@@ -213,7 +213,7 @@ class MainWindow(QMainWindow):
         header.setObjectName("headerBar")
         header.setStyleSheet("""
             QFrame#headerBar {
-                background: rgba(20,22,30,0.82);
+                background: rgba(16,18,25,0.94);
                 border-bottom: 1px solid rgba(255,255,255,0.075);
                 padding: 8px 16px;
             }
@@ -257,6 +257,24 @@ class MainWindow(QMainWindow):
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self._table.verticalHeader().setVisible(False)
         self._table.setColumnHidden(6, True)
+        self._table.setStyleSheet("""
+            QTableView {
+                background: #090B11;
+                alternate-background-color: rgba(255,255,255,0.025);
+                color: rgba(245,245,247,0.92);
+                border: none;
+                gridline-color: transparent;
+                selection-background-color: rgba(255,77,46,0.34);
+                selection-color: #ffffff;
+            }
+            QHeaderView::section {
+                background: rgba(255,255,255,0.045);
+                color: rgba(245,245,247,0.68);
+                border: none;
+                border-bottom: 1px solid rgba(255,255,255,0.07);
+                padding: 8px;
+            }
+        """)
         self._table.doubleClicked.connect(self._on_table_dbl)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._on_table_menu)
@@ -308,8 +326,13 @@ class MainWindow(QMainWindow):
         cw.setObjectName("contentSurface")
         cw.setStyleSheet(
             "QWidget#contentSurface {"
-            "  background: rgba(10,12,18,0.96);"
-            "  border-left: 1px solid rgba(255,255,255,0.04);"
+            "  background: #090B11;"
+            "  border-left: 1px solid rgba(255,255,255,0.045);"
+            "}")
+        self._content.setStyleSheet(
+            "QStackedWidget {"
+            "  background: #090B11;"
+            "  border: none;"
             "}")
         cl = QVBoxLayout(cw); cl.setContentsMargins(0, 0, 0, 0); cl.setSpacing(0)
         cl.addWidget(header); cl.addWidget(self._content)
@@ -319,8 +342,8 @@ class MainWindow(QMainWindow):
         sidebar_shell.setObjectName("sidebarShell")
         sidebar_shell.setStyleSheet(
             "QWidget#sidebarShell {"
-            "  background: rgba(8,10,15,0.95);"
-            "  border-right: 1px solid rgba(255,255,255,0.10);"
+            "  background: #080A0F;"
+            "  border-right: 1px solid rgba(255,255,255,0.08);"
             "}")
         ss_layout = QVBoxLayout(sidebar_shell)
         ss_layout.setContentsMargins(10, 10, 6, 10)
@@ -344,8 +367,8 @@ class MainWindow(QMainWindow):
         bar_wrapper.setAttribute(Qt.WA_TranslucentBackground)
         bar_wrapper.setStyleSheet(
             "QWidget#bottomBarArea {"
-            "  background: rgba(13,15,22,0.88);"
-            "  border-top: 1px solid rgba(255,255,255,0.085);"
+            "  background: rgba(8,10,15,0.92);"
+            "  border-top: 1px solid rgba(255,255,255,0.08);"
             "}")
         wl = QHBoxLayout(bar_wrapper)
         wl.setContentsMargins(24, 10, 24, 12)

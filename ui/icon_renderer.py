@@ -1,4 +1,4 @@
-"""Icon Renderer — SVG to QPixmap with proper scaling and centering."""
+"""Icon Renderer — SVG to QPixmap with proper scaling, centering, and padding."""
 
 from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QPixmap, QPainter
@@ -22,12 +22,15 @@ def render_svg_icon(path: str, size: int = 20) -> QPixmap:
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
-    if view.isEmpty():
-        renderer.render(painter, QRectF(0, 0, size, size))
+    padding = max(1, int(size * 0.10))
+    target = size - padding * 2
+
+    if view.isEmpty() or view.width() <= 0 or view.height() <= 0:
+        renderer.render(painter, QRectF(padding, padding, target, target))
         painter.end()
         return pixmap
 
-    scale = min(size / view.width(), size / view.height())
+    scale = min(target / view.width(), target / view.height())
     w = view.width() * scale
     h = view.height() * scale
     x = (size - w) / 2

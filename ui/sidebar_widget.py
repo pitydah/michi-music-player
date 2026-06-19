@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, Signal, QRectF
+from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QPen
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QFrame, QScrollArea, QGraphicsOpacityEffect, QSizePolicy,
@@ -110,7 +110,7 @@ class _Item(QFrame):
         self._icon_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._icon_label.setStyleSheet("background:transparent;border:none;")
         self._icon_effect = QGraphicsOpacityEffect()
-        self._icon_effect.setOpacity(0.82)
+        self._icon_effect.setOpacity(1.0)
         self._icon_label.setGraphicsEffect(self._icon_effect)
 
         self._load_icon(icon)
@@ -121,7 +121,7 @@ class _Item(QFrame):
         self._label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self._label.setStyleSheet(
-            "font-size:13px;font-weight:520;color:rgba(255,255,255,0.90);"
+            "font-size:13px;font-weight:520;color:rgba(255,255,255,0.92);"
             "background:transparent;border:none;")
         layout.addWidget(self._label)
         layout.addStretch()
@@ -168,10 +168,10 @@ class _Item(QFrame):
                 }
             """)
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:520;color:rgba(255,255,255,0.90);"
+                "font-size:13px;font-weight:520;color:rgba(255,255,255,0.92);"
                 "background:transparent;border:none;")
             if self._icon_effect:
-                self._icon_effect.setOpacity(0.90)
+                self._icon_effect.setOpacity(1.0)
 
     def enterEvent(self, event):
         if not self._active:
@@ -260,21 +260,14 @@ class SidebarWidget(QWidget):
         self._dark = is_dark_mode()
 
         self.setObjectName("sidebarGlass")
-        self.setAutoFillBackground(True)
+        self.setAutoFillBackground(False)
+        self.setAttribute(Qt.WA_StyledBackground, False)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self.setStyleSheet("""
             QWidget#sidebarGlass {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(68,72,84,0.98),
-                    stop:1 rgba(48,52,64,0.98)
-                );
-                border-top: 1px solid rgba(255,255,255,0.12);
-                border-left: 1px solid rgba(255,255,255,0.08);
-                border-right: 1px solid rgba(255,255,255,0.16);
-                border-bottom: 1px solid rgba(0,0,0,0.42);
-                border-radius: 16px;
+                background: transparent;
+                border: none;
             }
         """)
 
@@ -420,3 +413,19 @@ class SidebarWidget(QWidget):
             else:
                 sec.header.setVisible(True)
                 sec._container.setVisible(not sec.header.collapsed)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+
+        grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
+        grad.setColorAt(0.0, QColor(70, 74, 88, 250))
+        grad.setColorAt(1.0, QColor(48, 52, 64, 250))
+
+        painter.setBrush(grad)
+        painter.setPen(QPen(QColor(255, 255, 255, 36), 1))
+        painter.drawRoundedRect(rect, 16, 16)
+
+        painter.end()
