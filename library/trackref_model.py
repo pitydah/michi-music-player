@@ -23,15 +23,31 @@ class TrackRefTableModel(QStandardItemModel):
             t.setData(item, Qt.UserRole)
             a = QStandardItem(item.artist); a.setEditable(False)
             al = QStandardItem(item.album); al.setEditable(False)
-            y = QStandardItem(str(item.year) if item.year else "—"); y.setEditable(False)
+
+            # Year: store as int for numeric sorting
+            y = QStandardItem()
+            y.setEditable(False)
             y.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             y.setForeground(QBrush(QColor("#8e8e93")))
+            if item.year:
+                y.setText(str(item.year))
+                y.setData(item.year, Qt.UserRole)
+            else:
+                y.setText("—")
+
             g = QStandardItem(item.genre or "—"); g.setEditable(False)
-            d = QStandardItem(
-                self._fmt_duration(item.duration) if item.duration else "—")
+
+            # Duration: store formatted text but sort by raw seconds
+            d = QStandardItem()
             d.setEditable(False)
             d.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             d.setForeground(QBrush(QColor("#8e8e93")))
+            if item.duration:
+                d.setText(self._fmt_duration(item.duration))
+                d.setData(item.duration, Qt.UserRole)
+            else:
+                d.setText("—")
+
             uri = QStandardItem(item.uri); uri.setEditable(False)
             self.appendRow([t, a, al, y, g, d, uri])
 

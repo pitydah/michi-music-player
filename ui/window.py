@@ -318,27 +318,108 @@ class MainWindow(QMainWindow):
         self._table.setShowGrid(False)
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._table.setFrameShape(QFrame.NoFrame)
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self._table.horizontalHeader().setSectionsClickable(True)
+        self._table.horizontalHeader().setSortIndicatorShown(True)
+        self._table.horizontalHeader().setHighlightSections(False)
         self._table.verticalHeader().setVisible(False)
+        self._table.verticalHeader().setDefaultSectionSize(30)
         self._table.setColumnHidden(6, True)
+        self._table.setSortingEnabled(True)
         self._table.setStyleSheet("""
             QTableView {
                 background: #090B11;
-                alternate-background-color: rgba(255,255,255,0.025);
-                color: rgba(245,245,247,0.92);
+                alternate-background-color: #0E1118;
+                color: #FFFFFF;
+                gridline-color: rgba(255,255,255,0.05);
                 border: none;
-                gridline-color: transparent;
-                selection-background-color: rgba(255,77,46,0.34);
-                selection-color: #ffffff;
+                selection-background-color: rgba(255,77,46,0.28);
+                selection-color: #FFFFFF;
+                outline: 0;
+            }
+            QTableView::item {
+                min-height: 28px;
+                padding: 4px 8px;
+                border: none;
+            }
+            QTableView::item:hover {
+                background: rgba(255,255,255,0.055);
+            }
+            QHeaderView {
+                background: #10131A;
+                border: none;
             }
             QHeaderView::section {
-                background: rgba(255,255,255,0.045);
-                color: rgba(245,245,247,0.68);
+                background: qlineargradient(
+                    x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #181C25,
+                    stop:1 #10131A
+                );
+                color: rgba(255,255,255,0.82);
+                font-size: 12px;
+                font-weight: 650;
+                padding: 7px 10px;
                 border: none;
-                border-bottom: 1px solid rgba(255,255,255,0.07);
-                padding: 8px;
+                border-right: 1px solid rgba(255,255,255,0.06);
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+            QHeaderView::section:hover {
+                background: rgba(255,255,255,0.08);
+                color: #FFFFFF;
+            }
+            QHeaderView::section:checked {
+                background: rgba(255,77,46,0.18);
+                color: #FFFFFF;
+            }
+            QTableCornerButton::section {
+                background: #10131A;
+                border: none;
+                border-bottom: 1px solid rgba(255,255,255,0.08);
+            }
+            QScrollBar:vertical {
+                background: rgba(255,255,255,0.025);
+                width: 10px;
+                margin: 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(255,255,255,0.18);
+                min-height: 40px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(255,122,0,0.42);
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+                background: transparent;
+            }
+            QScrollBar:horizontal {
+                background: rgba(255,255,255,0.025);
+                height: 10px;
+                margin: 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:horizontal {
+                background: rgba(255,255,255,0.18);
+                min-width: 40px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: rgba(255,122,0,0.42);
+            }
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {
+                width: 0px;
+                background: transparent;
+            }
+            QScrollBar::add-page,
+            QScrollBar::sub-page {
+                background: transparent;
             }
         """)
         self._table.doubleClicked.connect(self._on_table_dbl)
