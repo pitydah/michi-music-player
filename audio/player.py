@@ -97,6 +97,10 @@ class GStreamerEngine(QObject):
         # Transmit
         self._transmit_device = None
 
+        # Crossfade / ReplayGain
+        self._crossfade = 0       # seconds
+        self._replaygain = False
+
     def set_library_db(self, db):
         self._db = db
         queue, idx = db.load_queue()
@@ -115,6 +119,8 @@ class GStreamerEngine(QObject):
             self._dac.buffer_ms = sm.get("audio/buffer_ms")
             self._eq.mode = sm.get("eq/mode")
             self._eq.preamp_db = sm.get("eq/preamp")
+            self._crossfade = sm.get("playback/crossfade")
+            self._replaygain = sm.get("playback/replaygain")
         except Exception:
             pass
 
@@ -346,6 +352,12 @@ class GStreamerEngine(QObject):
         else:
             base = (f"audioconvert ! audioresample ! "
                     f"alsasink device={self._dac.alsa_device_str}")
+
+        # ReplayGain
+        if self._replaygain and not self._is_dsd:
+            # Insert rganalysis+rgvolume before the sink
+            base = (f"rganalysis ! rgvolume album-mode=0 "
+                    f"fallback-gain=0 preamp-headroom=0 ! {base}")
 
         if self._transmit_device and not self._is_dsd:
             dev = self._transmit_device

@@ -216,7 +216,9 @@ def extract_metadata_full(filepath: str) -> dict:
 
 class LibraryDB:
     def __init__(self, db_path: str = DB_PATH):
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        dir_name = os.path.dirname(db_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("""CREATE TABLE IF NOT EXISTS media_items (

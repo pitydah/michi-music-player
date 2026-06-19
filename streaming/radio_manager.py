@@ -64,3 +64,25 @@ class RadioManager:
                 self._save()
                 return True
         return False
+
+    def start_recording(self, url: str, output_path: str) -> bool:
+        """Record a radio stream to file using GStreamer."""
+        import gi
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+        Gst.init(None)
+        pipeline_str = (
+            f"uridecodebin uri={url} ! audioconvert ! "
+            f"lamemp3enc target=bitrate bitrate=192 ! "
+            f"filesink location={output_path}"
+        )
+        self._record_pipeline = Gst.parse_launch(pipeline_str)
+        if self._record_pipeline:
+            self._record_pipeline.set_state(Gst.State.PLAYING)
+            return True
+        return False
+
+    def stop_recording(self):
+        if hasattr(self, '_record_pipeline') and self._record_pipeline:
+            self._record_pipeline.set_state(Gst.State.NULL)
+            self._record_pipeline = None

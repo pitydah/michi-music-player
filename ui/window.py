@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem, QStackedWidget, QTableView, QHeaderView,
     QAbstractItemView, QFileDialog, QProgressDialog,
     QInputDialog, QMessageBox, QMenu, QDialog, QFormLayout,
-    QDialogButtonBox, QGraphicsOpacityEffect,
+    QDialogButtonBox, QGraphicsOpacityEffect, QSystemTrayIcon,
 )
 
 from ui.sidebar_widget import SidebarWidget
@@ -33,6 +33,7 @@ from streaming.subsonic_client import (
 from streaming.server_dialog import ServerDialog
 from streaming.remote_browser import RemoteBrowser
 from library.coverflow import CoverFlowWidget
+from library.album_grid import AlbumGridWidget
 from library.album_art import load_covers_for_albums
 from ui.expanded_view import ExpandedNowPlaying
 from streaming.radio_widget import RadioWidget
@@ -93,6 +94,8 @@ class MainWindow(QMainWindow):
         self._setup_shortcuts()
         self._load_library()
 
+        self._setup_tray()
+
         self._mpris = None
         try:
             from adapters.mpris import MPRISAdapter
@@ -110,6 +113,9 @@ class MainWindow(QMainWindow):
         fm = mb.addMenu("&Archivo")
         fm.addAction("Abrir archivo...", self._open_file, "Ctrl+O")
         fm.addAction("Añadir carpeta...", self._add_folder, "Ctrl+D")
+        fm.addSeparator()
+        fm.addAction("Importar playlist...", self._import_playlist)
+        fm.addAction("Exportar playlist...", self._export_playlist)
         fm.addSeparator()
         self._sync_action = fm.addAction("Activar sincronización Android")
         self._sync_action.setCheckable(True)
@@ -228,6 +234,10 @@ class MainWindow(QMainWindow):
         self._radio_widget = RadioWidget()
         self._radio_widget.station_selected.connect(self._play_radio)
 
+        self._album_grid = AlbumGridWidget()
+        self._album_grid.album_double_clicked.connect(
+            lambda fps: self._player.enqueue(fps, play_now=True))
+
         self._content = QStackedWidget()
         self._content.setMinimumHeight(200)
         self._content.addWidget(placeholder)      # 0: empty
@@ -236,6 +246,7 @@ class MainWindow(QMainWindow):
         self._content.addWidget(placeholder)      # 3: coverflow placeholder
         self._content.addWidget(placeholder)      # 4: expanded view placeholder
         self._content.addWidget(self._radio_widget)  # 5: radio
+        self._content.addWidget(self._album_grid)    # 6: album grid
         self._content.setCurrentIndex(0)
 
         # ── Content wrapper ──
@@ -290,9 +301,74 @@ class MainWindow(QMainWindow):
         pb.transmit_clicked.connect(self._show_transmit_menu)
         pb.cover_loaded.connect(self._apply_adaptive_background)
 
+    def _setup_tray(self):
+        self._tray = QSystemTrayIcon(QIcon(app_icon()), self)
+        self._tray.setToolTip("Astra Music Player")
+        tray_menu = QMenu()
+        tray_menu.addAction("Mostrar", self.show)
+        tray_menu.addAction("Reproducir/Pausa", self._player.toggle)
+        tray_menu.addAction("Siguiente", self._player.play_next)
+        tray_menu.addAction("Anterior", self._player.play_prev)
+        tray_menu.addSeparator()
+        tray_menu.addAction("Salir", self.close)
+        self._tray.setContextMenu(tray_menu)
+        self._tray.show()
+
+    def _notify_track(self, title: str, artist: str):
+        if hasattr(self, '_tray') and self._tray and self._tray.isVisible():
+            self._tray.showMessage(
+                "Astra", f"{title} — {artist}",
+                QSystemTrayIcon.NoIcon, 3000)
+
+    def _import_playlist(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Importar playlist", os.path.expanduser("~"),
+            "Playlists (*.m3u *.m3u8 *.pls);;Todos (*)")
+        if not path:
+            return
+        from ui.playlist_io import import_playlist
+        files = import_playlist(path)
+        if files:
+            for fp in files:
+                self._db.add_file(fp)
+            self._load_library()
+            self._player.enqueue(files, play_now=False)
+            self._player_bar.set_track(
+                f"Importados {len(files)} temas", "Playlist")
+        else:
+            QMessageBox.information(
+                self, "Importar", "No se encontraron archivos válidos.")
+
+    def _export_playlist(self):
+        if not self._player._queue:
+            QMessageBox.information(
+                self, "Exportar", "La cola de reproducción está vacía.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exportar playlist", "playlist.m3u",
+            "M3U (*.m3u);;Todos (*)")
+        if not path:
+            return
+        from ui.playlist_io import export_m3u
+        export_m3u(path, self._player._queue)
+        QMessageBox.information(
+            self, "Exportar", f"Playlist exportada a {path}")
+
     def _setup_shortcuts(self):
         from PySide6.QtGui import QShortcut, QKeySequence
         QShortcut(QKeySequence("Space"), self, self._player.toggle)
+        QShortcut(QKeySequence("Ctrl+Right"), self, self._player.play_next)
+        QShortcut(QKeySequence("Ctrl+Left"), self, self._player.play_prev)
+        QShortcut(QKeySequence("Ctrl+Up"), self,
+                  lambda: self._player_bar.volume_changed.emit(
+                      min(100, self._player_bar._vol.value() + 5)))
+        QShortcut(QKeySequence("Ctrl+Down"), self,
+                  lambda: self._player_bar.volume_changed.emit(
+                      max(0, self._player_bar._vol.value() - 5)))
+        QShortcut(QKeySequence("Ctrl+M"), self,
+                  lambda: self._player_bar.volume_changed.emit(0))
+        QShortcut(QKeySequence("Ctrl+F"), self,
+                  lambda: self._search.setFocus())
         QShortcut(QKeySequence("Ctrl+Right"), self, self._player.play_next)
         QShortcut(QKeySequence("Ctrl+Left"), self, self._player.play_prev)
         QShortcut(QKeySequence("Ctrl+Up"), self,
@@ -546,9 +622,9 @@ class MainWindow(QMainWindow):
             self._section_title.setText("Biblioteca")
             self._fade_content(1)
         elif mode == "grid":
-            self._show_coverflow()
+            self._show_album_grid()
             self._section_title.setText("Carátulas")
-            self._fade_content(3)
+            self._fade_content(6)
         elif mode == "coverflow":
             self._show_coverflow()
             self._section_title.setText("Coverflow")
@@ -576,6 +652,10 @@ class MainWindow(QMainWindow):
     def _show_grid_view(self):
         self._view_switcher.set_view("grid", emit=False)
         self._on_view_mode_changed("grid")
+
+    def _show_album_grid(self):
+        self._album_grid.set_items(self._all_items, 180)
+        self._count.setText(f"{len(self._all_items)} temas")
 
     def _show_coverflow_view(self):
         self._view_switcher.set_view("coverflow", emit=False)
@@ -786,6 +866,8 @@ class MainWindow(QMainWindow):
             self._mpris.player.set_metadata(
                 title=name, artist=artist or "",
                 album=album, duration=dur)
+
+        self._notify_track(name, artist)
 
         self.setWindowTitle(f"Astra Music Player — {name}")
 
