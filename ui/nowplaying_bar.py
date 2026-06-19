@@ -86,7 +86,8 @@ QSlider::handle:horizontal {
 """
 
 
-def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) -> QPushButton:
+def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
+              primary: bool = False) -> QPushButton:
     btn = QPushButton("")
     btn.setFlat(True)
 
@@ -103,21 +104,58 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
 
     btn.setCursor(Qt.PointingHandCursor)
     btn.setFocusPolicy(Qt.NoFocus)
-    btn.setStyleSheet("""
-        QPushButton {
-            background: transparent;
-            border: none;
-            padding: 0px;
-            margin: 0px;
-            border-radius: 11px;
-        }
-        QPushButton:hover {
-            background: rgba(255,255,255,0.09);
-        }
-        QPushButton:pressed {
-            background: rgba(255,77,46,0.24);
-        }
-    """)
+
+    if primary:
+        btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #FF7A00,
+                    stop:0.4 #FF4D2E,
+                    stop:0.75 #E8006D,
+                    stop:1 #CC0050
+                );
+                border: none;
+                padding: 0px;
+                margin: 0px;
+                border-radius: 14px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #FF8F20,
+                    stop:0.4 #FF6E4E,
+                    stop:0.75 #F02088,
+                    stop:1 #E82070
+                );
+            }
+            QPushButton:pressed {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #CC5500,
+                    stop:0.4 #CC2E0E,
+                    stop:0.75 #BB0055,
+                    stop:1 #990038
+                );
+            }
+        """)
+    else:
+        btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+                border-radius: 11px;
+            }
+            QPushButton:hover {
+                background: rgba(255,255,255,0.08);
+            }
+            QPushButton:pressed {
+                background: rgba(255,77,46,0.22);
+            }
+        """)
+
     return btn
 
 
@@ -225,11 +263,15 @@ class NowPlayingBar(QWidget):
         from ui.theme import is_dark_mode
         self._dark_mode = is_dark_mode()
         if self._dark_mode:
-            self._bg_rgba = "rgba(48, 52, 64, 242)"
+            self._bg_rgba = (
+                "qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+                " stop:0 rgba(10,12,18,0.98),"
+                " stop:0.55 rgba(7,9,14,0.98),"
+                " stop:1 rgba(14,10,16,0.98))")
             self._text_color = "rgba(255,255,255,0.98)"
             self._text_sec = "rgba(245,245,247,0.74)"
             self._accent = "#ffffff"
-            self._border = "rgba(255,255,255,0.14)"
+            self._border = "rgba(255,255,255,0.08)"
             self._shadow_alpha = 110
         else:
             self._bg_rgba = "rgba(245, 245, 247, 220)"
@@ -258,11 +300,11 @@ class NowPlayingBar(QWidget):
             QWidget#nowPlayingInfoCard {
                 background: qlineargradient(
                     x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(68,72,84,0.98),
-                    stop:0.55 rgba(58,62,74,0.98),
-                    stop:1 rgba(48,52,64,0.98)
+                    stop:0 rgba(64,68,80,0.92),
+                    stop:0.55 rgba(45,49,60,0.92),
+                    stop:1 rgba(20,22,30,0.95)
                 );
-                border: 1px solid rgba(255,255,255,0.13);
+                border: 1px solid rgba(255,255,255,0.10);
                 border-radius: 16px;
             }
         """)
@@ -388,7 +430,7 @@ class NowPlayingBar(QWidget):
 
         self._shuffle_btn = _make_btn("warm_shuffle", 20, 40)
         self._prev_btn = _make_btn("warm_prev", 26, 44)
-        self._play_btn = _make_btn("warm_play", 32, 54)
+        self._play_btn = _make_btn("warm_play", 32, 54, primary=True)
         self._next_btn = _make_btn("warm_next", 26, 44)
         self._repeat_btn = _make_btn("warm_repeat", 20, 40)
 
@@ -475,7 +517,7 @@ class NowPlayingBar(QWidget):
         self.setStyleSheet(f"""
             QWidget#nowplayingBar {{
                 background: {self._bg_rgba};
-                border-radius: 16px;
+                border-radius: 18px;
                 border: 1px solid {self._border};
             }}
         """)

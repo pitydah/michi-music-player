@@ -423,8 +423,8 @@ class MainWindow(QMainWindow):
         bar_wrapper.setAttribute(Qt.WA_TranslucentBackground)
         bar_wrapper.setStyleSheet(
             "QWidget#bottomBarArea {"
-            "  background: rgba(8,10,15,0.92);"
-            "  border-top: 1px solid rgba(255,255,255,0.08);"
+            "  background: rgba(5,7,10,0.92);"
+            "  border-top: 1px solid rgba(255,255,255,0.06);"
             "}")
         wl = QHBoxLayout(bar_wrapper)
         wl.setContentsMargins(24, 10, 24, 12)
