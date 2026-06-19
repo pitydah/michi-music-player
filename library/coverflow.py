@@ -6,12 +6,12 @@ from PySide6.QtCore import (
     Property, Signal, QRectF, QPointF,
 )
 from PySide6.QtGui import (
-    QPainter, QColor, QPen, QLinearGradient, QPixmap,
+    QPainter, QColor, QPen, QLinearGradient, QRadialGradient, QPixmap,
     QTransform, QFont, QPainterPath,
 )
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsObject,
-    QGraphicsTextItem,
+    QGraphicsTextItem, QGraphicsOpacityEffect,
 )
 
 from library.album_art import CoverFlowItem
@@ -125,6 +125,18 @@ class CoverItem(QGraphicsObject):
         # Draw cached cover + reflection (rounded corners + border baked in)
         painter.drawPixmap(0, 0, self._cached)
 
+        # Floor shadow for center item
+        if hasattr(self, '_is_center') and self._is_center:
+            painter.save()
+            shadow = QRadialGradient(self._w / 2, self._h, self._w * 0.55)
+            shadow.setColorAt(0.0, QColor(0, 0, 0, 50))
+            shadow.setColorAt(1.0, QColor(0, 0, 0, 0))
+            painter.setBrush(shadow)
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(QPointF(self._w / 2, self._h),
+                               self._w * 0.4, 10)
+            painter.restore()
+
         # Fade-in overlay: if real_cover is loading, crossfade over cached
         if hasattr(self, '_real_cover') and self._fade_alpha < 1.0:
             painter.save()
@@ -145,19 +157,20 @@ class CoverItem(QGraphicsObject):
             painter.restore()
 
     def update_transform(self, current_offset: float, view_width: float,
-                         view_height: float):
+                         view_height: float, velocity: float = 0.0):
         dist = self._index - current_offset
         transform = QTransform()
         max_rot = 65.0
         spacing_center = 170.0
         spacing_side = 25.0
+        zoom_out = min(0.15, abs(velocity) * 2.0)
 
         if abs(dist) < 0.1:
             self.setZValue(1000)
             cx = view_width / 2
             cy = view_height / 2 - 20
             transform.translate(cx, cy)
-            transform.scale(1.0, 1.0)
+            transform.scale(1.0 - zoom_out, 1.0 - zoom_out)
         else:
             is_left = dist < 0
             ad = abs(dist)
@@ -180,7 +193,7 @@ class CoverItem(QGraphicsObject):
                 cx += spacing_center * flip_factor + spacing_side * max(0, ad - 1)
             transform.translate(cx - self._w / 2, cy - self._h / 2)
             scale = 0.85
-            transform.scale(scale, scale)
+            transform.scale(scale - zoom_out, scale - zoom_out)
 
         self.setTransform(transform)
 
@@ -215,12 +228,18 @@ class CoverFlowWidget(QGraphicsView):
         self._title_text.setDefaultTextColor(QColor("#ffffff"))
         self._title_text.setFont(QFont("sans-serif", 14, QFont.Bold))
         self._title_text.setZValue(2000)
+        self._title_effect = QGraphicsOpacityEffect()
+        self._title_effect.setOpacity(1.0)
+        self._title_text.setGraphicsEffect(self._title_effect)
         self._scene.addItem(self._title_text)
 
         self._artist_text = QGraphicsTextItem()
         self._artist_text.setDefaultTextColor(QColor(245, 245, 247, 140))
         self._artist_text.setFont(QFont("sans-serif", 12))
         self._artist_text.setZValue(2000)
+        self._artist_effect = QGraphicsOpacityEffect()
+        self._artist_effect.setOpacity(1.0)
+        self._artist_text.setGraphicsEffect(self._artist_effect)
         self._scene.addItem(self._artist_text)
 
         # Empty state message
@@ -335,7 +354,8 @@ class CoverFlowWidget(QGraphicsView):
                 continue
 
             ci.setVisible(True)
-            ci.update_transform(self._current, vw, vh)
+            ci.update_transform(self._current, vw, vh, self._velocity)
+            ci._is_center = abs(dist) < 0.5
 
             # Async loading: request cover if still placeholder
             if not hasattr(ci, '_real_cover') and not ci._placeholder.isNull():
@@ -344,22 +364,44 @@ class CoverFlowWidget(QGraphicsView):
 
         idx = max(0, min(len(self._items) - 1, int(round(self._current))))
 
-        # 2. Update central text
+        # Update central text with crossfade
         if self._items and 0 <= idx < len(self._items):
             item = self._items[idx]
-            self._title_text.setPlainText(item.title)
             artist = (
                 item.subtitle.split(" · ")[0]
                 if item.subtitle and " · " in item.subtitle
                 else "Desconocido")
-            self._artist_text.setPlainText(artist)
+            self._animate_text_change(item.title, artist)
+        else:
+            self._animate_text_change("", "")
+
+    def _animate_text_change(self, new_title: str, new_artist: str):
+        """Fade out → change text → fade in."""
+        vw = self.viewport().width()
+        vh = self.viewport().height()
+
+        anim = QVariantAnimation()
+        anim.setDuration(120)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.0)
+
+        def _on_fade_out():
+            self._title_text.setPlainText(new_title)
+            self._artist_text.setPlainText(new_artist)
             tr = self._title_text.boundingRect()
             ar = self._artist_text.boundingRect()
             self._title_text.setPos(vw / 2 - tr.width() / 2, vh - 85)
             self._artist_text.setPos(vw / 2 - ar.width() / 2, vh - 65)
-        else:
-            self._title_text.setPlainText("")
-            self._artist_text.setPlainText("")
+            # Fade back in
+            self._title_effect.setOpacity(1.0)
+            self._artist_effect.setOpacity(1.0)
+
+        anim.finished.connect(_on_fade_out)
+        anim.valueChanged.connect(
+            lambda v: (self._title_effect.setOpacity(v),
+                       self._artist_effect.setOpacity(v)))
+        anim.start()
+        self._text_anim = anim  # keep reference
 
         # 3. Signal throttling — only emit if index changed
         if getattr(self, '_last_emitted_idx', -1) != idx:
@@ -377,6 +419,14 @@ class CoverFlowWidget(QGraphicsView):
             return
         self._velocity *= 0.92
         self._current += self._velocity
+
+        # Elastic overscroll: spring back toward valid range
+        max_i = max(0.0, float(len(self._items) - 1))
+        if self._current < 0:
+            self._velocity += -self._current * 0.05
+        if self._current > max_i:
+            self._velocity += (max_i - self._current) * 0.05
+
         self._update_layout()
         if abs(self._velocity) < 0.003:
             self._trigger_snap()
