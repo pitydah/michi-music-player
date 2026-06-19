@@ -49,6 +49,9 @@ from library.album_art import load_covers_for_albums
 from ui.expanded_view import ExpandedNowPlaying
 from streaming.radio_widget import RadioWidget
 from streaming.radio_manager import RadioManager
+from ui.music_identifier_view import MusicIdentifierView
+from recognition.detection_service import DetectionService
+from recognition.null_recognizer import NullRecognizer
 
 
 class MainWindow(QMainWindow):
@@ -87,6 +90,16 @@ class MainWindow(QMainWindow):
         self._load_library()
 
         self._setup_tray()
+
+        # ── Music Identifier ──
+        self._detection = DetectionService(self._db, NullRecognizer(), self)
+        self._identifier_view = MusicIdentifierView()
+        self._identifier_view.toggle_requested.connect(self._toggle_identifier)
+        self._identifier_view.clear_requested.connect(self._clear_detected_tracks)
+        self._identifier_view.track_selected.connect(self._on_detected_track_selected)
+        self._detection.status_changed.connect(self._identifier_view.set_identifier_state)
+        self._detection.track_detected.connect(self._on_track_detected)
+        self._detection.detection_failed.connect(self._on_detection_failed)
 
         self._mpris = None
         try:
@@ -281,6 +294,7 @@ class MainWindow(QMainWindow):
         self._views.register("radio", self._radio_widget)
         self._views.register("album_grid", self._album_grid)
         self._views.register("folders", self._folder_browser)
+        self._views.register("identifier", self._identifier_view)
         self._views.show("empty")
 
         # ── Content wrapper ──
@@ -543,6 +557,13 @@ class MainWindow(QMainWindow):
                 if files:
                     self._playback.enqueue(files, play_now=True)
                     self._show_expanded()
+
+        elif key == "identifier":
+            self._section_title.setText("Identificador")
+            self._identifier_view.set_detected_tracks(
+                self._db.get_detected_tracks(100))
+            self._views.show("identifier")
+            self._search.hide()
 
     def _on_sidebar_menu(self, pos):
         widget = self._sidebar.childAt(pos)
@@ -1212,6 +1233,41 @@ class MainWindow(QMainWindow):
         btn_row.addWidget(close_btn)
         layout.addLayout(btn_row)
         dlg.exec()
+
+    # ── Identifier ──
+
+    def _toggle_identifier(self, enabled: bool):
+        current = getattr(self._playback, 'current', None)
+        source = "stream" if current and current.startswith("http") else "local"
+        if enabled:
+            self._detection.start(source=source, filepath=current)
+            self._identifier_view.set_identifier_enabled(True)
+        else:
+            self._detection.stop()
+            self._identifier_view.set_identifier_enabled(False)
+
+    def _clear_detected_tracks(self):
+        self._db.clear_detected_tracks()
+        self._identifier_view.set_detected_tracks([])
+
+    def _on_track_detected(self, track):
+        self._identifier_view.set_detected_tracks(
+            self._db.get_detected_tracks(100))
+
+    def _on_detection_failed(self, message: str):
+        self._identifier_view.set_status_message(message)
+
+    def _on_detected_track_selected(self, track: dict):
+        filepath = track.get("filepath")
+        if filepath and os.path.exists(filepath):
+            self._playback.enqueue([filepath], play_now=True)
+        else:
+            title = track.get("title", "")
+            artist = track.get("artist", "")
+            if title or artist:
+                self._search.setText(f"{title} {artist}")
+                self._search_ctrl.set_active("local")
+                self._search_ctrl.search(f"{title} {artist}")
 
     def paintEvent(self, event):
         painter = QPainter(self)

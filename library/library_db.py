@@ -288,11 +288,29 @@ class LibraryDB:
             mime        TEXT NOT NULL,
             data        BLOB NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS detected_tracks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            artist TEXT NOT NULL,
+            album TEXT DEFAULT '',
+            source TEXT DEFAULT '',
+            provider TEXT DEFAULT '',
+            confidence REAL,
+            isrc TEXT,
+            artwork_url TEXT,
+            external_url TEXT,
+            filepath TEXT,
+            matched_library_id INTEGER,
+            raw_json TEXT,
+            detected_at REAL NOT NULL
+        );
         """)
         self._conn.commit()
 
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_pl_filepath ON playlist_items(filepath)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_pl_playlist ON playlist_items(playlist_id)")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_detected_tracks_time ON detected_tracks(detected_at DESC)")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_detected_tracks_artist_title ON detected_tracks(artist, title)")
         self._conn.commit()
 
     def _run_migrations(self):
@@ -527,6 +545,65 @@ class LibraryDB:
             "WHERE device=? ORDER BY last_played DESC", (device,)).fetchall()
         return [{"track_id": r[0], "play_count": r[1], "last_played": r[2]}
                 for r in rows]
+
+    # ── Detected Tracks ──
+
+    def add_detected_track(
+        self,
+        title: str,
+        artist: str,
+        album: str = "",
+        source: str = "",
+        provider: str = "",
+        confidence: float | None = None,
+        isrc: str | None = None,
+        artwork_url: str | None = None,
+        external_url: str | None = None,
+        filepath: str | None = None,
+        matched_library_id: int | None = None,
+        raw_json: str | None = None,
+        detected_at: float | None = None,
+    ) -> int:
+        import time as _time
+        self._conn.execute(
+            "INSERT INTO detected_tracks "
+            "(title, artist, album, source, provider, confidence, isrc, "
+            " artwork_url, external_url, filepath, matched_library_id, "
+            " raw_json, detected_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (title, artist, album, source, provider, confidence, isrc,
+             artwork_url, external_url, filepath, matched_library_id,
+             raw_json, detected_at or _time.time()))
+        self._conn.commit()
+        return self._conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def get_detected_tracks(self, limit: int = 100) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT * FROM detected_tracks "
+            "ORDER BY detected_at DESC LIMIT ?", (limit,)).fetchall()
+        cols = [d[1] for d in self._conn.execute(
+            "PRAGMA table_info(detected_tracks)").fetchall()]
+        return [dict(zip(cols, r)) for r in rows]
+
+    def clear_detected_tracks(self):
+        self._conn.execute("DELETE FROM detected_tracks")
+        self._conn.commit()
+
+    def find_detected_track_recent(
+        self, title: str, artist: str, within_seconds: int = 300
+    ) -> dict | None:
+        import time as _time
+        cutoff = _time.time() - within_seconds
+        row = self._conn.execute(
+            "SELECT * FROM detected_tracks "
+            "WHERE title=? AND artist=? AND detected_at > ? "
+            "ORDER BY detected_at DESC LIMIT 1",
+            (title, artist, cutoff)).fetchone()
+        if row:
+            cols = [d[1] for d in self._conn.execute(
+                "PRAGMA table_info(detected_tracks)").fetchall()]
+            return dict(zip(cols, row))
+        return None
 
 
 # ── Scanner Worker (QThread-safe) ──

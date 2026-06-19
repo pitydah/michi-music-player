@@ -26,6 +26,7 @@ CUSTOM_ICONS = {
     "sidebar_unplayed":   "icons/sidebar_unplayed.svg",
     "sidebar_popular":    "icons/sidebar_popular.svg",
     "sidebar_add":        "icons/sidebar_add.svg",
+    "sidebar_identifier": "icons/sidebar_identifier.svg",
     "sidebar_songs":      "icons/sidebar_songs.svg",
     "warm_play":          "icons/warm_play.svg",
     "warm_pause":         "icons/warm_pause.svg",
