@@ -139,7 +139,14 @@ class _Item(QFrame):
 
     def _load_icon(self, name: str):
         path = get_icon(name) if name else ""
-        pix = render_svg_icon(path, SIDEBAR_ICON, 2) if path else QPixmap(SIDEBAR_ICON, SIDEBAR_ICON)
+        if not path:
+            pix = QPixmap(SIDEBAR_ICON, SIDEBAR_ICON)
+        elif path.lower().endswith(".png"):
+            pix = QPixmap(path).scaled(
+                SIDEBAR_ICON, SIDEBAR_ICON,
+                Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            pix = render_svg_icon(path, SIDEBAR_ICON, 2)
         self._icon_label.setPixmap(pix)
 
     def _refresh_styles(self):
