@@ -430,7 +430,7 @@ class NowPlayingBar(QWidget):
         self._eq_btn = _make_btn("warm_eq", 26, 44)
         self._eq_btn.clicked.connect(self.eq_clicked.emit)
 
-        self._transmit_btn = _make_btn("warm_transmit", 26, 44)
+        self._transmit_btn = _make_btn("warm_transmit", 28, 44)
         self._transmit_btn.setToolTip("Transmitir a dispositivo")
         self._transmit_btn.clicked.connect(lambda: self.transmit_clicked.emit())
 
