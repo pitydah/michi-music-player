@@ -122,12 +122,12 @@ class NowPlayingBar(QWidget):
         from ui.theme import is_dark_mode
         self._dark_mode = is_dark_mode()
         if self._dark_mode:
-            self._bg_rgba = "rgba(42, 42, 48, 220)"
-            self._text_color = "#ffffff"
-            self._text_sec = "rgba(255,255,255,0.6)"
+            self._bg_rgba = "rgba(45, 48, 58, 238)"
+            self._text_color = "rgba(255,255,255,0.96)"
+            self._text_sec = "rgba(245,245,247,0.70)"
             self._accent = "#ffffff"
-            self._border = "rgba(255,255,255,0.06)"
-            self._shadow_alpha = 80
+            self._border = "rgba(255,255,255,0.12)"
+            self._shadow_alpha = 95
         else:
             self._bg_rgba = "rgba(245, 245, 247, 220)"
             self._text_color = "#1c1c1e"
@@ -288,13 +288,13 @@ class NowPlayingBar(QWidget):
         self._quality_badge.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self._quality_badge.setStyleSheet("""
             QLabel {
-                background: rgba(28,28,30,0.6);
-                color: #FF7A00;
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 4px;
-                padding: 2px 8px;
-                font-size: 9px;
-                font-family: monospace;
+                background: rgba(255,255,255,0.07);
+                color: #FF9A3D;
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 8px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: 550;
             }
         """)
 
@@ -322,7 +322,7 @@ class NowPlayingBar(QWidget):
         self.setStyleSheet(f"""
             QWidget#nowplayingBar {{
                 background: {self._bg_rgba};
-                border-radius: 14px;
+                border-radius: 16px;
                 border: 1px solid {self._border};
             }}
         """)

@@ -83,6 +83,10 @@ class MainWindow(QMainWindow):
         self._search_text = ""
         self._current_playlist: int | None = None
 
+        # ── Music Identifier (must exist before _setup_ui) ──
+        self._detection = DetectionService(self._db, NullRecognizer(), self)
+        self._identifier_view = MusicIdentifierView()
+
         self._setup_menu()
         self._setup_ui()
         self._connect_signals()
@@ -91,9 +95,7 @@ class MainWindow(QMainWindow):
 
         self._setup_tray()
 
-        # ── Music Identifier ──
-        self._detection = DetectionService(self._db, NullRecognizer(), self)
-        self._identifier_view = MusicIdentifierView()
+        # ── Music Identifier signal connections ──
         self._identifier_view.toggle_requested.connect(self._toggle_identifier)
         self._identifier_view.clear_requested.connect(self._clear_detected_tracks)
         self._identifier_view.track_selected.connect(self._on_detected_track_selected)
@@ -199,7 +201,7 @@ class MainWindow(QMainWindow):
         # ── Sidebar ──
         self._sidebar = SidebarWidget()
         self._sidebar.setMinimumWidth(270)
-        self._sidebar.setMaximumWidth(300)
+        self._sidebar.setMaximumWidth(380)
         self._sidebar_controller = SidebarController(self._sidebar, self._db)
         self._sidebar_controller.navigation_requested.connect(
             self._on_sidebar_navigate)
@@ -305,7 +307,11 @@ class MainWindow(QMainWindow):
         # ── Splitter ──
         sidebar_shell = QWidget()
         sidebar_shell.setObjectName("sidebarShell")
-        sidebar_shell.setStyleSheet("background: transparent;")
+        sidebar_shell.setStyleSheet(
+            "QWidget#sidebarShell {"
+            "  background: transparent;"
+            "  border-right: 1px solid rgba(255,255,255,0.075);"
+            "}")
         ss_layout = QVBoxLayout(sidebar_shell)
         ss_layout.setContentsMargins(10, 10, 6, 10)
         ss_layout.setSpacing(0)
@@ -314,16 +320,25 @@ class MainWindow(QMainWindow):
         sp = QSplitter(Qt.Horizontal)
         sp.addWidget(sidebar_shell)
         sp.addWidget(cw)
+        sp.setCollapsible(0, False)
+        sp.setCollapsible(1, False)
         sp.setStretchFactor(0, 1); sp.setStretchFactor(1, 3); sp.setSizes([300, 820])
-        sp.setStyleSheet("QSplitter::handle { background: rgba(0,0,0,0.06); width: 1px; }")
+        sp.setStyleSheet(
+            "QSplitter::handle { background: transparent; width: 1px; }")
 
         # ── NowPlaying bar ──
         self._player_bar = NowPlayingBar()
 
         bar_wrapper = QWidget()
+        bar_wrapper.setObjectName("bottomBarArea")
         bar_wrapper.setAttribute(Qt.WA_TranslucentBackground)
+        bar_wrapper.setStyleSheet(
+            "QWidget#bottomBarArea {"
+            "  background: transparent;"
+            "  border-top: 1px solid rgba(255,255,255,0.065);"
+            "}")
         wl = QHBoxLayout(bar_wrapper)
-        wl.setContentsMargins(24, 0, 24, 12)
+        wl.setContentsMargins(24, 10, 24, 12)
         wl.addWidget(self._player_bar)
 
         cent = QWidget()

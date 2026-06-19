@@ -5,8 +5,8 @@ from pathlib import Path
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
-    QFrame, QScrollArea, QGraphicsOpacityEffect,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QFrame, QScrollArea, QGraphicsOpacityEffect, QSizePolicy,
 )
 
 from ui.icons import get_icon
@@ -33,16 +33,16 @@ class _SectionHeader(QWidget):
         layout.setContentsMargins(12, 18, 12, 6)
         layout.setSpacing(0)
 
+        txt_c = "rgba(245,245,247,0.72)" if dark else "rgba(28,28,30,0.72)"
         self._title = QLabel(text)
-        txt_c = "rgba(245,245,247,0.58)" if dark else "rgba(28,28,30,0.58)"
         self._title.setStyleSheet(
-            f"font-size:12px;font-weight:650;color:{txt_c};"
+            f"font-size:12px;font-weight:680;color:{txt_c};"
             "background:transparent;border:none;")
         layout.addWidget(self._title)
         layout.addStretch()
 
+        chev_c = "rgba(245,245,247,0.64)" if dark else "rgba(28,28,30,0.64)"
         self._chevron = QLabel("˅")
-        chev_c = "rgba(245,245,247,0.50)" if dark else "rgba(28,28,30,0.50)"
         self._chevron.setStyleSheet(
             f"font-size:11px;color:{chev_c};background:transparent;border:none;")
         self._chevron.setFixedWidth(16)
@@ -63,17 +63,23 @@ class _SectionHeader(QWidget):
         super().mousePressEvent(event)
 
     def enterEvent(self, event):
-        c = "rgba(245,245,247,0.80)" if self._dark else "rgba(28,28,30,0.80)"
+        c = "rgba(255,255,255,0.90)" if self._dark else "rgba(28,28,30,0.90)"
         self._title.setStyleSheet(
-            f"font-size:12px;font-weight:650;color:{c};"
+            f"font-size:12px;font-weight:680;color:{c};"
             "background:transparent;border:none;")
+        cc = "rgba(255,255,255,0.85)" if self._dark else "rgba(28,28,30,0.85)"
+        self._chevron.setStyleSheet(
+            f"font-size:11px;color:{cc};background:transparent;border:none;")
         super().enterEvent(event)
 
     def leaveEvent(self, event):
-        c = "rgba(245,245,247,0.58)" if self._dark else "rgba(28,28,30,0.58)"
+        c = "rgba(245,245,247,0.72)" if self._dark else "rgba(28,28,30,0.72)"
         self._title.setStyleSheet(
-            f"font-size:12px;font-weight:650;color:{c};"
+            f"font-size:12px;font-weight:680;color:{c};"
             "background:transparent;border:none;")
+        cc = "rgba(245,245,247,0.64)" if self._dark else "rgba(28,28,30,0.64)"
+        self._chevron.setStyleSheet(
+            f"font-size:11px;color:{cc};background:transparent;border:none;")
         super().leaveEvent(event)
 
 
@@ -91,36 +97,41 @@ class _Item(QFrame):
         self._icon_name = icon
         self.setCursor(Qt.PointingHandCursor)
         self.setMinimumHeight(SIDEBAR_ITEM_H)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 0, 12, 0)
         layout.setSpacing(12)
 
-        # Icon — left side, fixed size
+        # Icon — fixed size, left side
         self._icon_label = QLabel()
         self._icon_label.setFixedSize(SIDEBAR_ICON, SIDEBAR_ICON)
+        self._icon_label.setScaledContents(False)
+        self._icon_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._icon_label.setStyleSheet("background:transparent;border:none;")
         self._icon_effect = QGraphicsOpacityEffect()
-        self._icon_effect.setOpacity(0.72)
+        self._icon_effect.setOpacity(0.82)
         self._icon_label.setGraphicsEffect(self._icon_effect)
 
         self._load_icon(icon)
         layout.addWidget(self._icon_label)
 
-        # Text
+        # Text — left-aligned, expands with sidebar
         self._label = QLabel(text)
+        self._label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self._label.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
         self._label.setStyleSheet(
-            "font-size:13px;font-weight:500;color:rgba(245,245,247,0.76);"
+            "font-size:13px;font-weight:520;color:rgba(245,245,247,0.86);"
             "background:transparent;border:none;")
         layout.addWidget(self._label)
         layout.addStretch()
 
-        # Badge — right side
+        # Badge — right side, fixed
         self._badge_label = None
         if badge:
             self._badge_label = QLabel(badge)
             self._badge_label.setStyleSheet(
-                "font-size:10px;color:rgba(245,245,247,0.4);"
+                "font-size:10px;color:rgba(245,245,247,0.45);"
                 "background:rgba(255,255,255,0.06);"
                 "border-radius:4px;padding:1px 6px;border:none;")
             layout.addWidget(self._badge_label)
@@ -137,6 +148,7 @@ class _Item(QFrame):
             self.setStyleSheet(f"""
                 QFrame {{
                     background: {SIDEBAR_ACTIVE_GRADIENT};
+                    border: 1px solid rgba(255,255,255,0.18);
                     border-radius: 11px;
                     margin: 1px 8px;
                 }}
@@ -156,27 +168,27 @@ class _Item(QFrame):
                 }
             """)
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:500;color:rgba(245,245,247,0.76);"
+                "font-size:13px;font-weight:520;color:rgba(245,245,247,0.86);"
                 "background:transparent;border:none;")
             if self._icon_effect:
-                self._icon_effect.setOpacity(0.72)
+                self._icon_effect.setOpacity(0.82)
 
     def enterEvent(self, event):
         if not self._active:
             self.setStyleSheet("""
                 QFrame {
-                    background: rgba(255,255,255,0.07);
+                    background: rgba(255,255,255,0.085);
                     border: none;
                     border-radius: 10px;
                     margin: 1px 8px;
                 }
             """)
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:500;"
-                "color:rgba(245,245,247,0.92);"
+                "font-size:13px;font-weight:520;"
+                "color:rgba(255,255,255,0.96);"
                 "background:transparent;border:none;")
             if self._icon_effect:
-                self._icon_effect.setOpacity(0.90)
+                self._icon_effect.setOpacity(0.96)
         super().enterEvent(event)
 
     def leaveEvent(self, event):
@@ -249,20 +261,22 @@ class SidebarWidget(QWidget):
 
         self.setObjectName("sidebarGlass")
         self.setAutoFillBackground(True)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self.setStyleSheet("""
             QWidget#sidebarGlass {
                 background: qlineargradient(
                     x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(36,36,42,0.92),
-                    stop:1 rgba(28,28,34,0.88)
+                    stop:0 rgba(52,55,64,0.96),
+                    stop:1 rgba(38,41,50,0.96)
                 );
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 18px;
+                border-top: 1px solid rgba(255,255,255,0.08);
+                border-left: 1px solid rgba(255,255,255,0.06);
+                border-right: 1px solid rgba(255,255,255,0.11);
+                border-bottom: 1px solid rgba(0,0,0,0.35);
+                border-radius: 16px;
             }
         """)
-
-        txt = "#f5f5f7" if self._dark else "#1c1c1e"
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(14, 14, 10, 12)
@@ -287,11 +301,11 @@ class SidebarWidget(QWidget):
         brand_text.setSpacing(0)
         title_lbl = QLabel("ASTRA")
         title_lbl.setStyleSheet(
-            f"font-size:16px;font-weight:750;color:rgba(245,245,247,0.90);"
+            "font-size:16px;font-weight:760;color:rgba(255,255,255,0.96);"
             "background:transparent;border:none;")
         sub_lbl = QLabel("Music Player")
         sub_lbl.setStyleSheet(
-            "font-size:11px;color:rgba(245,245,247,0.55);"
+            "font-size:11px;color:rgba(245,245,247,0.66);"
             "background:transparent;border:none;")
         brand_text.addWidget(title_lbl)
         brand_text.addWidget(sub_lbl)
@@ -308,17 +322,17 @@ class SidebarWidget(QWidget):
         self._search.setClearButtonEnabled(True)
         self._search.setStyleSheet("""
             QLineEdit#sidebarSearch {
-                background: rgba(255,255,255,0.12);
-                border: 1px solid rgba(255,255,255,0.10);
+                background: rgba(255,255,255,0.14);
+                border: 1px solid rgba(255,255,255,0.13);
                 border-radius: 15px;
                 padding: 7px 32px 7px 12px;
-                color: rgba(245,245,247,0.92);
+                color: rgba(255,255,255,0.94);
                 font-size: 13px;
                 selection-background-color: rgba(221,0,122,0.45);
             }
             QLineEdit#sidebarSearch:focus {
-                background: rgba(255,255,255,0.16);
-                border: 1px solid rgba(255,255,255,0.16);
+                background: rgba(255,255,255,0.18);
+                border: 1px solid rgba(255,255,255,0.20);
             }
         """)
         self._search.setAttribute(Qt.WA_MacShowFocusRect, False)
@@ -327,8 +341,8 @@ class SidebarWidget(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep_c = "rgba(255,255,255,0.06)" if self._dark else "rgba(0,0,0,0.06)"
-        sep.setStyleSheet(f"background:{sep_c};")
+        sep.setFixedHeight(1)
+        sep.setStyleSheet("background: rgba(255,255,255,0.095);")
         outer.addWidget(sep)
 
         # ── Scroll area ──
@@ -339,7 +353,7 @@ class SidebarWidget(QWidget):
             "QScrollArea{background:transparent;border:none;}"
             "QScrollBar:vertical{width:4px;background:transparent;}"
             "QScrollBar::handle:vertical{"
-            "background:rgba(128,128,128,0.25);border-radius:2px;}"
+            "background:rgba(128,128,128,0.30);border-radius:2px;}"
             "QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical"
             "{height:0;}")
 
