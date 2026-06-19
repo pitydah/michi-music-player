@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.icons import get_icon
+from ui.player_icon_button import PlayerIconButton
 
 SEEK_STYLESHEET = """
 QSlider::groove:horizontal {
@@ -86,27 +87,14 @@ QSlider::handle:horizontal {
 """
 
 
-def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) -> QPushButton:
-    btn = QPushButton(QIcon(get_icon(icon_name)), "")
-    btn.setFlat(True)
-    btn.setIconSize(QSize(icon_size, icon_size))
+def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) -> PlayerIconButton:
     final_size = button_size or icon_size + 10
-    btn.setFixedSize(final_size, final_size)
-    btn.setCursor(Qt.PointingHandCursor)
-    btn.setStyleSheet("""
-        QPushButton {
-            background: transparent;
-            border: none;
-            border-radius: 11px;
-        }
-        QPushButton:hover {
-            background: rgba(255,255,255,0.09);
-        }
-        QPushButton:pressed {
-            background: rgba(255,77,46,0.24);
-        }
-    """)
-    return btn
+    return PlayerIconButton(
+        icon_name=icon_name,
+        button_size=final_size,
+        icon_size=icon_size,
+        primary=(icon_name in ("warm_play", "warm_pause")),
+    )
 
 
 class NowPlayingBar(QWidget):
@@ -130,7 +118,7 @@ class NowPlayingBar(QWidget):
         self._shuffle = False
         self._repeat = "none"
         self.setObjectName("nowplayingBar")
-        self.setFixedHeight(110)
+        self.setFixedHeight(112)
 
         self.setAutoFillBackground(True)
 
@@ -240,11 +228,11 @@ class NowPlayingBar(QWidget):
         ctrl_row.setSpacing(16)
         ctrl_row.setAlignment(Qt.AlignCenter)
 
-        self._shuffle_btn = _make_btn("warm_shuffle", 20, 40)
-        self._prev_btn = _make_btn("warm_prev", 26, 46)
-        self._play_btn = _make_btn("warm_play", 34, 56)
-        self._next_btn = _make_btn("warm_next", 26, 46)
-        self._repeat_btn = _make_btn("warm_repeat", 20, 40)
+        self._shuffle_btn = _make_btn("warm_shuffle", 22, 42)
+        self._prev_btn = _make_btn("warm_prev", 28, 48)
+        self._play_btn = _make_btn("warm_play", 34, 58)
+        self._next_btn = _make_btn("warm_next", 28, 48)
+        self._repeat_btn = _make_btn("warm_repeat", 22, 42)
 
         self._shuffle_btn.clicked.connect(self._on_shuffle)
         self._prev_btn.clicked.connect(self.prev_clicked.emit)
@@ -271,7 +259,7 @@ class NowPlayingBar(QWidget):
         grid.setVerticalSpacing(4)
 
         # Widgets
-        self._vol_btn = _make_btn("warm_vol_high", 24, 38)
+        self._vol_btn = _make_btn("warm_vol_high", 25, 40)
 
         self._vol = QSlider(Qt.Horizontal)
         self._vol.setRange(0, 100)
@@ -281,10 +269,10 @@ class NowPlayingBar(QWidget):
         self._vol.setStyleSheet(VOLUME_STYLESHEET)
         self._vol.valueChanged.connect(lambda v: self.volume_changed.emit(v))
 
-        self._eq_btn = _make_btn("warm_eq", 25, 44)
+        self._eq_btn = _make_btn("warm_eq", 26, 46)
         self._eq_btn.clicked.connect(self.eq_clicked.emit)
 
-        self._transmit_btn = _make_btn("warm_transmit", 25, 44)
+        self._transmit_btn = _make_btn("warm_transmit", 26, 46)
         self._transmit_btn.setToolTip("Transmitir a dispositivo")
         self._transmit_btn.clicked.connect(lambda: self.transmit_clicked.emit())
 
@@ -342,15 +330,13 @@ class NowPlayingBar(QWidget):
 
     def _on_shuffle(self):
         self._shuffle = not self._shuffle
-        self._shuffle_btn.setStyleSheet(
-            f"QPushButton {{ color: {self._accent}; }}" if self._shuffle else "")
+        self._shuffle_btn.set_active(self._shuffle)
         self.shuffle_clicked.emit()
 
     def _on_repeat(self):
         modes = {"none": "all", "all": "one", "one": "none"}
         self._repeat = modes.get(self._repeat, "none")
-        self._repeat_btn.setStyleSheet(
-            f"QPushButton {{ color: {self._accent}; }}" if self._repeat != "none" else "")
+        self._repeat_btn.set_active(self._repeat != "none")
         self.repeat_clicked.emit()
 
     def _on_seek_end(self):
@@ -367,8 +353,8 @@ class NowPlayingBar(QWidget):
 
     def set_state(self, state: str):
         self._state = state
-        self._play_btn.setIcon(QIcon(get_icon(
-            "warm_pause" if state == "playing" else "warm_play")))
+        self._play_btn.set_icon_name(
+            "warm_pause" if state == "playing" else "warm_play")
 
     def set_track(self, title: str, artist: str, cover_path: str = ""):
         self._title_lbl.setText(title or "Sin reproducción")
@@ -410,7 +396,7 @@ class NowPlayingBar(QWidget):
             name = "warm_vol_medium"
         else:
             name = "warm_vol_high"
-        self._vol_btn.setIcon(QIcon(get_icon(name)))
+        self._vol_btn.set_icon_name(name)
 
     def set_quality(self, text: str):
         self._quality_badge.setText(f" {text} ") if text else self._quality_badge.clear()
