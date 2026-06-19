@@ -1,10 +1,10 @@
 """Sidebar Widget — scrollable sections with collapsible headers."""
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QLabel, QLineEdit,
-    QFrame, QScrollArea, QSizePolicy,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
+    QFrame, QScrollArea,
 )
 
 from ui.icons import get_icon
@@ -32,9 +32,9 @@ class _SectionHeader(QPushButton):
         self.setStyleSheet(f"""
             QPushButton {{
                 text-align: left;
-                padding: 12px 12px 4px 12px;
+                padding: 14px 12px 4px 12px;
                 border: none; background: transparent;
-                font-size: 12px; font-weight: 700;
+                font-size: 11px; font-weight: 700;
                 color: {sec}; letter-spacing: 0.5px;
             }}
             QPushButton:hover {{ color: {txt}; }}
@@ -51,57 +51,110 @@ class _SectionHeader(QPushButton):
         return self._collapsed
 
 
-class _Item(QPushButton):
+class _Item(QFrame):
+    clicked = Signal(str)
+
     def __init__(self, text: str, key: str, icon: str = "",
                  badge: str = "", dark: bool = False):
         super().__init__()
         self._key = key
         self._dark = dark
-        self.setFlat(True)
+        self._active = False
         self.setCursor(Qt.PointingHandCursor)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMinimumHeight(36)
+        self.setMinimumHeight(38)
 
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 7, 10, 7)
+        layout.setSpacing(0)
+
+        label_text = f"{text}  ·  {badge}" if badge else text
+        self._label = QLabel(label_text)
+        self._label.setStyleSheet(
+            "font-size:13px; color:rgba(255,255,255,0.6);"
+            "background:transparent; border:none;")
+
+        layout.addWidget(self._label)
+        layout.addStretch()
+
+        self._icon_label: QLabel | None = None
         if icon:
-            qicon = _qicon(icon)
-            if not qicon.isNull():
-                self.setIcon(qicon)
-                self.setIconSize(QSize(22, 22))
-        label = f"{text}  ·  {badge}" if badge else text
-        self.setText(f"  {label}")
-        self.set_style_active(False)
+            pix = QPixmap(get_icon(icon))
+            if not pix.isNull():
+                self._icon_label = QLabel()
+                self._icon_label.setFixedSize(20, 20)
+                self._icon_label.setStyleSheet("background:transparent; border:none;")
+                self._icon_label.setPixmap(
+                    pix.scaled(20, 20, Qt.KeepAspectRatio,
+                              Qt.SmoothTransformation))
+                layout.addWidget(self._icon_label)
 
-    def _style(self, active: bool) -> str:
-        if active:
-            return """
-                QPushButton {
-                    text-align: left; padding: 6px 10px; border: none;
-                    border-radius: 8px; margin: 1px 4px; font-size: 14px;
-                    color: #ffffff; font-weight: 600;
+        self._refresh_styles()
+
+    def _refresh_styles(self):
+        if self._active:
+            self.setStyleSheet("""
+                QFrame {
                     background: qlineargradient(
                         x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #FF7A00, stop:1 #DD007A
+                        stop:0 rgba(255,122,0,0.18), stop:1 rgba(221,0,122,0.08)
                     );
+                    border-left: 3px solid #FF8A00;
+                    border-radius: 10px;
+                    margin: 1px 6px;
                 }
-            """
-        txt = "#f5f5f7" if self._dark else "#1c1c1e"
-        hover = ("rgba(255,122,0,0.10)" if self._dark
-                 else "rgba(255,122,0,0.06)")
-        return f"""
-            QPushButton {{
-                text-align: left; padding: 6px 10px; border: none;
-                border-radius: 6px; margin: 1px 4px; font-size: 14px;
-                color: {txt}; background: transparent;
-            }}
-            QPushButton:hover {{ background: {hover}; }}
-        """
+            """)
+            self._label.setStyleSheet(
+                "font-size:13px; color:#ffffff; font-weight:600;"
+                "background:transparent; border:none;")
+        else:
+            self.setStyleSheet("""
+                QFrame {
+                    background: transparent;
+                    border-left: 3px solid transparent;
+                    border-radius: 10px;
+                    margin: 1px 6px;
+                }
+            """)
+            self._label.setStyleSheet(
+                "font-size:13px; color:rgba(255,255,255,0.6);"
+                "background:transparent; border:none;")
+        if self._icon_label:
+            self._icon_label.setStyleSheet(
+                "background:transparent; border:none;"
+                f"opacity: {'1.0' if self._active else '0.6'};")
+
+    def enterEvent(self, event):
+        if not self._active:
+            self.setStyleSheet("""
+                QFrame {
+                    background: rgba(255,255,255,0.06);
+                    border-left: 3px solid transparent;
+                    border-radius: 10px;
+                    margin: 1px 6px;
+                }
+            """)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        if not self._active:
+            self._refresh_styles()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit(self._key)
+        super().mousePressEvent(event)
 
     def set_style_active(self, active: bool):
-        self.setStyleSheet(self._style(active))
+        self._active = active
+        self._refresh_styles()
 
     @property
     def key(self) -> str:
         return self._key
+
+    def text(self) -> str:
+        return self._label.text()
 
 
 class _Section:
@@ -157,11 +210,15 @@ class SidebarWidget(QWidget):
         outer.setSpacing(4)
 
         h = QLabel("✦ ASTRA")
-        h.setStyleSheet(f"font-size:15px;font-weight:700;color:{txt};padding:4px 10px;")
+        h.setStyleSheet(f"font-size:15px;font-weight:700;color:{txt};padding:4px 10px 0px 10px;")
         outer.addWidget(h)
 
+        sub = QLabel("Music Player")
+        sub.setStyleSheet(f"font-size:10px;color:rgba(255,255,255,0.4);padding:0px 10px 4px 10px;")
+        outer.addWidget(sub)
+
         self._search = QLineEdit()
-        self._search.setPlaceholderText("Buscar...")
+        self._search.setPlaceholderText("Filtrar menú...")
         self._search.setClearButtonEnabled(True)
         self._search.setStyleSheet(f"""
             QLineEdit {{
@@ -199,12 +256,8 @@ class SidebarWidget(QWidget):
         outer.addWidget(self._scroll)
 
     def _clear(self):
-        # Remove all section widgets from container layout
         for sec in list(self._sections.values()):
-            self._container_layout.removeWidget(sec.header)
-            sec.header.hide()
-            self._container_layout.removeWidget(sec._container)
-            sec._container.hide()
+            sec.destroy()
         self._sections.clear()
         self._items.clear()
 

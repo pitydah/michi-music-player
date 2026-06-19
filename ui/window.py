@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.sidebar_widget import SidebarWidget
+from ui.view_switcher import SegmentedViewSwitcher
 
 from ui.icons import get_icon, app_icon
 from ui.nowplaying_bar import NowPlayingBar
@@ -190,19 +191,9 @@ class MainWindow(QMainWindow):
         self._count = QLabel("0 elementos")
         self._count.setStyleSheet("color: rgba(255,255,255,0.4); font-size: 12px;")
 
-        # View selector buttons (always visible)
-        self._btn_list = QPushButton(QIcon(get_icon("list")), " Lista")
-        self._btn_list.setFixedSize(64, 30)
-        self._btn_list.clicked.connect(self._show_list_view)
-
-        self._btn_grid = QPushButton(QIcon(get_icon("grid")), " Carátulas")
-        self._btn_grid.setFixedSize(90, 30)
-        self._btn_grid.clicked.connect(self._show_grid_view)
-
-        self._btn_cf = QPushButton(QIcon(get_icon("coverflow")), " Coverflow")
-        self._btn_cf.setFixedSize(100, 30)
-        self._btn_cf.clicked.connect(self._show_coverflow_view)
-
+        # View selector (segmented capsule)
+        self._view_switcher = SegmentedViewSwitcher(get_icon)
+        self._view_switcher.view_changed.connect(self._on_view_mode_changed)
         self._view_mode = "list"
 
         self._settings_btn = QPushButton(QIcon(get_icon("warm_settings")), "")
@@ -213,15 +204,11 @@ class MainWindow(QMainWindow):
 
         hl.addWidget(self._section_title)
         hl.addSpacing(16)
-        hl.addWidget(self._btn_list)
-        hl.addWidget(self._btn_grid)
-        hl.addWidget(self._btn_cf)
+        hl.addWidget(self._view_switcher)
         hl.addStretch()
         hl.addWidget(self._search)
         hl.addWidget(self._count)
         hl.addWidget(self._settings_btn)
-
-        self._set_active_button(self._btn_list)
 
         # ── Table ──
         self._table = QTableView()
@@ -393,7 +380,7 @@ class MainWindow(QMainWindow):
             self._kind_filter = None
             self._apply_filters()
             self._view_mode = "list"
-            self._set_active_button(self._btn_list)
+            self._view_switcher.set_view("list", emit=False)
             self._search.show()
 
         elif key and key.startswith("pl:"):
@@ -548,48 +535,29 @@ class MainWindow(QMainWindow):
 
     # ── CoverFlow ──
 
-    def _set_active_button(self, active_btn):
-        for btn in [self._btn_list, self._btn_grid, self._btn_cf]:
-            if btn == active_btn:
-                    btn.setStyleSheet("""
-                    QPushButton {
-                        background: #FF7A00;
-                        color: #ffffff;
-                        border-radius: 6px;
-                        padding: 2px 8px;
-                        font-weight: 600;
-                    }
-                """)
-            else:
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background: transparent;
-                        color: rgba(255,255,255,0.6);
-                        border-radius: 6px;
-                        padding: 2px 8px;
-                    }
-                    QPushButton:hover {
-                        background: rgba(255,255,255,0.08);
-                    }
-                """)
+    def _on_view_mode_changed(self, mode: str):
+        self._view_mode = mode
+        if mode == "list":
+            self._apply_filters()
+            self._section_title.setText("Biblioteca")
+        elif mode == "grid":
+            self._show_coverflow()
+            self._section_title.setText("Carátulas")
+        elif mode == "coverflow":
+            self._show_coverflow()
+            self._section_title.setText("Coverflow")
 
     def _show_list_view(self):
-        self._view_mode = "list"
-        self._set_active_button(self._btn_list)
-        self._apply_filters()
-        self._section_title.setText("Biblioteca")
+        self._view_switcher.set_view("list", emit=False)
+        self._on_view_mode_changed("list")
 
     def _show_grid_view(self):
-        self._view_mode = "grid"
-        self._set_active_button(self._btn_grid)
-        self._show_coverflow()
-        self._section_title.setText("Carátulas")
+        self._view_switcher.set_view("grid", emit=False)
+        self._on_view_mode_changed("grid")
 
     def _show_coverflow_view(self):
-        self._view_mode = "coverflow"
-        self._set_active_button(self._btn_cf)
-        self._show_coverflow()
-        self._section_title.setText("Coverflow")
+        self._view_switcher.set_view("coverflow", emit=False)
+        self._on_view_mode_changed("coverflow")
 
     def _show_coverflow(self):
         items = self._all_items
