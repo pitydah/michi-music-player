@@ -3,7 +3,7 @@
 import os
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QPixmap, QColor
+from PySide6.QtGui import QIcon, QPixmap, QColor, QPainter, QPainterPath, QLinearGradient, QRadialGradient, QPen
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QPushButton,
     QSlider, QLabel, QMenu, QSizePolicy, QGraphicsDropShadowEffect,
@@ -121,6 +121,82 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
     return btn
 
 
+def _rounded_cover_pixmap(src: QPixmap, size: int = 76, radius: int = 16) -> QPixmap:
+    """Scale and round-crop a cover pixmap."""
+    result = QPixmap(size, size)
+    result.fill(Qt.transparent)
+
+    if src.isNull():
+        return result
+
+    painter = QPainter(result)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    path = QPainterPath()
+    path.addRoundedRect(0, 0, size, size, radius, radius)
+    painter.setClipPath(path)
+
+    scaled = src.scaled(size, size, Qt.KeepAspectRatioByExpanding,
+                        Qt.SmoothTransformation)
+    x = (scaled.width() - size) // 2
+    y = (scaled.height() - size) // 2
+    painter.drawPixmap(-x, -y, scaled)
+    painter.end()
+
+    return result
+
+
+def _placeholder_cover_pixmap(size: int = 76, radius: int = 16) -> QPixmap:
+    """Premium placeholder cover art."""
+    pix = QPixmap(size, size)
+    pix.fill(Qt.transparent)
+
+    painter = QPainter(pix)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+
+    path = QPainterPath()
+    path.addRoundedRect(0, 0, size, size, radius, radius)
+    painter.setClipPath(path)
+
+    grad = QLinearGradient(0, 0, size, size)
+    grad.setColorAt(0.0, QColor(32, 36, 46))
+    grad.setColorAt(1.0, QColor(20, 24, 33))
+    painter.setBrush(grad)
+    painter.setPen(Qt.NoPen)
+    painter.drawRoundedRect(0, 0, size, size, radius, radius)
+
+    # Subtle accent glow
+    glow = QRadialGradient(size * 0.65, size * 0.3, size * 0.7)
+    glow.setColorAt(0.0, QColor(255, 122, 0, 38))
+    glow.setColorAt(1.0, QColor(255, 77, 46, 0))
+    painter.setBrush(glow)
+    painter.drawRoundedRect(0, 0, size, size, radius, radius)
+
+    # Musical note
+    pen = QPen(QColor(255, 255, 255, 55), 2.0)
+    pen.setCapStyle(Qt.RoundCap)
+    pen.setJoinStyle(Qt.RoundJoin)
+    painter.setPen(pen)
+    painter.setBrush(Qt.NoBrush)
+    cx, cy = size / 2, size / 2
+    painter.drawLine(int(cx + 4), int(cy - 8), int(cx + 4), int(cy + 8))
+    painter.drawLine(int(cx + 4), int(cy - 8), int(cx + 12), int(cy - 5))
+    painter.setBrush(QColor(255, 255, 255, 55))
+    painter.drawEllipse(int(cx - 6), int(cy + 4), 9, 8)
+
+    painter.end()
+
+    # Border
+    painter2 = QPainter(pix)
+    painter2.setRenderHint(QPainter.Antialiasing, True)
+    painter2.setPen(QPen(QColor(255, 255, 255, 25), 1))
+    painter2.setBrush(Qt.NoBrush)
+    painter2.drawRoundedRect(0.5, 0.5, size - 1, size - 1, radius, radius)
+    painter2.end()
+
+    return pix
+
+
 class NowPlayingBar(QWidget):
     play_clicked = Signal()
     prev_clicked = Signal()
@@ -168,46 +244,105 @@ class NowPlayingBar(QWidget):
         layout.setContentsMargins(16, 8, 16, 8)
         layout.setSpacing(24)
 
-        # ═══ LEFT: COVER + TITLE/ARTIST (stretch=0) ═══
-        left_widget = QWidget()
-        left_widget.setStyleSheet("background: transparent;")
-        left_layout = QHBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(10)
+        # ═══ LEFT: NOW PLAYING INFO CARD ═══
+        self._cover_pixmap = QPixmap()
+        self._raw_title = ""
+        self._raw_artist = ""
+        self._raw_meta = ""
 
-        self._cover = QPushButton()
-        self._cover.setFlat(True)
-        self._cover.setFixedSize(48, 48)
-        self._cover.setStyleSheet("""
-            QPushButton {
-                background: #2a2a2e;
-                border-radius: 8px;
-                border: none;
+        left_widget = QWidget()
+        left_widget.setObjectName("nowPlayingInfoCard")
+        left_widget.setMinimumWidth(300)
+        left_widget.setMaximumWidth(410)
+        left_widget.setFixedHeight(92)
+        left_widget.setStyleSheet("""
+            QWidget#nowPlayingInfoCard {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:1,
+                    stop:0 rgba(255,255,255,0.085),
+                    stop:0.48 rgba(255,255,255,0.045),
+                    stop:1 rgba(255,122,0,0.045)
+                );
+                border: 1px solid rgba(255,255,255,0.105);
+                border-radius: 18px;
             }
-            QPushButton:hover {
-                border: 1px solid rgba(255,255,255,0.2);
+        """)
+        left_widget.setCursor(Qt.PointingHandCursor)
+        left_widget.mousePressEvent = lambda e: self.cover_clicked.emit()
+
+        card_shadow = QGraphicsDropShadowEffect(left_widget)
+        card_shadow.setBlurRadius(20)
+        card_shadow.setXOffset(0)
+        card_shadow.setYOffset(4)
+        card_shadow.setColor(QColor(0, 0, 0, 55))
+        left_widget.setGraphicsEffect(card_shadow)
+
+        card_layout = QHBoxLayout(left_widget)
+        card_layout.setContentsMargins(12, 8, 14, 8)
+        card_layout.setSpacing(14)
+
+        # Cover button
+        self._cover = QPushButton()
+        self._cover.setObjectName("coverButton")
+        self._cover.setFixedSize(76, 76)
+        self._cover.setIconSize(QSize(76, 76))
+        self._cover.setCursor(Qt.PointingHandCursor)
+        self._cover.setFlat(True)
+        self._cover.setStyleSheet("""
+            QPushButton#coverButton {
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.13);
+                border-radius: 16px;
+                padding: 0px;
+                margin: 0px;
+            }
+            QPushButton#coverButton:hover {
+                border: 1px solid rgba(255,122,0,0.38);
             }
         """)
         self._cover.clicked.connect(self.cover_clicked.emit)
-        self._cover.setIcon(QIcon(get_icon("play")))
-        self._cover.setIconSize(QSize(44, 44))
-        self._cover_pixmap = QPixmap()
-        left_layout.addWidget(self._cover)
+        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(76, 16)))
+        card_layout.addWidget(self._cover)
 
+        # Text column
         text_layout = QVBoxLayout()
         text_layout.setContentsMargins(0, 0, 0, 0)
-        text_layout.setSpacing(0)
+        text_layout.setSpacing(3)
+
+        text_layout.addStretch(1)
+
         self._title_lbl = QLabel("Sin reproducción")
-        self._title_lbl.setObjectName("titleLabel")
+        self._title_lbl.setObjectName("nowPlayingTitle")
         self._title_lbl.setStyleSheet(
-            f"font-size: 14px; font-weight: 700; color: {self._text_color};")
-        self._artist_lbl = QLabel("Añade música")
-        self._artist_lbl.setObjectName("artistLabel")
-        self._artist_lbl.setStyleSheet(
-            f"font-size: 12px; font-weight: 400; color: {self._text_sec};")
+            "QLabel#nowPlayingTitle {"
+            "  font-size: 16px; font-weight: 760;"
+            "  color: rgba(255,255,255,0.98);"
+            "  background: transparent; border: none;"
+            "}")
         text_layout.addWidget(self._title_lbl)
+
+        self._artist_lbl = QLabel("Añade música")
+        self._artist_lbl.setObjectName("nowPlayingArtist")
+        self._artist_lbl.setStyleSheet(
+            "QLabel#nowPlayingArtist {"
+            "  font-size: 13px; font-weight: 560;"
+            "  color: rgba(245,245,247,0.74);"
+            "  background: transparent; border: none;"
+            "}")
         text_layout.addWidget(self._artist_lbl)
-        left_layout.addLayout(text_layout)
+
+        self._meta_lbl = QLabel("Astra Music Player")
+        self._meta_lbl.setObjectName("nowPlayingMeta")
+        self._meta_lbl.setStyleSheet(
+            "QLabel#nowPlayingMeta {"
+            "  font-size: 11px; font-weight: 520;"
+            "  color: rgba(245,245,247,0.46);"
+            "  background: transparent; border: none;"
+            "}")
+        text_layout.addWidget(self._meta_lbl)
+
+        text_layout.addStretch(1)
+        card_layout.addLayout(text_layout, 1)
 
         layout.addWidget(left_widget, 0)
 
@@ -384,21 +519,36 @@ class NowPlayingBar(QWidget):
         self._play_btn.setIconSize(QSize(48, 48))
 
     def set_track(self, title: str, artist: str, cover_path: str = ""):
-        self._title_lbl.setText(title or "Sin reproducción")
-        if artist:
-            artist = artist.split(" · ")[0]
-        self._artist_lbl.setText(artist or "Sin información")
+        self._raw_title = title or "Sin reproducción"
+        self._raw_artist = artist or "Añade música"
+        self._raw_meta = "Astra Music Player"
+
+        # Split artist/album if combined
+        if " · " in self._raw_artist:
+            parts = self._raw_artist.split(" · ")
+            self._raw_artist = parts[0]
+            if len(parts) > 1:
+                self._raw_meta = parts[1]
+
+        self._title_lbl.setText(self._raw_title)
+        self._artist_lbl.setText(self._raw_artist)
+        self._meta_lbl.setText(self._raw_meta)
+
         if cover_path:
             pix = QPixmap(cover_path)
             if not pix.isNull():
-                self._cover_pixmap = pix.scaled(
-                    48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                self._cover.setIcon(QIcon(self._cover_pixmap))
-                self.cover_loaded.emit(self._cover_pixmap)
+                rounded = _rounded_cover_pixmap(pix, 76, 16)
+                self._cover_pixmap = rounded
+                self._cover.setIcon(QIcon(rounded))
+                self.cover_loaded.emit(pix)
             else:
+                self._cover.setIcon(QIcon(_placeholder_cover_pixmap(76, 16)))
                 self.cover_loaded.emit(None)
         else:
+            self._cover.setIcon(QIcon(_placeholder_cover_pixmap(76, 16)))
             self.cover_loaded.emit(None)
+
+        self._apply_elide()
 
     def set_position(self, seconds: float):
         if self._seeking or self._duration <= 0:
@@ -407,9 +557,27 @@ class NowPlayingBar(QWidget):
         self._seek.setValue(int(seconds / self._duration * 1000))
 
     def set_duration(self, seconds: float):
-        if seconds > 0:
-            self._duration = seconds
-            self._dur_lbl.setText(_fmt(seconds))
+        self._duration = seconds
+        self._dur_lbl.setText(_fmt(seconds))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._apply_elide()
+
+    def _apply_elide(self):
+        """Apply text elision to prevent overflow."""
+        w = self.width()
+        # Estimate available width for text (left card is ~300-410px of bar)
+        avail = max(80, w - 580)
+        fm = self._title_lbl.fontMetrics()
+        self._title_lbl.setText(
+            fm.elidedText(self._raw_title, Qt.ElideRight, avail))
+        fm2 = self._artist_lbl.fontMetrics()
+        self._artist_lbl.setText(
+            fm2.elidedText(self._raw_artist, Qt.ElideRight, avail))
+        fm3 = self._meta_lbl.fontMetrics()
+        self._meta_lbl.setText(
+            fm3.elidedText(self._raw_meta, Qt.ElideRight, avail))
 
     def set_volume(self, vol: int):
         self._vol.blockSignals(True)
