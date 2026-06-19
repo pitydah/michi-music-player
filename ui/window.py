@@ -313,8 +313,8 @@ class MainWindow(QMainWindow):
     def _setup_tray(self):
         tray_pix = QPixmap(get_icon("tray_icon"))
         if not tray_pix.isNull():
-            tray_pix = tray_pix.scaled(48, 48, Qt.KeepAspectRatio,
-                                       Qt.SmoothTransformation)
+            tray_pix = tray_pix.scaled(64, 64, Qt.KeepAspectRatio,
+                                        Qt.SmoothTransformation)
         self._tray = QSystemTrayIcon(QIcon(tray_pix), self)
         self._tray.setToolTip("Astra Music Player")
         tray_menu = QMenu()
