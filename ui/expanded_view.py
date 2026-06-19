@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.icons import get_icon
+from ui.adaptive_artwork_background import AdaptiveArtworkBackground
 
 
 def _make_btn(icon_name: str, size: int) -> QPushButton:
@@ -39,6 +40,10 @@ class ExpandedNowPlaying(QWidget):
         main = QVBoxLayout(self)
         main.setContentsMargins(0, 0, 0, 0)
         main.setSpacing(0)
+
+        # Background — sits behind everything
+        self._artwork_bg = AdaptiveArtworkBackground(self)
+        self._artwork_bg.lower()
 
         # ── Header ──
         header = QHBoxLayout()
@@ -244,6 +249,10 @@ class ExpandedNowPlaying(QWidget):
         menu.addAction("Información del archivo", lambda: None)
         menu.exec(self._menu_btn.mapToGlobal(self._menu_btn.rect().bottomRight()))
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._artwork_bg.setGeometry(self.rect())
+
     # ── Public API ──
 
     def set_track(self, title: str, artist: str = "", album: str = "",
@@ -266,6 +275,9 @@ class ExpandedNowPlaying(QWidget):
             if not pix.isNull():
                 self._cover.setPixmap(pix.scaled(
                     310, 310, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self._artwork_bg.set_pixmap(pix)
+        else:
+            self._artwork_bg.clear()
 
     def set_state(self, state: str):
         self._state = state

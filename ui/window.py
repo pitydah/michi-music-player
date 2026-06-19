@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from ui.sidebar_widget import SidebarWidget
 from ui.view_switcher import SegmentedViewSwitcher
+from ui.view_controller import ViewController
 
 from ui.icons import get_icon, app_icon
 from ui.nowplaying_bar import NowPlayingBar
@@ -230,6 +231,13 @@ class MainWindow(QMainWindow):
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setStyleSheet("color: rgba(255,255,255,0.3); font-size: 16px;")
 
+        placeholder_albums = QLabel("Sin álbumes en la biblioteca")
+        placeholder_albums.setAlignment(Qt.AlignCenter)
+        placeholder_albums.setStyleSheet("color: rgba(255,255,255,0.3); font-size: 16px;")
+
+        placeholder_expanded = QLabel("")
+        placeholder_expanded.setAlignment(Qt.AlignCenter)
+
         # ── Expanded view (created on demand) ──
         self._expanded = None
         self._coverflow = None
@@ -248,15 +256,17 @@ class MainWindow(QMainWindow):
 
         self._content = QStackedWidget()
         self._content.setMinimumHeight(200)
-        self._content.addWidget(placeholder)      # 0: empty
-        self._content.addWidget(self._table)      # 1: library table
-        self._content.addWidget(self._remote_placeholder)  # 2: remote browser
-        self._content.addWidget(placeholder)      # 3: coverflow placeholder
-        self._content.addWidget(placeholder)      # 4: expanded view placeholder
-        self._content.addWidget(self._radio_widget)  # 5: radio
-        self._content.addWidget(self._album_grid)    # 6: album grid
-        self._content.addWidget(self._folder_browser)  # 7: folder browser
-        self._content.setCurrentIndex(0)
+
+        self._views = ViewController(self._content, self)
+        self._views.register("empty", placeholder)
+        self._views.register("library", self._table)
+        self._views.register("remote", self._remote_placeholder)
+        self._views.register("coverflow", placeholder_albums)
+        self._views.register("expanded", placeholder_expanded)
+        self._views.register("radio", self._radio_widget)
+        self._views.register("album_grid", self._album_grid)
+        self._views.register("folders", self._folder_browser)
+        self._views.show("empty")
 
         # ── Content wrapper ──
         cw = QWidget()
@@ -413,13 +423,13 @@ class MainWindow(QMainWindow):
         self._model.populate(items)
         self._count.setText(f"{len(items)} elementos" if items else "0 elementos")
         if items:
-            self._content.setCurrentIndex(1)
+            self._views.show("library")
             self._table.setModel(self._model)
             self._table.setColumnWidth(0, 280); self._table.setColumnWidth(1, 170)
             self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 55)
             self._table.setColumnWidth(4, 110); self._table.setColumnWidth(5, 75)
         else:
-            self._content.setCurrentIndex(0)
+            self._views.show("empty")
 
     # ── Sidebar ──
 
@@ -489,7 +499,7 @@ class MainWindow(QMainWindow):
             items = self._db.get_playlist_items(pid)
             self._model.populate(items)
             self._count.setText(f"{len(items)} temas")
-            self._content.setCurrentIndex(1); self._table.setModel(self._model)
+            self._views.show("library"); self._table.setModel(self._model)
             self._table.setColumnWidth(0, 280); self._table.setColumnWidth(1, 170)
             self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 55)
             self._table.setColumnWidth(4, 110); self._table.setColumnWidth(5, 75)
@@ -504,7 +514,7 @@ class MainWindow(QMainWindow):
 
         elif key == "folders":
             self._section_title.setText("Carpetas")
-            self._content.setCurrentIndex(7)
+            self._views.show("folders")
             self._search.hide()
 
         elif key == "new_playlist":
@@ -512,7 +522,7 @@ class MainWindow(QMainWindow):
 
         elif key == "radio":
             self._section_title.setText("📻 Radio")
-            self._content.setCurrentIndex(5)
+            self._views.show("radio")
             self._search.hide()
 
         elif key == "add_server":
@@ -533,7 +543,7 @@ class MainWindow(QMainWindow):
                              directory=os.path.dirname(fp), ext=e, kind=k, title=n))
             self._model.populate(items)
             self._count.setText(f"{len(items)} archivos")
-            self._content.setCurrentIndex(1); self._table.setModel(self._model)
+            self._views.show("library"); self._table.setModel(self._model)
             self._section_title.setText(os.path.basename(mount))
             self._search.show()
 
@@ -613,7 +623,7 @@ class MainWindow(QMainWindow):
             if self._content.count() > 2:
                 self._content.removeWidget(self._content.widget(2))
             self._content.insertWidget(2, self._remote_browser)
-            self._content.setCurrentIndex(2)
+            self._views.show("remote")
 
             self._remote_browser.load_artists()
             self._section_title.setText(f"🌐 {name}")
@@ -661,21 +671,20 @@ class MainWindow(QMainWindow):
         if mode == "list":
             self._apply_filters()
             self._section_title.setText("Biblioteca")
-            self._fade_content(1)
+            self._fade_content("library")
         elif mode == "grid":
             self._show_album_grid()
             self._section_title.setText("Carátulas")
-            self._fade_content(6)
+            self._fade_content("album_grid")
         elif mode == "coverflow":
             self._show_coverflow()
             self._section_title.setText("Coverflow")
-            self._fade_content(3)
+            self._fade_content("coverflow")
 
-    def _fade_content(self, target_idx: int):
-        current_idx = self._content.currentIndex()
-        if current_idx == target_idx:
+    def _fade_content(self, target: str):
+        if self._views.current() == target:
             return
-        self._content.setCurrentIndex(target_idx)
+        self._views.show(target)
         effect = QGraphicsOpacityEffect(self._content)
         self._content.setGraphicsEffect(effect)
         anim = QPropertyAnimation(effect, b"opacity")
@@ -709,7 +718,7 @@ class MainWindow(QMainWindow):
         covers = load_covers_for_albums(items, 260, lazy=True)
 
         if not covers:
-            self._content.setCurrentIndex(0)
+            self._views.show("empty")
             self._count.setText("0 álbumes")
             return
 
@@ -722,7 +731,7 @@ class MainWindow(QMainWindow):
             self._content.insertWidget(3, self._coverflow)
 
         self._coverflow.set_items(covers)
-        self._content.setCurrentIndex(3)
+        self._views.show("coverflow")
         self._count.setText(f"{len(covers)} álbumes")
         self._coverflow.setFocus()
 
@@ -788,8 +797,13 @@ class MainWindow(QMainWindow):
                 if album: subtitle_parts.append(album)
                 if i.year: subtitle_parts.append(str(i.year))
                 subtitle = " · ".join(subtitle_parts) if subtitle_parts else ""
+                cover_path = ""
+                from library.album_art import find_cover_in_dir
+                cover = find_cover_in_dir(os.path.dirname(current))
+                if cover:
+                    cover_path = cover
                 self._expanded.set_track(
-                    i.title or name, artist, album, qual, "")
+                    i.title or name, artist, album, qual, cover_path)
                 break
         else:
             self._expanded.set_track(name, artist, "", qual, "")
@@ -799,10 +813,10 @@ class MainWindow(QMainWindow):
         self._expanded.set_queue(self._player.get_queue())
         self._section_title.setText("Reproduciendo")
 
-        self._content.setCurrentIndex(4)
+        self._views.show("expanded")
 
     def _on_expanded_back(self):
-        self._content.setCurrentIndex(1)
+        self._views.show("library")
         self._section_title.setText("Biblioteca")
 
     def _on_expanded_prev(self):
