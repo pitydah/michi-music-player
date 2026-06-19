@@ -97,13 +97,13 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
         QPushButton {
             background: transparent;
             border: none;
-            border-radius: 10px;
+            border-radius: 11px;
         }
         QPushButton:hover {
-            background: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.09);
         }
         QPushButton:pressed {
-            background: rgba(255,77,46,0.22);
+            background: rgba(255,77,46,0.24);
         }
     """)
     return btn
@@ -281,10 +281,10 @@ class NowPlayingBar(QWidget):
         self._vol.setStyleSheet(VOLUME_STYLESHEET)
         self._vol.valueChanged.connect(lambda v: self.volume_changed.emit(v))
 
-        self._eq_btn = _make_btn("warm_eq", 24, 42)
+        self._eq_btn = _make_btn("warm_eq", 25, 44)
         self._eq_btn.clicked.connect(self.eq_clicked.emit)
 
-        self._transmit_btn = _make_btn("warm_transmit", 24, 42)
+        self._transmit_btn = _make_btn("warm_transmit", 25, 44)
         self._transmit_btn.setToolTip("Transmitir a dispositivo")
         self._transmit_btn.clicked.connect(lambda: self.transmit_clicked.emit())
 

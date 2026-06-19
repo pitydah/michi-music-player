@@ -6,14 +6,63 @@ from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QPen
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QFrame, QScrollArea, QGraphicsOpacityEffect, QSizePolicy,
+    QFrame, QScrollArea, QSizePolicy,
 )
 
-from ui.sidebar_icon_factory import sidebar_pixmap
+from ui.sidebar_icon_factory import draw_sidebar_icon
 from ui.design_tokens import (
     SIDEBAR_ITEM_H, SIDEBAR_ICON,
     SIDEBAR_ACTIVE_GRADIENT,
 )
+
+
+# ── SidebarIcon — custom paint widget, no QLabel/pixmap/SVG ──
+
+class SidebarIcon(QWidget):
+    """Direct-paint icon widget. No QPixmap, no QLabel, no SVG dependency."""
+
+    def __init__(self, icon_name: str, parent=None):
+        super().__init__(parent)
+        self._icon_name = icon_name or ""
+        self._active = False
+        self._hover = False
+        self._size = SIDEBAR_ICON + 6
+        self.setFixedSize(self._size, self._size)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+
+    def set_icon(self, icon_name: str):
+        self._icon_name = icon_name or ""
+        self.update()
+
+    def set_active(self, active: bool):
+        self._active = active
+        self.update()
+
+    def set_hovered(self, hovered: bool):
+        self._hover = hovered
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+
+        color = QColor("#FFFFFF")
+        if not self._active and not self._hover:
+            color.setAlphaF(0.92)
+
+        rect = QRectF(self.rect()).adjusted(4, 4, -4, -4)
+
+        if rect.width() > 0 and rect.height() > 0:
+            draw_sidebar_icon(
+                painter=painter,
+                name=self._icon_name,
+                rect=rect,
+                color=color,
+            )
+
+        painter.end()
 
 
 # ── Section Header ──
@@ -102,17 +151,9 @@ class _Item(QFrame):
         layout.setContentsMargins(12, 0, 12, 0)
         layout.setSpacing(12)
 
-        # Icon — fixed size, left side
-        self._icon_label = QLabel()
-        self._icon_label.setFixedSize(SIDEBAR_ICON, SIDEBAR_ICON)
-        self._icon_label.setScaledContents(False)
-        self._icon_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self._icon_label.setStyleSheet("background:transparent;border:none;")
-        self._icon_effect = None
-        self._icon_label.setGraphicsEffect(self._icon_effect)
-
-        self._load_icon(icon)
-        layout.addWidget(self._icon_label)
+        # Icon — custom paint widget, no QLabel/pixmap/SVG
+        self._icon_widget = SidebarIcon(icon)
+        layout.addWidget(self._icon_widget)
 
         # Text — left-aligned, expands with sidebar
         self._label = QLabel(text)
@@ -136,10 +177,6 @@ class _Item(QFrame):
 
         self._refresh_styles()
 
-    def _load_icon(self, name: str):
-        pix = sidebar_pixmap(name, SIDEBAR_ICON, "#FFFFFF")
-        self._icon_label.setPixmap(pix)
-
     def _refresh_styles(self):
         if self._active:
             self.setStyleSheet(f"""
@@ -153,8 +190,7 @@ class _Item(QFrame):
             self._label.setStyleSheet(
                 "font-size:13px;font-weight:650;color:#ffffff;"
                 "background:transparent;border:none;")
-            if self._icon_effect:
-                self._icon_effect.setOpacity(1.0)
+            self._icon_widget.set_active(True)
         else:
             self.setStyleSheet("""
                 QFrame {
@@ -167,8 +203,7 @@ class _Item(QFrame):
             self._label.setStyleSheet(
                 "font-size:13px;font-weight:520;color:rgba(255,255,255,0.92);"
                 "background:transparent;border:none;")
-            if self._icon_effect:
-                self._icon_effect.setOpacity(0.92)
+            self._icon_widget.set_active(False)
 
     def enterEvent(self, event):
         if not self._active:
@@ -184,13 +219,13 @@ class _Item(QFrame):
                 "font-size:13px;font-weight:520;"
                 "color:rgba(255,255,255,0.98);"
                 "background:transparent;border:none;")
-            if self._icon_effect:
-                self._icon_effect.setOpacity(1.0)
+            self._icon_widget.set_hovered(True)
         super().enterEvent(event)
 
     def leaveEvent(self, event):
         if not self._active:
             self._refresh_styles()
+            self._icon_widget.set_hovered(False)
         super().leaveEvent(event)
 
     def mousePressEvent(self, event):
