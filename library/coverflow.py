@@ -7,7 +7,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QLinearGradient, QPixmap,
-    QTransform, QFont,
+    QTransform, QFont, QPainterPath,
 )
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsObject,
@@ -44,21 +44,46 @@ class CoverItem(QGraphicsObject):
             self._pixmap = pixmap.scaled(
                 width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
+        self._cached = self._generate_reflection()
+
     def _generate_reflection(self) -> QPixmap:
         cached = QPixmap(self._w, self._h * 2)
         cached.fill(Qt.transparent)
         p = QPainter(cached)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        # Rounded corners (Sleeve Effect)
+        radius = 6.0
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self._w, self._h, radius, radius)
+
+        # Cover with clipping
+        p.save()
+        p.setClipPath(path)
         p.drawPixmap(0, 0, self._pixmap)
+        p.restore()
+
+        # Subtle physical border
+        p.setPen(QPen(QColor(0, 0, 0, 80), 1.0))
+        p.drawPath(path)
+
+        # Reflection ("Wet Floor")
         p.save()
         p.translate(0, self._h * 2)
         p.scale(1, -1)
-        p.setOpacity(0.3)
+        p.setOpacity(0.35)
+        p.setClipPath(path)
         p.drawPixmap(0, 0, self._pixmap)
         p.restore()
+
+        # Non-linear fade gradient (background-matched)
         grad = QLinearGradient(0, self._h, 0, self._h * 2)
-        grad.setColorAt(0.0, QColor(0, 0, 0, 90))
-        grad.setColorAt(0.3, QColor(0, 0, 0, 255))
-        grad.setColorAt(1.0, QColor(0, 0, 0, 255))
+        grad.setColorAt(0.0, QColor(13, 13, 20, 100))
+        grad.setColorAt(0.15, QColor(13, 13, 20, 180))
+        grad.setColorAt(0.4, QColor(13, 13, 20, 255))
+        grad.setColorAt(1.0, QColor(13, 13, 20, 255))
+        p.setCompositionMode(QPainter.CompositionMode_SourceOver)
         p.fillRect(0, self._h, self._w, self._h, grad)
         p.end()
         return cached
@@ -87,6 +112,7 @@ class CoverItem(QGraphicsObject):
         self._pixmap = self._real_cover
         self._fade_alpha = 1.0
         self._placeholder = QPixmap()
+        self._cached = self._generate_reflection()
         self.update()
 
     def boundingRect(self) -> QRectF:
@@ -96,25 +122,10 @@ class CoverItem(QGraphicsObject):
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
-        # Draw cover + reflection
-        painter.drawPixmap(0, 0, self._pixmap)
+        # Draw cached cover + reflection (rounded corners + border baked in)
+        painter.drawPixmap(0, 0, self._cached)
 
-        # Reflection
-        painter.save()
-        painter.translate(0, self._h * 2)
-        painter.scale(1, -1)
-        painter.setOpacity(0.3)
-        painter.drawPixmap(0, 0, self._pixmap)
-        painter.restore()
-
-        # Fade gradient over reflection
-        gradient = QLinearGradient(0, self._h, 0, self._h * 2)
-        gradient.setColorAt(0.0, QColor(0, 0, 0, 90))
-        gradient.setColorAt(0.3, QColor(0, 0, 0, 255))
-        gradient.setColorAt(1.0, QColor(0, 0, 0, 255))
-        painter.fillRect(0, int(self._h), int(self._w), int(self._h), gradient)
-
-        # Fade-in overlay: if real_cover is loading, crossfade
+        # Fade-in overlay: if real_cover is loading, crossfade over cached
         if hasattr(self, '_real_cover') and self._fade_alpha < 1.0:
             painter.save()
             painter.setOpacity(self._fade_alpha)
@@ -138,8 +149,8 @@ class CoverItem(QGraphicsObject):
         dist = self._index - current_offset
         transform = QTransform()
         max_rot = 65.0
-        spacing_center = 200.0
-        spacing_side = 60.0
+        spacing_center = 170.0
+        spacing_side = 25.0
 
         if abs(dist) < 0.1:
             self.setZValue(1000)
@@ -152,7 +163,8 @@ class CoverItem(QGraphicsObject):
             ad = abs(dist)
             self._darken_alpha = min(150, int(ad * 40))
             self.setZValue(1000 - int(ad * 10))
-            rot = max_rot if ad >= 1.0 else max_rot * ad
+            flip_factor = min(1.0, math.pow(ad, 0.35))
+            rot = max_rot * flip_factor
             if is_left:
                 rot = -rot
 
@@ -163,9 +175,9 @@ class CoverItem(QGraphicsObject):
             cx = view_width / 2
             cy = view_height / 2 - 20
             if is_left:
-                cx -= spacing_center + spacing_side * (ad - 1)
+                cx -= spacing_center * flip_factor + spacing_side * max(0, ad - 1)
             else:
-                cx += spacing_center + spacing_side * (ad - 1)
+                cx += spacing_center * flip_factor + spacing_side * max(0, ad - 1)
             transform.translate(cx - self._w / 2, cy - self._h / 2)
             scale = 0.85
             transform.scale(scale, scale)
