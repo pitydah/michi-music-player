@@ -33,7 +33,7 @@ class _SectionHeader(QWidget):
         layout.setContentsMargins(12, 18, 12, 6)
         layout.setSpacing(0)
 
-        txt_c = "rgba(245,245,247,0.82)" if dark else "rgba(28,28,30,0.82)"
+        txt_c = "rgba(255,255,255,0.64)" if dark else "rgba(28,28,30,0.64)"
         self._title = QLabel(text)
         self._title.setStyleSheet(
             f"font-size:12px;font-weight:680;color:{txt_c};"
@@ -41,7 +41,7 @@ class _SectionHeader(QWidget):
         layout.addWidget(self._title)
         layout.addStretch()
 
-        chev_c = "rgba(245,245,247,0.76)" if dark else "rgba(28,28,30,0.76)"
+        chev_c = "rgba(255,255,255,0.52)" if dark else "rgba(28,28,30,0.52)"
         self._chevron = QLabel("˅")
         self._chevron.setStyleSheet(
             f"font-size:11px;color:{chev_c};background:transparent;border:none;")
@@ -73,11 +73,11 @@ class _SectionHeader(QWidget):
         super().enterEvent(event)
 
     def leaveEvent(self, event):
-        c = "rgba(245,245,247,0.82)" if self._dark else "rgba(28,28,30,0.82)"
+        c = "rgba(255,255,255,0.64)" if self._dark else "rgba(28,28,30,0.64)"
         self._title.setStyleSheet(
             f"font-size:12px;font-weight:680;color:{c};"
             "background:transparent;border:none;")
-        cc = "rgba(245,245,247,0.76)" if self._dark else "rgba(28,28,30,0.76)"
+        cc = "rgba(255,255,255,0.52)" if self._dark else "rgba(28,28,30,0.52)"
         self._chevron.setStyleSheet(
             f"font-size:11px;color:{cc};background:transparent;border:none;")
         super().leaveEvent(event)

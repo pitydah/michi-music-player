@@ -110,10 +110,9 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
             QPushButton {
                 background: qlineargradient(
                     x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #FF7A00,
-                    stop:0.4 #FF4D2E,
-                    stop:0.75 #E8006D,
-                    stop:1 #CC0050
+                    stop:0 rgba(255,122,0,0.82),
+                    stop:0.55 rgba(255,77,46,0.78),
+                    stop:1 rgba(232,0,109,0.78)
                 );
                 border: none;
                 padding: 0px;
@@ -123,19 +122,17 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
             QPushButton:hover {
                 background: qlineargradient(
                     x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #FF8F20,
-                    stop:0.4 #FF6E4E,
-                    stop:0.75 #F02088,
-                    stop:1 #E82070
+                    stop:0 rgba(255,140,20,0.88),
+                    stop:0.55 rgba(255,100,70,0.85),
+                    stop:1 rgba(240,30,130,0.85)
                 );
             }
             QPushButton:pressed {
                 background: qlineargradient(
                     x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #CC5500,
-                    stop:0.4 #CC2E0E,
-                    stop:0.75 #BB0055,
-                    stop:1 #990038
+                    stop:0 rgba(200,90,0,0.82),
+                    stop:0.55 rgba(200,50,20,0.78),
+                    stop:1 rgba(180,0,80,0.78)
                 );
             }
         """)

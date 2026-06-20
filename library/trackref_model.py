@@ -7,20 +7,35 @@ from sources.base_source import TrackRef
 
 
 class TrackRefTableModel(QStandardItemModel):
-    COL_TITLE = 0; COL_ARTIST = 1; COL_ALBUM = 2
-    COL_YEAR = 3; COL_GENRE = 4; COL_DURATION = 5; COL_URI = 6
+    COL_TRACK = 0; COL_TITLE = 1; COL_ARTIST = 2; COL_ALBUM = 3
+    COL_YEAR = 4; COL_GENRE = 5; COL_DURATION = 6; COL_URI = 7
 
     def __init__(self, parent=None):
-        super().__init__(0, 7, parent)
+        super().__init__(0, 8, parent)
         self.setHorizontalHeaderLabels(
-            ["Título", "Artista", "Álbum", "Año", "Género", "Duración", ""])
+            ["Nº pista", "Título", "Artista", "Álbum",
+             "Año", "Género", "Duración", ""])
 
     def populate(self, items: list[TrackRef]):
         self.removeRows(0, self.rowCount())
         for item in items:
+            # Track number
+            tr = QStandardItem()
+            tr.setEditable(False)
+            tr.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            tr.setForeground(QBrush(QColor("rgba(255,255,255,0.72)")))
+            tn = self._parse_track_number(item.track_number)
+            if tn is not None:
+                tr.setText(str(tn))
+                tr.setData(tn, Qt.UserRole)
+            else:
+                tr.setText("—")
+
+            # Title
             t = QStandardItem(item.title or "Sin título")
             t.setEditable(False); t.setToolTip(item.uri)
             t.setData(item, Qt.UserRole)
+
             a = QStandardItem(item.artist); a.setEditable(False)
             al = QStandardItem(item.album); al.setEditable(False)
 
@@ -49,11 +64,23 @@ class TrackRefTableModel(QStandardItemModel):
                 d.setText("—")
 
             uri = QStandardItem(item.uri); uri.setEditable(False)
-            self.appendRow([t, a, al, y, g, d, uri])
+            self.appendRow([tr, t, a, al, y, g, d, uri])
 
     def get_trackref(self, row: int) -> TrackRef | None:
         idx = self.index(row, self.COL_TITLE)
         return self.data(idx, Qt.UserRole)
+
+    @staticmethod
+    def _parse_track_number(value) -> int | None:
+        if not value and value != 0:
+            return None
+        text = str(value).strip()
+        if "/" in text:
+            text = text.split("/", 1)[0].strip()
+        try:
+            return int(text)
+        except (ValueError, TypeError):
+            return None
 
     @staticmethod
     def _fmt_duration(seconds: float) -> str:

@@ -327,7 +327,7 @@ class MainWindow(QMainWindow):
         self._table.horizontalHeader().setHighlightSections(False)
         self._table.verticalHeader().setVisible(False)
         self._table.verticalHeader().setDefaultSectionSize(30)
-        self._table.setColumnHidden(6, True)
+        self._table.setColumnHidden(7, True)  # hide URI column
         self._table.setSortingEnabled(True)
         self._table.setStyleSheet("""
             QTableView {
@@ -682,9 +682,9 @@ class MainWindow(QMainWindow):
 
             self._count.setText(count_text)
             self._views.show("library"); self._table.setModel(self._model)
-            self._table.setColumnWidth(0, 280); self._table.setColumnWidth(1, 170)
-            self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 55)
-            self._table.setColumnWidth(4, 110); self._table.setColumnWidth(5, 75)
+            self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260); self._table.setColumnWidth(3, 170)
+            self._table.setColumnWidth(3, 170); self._table.setColumnWidth(4, 55)
+            self._table.setColumnWidth(5, 110); self._table.setColumnWidth(6, 75)
             name = next((p["name"] for p in self._db.get_playlists() if p["id"] == pid), "")
             self._section_title.setText(f"Playlist · {name}")
             self._search.show()
@@ -867,9 +867,9 @@ class MainWindow(QMainWindow):
         if n:
             self._views.show("library")
             self._table.setModel(self._model)
-            self._table.setColumnWidth(0, 280); self._table.setColumnWidth(1, 170)
-            self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 55)
-            self._table.setColumnWidth(4, 110); self._table.setColumnWidth(5, 75)
+            self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260); self._table.setColumnWidth(3, 170)
+            self._table.setColumnWidth(3, 170); self._table.setColumnWidth(4, 55)
+            self._table.setColumnWidth(5, 110); self._table.setColumnWidth(6, 75)
         else:
             self._views.show("empty")
 
