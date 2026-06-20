@@ -118,7 +118,7 @@ class TransmitController:
     def open_mini_player(self):
         from ui.mini_player import MiniPlayer
         from audio.player import PlaybackState
-        from audio.audio_chain import get_quality_label
+        from library.cover_art_service import CoverArtService
 
         if not hasattr(self._win, '_mini_player'):
             self._win._mini_player = MiniPlayer(self._win._playback, self._win)
@@ -138,7 +138,7 @@ class TransmitController:
         name = os.path.basename(current) if current else ""
         artist = ""
         if current:
-            qual, _ = get_quality_label(current)
+            qual, _ = CoverArtService.quality_label(current)
             item = self._win._items_index.get(current)
             if item:
                 artist = item.artist or qual or ""

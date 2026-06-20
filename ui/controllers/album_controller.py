@@ -24,14 +24,14 @@ class AlbumController:
             return
         d = os.path.dirname(tracks[0].filepath)
         try:
-            from library.album_art import find_cover_in_dir
             from library.artwork_cache import cache_cover
+            from library.cover_art_service import CoverArtService
             cover_path = os.path.join(d, "cover.jpg")
             if os.path.isfile(cover_path):
                 cache_cover(cover_path, None, "large")
                 self._toast("Carátula ya existente", "success")
                 self._refresh_grid()
-            elif find_cover_in_dir(d):
+            elif CoverArtService.find_cover(tracks[0].filepath):
                 self._toast("Carátula encontrada localmente", "success")
                 self._refresh_grid()
             else:

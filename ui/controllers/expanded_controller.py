@@ -2,7 +2,7 @@
 import os
 
 from audio.player import PlaybackState
-from audio.audio_chain import get_quality_label
+from library.cover_art_service import CoverArtService
 from ui.expanded_view import ExpandedNowPlaying
 
 
@@ -36,7 +36,7 @@ class ExpandedController:
 
         current = self._win._playback.current
         name = os.path.basename(current) if current else ""
-        qual, _ = get_quality_label(current) if current else ("", "")
+        qual, _ = CoverArtService.quality_label(current) if current else ("", "")
         artist = ""
         album = ""
         dur = 0.0
@@ -60,8 +60,7 @@ class ExpandedController:
                 title = item.title or name
 
         if not cover_path:
-            from library.album_art import find_cover_in_dir
-            cover = find_cover_in_dir(os.path.dirname(current))
+            cover = CoverArtService.find_cover(current)
             if cover:
                 cover_path = cover
 

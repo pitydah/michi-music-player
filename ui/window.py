@@ -195,8 +195,7 @@ class MainWindow(QMainWindow):
         self._current_refs: list = []
         self._album_sort_key = "title"
         self._album_filter_mode = "all"
-        self._artist_groups: list[ArtistGroup] = []
-        self._current_artist_key: str | None = None
+
         self._coverflow_cache_key: tuple | None = None
 
         # ── Music Identifier (must exist before _setup_ui) ──
@@ -837,6 +836,10 @@ class MainWindow(QMainWindow):
             self._playlist_hub, self._metadata_editor,
             self._discover, self._identifier_view,
         ]
+        from ui.controllers.background_theme_service import BackgroundThemeService
+        self._bg_theme = BackgroundThemeService(self._content)
+        from ui.controllers.artist_repository import ArtistRepository
+        self._artist_repo = ArtistRepository()
 
         # ── Content wrapper ──
         cw = QWidget()
@@ -910,7 +913,7 @@ class MainWindow(QMainWindow):
         pb.transmit_clicked.connect(self._show_transmit_menu)
         pb.audio_output_clicked.connect(self._show_audio_output_menu)
         pb.mini_player_clicked.connect(self._open_mini_player)
-        pb.cover_loaded.connect(self._apply_adaptive_background)
+        pb.cover_loaded.connect(self._bg_theme.apply)
 
     def _setup_tray(self):
         from ui.controllers.tray_controller import TrayController
@@ -1068,14 +1071,14 @@ class MainWindow(QMainWindow):
             self._search.show()
 
         elif key == "artists":
-            self._current_artist_key = None
-            self._artist_groups = build_artist_groups(self._all_items)
-            self._artist_grid.set_artists(self._artist_groups)
+            self._artist_repo.clear_current()
+            self._artist_repo.build(self._all_items)
+            self._artist_grid.set_artists(self._artist_repo.groups)
             if self._view_mode not in ("grid", "list"):
                 self._view_mode = "grid"
                 self._view_switcher.set_view("grid", emit=False)
             self._show_artists_view(self._view_mode)
-            self._count.setText(f"{len(self._artist_groups)} artistas")
+            self._count.setText(f"{self._artist_repo.count} artistas")
             self._search.show()
 
         elif key == "albums":
@@ -1356,13 +1359,13 @@ class MainWindow(QMainWindow):
 
     def _on_search(self, text: str):
         self._search_text = text.strip()
-        if self._current_section_key == "artists" and not self._current_artist_key:
+        if self._current_section_key == "artists" and not self._artist_repo.current_key:
             query = self._search_text.lower()
             if not query:
-                filtered = self._artist_groups
+                filtered = self._artist_repo.groups
             else:
                 filtered = [
-                    g for g in self._artist_groups
+                    g for g in self._artist_repo.groups
                     if query in g.display_name.lower()
                     or any(query in a.title.lower() for a in g.albums)
                     or any(query in (t.title or "").lower() for t in g.all_tracks)
@@ -1707,7 +1710,7 @@ class MainWindow(QMainWindow):
             return
         item = self._coverflow._items[index]
         if item and item.pixmap and not item.pixmap.isNull():
-            self._apply_adaptive_background(item.pixmap)
+            self._bg_theme.apply(item.pixmap)
 
     def _coverflow_album_tracks(self, idx: int) -> list:
         item = self._coverflow.item_at(idx) if self._coverflow else None
@@ -1825,10 +1828,10 @@ class MainWindow(QMainWindow):
         self._fade_content("artist_grid")
 
     def _open_artist_detail(self, artist_key: str):
-        group = next((g for g in self._artist_groups if g.key == artist_key), None)
+        group = next((g for g in self._artist_repo.groups if g.key == artist_key), None)
         if not group:
             return
-        self._current_artist_key = artist_key
+        self._artist_repo.current_key = artist_key
         self._artist_detail.set_artist(group)
 
         self._section_title.setText(group.display_name)
@@ -1841,12 +1844,12 @@ class MainWindow(QMainWindow):
         self._fade_content("artist_detail")
 
     def _show_artists_overview(self):
-        self._current_artist_key = None
+        self._artist_repo.clear_current()
         self._configure_header_for_section("artists")
         self._show_artists_view(self._view_mode)
 
     def _artist_filepaths(self, artist_key: str) -> list[str]:
-        group = next((g for g in self._artist_groups if g.key == artist_key), None)
+        group = next((g for g in self._artist_repo.groups if g.key == artist_key), None)
         if not group:
             return []
         return [t.filepath for t in group.all_tracks if os.path.isfile(t.filepath)]
@@ -1862,7 +1865,7 @@ class MainWindow(QMainWindow):
             self._playback.enqueue(fps, play_now=False)
 
     def _create_playlist_from_artist(self, artist_key: str):
-        group = next((g for g in self._artist_groups if g.key == artist_key), None)
+        group = next((g for g in self._artist_repo.groups if g.key == artist_key), None)
         if not group:
             return
         pid = self._db.create_playlist(group.display_name)
@@ -1997,7 +2000,8 @@ class MainWindow(QMainWindow):
                 quality_str = ext
 
         if not quality_str:
-            qual, _ = get_quality_label(track.uri)
+            from library.cover_art_service import CoverArtService
+            qual, _ = CoverArtService.quality_label(track.uri)
             quality_str = qual
 
         self._player_bar_ctrl.set_track(name, artist)
@@ -2007,18 +2011,18 @@ class MainWindow(QMainWindow):
         if track.uri.startswith("http") and track.cover_path:
             pix = QPixmap(track.cover_path)
             if not pix.isNull():
-                self._apply_adaptive_background(pix)
+                self._bg_theme.apply(pix)
         else:
             from library.album_art import find_cover_in_dir
             cover = find_cover_in_dir(os.path.dirname(track.uri))
             if cover:
                 pix = QPixmap(cover)
                 if not pix.isNull():
-                    self._apply_adaptive_background(pix)
+                    self._bg_theme.apply(pix)
                 else:
-                    self._reset_background()
+                    self._bg_theme.reset()
             else:
-                self._reset_background()
+                self._bg_theme.reset()
 
         # MPRIS
         dur = int(track.duration)
@@ -2051,46 +2055,10 @@ class MainWindow(QMainWindow):
     def _on_stop(self):
         self._playback.stop()
         self._player_bar_ctrl.reset()
-        self._reset_background()
+        self._bg_theme.reset()
         self.setWindowTitle("Astra Music Player")
 
-    def _extract_colors(self, pixmap):
-        img = pixmap.toImage().scaled(1, 1, Qt.IgnoreAspectRatio,
-                                      Qt.SmoothTransformation)
-        avg = img.pixelColor(0, 0)
-        return avg.name(), avg.darker(150).name()
 
-    def _apply_adaptive_background(self, pixmap):
-        if pixmap is None or pixmap.isNull():
-            self._reset_background()
-            return
-        c1, _ = self._extract_colors(pixmap)
-        c1_color = QColor(c1)
-
-        if not hasattr(self, '_last_bg_color'):
-            self._last_bg_color = QColor("#1a1a1e")
-
-        anim = QVariantAnimation(self)
-        anim.setDuration(800)
-        anim.setStartValue(self._last_bg_color)
-        anim.setEndValue(c1_color)
-        anim.valueChanged.connect(
-            lambda v: self._content.setStyleSheet(
-                f"QStackedWidget {{"
-                f"  background: qlineargradient(y1:0, y2:1, stop:0 {v.name()}, stop:1 {v.name()});"
-                f"  border-radius: 12px;"
-                f"}}"))
-        anim.start()
-        self._last_bg_color = c1_color
-        # Keep reference to prevent GC
-        self._bg_fade_anim = anim
-
-    def _reset_background(self):
-        self._content.setStyleSheet(
-            "QStackedWidget {"
-            "  background: rgba(255,255,255,0.04);"
-            "  border-radius: 12px;"
-            "}")
 
     def _open_eq(self):
         from ui.eq_panel import EqDialog
