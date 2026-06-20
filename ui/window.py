@@ -315,8 +315,18 @@ class MainWindow(QMainWindow):
             }
         """)
         self._count = QLabel("0 elementos")
-        self._count.setStyleSheet(
-            "color: rgba(255,255,255,0.64); font-size: 11.5px; font-weight: 650;")
+        self._count.setObjectName("countBadge")
+        self._count.setStyleSheet("""
+            QLabel#countBadge {
+                background: rgba(255,255,255,0.045);
+                border: 1px solid rgba(255,255,255,0.075);
+                border-radius: 10px;
+                padding: 6px 10px;
+                color: rgba(255,255,255,0.64);
+                font-size: 11.5px;
+                font-weight: 650;
+            }
+        """)
 
         # View selector (segmented capsule)
         self._view_switcher = SegmentedViewSwitcher(get_icon)
@@ -399,7 +409,7 @@ class MainWindow(QMainWindow):
                 color: #FFFFFF;
                 gridline-color: rgba(255,255,255,0.05);
                 border: none;
-                selection-background-color: rgba(255,77,46,0.28);
+                selection-background-color: rgba(255,255,255,0.115);
                 selection-color: #FFFFFF;
                 outline: 0;
             }
@@ -434,7 +444,7 @@ class MainWindow(QMainWindow):
                 color: #FFFFFF;
             }
             QHeaderView::section:checked {
-                background: rgba(255,77,46,0.18);
+                background: rgba(255,255,255,0.115);
                 color: #FFFFFF;
             }
             QTableCornerButton::section {
