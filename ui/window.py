@@ -192,6 +192,8 @@ class MainWindow(QMainWindow):
         # ── Music Identifier (must exist before _setup_ui) ──
         self._detection = DetectionService(self._db, NullRecognizer(), self)
         self._identifier_view = MusicIdentifierView()
+        from recognition.identifier_controller import IdentifierController
+        self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
 
         self._setup_actions()
         self._setup_ui()
@@ -210,9 +212,16 @@ class MainWindow(QMainWindow):
         self._identifier_view.toggle_requested.connect(self._toggle_identifier)
         self._identifier_view.clear_requested.connect(self._clear_detected_tracks)
         self._identifier_view.track_selected.connect(self._on_detected_track_selected)
-        self._detection.status_changed.connect(self._identifier_view.set_identifier_state)
+        self._detection.status_changed.connect(self._identifier_view.set_identifier_enabled)
         self._detection.track_detected.connect(self._on_track_detected)
         self._detection.detection_failed.connect(self._on_detection_failed)
+
+        self._identifier_ctrl.state_changed.connect(self._identifier_view.set_identifier_state)
+        self._identifier_ctrl.source_changed.connect(self._identifier_view.set_source_status)
+        self._identifier_ctrl.pause_reason_changed.connect(
+            lambda r: self._identifier_view.set_source_status(
+                self._identifier_ctrl.current_source_type,
+                self._identifier_ctrl.current_source_label, r))
 
         from ui.controllers.mpris_controller import MPRISController
         self._mpris_ctrl = MPRISController(self)
@@ -1385,11 +1394,13 @@ class MainWindow(QMainWindow):
 
     def _play_stream(self, url: str, title: str, artist: str, album: str = ""):
         self._play_trackref(TrackRef(
-            uri=url, title=title, artist=artist, album=album))
+            uri=url, title=title, artist=artist, album=album,
+            source_type="remote_stream", source_label="Servidor remoto"))
 
     def _play_radio(self, url: str, name: str):
         self._play_trackref(TrackRef(
-            uri=url, title=name, artist="Radio"))
+            uri=url, title=name, artist="Radio",
+            source_type="radio", source_label=name))
 
     # ── Search ──
 
@@ -1938,6 +1949,14 @@ class MainWindow(QMainWindow):
         self._playback_ctrl.on_table_dbl(idx)
 
     def _play_trackref(self, track: TrackRef):
+        # Notify identifier controller of source change
+        if hasattr(self, '_identifier_ctrl'):
+            self._identifier_ctrl.set_current_track(
+                source_type=track.source_type,
+                source_label=track.source_label,
+                uri=track.uri,
+                title=track.title,
+                artist=track.artist)
         self._playback_ctrl.play_trackref(track)
 
     def _play_file(self, filepath: str, add_to_queue: bool = False):
@@ -1981,14 +2000,10 @@ class MainWindow(QMainWindow):
     # ── Identifier ──
 
     def _toggle_identifier(self, enabled: bool):
-        current = getattr(self._playback, 'current', None)
-        source = "stream" if current and current.startswith("http") else "local"
-        if enabled:
-            self._detection.start(source=source, filepath=current)
-            self._identifier_view.set_identifier_enabled(True)
-        else:
-            self._detection.stop()
-            self._identifier_view.set_identifier_enabled(False)
+        self._identifier_ctrl.enabled = enabled
+        self._identifier_view.set_identifier_enabled(enabled)
+        if not enabled:
+            self._identifier_ctrl.stop()
 
     def _clear_detected_tracks(self):
         self._db.clear_detected_tracks()

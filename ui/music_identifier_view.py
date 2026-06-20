@@ -95,6 +95,36 @@ class MusicIdentifierView(QWidget):
 
         main.addWidget(card1)
 
+        # ── Source-aware status card ──
+        self._source_card = QFrame()
+        self._source_card.setStyleSheet("""
+            QFrame {
+                background: rgba(255,255,255,0.040);
+                border: 1px solid rgba(255,255,255,0.060);
+                border-radius: 14px;
+                padding: 14px;
+            }
+        """)
+        sc = QVBoxLayout(self._source_card)
+        sc.setContentsMargins(16, 12, 16, 12)
+        sc.setSpacing(4)
+
+        self._source_label = QLabel("Sin reproducción")
+        self._source_label.setStyleSheet(
+            "font-size:13px;font-weight:600;color:rgba(245,245,247,0.72);"
+            "background:transparent;border:none;")
+        sc.addWidget(self._source_label)
+
+        self._source_detail = QLabel("")
+        self._source_detail.setWordWrap(True)
+        self._source_detail.setStyleSheet(
+            "font-size:11px;color:rgba(245,245,247,0.48);"
+            "background:transparent;border:none;")
+        sc.addWidget(self._source_detail)
+
+        self._source_card.hide()
+        main.addWidget(self._source_card)
+
         # ── Block 2: History card ──
         card2 = QFrame()
         card2.setStyleSheet("""
@@ -243,6 +273,59 @@ class MusicIdentifierView(QWidget):
 
     def set_status_message(self, text: str):
         self._status_message.setText(text)
+
+    def set_source_status(self, source_type: str, source_label: str = "",
+                          paused_reason: str = ""):
+        """Update the source-aware status card."""
+        labels = {
+            "local_file": "Archivo local",
+            "radio": "Radio",
+            "navidrome": "Navidrome",
+            "jellyfin": "Jellyfin",
+            "remote_stream": "Stream remoto",
+            "device_file": "Dispositivo USB",
+            "unknown": "",
+        }
+        display = labels.get(source_type, source_label or "Sin reproducción")
+        self._source_label.setText(f"Fuente: {display}")
+
+        if paused_reason:
+            self._source_detail.setText(f"Identificador en pausa — {paused_reason}")
+            self._source_card.setStyleSheet("""
+                QFrame {
+                    background: rgba(255,255,255,0.040);
+                    border: 1px solid rgba(255,255,255,0.060);
+                    border-radius: 14px;
+                    padding: 14px;
+                }
+            """)
+        elif source_type in ("radio", "navidrome", "jellyfin", "remote_stream"):
+            self._source_detail.setText("El identificador está escuchando esta fuente.")
+            self._source_card.setStyleSheet("""
+                QFrame {
+                    background: rgba(52,199,89,0.08);
+                    border: 1px solid rgba(52,199,89,0.15);
+                    border-radius: 14px;
+                    padding: 14px;
+                }
+            """)
+            self._source_label.setStyleSheet(
+                "font-size:13px;font-weight:600;color:#34c759;"
+                "background:transparent;border:none;")
+        else:
+            self._source_detail.setText("")
+            self._source_card.setStyleSheet("""
+                QFrame {
+                    background: rgba(255,255,255,0.040);
+                    border: 1px solid rgba(255,255,255,0.060);
+                    border-radius: 14px;
+                    padding: 14px;
+                }
+            """)
+            self._source_label.setStyleSheet(
+                "font-size:13px;font-weight:600;color:rgba(245,245,247,0.72);"
+                "background:transparent;border:none;")
+        self._source_card.show()
 
     def set_detected_tracks(self, tracks: list[dict]):
         self._list.clear()

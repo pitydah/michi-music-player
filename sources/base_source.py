@@ -17,6 +17,8 @@ class TrackRef:
     track_number: int = 0
     year: int = 0
     genre: str = ""
+    source_type: str = "local_file"
+    source_label: str = ""
 
 
 class MusicSource(ABC):
