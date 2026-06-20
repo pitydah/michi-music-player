@@ -57,29 +57,83 @@ from recognition.null_recognizer import NullRecognizer
 
 
 SECTION_CONFIG = {
-    "library": {"title": "Biblioteca", "subtitle": "Toda tu música local",
-                "views": ["list", "grid"], "search": True, "default": "list"},
-    "albums":  {"title": "Álbumes", "subtitle": "Carátulas y navegación visual",
-                "views": ["list", "grid", "coverflow"], "search": True, "default": "grid"},
-    "artists": {"title": "Artistas", "subtitle": "Agrupados por artista",
-                "views": ["list", "grid"], "search": True, "default": "list"},
-    "genres":  {"title": "Géneros", "subtitle": "Explora por estilo musical",
-                "views": ["list", "grid"], "search": True, "default": "list"},
-    "folders": {"title": "Carpetas", "subtitle": "Explorador musical local",
-                "views": ["tree"], "search": True, "default": "tree"},
-    "radio":   {"title": "Emisoras", "subtitle": "Radios por URL y mosaicos",
-                "views": ["grid", "list"], "search": True, "default": "grid"},
+    "library":    {"title": "Todas las canciones", "subtitle": "Toda tu música local",
+                   "icon": "sidebar_library", "views": ["list", "grid"],
+                   "search": True, "default": "list"},
+    "albums":     {"title": "Álbumes", "subtitle": "Carátulas y navegación visual",
+                   "icon": "sidebar_albums", "views": ["list", "grid", "coverflow"],
+                   "search": True, "default": "grid"},
+    "artists":    {"title": "Artistas", "subtitle": "Agrupados por artista · Doble click para canciones",
+                   "icon": "sidebar_mix", "views": ["list", "grid"],
+                   "search": True, "default": "list"},
+    "genres":     {"title": "Géneros", "subtitle": "Explora por estilo musical",
+                   "icon": "sidebar_popular", "views": ["list", "grid"],
+                   "search": True, "default": "list"},
+    "folders":    {"title": "Carpetas", "subtitle": "Explorador musical local",
+                   "icon": "sidebar_folders", "views": ["tree"],
+                   "search": True, "default": "tree"},
+    "radio":      {"title": "Emisoras", "subtitle": "Radios por URL y mosaicos",
+                   "icon": "sidebar_radio", "views": ["grid", "list"],
+                   "search": True, "default": "grid"},
     "identifier": {"title": "Identificador", "subtitle": "Detección musical",
-                   "views": [], "search": False, "default": None},
-    "playlists": {"title": "Playlist", "subtitle": "Colecciones personalizadas",
-                  "views": ["list", "grid"], "search": True, "default": "list"},
-    "favs":      {"title": "Favoritos", "subtitle": "Canciones marcadas",
-                  "views": ["list", "grid"], "search": True, "default": "list"},
-    "recent":    {"title": "Recientes", "subtitle": "Reproducidas recientemente",
-                  "views": ["list", "grid"], "search": True, "default": "list"},
-    "discover":  {"title": "Descubrir", "subtitle": "Explora tu música",
-                  "views": [], "search": False, "default": None},
+                   "icon": "sidebar_identifier", "views": [],
+                   "search": False, "default": None},
+    "playlists":  {"title": "Playlist", "subtitle": "Colecciones personalizadas",
+                   "icon": "sidebar_playlists", "views": ["list", "grid"],
+                   "search": True, "default": "list"},
+    "favs":       {"title": "Favoritos", "subtitle": "Canciones marcadas como favoritas",
+                   "icon": "sidebar_popular", "views": ["list", "grid"],
+                   "search": True, "default": "list"},
+    "recent":     {"title": "Recientes", "subtitle": "Reproducidas recientemente",
+                   "icon": "sidebar_mix", "views": ["list", "grid"],
+                   "search": True, "default": "list"},
+    "discover":   {"title": "Descubrir", "subtitle": "Explora y redescubre tu música",
+                   "icon": "sidebar_mix", "views": [],
+                   "search": False, "default": None},
+    "mix_daily":  {"title": "Mix diario", "subtitle": "Selección automática para hoy",
+                   "icon": "sidebar_mix", "views": [],
+                   "search": False, "default": None},
+    "mix_unplayed": {"title": "No escuchadas", "subtitle": "Canciones por descubrir",
+                     "icon": "sidebar_unplayed", "views": ["list", "grid"],
+                     "search": True, "default": "list"},
+    "mix_popular": {"title": "Más escuchadas", "subtitle": "Mayor número de reproducciones",
+                    "icon": "sidebar_popular", "views": [],
+                    "search": False, "default": None},
+    "new_playlist": {"title": "Nueva playlist", "subtitle": "Crea una lista personalizada",
+                     "icon": "sidebar_add", "views": [],
+                     "search": False, "default": None},
+    "add_server": {"title": "Añadir servidor", "subtitle": "Conecta Navidrome o Jellyfin",
+                   "icon": "sidebar_add", "views": [],
+                   "search": False, "default": None},
 }
+
+
+def _resolve_section_config(key: str, extra: dict = None) -> dict:
+    """Resolve section config for static or dynamic keys (pl:, srv:, dev:)."""
+    if key in SECTION_CONFIG:
+        return SECTION_CONFIG[key]
+
+    if key.startswith("pl:") and extra:
+        name = extra.get("name", "Playlist")
+        return {"title": f"Playlist · {name}", "subtitle": "Colección personalizada",
+                "icon": "sidebar_playlist_item", "views": ["list", "grid"],
+                "search": True, "default": "list"}
+    if key.startswith("srv:") and extra:
+        name = extra.get("name", "Servidor")
+        sv_type = extra.get("type", "")
+        icon = "sidebar_navidrome" if sv_type == "navidrome" else "sidebar_jellyfin"
+        return {"title": name, "subtitle": "Servidor remoto",
+                "icon": icon, "views": [],
+                "search": True, "default": None}
+    if key.startswith("dev:") and extra:
+        name = extra.get("name", os.path.basename(extra.get("mount", "")))
+        return {"title": name, "subtitle": "Dispositivo externo",
+                "icon": "sidebar_devices", "views": ["list"],
+                "search": True, "default": "list"}
+
+    return {"title": key.capitalize(), "subtitle": "",
+            "icon": "sidebar_library", "views": ["list", "grid"],
+            "search": True, "default": "list"}
 
 
 class MainWindow(QMainWindow):
@@ -284,27 +338,41 @@ class MainWindow(QMainWindow):
         """)
         hl = QHBoxLayout(header); hl.setContentsMargins(0, 0, 0, 0); hl.setSpacing(10)
 
+        # Section icon + title + subtitle
+        self._section_icon = QLabel()
+        self._section_icon.setFixedSize(28, 28)
+        self._section_icon.setAlignment(Qt.AlignCenter)
+        self._section_icon.setStyleSheet("background: transparent; border: none;")
+
         title_box = QVBoxLayout()
         title_box.setSpacing(1)
-        self._section_title = QLabel("Biblioteca")
+        self._section_title = QLabel("Todas las canciones")
         self._section_title.setObjectName("sectionTitle")
         self._section_title.setStyleSheet("""
             QLabel#sectionTitle {
-                color: rgba(255,255,255,0.92);
-                font-size: 16px; font-weight: 750;
+                color: #FFFFFF;
+                font-size: 16px; font-weight: 760;
+                background: transparent; border: none;
             }
         """)
         self._section_subtitle = QLabel("Toda tu música local")
         self._section_subtitle.setObjectName("sectionSubtitle")
         self._section_subtitle.setStyleSheet("""
             QLabel#sectionSubtitle {
-                color: rgba(255,255,255,0.48);
-                font-size: 11.5px; font-weight: 500;
+                color: rgba(255,255,255,0.76);
+                font-size: 11.5px; font-weight: 520;
+                background: transparent; border: none;
             }
         """)
         title_box.addWidget(self._section_title)
         title_box.addWidget(self._section_subtitle)
-        hl.addLayout(title_box)
+
+        title_wrap = QHBoxLayout()
+        title_wrap.setContentsMargins(0, 0, 0, 0)
+        title_wrap.setSpacing(10)
+        title_wrap.addWidget(self._section_icon)
+        title_wrap.addLayout(title_box)
+        hl.addLayout(title_wrap)
         hl.addSpacing(16)
 
         self._search = QLineEdit()
@@ -312,31 +380,33 @@ class MainWindow(QMainWindow):
         self._search.setFixedWidth(200); self._search.textChanged.connect(self._on_search)
         self._search.setStyleSheet("""
             QLineEdit {
-                background: rgba(255,255,255,0.055);
+                background: rgba(255,255,255,0.060);
                 color: #FFFFFF;
-                border: 1px solid rgba(255,255,255,0.085);
+                border: 1px solid rgba(255,255,255,0.10);
                 border-radius: 12px;
                 padding: 8px 12px;
                 font-size: 12.5px;
+                selection-background-color: rgba(255,255,255,0.18);
+                selection-color: #FFFFFF;
             }
             QLineEdit:hover {
-                background: rgba(255,255,255,0.075);
-                border: 1px solid rgba(255,255,255,0.12);
+                background: rgba(255,255,255,0.080);
+                border: 1px solid rgba(255,255,255,0.14);
             }
             QLineEdit:focus {
-                background: rgba(255,255,255,0.085);
-                border: 1px solid rgba(255,255,255,0.16);
+                background: rgba(255,255,255,0.095);
+                border: 1px solid rgba(255,255,255,0.18);
             }
         """)
         self._count = QLabel("0 elementos")
         self._count.setObjectName("countBadge")
         self._count.setStyleSheet("""
             QLabel#countBadge {
-                background: rgba(255,255,255,0.045);
-                border: 1px solid rgba(255,255,255,0.075);
+                background: rgba(255,255,255,0.055);
+                border: 1px solid rgba(255,255,255,0.085);
                 border-radius: 10px;
                 padding: 6px 10px;
-                color: rgba(255,255,255,0.64);
+                color: rgba(255,255,255,0.80);
                 font-size: 11.5px;
                 font-weight: 650;
             }
@@ -516,7 +586,7 @@ class MainWindow(QMainWindow):
         placeholder = QLabel()
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.35); font-size: 16px;"
+            "QLabel { color: rgba(255,255,255,0.68); font-size: 16px;"
             "  background: transparent; border: none; padding: 48px; }")
         placeholder.setText(
             "🎵\n\nAñade una carpeta o abre un archivo\n"
@@ -525,7 +595,7 @@ class MainWindow(QMainWindow):
         placeholder_albums = QLabel()
         placeholder_albums.setAlignment(Qt.AlignCenter)
         placeholder_albums.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.28); font-size: 15px;"
+            "QLabel { color: rgba(255,255,255,0.62); font-size: 15px;"
             "  background: transparent; border: none; padding: 48px; }")
         placeholder_albums.setText(
             "📀\n\nSin álbumes en la biblioteca\n"
@@ -1161,15 +1231,27 @@ class MainWindow(QMainWindow):
 
     def _configure_header_for_section(self, section_key: str):
         self._current_section_key = section_key
-        config = SECTION_CONFIG.get(section_key, {})
-        title = config.get("title", "Biblioteca")
+        config = _resolve_section_config(section_key)
+        title = config.get("title", "Todas las canciones")
         subtitle = config.get("subtitle", "")
+        icon_name = config.get("icon", "sidebar_library")
         views = config.get("views", ["list", "grid"])
         search = config.get("search", True)
         default = config.get("default", "list")
 
         self._section_title.setText(title)
         self._section_subtitle.setText(subtitle)
+
+        # Set section icon
+        icon_path = get_icon(icon_name)
+        if icon_path:
+            pix = QPixmap(icon_path)
+            if not pix.isNull():
+                self._section_icon.setPixmap(
+                    pix.scaled(26, 26, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            self._section_icon.clear()
+
         self._search.setVisible(search)
         self._view_switcher.set_available_modes(views)
 

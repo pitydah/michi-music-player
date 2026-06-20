@@ -153,14 +153,14 @@ class _Item(QFrame):
         if self._active:
             self.setStyleSheet(f"""
                 QFrame {{
-                    background: {SIDEBAR_ACTIVE_GRADIENT};
+                    background: rgba(255,255,255,0.145);
                     border: 1px solid rgba(255,255,255,0.18);
                     border-radius: 11px;
                     margin: 1px 8px;
                 }}
             """)
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:650;color:#ffffff;"
+                "font-size:13px;font-weight:700;color:#ffffff;"
                 "background:transparent;border:none;")
         else:
             self.setStyleSheet("""
@@ -172,22 +172,22 @@ class _Item(QFrame):
                 }
             """)
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:520;color:rgba(255,255,255,0.92);"
+                "font-size:13px;font-weight:540;color:rgba(255,255,255,0.88);"
                 "background:transparent;border:none;")
 
     def enterEvent(self, event):
         if not self._active:
             self.setStyleSheet("""
                 QFrame {
-                    background: rgba(255,255,255,0.085);
-                    border: none;
-                    border-radius: 10px;
+                    background: rgba(255,255,255,0.105);
+                    border: 1px solid rgba(255,255,255,0.115);
+                    border-radius: 11px;
                     margin: 1px 8px;
                 }
             """)
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:520;"
-                "color:rgba(255,255,255,0.98);"
+                "font-size:13px;font-weight:600;"
+                "color:#FFFFFF;"
                 "background:transparent;border:none;")
         super().enterEvent(event)
 
