@@ -40,11 +40,15 @@ def copy_custom_cover(playlist_id: int, image_path: str) -> str:
 
 
 def remove_custom_cover(playlist_id: int):
-    """Remove the custom cover for a playlist."""
+    """Remove the custom cover for a playlist. Only deletes inside COVER_DIR."""
+    import logging
     for ext in (".png", ".jpg", ".jpeg"):
-        path = os.path.join(COVER_DIR, f"playlist_{playlist_id}{ext}")
-        if os.path.isfile(path):
+        path = os.path.realpath(os.path.join(COVER_DIR, f"playlist_{playlist_id}{ext}"))
+        cover_real = os.path.realpath(COVER_DIR)
+        if os.path.isfile(path) and os.path.commonpath([path, cover_real]) == cover_real:
             os.remove(path)
+        elif os.path.isfile(path):
+            logging.getLogger("astra").warning("remove_custom_cover: path outside COVER_DIR — skipped %s", path)
 
 
 def generate_mosaic(tracks: list, size: int = 180) -> QPixmap | None:

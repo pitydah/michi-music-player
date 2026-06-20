@@ -743,9 +743,9 @@ class MainWindow(QMainWindow):
 
         self._album_grid = AlbumGridWidget()
         self._album_grid.album_double_clicked.connect(
-            lambda fps: self._playback.enqueue(fps, play_now=True))
+            lambda fps: self._play_filepaths(fps, play_now=True))
         self._album_grid.queue_requested.connect(
-            lambda fps: self._playback.enqueue(fps, play_now=False))
+            lambda fps: self._play_filepaths(fps, play_now=False))
         self._album_grid.playlist_requested.connect(
             self._on_album_create_playlist)
         self._album_grid.cover_search_requested.connect(
@@ -784,7 +784,7 @@ class MainWindow(QMainWindow):
         self._playlist_detail.queue_requested.connect(self._on_hub_playlist_queue)
         self._playlist_detail.edit_requested.connect(self._edit_playlist_dialog)
         self._playlist_detail.track_double_clicked.connect(
-            lambda fp: self._playback.enqueue([fp], play_now=True))
+            lambda fp: self._play_filepaths([fp], play_now=True))
 
         self._playlist_hub.playlist_edit_requested.connect(self._edit_playlist_dialog)
         self._playlist_hub.create_from_album_requested.connect(
@@ -811,18 +811,18 @@ class MainWindow(QMainWindow):
         self._artist_detail.play_all_requested.connect(self._play_artist)
         self._artist_detail.queue_all_requested.connect(self._queue_artist)
         self._artist_detail.play_album_requested.connect(
-            lambda fps: self._playback.enqueue(fps, play_now=True))
+            lambda fps: self._play_filepaths(fps, play_now=True))
         self._artist_detail.queue_album_requested.connect(
-            lambda fps: self._playback.enqueue(fps, play_now=False))
+            lambda fps: self._play_filepaths(fps, play_now=False))
         self._artist_detail.playlist_artist_requested.connect(self._create_playlist_from_artist)
         self._artist_detail.metadata_artist_requested.connect(self._edit_artist_metadata)
         self._artist_detail.metadata_files_requested.connect(self._open_metadata_for_files)
 
         self._folder_browser = FolderBrowserWidget()
         self._folder_browser.folder_selected.connect(
-            lambda fps: self._playback.enqueue(fps, play_now=True))
+            lambda fps: self._play_filepaths(fps, play_now=True))
         self._folder_browser.queue_requested.connect(
-            lambda fps: self._playback.enqueue(fps, play_now=False))
+            lambda fps: self._play_filepaths(fps, play_now=False))
         self._folder_browser.scan_requested.connect(self._scan_path)
         self._folder_browser.create_playlist_requested.connect(
             self._on_folder_create_playlist)
@@ -1990,6 +1990,18 @@ class MainWindow(QMainWindow):
 
     def _on_table_dbl(self, idx):
         self._playback_ctrl.on_table_dbl(idx)
+
+    def _play_filepaths(self, filepaths: list[str], play_now: bool = True):
+        """Centralized playback entry point — ensures all tracks go through _play_trackref."""
+        if not filepaths:
+            return
+        if play_now:
+            track = TrackRef(uri=filepaths[0], title=os.path.basename(filepaths[0]))
+            self._play_trackref(track)
+            for fp in filepaths[1:]:
+                self._playback.enqueue([fp], play_now=False)
+        else:
+            self._playback.enqueue(filepaths, play_now=False)
 
     def _play_trackref(self, track: TrackRef):
         # Notify identifier controller of source change

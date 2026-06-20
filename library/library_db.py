@@ -281,16 +281,16 @@ class LibraryDB:
                         cover_path: str = "", cover_type: str = ""):
         updates = []
         params = []
-        if name:
+        if name is not None:
             updates.append("name = ?")
             params.append(name)
-        if description:
+        if description is not None:
             updates.append("description = ?")
             params.append(description)
-        if cover_path:
+        if cover_path is not None:
             updates.append("cover_path = ?")
             params.append(cover_path)
-        if cover_type:
+        if cover_type is not None:
             updates.append("cover_type = ?")
             params.append(cover_type)
         if updates:

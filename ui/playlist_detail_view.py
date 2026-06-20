@@ -73,15 +73,30 @@ class PlaylistDetailView(QWidget):
         outer.addWidget(self._scroll)
 
     def set_playlist(self, playlist: dict, tracks: list):
+        sig = (playlist.get("id"), playlist.get("name"), playlist.get("cover_path"),
+               len(tracks), sum(getattr(t, 'duration', 0) or 0 for t in tracks))
+        if sig == getattr(self, '_last_detail_sig', None):
+            return
+        self._last_detail_sig = sig
         self._playlist = playlist
         self._tracks = tracks
         self._rebuild()
 
+    def _clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            if item is None:
+                continue
+            w = item.widget()
+            if w is not None:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
+            elif item.layout() is not None:
+                self._clear_layout(item.layout())
+
     def _rebuild(self):
-        while self._layout.count():
-            item = self._layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        self._clear_layout(self._layout)
 
         if not self._playlist:
             return

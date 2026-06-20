@@ -259,7 +259,10 @@ class PlaylistHubWidget(QWidget):
 
     def _build_quick_actions(self):
         self._add_section_heading("Acciones rápidas")
-        row = QHBoxLayout()
+        section = QWidget()
+        section.setStyleSheet("background: transparent;")
+        row = QHBoxLayout(section)
+        row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(10)
 
         actions = [
@@ -278,7 +281,7 @@ class PlaylistHubWidget(QWidget):
             row.addWidget(btn)
 
         row.addStretch()
-        self._layout.addLayout(row)
+        self._layout.addWidget(section)
 
     # ── My Playlists ──
 
