@@ -38,28 +38,51 @@ class TrackTags:
 
     # State
     dirty: bool = False
+    dirty_fields: set[str] = field(default_factory=set)
+    artwork_dirty: bool = False
     error: str = ""
     original: "TrackTags | None" = None
 
-    # For batch edit storage, shallow copy per-field
-    FIELD_NAMES = [
+    TEXT_FIELDS = [
         "title", "artist", "album", "albumartist",
         "tracknumber", "tracktotal", "discnumber", "disctotal",
         "date", "genre", "composer", "comment", "lyrics",
         "bpm", "isrc", "musicbrainz_trackid", "musicbrainz_albumid",
-        "has_artwork",
     ]
 
-    def mark_dirty(self):
+    def set_field(self, field: str, value) -> bool:
+        """Set a field value, tracking dirty state. Returns True if changed."""
+        old = getattr(self, field, "")
+        if str(old) != str(value):
+            setattr(self, field, value)
+            self.dirty = True
+            self.dirty_fields.add(field)
+            return True
+        return False
+
+    def mark_dirty(self, field: str | None = None):
         self.dirty = True
+        if field:
+            self.dirty_fields.add(field)
+
+    def mark_artwork_dirty(self):
+        self.artwork_dirty = True
+        self.dirty = True
+        self.dirty_fields.add("artwork")
 
     def revert(self):
         if self.original:
-            for f in self.FIELD_NAMES:
+            for f in self.TEXT_FIELDS:
                 setattr(self, f, getattr(self.original, f))
-            self.dirty = False
+            self.has_artwork = self.original.has_artwork
+            self.artwork_mime = self.original.artwork_mime
+            self.artwork_data = self.original.artwork_data
+        self.dirty = False
+        self.dirty_fields.clear()
+        self.artwork_dirty = False
 
     def clone(self) -> "TrackTags":
+        """Clone without circular reference — original is set to None on the clone."""
         return TrackTags(
             filepath=self.filepath,
             title=self.title, artist=self.artist, album=self.album,
@@ -75,5 +98,13 @@ class TrackTags:
             file_mtime=self.file_mtime,
             has_artwork=self.has_artwork, artwork_mime=self.artwork_mime,
             artwork_data=self.artwork_data,
-            dirty=False, error=self.error, original=self,
+            dirty=False, dirty_fields=set(), artwork_dirty=False,
+            error=self.error, original=None,
         )
+
+    def is_field_dirty(self, field: str) -> bool:
+        return field in self.dirty_fields or field == "artwork" and self.artwork_dirty
+
+    @property
+    def changed_fields(self) -> list[str]:
+        return sorted(self.dirty_fields)

@@ -3,7 +3,6 @@ import os
 
 from metadata.tag_model import TrackTags
 
-
 _PATTERNS = {
     "%artist%/%album%/%track% - %title%":
         lambda t: f"{t.artist}/{t.album}/{t.tracknumber} - {t.title}",
@@ -19,33 +18,54 @@ _PATTERNS = {
         lambda t: f"{t.tracknumber} - {t.title}",
 }
 
+_TEMPLATE_KEYS = {
+    "artist": "artist",
+    "album": "album",
+    "albumartist": "albumartist",
+    "track": "tracknumber",
+    "title": "title",
+    "genre": "genre",
+    "year": "date",
+}
 
-def _sanitize(name: str) -> str:
-    """Remove unsafe filename characters."""
+
+def sanitize_filename_part(value: str) -> str:
     for ch in '<>:"/\\|?*':
-        name = name.replace(ch, "")
-    return name.strip().strip(".")
+        value = value.replace(ch, "")
+    return value.strip().strip(".")
+
+
+def render_pattern(tags: TrackTags, pattern: str) -> str:
+    """Render a free-form pattern using tag values."""
+    result = pattern
+    for key, attr in _TEMPLATE_KEYS.items():
+        val = getattr(tags, attr, "")
+        result = result.replace(f"%{key}%", sanitize_filename_part(val or "Desconocido"))
+    return result
 
 
 def preview_rename(items: list[TrackTags], pattern: str) -> list[tuple[str, str]]:
-    """Generate (old_path, new_path) pairs for preview. Does not rename."""
     results = []
-    fn = _PATTERNS.get(pattern)
-    if not fn:
-        return results
 
+    # First try predefined patterns
+    fn = _PATTERNS.get(pattern)
     for t in items:
         old = t.filepath
         ext = os.path.splitext(old)[1]
         base_dir = os.path.dirname(old)
-        relative = _sanitize(fn(t))
+
+        if fn:
+            relative = sanitize_filename_part(fn(t))
+        else:
+            # Free-form pattern
+            relative = render_pattern(t, pattern)
+
         new = os.path.join(base_dir, relative + ext)
         results.append((old, new))
     return results
 
 
 def apply_rename(preview: list[tuple[str, str]]) -> tuple[int, int]:
-    """Actually rename files. Returns (success_count, fail_count)."""
     ok = 0
     fail = 0
     for old, new in preview:
@@ -58,3 +78,4 @@ def apply_rename(preview: list[tuple[str, str]]) -> tuple[int, int]:
         except OSError:
             fail += 1
     return ok, fail
+
