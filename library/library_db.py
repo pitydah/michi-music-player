@@ -14,11 +14,11 @@ from typing import Callable
 
 logger = logging.getLogger("astra.library")
 
-from PySide6.QtCore import Signal, QObject
+from PySide6.QtCore import Signal, QObject  # noqa: E402
 
 # ── Re-exports from split modules ──
-from library.metadata_extractor import ALL_EXTS, extract_metadata, extract_metadata_full
-from library.media_item import MediaItem, media_kind
+from library.metadata_extractor import ALL_EXTS, extract_metadata, extract_metadata_full  # noqa: E402
+from library.media_item import MediaItem, media_kind  # noqa: E402
 
 DB_PATH = os.path.expanduser("~/.local/share/astra-music-player/library.db")
 
