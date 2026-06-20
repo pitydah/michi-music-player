@@ -12,64 +12,64 @@ VIEW_MODE_DEFS = {
         "icon": "warm_view_list",
         "label": "Lista",
         "short_label": "Lista",
-        "tooltip": "Cambiar a vista de lista",
-        "active_tooltip": "Vista actual: Lista",
+        "tooltip": "Vista lista",
+        "active_tooltip": "Lista activa",
         "description": "Muestra los elementos en una tabla ordenada.",
     },
     "grid": {
         "icon": "warm_view_grid",
         "label": "Mosaico",
         "short_label": "Mosaico",
-        "tooltip": "Cambiar a vista de mosaico",
-        "active_tooltip": "Vista actual: Mosaico",
+        "tooltip": "Vista mosaico",
+        "active_tooltip": "Mosaico activo",
         "description": "Muestra tarjetas visuales con carátulas.",
     },
     "coverflow": {
         "icon": "warm_view_coverflow",
         "label": "CoverFlow",
         "short_label": "Cover",
-        "tooltip": "Cambiar a CoverFlow de álbumes",
-        "active_tooltip": "Vista actual: CoverFlow",
+        "tooltip": "Vista CoverFlow",
+        "active_tooltip": "CoverFlow activo",
         "description": "Carrusel visual de álbumes.",
     },
     "tree": {
         "icon": "warm_view_tree",
         "label": "Árbol",
         "short_label": "Árbol",
-        "tooltip": "Cambiar a vista de árbol",
-        "active_tooltip": "Vista actual: Árbol",
+        "tooltip": "Vista árbol",
+        "active_tooltip": "Árbol activo",
         "description": "Explora carpetas y jerarquías.",
     },
     "details": {
         "icon": "warm_view_details",
         "label": "Detalles",
         "short_label": "Detalle",
-        "tooltip": "Cambiar a vista de detalles",
-        "active_tooltip": "Vista actual: Detalles",
+        "tooltip": "Vista detalles",
+        "active_tooltip": "Detalles activo",
         "description": "Muestra información ampliada.",
     },
 }
 
 _QSS = """
     QWidget#segmentedViewSwitcher {
-        background: rgba(255,255,255,0.045);
-        border: 1px solid rgba(255,255,255,0.090);
-        border-radius: 17px;
+        background: rgba(255,255,255,0.035);
+        border: 1px solid rgba(255,255,255,0.065);
+        border-radius: 16px;
     }
     QWidget#segmentedViewSwitcher QPushButton {
         background: transparent;
-        color: rgba(255,255,255,0.70);
+        color: rgba(255,255,255,0.66);
         border: 1px solid transparent;
-        border-radius: 14px;
-        margin: 2px;
-        padding: 0px 10px;
+        border-radius: 13px;
+        margin: 1px;
+        padding: 0px 8px;
         font-size: 11.5px;
         font-weight: 720;
     }
     QWidget#segmentedViewSwitcher QPushButton:hover {
-        background: rgba(255,255,255,0.085);
+        background: rgba(255,255,255,0.060);
         color: #FFFFFF;
-        border: 1px solid rgba(255,255,255,0.115);
+        border: 1px solid rgba(255,255,255,0.090);
     }
     QWidget#segmentedViewSwitcher QPushButton:checked {
         background: transparent;
@@ -77,9 +77,9 @@ _QSS = """
         border: 1px solid transparent;
     }
     QWidget#segmentedViewSwitcher QPushButton:pressed {
-        background: rgba(255,255,255,0.175);
+        background: rgba(255,255,255,0.120);
         color: #FFFFFF;
-        border: 1px solid rgba(255,255,255,0.220);
+        border: 1px solid rgba(255,255,255,0.160);
     }
     QWidget#segmentedViewSwitcher QPushButton:disabled {
         background: transparent;
@@ -87,9 +87,9 @@ _QSS = """
         border: 1px solid transparent;
     }
     QFrame#activeViewPill {
-        background: rgba(255,255,255,0.145);
-        border: 1px solid rgba(255,255,255,0.185);
-        border-radius: 14px;
+        background: rgba(255,255,255,0.105);
+        border: 1px solid rgba(255,255,255,0.120);
+        border-radius: 13px;
     }
 """
 
@@ -269,8 +269,6 @@ class SegmentedViewSwitcher(QWidget):
             return
         if window_width < 930:
             self.set_display_mode("compact")
-        elif window_width >= 1250:
-            self.set_display_mode("expanded")
         else:
             self.set_display_mode("normal")
 

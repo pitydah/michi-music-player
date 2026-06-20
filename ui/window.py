@@ -540,9 +540,6 @@ class MainWindow(QMainWindow):
         settings_menu.addAction(self._quit_action)
         self._settings_btn.setMenu(settings_menu)
 
-        hl.addSpacing(16)
-        hl.addWidget(self._view_switcher)
-
         # Album sort/filter row (shown only for albums section)
         self._album_sort_btn = QToolButton()
         self._album_sort_btn.setText("Ordenar")
