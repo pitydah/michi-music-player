@@ -55,6 +55,20 @@ from recognition.detection_service import DetectionService
 from recognition.null_recognizer import NullRecognizer
 
 
+SECTION_CONFIG = {
+    "library": {"title": "Biblioteca", "subtitle": "Toda tu música local",
+                "views": ["list", "grid"], "search": True, "default": "list"},
+    "albums":  {"title": "Álbumes", "subtitle": "Carátulas y navegación visual",
+                "views": ["list", "grid", "coverflow"], "search": True, "default": "grid"},
+    "folders": {"title": "Carpetas", "subtitle": "Explorador musical local",
+                "views": ["tree"], "search": True, "default": "tree"},
+    "radio":   {"title": "Emisoras", "subtitle": "Radios por URL y mosaicos",
+                "views": ["grid", "list"], "search": True, "default": "grid"},
+    "identifier": {"title": "Identificador", "subtitle": "Detección musical",
+                   "views": [], "search": False, "default": None},
+}
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -80,7 +94,7 @@ class MainWindow(QMainWindow):
         self._search_ctrl.results_ready.connect(self._on_search_results)
         self._all_items: list[MediaItem] = []
         self._items_index: dict[str, MediaItem] = {}
-        self._current_ref: TrackRef | None = None
+        self._current_section_key: str = "library"
         self._kind_filter: str | None = None
         self._search_text = ""
         self._current_playlist: int | None = None
@@ -243,19 +257,66 @@ class MainWindow(QMainWindow):
         header.setObjectName("headerBar")
         header.setStyleSheet("""
             QFrame#headerBar {
-                background: rgba(16,18,25,0.94);
-                border-bottom: 1px solid rgba(255,255,255,0.075);
-                padding: 8px 16px;
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(16,18,25,0.96),
+                    stop:0.55 rgba(13,15,22,0.94),
+                    stop:1 rgba(20,22,30,0.92)
+                );
+                border: 1px solid rgba(255,255,255,0.065);
+                border-radius: 16px;
+                padding: 8px 14px;
             }
         """)
         hl = QHBoxLayout(header); hl.setContentsMargins(0, 0, 0, 0); hl.setSpacing(10)
+
+        title_box = QVBoxLayout()
+        title_box.setSpacing(1)
         self._section_title = QLabel("Biblioteca")
-        self._section_title.setStyleSheet("font-size: 16px; font-weight: bold; color: rgba(255,255,255,0.85);")
+        self._section_title.setObjectName("sectionTitle")
+        self._section_title.setStyleSheet("""
+            QLabel#sectionTitle {
+                color: rgba(255,255,255,0.92);
+                font-size: 16px; font-weight: 750;
+            }
+        """)
+        self._section_subtitle = QLabel("Toda tu música local")
+        self._section_subtitle.setObjectName("sectionSubtitle")
+        self._section_subtitle.setStyleSheet("""
+            QLabel#sectionSubtitle {
+                color: rgba(255,255,255,0.48);
+                font-size: 11.5px; font-weight: 500;
+            }
+        """)
+        title_box.addWidget(self._section_title)
+        title_box.addWidget(self._section_subtitle)
+        hl.addLayout(title_box)
+        hl.addSpacing(16)
+
         self._search = QLineEdit()
         self._search.setPlaceholderText("Buscar..."); self._search.setClearButtonEnabled(True)
         self._search.setFixedWidth(200); self._search.textChanged.connect(self._on_search)
+        self._search.setStyleSheet("""
+            QLineEdit {
+                background: rgba(255,255,255,0.055);
+                color: #FFFFFF;
+                border: 1px solid rgba(255,255,255,0.085);
+                border-radius: 12px;
+                padding: 8px 12px;
+                font-size: 12.5px;
+            }
+            QLineEdit:hover {
+                background: rgba(255,255,255,0.075);
+                border: 1px solid rgba(255,255,255,0.12);
+            }
+            QLineEdit:focus {
+                background: rgba(255,255,255,0.085);
+                border: 1px solid rgba(255,255,255,0.16);
+            }
+        """)
         self._count = QLabel("0 elementos")
-        self._count.setStyleSheet("color: rgba(255,255,255,0.4); font-size: 12px;")
+        self._count.setStyleSheet(
+            "color: rgba(255,255,255,0.64); font-size: 11.5px; font-weight: 650;")
 
         # View selector (segmented capsule)
         self._view_switcher = SegmentedViewSwitcher(get_icon)
@@ -668,14 +729,23 @@ class MainWindow(QMainWindow):
     def _on_sidebar_navigate(self, key: str):
         self._current_playlist = None
 
+        # Configure header based on section
+        section_key = key.split(":")[0] if ":" in key else key
+        # Normalize some section keys
+        if section_key == "srv":
+            section_key = "servers"
+        elif section_key == "dev":
+            section_key = "devices"
+        elif key.startswith("pl:"):
+            section_key = "playlists"
+        self._configure_header_for_section(section_key)
+
         if key == "library":
-            self._section_title.setText("Biblioteca")
             self._kind_filter = None
             self._search_ctrl.set_active("local")
             self._apply_filters()
             self._view_mode = "list"
             self._view_switcher.set_view("list", emit=False)
-            self._search.show()
 
         elif key and key.startswith("pl:"):
             pid = int(key.split(":", 1)[1])
@@ -891,19 +961,44 @@ class MainWindow(QMainWindow):
     # ── CoverFlow ──
 
     def _on_view_mode_changed(self, mode: str):
+        # Protect CoverFlow — only available in albums section
+        if mode == "coverflow" and self._current_section_key != "albums":
+            return
         self._view_mode = mode
         if mode == "list":
             self._apply_filters()
-            self._section_title.setText("Biblioteca")
             self._fade_content("library")
         elif mode == "grid":
-            self._show_song_grid()
-            self._section_title.setText("Carátulas")
-            self._fade_content("song_grid")
+            if self._current_section_key == "albums":
+                self._show_album_grid()
+                self._fade_content("album_grid")
+            else:
+                self._show_song_grid()
+                self._fade_content("song_grid")
         elif mode == "coverflow":
             self._show_coverflow()
-            self._section_title.setText("Coverflow")
             self._fade_content("coverflow")
+
+    def _configure_header_for_section(self, section_key: str):
+        self._current_section_key = section_key
+        config = SECTION_CONFIG.get(section_key, {})
+        title = config.get("title", "Biblioteca")
+        subtitle = config.get("subtitle", "")
+        views = config.get("views", ["list", "grid"])
+        search = config.get("search", True)
+        default = config.get("default", "list")
+
+        self._section_title.setText(title)
+        self._section_subtitle.setText(subtitle)
+        self._search.setVisible(search)
+        self._view_switcher.set_available_modes(views)
+
+        if self._view_mode not in views and default:
+            self._view_mode = default
+            self._view_switcher.set_view(default, emit=False)
+
+        if not search:
+            self._search.hide()
 
     def _fade_content(self, target: str):
         if self._views.current() == target:

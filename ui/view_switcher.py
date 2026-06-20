@@ -86,3 +86,9 @@ class SegmentedViewSwitcher(QWidget):
     @property
     def current_view(self) -> str:
         return self._current
+
+    def set_available_modes(self, modes: list[str]):
+        for mode_name, btn in self._buttons.items():
+            btn.setVisible(mode_name in modes)
+        if self._current not in modes and modes:
+            self.set_view(modes[0], emit=False)
