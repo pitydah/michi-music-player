@@ -125,30 +125,26 @@ def get_quality_label(filepath: str) -> tuple[str, str]:
 # ═══════════════════════════════════════════════
 
 def build_eq_graphic_chain(bands_db: list[float]) -> str:
-    """Build 31-band graphic equalizer chain (sink not included)."""
-    parts = []
-    parts.append("equalizer-nbands")
-    for i, db in enumerate(bands_db[:31]):
-        parts.append(f"band{i}={db:.1f}")
-    return " ! ".join(parts)
+    """Build 31-band graphic equalizer chain (sink not included).
+
+    NOTE: equalizer-nbands does not support setting individual bands via
+    pipeline description (no band0/band1 properties). Band values must be
+    set programmatically via GStreamer element API after pipeline creation.
+    For now, equalizer-nbands defaults to unity gain (0 dB per band).
+    """
+    return "equalizer-nbands"
 
 
 def build_eq_parametric_chain(bands: list[dict], preamp_db: float) -> str:
-    """Build parametric EQ chain with biquads (sink not included)."""
-    parts = []
-    if abs(preamp_db) > 0.01:
-        parts.append(f"volume volume={10.0 ** (preamp_db / 20.0):.6f}")
-    for i, band in enumerate(bands):
-        coefs = compute_biquad(
-            band.get("type", "Peak"), band.get("freq", 1000.0),
-            band.get("gain", 0.0), band.get("Q", 1.41))
-        b0, b1, b2, a0, a1, a2 = coefs
-        parts.append(
-            f"audioiirfilter name=eqband{i} "
-            f"b0={b0:.10f} b1={b1:.10f} b2={b2:.10f} "
-            f"a0={a0:.10f} a1={a1:.10f} a2={a2:.10f}"
-        )
-    return " ! ".join(parts) if parts else ""
+    """Build parametric EQ chain with biquads (sink not included).
+
+    NOTE: audioiirfilter b0/b1/b2/a0/a1/a2 cannot be set via pipeline
+    description. Filter coefficients must be set programmatically after
+    pipeline creation. For now, returns empty chain (flat pass-through).
+    TODO: Create audioiirfilter elements via Gst.ElementFactory.make()
+    and configure properties manually.
+    """
+    return ""
 
 
 def build_spectrum_branch() -> str:
