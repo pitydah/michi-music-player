@@ -1,0 +1,171 @@
+"""Playback controller — core track playback, table menus, EQ, state handling."""
+import os
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QApplication, QMenu, QDialog
+
+from audio.player import PlaybackState
+from sources.base_source import TrackRef
+from library.trackref_model import TrackRefTableModel
+from library.cover_art_service import CoverArtService
+
+
+class PlaybackController:
+    def __init__(self, window):
+        self._win = window
+
+    def on_table_menu(self, pos):
+        idx = self._win._table.indexAt(pos)
+        if not idx.isValid():
+            return
+        fp = self._win._model.index(idx.row(), TrackRefTableModel.COL_URI)
+        fp = self._win._model.data(fp, Qt.DisplayRole)
+        if not fp:
+            return
+        is_remote = fp.startswith("http://") or fp.startswith("https://")
+        menu = QMenu(self._win)
+        menu.addAction("Reproducir", lambda: self._win._play_file(fp))
+        menu.addAction("Añadir a cola",
+                       lambda: self._win._playback.enqueue([fp], play_now=False))
+        menu.addSeparator()
+        if is_remote:
+            menu.addAction("Copiar URL", lambda: QApplication.clipboard().setText(fp))
+        else:
+            menu.addAction("Editar metadatos...", lambda: self.edit_tags(fp))
+        menu.exec(self._win._table.viewport().mapToGlobal(pos))
+
+    def edit_tags(self, filepath: str):
+        from library.tag_editor import TagEditorDialog
+        dlg = TagEditorDialog(filepath, self._win)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._win._db.add_file(filepath)
+            self._win._load_library()
+
+    def on_table_dbl(self, idx):
+        if self._win._current_section_key == "artists":
+            artist_name = self._win._model.data(
+                self._win._model.index(idx.row(), TrackRefTableModel.COL_TITLE),
+                Qt.DisplayRole)
+            if artist_name:
+                items = self._win._db.get_all(search=artist_name)
+                refs = [TrackRef(uri=i.filepath,
+                                 title=i.title or os.path.basename(i.filepath),
+                                 artist=i.artist, album=i.album,
+                                 duration=i.duration, year=i.year, genre=i.genre)
+                        for i in items]
+                self._win._model.populate(refs)
+                self._win._section_subtitle.setText(
+                    f"Todas las canciones de: {artist_name}")
+                self._win._count.setText(f"{len(refs)} canciones")
+                self._win._views.show("library")
+                self._win._table.setModel(self._win._model)
+                self._win._table.setColumnWidth(0, 72)
+                self._win._table.setColumnWidth(1, 260)
+                self._win._table.setColumnWidth(2, 170)
+                self._win._table.setColumnWidth(3, 170)
+                self._win._table.setColumnWidth(4, 55)
+                self._win._table.setColumnWidth(5, 110)
+                self._win._table.setColumnWidth(6, 75)
+            return
+
+        track = self._win._model.get_trackref(idx.row())
+        if track:
+            self.play_trackref(track)
+
+    def play_trackref(self, track: TrackRef):
+        self._win._current_ref = track
+
+        if track.uri.startswith("http"):
+            self._win._playback.play_url(track.uri, track.title, track.artist)
+        else:
+            self._win._playback.enqueue([track.uri], play_now=True)
+
+        name = track.title or os.path.basename(track.uri)
+        artist = track.artist or ""
+        quality_str = ""
+        album = track.album or ""
+
+        item = self._win._items_index.get(track.uri)
+        if item:
+            artist = item.artist or artist
+            album = item.album or album
+            ext = item.ext.upper().lstrip(".")
+            if item.sample_rate:
+                quality_str = (
+                    f"{ext} · {item.sample_rate / 1000:.1f}kHz"
+                    if item.sample_rate >= 1000
+                    else f"{ext} · {item.sample_rate}Hz")
+            elif item.bitrate and item.bitrate >= 1000:
+                quality_str = f"{ext} · {item.bitrate // 1000}kbps"
+            elif item.ext:
+                quality_str = ext
+
+        if not quality_str:
+            qual, _ = CoverArtService.quality_label(track.uri)
+            quality_str = qual
+
+        self._win._player_bar_ctrl.set_track(name, artist)
+        self._win._player_bar_ctrl.set_quality(quality_str)
+
+        if track.uri.startswith("http") and track.cover_path:
+            pix = QPixmap(track.cover_path)
+            if not pix.isNull():
+                self._win._bg_theme.apply(pix)
+        else:
+            cover = CoverArtService.find_cover(track.uri)
+            if cover:
+                pix = QPixmap(cover)
+                if not pix.isNull():
+                    self._win._bg_theme.apply(pix)
+                else:
+                    self._win._bg_theme.reset()
+            else:
+                self._win._bg_theme.reset()
+
+        dur = int(track.duration)
+        if dur <= 0:
+            idx_item = self._win._items_index.get(track.uri)
+            if idx_item:
+                dur = int(idx_item.duration)
+        if hasattr(self._win, '_mpris_ctrl'):
+            self._win._mpris_ctrl.update_metadata(
+                title=name, artist=artist or "",
+                album=album, duration=dur)
+
+        self._win._notify_track(name, artist)
+        self._win.setWindowTitle(f"Astra Music Player — {name}")
+
+    def play_file(self, filepath: str, add_to_queue: bool = False):
+        track = TrackRef(uri=filepath, title=os.path.basename(filepath))
+        self.play_trackref(track)
+
+    def on_state(self, state: PlaybackState):
+        s = ("playing" if state == PlaybackState.PLAYING else
+             "paused" if state == PlaybackState.PAUSED else "stopped")
+        self._win._player_bar_ctrl.set_state(s)
+        if state == PlaybackState.STOPPED:
+            self._win._player_bar_ctrl.set_position(0)
+
+    def on_stop(self):
+        self._win._playback.stop()
+        self._win._player_bar_ctrl.reset()
+        self._win._bg_theme.reset()
+        self._win.setWindowTitle("Astra Music Player")
+
+    def open_eq(self):
+        from ui.eq_panel import EqDialog
+        dlg = EqDialog(self._win)
+        dlg.eq_bands_graphic_changed.connect(
+            lambda bands: self._win._player.set_eq_graphic(bands))
+        dlg.eq_bands_parametric_changed.connect(
+            lambda bands: self._win._player.set_eq_parametric(bands))
+        dlg.preamp_changed.connect(
+            lambda db: self._win._player.set_eq_preamp(db))
+        dlg.eq_bypass_changed.connect(
+            lambda bypass: self._win._player.set_eq_bypass(bypass))
+        dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowStaysOnTopHint)
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+        self._win._eq_dlg = dlg

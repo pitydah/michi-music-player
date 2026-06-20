@@ -840,6 +840,10 @@ class MainWindow(QMainWindow):
         self._bg_theme = BackgroundThemeService(self._content)
         from ui.controllers.artist_repository import ArtistRepository
         self._artist_repo = ArtistRepository()
+        from ui.controllers.artist_controller import ArtistController
+        self._artist_ctrl = ArtistController(self)
+        from core.playback_controller import PlaybackController
+        self._playback_ctrl = PlaybackController(self)
 
         # ── Content wrapper ──
         cw = QWidget()
@@ -1821,68 +1825,34 @@ class MainWindow(QMainWindow):
     def _refresh_library(self):
         self._playlist_ctrl.refresh_library()
 
-    # TODO(astra): extract to ui/artist_controller.py — grid + detail logic
+    # Extracted to ui/controllers/artist_controller.py — grid + detail logic
 
     def _show_artists_view(self, mode: str):
-        self._artist_grid.set_view_mode(mode)
-        self._fade_content("artist_grid")
+        self._artist_ctrl.show_artists_view(mode)
 
     def _open_artist_detail(self, artist_key: str):
-        group = next((g for g in self._artist_repo.groups if g.key == artist_key), None)
-        if not group:
-            return
-        self._artist_repo.current_key = artist_key
-        self._artist_detail.set_artist(group)
-
-        self._section_title.setText(group.display_name)
-        parts = [f"{group.album_count} álbumes", f"{group.track_count} canciones"]
-        if group.total_duration:
-            s = int(group.total_duration)
-            parts.append(f"{s // 3600} h {(s % 3600) // 60} min" if s >= 3600 else f"{s // 60} min")
-        self._section_subtitle.setText(" · ".join(parts))
-        self._view_switcher.set_available_modes([])
-        self._fade_content("artist_detail")
+        self._artist_ctrl.open_artist_detail(artist_key)
 
     def _show_artists_overview(self):
-        self._artist_repo.clear_current()
-        self._configure_header_for_section("artists")
-        self._show_artists_view(self._view_mode)
+        self._artist_ctrl.show_artists_overview()
 
     def _artist_filepaths(self, artist_key: str) -> list[str]:
-        group = next((g for g in self._artist_repo.groups if g.key == artist_key), None)
-        if not group:
-            return []
-        return [t.filepath for t in group.all_tracks if os.path.isfile(t.filepath)]
+        return self._artist_ctrl.artist_filepaths(artist_key)
 
     def _play_artist(self, artist_key: str):
-        fps = self._artist_filepaths(artist_key)
-        if fps:
-            self._playback.enqueue(fps, play_now=True)
+        self._artist_ctrl.play_artist(artist_key)
 
     def _queue_artist(self, artist_key: str):
-        fps = self._artist_filepaths(artist_key)
-        if fps:
-            self._playback.enqueue(fps, play_now=False)
+        self._artist_ctrl.queue_artist(artist_key)
 
     def _create_playlist_from_artist(self, artist_key: str):
-        group = next((g for g in self._artist_repo.groups if g.key == artist_key), None)
-        if not group:
-            return
-        pid = self._db.create_playlist(group.display_name)
-        for fp in [t.filepath for t in group.all_tracks if os.path.isfile(t.filepath)]:
-            self._db.add_to_playlist(pid, fp)
-        self._rebuild_sidebar()
-        self._toast_svc.show(f"Playlist creada: {group.display_name}", "success")
+        self._artist_ctrl.create_playlist_from_artist(artist_key)
 
     def _edit_artist_metadata(self, artist_key: str):
-        fps = self._artist_filepaths(artist_key)
-        if fps:
-            self._open_metadata_for_files(fps)
+        self._artist_ctrl.edit_artist_metadata(artist_key)
 
     def _open_metadata_for_files(self, filepaths: list[str]):
-        self._metadata_editor.load_files(filepaths)
-        self._configure_header_for_section("metadata_editor")
-        self._fade_content("metadata_editor")
+        self._artist_ctrl.open_metadata_for_files(filepaths)
 
     # Extracted to ui/controllers/expanded_controller.py — now playing expanded
 
@@ -1915,167 +1885,31 @@ class MainWindow(QMainWindow):
     def _scan_path(self, path: str):
         self._file_actions.scan_path(path)
 
-    # TODO(astra): extract to core/playback_controller.py — play/pause/queue logic
+    # Extracted to core/playback_controller.py — play/pause/queue logic
 
     def _on_table_menu(self, pos):
-        idx = self._table.indexAt(pos)
-        if not idx.isValid():
-            return
-        fp = self._model.index(idx.row(), TrackRefTableModel.COL_URI)
-        fp = self._model.data(fp, Qt.DisplayRole)
-        if not fp:
-            return
-        is_remote = fp.startswith("http://") or fp.startswith("https://")
-        menu = QMenu(self)
-        menu.addAction("Reproducir", lambda: self._play_file(fp))
-        menu.addAction("Añadir a cola", lambda: self._playback.enqueue([fp], play_now=False))
-        menu.addSeparator()
-        if is_remote:
-            menu.addAction("Copiar URL", lambda: QApplication.clipboard().setText(fp))
-        else:
-            menu.addAction("Editar metadatos...", lambda: self._edit_tags(fp))
-        menu.exec(self._table.viewport().mapToGlobal(pos))
+        self._playback_ctrl.on_table_menu(pos)
 
     def _edit_tags(self, filepath: str):
-        from library.tag_editor import TagEditorDialog
-        dlg = TagEditorDialog(filepath, self)
-        if dlg.exec() == QDialog.DialogCode.Accepted:
-            self._db.add_file(filepath)
-            self._load_library()
+        self._playback_ctrl.edit_tags(filepath)
 
     def _on_table_dbl(self, idx):
-        if self._current_section_key == "artists":
-            # Show all tracks by this artist
-            artist_name = self._model.data(
-                self._model.index(idx.row(), TrackRefTableModel.COL_TITLE),
-                Qt.DisplayRole)
-            if artist_name:
-                items = self._db.get_all(search=artist_name)
-                refs = [TrackRef(uri=i.filepath,
-                                 title=i.title or os.path.basename(i.filepath),
-                                 artist=i.artist, album=i.album,
-                                 duration=i.duration, year=i.year, genre=i.genre)
-                        for i in items]
-                self._model.populate(refs)
-                self._section_subtitle.setText(f"Todas las canciones de: {artist_name}")
-                self._count.setText(f"{len(refs)} canciones")
-                self._views.show("library"); self._table.setModel(self._model)
-                self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260)
-                self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
-                self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
-                self._table.setColumnWidth(6, 75)
-            return
-
-        track = self._model.get_trackref(idx.row())
-        if track:
-            self._play_trackref(track)
+        self._playback_ctrl.on_table_dbl(idx)
 
     def _play_trackref(self, track: TrackRef):
-        self._current_ref = track
-
-        if track.uri.startswith("http"):
-            self._playback.play_url(track.uri, track.title, track.artist)
-        else:
-            self._playback.enqueue([track.uri], play_now=True)
-
-        name = track.title or os.path.basename(track.uri)
-        artist = track.artist or ""
-        quality_str = ""
-        album = track.album or ""
-
-        # Fallback: enrich with MediaItem for local files
-        item = self._items_index.get(track.uri)
-        if item:
-            artist = item.artist or artist
-            album = item.album or album
-            ext = item.ext.upper().lstrip(".")
-            if item.sample_rate:
-                quality_str = (
-                    f"{ext} · {item.sample_rate/1000:.1f}kHz"
-                    if item.sample_rate >= 1000
-                    else f"{ext} · {item.sample_rate}Hz")
-            elif item.bitrate and item.bitrate >= 1000:
-                quality_str = f"{ext} · {item.bitrate//1000}kbps"
-            elif item.ext:
-                quality_str = ext
-
-        if not quality_str:
-            from library.cover_art_service import CoverArtService
-            qual, _ = CoverArtService.quality_label(track.uri)
-            quality_str = qual
-
-        self._player_bar_ctrl.set_track(name, artist)
-        self._player_bar_ctrl.set_quality(quality_str)
-
-        # Cover art
-        if track.uri.startswith("http") and track.cover_path:
-            pix = QPixmap(track.cover_path)
-            if not pix.isNull():
-                self._bg_theme.apply(pix)
-        else:
-            from library.album_art import find_cover_in_dir
-            cover = find_cover_in_dir(os.path.dirname(track.uri))
-            if cover:
-                pix = QPixmap(cover)
-                if not pix.isNull():
-                    self._bg_theme.apply(pix)
-                else:
-                    self._bg_theme.reset()
-            else:
-                self._bg_theme.reset()
-
-        # MPRIS
-        dur = int(track.duration)
-        if dur <= 0:
-            idx_item = self._items_index.get(track.uri)
-            if idx_item:
-                dur = int(idx_item.duration)
-        if hasattr(self, '_mpris_ctrl'):
-            self._mpris_ctrl.update_metadata(
-                title=name, artist=artist or "",
-                album=album, duration=dur)
-
-        self._notify_track(name, artist)
-        self.setWindowTitle(f"Astra Music Player — {name}")
+        self._playback_ctrl.play_trackref(track)
 
     def _play_file(self, filepath: str, add_to_queue: bool = False):
-        track = TrackRef(uri=filepath, title=os.path.basename(filepath))
-        if filepath.startswith("http"):
-            self._play_trackref(track)
-        else:
-            self._play_trackref(track)
+        self._playback_ctrl.play_file(filepath, add_to_queue)
 
     def _on_state(self, state: PlaybackState):
-        s = "playing" if state == PlaybackState.PLAYING else \
-            "paused" if state == PlaybackState.PAUSED else "stopped"
-        self._player_bar_ctrl.set_state(s)
-        if state == PlaybackState.STOPPED:
-            self._player_bar_ctrl.set_position(0)
+        self._playback_ctrl.on_state(state)
 
     def _on_stop(self):
-        self._playback.stop()
-        self._player_bar_ctrl.reset()
-        self._bg_theme.reset()
-        self.setWindowTitle("Astra Music Player")
-
-
+        self._playback_ctrl.on_stop()
 
     def _open_eq(self):
-        from ui.eq_panel import EqDialog
-        dlg = EqDialog(self)
-        dlg.eq_bands_graphic_changed.connect(
-            lambda bands: self._player.set_eq_graphic(bands))
-        dlg.eq_bands_parametric_changed.connect(
-            lambda bands: self._player.set_eq_parametric(bands))
-        dlg.preamp_changed.connect(
-            lambda db: self._player.set_eq_preamp(db))
-        dlg.eq_bypass_changed.connect(
-            lambda bypass: self._player.set_eq_bypass(bypass))
-        dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowStaysOnTopHint)
-        dlg.show()
-        dlg.raise_()
-        dlg.activateWindow()
-        self._eq_dlg = dlg  # keep reference to prevent GC
+        self._playback_ctrl.open_eq()
 
     # Extracted to ui/controllers/transmit_controller.py — streaming + snapcast
 
