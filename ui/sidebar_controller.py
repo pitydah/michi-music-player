@@ -27,15 +27,13 @@ class SidebarController(QObject):
         self._sidebar.add_item("lib", "genres", "Géneros", "sidebar_popular")
         self._sidebar.add_item("lib", "folders", "Carpetas", "sidebar_folders")
 
-        # Playlists
+        # Playlists — solo Menú de playlist + playlists del usuario
         self._sidebar.add_section("pl", "Playlist", "sidebar_playlists")
-        self._sidebar.add_item("pl", "playlist_hub", "Inicio",
+        self._sidebar.add_item("pl", "playlist_hub", "Menú de playlist",
                                "sidebar_playlists")
         for p in self._db.get_playlists():
             self._sidebar.add_item("pl", f"pl:{p['id']}", p['name'],
                                    "sidebar_playlist_item")
-        self._sidebar.add_item("pl", "new_playlist", "+ Nueva playlist",
-                               "sidebar_add")
 
         # Descubrir
         self._sidebar.add_section("mix", "Descubrir", "sidebar_mix")

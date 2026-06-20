@@ -124,7 +124,7 @@ def _resolve_section_config(key: str, extra: dict = None) -> dict:
 
     if key.startswith("pl:") and extra:
         name = extra.get("name", "Playlist")
-        return {"title": f"Playlist · {name}", "subtitle": "Colección personalizada",
+        return {"title": name, "subtitle": "Playlist local",
                 "icon": "sidebar_playlist_item", "views": ["list", "grid"],
                 "search": True, "default": "list"}
     if key.startswith("srv:") and extra:
@@ -990,11 +990,13 @@ class MainWindow(QMainWindow):
             self._table.setColumnWidth(5, 110); self._table.setColumnWidth(6, 75)
             name = next((p["name"] for p in self._db.get_playlists() if p["id"] == pid), "")
             total_dur = int(sum(r.duration for r in refs))
-            dur_str = f"{total_dur//60}:{total_dur%60:02d}" if total_dur > 0 else ""
+            h = total_dur // 3600
+            m = (total_dur % 3600) // 60
+            dur_str = f"{h} h {m} min" if h > 0 else f"{m} min" if m > 0 else ""
             subtitle = f"{len(refs)} canciones"
             if dur_str:
-                subtitle += f" · {dur_str} total"
-            self._section_title.setText(f"Playlist · {name}")
+                subtitle += f" · {dur_str}"
+            self._section_title.setText(name)
             self._section_subtitle.setText(subtitle)
             self._search.show()
 
