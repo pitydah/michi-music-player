@@ -227,6 +227,8 @@ class NowPlayingBar(QWidget):
     eq_clicked = Signal()
     cover_clicked = Signal()
     transmit_clicked = Signal()
+    audio_output_clicked = Signal()
+    mini_player_clicked = Signal()
     cover_loaded = Signal(object)  # emits QPixmap of album art
 
     def __init__(self, parent=None):
@@ -451,11 +453,20 @@ class NowPlayingBar(QWidget):
         self._vol.valueChanged.connect(lambda v: self.volume_changed.emit(v))
 
         self._eq_btn = _make_btn("warm_eq", 26, 44)
+        self._eq_btn.setToolTip("Ecualizador")
         self._eq_btn.clicked.connect(self.eq_clicked.emit)
 
         self._transmit_btn = _make_btn("warm_transmit", 28, 44)
         self._transmit_btn.setToolTip("Transmitir a dispositivo")
         self._transmit_btn.clicked.connect(lambda: self.transmit_clicked.emit())
+
+        self._audio_output_btn = _make_btn("warm_audio_source", 24, 40)
+        self._audio_output_btn.setToolTip("Seleccionar salida de audio")
+        self._audio_output_btn.clicked.connect(self.audio_output_clicked.emit)
+
+        self._mini_player_btn = _make_btn("warm_mini_player", 24, 40)
+        self._mini_player_btn.setToolTip("Abrir mini reproductor")
+        self._mini_player_btn.clicked.connect(self.mini_player_clicked.emit)
 
         self._quality_badge = QLabel("")
         self._quality_badge.setAlignment(Qt.AlignCenter)
@@ -485,12 +496,14 @@ class NowPlayingBar(QWidget):
         grid.addWidget(self._vol_btn, 0, 1, Qt.AlignVCenter)
         grid.addWidget(self._vol, 0, 2, Qt.AlignVCenter)
 
-        tight = QHBoxLayout()
-        tight.setSpacing(2)
-        tight.setContentsMargins(0, 0, 0, 0)
-        tight.addWidget(self._eq_btn)
-        tight.addWidget(self._transmit_btn)
-        grid.addLayout(tight, 0, 3, Qt.AlignVCenter)
+        tools = QHBoxLayout()
+        tools.setSpacing(6)
+        tools.setContentsMargins(0, 0, 0, 0)
+        tools.addWidget(self._audio_output_btn)
+        tools.addWidget(self._mini_player_btn)
+        tools.addWidget(self._eq_btn)
+        tools.addWidget(self._transmit_btn)
+        grid.addLayout(tools, 0, 3, Qt.AlignVCenter)
 
         # Row 1 — badge under slider
         grid.addWidget(self._quality_badge, 1, 2, Qt.AlignHCenter | Qt.AlignVCenter)

@@ -536,6 +536,8 @@ class MainWindow(QMainWindow):
         pb.eq_clicked.connect(self._open_eq)
         pb.cover_clicked.connect(self._show_expanded)
         pb.transmit_clicked.connect(self._show_transmit_menu)
+        pb.audio_output_clicked.connect(self._show_audio_output_menu)
+        pb.mini_player_clicked.connect(self._open_mini_player)
         pb.cover_loaded.connect(self._apply_adaptive_background)
 
     def _setup_tray(self):
@@ -1334,6 +1336,40 @@ class MainWindow(QMainWindow):
         else:
             self._player_bar._transmit_btn.setStyleSheet("")
             self._player_bar._transmit_btn.setToolTip("Transmitir a dispositivo")
+
+    def _show_audio_output_menu(self):
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu { background: rgba(28,28,30,230); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 4px; }
+            QMenu::item { padding: 6px 32px 6px 12px; border-radius: 6px; color: rgba(255,255,255,0.8); }
+            QMenu::item:selected { background: rgba(255,122,0,0.20); }
+            QMenu::separator { height: 1px; background: rgba(255,255,255,0.06); margin: 3px 8px; }
+        """)
+
+        action_system = menu.addAction("Salida predeterminada del sistema")
+        action_system.triggered.connect(
+            lambda: self._playback.set_output_device(None))
+
+        menu.addSeparator()
+
+        # Future: detect real devices via Engine/GStreamer
+        action_pc = menu.addAction("Audio del PC")
+        action_dac = menu.addAction("DAC USB")
+        action_hdmi = menu.addAction("HDMI / Monitor")
+        action_pc.setEnabled(False)
+        action_dac.setEnabled(False)
+        action_hdmi.setEnabled(False)
+
+        from PySide6.QtGui import QCursor
+        menu.exec(QCursor.pos())
+
+    def _open_mini_player(self):
+        from ui.mini_player import MiniPlayer
+        if not hasattr(self, '_mini_player'):
+            self._mini_player = MiniPlayer(self._playback, self)
+        self._mini_player.show()
+        self._mini_player.raise_()
+        self._mini_player.activateWindow()
 
     def _add_transmit_device(self):
         dlg = QDialog(self)
