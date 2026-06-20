@@ -406,14 +406,14 @@ class NowPlayingBar(QWidget):
         seek_row.addWidget(self._seek)
         seek_row.addWidget(self._dur_lbl)
 
-        # Controls row
+        # Controls row — playback | utility in one horizontal band
         ctrl_row = QHBoxLayout()
         ctrl_row.setSpacing(12)
         ctrl_row.setAlignment(Qt.AlignCenter)
 
         self._shuffle_btn = _make_btn("warm_shuffle", 20, 40)
         self._prev_btn = _make_btn("warm_prev", 26, 44)
-        self._play_btn = _make_btn("warm_play", 28, 46)
+        self._play_btn = _make_btn("warm_play", 34, 54)
         self._next_btn = _make_btn("warm_next", 26, 44)
         self._repeat_btn = _make_btn("warm_repeat", 20, 40)
 
@@ -423,11 +423,11 @@ class NowPlayingBar(QWidget):
         self._next_btn.clicked.connect(self.next_clicked.emit)
         self._repeat_btn.clicked.connect(self._on_repeat)
 
-        self._audio_output_btn = _make_btn("warm_audio_source", 24, 40)
+        self._audio_output_btn = _make_btn("warm_audio_source", 22, 40)
         self._audio_output_btn.setToolTip("Seleccionar salida de audio")
         self._audio_output_btn.clicked.connect(self.audio_output_clicked.emit)
 
-        self._mini_player_btn = _make_btn("warm_mini_player", 24, 40)
+        self._mini_player_btn = _make_btn("warm_mini_player", 22, 40)
         self._mini_player_btn.setToolTip("Abrir mini reproductor")
         self._mini_player_btn.clicked.connect(self.mini_player_clicked.emit)
 
@@ -437,16 +437,23 @@ class NowPlayingBar(QWidget):
         ctrl_row.addWidget(self._next_btn)
         ctrl_row.addWidget(self._repeat_btn)
 
-        # ── Utility row: audio source + mini player under slider ──
-        utility_row = QHBoxLayout()
-        utility_row.setContentsMargins(0, -4, 0, 0)
-        utility_row.addStretch()
-        utility_row.addWidget(self._audio_output_btn)
-        utility_row.addWidget(self._mini_player_btn)
+        utility_controls = QHBoxLayout()
+        utility_controls.setContentsMargins(0, -2, 0, 0)
+        utility_controls.setSpacing(10)
+        utility_controls.addWidget(self._audio_output_btn)
+        utility_controls.addWidget(self._mini_player_btn)
+
+        playback_row = QHBoxLayout()
+        playback_row.setContentsMargins(0, 0, 0, 0)
+        playback_row.setSpacing(0)
+        playback_row.addStretch(1)
+        playback_row.addLayout(ctrl_row)
+        playback_row.addSpacing(180)
+        playback_row.addLayout(utility_controls)
+        playback_row.addStretch(1)
 
         center_layout.addLayout(seek_row)
-        center_layout.addLayout(ctrl_row)
-        center_layout.addLayout(utility_row)
+        center_layout.addLayout(playback_row)
         layout.addWidget(center_widget, 1)
 
         # ═══ RIGHT: VOLUME + TOOLS + BADGE (stretch=0) ═══
@@ -567,7 +574,7 @@ class NowPlayingBar(QWidget):
         self._state = state
         name = "warm_pause" if state == "playing" else "warm_play"
         self._play_btn.setIcon(QIcon(get_icon(name)))
-        self._play_btn.setIconSize(QSize(28, 28))
+        self._play_btn.setIconSize(QSize(34, 34))
 
     def set_track(self, title: str, artist: str, cover_path: str = ""):
         self._raw_title = title or "Sin reproducción"
