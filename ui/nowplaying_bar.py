@@ -440,20 +440,21 @@ class NowPlayingBar(QWidget):
         utility_controls = QHBoxLayout()
         utility_controls.setContentsMargins(0, -2, 0, 0)
         utility_controls.setSpacing(10)
+        utility_controls.addStretch()
         utility_controls.addWidget(self._audio_output_btn)
         utility_controls.addWidget(self._mini_player_btn)
+        utility_controls.addSpacing(32)
 
-        playback_row = QHBoxLayout()
-        playback_row.setContentsMargins(0, 0, 0, 0)
-        playback_row.setSpacing(0)
-        playback_row.addStretch(1)
-        playback_row.addLayout(ctrl_row)
-        playback_row.addSpacing(260)
-        playback_row.addLayout(utility_controls)
-        playback_row.addStretch(1)
+        # Mirror seek_row: 32px | stretch(controls) | utility | 32px
+        controls_row = QHBoxLayout()
+        controls_row.setContentsMargins(0, 0, 0, 0)
+        controls_row.setSpacing(0)
+        controls_row.addSpacing(32)
+        controls_row.addLayout(ctrl_row, 1)
+        controls_row.addLayout(utility_controls, 0)
 
         center_layout.addLayout(seek_row)
-        center_layout.addLayout(playback_row)
+        center_layout.addLayout(controls_row)
         layout.addWidget(center_widget, 1)
 
         # ═══ RIGHT: VOLUME + TOOLS + BADGE (stretch=0) ═══
