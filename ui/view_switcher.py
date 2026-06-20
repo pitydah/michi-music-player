@@ -5,7 +5,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QButtonGroup
 
 from ui.design_tokens import (VIEW_BUTTON_W, VIEW_BUTTON_H,
-    VIEW_ICON_W, VIEW_ICON_H, RADIUS_MD, ACCENT_GRADIENT)
+    VIEW_ICON_W, VIEW_ICON_H)
 
 
 class SegmentedViewSwitcher(QWidget):
@@ -46,8 +46,8 @@ class SegmentedViewSwitcher(QWidget):
 
         self.setStyleSheet(f"""
             QWidget#segmentedViewSwitcher {{
-                background: rgba(255,255,255,0.065);
-                border: 1px solid rgba(255,255,255,0.09);
+                background: rgba(255,255,255,0.04);
+                border: 1px solid rgba(255,255,255,0.06);
                 border-radius: 12px;
             }}
             QWidget#segmentedViewSwitcher QPushButton {{
@@ -59,13 +59,13 @@ class SegmentedViewSwitcher(QWidget):
                 max-width: 42px;
                 min-height: 34px;
                 max-height: 34px;
-                border-radius: 10px;
+                border-radius: 8px;
             }}
             QWidget#segmentedViewSwitcher QPushButton:hover {{
-                background: rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.06);
             }}
             QWidget#segmentedViewSwitcher QPushButton:checked {{
-                background: {ACCENT_GRADIENT};
+                background: rgba(255,255,255,0.10);
                 border: none;
                 margin: 0;
                 padding: 0;

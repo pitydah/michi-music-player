@@ -115,9 +115,13 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
                     stop:1 rgba(232,0,109,0.78)
                 );
                 border: none;
+                outline: none;
                 padding: 0px;
                 margin: 0px;
                 border-radius: 14px;
+            }
+            QPushButton:focus {
+                outline: none;
             }
             QPushButton:hover {
                 background: qlineargradient(
@@ -141,15 +145,19 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
             QPushButton {
                 background: transparent;
                 border: none;
+                outline: none;
                 padding: 0px;
                 margin: 0px;
                 border-radius: 11px;
             }
+            QPushButton:focus {
+                outline: none;
+            }
             QPushButton:hover {
-                background: rgba(255,255,255,0.08);
+                background: rgba(255,255,255,0.06);
             }
             QPushButton:pressed {
-                background: rgba(255,77,46,0.22);
+                background: rgba(255,255,255,0.10);
             }
         """)
 
@@ -527,15 +535,23 @@ class NowPlayingBar(QWidget):
 
     def _on_shuffle(self):
         self._shuffle = not self._shuffle
-        self._shuffle_btn.setStyleSheet(
-            f"QPushButton {{ color: {self._accent}; }}" if self._shuffle else "")
+        if self._shuffle:
+            self._shuffle_btn.setStyleSheet(
+                "QPushButton { background: rgba(255,255,255,0.12); border: none; "
+                "padding: 0px; margin: 0px; border-radius: 11px; }")
+        else:
+            self._shuffle_btn.setStyleSheet("")
         self.shuffle_clicked.emit()
 
     def _on_repeat(self):
         modes = {"none": "all", "all": "one", "one": "none"}
         self._repeat = modes.get(self._repeat, "none")
-        self._repeat_btn.setStyleSheet(
-            f"QPushButton {{ color: {self._accent}; }}" if self._repeat != "none" else "")
+        if self._repeat != "none":
+            self._repeat_btn.setStyleSheet(
+                "QPushButton { background: rgba(255,255,255,0.12); border: none; "
+                "padding: 0px; margin: 0px; border-radius: 11px; }")
+        else:
+            self._repeat_btn.setStyleSheet("")
         self.repeat_clicked.emit()
 
     def _on_seek_end(self):
