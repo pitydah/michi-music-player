@@ -413,7 +413,7 @@ class NowPlayingBar(QWidget):
 
         self._shuffle_btn = _make_btn("warm_shuffle", 20, 40)
         self._prev_btn = _make_btn("warm_prev", 26, 44)
-        self._play_btn = _make_btn("warm_play", 28, 44)
+        self._play_btn = _make_btn("warm_play", 28, 46)
         self._next_btn = _make_btn("warm_next", 26, 44)
         self._repeat_btn = _make_btn("warm_repeat", 20, 40)
 
