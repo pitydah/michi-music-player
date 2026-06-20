@@ -33,7 +33,7 @@ class _SectionHeader(QWidget):
         layout.setContentsMargins(12, 18, 12, 6)
         layout.setSpacing(0)
 
-        txt_c = "rgba(255,255,255,0.64)" if dark else "rgba(28,28,30,0.64)"
+        txt_c = "rgba(255,255,255,0.62)" if dark else "rgba(28,28,30,0.62)"
         self._title = QLabel(text)
         self._title.setStyleSheet(
             f"font-size:12px;font-weight:680;color:{txt_c};"
