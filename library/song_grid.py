@@ -127,7 +127,7 @@ class _SongCard(QFrame):
         artist = getattr(item, 'artist', '') or ""
         album = getattr(item, 'album', '') or ""
 
-        # Load cover
+        # Load cover or show skeleton
         cover_path = find_cover_in_dir(os.path.dirname(self._fp)) if self._fp else ""
         if cover_path:
             pix = QPixmap(cover_path)
@@ -136,15 +136,19 @@ class _SongCard(QFrame):
                                  Qt.SmoothTransformation)
                 cover.setPixmap(pix)
             else:
-                cover.setText("♪")
                 cover.setStyleSheet(
-                    "QLabel { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.2);"
-                    "  font-size: 32px; border-radius: 8px; }")
+                    "QLabel { background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+                    "  stop:0 rgba(255,255,255,0.045), stop:0.5 rgba(255,255,255,0.06),"
+                    "  stop:1 rgba(255,255,255,0.045)); border-radius: 8px;"
+                    "  color: rgba(255,255,255,0.08); font-size: 28px; }")
+                cover.setText("♪")
         else:
-            cover.setText("♪")
             cover.setStyleSheet(
-                "QLabel { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.2);"
-                "  font-size: 32px; border-radius: 8px; }")
+                "QLabel { background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+                "  stop:0 rgba(255,255,255,0.045), stop:0.5 rgba(255,255,255,0.06),"
+                "  stop:1 rgba(255,255,255,0.045)); border-radius: 8px;"
+                "  color: rgba(255,255,255,0.08); font-size: 28px; }")
+            cover.setText("♪")
         layout.addWidget(cover, alignment=Qt.AlignCenter)
 
         # Title

@@ -62,6 +62,8 @@ SECTION_CONFIG = {
                 "views": ["list", "grid", "coverflow"], "search": True, "default": "grid"},
     "artists": {"title": "Artistas", "subtitle": "Agrupados por artista",
                 "views": ["list", "grid"], "search": True, "default": "list"},
+    "genres":  {"title": "Géneros", "subtitle": "Explora por estilo musical",
+                "views": ["list", "grid"], "search": True, "default": "list"},
     "folders": {"title": "Carpetas", "subtitle": "Explorador musical local",
                 "views": ["tree"], "search": True, "default": "tree"},
     "radio":   {"title": "Emisoras", "subtitle": "Radios por URL y mosaicos",
@@ -831,6 +833,25 @@ class MainWindow(QMainWindow):
         elif key == "albums":
             self._section_title.setText("Álbumes")
             self._show_coverflow()
+            self._search.show()
+
+        elif key == "genres":
+            self._section_title.setText("Géneros")
+            self._section_subtitle.setText("Explora por estilo musical")
+            items = self._db.get_all(group_by="genre")
+            refs = [TrackRef(uri=i.filepath, title=i.genre or "Sin género",
+                             duration=i.duration, genre=i.genre or "Sin género")
+                    for i in items if i.genre]
+            self._model.populate(refs)
+            self._count.setText(f"{len(refs)} géneros")
+            if refs:
+                self._views.show("library"); self._table.setModel(self._model)
+                self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 240)
+                self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
+                self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
+                self._table.setColumnWidth(6, 75)
+            else:
+                self._views.show("empty")
             self._search.show()
 
         elif key == "folders":
