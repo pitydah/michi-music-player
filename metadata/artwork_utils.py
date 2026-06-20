@@ -137,7 +137,8 @@ def extract_artwork(filepath: str, dest_path: str) -> bool:
                 f.write(tags.artwork_data)
             return True
     except Exception:
-        pass
+        import logging
+    logging.getLogger("astra").debug("Artwork extraction failed")
     return False
 
 

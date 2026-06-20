@@ -4,6 +4,11 @@ import os
 import json
 from dataclasses import dataclass, asdict
 
+try:
+    from gi.repository import Gst
+except ImportError:
+    Gst = None
+
 CONFIG_DIR = os.path.expanduser("~/.local/share/astra-music-player")
 RADIO_FILE = os.path.join(CONFIG_DIR, "radio_stations.json")
 

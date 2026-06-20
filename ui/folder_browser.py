@@ -663,4 +663,5 @@ class FolderBrowserWidget(QWidget):
         try:
             subprocess.Popen(["xdg-open", target])
         except Exception:
-            pass
+            import logging
+            logging.getLogger("astra").debug("Folder browser: xdg-open failed")

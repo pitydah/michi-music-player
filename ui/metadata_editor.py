@@ -997,7 +997,8 @@ class MetadataEditorWidget(QWidget):
         try:
             pass
         except Exception:
-            pass
+            import logging
+        logging.getLogger("astra").debug("Metadata editor: non-critical op failed")
         # Try to emit the signal so the parent can toast
         self.metadata_changed.emit()
 

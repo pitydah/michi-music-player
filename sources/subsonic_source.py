@@ -28,7 +28,8 @@ class SubsonicSource(MusicSource):
                         ),
                     ))
         except Exception:
-            pass
+            import logging
+        logging.getLogger("astra").debug("Subsonic source: request failed")
         return refs
 
     def search(self, query: str) -> list[TrackRef]:

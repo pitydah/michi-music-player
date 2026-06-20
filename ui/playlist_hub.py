@@ -369,7 +369,8 @@ class PlaylistHubWidget(QWidget):
                 from library.album_art import load_cover_pixmap
                 return load_cover_pixmap(filepath, size)
             except Exception:
-                pass
+                import logging
+            logging.getLogger("astra").debug("Playlist cover loading failed")
         pix = QPixmap(size, size)
         pix.fill(QColor(255, 255, 255, 12))
         return pix

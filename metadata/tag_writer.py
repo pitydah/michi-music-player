@@ -95,7 +95,8 @@ def _celiminar_mp3_frame(f, frame_id: str):
     try:
         f.tags.delall(frame_id)
     except Exception:
-        pass
+        import logging
+        logging.getLogger("astra").debug("Non-critical operation failed")
 
 
 def _set_mp3_field(f, attr: str, value: str):

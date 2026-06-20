@@ -1478,7 +1478,6 @@ class MainWindow(QMainWindow):
         refs = []
         for album, artist, tracks in groups:
             dur = sum(getattr(t, 'duration', 0) or 0 for t in tracks)
-            exts = set((getattr(t, 'ext', '') or '').upper().lstrip(".") for t in tracks if getattr(t, 'ext', ''))
             year = tracks[0].year if tracks else ""
             refs.append(TrackRef(
                 uri=album, title=album,
@@ -1675,7 +1674,8 @@ class MainWindow(QMainWindow):
                     w.setGraphicsEffect(None)
                 w.setEnabled(True)
             except Exception:
-                pass
+                import logging
+                logging.getLogger("astra").debug("Opacity restore failed on a child widget")
 
         # Also check the QStackedWidget itself
         try:
@@ -1687,7 +1687,8 @@ class MainWindow(QMainWindow):
                     cw.setGraphicsEffect(None)
                 cw.setEnabled(True)
         except Exception:
-            pass
+            import logging
+            logging.getLogger("astra").debug("Central opacity restore failed")
 
         # Debug if ASTRA_UI_DEBUG=1
         if os.getenv("ASTRA_UI_DEBUG") == "1":
@@ -2466,7 +2467,8 @@ class MainWindow(QMainWindow):
                 # Fallback: check for pipewire/pulse directly
                 pass
         except Exception:
-            pass
+            import logging
+            logging.getLogger("astra").debug("Central opacity restore failed")
 
         menu.addSeparator()
         action_pipewire = menu.addAction("PipeWire (sistema)")

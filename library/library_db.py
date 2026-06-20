@@ -179,7 +179,8 @@ def extract_metadata_full(filepath: str) -> dict:
                     if genre_val and genre_val.startswith("(") and ")" in genre_val:
                         genre_val = genre_val.split(")", 1)[-1].strip()
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger("astra").debug("Genre parsing failed, using raw value")
                 info["genre"] = genre_val
                 year_val = get_tag(mf.tags, "date", "year", "TYER", "©day", "TDRC")
                 try:
@@ -199,7 +200,8 @@ def extract_metadata_full(filepath: str) -> dict:
                         info["cover_mime"] = cover.mime if hasattr(cover, 'mime') else "image/jpeg"
                         info["cover_data"] = cover.data if hasattr(cover, 'data') else b""
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger("astra").debug("Cover art APIC extraction failed")
                 break
         if not info["cover_data"]:
             for key in (b'APIC:', 'APIC:'):
@@ -210,7 +212,8 @@ def extract_metadata_full(filepath: str) -> dict:
                         info["cover_data"] = getattr(val, 'data', b'')
                         break
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger("astra").debug("Cover art key extraction failed")
         if not info["cover_data"] and hasattr(mf, 'pictures'):
             pics = getattr(mf, 'pictures', [])
             if pics:
@@ -219,7 +222,8 @@ def extract_metadata_full(filepath: str) -> dict:
                     info["cover_mime"] = getattr(p, 'mime', 'image/jpeg')
                     info["cover_data"] = getattr(p, 'data', b'')
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger("astra").debug("Cover art picture extraction failed")
     except Exception as e:
         import logging
         logging.getLogger("astra").debug(f"Full metadata extraction failed for {filepath}: {e}")
@@ -389,7 +393,8 @@ class LibraryDB:
                          meta_full["cover_data"]))
                     self._conn.commit()
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger("astra").debug("Scanner: commit after add_file failed")
 
             return cur.lastrowid
         except Exception:
