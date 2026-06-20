@@ -1,7 +1,6 @@
 """Artist controller — artist grid and detail navigation logic."""
 import os
 
-from PySide6.QtCore import Qt
 
 
 class ArtistController:

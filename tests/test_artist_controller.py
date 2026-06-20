@@ -1,6 +1,5 @@
 """Tests for ArtistController."""
 from ui.controllers.artist_controller import ArtistController
-from ui.controllers.artist_repository import ArtistRepository
 
 
 class TestArtistController:

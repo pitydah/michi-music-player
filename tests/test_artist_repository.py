@@ -1,7 +1,6 @@
 """Tests for ArtistRepository — artist groups state and lookups."""
 import os
 from unittest.mock import MagicMock
-from library.artist_grouping import ArtistGroup, ArtistAlbumGroup
 from ui.controllers.artist_repository import ArtistRepository
 
 

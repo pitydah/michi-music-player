@@ -1,7 +1,6 @@
 """Transmit controller — streaming, snapcast, audio output management."""
 import os
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QMenu, QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QPushButton, QListWidget, QListWidgetItem,

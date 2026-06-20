@@ -1,5 +1,4 @@
 """Tests for PlaybackController."""
-from unittest.mock import MagicMock
 from sources.base_source import TrackRef
 from core.playback_controller import PlaybackController
 

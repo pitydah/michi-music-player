@@ -17,9 +17,8 @@ logger = logging.getLogger("astra.library")
 from PySide6.QtCore import Signal, QObject
 
 # ── Re-exports from split modules ──
-from library.metadata_extractor import AUDIO_EXTS, ALL_EXTS, extract_metadata, extract_metadata_full
+from library.metadata_extractor import ALL_EXTS, extract_metadata, extract_metadata_full
 from library.media_item import MediaItem, media_kind
-from library.devices import get_mounted_devices, scan_device_music
 
 DB_PATH = os.path.expanduser("~/.local/share/astra-music-player/library.db")
 

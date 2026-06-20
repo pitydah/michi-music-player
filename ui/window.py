@@ -2,16 +2,13 @@
 
 import os
 import random
-from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QVariantAnimation
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QSplitter, QLabel,
-    QFrame, QHBoxLayout, QLineEdit, QPushButton, QToolButton, QListWidget, QComboBox,
-    QListWidgetItem, QStackedWidget, QTableView, QHeaderView,
-    QAbstractItemView, QFileDialog, QInputDialog, QMessageBox, QMenu, QDialog, QFormLayout,
-    QDialogButtonBox, QGraphicsOpacityEffect, QSystemTrayIcon,
+    QFrame, QHBoxLayout, QLineEdit, QToolButton, QStackedWidget, QTableView, QHeaderView,
+    QAbstractItemView, QFileDialog, QInputDialog, QMessageBox, QMenu,
 )
-from PySide6.QtWidgets import QApplication
 
 from ui.sidebar_widget import SidebarWidget
 from ui.view_switcher import SegmentedViewSwitcher
@@ -21,13 +18,11 @@ from ui.sidebar_controller import SidebarController
 from ui.icons import get_icon, app_icon
 from ui.nowplaying_bar import NowPlayingBar
 from audio.player import PlayerEngine, PlaybackState
-from audio.audio_chain import get_quality_label
 from library.library_db import (
-    LibraryDB, DB_PATH, ScannerWorker, MediaItem,
+    LibraryDB, DB_PATH, MediaItem,
     AUDIO_EXTS, ALL_EXTS, scan_device_music,
 )
 from ui.folder_browser import FolderBrowserWidget
-from ui.loading_overlay import LoadingOverlay
 from ui.search_controller import SearchController
 from sources.local_source import LocalSource
 from sources.radio_source import RadioSource
@@ -46,8 +41,6 @@ from library.coverflow import CoverFlowWidget
 from library.album_grid import AlbumGridWidget
 from library.song_grid import SongGridWidget
 from library.album_art import load_covers_for_albums
-from library.artist_grouping import build_artist_groups, ArtistGroup
-from ui.expanded_view import ExpandedNowPlaying
 from streaming.radio_widget import RadioWidget
 from streaming.radio_manager import RadioManager
 from ui.music_identifier_view import MusicIdentifierView
