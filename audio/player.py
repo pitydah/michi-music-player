@@ -269,7 +269,7 @@ class GStreamerEngine(QObject):
             return
 
         self._appsrc = self._pipeline.get_by_name("dsdsrc")
-        self._file_handle = open(filepath, "rb")
+        self._file_handle = open(filepath, "rb")  # noqa: SIM115 — handle lives across thread
 
         self._setup_bus()
         self._setup_timer()

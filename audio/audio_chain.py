@@ -139,8 +139,12 @@ def build_eq_parametric_chain(bands: list[dict], preamp_db: float) -> str:
     NOTE: audioiirfilter b0/b1/b2/a0/a1/a2 cannot be set via pipeline
     description. Filter coefficients must be set programmatically after
     pipeline creation. For now, returns empty chain (flat pass-through).
-    TODO: Create audioiirfilter elements via Gst.ElementFactory.make()
-    and configure properties manually.
+
+    Roadmap:
+      1. Create audioiirfilter via Gst.ElementFactory.make("audioiirfilter")
+      2. Set "a0", "a1", "a2", "b0", "b1", "b2" properties via set_property()
+      3. Link into the pipeline chain: audioconvert → audioiirfilter → sink
+    See: gst-inspect-1.0 audioiirfilter for property names and ranges.
     """
     return ""
 

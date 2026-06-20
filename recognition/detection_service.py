@@ -1,7 +1,14 @@
 """Detection Service — manages music identification lifecycle.
 
 First version: UI + DB integration only. No real audio capture yet.
-TODO: Integrate AudD/ACRCloud/GStreamer appsink for real recognition.
+
+Roadmap for real recognition:
+  1. Capture audio via GStreamer appsink (pull 12-second PCM samples at 22050Hz)
+  2. Option A: AcoustID fingerprint via chromaprint (fpcalc binary or python-acoustid)
+  3. Option B: AudD API (requires API key — https://audd.io)
+  4. Option C: ACRCloud API (requires API key — https://acrcloud.com)
+  5. Option D: ShazamIO (unofficial, no API key needed)
+  6. Store fingerprint matches in detected_tracks table for local cache
 """
 
 import logging

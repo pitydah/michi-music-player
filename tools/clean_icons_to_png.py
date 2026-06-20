@@ -98,10 +98,9 @@ def remove_edge_black_background(image: QImage) -> QImage:
     for x in range(w):
         for y in (0, h - 1):
             c = QColor.fromRgba(image.pixel(x, y))
-            if c.alpha() > 10 and c.red() < 35 and c.green() < 35 and c.blue() < 35:
-                if not mask[y][x]:
-                    mask[y][x] = True
-                    queue.append((x, y))
+            if c.alpha() > 10 and c.red() < 35 and c.green() < 35 and c.blue() < 35 and not mask[y][x]:
+                mask[y][x] = True
+                queue.append((x, y))
 
     dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
     while queue:

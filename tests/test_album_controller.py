@@ -22,10 +22,9 @@ class TestAlbumController:
             "data": {"tracks": []},
         })()
         # This calls QMessageBox which needs a real QWidget, so we catch the error
-        try:
+        import contextlib
+        with contextlib.suppress(TypeError, RuntimeError):
             ctrl.show_details(group)
-        except (TypeError, RuntimeError):
-            pass  # QMessageBox.information fails with mock parent
 
     def test_search_cover_no_tracks(self, mock_window):
         ctrl = AlbumController(mock_window)

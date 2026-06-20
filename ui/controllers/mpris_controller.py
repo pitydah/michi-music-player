@@ -1,4 +1,5 @@
 """MPRIS controller — manages D-Bus MPRIS integration with graceful fallback."""
+import contextlib
 import logging
 
 
@@ -28,9 +29,7 @@ class MPRISController:
                         album: str = "", duration: int = 0):
         """Update MPRIS metadata if the adapter is active."""
         if self._adapter:
-            try:
+            with contextlib.suppress(Exception):
                 self._adapter.player.set_metadata(
                     title=title, artist=artist,
                     album=album, duration=duration)
-            except Exception:
-                pass

@@ -54,11 +54,7 @@ def preview_rename(items: list[TrackTags], pattern: str) -> list[tuple[str, str]
         ext = os.path.splitext(old)[1]
         base_dir = os.path.dirname(old)
 
-        if fn:
-            relative = sanitize_filename_part(fn(t))
-        else:
-            # Free-form pattern
-            relative = render_pattern(t, pattern)
+        relative = sanitize_filename_part(fn(t)) if fn else render_pattern(t, pattern)
 
         new = os.path.join(base_dir, relative + ext)
         results.append((old, new))
