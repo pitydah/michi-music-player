@@ -168,17 +168,33 @@ class PlaylistHubWidget(QWidget):
 
     def set_playlists(self, playlists: list[dict]):
         self._playlists = playlists or []
+        sig = tuple(
+            (p.get("id"), p.get("name"), len(p.get("tracks", []) or []), p.get("cover_path"))
+            for p in self._playlists
+        )
+        if sig == getattr(self, '_last_p_sig', None):
+            return
+        self._last_p_sig = sig
         self._rebuild()
 
     # ── Build ──
 
-    def _rebuild(self):
-        # Clear
-        while self._layout.count():
-            item = self._layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+    def _clear_layout(self, layout):
+        """Recursively clean a QLayout, deleting all widgets and sub-layouts."""
+        while layout.count():
+            item = layout.takeAt(0)
+            if item is None:
+                continue
+            w = item.widget()
+            if w is not None:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
+            elif item.layout() is not None:
+                self._clear_layout(item.layout())
 
+    def _rebuild(self):
+        self._clear_layout(self._layout)
         self._build_hero()
         self._build_quick_actions()
         if self._playlists:
@@ -268,17 +284,15 @@ class PlaylistHubWidget(QWidget):
 
     def _build_my_playlists(self):
         self._add_section_heading("Mis playlists", f"{len(self._playlists)} playlists")
-        grid = QGridLayout()
+        section = QWidget()
+        section.setStyleSheet("background: transparent;")
+        grid = QGridLayout(section)
         grid.setSpacing(16)
-
         cols = max(1, (self.width() - 64) // 220)
         for i, pl in enumerate(self._playlists):
             card = self._make_playlist_card(pl)
-            row = i // cols
-            col = i % cols
-            grid.addWidget(card, row, col, Qt.AlignTop)
-
-        self._layout.addLayout(grid)
+            grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
+        self._layout.addWidget(section)
 
     def _make_playlist_card(self, pl: dict) -> QFrame:
         card = QFrame()
@@ -388,17 +402,15 @@ class PlaylistHubWidget(QWidget):
 
     def _build_smart_playlists(self):
         self._add_section_heading("Inteligentes")
-        grid = QGridLayout()
+        section = QWidget()
+        section.setStyleSheet("background: transparent;")
+        grid = QGridLayout(section)
         grid.setSpacing(12)
-
         cols = max(1, (self.width() - 64) // 220)
         for i, (key, title, desc, symbol) in enumerate(SMART_PLAYLISTS):
             card = self._make_smart_card(key, title, desc, symbol)
-            row = i // cols
-            col = i % cols
-            grid.addWidget(card, row, col, Qt.AlignTop)
-
-        self._layout.addLayout(grid)
+            grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
+        self._layout.addWidget(section)
 
     def _make_smart_card(self, key: str, title: str, desc: str, symbol: str) -> QFrame:
         card = QFrame()
@@ -442,17 +454,15 @@ class PlaylistHubWidget(QWidget):
 
     def _build_create_auto(self):
         self._add_section_heading("Crear automáticamente")
-        grid = QGridLayout()
+        section = QWidget()
+        section.setStyleSheet("background: transparent;")
+        grid = QGridLayout(section)
         grid.setSpacing(10)
-
         cols = max(1, (self.width() - 64) // 220)
         for i, (key, title, desc) in enumerate(CREATE_AUTO):
             card = self._make_create_card(key, title, desc)
-            row = i // cols
-            col = i % cols
-            grid.addWidget(card, row, col, Qt.AlignTop)
-
-        self._layout.addLayout(grid)
+            grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
+        self._layout.addWidget(section)
 
     def _make_create_card(self, key: str, title: str, desc: str) -> QFrame:
         card = QFrame()
@@ -498,31 +508,27 @@ class PlaylistHubWidget(QWidget):
 
     def _build_import_tools(self):
         self._add_section_heading("Importar y exportar")
-        grid = QGridLayout()
+        section = QWidget()
+        section.setStyleSheet("background: transparent;")
+        grid = QGridLayout(section)
         grid.setSpacing(10)
-
         cols = max(1, (self.width() - 64) // 220)
         for i, (key, title, desc) in enumerate(IMPORT_TOOLS):
             card = self._make_tool_card(key, title, desc)
-            row = i // cols
-            col = i % cols
-            grid.addWidget(card, row, col, Qt.AlignTop)
-
-        self._layout.addLayout(grid)
+            grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
+        self._layout.addWidget(section)
 
     def _build_utility_tools(self):
         self._add_section_heading("Herramientas")
-        grid = QGridLayout()
+        section = QWidget()
+        section.setStyleSheet("background: transparent;")
+        grid = QGridLayout(section)
         grid.setSpacing(10)
-
         cols = max(1, (self.width() - 64) // 220)
         for i, (key, title, desc) in enumerate(UTILITY_TOOLS):
             card = self._make_tool_card(key, title, desc)
-            row = i // cols
-            col = i % cols
-            grid.addWidget(card, row, col, Qt.AlignTop)
-
-        self._layout.addLayout(grid)
+            grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
+        self._layout.addWidget(section)
 
     def _make_tool_card(self, key: str, title: str, desc: str) -> QFrame:
         card = QFrame()
