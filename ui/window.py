@@ -818,11 +818,14 @@ class MainWindow(QMainWindow):
                     for i in items]
             self._model.populate(refs)
             self._count.setText(f"{len(refs)} artistas")
-            self._views.show("library"); self._table.setModel(self._model)
-            self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 280)
-            self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
-            self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
-            self._table.setColumnWidth(6, 75)
+            if refs:
+                self._views.show("library"); self._table.setModel(self._model)
+                self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 280)
+                self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
+                self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
+                self._table.setColumnWidth(6, 75)
+            else:
+                self._views.show("empty")
             self._search.show()
 
         elif key == "albums":
@@ -903,11 +906,14 @@ class MainWindow(QMainWindow):
                              year=i.year, genre=i.genre) for i in items]
             self._model.populate(refs)
             self._count.setText(f"{len(refs)} canciones")
-            self._views.show("library"); self._table.setModel(self._model)
-            self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260)
-            self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
-            self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
-            self._table.setColumnWidth(6, 75)
+            if refs:
+                self._views.show("library"); self._table.setModel(self._model)
+                self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260)
+                self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
+                self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
+                self._table.setColumnWidth(6, 75)
+            else:
+                self._views.show("empty")
             self._search.show()
 
         elif key == "recent":
@@ -925,8 +931,15 @@ class MainWindow(QMainWindow):
                              year=i.year, genre=i.genre) for i in items]
             self._model.populate(refs)
             self._count.setText(f"{len(refs)} canciones")
-            self._views.show("library"); self._table.setModel(self._model)
-            self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260)
+            if refs:
+                self._views.show("library"); self._table.setModel(self._model)
+                self._table.setColumnWidth(0, 72); self._table.setColumnWidth(1, 260)
+                self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
+                self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
+                self._table.setColumnWidth(6, 75)
+            else:
+                self._views.show("empty")
+            self._search.show()
             self._table.setColumnWidth(2, 170); self._table.setColumnWidth(3, 170)
             self._table.setColumnWidth(4, 55); self._table.setColumnWidth(5, 110)
             self._table.setColumnWidth(6, 75)
