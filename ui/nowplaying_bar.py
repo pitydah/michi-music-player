@@ -439,7 +439,7 @@ class NowPlayingBar(QWidget):
 
         # ── Utility row: audio source + mini player under slider ──
         utility_row = QHBoxLayout()
-        utility_row.setContentsMargins(0, 0, 0, 0)
+        utility_row.setContentsMargins(0, -4, 0, 0)
         utility_row.addStretch()
         utility_row.addWidget(self._audio_output_btn)
         utility_row.addWidget(self._mini_player_btn)
