@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
     QPushButton, QLabel, QFileDialog, QHeaderView, QFrame, QMenu,
     QApplication, QMessageBox, QScrollArea, QDialog, QFormLayout, QTextEdit,
+    QAbstractItemView,
     QDialogButtonBox,
 )
 
@@ -171,33 +172,76 @@ class FolderBrowserWidget(QWidget):
         self._tree.setAnimated(True)
         self._tree.setUniformRowHeights(True)
         self._tree.setSelectionMode(QTreeWidget.SingleSelection)
+        self._tree.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._tree.setAllColumnsShowFocus(True)
+        self._tree.setRootIsDecorated(False)
         self._tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self._tree.setStyleSheet("""
             QTreeWidget {
-                background: #090B11;
-                alternate-background-color: #0E1118;
-                color: #fff; border: 1px solid rgba(255,255,255,0.055);
-                border-radius: 16px; outline: none; padding: 8px;
+                background: rgba(255,255,255,0.025);
+                alternate-background-color: rgba(255,255,255,0.014);
+                color: #FFFFFF;
+                border: 1px solid rgba(255,255,255,0.065);
+                border-radius: 16px;
+                outline: none;
+                padding: 8px;
             }
             QTreeWidget::item {
-                min-height: 42px; padding: 7px 10px; margin: 2px 4px;
-                border-radius: 12px; color: rgba(255,255,255,0.78);
+                min-height: 42px;
+                padding: 7px 10px;
+                margin: 1px 4px;
+                border-radius: 12px;
+                color: rgba(255,255,255,0.78);
+                background: transparent;
+                border: 1px solid transparent;
             }
-            QTreeWidget::item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+            QTreeWidget::item:hover {
+                background: rgba(255,255,255,0.075);
+                color: #FFFFFF;
+                border: 1px solid rgba(255,255,255,0.10);
+            }
             QTreeWidget::item:selected {
-                background: rgba(255,77,46,0.20); color: #fff;
-                border-left: 3px solid rgba(255,122,0,0.85);
+                background: rgba(255,255,255,0.105);
+                color: #FFFFFF;
+                border: 1px solid rgba(255,255,255,0.14);
+            }
+            QTreeWidget::item:selected:hover {
+                background: rgba(255,255,255,0.125);
+                color: #FFFFFF;
+                border: 1px solid rgba(255,255,255,0.16);
             }
             QHeaderView::section {
-                background: #10131A; color: rgba(255,255,255,0.72);
-                border: none; border-bottom: 1px solid rgba(255,255,255,0.07);
-                padding: 8px 10px; font-size: 11.5px; font-weight: 700;
+                background: rgba(255,255,255,0.035);
+                color: rgba(255,255,255,0.64);
+                border: none;
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+                padding: 8px 10px;
+                font-size: 11.5px;
+                font-weight: 700;
             }
-            QScrollBar:vertical { background: rgba(255,255,255,0.025); width: 10px; margin: 4px; border-radius: 5px; }
-            QScrollBar::handle:vertical { background: rgba(255,255,255,0.18); min-height: 40px; border-radius: 5px; }
-            QScrollBar::handle:vertical:hover { background: rgba(255,122,0,0.42); }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; background: transparent; }
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+            QHeaderView::section:hover {
+                background: rgba(255,255,255,0.06);
+                color: rgba(255,255,255,0.82);
+            }
+            QScrollBar:vertical {
+                background: rgba(255,255,255,0.025);
+                width: 10px; margin: 4px; border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(255,255,255,0.18);
+                min-height: 40px; border-radius: 5px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(255,255,255,0.28);
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px; background: transparent;
+            }
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {
+                background: transparent;
+            }
         """)
         hdr = self._tree.header()
         hdr.setStretchLastSection(True)
