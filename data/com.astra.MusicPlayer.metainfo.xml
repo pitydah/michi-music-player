@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.astra.MusicPlayer</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Astra Music Player</name>
+  <summary>Modern music player for Linux/KDE</summary>
+
+  <description>
+    <p>Astra Music Player is a premium music player for Linux built with Python,
+    PySide6 (Qt6), and GStreamer. Features include:</p>
+    <ul>
+      <li>Local music library with SQLite</li>
+      <li>CoverFlow 3D album carousel</li>
+      <li>Apple Music-style artist pages with album/track hierarchy</li>
+      <li>Advanced metadata editor (Mutagen)</li>
+      <li>Graphic &amp; parametric equalizer</li>
+      <li>Playlist hub with smart playlists</li>
+      <li>Subsonic/Navidrome/Jellyfin streaming</li>
+      <li>Internet radio with station management</li>
+      <li>MPRIS integration (KDE Plasma)</li>
+      <li>Glassmorphism dark theme</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.astra.MusicPlayer.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/pitydah/astra-music-player/main/docs/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/pitydah/astra-music-player</url>
+  <url type="bugtracker">https://github.com/pitydah/astra-music-player/issues</url>
+  <url type="vcs-browser">https://github.com/pitydah/astra-music-player</url>
+
+  <releases>
+    <release version="0.1.0-alpha" date="2026-06-20">
+      <description>
+        <p>Initial alpha release.</p>
+        <ul>
+          <li>Full local music library with SQLite + GStreamer</li>
+          <li>CoverFlow 3D, Artist pages, Album grid</li>
+          <li>Metadata editor, Playlist hub, EQ panel</li>
+          <li>18 modular controllers extracted from window.py</li>
+          <li>85 automated tests</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Music</category>
+    <category>Player</category>
+  </categories>
+
+  <content_rating type="oars-1.1" />
+  <developer_name>Cristian</developer_name>
+  <update_contact>https://github.com/pitydah/astra-music-player/issues</update_contact>
+</component>
