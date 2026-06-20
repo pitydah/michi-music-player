@@ -172,6 +172,10 @@ class MainWindow(QMainWindow):
         self._search_ctrl.results_ready.connect(self._on_search_results)
         from core.app_context import AppContext
         self._ctx = AppContext(self)
+        from ui.controllers.playlist_controller import PlaylistController
+        self._playlist_ctrl = PlaylistController(self)
+        from core.file_actions import FileActions
+        self._file_actions = FileActions(self)
         self._all_items: list[MediaItem] = []
         self._items_index: dict[str, MediaItem] = {}
         self._current_section_key: str = "library"
@@ -1893,48 +1897,37 @@ class MainWindow(QMainWindow):
         )
         QMessageBox.information(self, "Detalles del álbum", msg)
 
-    # TODO(astra): extract to ui/playlist_controller.py — Hub + import/export
+    # Extracted to ui/controllers/playlist_controller.py — Hub + import/export
 
     def _import_m3u(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Importar M3U", "", "Playlist M3U (*.m3u *.m3u8);;Todos (*.*)")
-        if path:
-            self._toast.show(f"Importador M3U pendiente de implementar: {os.path.basename(path)}", "info")
+        self._playlist_ctrl.import_m3u()
 
     def _export_playlists(self):
-        self._toast.show("Exportador de playlists pendiente de implementar", "info")
+        self._playlist_ctrl.export_playlists()
 
     def _open_smart_playlist(self, key: str):
-        self._on_sidebar_navigate(f"mix_{key}" if not key.startswith("mix_") else key)
+        self._playlist_ctrl.open_smart_playlist(key)
 
     def _on_hub_playlist_play(self, pid: int):
-        items = self._db.get_playlist_items(pid)
-        fps = [i.filepath for i in items]
-        self._playback.enqueue(fps, play_now=True)
-        self._toast.show("Reproduciendo playlist", "success")
+        self._playlist_ctrl.hub_playlist_play(pid)
 
     def _on_hub_playlist_queue(self, pid: int):
-        items = self._db.get_playlist_items(pid)
-        fps = [i.filepath for i in items]
-        self._playback.enqueue(fps, play_now=False)
-        self._toast.show("Playlist añadida a la cola", "success")
+        self._playlist_ctrl.hub_playlist_queue(pid)
 
     def _on_hub_create_from_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta musical")
-        if folder:
-            self._toast.show(f"Crear playlist desde carpeta pendiente: {folder}", "info")
+        self._playlist_ctrl.hub_create_from_folder()
 
     def _on_hub_create_from_queue(self):
-        self._toast.show("Crear playlist desde cola pendiente de implementar", "info")
+        self._playlist_ctrl.hub_create_from_queue()
 
     def _on_stub_action(self):
-        self._toast.show("Acción pendiente de implementar", "info")
+        self._playlist_ctrl.stub_action()
 
     def _on_metadata_saved(self, filepaths: list):
-        self._toast.show(f"Metadatos guardados en {len(filepaths)} archivos", "success")
+        self._playlist_ctrl.metadata_saved(filepaths)
 
     def _refresh_library(self):
-        self._load_library()
+        self._playlist_ctrl.refresh_library()
 
     # TODO(astra): extract to ui/artist_controller.py — grid + detail logic
 
@@ -2084,67 +2077,19 @@ class MainWindow(QMainWindow):
         self._playback.play(filepath)
         self._show_expanded()
 
-    # TODO(astra): extract to core/file_actions.py — open/scan/drop logic
+    # Extracted to core/file_actions.py — open/scan/drop logic
 
     def _open_file(self):
-        exts = " ".join(f"*{e}" for e in sorted(ALL_EXTS))
-        fp, _ = QFileDialog.getOpenFileName(
-            self, "Abrir archivo", os.path.expanduser("~"),
-            f"Multimedia ({exts});;Todos (*)")
-        if fp:
-            self._db.add_file(fp)
-            self._load_library()
-            self._play_file(fp)
+        self._file_actions.open_file(ALL_EXTS)
 
     def _add_folder(self):
-        path = QFileDialog.getExistingDirectory(
-            self, "Añadir carpeta", os.path.expanduser("~"))
-        if not path:
-            return
-        self._scan_path(path)
+        self._file_actions.add_folder()
 
     def _on_folder_create_playlist(self, name: str, filepaths: list):
-        pid = self._db.create_playlist(name)
-        if pid:
-            for fp in filepaths:
-                self._db.add_playlist_item(pid, fp)
-            self._rebuild_sidebar()
-            from ui.toast_notification import ToastNotification
-            ToastNotification.success(
-                f"Playlist \"{name}\" creada con {len(filepaths)} canciones", self)
+        self._file_actions.folder_create_playlist(name, filepaths)
 
     def _scan_path(self, path: str):
-        from PySide6.QtCore import QThread
-        worker = ScannerWorker(self._db, path)
-        thread = QThread()
-
-        overlay = LoadingOverlay(self._content)
-        overlay.set_text("Escaneando...")
-        overlay.show(delay_ms=100)
-
-        worker.progress.connect(
-            lambda c, t, f: overlay.set_text(
-                f"Escaneando [{c}/{t}]\n{os.path.basename(f)[:60]}"))
-
-        def _on_done(added):
-            overlay.hide()
-            overlay.deleteLater()
-            self._load_library()
-            from ui.toast_notification import ToastNotification
-            ToastNotification.success(
-                f"Escaneo completado: {added} archivos añadidos", self)
-
-        worker.moveToThread(thread)
-        worker.finished.connect(lambda a: _on_done(a))
-        thread.started.connect(worker.run)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.start()
-
-    def _on_scan_done(self, added, progress, thread):
-        progress.close()
-        self._load_library()
+        self._file_actions.scan_path(path)
 
     # TODO(astra): extract to core/playback_controller.py — play/pause/queue logic
 
