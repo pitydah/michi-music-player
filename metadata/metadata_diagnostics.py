@@ -1,5 +1,4 @@
 """Metadata diagnostics — detect issues across loaded TrackTags."""
-from dataclasses import dataclass
 
 from metadata.tag_model import TrackTags
 

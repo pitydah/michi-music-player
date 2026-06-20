@@ -1,14 +1,12 @@
 """Parametric EQ advanced mode widget."""
 
-import os
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider,
-    QLabel, QScrollArea, QComboBox, QCheckBox, QFileDialog,
+    QLabel, QScrollArea,
 )
 
 from audio.eq_band_row import BandRow
-from audio.eq_biquad import FILTER_LABELS
 
 
 class AdvancedEqWidget(QWidget):

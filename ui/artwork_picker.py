@@ -1,10 +1,8 @@
 """Artwork resize dialog — preview and resize album art before embedding."""
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QSpinBox, QCheckBox, QFrame, QGridLayout,
-    QDialogButtonBox, QGroupBox, QMessageBox,
 )
 
 from metadata.artwork_utils import (
@@ -154,7 +152,7 @@ class ArtworkResizeDialog(QDialog):
         if ow > 3000 or oh > 3000 or omb > 5:
             warn = QLabel(f"La imagen es muy grande ({ow}×{oh}, {omb:.1f} MB). Se recomienda redimensionar a 600×600 o 1000×1000.")
             warn.setWordWrap(True)
-            warn.setStyleSheet(f"color: #FFB347; font-size: 11px; background: transparent;")
+            warn.setStyleSheet("color: #FFB347; font-size: 11px; background: transparent;")
             main.addWidget(warn)
 
         # ── Buttons ──
@@ -251,14 +249,14 @@ class ArtworkResizeDialog(QDialog):
                 return
 
         # Update result preview
-        result_img = self._result_preview.findChild(QLabel, f"preview_Final")
+        result_img = self._result_preview.findChild(QLabel, "preview_Final")
         if result_img and self._result_data:
             pix = make_artwork_pixmap(self._result_data, 196)
             if pix:
                 result_img.setPixmap(pix)
                 result_img.setText("")
 
-        result_info = self._result_preview.findChild(QLabel, f"info_Final")
+        result_info = self._result_preview.findChild(QLabel, "info_Final")
         if result_info:
             w = info.get("width", 0)
             h = info.get("height", 0)

@@ -1,7 +1,6 @@
 """Toast Notification — floating, animated popup messages."""
 
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QTimer, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QLabel, QHBoxLayout, QGraphicsOpacityEffect
 
 _TOASTS: list["ToastNotification"] = []

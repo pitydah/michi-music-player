@@ -1,10 +1,10 @@
 """Remote browser — artist → album → track navigation with thumbnails."""
 
-from PySide6.QtCore import Qt, Signal, QSize, QThread
-from PySide6.QtGui import QIcon, QPixmap, QFont
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QLabel, QPushButton, QProgressDialog, QApplication, QFrame,
+    QLabel, QPushButton, QApplication, QFrame,
 )
 import urllib.request
 import urllib.error

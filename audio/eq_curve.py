@@ -1,7 +1,7 @@
 """Frequency response curve widget — QPainterPath from biquad evaluation."""
 
 import numpy as np
-from PySide6.QtCore import Qt, QPointF
+from PySide6.QtCore import Qt
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QFont, QPainterPath,
 )

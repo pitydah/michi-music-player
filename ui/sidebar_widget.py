@@ -13,7 +13,6 @@ from ui.icon_renderer import render_svg_icon
 from ui.icons import get_icon
 from ui.design_tokens import (
     SIDEBAR_ITEM_H, SIDEBAR_ICON,
-    SIDEBAR_ACTIVE_GRADIENT,
 )
 
 
@@ -157,13 +156,13 @@ class _Item(QFrame):
 
     def _refresh_styles(self):
         if self._active:
-            self.setStyleSheet(f"""
-                QFrame {{
+            self.setStyleSheet("""
+                QFrame {
                     background: rgba(255,255,255,0.145);
                     border: 1px solid rgba(255,255,255,0.18);
                     border-radius: 11px;
                     margin: 1px 8px;
-                }}
+                }
             """)
             self._label.setStyleSheet(
                 "font-size:13px;font-weight:700;color:#ffffff;"

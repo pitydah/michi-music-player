@@ -1,9 +1,9 @@
 """Real-time spectrum analyzer — FFT via numpy, 60-band logarithmic display."""
 
 import numpy as np
-from PySide6.QtCore import Qt, QTimer, QRectF
+from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import (
-    QPainter, QColor, QLinearGradient, QFont, QPen, QPainterPath,
+    QPainter, QColor, QFont, QPen, QPainterPath,
 )
 from PySide6.QtWidgets import QWidget
 

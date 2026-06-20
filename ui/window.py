@@ -3,13 +3,12 @@
 import os
 import random
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QVariantAnimation
-from PySide6.QtGui import QIcon, QPixmap, QBrush, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
+from PySide6.QtGui import QIcon, QPixmap, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QSplitter, QLabel,
     QFrame, QHBoxLayout, QLineEdit, QPushButton, QToolButton, QListWidget, QComboBox,
     QListWidgetItem, QStackedWidget, QTableView, QHeaderView,
-    QAbstractItemView, QFileDialog, QProgressDialog,
-    QInputDialog, QMessageBox, QMenu, QDialog, QFormLayout,
+    QAbstractItemView, QFileDialog, QInputDialog, QMessageBox, QMenu, QDialog, QFormLayout,
     QDialogButtonBox, QGraphicsOpacityEffect, QSystemTrayIcon,
 )
 from PySide6.QtWidgets import QApplication
@@ -22,10 +21,10 @@ from ui.sidebar_controller import SidebarController
 from ui.icons import get_icon, app_icon
 from ui.nowplaying_bar import NowPlayingBar
 from audio.player import PlayerEngine, PlaybackState
-from audio.audio_chain import DacConfig, get_quality_label
+from audio.audio_chain import get_quality_label
 from library.library_db import (
     LibraryDB, DB_PATH, ScannerWorker, MediaItem,
-    AUDIO_EXTS, ALL_EXTS, media_kind, get_mounted_devices, scan_device_music,
+    AUDIO_EXTS, ALL_EXTS, scan_device_music,
 )
 from ui.folder_browser import FolderBrowserWidget
 from ui.loading_overlay import LoadingOverlay
@@ -38,7 +37,7 @@ from library.trackref_model import TrackRefTableModel
 from streaming.transmit_manager import TransmitManager
 
 from streaming.subsonic_client import (
-    SubsonicClient, ServerConfig, load_servers, save_servers,
+    SubsonicClient, load_servers, save_servers,
     SubsonicError, AuthError, ServerNotFoundError,
 )
 from streaming.server_dialog import ServerDialog
@@ -1864,7 +1863,6 @@ class MainWindow(QMainWindow):
     def _on_coverflow_search_cover(self, idx: int):
         tracks = self._coverflow_album_tracks(idx)
         if tracks:
-            from library.album_art import find_cover_in_dir
             d = os.path.dirname(tracks[0].filepath) if tracks else ""
             self._toast.show(f"Buscar carátula en: {d}", "info")
 
@@ -1875,7 +1873,7 @@ class MainWindow(QMainWindow):
             import subprocess
             subprocess.Popen(["xdg-open", d])
 
-    # ── Album actions ──
+    # TODO(astra): extract to ui/album_controller.py — album grid + detail actions
 
     def _on_album_create_playlist(self, fps: list):
         tracks = self._playback.to_trackrefs(fps) or fps
@@ -1886,7 +1884,7 @@ class MainWindow(QMainWindow):
         tracks = group.data.get("tracks", []) if group.data else []
         if tracks:
             d = os.path.dirname(tracks[0].filepath)
-            from library.album_art import fetch_cover_online, cache_cover, find_cover_in_dir
+            from library.album_art import fetch_cover_online, cache_cover
             try:
                 album_name = group.title
                 artist = getattr(tracks[0], 'artist', '') or ''
@@ -1925,7 +1923,7 @@ class MainWindow(QMainWindow):
         )
         QMessageBox.information(self, "Detalles del álbum", msg)
 
-    # ── Playlist Hub actions ──
+    # TODO(astra): extract to ui/playlist_controller.py — Hub + import/export
 
     def _import_m3u(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1943,13 +1941,13 @@ class MainWindow(QMainWindow):
         items = self._db.get_playlist_items(pid)
         fps = [i.filepath for i in items]
         self._playback.enqueue(fps, play_now=True)
-        self._toast.show(f"Reproduciendo playlist", "success")
+        self._toast.show("Reproduciendo playlist", "success")
 
     def _on_hub_playlist_queue(self, pid: int):
         items = self._db.get_playlist_items(pid)
         fps = [i.filepath for i in items]
         self._playback.enqueue(fps, play_now=False)
-        self._toast.show(f"Playlist añadida a la cola", "success")
+        self._toast.show("Playlist añadida a la cola", "success")
 
     def _on_hub_create_from_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta musical")
@@ -1968,7 +1966,7 @@ class MainWindow(QMainWindow):
     def _refresh_library(self):
         self._load_library()
 
-    # ── Artist views ──
+    # TODO(astra): extract to ui/artist_controller.py — grid + detail logic
 
     def _show_artists_view(self, mode: str):
         self._artist_grid.set_view_mode(mode)
@@ -2031,7 +2029,7 @@ class MainWindow(QMainWindow):
         self._configure_header_for_section("metadata_editor")
         self._fade_content("metadata_editor")
 
-    # ── Expanded View ──
+    # TODO(astra): extract to ui/expanded_controller.py — now playing expanded
 
     def _show_expanded(self):
         if not self._playback.current:
@@ -2116,7 +2114,7 @@ class MainWindow(QMainWindow):
         self._playback.play(filepath)
         self._show_expanded()
 
-    # ── File open / scan ──
+    # TODO(astra): extract to core/file_actions.py — open/scan/drop logic
 
     def _open_file(self):
         exts = " ".join(f"*{e}" for e in sorted(ALL_EXTS))
@@ -2178,7 +2176,7 @@ class MainWindow(QMainWindow):
         progress.close()
         self._load_library()
 
-    # ── Playback ──
+    # TODO(astra): extract to core/playback_controller.py — play/pause/queue logic
 
     def _on_table_menu(self, pos):
         idx = self._table.indexAt(pos)
@@ -2323,7 +2321,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Astra Music Player")
 
     def _extract_colors(self, pixmap):
-        from PySide6.QtGui import QColor
         img = pixmap.toImage().scaled(1, 1, Qt.IgnoreAspectRatio,
                                       Qt.SmoothTransformation)
         avg = img.pixelColor(0, 0)
@@ -2378,7 +2375,7 @@ class MainWindow(QMainWindow):
         dlg.activateWindow()
         self._eq_dlg = dlg  # keep reference to prevent GC
 
-    # ── Transmit ──
+    # TODO(astra): extract to ui/transmit_controller.py — streaming + snapcast
 
     def _show_transmit_menu(self):
         menu = QMenu(self)

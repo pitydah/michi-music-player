@@ -1,10 +1,8 @@
 """Discover Dashboard — large cards for Mix, NoReproducidos, Favoritos, Recientes."""
 
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton,
-    QLabel, QScrollArea, QFrame,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QScrollArea, QFrame,
 )
 
 from ui.icons import get_icon
@@ -49,23 +47,23 @@ class DiscoverDashboard(QWidget):
 
         cards = [
             ("mix_daily", "Mix diario", "Reproducido en los últimos 7 días",
-             f"qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+             "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
              "stop:0 rgba(255,122,0,0.15), stop:1 rgba(232,0,109,0.10))",
              "sidebar_mix"),
             ("mix_unplayed", "No escuchadas", "Canciones que aún no has reproducido",
-             f"qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+             "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
              "stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0.04))",
              "sidebar_unplayed"),
             ("mix_popular", "Más escuchadas", "Tus canciones con más reproducciones",
-             f"qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+             "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
              "stop:0 rgba(255,122,0,0.10), stop:1 rgba(232,0,109,0.08))",
              "sidebar_popular"),
             ("favs", "Favoritos", "Canciones que has marcado como favoritas",
-             f"qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+             "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
              "stop:0 rgba(232,0,109,0.12), stop:1 rgba(255,122,0,0.06))",
              "sidebar_popular"),
             ("recent", "Recientes", "Reproducidas recientemente",
-             f"qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+             "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
              "stop:0 rgba(255,255,255,0.06), stop:1 rgba(255,255,255,0.03))",
              "sidebar_recent"),
         ]

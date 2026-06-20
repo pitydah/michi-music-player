@@ -25,7 +25,6 @@ from PySide6.QtCore import QObject, Signal, QTimer
 
 from audio.audio_chain import DacConfig, build_eq_graphic_chain, build_eq_parametric_chain
 from audio.dff_parser import parse_dff
-from audio.eq_biquad import compute_biquad
 
 Gst.init(None)
 
@@ -216,7 +215,8 @@ class GStreamerEngine(QObject):
                         if band:
                             band.set_property("gain", float(db))
             except Exception:
-                pass
+                import logging
+                logging.getLogger("astra").debug("EQ bands application failed")
 
         ret = self._pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:

@@ -19,3 +19,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 This software is derived in part from Miro Player
 (https://github.com/pculture/miro), which is copyright
 Participatory Culture Foundation and licensed under GPL-2.0.
+
+IMPORTANT: The original Miro Player was licensed under GPL-2.0-only.
+GPL-2.0-only and GPL-3.0-or-later are incompatible unless Miro
+included an "or later" clause in its license. Verify the original
+license before distribution. If confirmed GPL-2.0-only, this
+project must use GPL-2.0-only.

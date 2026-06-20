@@ -1,9 +1,9 @@
 """31-band graphic equalizer widget — basic mode."""
 
-from PySide6.QtCore import Qt, Signal, QRectF, QSize
+from PySide6.QtCore import Qt, Signal, QRectF
 from PySide6.QtGui import QPainter, QColor, QLinearGradient, QFont, QPen
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QScrollArea,
+    QWidget, QHBoxLayout, QVBoxLayout, QScrollArea,
 )
 
 from audio.eq_presets import ISO_31_LABELS

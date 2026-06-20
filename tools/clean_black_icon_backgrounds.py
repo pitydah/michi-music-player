@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Clean black backgrounds from PNG icons — flood-fill border-connected black to transparent."""
-import sys
 from pathlib import Path
 from PIL import Image
 

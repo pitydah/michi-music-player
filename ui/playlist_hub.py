@@ -4,11 +4,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QPixmap, QIcon, QColor
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QGridLayout,
-    QLabel, QFrame, QPushButton, QSizePolicy,
+    QLabel, QFrame, QPushButton,
 )
 
 HERE = Path(__file__).parent.parent

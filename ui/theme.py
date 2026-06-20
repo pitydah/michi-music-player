@@ -1,6 +1,6 @@
 """Plasma-native palette and modern QSS for Astra Music Player."""
 
-from PySide6.QtGui import QPalette, QColor, QFont
+from PySide6.QtGui import QPalette, QColor
 
 
 def is_dark_mode(palette: QPalette | None = None) -> bool:

@@ -3,8 +3,8 @@
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QIcon, QPainterPath
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QIcon
 
 BREEZE = "/usr/share/icons/breeze"
 HERE = Path(__file__).parent.parent

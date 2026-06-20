@@ -72,4 +72,3 @@ def invalidate(filepath: str):
             os.remove(path)
 
 
-from PySide6.QtCore import Qt

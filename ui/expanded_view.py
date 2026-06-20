@@ -1,11 +1,10 @@
 """Expanded NowPlaying view — full-screen cover art with controls and queue."""
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QPixmap, QFont
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QSlider, QListWidget, QListWidgetItem, QFrame, QSizePolicy,
-    QMenu, QAbstractItemView,
+    QSlider, QListWidget, QListWidgetItem, QFrame, QMenu, QAbstractItemView,
 )
 
 from ui.icons import get_icon

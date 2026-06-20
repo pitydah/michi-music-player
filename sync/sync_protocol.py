@@ -5,12 +5,10 @@ Simplified for music-specific sync: no TLS, token-based auth, JSON over HTTP.
 """
 
 import json
-import uuid
 import time
 import hashlib
 import secrets
 from dataclasses import dataclass, field, asdict
-from typing import Optional
 
 
 # ═══════════════════════════════════════

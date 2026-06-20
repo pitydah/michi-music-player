@@ -1,6 +1,6 @@
 """Marquee Label — smooth horizontal scrolling for long titles."""
 
-from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
+from PySide6.QtCore import Qt, QTimer, QPointF
 from PySide6.QtGui import QPainter, QFontMetrics
 from PySide6.QtWidgets import QLabel
 

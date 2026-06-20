@@ -5,15 +5,13 @@ import random
 import stat
 import subprocess
 import json
-from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal, QSize, QSettings
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
     QPushButton, QLabel, QFileDialog, QHeaderView, QFrame, QMenu,
-    QApplication, QMessageBox, QScrollArea, QDialog, QFormLayout, QTextEdit,
-    QAbstractItemView,
+    QApplication, QMessageBox, QDialog, QFormLayout, QAbstractItemView,
     QDialogButtonBox,
 )
 
@@ -614,7 +612,7 @@ class FolderBrowserWidget(QWidget):
 
     @staticmethod
     def _show_audio_info(filepath: str):
-        from PySide6.QtWidgets import QDialogButtonBox, QFormLayout, QLineEdit
+        from PySide6.QtWidgets import QLineEdit
         dlg = QDialog()
         dlg.setWindowTitle("Información de audio")
         dlg.setMinimumWidth(420)

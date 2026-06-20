@@ -4,14 +4,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QPixmap, QColor, QIcon, QDragEnterEvent, QDropEvent
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap, QColor, QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QScrollArea,
-    QLabel, QLineEdit, QPushButton, QFrame, QTableWidget, QTableWidgetItem,
+    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QLabel, QLineEdit, QPushButton, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QFileDialog, QMessageBox,
-    QComboBox, QSpinBox, QTabWidget, QTextEdit, QListWidget, QListWidgetItem,
-    QSizePolicy, QInputDialog,
+    QComboBox, QSpinBox, QTabWidget, QListWidget, QListWidgetItem,
+    QInputDialog,
 )
 
 from metadata.tag_model import TrackTags
@@ -21,8 +20,7 @@ from metadata import tag_actions as ta
 from metadata.metadata_diagnostics import diagnose_items, NAV_CATEGORIES
 from metadata.rename_engine import preview_rename, apply_rename
 from metadata.artwork_utils import (
-    _pillow_available, image_info, resize_artwork_bytes,
-    make_artwork_pixmap, DEFAULT_SIZE,
+    _pillow_available,
 )
 
 # ═══════════════════════════════════════════════════════════
@@ -129,13 +127,13 @@ class MetadataEditorWidget(QWidget):
         header = QFrame()
         header.setObjectName("metadataHero")
         header.setStyleSheet(
-            f"QFrame#metadataHero {{"
-            f"  background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            f"    stop:0 rgba(255,255,255,0.075),"
-            f"    stop:0.55 rgba(255,255,255,0.040),"
-            f"    stop:1 rgba(255,255,255,0.025));"
-            f"  border: 1px solid rgba(255,255,255,0.085);"
-            f"  border-radius: 22px; }}")
+            "QFrame#metadataHero {"
+            "  background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
+            "    stop:0 rgba(255,255,255,0.075),"
+            "    stop:0.55 rgba(255,255,255,0.040),"
+            "    stop:1 rgba(255,255,255,0.025));"
+            "  border: 1px solid rgba(255,255,255,0.085);"
+            "  border-radius: 22px; }")
         header.setContentsMargins(24, 20, 24, 20)
         header.setLayout(header_row)
 
@@ -884,7 +882,7 @@ class MetadataEditorWidget(QWidget):
                 QMessageBox.information(self, "Renombrar", "Carga archivos primero para usar el renombrador.")
                 return
 
-        from PySide6.QtWidgets import QDialog, QDialogButtonBox, QComboBox, QLineEdit
+        from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLineEdit
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Renombrar archivos desde tags")
@@ -998,7 +996,7 @@ class MetadataEditorWidget(QWidget):
 
     def _toast_info(self, msg: str):
         try:
-            from ui.window import MainWindow
+            pass
         except Exception:
             pass
         # Try to emit the signal so the parent can toast

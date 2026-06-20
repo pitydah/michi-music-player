@@ -2,7 +2,7 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
-    QCheckBox, QComboBox, QSlider, QSpinBox, QLineEdit, QFileDialog,
+    QCheckBox, QComboBox, QSlider, QLineEdit, QFileDialog,
 )
 from PySide6.QtGui import QPixmap
 
@@ -100,22 +100,22 @@ class SettingsSwitch(QCheckBox):
         self.setChecked(checked)
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedSize(40, 22)
-        self.setStyleSheet(f"""
-            QCheckBox {{
+        self.setStyleSheet("""
+            QCheckBox {
                 background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.12);
                 border-radius: 11px; padding: 0;
-            }}
-            QCheckBox::indicator {{
+            }
+            QCheckBox::indicator {
                 width: 16px; height: 16px; border-radius: 8px;
                 background: rgba(255,255,255,0.40);
                 margin: 2px;
-            }}
-            QCheckBox:checked {{
+            }
+            QCheckBox:checked {
                 background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.20);
-            }}
-            QCheckBox:checked::indicator {{
+            }
+            QCheckBox:checked::indicator {
                 background: #FFFFFF; margin-left: 20px;
-            }}
+            }
         """)
 
 

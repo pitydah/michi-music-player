@@ -2,7 +2,7 @@
 
 
 def test_add_remove_device():
-    from streaming.transmit_manager import TransmitManager, TransmitDevice
+    from streaming.transmit_manager import TransmitManager
     mgr = TransmitManager()
     mgr._devices = []  # reset
     dev = mgr.add_device("Test", "http", "192.168.1.1", 8554)
@@ -13,7 +13,7 @@ def test_add_remove_device():
 
 
 def test_active_device():
-    from streaming.transmit_manager import TransmitManager, TransmitDevice
+    from streaming.transmit_manager import TransmitManager
     mgr = TransmitManager()
     mgr._devices = []
     dev = mgr.add_device("Snap", "snapcast", "10.0.0.1", 1704)

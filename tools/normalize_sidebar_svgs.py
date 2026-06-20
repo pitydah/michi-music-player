@@ -8,7 +8,6 @@ Then set width/height to 24 (preserving the new tight viewBox).
 
 import sys
 import shutil
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QRectF

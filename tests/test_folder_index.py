@@ -1,7 +1,5 @@
 """Tests for folder_index — file listing and edge cases."""
 
-import os
-import tempfile
 import pytest
 
 from library.folder_index import list_audio_files, list_subfolders, get_audio_tree

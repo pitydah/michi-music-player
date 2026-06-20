@@ -12,8 +12,7 @@ def test_db_init():
 
 
 def test_add_file():
-    from library.library_db import LibraryDB, MediaItem
-    import tempfile
+    from library.library_db import LibraryDB
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         f.write(b"dummy")
         path = f.name
@@ -38,7 +37,7 @@ def test_playlist_crud():
 
 def test_scanner():
     from library.library_db import LibraryDB
-    import tempfile, os
+    import os
     with tempfile.TemporaryDirectory() as d:
         for ext in [".mp3", ".txt", ".ogg"]:
             path = os.path.join(d, f"test{ext}")

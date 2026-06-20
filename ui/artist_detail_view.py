@@ -1,14 +1,13 @@
 """Artist Detail View — Apple Music-style artist page with albums and tracks."""
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QPixmap, QColor
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QGridLayout,
     QLabel, QPushButton, QFrame, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QMenu, QSplitter,
+    QHeaderView, QAbstractItemView,
 )
 
 from library.artist_grouping import ArtistGroup, ArtistAlbumGroup
-from library.album_art import load_cover_pixmap, find_cover_in_dir
+from library.album_art import load_cover_pixmap
 
 _BG = "#090B11"
 _PANEL = "rgba(255,255,255,0.035)"
@@ -132,7 +131,7 @@ class ArtistDetailView(QWidget):
         cover_frame = QFrame()
         cover_frame.setFixedSize(cover_size, cover_size)
         cover_frame.setStyleSheet(
-            f"QFrame {{ background: rgba(255,255,255,0.04); border-radius: 24px; }}")
+            "QFrame { background: rgba(255,255,255,0.04); border-radius: 24px; }")
         cover_layout = QGridLayout(cover_frame)
         cover_layout.setContentsMargins(6, 6, 6, 6)
         cover_layout.setSpacing(4)

@@ -1,10 +1,10 @@
 """Lyrics Widget — synced lyrics display with glassmorphism styling."""
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter, QFont, QColor, QLinearGradient, QPen
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar
 
-from lyrics.lrclib_client import LyricLine, LyricsResult, LrcLibClient
+from lyrics.lrclib_client import LyricLine, LrcLibClient
 
 
 class LyricsWidget(QWidget):

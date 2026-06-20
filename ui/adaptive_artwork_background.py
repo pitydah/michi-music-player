@@ -1,7 +1,7 @@
 """Adaptive Artwork Background — blurred album art with dark overlay."""
 
-from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QBrush
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient
 from PySide6.QtWidgets import QWidget
 
 

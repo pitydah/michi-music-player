@@ -4,7 +4,6 @@ Inspired by LocalSend's multicast_discovery.dart (UDP 224.0.0.167).
 Announces every 5s, listens continuously for peer responses.
 """
 
-import json
 import socket
 import struct
 import threading
@@ -49,7 +48,8 @@ class DiscoveryServer(QObject):
             try:
                 self._sock.close()
             except Exception:
-                pass
+                import logging
+                logging.getLogger("astra").debug("Sync discovery task failed")
             self._sock = None
         self.discovery_stopped.emit()
 
@@ -95,7 +95,8 @@ class DiscoveryServer(QObject):
             try:
                 self._sock.close()
             except Exception:
-                pass
+                import logging
+                logging.getLogger("astra").debug("Sync discovery task failed")
             self._sock = None
 
     def _announce(self):
@@ -119,7 +120,8 @@ class DiscoveryServer(QObject):
             data = msg.to_json().encode("utf-8")
             self._sock.sendto(data, (MULTICAST_GROUP, MULTICAST_PORT))
         except Exception:
-            pass
+                import logging
+                logging.getLogger("astra").debug("Sync discovery: failed to close socket")
 
     def _handle_message(self, data: bytes, ip: str):
         try:

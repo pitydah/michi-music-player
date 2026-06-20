@@ -15,7 +15,6 @@ Endpoints:
 
 import os
 import json
-import time
 import threading
 import hashlib
 import urllib.parse
@@ -25,10 +24,9 @@ from concurrent.futures import ThreadPoolExecutor
 from sync.sync_protocol import (
     SessionToken, TrackDto, LibraryResponse,
     RegisterRequest, RegisterResponse,
-    SyncStateRequest, SyncStateEntry,
-    make_track_id, make_device_id,
+    SyncStateRequest, make_track_id, make_device_id,
 )
-from library.library_db import LibraryDB, MediaItem
+from library.library_db import LibraryDB
 from PySide6.QtCore import QObject, Signal
 
 
@@ -356,7 +354,8 @@ class SyncServer(QObject):
             try:
                 self._httpd.server_close()
             except Exception:
-                pass
+                import logging
+                logging.getLogger("astra").debug("Sync server operation failed")
         if self._executor:
             self._executor.shutdown(wait=False)
         self._sessions.clear()

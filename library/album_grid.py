@@ -1,8 +1,8 @@
 """Album grid — premium 2D glass mosaic of album cards with metadata."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal, QSize, QPoint
-from PySide6.QtGui import QPixmap, QIcon, QAction
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QPixmap, QIcon, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QGridLayout,
     QPushButton, QLabel, QFrame, QMenu,
@@ -300,7 +300,7 @@ class AlbumGridWidget(QWidget):
 
 
 def _placeholder_album_icon(size=72) -> QPixmap:
-    from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen, QFont
+    from PySide6.QtGui import QPainter, QColor, QPen
     pix = QPixmap(size, size)
     pix.fill(Qt.transparent)
     p = QPainter(pix)

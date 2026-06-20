@@ -1,12 +1,11 @@
 """CoverFlow — QGraphicsView-based carousel with OpenGL, physics, reflections, slider."""
-import math
 from PySide6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QVariantAnimation,
     Property, Signal, QRectF, QPointF,
 )
 from PySide6.QtGui import (
     QPainter, QColor, QPen, QLinearGradient, QRadialGradient, QPixmap,
-    QTransform, QFont, QPainterPath, QBrush,
+    QTransform, QFont, QPainterPath,
 )
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsObject,

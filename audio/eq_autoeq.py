@@ -2,7 +2,6 @@
 
 import json
 import os
-import hashlib
 import urllib.request
 
 CACHE_DIR = os.path.expanduser("~/.local/share/astra-music-player/autoeq")

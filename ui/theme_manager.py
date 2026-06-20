@@ -9,9 +9,9 @@ import logging
 from PySide6.QtCore import QTimer, QObject, Signal
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication
-from PySide6.QtDBus import QDBusConnection, QDBusMessage
+from PySide6.QtDBus import QDBusConnection
 
-from ui.design_tokens import get_tokens, set_theme, current_theme
+from ui.design_tokens import set_theme
 
 logger = logging.getLogger("astra.theme")
 

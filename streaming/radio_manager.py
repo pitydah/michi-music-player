@@ -31,6 +31,8 @@ class RadioManager:
                 self._stations = [RadioStation(**s) for s in data]
                 self._next_id = max([s.id for s in self._stations] + [0]) + 1
         except Exception:
+            import logging
+            logging.getLogger("astra").debug("Failed to load radio stations config")
             self._stations = []
             self._next_id = 1
 

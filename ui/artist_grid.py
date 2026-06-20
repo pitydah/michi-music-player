@@ -1,10 +1,10 @@
 """Artist Grid — premium mosaic/list of artists with cards and context menu."""
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap, QColor, QIcon
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QGridLayout,
-    QPushButton, QLabel, QFrame, QListWidget, QListWidgetItem,
-    QMenu, QSizePolicy,
+    QLabel, QFrame, QListWidget, QListWidgetItem,
+    QMenu,
 )
 
 from library.artist_grouping import ArtistGroup
@@ -224,7 +224,7 @@ class _ArtistCard(QFrame):
         cover_area = QFrame()
         cover_area.setFixedSize(size, size)
         cover_area.setStyleSheet(
-            f"QFrame {{ background: rgba(255,255,255,0.035); border-radius: 24px; }}")
+            "QFrame { background: rgba(255,255,255,0.035); border-radius: 24px; }")
         c_layout = QGridLayout(cover_area)
         c_layout.setContentsMargins(4, 4, 4, 4)
         c_layout.setSpacing(4)
@@ -285,20 +285,20 @@ class _ArtistCard(QFrame):
         v.addStretch()
 
     def _apply_qss(self):
-        self.setStyleSheet(f"""
-            QFrame {{
+        self.setStyleSheet("""
+            QFrame {
                 background: rgba(255,255,255,0.035);
                 border: 1px solid rgba(255,255,255,0.065);
                 border-radius: 18px;
-            }}
-            QFrame:hover {{
+            }
+            QFrame:hover {
                 background: rgba(255,255,255,0.065);
                 border: 1px solid rgba(255,255,255,0.12);
-            }}
-            QFrame[active="true"] {{
+            }
+            QFrame[active="true"] {
                 background: rgba(255,255,255,0.105);
                 border: 1px solid rgba(255,255,255,0.16);
-            }}
+            }
         """)
 
     def set_active(self, active: bool):
@@ -338,7 +338,7 @@ class _ArtistCard(QFrame):
 
 
 def _artist_placeholder(size: int) -> QPixmap:
-    from PySide6.QtGui import QPainter, QPainterPath, QPen, QColor
+    from PySide6.QtGui import QPainter, QPen
     pix = QPixmap(size, size)
     pix.fill(Qt.transparent)
     p = QPainter(pix)

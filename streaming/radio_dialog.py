@@ -1,6 +1,5 @@
 """Radio Dialog — dialog to add/edit radio stations."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit,
     QDialogButtonBox, QLabel,

@@ -10,10 +10,9 @@ Features:
 
 import os
 import sqlite3
-import time
 import hashlib
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger("astra.library")
 from typing import Callable
@@ -24,7 +23,7 @@ gi.require_version("GstPbutils", "1.0")
 from gi.repository import Gst, GstPbutils
 
 from PySide6.QtCore import (
-    QAbstractListModel, QModelIndex, Qt, Signal, QObject,
+    Signal, QObject,
 )
 
 Gst.init(None)
@@ -52,6 +51,7 @@ def media_kind(ext: str) -> str:
 # ── Data class ──
 
 @dataclass
+# TODO(astra): extract to library/media_item.py — MediaItem + from_row
 class MediaItem:
     id: int = 0
     filepath: str = ""
@@ -115,6 +115,7 @@ class MediaItem:
         )
 
 
+# TODO(astra): extract to library/metadata_extractor.py — GStreamer discovery + Mutagen full
 # ── Metadata extraction ──
 
 def extract_metadata(filepath: str) -> dict:
@@ -473,6 +474,7 @@ class LibraryDB:
 
     # ── Playlists ──
 
+    # TODO(astra): extract to library/playlist_store.py — CRUD playlists
     def create_playlist(self, name: str) -> int:
         cur = self._conn.execute("INSERT INTO playlists (name) VALUES (?)", (name,))
         self._conn.commit()
@@ -505,6 +507,7 @@ class LibraryDB:
         ).fetchall()
         return [MediaItem.from_row(r) for r in rows]
 
+    # TODO(astra): extract to library/history_store.py — favorites, play history, detected tracks
     def save_queue(self, filepaths: list[str], current_index: int):
         self._conn.execute("DELETE FROM queue_state")
         for i, fp in enumerate(filepaths):
@@ -657,6 +660,7 @@ class ScannerWorker(QObject):
         self.finished.emit(added)
 
 
+# TODO(astra): extract to library/devices.py — get_mounted_devices + disk_usage
 # ── Devices ──
 
 def get_mounted_devices() -> list[dict]:

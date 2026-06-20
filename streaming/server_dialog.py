@@ -1,10 +1,9 @@
 """Server connection dialog — add Navidrome/Jellyfin server."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit,
+    QDialog, QHBoxLayout, QFormLayout, QLineEdit,
     QComboBox, QPushButton, QLabel, QDialogButtonBox, QMessageBox,
-    QProgressDialog, QApplication,
+    QApplication,
 )
 
 from streaming.subsonic_client import ServerConfig, SubsonicClient

@@ -2,11 +2,11 @@
 
 import os
 
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QPushButton, QLabel,
-    QGridLayout, QFrame, QMenu,
+    QWidget, QVBoxLayout, QScrollArea, QLabel,
+    QGridLayout, QFrame,
 )
 from library.album_art import find_cover_in_dir
 

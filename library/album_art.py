@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from PySide6.QtGui import QPixmap, QColor, QPainter, QFont, QPen, QPainterPath
 from PySide6.QtCore import Qt, QRectF, QPointF
 
-from library.library_db import MediaItem, DB_PATH
+from library.library_db import MediaItem
 from library.artwork_cache import get_cached, cache_cover
 
 

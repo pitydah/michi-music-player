@@ -120,9 +120,7 @@ def _add_mp3_frame(f, frame_id: str, value: str):
         "TCOM": TCOM, "TBPM": TBPM, "TSRC": TSRC,
     }.get(frame_id)
 
-    if frame_cls in (TCOM, TBPM, TSRC):
-        f.tags.add(frame_cls(encoding=3, text=[value]))
-    elif frame_cls:
+    if frame_cls in (TCOM, TBPM, TSRC) or frame_cls:
         f.tags.add(frame_cls(encoding=3, text=[value]))
     elif frame_id == "COMM":
         f.tags.add(COMM(encoding=3, lang="spa", desc="", text=[value]))

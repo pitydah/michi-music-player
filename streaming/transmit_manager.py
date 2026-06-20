@@ -47,6 +47,8 @@ class TransmitManager(QObject):
                     data = json.load(f)
                 self._devices = [TransmitDevice.from_dict(d) for d in data]
             except Exception:
+                import logging
+                logging.getLogger("astra").debug("Failed to load transmit devices config")
                 self._devices = []
 
     def save(self):

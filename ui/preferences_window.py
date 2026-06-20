@@ -1,5 +1,4 @@
 """Preferences Window — premium 16-category settings dialog with sidebar and search."""
-import os
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
@@ -27,7 +26,7 @@ _TEXT = "#FFFFFF"
 _TEXT2 = "rgba(255,255,255,0.78)"
 _TEXT3 = "rgba(255,255,255,0.62)"
 
-_PAGE_DEFS = [
+PAGE_DEFS = [
     ("General", "general", "sidebar_library"),
     ("Apariencia", "appearance", "sidebar_albums"),
     ("Biblioteca", "library", "sidebar_library"),

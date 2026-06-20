@@ -1,9 +1,8 @@
 """Premium equalizer panel — dark glass, segmented modes, preset chips."""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox,
-    QLabel, QCheckBox, QMessageBox, QWidget, QScrollArea,
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QMessageBox, QWidget,
 )
 
 from audio.eq_basic import GraphicEqWidget
@@ -11,7 +10,6 @@ from audio.eq_advanced import AdvancedEqWidget
 from audio.eq_curve import EqCurveWidget
 from audio.spectrum import SpectrumWidget
 from audio.eq_presets import (
-    GRAPHIC_PRESETS, PARAMETRIC_PRESETS,
     load_graphic_preset, load_parametric_preset,
 )
 from audio.eq_convert import graphic_to_parametric, parametric_to_graphic

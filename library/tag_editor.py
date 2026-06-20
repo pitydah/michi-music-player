@@ -1,12 +1,9 @@
 """Tag Editor — edit audio file metadata using mutagen."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QLineEdit, QSpinBox,
-    QPushButton, QDialogButtonBox, QLabel, QHBoxLayout,
-    QFileDialog, QMessageBox,
+    QDialog, QFormLayout, QLineEdit, QSpinBox,
+    QDialogButtonBox, QMessageBox,
 )
-from PySide6.QtGui import QPixmap
 
 
 class TagEditorDialog(QDialog):

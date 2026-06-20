@@ -12,7 +12,6 @@ import urllib.error
 import socket
 import random
 import os
-import sys
 import time
 import logging
 from dataclasses import dataclass

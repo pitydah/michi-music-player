@@ -1,12 +1,11 @@
 """NowPlayingBar — bottom bar with cover, info, seek, controls, volume."""
 
-import os
 
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QIcon, QPixmap, QColor
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QPushButton,
-    QSlider, QLabel, QMenu, QSizePolicy, QGraphicsDropShadowEffect,
+    QSlider, QLabel, QSizePolicy, QGraphicsDropShadowEffect,
 )
 
 from icons import get_icon

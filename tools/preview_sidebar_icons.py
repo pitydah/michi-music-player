@@ -2,7 +2,7 @@
 
 import sys
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QFont, QPen
+from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QFont
 from PySide6.QtWidgets import QApplication
 
 from ui.icons import get_icon
