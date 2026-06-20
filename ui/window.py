@@ -170,6 +170,8 @@ class MainWindow(QMainWindow):
         self._search_ctrl.register("local", LocalSource(self._db))
         self._search_ctrl.register("radio", RadioSource(RadioManager()))
         self._search_ctrl.results_ready.connect(self._on_search_results)
+        from core.app_context import AppContext
+        self._ctx = AppContext(self)
         self._all_items: list[MediaItem] = []
         self._items_index: dict[str, MediaItem] = {}
         self._current_section_key: str = "library"
@@ -205,14 +207,10 @@ class MainWindow(QMainWindow):
         self._detection.track_detected.connect(self._on_track_detected)
         self._detection.detection_failed.connect(self._on_detection_failed)
 
-        self._mpris = None
-        try:
-            from adapters.mpris import MPRISAdapter
-            self._mpris = MPRISAdapter(self)
-            self._mpris.player.set_engine(self._player)
-        except Exception:
-            import logging
-            logging.getLogger("astra").debug("MPRIS integration not available (no dbus)")
+        from ui.controllers.mpris_controller import MPRISController
+        self._mpris_ctrl = MPRISController(self)
+        self._mpris_ctrl.init()
+        self._mpris = self._mpris_ctrl.adapter  # backward compatibility
 
         self._transmit_mgr = TransmitManager(self)
         self._transmit_mgr.device_changed.connect(self._on_transmit_devices_changed)
@@ -892,27 +890,14 @@ class MainWindow(QMainWindow):
         pb.cover_loaded.connect(self._apply_adaptive_background)
 
     def _setup_tray(self):
-        tray_pix = QPixmap(get_icon("tray_icon"))
-        if not tray_pix.isNull():
-            tray_pix = tray_pix.scaled(64, 64, Qt.KeepAspectRatio,
-                                        Qt.SmoothTransformation)
-        self._tray = QSystemTrayIcon(QIcon(tray_pix), self)
-        self._tray.setToolTip("Astra Music Player")
-        tray_menu = QMenu()
-        tray_menu.addAction("Mostrar", self.show)
-        tray_menu.addAction("Reproducir/Pausa", self._playback.toggle)
-        tray_menu.addAction("Siguiente", self._playback.play_next)
-        tray_menu.addAction("Anterior", self._playback.play_prev)
-        tray_menu.addSeparator()
-        tray_menu.addAction("Salir", self.close)
-        self._tray.setContextMenu(tray_menu)
-        self._tray.show()
+        from ui.controllers.tray_controller import TrayController
+        self._tray_ctrl = TrayController(self)
+        self._tray_ctrl.setup()
+        self._tray = self._tray_ctrl._icon
 
     def _notify_track(self, title: str, artist: str):
-        if hasattr(self, '_tray') and self._tray and self._tray.isVisible():
-            self._tray.showMessage(
-                "Astra", f"{title} — {artist}",
-                QSystemTrayIcon.NoIcon, 3000)
+        if hasattr(self, '_tray_ctrl'):
+            self._tray_ctrl.notify(title, artist)
 
     def _import_playlist(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -965,20 +950,9 @@ class MainWindow(QMainWindow):
             self, "Exportar", f"Playlist exportada a {path}")
 
     def _setup_shortcuts(self):
-        from PySide6.QtGui import QShortcut, QKeySequence
-        QShortcut(QKeySequence("Space"), self, self._playback.toggle)
-        QShortcut(QKeySequence("Ctrl+Right"), self, self._playback.play_next)
-        QShortcut(QKeySequence("Ctrl+Left"), self, self._playback.play_prev)
-        QShortcut(QKeySequence("Ctrl+Up"), self,
-                  lambda: self._player_bar.volume_changed.emit(
-                      min(100, self._player_bar._vol.value() + 5)))
-        QShortcut(QKeySequence("Ctrl+Down"), self,
-                  lambda: self._player_bar.volume_changed.emit(
-                      max(0, self._player_bar._vol.value() - 5)))
-        QShortcut(QKeySequence("Ctrl+M"), self,
-                  lambda: self._player_bar.volume_changed.emit(0))
-        QShortcut(QKeySequence("Ctrl+F"), self,
-                  lambda: self._search.setFocus())
+        from ui.controllers.shortcut_controller import ShortcutController
+        self._shortcut_ctrl = ShortcutController(self)
+        self._shortcut_ctrl.setup()
 
     # ── Library ──
 
@@ -2281,13 +2255,13 @@ class MainWindow(QMainWindow):
                 self._reset_background()
 
         # MPRIS
-        if self._mpris:
-            dur = int(track.duration)
-            if dur <= 0:
-                idx_item = self._items_index.get(track.uri)
-                if idx_item:
-                    dur = int(idx_item.duration)
-            self._mpris.player.set_metadata(
+        dur = int(track.duration)
+        if dur <= 0:
+            idx_item = self._items_index.get(track.uri)
+            if idx_item:
+                dur = int(idx_item.duration)
+        if hasattr(self, '_mpris_ctrl'):
+            self._mpris_ctrl.update_metadata(
                 title=name, artist=artist or "",
                 album=album, duration=dur)
 
