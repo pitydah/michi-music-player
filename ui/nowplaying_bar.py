@@ -443,14 +443,14 @@ class NowPlayingBar(QWidget):
         utility_controls.addStretch()
         utility_controls.addWidget(self._audio_output_btn)
         utility_controls.addWidget(self._mini_player_btn)
-        utility_controls.addSpacing(32)
 
-        # Mirror seek_row: 32px | stretch(controls) | utility | 32px
+        # Mirror seek_row: 32px | stretch(controls) | 32px | utility
         controls_row = QHBoxLayout()
         controls_row.setContentsMargins(0, 0, 0, 0)
         controls_row.setSpacing(0)
         controls_row.addSpacing(32)
         controls_row.addLayout(ctrl_row, 1)
+        controls_row.addSpacing(32)
         controls_row.addLayout(utility_controls, 0)
 
         center_layout.addLayout(seek_row)
