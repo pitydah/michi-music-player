@@ -64,7 +64,7 @@ SECTION_CONFIG = {
                    "icon": "sidebar_albums", "views": ["list", "grid", "coverflow"],
                    "search": True, "default": "grid"},
     "artists":    {"title": "Artistas", "subtitle": "Agrupados por artista · Doble click para canciones",
-                   "icon": "sidebar_mix", "views": ["list", "grid"],
+                   "icon": "sidebar_artist", "views": ["list", "grid"],
                    "search": True, "default": "list"},
     "genres":     {"title": "Géneros", "subtitle": "Explora por estilo musical",
                    "icon": "sidebar_popular", "views": ["list", "grid"],

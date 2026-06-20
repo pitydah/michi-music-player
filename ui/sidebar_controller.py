@@ -23,7 +23,7 @@ class SidebarController(QObject):
         self._sidebar.add_item("lib", "library", "Todas las canciones",
                                "sidebar_library")
         self._sidebar.add_item("lib", "albums", "Álbumes", "sidebar_albums")
-        self._sidebar.add_item("lib", "artists", "Artistas", "sidebar_mix")
+        self._sidebar.add_item("lib", "artists", "Artistas", "sidebar_artist")
         self._sidebar.add_item("lib", "genres", "Géneros", "sidebar_popular")
         self._sidebar.add_item("lib", "folders", "Carpetas", "sidebar_folders")
 
