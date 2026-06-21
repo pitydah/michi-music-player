@@ -28,6 +28,8 @@ class HomeAudioView(QWidget):
         self._ha_connected = False
         self._multiroom_active = False
         self._snapserver_running = False
+        self._transmit_active = False
+        self._transmit_device_name = ""
         self._devices = []
         self._groups = []
         self._activity_log = []
@@ -182,7 +184,7 @@ class HomeAudioView(QWidget):
 
         hero_title = QLabel("Centro de audio domestico")
         hero_title.setStyleSheet(
-            "font-size: 20px; font-weight: 750; color: rgba(255,255,255,0.94);")
+            "font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.94);")
         left.addWidget(hero_title)
 
         hero_sub = QLabel(
@@ -775,7 +777,7 @@ class _PrimaryButton(QPushButton):
     def __init__(self, text):
         super().__init__(text)
         self.setStyleSheet(
-            "QPushButton { color: #FFFFFF; font-size: 12px; font-weight: 740;"
+            "QPushButton { color: #FFFFFF; font-size: 12px; font-weight: 700;"
             "  background: rgba(70,145,255,0.22);"
             "  border: 1px solid rgba(90,165,255,0.42);"
             "  border-radius: 13px; padding: 10px 18px; }"

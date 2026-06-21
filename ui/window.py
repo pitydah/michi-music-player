@@ -1217,9 +1217,7 @@ class MainWindow(QMainWindow):
             self._fade_content("identifier")
 
         elif key == "home_audio":
-            self._configure_header_for_section("home_audio")
-            self._home_audio_view.refresh_if_needed()
-            self._fade_content("home_audio")
+            self._show_home_audio()
 
     def _on_sidebar_menu(self, pos):
         widget = self._sidebar.childAt(pos)
@@ -2230,6 +2228,11 @@ class MainWindow(QMainWindow):
         self._transmit_ctrl.manage_devices()
 
     # ── Home Audio ──
+
+    def _show_home_audio(self):
+        self._configure_header_for_section("home_audio")
+        self._home_audio_view.refresh_if_needed()
+        self._fade_content("home_audio")
 
     def _on_home_audio_connect(self):
         from core.settings_manager import get as sget
