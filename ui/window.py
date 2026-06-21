@@ -756,6 +756,8 @@ class MainWindow(QMainWindow):
         # ── Content wrapper ──
         from ui.central.content_surface import CentralContentSurface
         cw = CentralContentSurface()
+        self._content.setStyleSheet(
+            "QStackedWidget { background: #090B11; border: none; }")
         cl = QVBoxLayout(cw)
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(0)

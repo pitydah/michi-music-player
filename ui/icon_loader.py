@@ -88,17 +88,20 @@ def get_pixmap(key: str, color: QColor | None = None, size: int = 24) -> QPixmap
 def get_sidebar_icon(key: str, active: bool = False, hover: bool = False,
                      size: int = 22) -> QPixmap:
     """Get sidebar icon with correct tinting for SVGs, direct load for PNGs."""
+    spec = ICON_REGISTRY.get(key)
     path = icon_path(key)
     if not path:
         return _missing_pixmap(SIDEBAR_NORMAL, size)
-    # PNGs: composite onto sidebar bg to kill dark alpha halos
     # PNGs already have correct color — load directly
     if path.lower().endswith(".png"):
         pix = QPixmap(path)
         if not pix.isNull():
             return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return _missing_pixmap(SIDEBAR_NORMAL, size)
-    # All SVGs in sidebar get tinted to match text opacity
+    # native_color SVGs: render preserving original colors (no tinting)
+    if spec and spec.render_mode == "native_color":
+        return render_svg_icon(path, size, padding=0)
+    # symbolic_tint SVGs get tinted to match text opacity
     if active:
         return get_pixmap(key, SIDEBAR_ACTIVE, size)
     if hover:

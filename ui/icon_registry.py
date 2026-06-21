@@ -96,7 +96,8 @@ ICON_REGISTRY: dict[str, IconSpec] = {
         description="Dispositivos"),
     "sidebar_artist": IconSpec(
         key="sidebar_artist", path="icons/sidebar_artist.svg",
-        family="sidebar", symbolic=True, render_mode="symbolic_tint",
+        family="sidebar", symbolic=True, allow_background=False,
+        render_mode="native_color",
         description="Artista"),
     "sidebar_recent": IconSpec(
         key="sidebar_recent", path="icons/sidebar_recent.svg",
@@ -110,11 +111,11 @@ ICON_REGISTRY: dict[str, IconSpec] = {
     # ── Home Audio ──
     "home_audio": IconSpec(
         key="home_audio", path="icons/sidebar/home-audio.svg",
-        family="sidebar", symbolic=True, render_mode="symbolic_tint",
+        family="sidebar", symbolic=True, render_mode="native_color",
         description="Home Audio / Multiroom"),
     "metadata_editor": IconSpec(
         key="metadata_editor", path="icons/sidebar/metadata.svg",
-        family="sidebar", symbolic=True, render_mode="symbolic_tint",
+        family="sidebar", symbolic=True, render_mode="native_color",
         description="Editor de metadatos"),
 
     # ── NowPlaying actions ──
