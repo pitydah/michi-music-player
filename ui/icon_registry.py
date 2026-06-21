@@ -74,6 +74,10 @@ ICON_REGISTRY: dict[str, IconSpec] = {
         key="sidebar_radio", path="icons/sidebar_clean/sidebar_radio_24.png",
         family="sidebar", symbolic=True,
         description="Radio"),
+    "radio_speaker": IconSpec(
+        key="radio_speaker", path="icons/radio/radio_speaker.svg",
+        family="sidebar", render_mode="native_color",
+        description="Altavoz de radio"),
     "sidebar_servers": IconSpec(
         key="sidebar_servers", path="icons/sidebar_clean/sidebar_servers_24.png",
         family="sidebar", symbolic=True,

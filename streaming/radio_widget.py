@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from streaming.radio_manager import RadioManager
+from ui.icon_loader import get_sidebar_icon
 
 
 class RadioWidget(QWidget):
@@ -100,7 +101,8 @@ class RadioWidget(QWidget):
         ev.setAlignment(Qt.AlignCenter)
         ev.setContentsMargins(60, 48, 60, 48)
         ev.setSpacing(6)
-        self._empty_icon = QLabel("📻")
+        self._empty_icon = QLabel()
+        self._empty_icon.setPixmap(get_sidebar_icon("radio_speaker", size=48))
         self._empty_icon.setAlignment(Qt.AlignCenter)
         self._empty_icon.setStyleSheet(
             "font-size: 40px; background: transparent; border: none;")
@@ -181,7 +183,7 @@ class RadioWidget(QWidget):
             else:
                 self._empty_title.setText("No hay emisoras")
                 self._empty_sub.setText("Añade una URL de radio para empezar")
-                self._empty_icon.setText("📻")
+                self._empty_icon.setPixmap(get_sidebar_icon("radio_speaker", size=48))
             return
 
         self._empty.hide()
@@ -285,16 +287,16 @@ class _StationCard(QFrame):
                 pix = pix.scaled(180, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 img_label.setPixmap(pix)
             else:
-                img_label.setText("📻")
+                img_label.setPixmap(
+                    get_sidebar_icon("radio_speaker", size=56))
                 img_label.setStyleSheet(
                     "QLabel { background: rgba(255,255,255,0.035);"
-                    "  color: rgba(255,255,255,0.22); font-size: 32px;"
                     "  border-radius: 8px; }")
         else:
-            img_label.setText("📻")
+            img_label.setPixmap(
+                get_sidebar_icon("radio_speaker", size=56))
             img_label.setStyleSheet(
                 "QLabel { background: rgba(255,255,255,0.035);"
-                "  color: rgba(255,255,255,0.22); font-size: 32px;"
                 "  border-radius: 8px; }")
         layout.addWidget(img_label, alignment=Qt.AlignCenter)
 
