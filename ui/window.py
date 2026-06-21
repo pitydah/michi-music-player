@@ -597,7 +597,7 @@ class MainWindow(QMainWindow):
         placeholder = QLabel()
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.68); font-size: 16px;"
+            "QLabel { color: rgba(255,255,255,0.82); font-size: 16px;"
             "  background: transparent; border: none; padding: 48px; }")
         placeholder.setText(
             "Añade música a tu biblioteca\n"
@@ -606,7 +606,7 @@ class MainWindow(QMainWindow):
         placeholder_albums = QLabel()
         placeholder_albums.setAlignment(Qt.AlignCenter)
         placeholder_albums.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.62); font-size: 15px;"
+            "QLabel { color: rgba(255,255,255,0.82); font-size: 15px;"
             "  background: transparent; border: none; padding: 48px; }")
         placeholder_albums.setText(
             "Sin álbumes en la biblioteca\n"

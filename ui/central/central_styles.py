@@ -48,7 +48,7 @@ def section_title_qss() -> str:
     return """
         QLabel#sectionTitle {
             font-size: 19px;
-            font-weight: 740;
+            font-weight: bold;
             color: rgba(255,255,255,0.96);
             background: transparent;
             border: none;
@@ -60,7 +60,7 @@ def section_subtitle_qss() -> str:
     return """
         QLabel#sectionSubtitle {
             font-size: 12px;
-            color: rgba(255,255,255,0.56);
+            color: rgba(255,255,255,0.62);
             background: transparent;
             border: none;
         }
@@ -70,8 +70,8 @@ def section_subtitle_qss() -> str:
 def search_qss() -> str:
     return """
         QLineEdit {
-            background: rgba(255,255,255,0.085);
-            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.13);
             border-radius: 13px;
             padding: 5px 32px 5px 12px;
             color: rgba(255,255,255,0.94);
@@ -79,7 +79,7 @@ def search_qss() -> str:
             selection-background-color: rgba(143,183,255,0.30);
         }
         QLineEdit:focus {
-            background: rgba(255,255,255,0.115);
+            background: rgba(255,255,255,0.14);
             border: 1px solid rgba(143,183,255,0.34);
         }
     """
@@ -108,7 +108,7 @@ def tool_button_qss(kind: str = "default") -> str:
             padding: 5px 14px;
             color: rgba(255,255,255,0.82);
             font-size: 12px;
-            font-weight: 540;
+            font-weight: 500;
         }
         QToolButton:hover {
             background: rgba(255,255,255,0.105);
@@ -159,7 +159,7 @@ def table_qss() -> str:
             gridline-color: rgba(255,255,255,0.04);
             selection-background-color: rgba(143,183,255,0.16);
             selection-color: rgba(255,255,255,1.00);
-            color: rgba(255,255,255,0.84);
+            color: rgba(255,255,255,0.85);
             font-size: 13px;
         }
         QTableView::item {
@@ -184,7 +184,7 @@ def table_qss() -> str:
 def scrollbar_qss() -> str:
     return """
         QScrollBar:vertical {
-            width: 4px;
+            width: 3px;
             background: transparent;
             border: none;
             margin: 0;
@@ -202,7 +202,7 @@ def scrollbar_qss() -> str:
             height: 0;
         }
         QScrollBar:horizontal {
-            height: 4px;
+            height: 3px;
             background: transparent;
             border: none;
         }
