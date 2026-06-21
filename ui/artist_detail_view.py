@@ -316,7 +316,7 @@ class ArtistDetailView(QWidget):
 
         row.addStretch()
 
-        refresh_btn = QPushButton("↻ Actualizar info TheAudioDB")
+        refresh_btn = QPushButton("↻ Actualizar info externa")
         refresh_btn.setCursor(Qt.PointingHandCursor)
         refresh_btn.setStyleSheet(_BTN_CSS.replace("8px 14px", "6px 12px").replace("12.5px", "11px"))
         refresh_btn.clicked.connect(lambda: self.artist_enrich_requested.emit(artist.key))
@@ -335,7 +335,7 @@ class ArtistDetailView(QWidget):
         bio_title = QLabel("Reseña")
         source = ""
         if getattr(artist, 'enrichment_status', '') == "loaded":
-            source = " · TheAudioDB"
+            source = " · Información externa"
         bio_title.setStyleSheet(
             f"color: {_TEXT}; font-size: 15px; font-weight: 700; background: transparent;")
         if source:
@@ -646,7 +646,7 @@ class ArtistDetailView(QWidget):
         if getattr(artist, 'mbid', ''):
             data_rows.append(("MusicBrainz ID", artist.mbid))
         if getattr(artist, 'external_id', ''):
-            data_rows.append(("TheAudioDB ID", artist.external_id))
+            data_rows.append(("ID externo", artist.external_id))
 
         grid = QGridLayout()
         grid.setSpacing(4)

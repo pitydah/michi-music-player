@@ -228,7 +228,7 @@ class ArtistGridWidget(QWidget):
             "Anadir a la cola": "queue",
             "Crear playlist": "playlist",
             "Editar metadatos": "metadata",
-            "Actualizar info TheAudioDB": "refresh_info",
+            "Actualizar info externa": "refresh_info",
         }
         for label, action in acts.items():
             menu.addAction(label, lambda checked=False, a=action, k=artist_key: self._handle_context(a, k))
@@ -418,7 +418,7 @@ class _ArtistCard(QFrame):
         menu.addAction("Crear playlist", lambda: self.context_action.emit("playlist"))
         menu.addAction("Editar metadatos", lambda: self.context_action.emit("metadata"))
         menu.addSeparator()
-        menu.addAction("Actualizar info TheAudioDB", lambda: self.context_action.emit("refresh_info"))
+        menu.addAction("Actualizar info externa", lambda: self.context_action.emit("refresh_info"))
         menu.exec(event.globalPos())
 
 

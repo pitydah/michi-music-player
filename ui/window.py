@@ -281,13 +281,12 @@ class MainWindow(QMainWindow):
         # Detect LAN IP for serving files to Home Assistant
         self._local_ip = self._resolve_lan_ip()
 
-        # Artist enrichment via TheAudioDB
+        # Artist enrichment via MusicBrainz + Wikipedia + Cover Art Archive
         from integrations.theaudiodb.artist_enrichment_service import (
             ArtistEnrichmentService)
         from core.settings_manager import get as sget
         self._artist_enrich = ArtistEnrichmentService(self)
         self._artist_enrich.configure(
-            api_key=sget("artist_enrichment/api_key") or "2",
             enabled=sget("artist_enrichment/enabled") is not False)
 
         # Album info repository + enrichment
@@ -2051,7 +2050,7 @@ class MainWindow(QMainWindow):
         if hasattr(self._artist_grid, 'set_artists'):
             self._artist_grid.set_artists(repo.groups)
         self._toast_svc.show(
-            f"TheAudioDB: {error}", "error")
+            f"Enriquecimiento: {error}", "error")
 
     def _open_metadata_for_files(self, filepaths: list[str]):
         self._artist_ctrl.open_metadata_for_files(filepaths)

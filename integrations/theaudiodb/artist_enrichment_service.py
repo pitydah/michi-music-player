@@ -1,46 +1,75 @@
-"""Artist Enrichment Service — queries TheAudioDB and updates UI incrementally."""
+"""Artist Enrichment Service — multi-provider: MusicBrainz + Wikipedia + Cover Art Archive."""
 import os
 import time
+import locale
 
 from PySide6.QtCore import QObject, Signal, QTimer
 
-from integrations.theaudiodb.client import TheAudioDBClient
 from integrations.theaudiodb.cache import ArtistCache, IMAGES_DIR
 from integrations.theaudiodb.models import ArtistExternalInfo
-from library.artist_grouping import ArtistGroup
+from integrations.musicbrainz.client import MusicBrainzClient
+from integrations.wikipedia.client import WikipediaClient
 
 
 class ArtistEnrichmentService(QObject):
-    artist_enriched = Signal(str, object)      # artist_key, ArtistExternalInfo
-    artist_image_loaded = Signal(str, str)     # artist_key, local_path
-    enrichment_failed = Signal(str, str)        # artist_key, error
-    enrichment_progress = Signal(int, int)      # current, total
+    artist_enriched = Signal(str, object)       # artist_key, ArtistExternalInfo
+    artist_image_loaded = Signal(str, str)      # artist_key, local_path
+    enrichment_failed = Signal(str, str)         # artist_key, error
+    enrichment_progress = Signal(int, int)       # current, total
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._client = TheAudioDBClient("2", self)
+        self._mb = MusicBrainzClient(self)
+        self._wiki = WikipediaClient(self)
         self._cache = ArtistCache(self)
         self._enabled = True
+        self._wiki_lang = "es"
         self._pending: list[str] = []
-        self._active_keys: dict[str, str] = {}  # key → display_name
+        self._active_keys: dict[str, str] = {}   # key → display_name
         self._current_key = ""
-        self._rate_limit = 0.5
+        self._rate_limit = 1.0                   # MB rate limit: 1/s
         self._last_call = 0.0
         self._queued = 0
         self._running = 0
 
         # Permanent signal connections
-        self._client.artists_found.connect(self._on_search_results)
-        self._client.error_occurred.connect(self._on_client_error)
+        self._mb.artists_found.connect(self._on_mb_search_results)
+        self._mb.artist_found.connect(self._on_mb_artist_result)
+        self._mb.error_occurred.connect(self._on_client_error)
+        self._wiki.bio_loaded.connect(self._on_bio_loaded)
+        self._wiki.image_url_found.connect(self._on_wiki_image)
+        self._wiki.error_occurred.connect(lambda e: None)  # non-fatal
         self._cache.image_downloaded.connect(self.artist_image_loaded.emit)
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._process_queue)
-        self._timer.setInterval(600)
+        self._timer.setInterval(1100)  # 1.1s for MB rate limit
 
-    def configure(self, api_key: str = "2", enabled: bool = True):
-        self._client.set_api_key(api_key)
+    def configure(self, api_key: str = "", enabled: bool = True):
+        """Configure enrichment. api_key unused for free providers.
+
+        Detects system language for Wikipedia bios.
+        """
         self._enabled = enabled
+        self._wiki_lang = self._detect_language()
+
+    @staticmethod
+    def _detect_language() -> str:
+        """Detect system language: settings override, then $LANG, then locale, fallback 'es'."""
+        try:
+            from core.settings_manager import get as sget
+            lang = sget("artist_enrichment/wiki_lang") or ""
+            if lang and len(lang) >= 2:
+                return lang[:2]
+        except Exception:
+            pass
+
+        sys_lang = os.environ.get("LANG", "") or locale.getdefaultlocale()[0] or ""
+        code = sys_lang[:2] if len(sys_lang) >= 2 else "es"
+
+        valid = {"es", "en", "fr", "de", "pt", "it", "ja", "ru", "zh", "ko",
+                 "nl", "pl", "sv", "ar", "tr", "cs", "ca", "eu", "gl"}
+        return code if code in valid else "en"
 
     def enrich_artist(self, group, force: bool = False):
         if not self._enabled or not group or not group.key:
@@ -50,10 +79,8 @@ class ArtistEnrichmentService(QObject):
 
         # Check cache first (unless forced)
         if not force:
-            from core.settings_manager import get as sget
-            refresh_days = sget("artist_enrichment/refresh_days") or 30
             cached = self._cache.get_cached_artist(key)
-            if cached and not self._cache.is_stale(key, days=refresh_days):
+            if cached and not self._cache.is_stale(key):
                 info = _dict_to_info(cached)
                 if info and info.has_any_data:
                     self.artist_enriched.emit(key, info)
@@ -67,13 +94,12 @@ class ArtistEnrichmentService(QObject):
         if not self._timer.isActive():
             self._timer.start()
 
-    def enrich_visible_artists(self, groups: list[ArtistGroup], limit: int = 12):
+    def enrich_visible_artists(self, groups: list, limit: int = 12):
         for g in groups[:limit]:
             self.enrich_artist(g)
 
     def refresh_artist(self, artist_key: str):
         self._cache.clear_artist_cache(artist_key)
-        # Will re-fetch on next enrich call
 
     def cancel_pending(self):
         self._pending.clear()
@@ -92,7 +118,7 @@ class ArtistEnrichmentService(QObject):
         if not self._pending:
             self._timer.stop()
             return
-        if self._current_key:  # already processing one
+        if self._current_key:
             return
         now = time.time()
         if now - self._last_call < self._rate_limit:
@@ -104,23 +130,60 @@ class ArtistEnrichmentService(QObject):
         self._last_call = time.time()
         self._running += 1
         self.enrichment_progress.emit(self._running, self._running + len(self._pending))
-        self._client.search_artist(search_name)
+        self._mb.search_artist(search_name)
 
-    def _on_search_results(self, results: list):
+    def _on_mb_search_results(self, results: list):
         key = self._current_key
         self._current_key = ""
         if not key:
             return
         if not results:
             self._cache_not_found(key)
-            self.enrichment_failed.emit(key, "No encontrado en TheAudioDB")
+            self.enrichment_failed.emit(key, "No encontrado en MusicBrainz")
             return
-        best = _pick_best_match(key, results)
-        if not best:
+
+        info = results[0]
+        self._save_and_emit(key, _parse_to_info(info))
+
+        # Fetch bio and image in background
+        display_name = info.get("name") or info.get("sort_name") or key
+        self._wiki.fetch_bio(key, display_name, self._wiki_lang)
+        self._wiki.fetch_image(key, display_name, self._wiki_lang)
+
+    def _on_mb_artist_result(self, info: dict | None):
+        key = self._current_key
+        self._current_key = ""
+        if not key:
+            return
+        if not info or not info.get("name"):
             self._cache_not_found(key)
-            self.enrichment_failed.emit(key, "Sin coincidencia aceptable")
+            self.enrichment_failed.emit(key, "No encontrado en MusicBrainz")
             return
-        self._save_and_emit(key, best)
+        self._save_and_emit(key, _parse_to_info(info))
+
+    def _on_bio_loaded(self, artist_key: str, bio: str):
+        if not bio:
+            return
+        cached = self._cache.get_cached_artist(artist_key)
+        if cached:
+            cached["biography_es"] = bio if self._wiki_lang == "es" else cached.get("biography_es", bio)
+            cached["biography_en"] = bio if self._wiki_lang == "en" else cached.get("biography_en", "")
+            cached["biography"] = bio
+            self._cache.save_artist(artist_key, cached)
+            info = _dict_to_info(cached)
+            if info:
+                self.artist_enriched.emit(artist_key, info)
+
+    def _on_wiki_image(self, artist_key: str, image_url: str):
+        if not image_url:
+            return
+        target = os.path.join(IMAGES_DIR, f"{artist_key}_thumb.jpg")
+        self._cache.download_image(image_url, target, artist_key)
+        # Also update cached metadata with the URL
+        cached = self._cache.get_cached_artist(artist_key)
+        if cached:
+            cached["thumb_url"] = image_url
+            self._cache.save_artist(artist_key, cached)
 
     def _on_client_error(self, msg: str):
         key = self._current_key
@@ -128,9 +191,7 @@ class ArtistEnrichmentService(QObject):
         if key:
             self.enrichment_failed.emit(key, msg)
 
-
     def _save_and_emit(self, key: str, info: ArtistExternalInfo):
-        # Set local paths before saving
         thumb_path = os.path.join(IMAGES_DIR, f"{key}_thumb.jpg")
         banner_path = os.path.join(IMAGES_DIR, f"{key}_banner.jpg")
         logo_path = os.path.join(IMAGES_DIR, f"{key}_logo.png")
@@ -138,50 +199,38 @@ class ArtistEnrichmentService(QObject):
         info.banner_path = banner_path
         info.logo_path = logo_path
 
-        # Set fanart paths
         fanart_paths = []
-        for fi, _url in enumerate(info.fanart_urls[:4]):
+        for fi, _url in enumerate((info.fanart_urls or [])[:4]):
             fp = os.path.join(IMAGES_DIR, f"{key}_fanart_{fi}.jpg")
             fanart_paths.append(fp)
         info.fanart_paths = fanart_paths
 
         self._cache.save_artist(key, _info_to_dict(info))
         self.artist_enriched.emit(key, info)
-        # Download images in background
-        if info.thumb_url:
-            self._cache.download_image(info.thumb_url, thumb_path, key)
-        if info.banner_url:
-            self._cache.download_image(info.banner_url, banner_path, key)
-        if info.logo_url:
-            self._cache.download_image(info.logo_url, logo_path, key)
-        for fi, url in enumerate(info.fanart_urls[:4]):
-            fp = os.path.join(IMAGES_DIR, f"{key}_fanart_{fi}.jpg")
-            self._cache.download_image(url, fp, key)
 
     def _cache_not_found(self, key: str):
         self._cache.save_artist(key, {
             "_not_found": True, "_updated": time.time()})
-        # Mark as stale later than usual so we don't hammer
-        # (handled by is_stale logic)
 
 
-def _pick_best_match(key: str, results: list) -> ArtistExternalInfo | None:
-    """Pick the best matching result by normalizing and comparing names."""
-    import difflib
-    target = key.lower().replace("_", " ").strip()
-    best = None
-    best_score = 0.0
-    for r in results:
-        name = (getattr(r, 'name', '') or '').lower().strip()
-        if name == target:
-            return r  # exact match
-        score = difflib.SequenceMatcher(None, target, name).ratio()
-        if score > best_score:
-            best_score = score
-            best = r
-    if best_score >= 0.82:
-        return best
-    return None
+def _parse_to_info(data: dict) -> ArtistExternalInfo:
+    """Convert MusicBrainz parser dict to ArtistExternalInfo."""
+    return ArtistExternalInfo(
+        provider=data.get("provider", "musicbrainz"),
+        artist_id=data.get("artist_id", ""),
+        name=data.get("name", ""),
+        mbid=data.get("mbid", ""),
+        biography=data.get("biography", ""),
+        biography_en=data.get("biography_en", ""),
+        biography_es=data.get("biography_es", ""),
+        genre=data.get("genre", ""),
+        style=data.get("style", ""),
+        mood=data.get("mood", ""),
+        country=data.get("country", ""),
+        formed_year=data.get("formed_year", ""),
+        website=data.get("website", ""),
+        fanart_urls=data.get("fanart_urls", []),
+    )
 
 
 def _info_to_dict(info: ArtistExternalInfo) -> dict:
