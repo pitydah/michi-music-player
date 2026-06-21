@@ -53,10 +53,22 @@ def get_icon(key: str) -> str:
 
 
 def get_qicon(key: str, color: QColor | None = None, size: int = 24) -> QIcon:
-    """Return a QIcon with optional tinting."""
+    """Return a QIcon with optional tinting, always alpha-safe for SVGs."""
+    from ui.icon_registry import ICON_REGISTRY
     path = icon_path(key)
     if not path:
         return _missing_icon(color, size)
+
+    spec = ICON_REGISTRY.get(key)
+    is_svg = path.lower().endswith(".svg")
+    is_native = spec and spec.render_mode == "native_color"
+
+    if is_svg:
+        if color and not is_native:
+            return QIcon(_tinted_pixmap(path, color, size))
+        return QIcon(render_svg_icon(path, size, padding=1))
+
+    # PNG
     if color:
         pix = _tinted_pixmap(path, color, size)
         return QIcon(pix)
@@ -64,15 +76,25 @@ def get_qicon(key: str, color: QColor | None = None, size: int = 24) -> QIcon:
 
 
 def get_pixmap(key: str, color: QColor | None = None, size: int = 24) -> QPixmap:
-    """Return a QPixmap with optional tinting (only for symbolic_tint)."""
+    """Return a QPixmap with optional tinting (only for symbolic_tint).
+    All SVGs pass through the alpha-safe renderer."""
     spec = ICON_REGISTRY.get(key)
     path = icon_path(key)
     if not path:
         return _missing_pixmap(color, size)
-    # native_color icons never get tinted
-    if spec and spec.render_mode == "native_color":
-        if path.lower().endswith(".svg"):
-            return render_svg_icon(path, size, padding=0)
+
+    is_svg = path.lower().endswith(".svg")
+    is_native = spec and spec.render_mode == "native_color"
+
+    if is_svg:
+        if is_native:
+            return render_svg_icon(path, size, padding=2)
+        if color:
+            return _tinted_pixmap(path, color, size)
+        return render_svg_icon(path, size, padding=1)
+
+    # PNG — native_color never gets tinted, symbolic may
+    if is_native:
         pix = QPixmap(path)
         if pix.isNull():
             return _missing_pixmap(color, size)

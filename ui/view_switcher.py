@@ -1,6 +1,5 @@
 """Segmented view switcher — premium capsule control with QButtonGroup."""
 from PySide6.QtCore import Signal, Qt, QSize, QPropertyAnimation, QEasingCurve, QRect
-from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QWidget, QPushButton, QHBoxLayout, QButtonGroup, QGraphicsOpacityEffect, QFrame,
 )
@@ -108,7 +107,7 @@ class SegmentedViewSwitcher(QWidget):
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)
 
-        from ui.icons import get_icon_qicon
+        from ui.icons import get_qicon
 
         self._buttons: dict[str, QPushButton] = {}
         layout = QHBoxLayout(self)
@@ -116,8 +115,7 @@ class SegmentedViewSwitcher(QWidget):
         layout.setSpacing(0)
 
         for mode, defs in VIEW_MODE_DEFS.items():
-            icon_path = get_icon_func(defs["icon"]) if get_icon_func else ""
-            icon = QIcon(icon_path) if icon_path else get_icon_qicon(defs["icon"])
+            icon = get_qicon(defs["icon"], size=VIEW_ICON_W)
             btn = QPushButton(icon, "")
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)

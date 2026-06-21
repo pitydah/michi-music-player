@@ -86,12 +86,13 @@ QSlider::handle:horizontal {
 
 
 def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) -> QPushButton:
+    from ui.icons import get_qicon
     btn = QPushButton("")
     btn.setFlat(True)
 
-    icon_path = get_icon(icon_name)
-    if icon_path:
-        btn.setIcon(QIcon(icon_path))
+    icon = get_qicon(icon_name, size=icon_size)
+    if not icon.isNull():
+        btn.setIcon(icon)
 
     btn.setIconSize(QSize(icon_size, icon_size))
 

@@ -24,7 +24,7 @@ from ui.central.central_styles import (
     table_header_qss,
 )
 
-from ui.icons import get_icon, app_icon
+from ui.icons import get_icon, get_pixmap, get_qicon, app_icon
 from ui.nowplaying_bar import NowPlayingBar
 from audio.player import PlayerEngine, PlaybackState
 from library.library_db import (
@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
 
         self._settings_btn = QToolButton()
         self._settings_btn.setObjectName("settingsButton")
-        self._settings_btn.setIcon(QIcon(get_icon("warm_settings")))
+        self._settings_btn.setIcon(get_qicon("warm_settings", size=24))
         self._settings_btn.setIconSize(QSize(24, 24))
         self._settings_btn.setFixedSize(44, 44)
         self._settings_btn.setToolTip("Configuración y acciones")
@@ -1525,12 +1525,9 @@ class MainWindow(QMainWindow):
         self._section_subtitle.setText(subtitle)
 
         # Set section icon
-        icon_path = get_icon(icon_name)
-        if icon_path:
-            pix = QPixmap(icon_path)
-            if not pix.isNull():
-                self._section_icon.setPixmap(
-                    pix.scaled(26, 26, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        pix = get_pixmap(icon_name, size=26)
+        if not pix.isNull():
+            self._section_icon.setPixmap(pix)
         else:
             self._section_icon.clear()
 
