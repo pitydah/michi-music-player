@@ -497,7 +497,6 @@ class MainWindow(QMainWindow):
         hl.addSpacing(16)
 
         self._search = QLineEdit()
-        self._search.setObjectName("headerSearch")
         self._search.setPlaceholderText("Buscar canciones...")
         self._search.setClearButtonEnabled(True)
         self._search.setFixedWidth(240)
@@ -595,18 +594,23 @@ class MainWindow(QMainWindow):
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._on_table_menu)
 
-        from ui.central.empty_state import CentralEmptyState
-        placeholder = CentralEmptyState()
-        placeholder.set_icon("\U0001f3b5")
-        placeholder.set_title("Añade música a tu biblioteca")
-        placeholder.set_subtitle("Abre una carpeta o arrastra archivos para comenzar")
-        placeholder.set_primary_action("Añadir carpeta", self._add_folder)
+        placeholder = QLabel()
+        placeholder.setAlignment(Qt.AlignCenter)
+        placeholder.setStyleSheet(
+            "QLabel { color: rgba(255,255,255,0.68); font-size: 16px;"
+            "  background: transparent; border: none; padding: 48px; }")
+        placeholder.setText(
+            "Añade música a tu biblioteca\n"
+            "Abre una carpeta o arrastra archivos para comenzar")
 
-        placeholder_albums = CentralEmptyState()
-        placeholder_albums.set_icon("\U0001f4c0")
-        placeholder_albums.set_title("Sin álbumes en la biblioteca")
-        placeholder_albums.set_subtitle("Añade carpetas de música para ver carátulas aquí")
-        placeholder_albums.set_primary_action("Añadir carpeta", self._add_folder)
+        placeholder_albums = QLabel()
+        placeholder_albums.setAlignment(Qt.AlignCenter)
+        placeholder_albums.setStyleSheet(
+            "QLabel { color: rgba(255,255,255,0.62); font-size: 15px;"
+            "  background: transparent; border: none; padding: 48px; }")
+        placeholder_albums.setText(
+            "Sin álbumes en la biblioteca\n"
+            "Añade carpetas de música para ver carátulas aquí")
 
         placeholder_expanded = QLabel("")
         placeholder_expanded.setAlignment(Qt.AlignCenter)
@@ -754,10 +758,18 @@ class MainWindow(QMainWindow):
         self._playback_ctrl = PlaybackController(self)
 
         # ── Content wrapper ──
-        from ui.central.content_surface import CentralContentSurface
-        cw = CentralContentSurface()
+        cw = QWidget()
+        cw.setObjectName("contentSurface")
+        cw.setStyleSheet(
+            "QWidget#contentSurface {"
+            "  background: #090B11;"
+            "  border-left: 1px solid rgba(255,255,255,0.045);"
+            "}")
         self._content.setStyleSheet(
-            "QStackedWidget { background: #090B11; border: none; }")
+            "QStackedWidget {"
+            "  background: #090B11;"
+            "  border: none;"
+            "}")
         cl = QVBoxLayout(cw)
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(0)

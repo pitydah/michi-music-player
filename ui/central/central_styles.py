@@ -69,7 +69,7 @@ def section_subtitle_qss() -> str:
 
 def search_qss() -> str:
     return """
-        QLineEdit#headerSearch {
+        QLineEdit {
             background: rgba(255,255,255,0.085);
             border: 1px solid rgba(255,255,255,0.10);
             border-radius: 13px;
@@ -78,7 +78,7 @@ def search_qss() -> str:
             font-size: 13px;
             selection-background-color: rgba(143,183,255,0.30);
         }
-        QLineEdit#headerSearch:focus {
+        QLineEdit:focus {
             background: rgba(255,255,255,0.115);
             border: 1px solid rgba(143,183,255,0.34);
         }
