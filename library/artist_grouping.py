@@ -12,13 +12,14 @@ class ArtistAlbumGroup:
     artist: str
     albumartist: str
     year: int
-    tracks: list[MediaItem]
+    tracks: list
     cover_path: str
     total_duration: float
     disc_count: int
     track_count: int
     formats: list[str]
     genres: list[str]
+    album_type: str = ""  # album, ep, single, compilation, appearance
 
 
 @dataclass

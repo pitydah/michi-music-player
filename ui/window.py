@@ -724,6 +724,12 @@ class MainWindow(QMainWindow):
         self._artist_detail.metadata_artist_requested.connect(self._edit_artist_metadata)
         self._artist_detail.metadata_files_requested.connect(self._open_metadata_for_files)
         self._artist_detail.artist_enrich_requested.connect(self._refresh_artist_info)
+        self._artist_detail.track_play_requested.connect(
+            lambda fp: self._play_filepaths([fp], play_now=True))
+        self._artist_detail.track_queue_requested.connect(
+            lambda fp: self._play_filepaths([fp], play_now=False))
+        self._artist_detail.track_metadata_requested.connect(
+            lambda fp: self._open_metadata_for_files([fp]))
 
         # Enrichment service signals
         self._artist_enrich.artist_enriched.connect(self._on_artist_enriched)

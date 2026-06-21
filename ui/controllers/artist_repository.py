@@ -91,3 +91,45 @@ class ArtistRepository:
 
     def clear_current(self):
         self._current_key = None
+
+    # ── Helper methods ──
+
+    def current_group(self) -> ArtistGroup | None:
+        """Return the currently selected artist group, or None."""
+        if self._current_key:
+            return self._by_key.get(self._current_key)
+        return None
+
+    def albums_for_artist(self, key: str) -> list:
+        group = self.get_group(key)
+        return group.albums if group else []
+
+    def tracks_for_artist(self, key: str) -> list:
+        group = self.get_group(key)
+        return group.all_tracks if group else []
+
+    def top_tracks_for_artist(self, key: str, limit: int = 10) -> list:
+        group = self.get_group(key)
+        if not group:
+            return []
+        tracks = group.all_tracks[:]
+        # Order by play_count if available, else by album year + track number
+        for t in tracks:
+            if not hasattr(t, 'play_count') or t.play_count is None:
+                t.play_count = 0
+        tracks.sort(key=lambda t: (
+            -(getattr(t, 'play_count', 0) or 0),
+            getattr(t, 'year', 0) or 0,
+            getattr(t, 'album', '') or '',
+            getattr(t, 'disc_number', 1) or 1,
+            getattr(t, 'track_number', 0) or 0,
+        ))
+        return tracks[:limit]
+
+    def genres_for_artist(self, key: str) -> list[str]:
+        group = self.get_group(key)
+        return group.genres if group else []
+
+    def years_for_artist(self, key: str) -> list[int]:
+        group = self.get_group(key)
+        return group.years if group else []

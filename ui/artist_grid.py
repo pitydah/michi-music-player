@@ -263,16 +263,13 @@ class _ArtistCard(QFrame):
         c_layout.setContentsMargins(4, 4, 4, 4)
         c_layout.setSpacing(4)
 
-        # Try external thumb first
-        thumb_local = ""
-        if artist.thumb_url:
-            import os as _os
-            thumb_local = _os.path.join(
-                _os.path.expanduser("~/.cache/astra/theaudiodb/artists/images"),
-                f"{artist.key}_thumb.jpg")
+        # Try external thumb first — use model field set by enrichment service + repository
         external_img = None
-        if thumb_local and _os.path.exists(thumb_local):
-            external_img = QPixmap(thumb_local)
+        thumb_path = getattr(artist, 'thumb_path', '') or ''
+        if thumb_path:
+            import os as _os
+            if _os.path.exists(thumb_path):
+                external_img = QPixmap(thumb_path)
 
         if external_img and not external_img.isNull():
             thumb_lbl = QLabel()
@@ -319,7 +316,7 @@ class _ArtistCard(QFrame):
         if artist.enrichment_status == "loaded":
             ext_badge = QLabel("Info")
             ext_badge.setStyleSheet(
-                "background: rgba(70,145,255,0.18); color: rgba(120,180,255,0.88);"
+                "background: rgba(143,183,255,0.14); color: rgba(143,183,255,0.88);"
                 "font-size: 9px; font-weight: 700; border-radius: 5px; padding: 1px 6px;")
             ext_badge.setFixedHeight(16)
             badge_row.addWidget(ext_badge)
