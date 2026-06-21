@@ -51,8 +51,8 @@ from ui.playlist_detail_view import PlaylistDetailView
 from ui.metadata_editor import MetadataEditorWidget
 from ui.artist_grid import ArtistGridWidget
 from ui.artist_detail_view import ArtistDetailView
+from ui.home_audio_view import HomeAudioView
 from recognition.detection_service import DetectionService
-from recognition.null_recognizer import NullRecognizer
 
 
 SECTION_CONFIG = {
@@ -108,9 +108,13 @@ SECTION_CONFIG = {
                      "icon": "sidebar_playlists", "views": ["grid"],
                      "search": False, "default": "grid"},
     "metadata_editor": {"title": "Editor de metadatos",
-                        "subtitle": "Limpia, completa y normaliza la información de tus archivos",
-                        "icon": "metadata_editor", "views": [],
-                        "search": False, "default": None},
+                         "subtitle": "Limpia, completa y normaliza la información de tus archivos",
+                         "icon": "metadata_editor", "views": [],
+                         "search": False, "default": None},
+    "home_audio": {"title": "Home Audio",
+                    "subtitle": "Audio multiroom, parlantes y Home Assistant",
+                    "icon": "home_audio", "views": [],
+                    "search": False, "default": None},
 }
 
 
@@ -168,6 +172,7 @@ class MainWindow(QMainWindow):
         from core.toast_service import ToastService
         self._toast_svc = ToastService(self)
         self._player_bar_ctrl = None  # initialized after _setup_ui creates _player_bar
+        self._current_ref = None
         from ui.controllers.playlist_controller import PlaylistController
         self._playlist_ctrl = PlaylistController(self)
         from core.file_actions import FileActions
@@ -192,10 +197,75 @@ class MainWindow(QMainWindow):
         self._coverflow_cache_key: tuple | None = None
 
         # ── Music Identifier (must exist before _setup_ui) ──
-        self._detection = DetectionService(self._db, NullRecognizer(), self)
+        self._detection = DetectionService(self._db, parent=self)
         self._identifier_view = MusicIdentifierView()
         from recognition.identifier_controller import IdentifierController
         self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
+
+        self._home_audio_view = HomeAudioView()
+        self._home_audio_view.connect_requested.connect(self._on_home_audio_connect)
+        self._home_audio_view.refresh_requested.connect(self._on_home_audio_refresh)
+        self._home_audio_view.enable_multiroom_requested.connect(
+            self._on_home_audio_multiroom)
+        self._home_audio_view.open_settings_requested.connect(
+            self._on_home_audio_settings)
+        self._home_audio_view.open_receiver_wizard_requested.connect(
+            self._on_home_audio_receiver_wizard)
+        self._home_audio_view.device_cast_current_requested.connect(
+            self._on_home_audio_cast)
+        self._home_audio_view.device_play_requested.connect(
+            self._on_home_audio_device_play)
+        self._home_audio_view.device_pause_requested.connect(
+            self._on_home_audio_device_pause)
+        self._home_audio_view.device_stop_requested.connect(
+            self._on_home_audio_device_stop)
+        self._home_audio_view.device_volume_changed.connect(
+            self._on_home_audio_device_volume)
+        self._home_audio_view.group_selected_requested.connect(
+            self._on_home_audio_group_selected)
+
+        # Snapcast integration
+        from integrations.snapcast.snapserver_manager import SnapServerManager
+        self._snapserver = SnapServerManager(self)
+        self._snapserver.started.connect(self._on_snapserver_started)
+        self._snapserver.stopped.connect(self._on_snapserver_stopped)
+        self._snapserver.error_occurred.connect(self._on_snapserver_error)
+
+        from integrations.snapcast.audio_capture import AudioCaptureManager
+        self._audio_capture = AudioCaptureManager(self)
+        self._audio_capture.sink_ready.connect(self._on_audio_sink_ready)
+        self._audio_capture.error_occurred.connect(self._on_snapserver_error)
+
+        from integrations.snapcast.discovery import SnapClientDiscovery
+        self._snap_discovery = SnapClientDiscovery(self)
+        self._snap_discovery.clients_found.connect(self._on_snap_clients_found)
+
+        from integrations.snapcast.group_manager import GroupManager
+        self._group_mgr = GroupManager(self)
+        self._group_mgr.groups_changed.connect(self._on_groups_changed)
+
+        # Astra API + mDNS
+        from integrations.astra_api.http_api import AstraHttpApi
+        self._astra_api = AstraHttpApi(self)
+        self._astra_api.configure()
+
+        from integrations.astra_api.mdns_advertiser import MDNSAdvertiser
+        self._mdns = MDNSAdvertiser(self)
+        self._mdns.configure()
+
+        # Local media server for file streaming to HA
+        from integrations.home_assistant.local_media_server import (
+            LocalMediaServer)
+        self._local_media = LocalMediaServer(self)
+
+        # Artist enrichment via TheAudioDB
+        from integrations.theaudiodb.artist_enrichment_service import (
+            ArtistEnrichmentService)
+        from core.settings_manager import get as sget
+        self._artist_enrich = ArtistEnrichmentService(self)
+        self._artist_enrich.configure(
+            api_key=sget("artist_enrichment/api_key") or "2",
+            enabled=sget("artist_enrichment/enabled") is not False)
 
         self._setup_actions()
         self._setup_ui()
@@ -214,7 +284,12 @@ class MainWindow(QMainWindow):
         self._identifier_view.toggle_requested.connect(self._toggle_identifier)
         self._identifier_view.clear_requested.connect(self._clear_detected_tracks)
         self._identifier_view.track_selected.connect(self._on_detected_track_selected)
-        self._detection.status_changed.connect(self._identifier_view.set_identifier_enabled)
+        self._identifier_view.identify_once_requested.connect(
+            lambda: self._identifier_ctrl.identify_once() if hasattr(self, '_identifier_ctrl') else None)
+        self._identifier_view.settings_requested.connect(self._on_identifier_settings)
+        self._identifier_view.play_track_requested.connect(self._on_identifier_play)
+        self._identifier_view.search_track_requested.connect(self._on_identifier_search)
+        self._identifier_view.delete_track_requested.connect(self._on_identifier_delete)
         self._detection.track_detected.connect(self._on_track_detected)
         self._detection.detection_failed.connect(self._on_detection_failed)
 
@@ -224,6 +299,8 @@ class MainWindow(QMainWindow):
             lambda r: self._identifier_view.set_source_status(
                 self._identifier_ctrl.current_source_type,
                 self._identifier_ctrl.current_source_label, r))
+        self._identifier_ctrl.provider_changed.connect(
+            self._identifier_view.set_provider_status)
 
         from ui.controllers.mpris_controller import MPRISController
         self._mpris_ctrl = MPRISController(self)
@@ -804,8 +881,10 @@ class MainWindow(QMainWindow):
         self._artist_grid.artist_queue_requested.connect(self._queue_artist)
         self._artist_grid.artist_playlist_requested.connect(self._create_playlist_from_artist)
         self._artist_grid.artist_metadata_requested.connect(self._edit_artist_metadata)
+        self._artist_grid.artist_enrich_requested.connect(self._refresh_artist_info)
         self._artist_detail.back_requested.connect(self._show_artists_overview)
         self._artist_detail.play_all_requested.connect(self._play_artist)
+        self._artist_detail.shuffle_all_requested.connect(self._shuffle_artist)
         self._artist_detail.queue_all_requested.connect(self._queue_artist)
         self._artist_detail.play_album_requested.connect(
             lambda fps: self._play_filepaths(fps, play_now=True))
@@ -814,6 +893,11 @@ class MainWindow(QMainWindow):
         self._artist_detail.playlist_artist_requested.connect(self._create_playlist_from_artist)
         self._artist_detail.metadata_artist_requested.connect(self._edit_artist_metadata)
         self._artist_detail.metadata_files_requested.connect(self._open_metadata_for_files)
+        self._artist_detail.artist_enrich_requested.connect(self._refresh_artist_info)
+
+        # Enrichment service signals
+        self._artist_enrich.artist_enriched.connect(self._on_artist_enriched)
+        self._artist_enrich.artist_image_loaded.connect(self._on_artist_image_loaded)
 
         self._folder_browser = FolderBrowserWidget()
         self._folder_browser.folder_selected.connect(
@@ -840,6 +924,7 @@ class MainWindow(QMainWindow):
         self._views.register("playlist_hub", self._playlist_hub)
         self._views.register("playlist_detail", self._playlist_detail)
         self._views.register("metadata_editor", self._metadata_editor)
+        self._views.register("home_audio", self._home_audio_view)
         self._views.register("artist_grid", self._artist_grid)
         self._views.register("artist_detail", self._artist_detail)
         self._views.register("folders", self._folder_browser)
@@ -853,6 +938,7 @@ class MainWindow(QMainWindow):
             self._folder_browser, self._radio_widget,
             self._playlist_hub, self._metadata_editor,
             self._discover, self._identifier_view,
+            self._home_audio_view,
         ]
         from core.background_theme_service import BackgroundThemeService
         self._bg_theme = BackgroundThemeService(self._content)
@@ -936,7 +1022,9 @@ class MainWindow(QMainWindow):
         pb.seek_requested.connect(self._playback.seek)
         pb.volume_changed.connect(self._playback.set_volume)
         pb.eq_clicked.connect(self._open_eq)
-        pb.cover_clicked.connect(self._show_expanded)
+        pb.cover_preview_requested.connect(self._show_cover_preview)
+        pb.track_details_requested.connect(self._show_nowplaying_details)
+        pb.expanded_requested.connect(self._show_expanded)
         pb.transmit_clicked.connect(self._show_transmit_menu)
         pb.audio_output_clicked.connect(self._show_audio_output_menu)
         pb.mini_player_clicked.connect(self._open_mini_player)
@@ -1083,9 +1171,16 @@ class MainWindow(QMainWindow):
             self._fade_content("playlist_detail")
 
         elif key == "artists":
+            if not self._all_items and self._db:
+                self._load_library()
             self._artist_repo.clear_current()
             self._artist_repo.build(self._all_items)
             self._artist_grid.set_artists(self._artist_repo.groups)
+            if hasattr(self, '_artist_enrich'):
+                from core.settings_manager import get as sget
+                if sget("artist_enrichment/preload_visible") is not False:
+                    self._artist_enrich.enrich_visible_artists(
+                        self._artist_repo.groups, limit=12)
             if self._view_mode not in ("grid", "list"):
                 self._view_mode = "grid"
                 self._view_switcher.set_view("grid", emit=False)
@@ -1154,8 +1249,8 @@ class MainWindow(QMainWindow):
             files = scan_device_music(mount)
             refs = [TrackRef(
                 uri=fp, title=os.path.basename(fp),
-                duration=0.0, cover_path=fp,
-            ) for fp in files]
+            duration=0.0,
+        ) for fp in files]
             self._model.populate(refs)
             device_name = os.path.basename(mount)
             if usage:
@@ -1217,7 +1312,7 @@ class MainWindow(QMainWindow):
                         self._views.show("empty")
 
                 elif files:
-                    self._playback.enqueue(files, play_now=True)
+                    self._play_filepaths(files, play_now=True)
                     self._show_expanded()
                 else:
                     self._toast_svc.warning(
@@ -1291,6 +1386,11 @@ class MainWindow(QMainWindow):
             self._identifier_view.set_detected_tracks(
                 self._db.get_detected_tracks(100))
             self._views.show("identifier")
+
+        elif key == "home_audio":
+            self._configure_header_for_section("home_audio")
+            self._home_audio_view.refresh_if_needed()
+            self._views.show("home_audio")
 
     def _on_sidebar_menu(self, pos):
         widget = self._sidebar.childAt(pos)
@@ -1570,7 +1670,7 @@ class MainWindow(QMainWindow):
                 duration=float(dur),
                 genre=f"{len(tracks)} canciones",
                 year=year,
-                cover_path=tracks[0].filepath if tracks else "",
+                cover_path="",
             ))
         self._model.populate(refs)
         self._table.setModel(self._model)
@@ -1614,6 +1714,7 @@ class MainWindow(QMainWindow):
             "playlist_hub": "Buscar playlists...", "favs": "Buscar favoritos...",
             "recent": "Buscar recientes...", "mix_unplayed": "Buscar canciones...",
             "discover": "", "identifier": "", "metadata_editor": "",
+            "home_audio": "",
         }
         self._search.setPlaceholderText(searchers.get(section_key, "Buscar..."))
         self._search.setVisible(search)
@@ -1776,6 +1877,7 @@ class MainWindow(QMainWindow):
             self._coverflow = CoverFlowWidget()
             self._coverflow.double_clicked.connect(self._on_coverflow_dbl)
             self._coverflow.cover_snapped.connect(self._on_coverflow_snap)
+            self._coverflow.request_cover.connect(self._on_coverflow_cover_request)
             self._coverflow.play_album_requested.connect(self._on_coverflow_play_album)
             self._coverflow.queue_album_requested.connect(self._on_coverflow_queue_album)
             self._coverflow.playlist_album_requested.connect(self._on_coverflow_playlist_album)
@@ -1798,15 +1900,16 @@ class MainWindow(QMainWindow):
         tracks = data.get("tracks", [])
         if tracks:
             filepaths = [t.filepath for t in tracks]
-            self._playback.enqueue(filepaths, play_now=True)
+            self._play_filepaths(filepaths, play_now=True)
             self._show_expanded()
 
     def _on_coverflow_snap(self, index: int):
         if not self._coverflow or index >= len(self._coverflow._items):
             return
-        item = self._coverflow._items[index]
-        if item and item.pixmap and not item.pixmap.isNull():
-            self._bg_theme.apply(item.pixmap)
+        # Desactivado: CoverFlow ya tiene backdrop premium propio
+        # item = self._coverflow._items[index]
+        # if item and item.pixmap and not item.pixmap.isNull():
+        #     self._bg_theme.apply(item.pixmap)
 
     def _coverflow_album_tracks(self, idx: int) -> list:
         item = self._coverflow.item_at(idx) if self._coverflow else None
@@ -1818,7 +1921,7 @@ class MainWindow(QMainWindow):
         tracks = self._coverflow_album_tracks(idx)
         fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
         if fps:
-            self._playback.enqueue(fps, play_now=True)
+            self._play_filepaths(fps, play_now=True)
 
     def _on_coverflow_queue_album(self, idx: int):
         tracks = self._coverflow_album_tracks(idx)
@@ -1870,6 +1973,15 @@ class MainWindow(QMainWindow):
             d = os.path.dirname(tracks[0].filepath)
             import subprocess
             subprocess.Popen(["xdg-open", d])
+
+    def _on_coverflow_cover_request(self, idx: int, item):
+        """Lazy-load cover art for a CoverFlow item."""
+        from library.album_art import load_cover_pixmap
+        tracks = item.data.get("tracks", []) if item.data else []
+        if tracks:
+            pix = load_cover_pixmap(tracks[0].filepath, self._coverflow._cover_w)
+            if pix and not pix.isNull():
+                self._coverflow._on_cover_loaded(idx, pix)
 
     # Extracted to ui/controllers/album_controller.py — album grid + detail actions
 
@@ -1924,6 +2036,12 @@ class MainWindow(QMainWindow):
 
     def _open_artist_detail(self, artist_key: str):
         self._artist_ctrl.open_artist_detail(artist_key)
+        # Trigger enrichment for this artist
+        if hasattr(self, '_artist_enrich'):
+            repo = self._ctx.artist_repo
+            group = repo.get_group(artist_key)
+            if group:
+                self._artist_enrich.enrich_artist(group)
 
     def _show_artists_overview(self):
         self._artist_ctrl.show_artists_overview()
@@ -1934,6 +2052,9 @@ class MainWindow(QMainWindow):
     def _play_artist(self, artist_key: str):
         self._artist_ctrl.play_artist(artist_key)
 
+    def _shuffle_artist(self, artist_key: str):
+        self._artist_ctrl.play_artist(artist_key, shuffle=True)
+
     def _queue_artist(self, artist_key: str):
         self._artist_ctrl.queue_artist(artist_key)
 
@@ -1943,10 +2064,86 @@ class MainWindow(QMainWindow):
     def _edit_artist_metadata(self, artist_key: str):
         self._artist_ctrl.edit_artist_metadata(artist_key)
 
+    def _refresh_artist_info(self, artist_key: str):
+        repo = self._ctx.artist_repo
+        group = repo.get_group(artist_key)
+        if group and hasattr(self, '_artist_enrich'):
+            self._artist_enrich.cancel_pending()
+            self._artist_enrich.refresh_artist(artist_key)
+            self._artist_enrich.enrich_artist(group)
+            self._toast_svc.show(
+                f"Actualizando info de {group.display_name}...", "info")
+
+    def _on_artist_enriched(self, artist_key: str, info):
+        if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
+                and self._artist_detail._artist
+                and self._artist_detail._artist.key == artist_key):
+            self._artist_detail.set_external_info(info)
+        # Refresh grid to show updated badges
+        if hasattr(self._artist_grid, 'set_artists'):
+            repo = self._ctx.artist_repo
+            self._artist_grid.set_artists(repo.groups)
+
+    def _on_artist_image_loaded(self, artist_key: str, local_path: str):
+        # Refresh grid to show new thumb
+        if hasattr(self._artist_grid, 'set_artists'):
+            repo = self._ctx.artist_repo
+            self._artist_grid.set_artists(repo.groups)
+
     def _open_metadata_for_files(self, filepaths: list[str]):
         self._artist_ctrl.open_metadata_for_files(filepaths)
 
     # Extracted to ui/controllers/expanded_controller.py — now playing expanded
+
+    def _show_cover_preview(self):
+        """Show cover art in a premium popup — does NOT replace central content."""
+        from PySide6.QtWidgets import QDialog
+        current = self._playback.current
+        cover_path = ""
+        if current:
+            from library.cover_art_service import CoverArtService
+            cover_path = CoverArtService.find_cover(current)
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Carátula")
+        dlg.setFixedSize(460, 460)
+        dlg.setStyleSheet("QDialog { background: rgba(9,11,17,0.97); border-radius: 18px; }")
+        from PySide6.QtWidgets import QVBoxLayout, QLabel
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        lbl = QLabel()
+        lbl.setAlignment(Qt.AlignCenter)
+        if cover_path:
+            pix = QPixmap(cover_path)
+            if not pix.isNull():
+                lbl.setPixmap(pix.scaled(400, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        lbl.setStyleSheet("background: transparent; border: none;")
+        layout.addWidget(lbl)
+        dlg.exec()
+
+    def _show_nowplaying_details(self):
+        """Show track details in a premium popover menu — does NOT replace central content."""
+        from PySide6.QtWidgets import QMenu
+        from ui.premium_menus import premium_menu_qss
+        menu = QMenu(self)
+        menu.setStyleSheet(premium_menu_qss())
+        current = self._playback.current
+        name = os.path.basename(current) if current else "Sin reproducción"
+        ref = self._current_ref
+        artist = ref.artist if ref else ""
+        album = ref.album if ref else ""
+
+        menu.addAction(f"Título: {name}").setEnabled(False)
+        if artist:
+            menu.addAction(f"Artista: {artist}").setEnabled(False)
+        if album:
+            menu.addAction(f"Álbum: {album}").setEnabled(False)
+        menu.addSeparator()
+        if current and not current.startswith("http"):
+            menu.addAction("Abrir carpeta", lambda: self._on_album_open_folder(os.path.dirname(current)))
+            menu.addAction("Editar metadatos", lambda: self._open_metadata_for_files([current]))
+
+        btn = self._player_bar._cover
+        menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
     def _show_expanded(self):
         self._expanded_ctrl.show_expanded()
@@ -2049,6 +2246,274 @@ class MainWindow(QMainWindow):
     def _manage_transmit_devices(self):
         self._transmit_ctrl.manage_transmit_devices()
 
+    # ── Home Audio ──
+
+    def _on_home_audio_connect(self):
+        from core.settings_manager import get as sget
+        from PySide6.QtWidgets import (
+            QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QCheckBox)
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Conectar Home Assistant")
+        dlg.setMinimumWidth(440)
+        layout = QFormLayout(dlg)
+        layout.setSpacing(10)
+
+        saved_url = sget("home_audio/ha_base_url") or ""
+        saved_token = sget("home_audio/ha_token") or ""
+
+        url_edit = QLineEdit(saved_url)
+        url_edit.setPlaceholderText("http://homeassistant.local:8123")
+        token_edit = QLineEdit(saved_token)
+        token_edit.setEchoMode(QLineEdit.Password)
+        token_edit.setPlaceholderText("Token de acceso de larga duracion")
+        verify_cb = QCheckBox("Verificar SSL")
+        verify_cb.setChecked(sget("home_audio/ha_verify_ssl") is not False)
+        verify_cb.setStyleSheet("color: rgba(255,255,255,0.72);")
+
+        layout.addRow("URL:", url_edit)
+        layout.addRow("Token:", token_edit)
+        layout.addRow("", verify_cb)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(lambda: self._try_ha_connection(
+            url_edit.text().strip(), token_edit.text().strip(), dlg))
+        btns.rejected.connect(dlg.reject)
+        layout.addRow(btns)
+        dlg.exec()
+
+    def _try_ha_connection(self, url: str, token: str, dialog):
+        from core.settings_manager import get as sget, set_ as sset
+        sset("home_audio/ha_base_url", url)
+        sset("home_audio/ha_token", token)
+        dialog.accept()
+
+        if not hasattr(self, '_ha_client'):
+            from integrations.home_assistant.client import HomeAssistantClient
+            self._ha_client = HomeAssistantClient(self)
+            self._ha_client.connection_tested.connect(
+                self._on_ha_connection_result)
+            self._ha_client.entities_loaded.connect(
+                self._on_ha_entities_loaded)
+            self._ha_client.error_occurred.connect(self._on_ha_error)
+
+        self._toast_svc.show("Probando conexion con Home Assistant...", "info")
+        self._ha_client.configure(
+            url, token, sget("home_audio/ha_verify_ssl"))
+        self._ha_client.test_connection()
+
+    def _on_ha_connection_result(self, ok: bool, msg: str):
+        if ok:
+            self._ha_connected = True
+            self._home_audio_view.set_data(
+                ha_connected=True, multiroom_active=False,
+                snapserver_running=False, devices=[], groups=[])
+            self._ha_client.get_media_players()
+            self._toast_svc.show(f"Home Assistant: {msg}", "success")
+        else:
+            self._ha_connected = False
+            self._toast_svc.show(f"Error: {msg}", "error")
+
+    def _on_ha_entities_loaded(self, entities: list):
+        from integrations.home_assistant.client import entity_to_device
+        devices = [entity_to_device(e) for e in entities]
+        self._home_audio_view.set_data(
+            ha_connected=True, multiroom_active=False,
+            snapserver_running=False, devices=devices, groups=[])
+        n = len([d for d in devices if d.get("available")])
+        self._toast_svc.show(
+            f"Home Assistant: {n} media_player disponibles", "info")
+
+    def _on_ha_error(self, msg: str):
+        self._toast_svc.show(f"Home Assistant: {msg}", "error")
+
+    def _on_home_audio_refresh(self):
+        if hasattr(self, '_snap_discovery'):
+            self._snap_discovery.refresh()
+        if hasattr(self, '_ha_client') and getattr(self, '_ha_connected', False):
+            self._ha_client.get_media_players()
+        else:
+            self._refresh_home_audio_state()
+
+    def _on_home_audio_multiroom(self, enable: bool):
+        if enable:
+            # Start Astra API
+            if not self._astra_api.is_running:
+                self._astra_api.start()
+            # Start local media server
+            if not self._local_media.is_running:
+                self._local_media.configure(8125)
+                self._local_media.start()
+            # Start mDNS
+            if not self._mdns.is_running and self._mdns.is_available:
+                self._mdns.start()
+
+            if not self._snapserver.is_binary_available():
+                self._toast_svc.show(
+                    "snapserver no encontrado. Instala snapcast para usar multiroom.",
+                    "error")
+                self._home_audio_view.set_data(
+                    ha_connected=getattr(self, '_ha_connected', False),
+                    multiroom_active=False,
+                    snapserver_running=False,
+                    devices=self._home_audio_view._devices,
+                    groups=self._group_mgr.groups())
+                return
+            self._audio_capture.create_sink()
+        else:
+            self._snapserver.stop()
+            self._audio_capture.remove_sink()
+            self._mdns.stop()
+            self._astra_api.stop()
+            self._local_media.stop()
+
+    def _on_home_audio_settings(self):
+        from core.settings_manager import get as sget
+        self._toast_svc.show(
+            "Preferencias Home Audio — "
+            f"HA: {sget('home_audio/ha_base_url') or 'no configurado'}",
+            "info")
+
+    def _on_home_audio_receiver_wizard(self):
+        from integrations.snapcast.receivers import ReceiverWizard
+        dlg = ReceiverWizard(self)
+        dlg.exec()
+
+    def _stream_local_to_ha(self, filepath: str, entity_id: str, device_name: str):
+        if not hasattr(self, '_local_media') or not self._local_media.is_running:
+            # Try to auto-start
+            if hasattr(self, '_local_media'):
+                self._local_media.configure(8125)
+                self._local_media.start()
+            else:
+                self._toast_svc.show(
+                    "Servidor local de medios no disponible", "error")
+                return
+        try:
+            url = self._local_media.register_file(filepath)
+            self._ha_client.play_media(entity_id, url, "music")
+            self._ctx.player_bar.set_transmit_active(True, device_name)
+            self._toast_svc.show(
+                f"Enviando a {device_name}", "success")
+        except ValueError as e:
+            self._toast_svc.show(
+                f"No se pudo servir el archivo: {e}", "error")
+
+    def _on_home_audio_cast(self, device: dict):
+        if not hasattr(self, '_ha_client') or not getattr(self, '_ha_connected', False):
+            self._toast_svc.show("No conectado a Home Assistant", "error")
+            return
+        current = self._playback.current
+        if not current:
+            self._toast_svc.show("No hay reproduccion activa", "info")
+            return
+        entity_id = device.get("entity_id", "")
+        device_name = device.get("name", "Dispositivo")
+        if current.startswith("http"):
+            self._ha_client.play_media(entity_id, current, "music")
+            self._ctx.player_bar.set_transmit_active(True, device_name)
+            self._toast_svc.show(
+                f"Enviando a {device_name}", "success")
+        else:
+            self._stream_local_to_ha(current, entity_id, device_name)
+
+    def _on_home_audio_device_play(self, device: dict):
+        if not hasattr(self, '_ha_client'):
+            return
+        self._ha_client.media_play(device.get("entity_id", ""))
+
+    def _on_home_audio_device_pause(self, device: dict):
+        if not hasattr(self, '_ha_client'):
+            return
+        self._ha_client.media_pause(device.get("entity_id", ""))
+
+    def _on_home_audio_device_stop(self, device: dict):
+        if not hasattr(self, '_ha_client'):
+            return
+        self._ha_client.media_stop(device.get("entity_id", ""))
+
+    def _on_home_audio_device_volume(self, device: dict, volume: int):
+        if not hasattr(self, '_ha_client'):
+            return
+        self._ha_client.set_volume(device.get("entity_id", ""), volume / 100.0)
+
+    def _on_home_audio_group_selected(self, group: dict):
+        gid = group.get("id", "")
+        if hasattr(self, '_group_mgr'):
+            self._group_mgr.activate_group(gid)
+            name = group.get("name", gid)
+            self._ctx.player_bar.set_transmit_active(True, name)
+            self._toast_svc.show(f"Zona activada: {name}", "success")
+            self._refresh_home_audio_state()
+
+    # ── Snapcast handlers ──
+
+    def _on_snapserver_started(self):
+        self._toast_svc.show("Snapserver iniciado", "success")
+        self._snap_discovery.refresh()
+        self._refresh_home_audio_state()
+
+    def _on_snapserver_stopped(self):
+        self._toast_svc.show("Snapserver detenido", "info")
+        self._refresh_home_audio_state()
+
+    def _on_snapserver_error(self, msg: str):
+        self._toast_svc.show(f"Snapcast: {msg}", "error")
+
+    def _on_audio_sink_ready(self, monitor: str):
+        self._snapserver.configure(
+            tcp=self._snapserver.tcp_port,
+            ctrl=self._snapserver.control_port,
+            http=self._snapserver.http_port)
+        self._snapserver.start()
+
+    def _on_snap_clients_found(self, clients: list):
+        self._refresh_home_audio_state()
+
+    def _on_groups_changed(self, groups: list):
+        self._refresh_home_audio_state()
+
+    def _refresh_home_audio_state(self):
+        snap_clients = self._snap_discovery.clients() if hasattr(
+            self, '_snap_discovery') else []
+        snap_devices = [
+            {"id": c["id"], "name": c.get("name", c.get("host", "")),
+             "entity_id": c.get("id", ""), "state": "idle",
+             "area": "", "device_type": "snapclient",
+             "backend": c.get("backend", "snapcast"),
+             "available": c.get("available", True)}
+            for c in snap_clients]
+
+        ha_devices = self._home_audio_view._devices if hasattr(
+            self, '_home_audio_view') else []
+        all_devices = ha_devices + snap_devices
+
+        groups = self._group_mgr.groups() if hasattr(
+            self, '_group_mgr') else []
+
+        api_running = self._astra_api.is_running if hasattr(
+            self, '_astra_api') else False
+        mdns_running = self._mdns.is_running if hasattr(
+            self, '_mdns') else False
+        snap_running = self._snapserver.is_running if hasattr(
+            self, '_snapserver') else False
+        local_media_running = self._local_media.is_running if hasattr(
+            self, '_local_media') else False
+
+        self._home_audio_view.set_data(
+            ha_connected=getattr(self, '_ha_connected', False),
+            multiroom_active=snap_running,
+            snapserver_running=snap_running,
+            devices=all_devices,
+            groups=groups)
+
+        self._home_audio_view.set_diagnostics({
+            "API Astra": "Activa" if api_running else "No activa",
+            "mDNS": "Activo" if mdns_running else (
+                "No disponible" if not (hasattr(self, '_mdns') and self._mdns.is_available) else "No activo"),
+            "Snapserver": "Activo" if snap_running else "Detenido",
+            "Servidor local": "Activo" if local_media_running else "No activo",
+        })
+
     # ── Identifier ──
 
     def _toggle_identifier(self, enabled: bool):
@@ -2071,7 +2536,7 @@ class MainWindow(QMainWindow):
     def _on_detected_track_selected(self, track: dict):
         filepath = track.get("filepath")
         if filepath and os.path.exists(filepath):
-            self._playback.enqueue([filepath], play_now=True)
+            self._play_file(filepath)
         else:
             title = track.get("title", "")
             artist = track.get("artist", "")
@@ -2079,6 +2544,31 @@ class MainWindow(QMainWindow):
                 self._search.setText(f"{title} {artist}")
                 self._search_ctrl.set_active("local")
                 self._search_ctrl.search(f"{title} {artist}")
+
+    def _on_identifier_settings(self):
+        self._toast_svc.show("Preferencias del identificador: proximamente en ajustes", "info")
+
+    def _on_identifier_play(self, track: dict):
+        fp = track.get("matched_filepath") or track.get("filepath", "")
+        if fp and os.path.isfile(fp):
+            self._play_file(fp)
+        else:
+            self._toast_svc.show("Archivo no encontrado en biblioteca", "info")
+
+    def _on_identifier_search(self, track: dict):
+        title = track.get("title", "")
+        artist = track.get("artist", "")
+        if title or artist:
+            self._search.setText(f"{title} {artist}")
+            self._search_ctrl.set_active("local")
+            self._search_ctrl.search(f"{title} {artist}")
+
+    def _on_identifier_delete(self, track: dict):
+        idx = track.get("id", 0)
+        if hasattr(self._db, 'delete_detected_track'):
+            self._db.delete_detected_track(idx)
+            self._identifier_view.set_detected_tracks(
+                self._db.get_detected_tracks(100))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -2152,4 +2642,4 @@ class MainWindow(QMainWindow):
             if len(files) == 1:
                 self._play_file(files[0])
             else:
-                self._playback.enqueue(files, play_now=True)
+                self._play_filepaths(files, play_now=True)

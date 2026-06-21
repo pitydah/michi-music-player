@@ -97,12 +97,3 @@ class IViewController(ABC):
     def widget(self, name: str) -> QWidget | None:
         ...
 
-
-class ILibraryController(ABC):
-    """Future: decouple window.py from direct LibraryDB access.
-
-    Not yet implemented — placeholder for Phase 3+."""
-
-    @abstractmethod
-    def get_all_tracks(self) -> list:
-        ...

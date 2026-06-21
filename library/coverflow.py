@@ -1,4 +1,7 @@
 """CoverFlow — QGraphicsView-based carousel with OpenGL, physics, reflections, slider."""
+import os
+from dataclasses import dataclass
+
 from PySide6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QVariantAnimation,
     Property, Signal, QRectF, QPointF,
@@ -21,6 +24,10 @@ try:
 except ImportError:
     HAVE_OPENGL = False
 
+# ── Render mode ──
+_MODE = os.environ.get("ASTRA_COVERFLOW_MODE", "classic_3d")
+_DEBUG = os.environ.get("ASTRA_COVERFLOW_DEBUG", "0") == "1"
+
 
 def _clamp(x, a, b):
     return max(a, min(b, float(x)))
@@ -34,6 +41,98 @@ def _smoothstep(edge0, edge1, x):
 def _ease_out_cubic(x):
     t = _clamp(x, 0.0, 1.0)
     return 1.0 - pow(1.0 - t, 3.0)
+
+
+@dataclass
+class CoverFlowItemState:
+    x: float = 0.0
+    y: float = 0.0
+    scale: float = 1.0
+    rotation_y: float = 0.0
+    opacity: float = 1.0
+    darken_alpha: int = 0
+    z: int = 0
+    is_center: bool = False
+    visible: bool = True
+
+
+class CoverFlowLayoutEngine:
+    """Pure math: calculates position, rotation, scale for each item."""
+
+    def __init__(self):
+        self.max_rot = 60.0
+        self.center_scale = 1.05
+        self.side_scale = 0.82
+        self.far_scale = 0.52
+        self.near_gap_factor = 0.72
+        self.side_gap_factor = 0.32
+        self.far_gap_factor = 0.18
+        self.center_y_offset = -38
+
+    def visible_indices(self, count: int, offset: float,
+                        viewport_width: int) -> range:
+        if viewport_width < 900:
+            r = 7
+        elif viewport_width > 1600:
+            r = 14
+        else:
+            r = 10
+        mid = round(offset)
+        return range(max(0, mid - r), min(count, mid + r + 1))
+
+    def item_state(self, index: int, offset: float,
+                   cover_w: int, cover_h: int,
+                   view_w: int, view_h: int,
+                   velocity: float = 0.0) -> CoverFlowItemState:
+        dist = index - offset
+        ad = abs(dist)
+        side = -1.0 if dist < 0 else 1.0
+
+        center_t = 1.0 - _smoothstep(0.0, 1.0, ad)
+        far_t = _smoothstep(1.8, 6.0, ad)
+
+        # rotation — classic Apple linear + cap
+        if ad <= 1.0:
+            rot_raw = ad * 50.0
+        elif ad <= 2.2:
+            rot_raw = 50.0 + (ad - 1.0) * 8.0
+        else:
+            rot_raw = 60.0
+        if ad < 0.10:
+            rot_raw = 0.0
+        rot = side * rot_raw
+
+        # position
+        near_gap = cover_w * self.near_gap_factor
+        side_gap = cover_w * self.side_gap_factor
+        far_gap = cover_w * self.far_gap_factor
+        cx = view_w / 2.0
+        if ad < 1.0:
+            x = cx + side * near_gap * _smoothstep(0.0, 1.0, ad)
+        else:
+            x = cx + side * (near_gap + side_gap * (ad - 1.0)
+                             + far_gap * max(0.0, ad - 3.0))
+        cy = view_h / 2.0 + self.center_y_offset
+        y = cy + (1.0 - center_t) * 16.0 + far_t * 12.0
+
+        # scale — classic Apple: center 1.05, ±1 = 0.87, ±2 = 0.65, min 0.45
+        scale = _clamp(self.center_scale - max(0.0, ad - 0.2) * 0.22, 0.45, 1.05)
+
+        # visual state
+        is_center = ad < 0.50
+        darken = 0 if is_center else int(_clamp(ad * 33, 0, 120))
+        z_val = 2000 - int(ad * 22)
+
+        # opacity
+        opacity = 1.0 - min(0.55, ad * 0.07)
+        if ad > 9:
+            opacity = 0.0
+        visible = ad <= 10
+
+        return CoverFlowItemState(
+            x=x, y=y, scale=scale, rotation_y=rot,
+            opacity=max(0.0, opacity), darken_alpha=darken,
+            z=z_val, is_center=is_center, visible=visible)
 
 
 def _format_dur(seconds: float) -> str:
@@ -73,7 +172,7 @@ class CoverItem(QGraphicsObject):
         self._index = index
         self._w = width
         self._h = height
-        self._ref_h = int(height * 0.55)
+        self._ref_h = int(height * 0.40)
         self._darken_alpha = 0
         self._is_center = False
         self._cover_requested = False
@@ -119,15 +218,16 @@ class CoverItem(QGraphicsObject):
         p.save()
         p.translate(0, self._h + self._ref_h)
         p.scale(1, -1)
-        p.setOpacity(0.18)
+        p.setOpacity(0.12)
         p.setClipPath(path)
         p.drawPixmap(0, 0, self._pixmap)
         p.restore()
 
         grad = QLinearGradient(0, self._h, 0, total_h)
-        grad.setColorAt(0.0, QColor(13, 13, 20, 80))
-        grad.setColorAt(0.12, QColor(13, 13, 20, 170))
-        grad.setColorAt(0.35, QColor(13, 13, 20, 255))
+        grad.setColorAt(0.0, QColor(0, 0, 0, 0))
+        grad.setColorAt(0.08, QColor(13, 13, 20, 80))
+        grad.setColorAt(0.25, QColor(13, 13, 20, 185))
+        grad.setColorAt(0.55, QColor(13, 13, 20, 255))
         grad.setColorAt(1.0, QColor(13, 13, 20, 255))
         p.setCompositionMode(QPainter.CompositionMode_SourceOver)
         p.fillRect(0, self._h, self._w, self._ref_h, grad)
@@ -170,8 +270,30 @@ class CoverItem(QGraphicsObject):
     def mark_cover_requested(self):
         self._cover_requested = True
 
+    def _apply_state(self, state, w, h):
+        self._is_center = state.is_center
+        self._darken_alpha = state.darken_alpha
+        self.setOpacity(state.opacity)
+        self.setZValue(state.z)
+
+        transform = QTransform()
+        if abs(state.rotation_y) > 0.0:
+            # Pivot from inner edge (coverflowjs pattern)
+            if state.rotation_y < 0:
+                # Left tile: pivot at right edge
+                pivot_x, pivot_y = w, h / 2
+            else:
+                # Right tile: pivot at left edge
+                pivot_x, pivot_y = 0, h / 2
+            transform.translate(pivot_x, pivot_y)
+            transform.rotate(state.rotation_y, Qt.YAxis)
+            transform.translate(-pivot_x, -pivot_y)
+        transform.translate(state.x - w / 2, state.y - h / 2)
+        transform.scale(state.scale, state.scale)
+        self.setTransform(transform)
+
     def boundingRect(self) -> QRectF:
-        return QRectF(-self._w / 2, -self._h / 2, self._w, self._h + self._ref_h)
+        return QRectF(0, 0, self._w, self._h + self._ref_h)
 
     def paint(self, painter: QPainter, option, widget):
         painter.setRenderHint(QPainter.Antialiasing)
@@ -182,15 +304,15 @@ class CoverItem(QGraphicsObject):
         if self._is_center:
             painter.save()
             shadow = QRadialGradient(self._w / 2, self._h, self._w * 0.55)
-            shadow.setColorAt(0.0, QColor(0, 0, 0, 40))
+            shadow.setColorAt(0.0, QColor(0, 0, 0, 55))
             shadow.setColorAt(1.0, QColor(0, 0, 0, 0))
             painter.setBrush(shadow)
             painter.setPen(Qt.NoPen)
-            painter.drawEllipse(QPointF(self._w / 2, self._h), self._w * 0.38, 8)
+            painter.drawEllipse(QPointF(self._w / 2, self._h), self._w * 0.45, 10)
             painter.restore()
 
             painter.save()
-            painter.setPen(QPen(QColor(255, 255, 255, 48), 1.3))
+            painter.setPen(QPen(QColor(255, 255, 255, 80), 1.3))
             path = QPainterPath()
             path.addRoundedRect(0.6, 0.6, self._w - 1.2, self._h - 1.2, 14, 14)
             painter.drawPath(path)
@@ -204,9 +326,10 @@ class CoverItem(QGraphicsObject):
 
         if self._darken_alpha > 0:
             painter.save()
-            painter.setCompositionMode(QPainter.CompositionMode_SourceAtop)
-            painter.fillRect(0, 0, int(self._w), int(self._h + self._ref_h),
-                             QColor(0, 0, 0, self._darken_alpha))
+            gray = max(40, 255 - int(self._darken_alpha * 1.6))
+            painter.setCompositionMode(QPainter.CompositionMode_Multiply)
+            painter.fillRect(0, 0, self._w, self._h + self._ref_h,
+                             QColor(gray, gray, gray))
             painter.restore()
 
     def update_transform(self, current_offset: float, view_width: float,
@@ -293,8 +416,13 @@ class CoverFlowWidget(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        if HAVE_OPENGL:
-            self.setViewport(QOpenGLWidget())
+        self._render_mode = _MODE
+        self._use_opengl = _MODE not in ("no_opengl", "safe_2d") and HAVE_OPENGL
+        if self._use_opengl:
+            try:
+                self.setViewport(QOpenGLWidget())
+            except Exception:
+                self._use_opengl = False
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -341,6 +469,8 @@ class CoverFlowWidget(QGraphicsView):
         self._phys_timer = QTimer(self)
         self._phys_timer.timeout.connect(self._update_physics)
 
+        self._layout_engine = CoverFlowLayoutEngine()
+
         self._wheel_snap_timer = QTimer(self)
         self._wheel_snap_timer.setSingleShot(True)
         self._wheel_snap_timer.timeout.connect(self._trigger_snap)
@@ -349,6 +479,7 @@ class CoverFlowWidget(QGraphicsView):
         self._snap_anim.setEasingCurve(QEasingCurve.OutCubic)
         self._snap_anim.setDuration(340)
         self._snap_anim.finished.connect(self._on_snap_finished)
+        self._snapping = False
 
         self._create_overlay_items()
         self._create_slider()
@@ -371,25 +502,26 @@ class CoverFlowWidget(QGraphicsView):
         self._slider.setObjectName("coverflowSlider")
         self._slider.setRange(0, 0)
         self._slider.setValue(0)
-        self._slider.setFixedHeight(26)
+        self._slider.setFixedHeight(20)
         self._slider.setCursor(Qt.PointingHandCursor)
         self._slider.setStyleSheet("""
-            QSlider#coverflowSlider { background: transparent; }
+            QSlider#coverflowSlider { background: transparent; border: none; }
             QSlider#coverflowSlider::groove:horizontal {
-                height: 5px; border-radius: 3px;
-                background: rgba(255,255,255,0.085);
+                height: 2px; border-radius: 1px; margin: 0 4px;
+                background: rgba(255,255,255,0.055);
             }
             QSlider#coverflowSlider::sub-page:horizontal {
-                height: 5px; border-radius: 3px;
-                background: rgba(255,255,255,0.32);
+                height: 2px; border-radius: 1px;
+                background: rgba(255,255,255,0.35);
             }
             QSlider#coverflowSlider::handle:horizontal {
-                width: 15px; height: 15px; margin: -5px 0; border-radius: 8px;
-                background: rgba(255,255,255,0.84);
-                border: 1px solid rgba(255,255,255,0.50);
+                width: 8px; height: 8px; margin: -3px -4px;
+                border-radius: 4px; background: rgba(255,255,255,0.92);
+                border: none;
             }
             QSlider#coverflowSlider::handle:horizontal:hover {
-                background: #FFFFFF; border: 1px solid rgba(255,255,255,0.78);
+                width: 14px; height: 14px; margin: -6px -7px;
+                border-radius: 7px; background: #FFFFFF;
             }
         """)
         self._slider.valueChanged.connect(self._on_slider_changed)
@@ -558,14 +690,19 @@ class CoverFlowWidget(QGraphicsView):
         vh = self.viewport().height()
         self._empty_msg.setVisible(False)
 
-        vis_range = self._visible_range()
         for ci in self._cover_items:
-            dist = ci._index - self._current
-            if abs(dist) > vis_range:
+            state = self._layout_engine.item_state(
+                ci._index, self._current, self._cover_w, self._cover_h,
+                vw, vh, self._velocity)
+            if not state.visible:
                 ci.setVisible(False)
                 continue
             ci.setVisible(True)
-            ci.update_transform(self._current, vw, vh, self._velocity, self._geometry)
+            if self._render_mode == "safe_2d":
+                state.rotation_y = 0.0
+            if self._render_mode == "no_reflection":
+                ci._ref_h = 0
+            ci._apply_state(state, self._cover_w, self._cover_h)
 
             if ci.needs_cover:
                 ci.mark_cover_requested()
@@ -589,6 +726,10 @@ class CoverFlowWidget(QGraphicsView):
         pr = self._position_text.boundingRect()
         self._position_text.setPos(vw - pr.width() - 20, vh - 58)
 
+        # Debug overlay
+        if _DEBUG:
+            self._show_debug_overlay(vw, vh, idx)
+
         # Center text
         if idx != self._last_text_idx:
             self._last_text_idx = idx
@@ -603,6 +744,18 @@ class CoverFlowWidget(QGraphicsView):
         if vw > 1600:
             return 14
         return 10
+
+    def _show_debug_overlay(self, vw: int, vh: int, idx: int):
+        lines = [
+            f"CoverFlow {self._render_mode} | {len(self._items)} items",
+            f"idx {idx} offset={self._current:.2f} v={self._velocity:.4f}",
+            f"GL={'on' if self._use_opengl else 'off'} {vw}x{vh}",
+            f"cover {self._cover_w}x{self._cover_h}",
+        ]
+        text = " | ".join(lines)
+        self._meta_text.setPlainText(self._meta_text.toPlainText())
+        self._position_text.setPlainText(
+            f"{self._position_text.toPlainText()}\n{text}")
 
     def _update_center_text(self, idx: int):
         if not self._items or idx < 0 or idx >= len(self._items):
@@ -673,6 +826,10 @@ class CoverFlowWidget(QGraphicsView):
     def _on_cover_loaded(self, idx: int, pixmap: QPixmap):
         if 0 <= idx < len(self._cover_items) and not pixmap.isNull():
             self._cover_items[idx].set_real_cover(pixmap)
+            # Cache for future rebuilds
+            if not hasattr(self, '_cover_cache'):
+                self._cover_cache = {}
+            self._cover_cache[idx] = pixmap
 
     # ── Physics ──
 
@@ -714,7 +871,7 @@ class CoverFlowWidget(QGraphicsView):
         self._velocity = _clamp(self._velocity, -self._max_velocity, self._max_velocity)
 
     def _trigger_snap(self):
-        if not self._items:
+        if not self._items or self._snapping:
             return
         target = self.current_index()
         if abs(self._current - target) < 0.008:
@@ -724,12 +881,14 @@ class CoverFlowWidget(QGraphicsView):
             self.cover_snapped.emit(target)
             return
         self._snap_anim.stop()
+        self._snapping = True
         self._snap_anim.setDuration(self._snap_duration_for(abs(self._current - target)))
         self._snap_anim.setStartValue(self._current)
         self._snap_anim.setEndValue(float(target))
         self._snap_anim.start()
 
     def _on_snap_finished(self):
+        self._snapping = False
         if not self._items:
             return
         target = self.current_index()
@@ -742,11 +901,32 @@ class CoverFlowWidget(QGraphicsView):
 
     def drawBackground(self, painter, rect):
         painter.save()
+        # Cover backdrop — blurred center cover image
+        ci = self.current_index()
+        if 0 <= ci < len(self._cover_items):
+            center = self._cover_items[ci]
+            if center._cached and not center._cached.isNull():
+                w = center._cached.width()
+                h = center._cached.height()
+                scale = max(rect.width() / w, rect.height() / h) * 1.6
+                x = (rect.width() - w * scale) / 2
+                y = (rect.height() - h * scale) / 2 - rect.height() * 0.05
+                painter.setOpacity(0.18)
+                painter.drawPixmap(x, y, w * scale, h * scale, center._cached)
+
+        # Darken layer
+        painter.setOpacity(1.0)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
         grad = QRadialGradient(rect.center(), max(rect.width(), rect.height()) * 0.65)
-        grad.setColorAt(0.0, QColor(28, 31, 42, 230))
-        grad.setColorAt(0.55, QColor(12, 14, 21, 245))
+        grad.setColorAt(0.0, QColor(32, 36, 48, 210))
+        grad.setColorAt(0.45, QColor(16, 18, 28, 240))
         grad.setColorAt(1.0, QColor(7, 9, 14, 255))
         painter.fillRect(rect, grad)
+        # Subtle violet glow in center
+        glow = QRadialGradient(rect.center(), rect.width() * 0.4)
+        glow.setColorAt(0.0, QColor(110, 90, 200, 14))
+        glow.setColorAt(1.0, QColor(0, 0, 0, 0))
+        painter.fillRect(rect, glow)
         painter.restore()
 
     # ── Resize ──
@@ -847,7 +1027,9 @@ class CoverFlowWidget(QGraphicsView):
     def mousePressEvent(self, event):
         self._dragging = True
         self._drag_moved = False
+        self._phys_timer.stop()
         self._snap_anim.stop()
+        self._snapping = False
         self._press_x = event.position().x()
         self._last_x = self._press_x
         self._velocity = 0.0
@@ -898,7 +1080,15 @@ class CoverFlowWidget(QGraphicsView):
             d = pixel.x() if abs(pixel.x()) > abs(pixel.y()) else pixel.y()
             self._current -= d * self._wheel_sensitivity
         else:
-            self._current -= event.angleDelta().y() / 120.0 * 0.42
+            angle = event.angleDelta()
+            if abs(angle.x()) > abs(angle.y() * 0.6):
+                # Horizontal navigation
+                self._current -= angle.x() / 120.0 * 0.42
+            elif abs(angle.y()) > 0:
+                # Pure vertical: zoom
+                self._layout_engine.center_scale = _clamp(
+                    self._layout_engine.center_scale + angle.y() / 120.0 * 0.02,
+                    0.90, 1.25)
 
         self._clamp_current_soft()
         self._update_layout()

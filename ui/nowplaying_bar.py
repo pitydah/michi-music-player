@@ -108,7 +108,7 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
     btn.setStyleSheet("""
         QPushButton {
             background: transparent;
-            border: none;
+            border: 1px solid transparent;
             outline: none;
             padding: 0px;
             margin: 0px;
@@ -119,14 +119,15 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
             border: none;
         }
         QPushButton:hover {
-            background: rgba(255,255,255,0.055);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
         }
         QPushButton:pressed {
             background: rgba(255,255,255,0.095);
         }
         QPushButton[active="true"] {
-            background: rgba(255,255,255,0.11);
-            border: none;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.10);
         }
     """)
     return btn
@@ -227,7 +228,9 @@ class NowPlayingBar(QWidget):
     seek_requested = Signal(float)
     volume_changed = Signal(int)
     eq_clicked = Signal()
-    cover_clicked = Signal()
+    cover_preview_requested = Signal()
+    track_details_requested = Signal()
+    expanded_requested = Signal()
     transmit_clicked = Signal()
     audio_output_clicked = Signal()
     mini_player_clicked = Signal()
@@ -263,9 +266,9 @@ class NowPlayingBar(QWidget):
         if self._dark_mode:
             self._bg_rgba = (
                 "qlineargradient(x1:0, y1:0, x2:1, y2:1,"
-                " stop:0 rgba(10,12,18,0.98),"
-                " stop:0.55 rgba(7,9,14,0.98),"
-                " stop:1 rgba(14,10,16,0.98))")
+                " stop:0 rgba(10,12,18,0.88),"
+                " stop:0.55 rgba(7,9,14,0.88),"
+                " stop:1 rgba(14,10,16,0.88))")
             self._text_color = "rgba(255,255,255,0.98)"
             self._text_sec = "rgba(245,245,247,0.74)"
             self._accent = "#ffffff"
@@ -307,7 +310,9 @@ class NowPlayingBar(QWidget):
             }
         """)
         left_widget.setCursor(Qt.PointingHandCursor)
-        left_widget.mousePressEvent = lambda e: self.cover_clicked.emit()
+        left_widget.setToolTip("Click: detalles del tema · Doble click: vista expandida")
+        left_widget.mousePressEvent = self._on_info_card_clicked
+        left_widget.mouseDoubleClickEvent = self._on_info_card_double_clicked
 
         card_shadow = QGraphicsDropShadowEffect(left_widget)
         card_shadow.setBlurRadius(20)
@@ -336,10 +341,10 @@ class NowPlayingBar(QWidget):
                 margin: 0px;
             }
             QPushButton#coverButton:hover {
-                border: 1px solid rgba(255,122,0,0.38);
+                border: 1px solid rgba(255,255,255,0.22);
             }
         """)
-        self._cover.clicked.connect(self.cover_clicked.emit)
+        self._cover.clicked.connect(self.cover_preview_requested.emit)
         self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
         card_layout.addWidget(self._cover, 0, Qt.AlignVCenter)
 
@@ -478,7 +483,7 @@ class NowPlayingBar(QWidget):
         # Widgets
         self._vol_btn = _make_btn("warm_vol_high", 22, 38)
 
-        self._vol = QSlider(Qt.Horizontal)
+        self._vol = ClickableSlider(Qt.Horizontal)
         self._vol.setRange(0, 100)
         self._vol.setValue(70)
         self._vol.setFixedWidth(80)
@@ -586,7 +591,6 @@ class NowPlayingBar(QWidget):
         self._raw_artist = artist or "Añade música"
         self._raw_meta = "Astra Music Player"
 
-        # Split artist/album if combined
         if " · " in self._raw_artist:
             parts = self._raw_artist.split(" · ")
             self._raw_artist = parts[0]
@@ -604,12 +608,9 @@ class NowPlayingBar(QWidget):
                 self._cover_pixmap = rounded
                 self._cover.setIcon(QIcon(rounded))
                 self.cover_loaded.emit(pix)
-            else:
-                self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
-                self.cover_loaded.emit(None)
-        else:
-            self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
-            self.cover_loaded.emit(None)
+                return
+        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
+        self.cover_loaded.emit(None)
 
         self._apply_elide()
 
@@ -738,6 +739,21 @@ class NowPlayingBar(QWidget):
     def get_volume(self) -> int:
         """Returns current volume level (0-100)."""
         return self._vol.value()
+
+
+    def _on_info_card_clicked(self, event):
+        if event.button() == Qt.LeftButton:
+            self.track_details_requested.emit()
+            event.accept()
+            return
+        event.ignore()
+
+    def _on_info_card_double_clicked(self, event):
+        if event.button() == Qt.LeftButton:
+            self.expanded_requested.emit()
+            event.accept()
+            return
+        event.ignore()
 
 
 class ClickableSlider(QSlider):

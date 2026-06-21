@@ -35,13 +35,14 @@ class SidebarController(QObject):
             self._sidebar.add_item("pl", f"pl:{p['id']}", p['name'],
                                    "sidebar_playlist_item")
 
-        # Descubrir
-        self._sidebar.add_section("mix", "Descubrir", "sidebar_mix")
+        # Herramientas
+        self._sidebar.add_section("mix", "Herramientas", "sidebar_mix")
         self._sidebar.add_item("mix", "discover", "Panel Descubrir", "sidebar_mix")
         self._sidebar.add_item("mix", "identifier", "Identificador",
-                               "sidebar_identifier")
+                                "sidebar_identifier")
         self._sidebar.add_item("mix", "metadata_editor", "Editor de metadatos",
-                               "metadata_editor")
+                                "metadata_editor")
+        self._sidebar.add_item("mix", "home_audio", "Home Audio", "home_audio")
 
         # Radio
         self._sidebar.add_section("rad", "Radio", "sidebar_radio")

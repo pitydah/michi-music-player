@@ -1,4 +1,5 @@
 """Player bar controller — wraps NowPlayingBar interactions for external controllers."""
+import os
 
 
 class PlayerBarController:
@@ -7,6 +8,13 @@ class PlayerBarController:
 
     def set_track(self, name: str, artist: str = "", cover: str = ""):
         self._bar.set_track(name, artist, cover)
+
+    def set_track_from_ref(self, track):
+        """Resolve cover art from TrackRef and update NowPlayingBar."""
+        from library.cover_art_service import CoverArtService
+        name = track.title or os.path.basename(track.uri)
+        cover_path = track.cover_path or CoverArtService.find_cover(track.uri)
+        self.set_track(name, track.artist or "", cover_path or "")
 
     def set_quality(self, text: str):
         self._bar.set_quality(text)

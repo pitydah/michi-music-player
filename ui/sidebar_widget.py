@@ -3,14 +3,13 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal, QRectF
-from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QPen
+from PySide6.QtGui import QPixmap, QPainter, QColor, QLinearGradient, QRadialGradient, QPen
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QFrame, QScrollArea, QSizePolicy,
 )
 
-from ui.icon_renderer import render_svg_icon
-from ui.icons import get_icon
+from ui.icon_loader import get_sidebar_icon
 from ui.design_tokens import (
     SIDEBAR_ITEM_H, SIDEBAR_ICON,
 )
@@ -29,28 +28,28 @@ class _SectionHeader(QWidget):
         self.setCursor(Qt.PointingHandCursor)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 18, 12, 6)
+        layout.setContentsMargins(12, 14, 12, 4)
         layout.setSpacing(0)
 
-        txt_c = "rgba(255,255,255,0.62)" if dark else "rgba(28,28,30,0.62)"
-        self._title = QLabel(text)
+        txt_c = "rgba(255,255,255,0.42)" if dark else "rgba(28,28,30,0.42)"
+        self._title = QLabel(text.upper())
         self._title.setStyleSheet(
-            f"font-size:12px;font-weight:680;color:{txt_c};"
+            f"font-size:11px;font-weight:720;color:{txt_c};"
             "background:transparent;border:none;")
         layout.addWidget(self._title)
         layout.addStretch()
 
-        chev_c = "rgba(255,255,255,0.52)" if dark else "rgba(28,28,30,0.52)"
-        self._chevron = QLabel("˅")
+        chev_c = "rgba(255,255,255,0.38)" if dark else "rgba(28,28,30,0.38)"
+        self._chevron = QLabel("\u25be")  # ▾ expanded
         self._chevron.setStyleSheet(
-            f"font-size:11px;color:{chev_c};background:transparent;border:none;")
-        self._chevron.setFixedWidth(16)
+            f"font-size:10px;color:{chev_c};background:transparent;border:none;")
+        self._chevron.setFixedWidth(14)
         self._chevron.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._chevron)
 
     def toggle(self) -> bool:
         self._collapsed = not self._collapsed
-        self._chevron.setText("˄" if self._collapsed else "˅")
+        self._chevron.setText("\u25b8" if self._collapsed else "\u25be")  # ▸ / ▾
         return self._collapsed
 
     @property
@@ -62,23 +61,23 @@ class _SectionHeader(QWidget):
         super().mousePressEvent(event)
 
     def enterEvent(self, event):
-        c = "rgba(255,255,255,0.96)" if self._dark else "rgba(28,28,30,0.96)"
+        c = "rgba(255,255,255,0.70)" if self._dark else "rgba(28,28,30,0.70)"
         self._title.setStyleSheet(
-            f"font-size:12px;font-weight:680;color:{c};"
+            f"font-size:11px;font-weight:720;color:{c};"
             "background:transparent;border:none;")
-        cc = "rgba(255,255,255,0.90)" if self._dark else "rgba(28,28,30,0.90)"
+        cc = "rgba(255,255,255,0.62)" if self._dark else "rgba(28,28,30,0.62)"
         self._chevron.setStyleSheet(
-            f"font-size:11px;color:{cc};background:transparent;border:none;")
+            f"font-size:10px;color:{cc};background:transparent;border:none;")
         super().enterEvent(event)
 
     def leaveEvent(self, event):
-        c = "rgba(255,255,255,0.64)" if self._dark else "rgba(28,28,30,0.64)"
+        c = "rgba(255,255,255,0.42)" if self._dark else "rgba(28,28,30,0.42)"
         self._title.setStyleSheet(
-            f"font-size:12px;font-weight:680;color:{c};"
+            f"font-size:11px;font-weight:720;color:{c};"
             "background:transparent;border:none;")
-        cc = "rgba(255,255,255,0.52)" if self._dark else "rgba(28,28,30,0.52)"
+        cc = "rgba(255,255,255,0.38)" if self._dark else "rgba(28,28,30,0.38)"
         self._chevron.setStyleSheet(
-            f"font-size:11px;color:{cc};background:transparent;border:none;")
+            f"font-size:10px;color:{cc};background:transparent;border:none;")
         super().leaveEvent(event)
 
 
@@ -99,10 +98,17 @@ class _Item(QFrame):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(12)
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(10)
 
-        # Icon — QLabel with SVG via render_svg_icon
+        # Accent bar — visible only when active
+        self._accent = QFrame()
+        self._accent.setFixedWidth(3)
+        self._accent.setStyleSheet(
+            "background: transparent; border-radius: 2px; border: none;")
+        layout.addWidget(self._accent)
+
+        # Icon
         self._icon_label = QLabel()
         self._icon_label.setFixedSize(SIDEBAR_ICON, SIDEBAR_ICON)
         self._icon_label.setScaledContents(False)
@@ -137,63 +143,62 @@ class _Item(QFrame):
         self._refresh_styles()
 
     def _load_icon(self, name: str):
-        path = get_icon(name) if name else ""
-        if not path:
+        if name:
+            pix = get_sidebar_icon(name, active=self._active, size=SIDEBAR_ICON)
+        else:
             pix = QPixmap(SIDEBAR_ICON, SIDEBAR_ICON)
             pix.fill(Qt.transparent)
-        elif path.lower().endswith(".png"):
-            pix = QPixmap(path)
-            if pix.isNull():
-                pix = QPixmap(SIDEBAR_ICON, SIDEBAR_ICON)
-                pix.fill(Qt.transparent)
-            else:
-                pix = pix.scaled(
-                    SIDEBAR_ICON, SIDEBAR_ICON,
-                    Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        else:
-            pix = render_svg_icon(path, SIDEBAR_ICON, 2)
         self._icon_label.setPixmap(pix)
 
     def _refresh_styles(self):
         if self._active:
-            self.setStyleSheet("""
-                QFrame {
-                    background: rgba(255,255,255,0.145);
-                    border: 1px solid rgba(255,255,255,0.18);
-                    border-radius: 11px;
-                    margin: 1px 8px;
-                }
-            """)
+            self.setStyleSheet(
+                "background: qlineargradient("
+                "  x1:0, y1:0, x2:1, y2:0,"
+                "  stop:0 rgba(110,150,255,0.16),"
+                "  stop:1 rgba(255,255,255,0.07));"
+                "border: 1px solid rgba(255,255,255,0.12);"
+                "border-radius: 12px; margin: 1px 6px;")
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:700;color:#ffffff;"
+                "font-size:13px;font-weight:680;color:#FFFFFF;"
                 "background:transparent;border:none;")
+            self._accent.setStyleSheet(
+                "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+                " stop:0 #7AA7FF, stop:1 #D85CFF);"
+                " border-radius: 2px; border: none;")
+            if self._badge_label:
+                self._badge_label.setStyleSheet(
+                    "font-size:10px;color:rgba(245,245,247,0.72);"
+                    "background:rgba(255,255,255,0.10);"
+                    "border-radius:5px;padding:1px 7px;border:none;")
+            self._load_icon(self._icon_name)
         else:
-            self.setStyleSheet("""
-                QFrame {
-                    background: transparent;
-                    border: none;
-                    border-radius: 10px;
-                    margin: 1px 8px;
-                }
-            """)
+            self.setStyleSheet(
+                "background: transparent; border: none;"
+                "border-radius: 12px; margin: 1px 6px;")
             self._label.setStyleSheet(
-                "font-size:13px;font-weight:540;color:rgba(255,255,255,0.88);"
+                "font-size:13px;font-weight:540;color:rgba(255,255,255,0.74);"
                 "background:transparent;border:none;")
+            self._accent.setStyleSheet(
+                "background: transparent; border-radius: 2px; border: none;")
+            if self._badge_label:
+                self._badge_label.setStyleSheet(
+                    "font-size:10px;color:rgba(245,245,247,0.45);"
+                    "background:rgba(255,255,255,0.06);"
+                    "border-radius:5px;padding:1px 7px;border:none;")
 
     def enterEvent(self, event):
         if not self._active:
-            self.setStyleSheet("""
-                QFrame {
-                    background: rgba(255,255,255,0.105);
-                    border: 1px solid rgba(255,255,255,0.115);
-                    border-radius: 11px;
-                    margin: 1px 8px;
-                }
-            """)
+            self.setStyleSheet(
+                "background: rgba(255,255,255,0.06);"
+                "border: 1px solid rgba(255,255,255,0.075);"
+                "border-radius: 12px; margin: 1px 6px;")
             self._label.setStyleSheet(
                 "font-size:13px;font-weight:600;"
-                "color:#FFFFFF;"
+                "color:rgba(255,255,255,0.94);"
                 "background:transparent;border:none;")
+            self._accent.setStyleSheet(
+                "background: transparent; border-radius: 2px; border: none;")
         super().enterEvent(event)
 
     def leaveEvent(self, event):
@@ -281,19 +286,24 @@ class SidebarWidget(QWidget):
         outer.setSpacing(8)
 
         # ── Branding ──
-        brand_row = QHBoxLayout()
-        brand_row.setContentsMargins(4, 4, 4, 4)
-        brand_row.setSpacing(10)
+        brand_card = QFrame()
+        brand_card.setStyleSheet(
+            "QFrame { background: rgba(255,255,255,0.04);"
+            "  border: 1px solid rgba(255,255,255,0.07);"
+            "  border-radius: 14px; }")
+        brand_inner = QHBoxLayout(brand_card)
+        brand_inner.setContentsMargins(10, 8, 10, 8)
+        brand_inner.setSpacing(10)
 
         app_icon_label = QLabel()
         app_icon_path = str(Path(__file__).parent.parent / "icons" / "app_icon.png")
         app_pix = QPixmap(app_icon_path)
         if not app_pix.isNull():
             app_icon_label.setPixmap(
-                app_pix.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            app_icon_label.setFixedSize(32, 32)
+                app_pix.scaled(34, 34, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            app_icon_label.setFixedSize(34, 34)
         app_icon_label.setStyleSheet("background:transparent;border:none;")
-        brand_row.addWidget(app_icon_label)
+        brand_inner.addWidget(app_icon_label)
 
         brand_text = QVBoxLayout()
         brand_text.setSpacing(0)
@@ -307,16 +317,16 @@ class SidebarWidget(QWidget):
             "background:transparent;border:none;")
         brand_text.addWidget(title_lbl)
         brand_text.addWidget(sub_lbl)
-        brand_row.addLayout(brand_text)
-        brand_row.addStretch()
-        outer.addLayout(brand_row)
+        brand_inner.addLayout(brand_text)
+        brand_inner.addStretch()
+        outer.addWidget(brand_card)
 
         outer.addSpacing(4)
 
         # ── Search ──
         self._search = QLineEdit()
         self._search.setObjectName("sidebarSearch")
-        self._search.setPlaceholderText("Buscar")
+        self._search.setPlaceholderText("Buscar en Astra")
         self._search.setClearButtonEnabled(True)
         self._search.setStyleSheet("""
             QLineEdit#sidebarSearch {
@@ -349,9 +359,10 @@ class SidebarWidget(QWidget):
         self._scroll.setFrameShape(QScrollArea.NoFrame)
         self._scroll.setStyleSheet(
             "QScrollArea{background:transparent;border:none;}"
-            "QScrollBar:vertical{width:4px;background:transparent;}"
+            "QScrollBar:vertical{width:3px;background:transparent;}"
             "QScrollBar::handle:vertical{"
-            "background:rgba(128,128,128,0.30);border-radius:2px;}"
+            "background:rgba(255,255,255,0.18);min-height:36px;border-radius:2px;}"
+            "QScrollBar::handle:vertical:hover{background:rgba(255,255,255,0.32);}"
             "QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical"
             "{height:0;}")
 
@@ -425,12 +436,22 @@ class SidebarWidget(QWidget):
 
         rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
 
+        # Base dark gradient
         grad = QLinearGradient(rect.topLeft(), rect.bottomRight())
-        grad.setColorAt(0.0, QColor(70, 74, 88, 250))
-        grad.setColorAt(1.0, QColor(48, 52, 64, 250))
+        grad.setColorAt(0.0, QColor(31, 35, 48, 248))
+        grad.setColorAt(0.4, QColor(24, 27, 38, 248))
+        grad.setColorAt(1.0, QColor(14, 17, 26, 248))
 
         painter.setBrush(grad)
-        painter.setPen(QPen(QColor(255, 255, 255, 36), 1))
+        painter.setPen(QPen(QColor(255, 255, 255, 28), 1))
+        painter.drawRoundedRect(rect, 16, 16)
+
+        # Subtle blue glow from top-left
+        glow = QRadialGradient(rect.topLeft(), rect.width())
+        glow.setColorAt(0.0, QColor(80, 120, 255, 22))
+        glow.setColorAt(0.6, QColor(0, 0, 0, 0))
+        painter.setBrush(glow)
+        painter.setPen(Qt.NoPen)
         painter.drawRoundedRect(rect, 16, 16)
 
         painter.end()

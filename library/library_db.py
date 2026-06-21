@@ -148,6 +148,21 @@ class LibraryDB:
                 with contextlib.suppress(sqlite3.OperationalError):
                     self._conn.execute(f"ALTER TABLE playlists ADD COLUMN {col} {col_def}")
 
+        # Detected tracks extended fields
+        dt_existing = {r[0] for r in self._conn.execute("PRAGMA table_info(detected_tracks)").fetchall()}
+        for col, col_def in [("source_type", "TEXT DEFAULT ''"),
+                              ("source_label", "TEXT DEFAULT ''"),
+                              ("source_uri", "TEXT DEFAULT ''"),
+                              ("match_status", "TEXT DEFAULT ''"),
+                              ("matched_filepath", "TEXT DEFAULT ''"),
+                              ("provider_track_id", "TEXT DEFAULT ''"),
+                              ("provider_artist_id", "TEXT DEFAULT ''"),
+                              ("album_art_path", "TEXT DEFAULT ''"),
+                              ("latency_ms", "INTEGER DEFAULT 0")]:
+            if col not in dt_existing:
+                with contextlib.suppress(sqlite3.OperationalError):
+                    self._conn.execute(f"ALTER TABLE detected_tracks ADD COLUMN {col} {col_def}")
+
     def close(self):
         self._conn.close()
 
@@ -402,6 +417,10 @@ class LibraryDB:
 
     def clear_detected_tracks(self):
         self._conn.execute("DELETE FROM detected_tracks")
+        self._conn.commit()
+
+    def delete_detected_track(self, track_id: int):
+        self._conn.execute("DELETE FROM detected_tracks WHERE id = ?", (track_id,))
         self._conn.commit()
 
     def find_detected_track_recent(

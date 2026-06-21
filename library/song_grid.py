@@ -20,13 +20,15 @@ class SongGridWidget(QWidget):
         self._items = []
         self._card_size = 170
 
-        self.setStyleSheet("background: #090B11;")
+        self.setStyleSheet(
+            "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
+            " stop:0 rgba(20,22,28,0.94), stop:1 rgba(8,10,16,0.94));")
 
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QScrollArea.NoFrame)
         self._scroll.setStyleSheet(
-            "QScrollArea { background: #090B11; border: none; }"
+            "QScrollArea { background: transparent; border: none; }"
             "QScrollBar:vertical { width: 8px; background: rgba(255,255,255,0.025);"
             "  border-radius: 4px; }"
             "QScrollBar::handle:vertical { background: rgba(255,255,255,0.16);"

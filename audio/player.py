@@ -526,10 +526,7 @@ class GStreamerEngine(QObject):
     def _on_bus_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
-            self._pipeline.set_state(Gst.State.NULL)
-            self._state = PlaybackState.STOPPED
-            self.state_changed.emit(self._state)
-            self.finished.emit()
+            self._on_media_finished()
         elif t == Gst.MessageType.ERROR:
             err, _ = message.parse_error()
             self.error_occurred.emit(f"GStreamer: {err}")
@@ -626,6 +623,7 @@ class GStreamerEngine(QObject):
 
     def _on_media_finished(self):
         if not self.play_next():
+            self._pipeline.set_state(Gst.State.NULL)
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)
             self.finished.emit()

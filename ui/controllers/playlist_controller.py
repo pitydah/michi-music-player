@@ -27,7 +27,7 @@ class PlaylistController:
     def hub_playlist_play(self, pid: int):
         items = self._win._ctx.db.get_playlist_items(pid)
         fps = [i.filepath for i in items]
-        self._win._ctx.playback.enqueue(fps, play_now=True)
+        self._win._play_filepaths(fps, play_now=True)
         self._toast("Reproduciendo playlist", "success")
 
     def hub_playlist_queue(self, pid: int):

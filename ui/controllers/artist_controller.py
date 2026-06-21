@@ -38,10 +38,13 @@ class ArtistController:
     def artist_filepaths(self, artist_key: str) -> list[str]:
         return self._win._ctx.artist_repo.filepaths(artist_key)
 
-    def play_artist(self, artist_key: str):
+    def play_artist(self, artist_key: str, shuffle: bool = False):
         fps = self.artist_filepaths(artist_key)
         if fps:
-            self._win._ctx.playback.enqueue(fps, play_now=True)
+            if shuffle:
+                import random
+                random.shuffle(fps)
+            self._win._play_filepaths(fps, play_now=True)
 
     def queue_artist(self, artist_key: str):
         fps = self.artist_filepaths(artist_key)

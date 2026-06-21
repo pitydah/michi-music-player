@@ -1,94 +1,146 @@
-"""Detection Service — manages music identification lifecycle.
-
-First version: UI + DB integration only. No real audio capture yet.
-
-Roadmap for real recognition:
-  1. Capture audio via GStreamer appsink (pull 12-second PCM samples at 22050Hz)
-  2. Option A: AcoustID fingerprint via chromaprint (fpcalc binary or python-acoustid)
-  3. Option B: AudD API (requires API key — https://audd.io)
-  4. Option C: ACRCloud API (requires API key — https://acrcloud.com)
-  5. Option D: ShazamIO (unofficial, no API key needed)
-  6. Store fingerprint matches in detected_tracks table for local cache
-"""
-
+"""Detection Service — orchestrates music identification lifecycle."""
 import logging
 
 from PySide6.QtCore import QObject, Signal
 
 from recognition.models import DetectedTrack
-from recognition.null_recognizer import NullRecognizer
+from recognition.provider_manager import ProviderManager
 
 logger = logging.getLogger("astra.detection")
 
 
 class DetectionService(QObject):
-    track_detected = Signal(object)   # DetectedTrack
-    detection_failed = Signal(str)    # error message
-    status_changed = Signal(str)      # idle/listening/processing/identified/error
+    track_detected = Signal(object)     # DetectedTrack
+    detection_failed = Signal(str)      # error message
+    status_changed = Signal(str)        # idle/listening/capturing/processing/identified/error
+    sample_captured = Signal(dict)       # sample metadata
+    provider_changed = Signal(str, bool)  # provider_name, is_configured
+    diagnostic_changed = Signal(dict)
 
-    def __init__(self, db, recognizer=None, parent=None):
+    def __init__(self, db, provider_manager: ProviderManager = None, parent=None):
         super().__init__(parent)
         self._db = db
-        self._recognizer = recognizer or NullRecognizer()
+        self._provider_mgr = provider_manager or ProviderManager(self)
         self._active = False
         self._status = "idle"
+        self._last_error = ""
+        self._detections_total = 0
+        self._duplicates_avoided = 0
 
-    def start(self, source: str = "", filepath: str | None = None):
+        self._provider_mgr.provider_changed.connect(
+            lambda n, ok: self.provider_changed.emit(n, ok))
+
+    @property
+    def recognizer(self):
+        return self._provider_mgr.recognizer
+
+    @property
+    def is_active(self) -> bool:
+        return self._active
+
+    @property
+    def status(self) -> str:
+        return self._status
+
+    @property
+    def provider_name(self) -> str:
+        return self._provider_mgr.current_provider
+
+    def set_recognizer(self, recognizer):
+        self._provider_mgr._recognizer = recognizer
+
+    def select_provider(self, name: str):
+        self._provider_mgr.select_provider(name)
+
+    def start(self, source: str = "", source_label: str = "",
+              source_uri: str = ""):
         self._active = True
         self._set_status("listening")
-        logger.info("Detection started source=%s filepath=%s", source, filepath)
+        logger.info("Detection started source=%s", source)
 
     def stop(self):
         self._active = False
         self._set_status("idle")
 
-    def toggle(self, source: str = "", filepath: str | None = None):
+    def toggle(self, source: str = ""):
         if self._active:
             self.stop()
         else:
-            self.start(source, filepath)
+            self.start(source)
 
-    def is_active(self) -> bool:
-        return self._active
+    def identify_once(self):
+        self._set_status("processing")
+        # For now, use NullRecognizer which returns None
+        result = self.recognizer.identify()
+        if result:
+            self._handle_identified(result)
+        else:
+            self._set_status("no_match")
+            self.detection_failed.emit("Sin coincidencia")
+
+    def add_manual_detection(self, title: str, artist: str,
+                             source: str = "manual", album: str = "",
+                             provider: str = "manual"):
+        self._set_status("identified")
+
+        existing = self._db.find_detected_track_recent(title, artist)
+        if existing:
+            logger.debug("Skipping duplicate: %s - %s", artist, title)
+            self._duplicates_avoided += 1
+            return
+
+        track = DetectedTrack(
+            title=title, artist=artist, album=album,
+            source=source, provider=provider, confidence=1.0)
+        self._save_track(track)
+        self._detections_total += 1
+
+    def _handle_identified(self, result: dict):
+        self._set_status("identified")
+        track = DetectedTrack(
+            title=result.get("title", ""),
+            artist=result.get("artist", ""),
+            album=result.get("album", ""),
+            source=result.get("source", ""),
+            provider=result.get("provider", self.provider_name),
+            confidence=result.get("confidence"),
+        )
+        self._save_track(track)
+        self._detections_total += 1
+
+    def _save_track(self, track: DetectedTrack):
+        try:
+            self._db.add_detected_track(
+                title=track.title, artist=track.artist,
+                album=track.album, source=track.source,
+                provider=track.provider, confidence=track.confidence,
+                filepath=track.filepath or "",
+                matched_library_id=track.matched_library_id or 0,
+            )
+        except Exception:
+            self._db.add_detected_track(
+                title=track.title or "",
+                artist=track.artist or "",
+                album=track.album or "",
+                source=track.source or "",
+                provider=track.provider or "",
+                confidence=track.confidence or 0.0,
+                filepath=track.filepath or "",
+                matched_library_id=track.matched_library_id or 0,
+            )
+        self.track_detected.emit(track)
 
     def _set_status(self, status: str):
         self._status = status
         self.status_changed.emit(status)
 
-    def add_manual_detection(self, title: str, artist: str,
-                             source: str = "manual", album: str = "",
-                             provider: str = "manual"):
-        """Add a detection manually — for testing and future external APIs."""
-        self._set_status("identified")
-
-        # Deduplication: skip if same title+artist detected in last 5 min
-        existing = self._db.find_detected_track_recent(title, artist)
-        if existing:
-            logger.debug("Skipping duplicate: %s - %s", artist, title)
-            return
-
-        track = DetectedTrack(
-            title=title,
-            artist=artist,
-            album=album,
-            source=source,
-            provider=provider,
-            confidence=1.0,
-        )
-
-        self._db.add_detected_track(
-            title=track.title,
-            artist=track.artist,
-            album=track.album,
-            source=track.source,
-            provider=track.provider,
-            confidence=track.confidence,
-            isrc=track.isrc,
-            artwork_url=track.artwork_url,
-            external_url=track.external_url,
-            filepath=track.filepath,
-            matched_library_id=track.matched_library_id,
-            raw_json=track.raw_json,
-        )
-
-        self.track_detected.emit(track)
+    def diagnostics(self) -> dict:
+        return {
+            "active": self._active,
+            "status": self._status,
+            "provider": self.provider_name,
+            "provider_ok": self._provider_mgr.recognizer.is_configured(),
+            "last_error": self._last_error,
+            "detections_total": self._detections_total,
+            "duplicates_avoided": self._duplicates_avoided,
+        }

@@ -19,7 +19,9 @@ class RadioWidget(QWidget):
         self._manager = RadioManager()
         self._stations = []
 
-        self.setStyleSheet("background: #090B11;")
+        self.setStyleSheet(
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+            "  stop:0 rgba(20,22,28,0.94), stop:1 rgba(10,12,18,0.94));")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

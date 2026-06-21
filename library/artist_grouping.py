@@ -35,6 +35,22 @@ class ArtistGroup:
     total_duration: float = 0.0
     track_count: int = 0
     album_count: int = 0
+    # External enrichment
+    external_id: str = ""
+    mbid: str = ""
+    bio: str = ""
+    genre: str = ""
+    thumb_url: str = ""
+    banner_url: str = ""
+    logo_url: str = ""
+    fanart_urls: list[str] = field(default_factory=list)
+    country: str = ""
+    formed_year: str = ""
+    style: str = ""
+    mood: str = ""
+    website: str = ""
+    last_enriched_at: str = ""
+    enrichment_status: str = ""  # "loaded", "not_found", "error"
 
 
 _VARIOUS_NAMES = {"various artists", "varios artistas", "va", "various", "varios",

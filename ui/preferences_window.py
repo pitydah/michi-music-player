@@ -13,6 +13,7 @@ from ui.settings_pages import (
     AudioPage, EqualizerPage, MetadataPage, PlaylistPage,
     ArtistsAlbumsPage, RadioPage, ServersPage, DevicesPage,
     SyncPage, ShortcutsPage, AdvancedPage, AboutPage,
+    HomeAudioPage,
 )
 from ui.icons import get_icon
 import core.settings_manager as sm
@@ -40,6 +41,7 @@ PAGE_DEFS = [
     ("Servidores", "servers", "sidebar_servers"),
     ("Dispositivos", "devices", "sidebar_devices"),
     ("Sincronización", "sync", "sidebar_servers"),
+    ("Home Audio", "home_audio", "home_audio"),
     ("Atajos", "shortcuts", "sidebar_library"),
     ("Avanzado", "advanced", "warm_settings"),
     ("Acerca de", "about", "warm_settings"),
@@ -76,9 +78,10 @@ class PreferencesWindow(QDialog):
         self.setModal(True)
         self._pending_changes: set[str] = set()
 
-        self.setStyleSheet(f"""
-            QDialog {{ background: {_BG}; }}
-            QWidget {{ background: transparent; }}
+        self.setStyleSheet("""
+            QDialog { background: rgba(15,17,22,0.96);
+              border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; }
+            QWidget { background: transparent; }
         """)
 
         # ── Header ──
@@ -133,7 +136,7 @@ class PreferencesWindow(QDialog):
         """)
 
         self._stack = QStackedWidget()
-        self._stack.setStyleSheet(f"QStackedWidget {{ background: {_BG}; }}")
+        self._stack.setStyleSheet("QStackedWidget { background: transparent; }")
 
         self._pages: list[tuple[str, QWidget]] = []
         for name, _page_class, icon_name in PAGE_DEFS:
@@ -236,6 +239,7 @@ class PreferencesWindow(QDialog):
             "servers": ServersPage, "devices": DevicesPage,
             "sync": SyncPage, "shortcuts": ShortcutsPage,
             "advanced": AdvancedPage, "about": AboutPage,
+            "home_audio": HomeAudioPage,
         }
         cls = page_classes.get(key, GeneralPage)
         page = cls()

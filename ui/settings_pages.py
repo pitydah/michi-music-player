@@ -704,3 +704,93 @@ class AboutPage(_Page):
         card.add_row(info_widget)
         self.add_card(card)
         self.add_stretch()
+
+
+# ═══════════════════════════════════════════
+# 17. Home Audio
+# ═══════════════════════════════════════════
+
+class HomeAudioPage(_Page):
+    def __init__(self):
+        super().__init__("Home Audio", "Audio multiroom, parlantes y Home Assistant",
+                         "home_audio")
+
+        # Home Assistant card
+        card1 = SettingsCard("Home Assistant")
+        self._ha_enabled = SettingsSwitch(sm.get("home_audio/enabled"))
+        self._ha_url = _line_edit(sm.get("home_audio/ha_base_url") or "")
+        self._ha_token = _line_edit(sm.get("home_audio/ha_token") or "")
+        self._ha_token.setEchoMode(_line_edit().EchoMode.Password)
+        self._ha_ssl = SettingsSwitch(sm.get("home_audio/ha_verify_ssl"))
+        card1.add_row(SettingsRow("Activar Home Audio", "Habilita la integracion con HA",
+                                  self._ha_enabled))
+        card1.add_row(SettingsRow("URL de Home Assistant", "http://homeassistant.local:8123",
+                                  self._ha_url))
+        card1.add_row(SettingsRow("Token de acceso", "Token de larga duracion",
+                                  self._ha_token))
+        card1.add_row(SettingsRow("Verificar SSL", "Validar certificado HTTPS",
+                                  self._ha_ssl))
+        self.add_card(card1)
+
+        # Snapserver card
+        card2 = SettingsCard("Snapserver")
+        self._snap_enabled = SettingsSwitch(sm.get("home_audio/snapserver_enabled"))
+        self._snap_tcp = SettingsSlider(1024, 65535, sm.get("home_audio/snapserver_tcp_port"))
+        self._snap_ctrl = SettingsSlider(1024, 65535, sm.get("home_audio/snapserver_control_port"))
+        self._snap_http = SettingsSlider(1024, 65535, sm.get("home_audio/snapserver_http_port"))
+        card2.add_row(SettingsRow("Activar Snapserver", "Iniciar al activar multiroom",
+                                  self._snap_enabled))
+        card2.add_row(SettingsRow("Puerto TCP", "Streaming de audio", self._snap_tcp))
+        card2.add_row(SettingsRow("Puerto control", "API de Snapcast", self._snap_ctrl))
+        card2.add_row(SettingsRow("Puerto HTTP", "Panel web", self._snap_http))
+        self.add_card(card2)
+
+        # API + mDNS card
+        card3 = SettingsCard("Astra API + mDNS")
+        self._api_enabled = SettingsSwitch(sm.get("home_audio/astra_api_enabled"))
+        self._api_port = SettingsSlider(1024, 65535, sm.get("home_audio/astra_api_port"))
+        self._api_token = _line_edit(sm.get("home_audio/astra_api_token") or "")
+        self._mdns_enabled = SettingsSwitch(sm.get("home_audio/mdns_enabled"))
+        card3.add_row(SettingsRow("Activar API Astra", "Control remoto desde HA",
+                                  self._api_enabled))
+        card3.add_row(SettingsRow("Puerto API", "Puerto HTTP de Astra", self._api_port))
+        card3.add_row(SettingsRow("Token API", "Token de autenticacion", self._api_token))
+        card3.add_row(SettingsRow("Activar mDNS", "Descubrimiento automatico en red",
+                                  self._mdns_enabled))
+        self.add_card(card3)
+
+        # Local media server card
+        card4 = SettingsCard("Servidor local de medios")
+        self._lms_enabled = SettingsSwitch(sm.get("home_audio/local_media_server_enabled"))
+        self._lms_port = SettingsSlider(1024, 65535, sm.get("home_audio/local_media_server_port"))
+        self._local_mon = SettingsSwitch(sm.get("home_audio/play_local_monitor"))
+        card4.add_row(SettingsRow("Activar servidor", "Servir archivos locales a HA/Cast",
+                                  self._lms_enabled))
+        card4.add_row(SettingsRow("Puerto", "Puerto HTTP del servidor", self._lms_port))
+        card4.add_row(SettingsRow("Reproducir localmente", "Audio tambien en este equipo",
+                                  self._local_mon))
+        self.add_card(card4)
+
+        self.add_stretch()
+
+    def apply(self):
+        sm.set_("home_audio/enabled", self._ha_enabled.isChecked())
+        sm.set_("home_audio/ha_base_url", self._ha_url.text())
+        sm.set_("home_audio/ha_token", self._ha_token.text())
+        sm.set_("home_audio/ha_verify_ssl", self._ha_ssl.isChecked())
+        sm.set_("home_audio/snapserver_enabled", self._snap_enabled.isChecked())
+        sm.set_("home_audio/snapserver_tcp_port", self._snap_tcp.value())
+        sm.set_("home_audio/snapserver_control_port", self._snap_ctrl.value())
+        sm.set_("home_audio/snapserver_http_port", self._snap_http.value())
+        sm.set_("home_audio/astra_api_enabled", self._api_enabled.isChecked())
+        sm.set_("home_audio/astra_api_port", self._api_port.value())
+        sm.set_("home_audio/astra_api_token", self._api_token.text())
+        sm.set_("home_audio/mdns_enabled", self._mdns_enabled.isChecked())
+        sm.set_("home_audio/local_media_server_enabled", self._lms_enabled.isChecked())
+        sm.set_("home_audio/local_media_server_port", self._lms_port.value())
+        sm.set_("home_audio/play_local_monitor", self._local_mon.isChecked())
+
+
+def _line_edit(text: str = ""):
+    from PySide6.QtWidgets import QLineEdit
+    return QLineEdit(text)

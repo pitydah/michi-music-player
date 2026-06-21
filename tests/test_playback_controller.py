@@ -10,7 +10,7 @@ class TestPlaybackController:
                          album="Test Album", duration=180.0)
         ctrl.play_trackref(track)
         mock_window._playback.enqueue.assert_called_once()
-        mock_window._player_bar_ctrl.set_track.assert_called_once()
+        mock_window._player_bar_ctrl.set_track_from_ref.assert_called_once()
         mock_window._ctx.notify_track.assert_called_once()
 
     def test_play_trackref_http(self, mock_window):

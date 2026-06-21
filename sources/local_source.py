@@ -21,8 +21,8 @@ class LocalSource(MusicSource):
             artist=i.artist,
             album=i.album,
             duration=i.duration,
-            cover_path=i.filepath,
-            track_number=i.track_number,
+        cover_path="",
+        track_number=i.track_number,
             year=i.year,
             genre=i.genre,
         ) for i in items]

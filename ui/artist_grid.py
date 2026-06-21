@@ -2,7 +2,7 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap, QColor, QIcon
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QGridLayout,
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QGridLayout,
     QLabel, QFrame, QListWidget, QListWidgetItem,
     QMenu,
 )
@@ -35,6 +35,8 @@ class ArtistGridWidget(QWidget):
     artist_queue_requested = Signal(str)
     artist_playlist_requested = Signal(str)
     artist_metadata_requested = Signal(str)
+
+    artist_enrich_requested = Signal(str)  # artist key
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -178,6 +180,8 @@ class ArtistGridWidget(QWidget):
             self.artist_playlist_requested.emit(artist_key)
         elif action == "metadata":
             self.artist_metadata_requested.emit(artist_key)
+        elif action == "refresh_info":
+            self.artist_enrich_requested.emit(artist_key)
 
     def _show_context_menu(self, pos, artist_key: str):
         menu = QMenu(self)
@@ -192,9 +196,10 @@ class ArtistGridWidget(QWidget):
         acts = {
             "Abrir artista": "open",
             "Reproducir todo": "play",
-            "Añadir a la cola": "queue",
+            "Anadir a la cola": "queue",
             "Crear playlist": "playlist",
             "Editar metadatos": "metadata",
+            "Actualizar info TheAudioDB": "refresh_info",
         }
         for label, action in acts.items():
             menu.addAction(label, lambda checked=False, a=action, k=artist_key: self._handle_context(a, k))
@@ -211,16 +216,16 @@ class _ArtistCard(QFrame):
         self._artist = artist
         self._active = False
         card_w = size + 24
-        card_h = size + 140
+        card_h = size + 155
         self.setFixedSize(card_w, card_h)
         self.setCursor(Qt.PointingHandCursor)
         self._apply_qss()
 
         v = QVBoxLayout(self)
         v.setContentsMargins(10, 10, 10, 10)
-        v.setSpacing(8)
+        v.setSpacing(6)
 
-        # Cover mosaic
+        # Cover area — external thumb if available, else mosaic
         cover_area = QFrame()
         cover_area.setFixedSize(size, size)
         cover_area.setStyleSheet(
@@ -229,20 +234,36 @@ class _ArtistCard(QFrame):
         c_layout.setContentsMargins(4, 4, 4, 4)
         c_layout.setSpacing(4)
 
-        # Show up to 4 covers as mosaic
-        for ci in range(min(4, len(artist.cover_paths))):
-            pix = load_cover_pixmap(artist.cover_paths[ci], size // 2 - 4)
-            lbl = QLabel()
-            if pix and not pix.isNull():
-                lbl.setPixmap(pix.scaled(size // 2 - 8, size // 2 - 8, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            else:
-                lbl.setText("")
-                lbl.setStyleSheet("background: rgba(255,255,255,0.04); border-radius: 8px;")
-            lbl.setAlignment(Qt.AlignCenter)
-            c_layout.addWidget(lbl, ci // 2, ci % 2, Qt.AlignCenter)
+        # Try external thumb first
+        thumb_local = ""
+        if artist.thumb_url:
+            from integrations.theaudiodb.cache import IMAGES_DIR
+            import os as _os
+            thumb_local = _os.path.join(IMAGES_DIR, f"{artist.key}_thumb.jpg")
+        external_img = None
+        if thumb_local and _os.path.exists(thumb_local):
+            external_img = QPixmap(thumb_local)
 
-        # If no covers, show a placeholder
-        if not artist.cover_paths:
+        if external_img and not external_img.isNull():
+            thumb_lbl = QLabel()
+            thumb_lbl.setPixmap(
+                external_img.scaled(size - 8, size - 8,
+                                     Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            thumb_lbl.setAlignment(Qt.AlignCenter)
+            c_layout.addWidget(thumb_lbl, 0, 0, 2, 2, Qt.AlignCenter)
+        elif artist.cover_paths:
+            for ci in range(min(4, len(artist.cover_paths))):
+                pix = load_cover_pixmap(artist.cover_paths[ci], size // 2 - 4)
+                lbl = QLabel()
+                if pix and not pix.isNull():
+                    lbl.setPixmap(pix.scaled(size // 2 - 8, size // 2 - 8,
+                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                else:
+                    lbl.setStyleSheet(
+                        "background: rgba(255,255,255,0.04); border-radius: 8px;")
+                lbl.setAlignment(Qt.AlignCenter)
+                c_layout.addWidget(lbl, ci // 2, ci % 2, Qt.AlignCenter)
+        else:
             place = QLabel()
             place.setPixmap(_artist_placeholder(size))
             place.setAlignment(Qt.AlignCenter)
@@ -253,33 +274,47 @@ class _ArtistCard(QFrame):
         # Name
         name = artist.display_name
         if len(name) > 24:
-            name = name[:23] + "…"
+            name = name[:23] + "\u2026"
         name_lbl = QLabel(name)
         name_lbl.setAlignment(Qt.AlignCenter)
         name_lbl.setWordWrap(False)
-        name_lbl.setStyleSheet(f"color: {_TEXT}; font-size: 13px; font-weight: 700; background: transparent;")
+        name_lbl.setStyleSheet(
+            f"color: {_TEXT}; font-size: 13px; font-weight: 700; background: transparent;")
         v.addWidget(name_lbl)
 
-        # Meta
-        meta = f"{artist.album_count} álbumes · {artist.track_count} canciones"
-        if len(meta) > 30:
-            meta = meta[:29] + "…"
+        # Badge row: enriched + meta
+        badge_row = QHBoxLayout()
+        badge_row.setAlignment(Qt.AlignCenter)
+        badge_row.setSpacing(6)
+        if artist.enrichment_status == "loaded":
+            ext_badge = QLabel("Info")
+            ext_badge.setStyleSheet(
+                "background: rgba(70,145,255,0.18); color: rgba(120,180,255,0.88);"
+                "font-size: 9px; font-weight: 700; border-radius: 5px; padding: 1px 6px;")
+            ext_badge.setFixedHeight(16)
+            badge_row.addWidget(ext_badge)
+
+        meta = f"{artist.album_count} alb · {artist.track_count} canc"
+        if len(meta) > 28:
+            meta = meta[:27] + "\u2026"
         meta_lbl = QLabel(meta)
         meta_lbl.setAlignment(Qt.AlignCenter)
-        meta_lbl.setStyleSheet(f"color: {_TEXT3}; font-size: 10.5px; background: transparent;")
-        v.addWidget(meta_lbl)
+        meta_lbl.setStyleSheet(f"color: {_TEXT3}; font-size: 10px; background: transparent;")
+        badge_row.addWidget(meta_lbl)
+        v.addLayout(badge_row)
 
         # Genres / years
         extra = ""
         if artist.genres:
             extra = ", ".join(artist.genres[:2])
         if artist.years:
-            y_str = f"{artist.years[0]}–{artist.years[-1]}" if len(artist.years) > 1 else str(artist.years[0])
-            extra = f"{extra} · {y_str}" if extra else y_str
+            y_str = f"{artist.years[0]}\u2013{artist.years[-1]}" if len(artist.years) > 1 else str(artist.years[0])
+            extra = f"{extra} \u00b7 {y_str}" if extra else y_str
         if extra:
             extra_lbl = QLabel(extra[:28])
             extra_lbl.setAlignment(Qt.AlignCenter)
-            extra_lbl.setStyleSheet(f"color: {_TEXT3}; font-size: 10px; background: transparent;")
+            extra_lbl.setStyleSheet(
+                f"color: {_TEXT3}; font-size: 10px; background: transparent;")
             v.addWidget(extra_lbl)
 
         v.addStretch()
@@ -331,9 +366,11 @@ class _ArtistCard(QFrame):
         menu.addAction("Abrir artista", lambda: self.context_action.emit("open"))
         menu.addSeparator()
         menu.addAction("Reproducir todo", lambda: self.context_action.emit("play"))
-        menu.addAction("Añadir a la cola", lambda: self.context_action.emit("queue"))
+        menu.addAction("Anadir a la cola", lambda: self.context_action.emit("queue"))
         menu.addAction("Crear playlist", lambda: self.context_action.emit("playlist"))
         menu.addAction("Editar metadatos", lambda: self.context_action.emit("metadata"))
+        menu.addSeparator()
+        menu.addAction("Actualizar info TheAudioDB", lambda: self.context_action.emit("refresh_info"))
         menu.exec(event.globalPos())
 
 

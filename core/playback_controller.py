@@ -105,9 +105,8 @@ class PlaybackController:
             qual, _ = CoverArtService.quality_label(track.uri)
             quality_str = qual
 
-        # Find cover art for NowPlayingBar
-        cover_path = track.cover_path or CoverArtService.find_cover(track.uri)
-        self._win._ctx.player_bar.set_track(name, artist, cover_path or "")
+        # Resolve cover + quality and update NowPlayingBar
+        self._win._ctx.player_bar.set_track_from_ref(track)
         self._win._ctx.player_bar.set_quality(quality_str)
 
         if track.uri.startswith("http") and track.cover_path:

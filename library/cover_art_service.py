@@ -1,4 +1,6 @@
 """Cover art service — unified cover art finding and quality labeling."""
+from __future__ import annotations
+
 import os
 import hashlib
 
@@ -9,6 +11,21 @@ CACHE_DIR = os.path.expanduser("~/.cache/astra/covers")
 
 
 class CoverArtService:
+    @staticmethod
+    def get_cover_pixmap(filepath: str, size: int = 64):
+        """Resolve cover art for a given audio file, returning a QPixmap or None."""
+        if not filepath:
+            return None
+        try:
+            # Use the full load_cover_pixmap which tries: DB cache → external → mutagen
+            from library.album_art import load_cover_pixmap
+            pix = load_cover_pixmap(filepath, size)
+            if pix and not pix.isNull():
+                return pix
+        except Exception:
+            pass
+        return None
+
     @staticmethod
     def find_cover(filepath: str) -> str:
         """Find cover art for a given filepath. Returns path or empty string."""
@@ -31,6 +48,9 @@ class CoverArtService:
                 return cache_path
             return ""
         except Exception:
+            import logging
+            logging.getLogger("astra").debug(
+                "find_cover failed for %s", filepath, exc_info=True)
             return ""
 
     @staticmethod

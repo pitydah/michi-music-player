@@ -31,7 +31,8 @@ class EqDialog(QDialog):
         self.resize(950, 640)
         self.setMinimumSize(750, 480)
         self.setStyleSheet("""
-            QDialog { background: #090B11; border-radius: 16px; }
+            QDialog { background: rgba(15,17,22,0.96); border-radius: 16px;
+              border: 1px solid rgba(255,255,255,0.07); }
         """)
         from ui.theme import apply_dialog_shadow
         apply_dialog_shadow(self)

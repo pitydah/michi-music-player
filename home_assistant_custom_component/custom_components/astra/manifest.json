@@ -1,0 +1,12 @@
+{
+  "domain": "astra",
+  "name": "Astra Music Player",
+  "codeowners": ["@astramusicplayer"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/anomalyco/astra",
+  "issue_tracker": "https://github.com/anomalyco/astra/issues",
+  "requirements": [],
+  "version": "0.1.0",
+  "iot_class": "local_push"
+}

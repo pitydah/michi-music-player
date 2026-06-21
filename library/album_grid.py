@@ -66,14 +66,16 @@ class AlbumGridWidget(QWidget):
         self._selected_index = -1
         self._cards: list[_AlbumCard] = []
 
-        self.setStyleSheet("background: #090B11;")
+        self.setStyleSheet(
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+            "  stop:0 rgba(20,22,28,0.92), stop:1 rgba(10,12,18,0.92));")
 
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QScrollArea.NoFrame)
         self._scroll.setStyleSheet("""
             QScrollArea {
-                background: #090B11; border: none;
+                background: transparent; border: none;
             }
             QScrollBar:vertical {
                 background: rgba(255,255,255,0.025);

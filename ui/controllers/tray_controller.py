@@ -1,9 +1,7 @@
 """Tray controller — manages system tray icon and notifications."""
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu
 
-from ui.icons import get_icon
+from ui.icon_loader import get_tray_icon
 
 
 class TrayController:
@@ -12,11 +10,7 @@ class TrayController:
         self._icon: QSystemTrayIcon | None = None
 
     def setup(self):
-        tray_pix = QPixmap(get_icon("tray_icon"))
-        if not tray_pix.isNull():
-            tray_pix = tray_pix.scaled(64, 64, Qt.KeepAspectRatio,
-                                        Qt.SmoothTransformation)
-        self._icon = QSystemTrayIcon(QIcon(tray_pix), self._win)
+        self._icon = QSystemTrayIcon(get_tray_icon(), self._win)
         self._icon.setToolTip("Astra Music Player")
         tray_menu = QMenu()
         tray_menu.addAction("Mostrar", self._win.show)

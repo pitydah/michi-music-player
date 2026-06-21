@@ -25,10 +25,10 @@ class MiniPlayer(QWidget):
             QWidget {
                 background: qlineargradient(
                     x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(20,24,34,0.96),
-                    stop:1 rgba(12,14,22,0.96)
+                    stop:0 rgba(20,24,34,0.88),
+                    stop:1 rgba(12,14,22,0.88)
                 );
-                border: 1px solid rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.10);
                 border-radius: 16px;
             }
             QLabel {
@@ -46,12 +46,15 @@ class MiniPlayer(QWidget):
         title_lbl = QLabel("Astra")
         title_lbl.setStyleSheet(
             "font-size: 12px; font-weight: 650; color: rgba(255,255,255,0.5);")
-        close_btn = QPushButton("×")
-        close_btn.setFixedSize(24, 24)
+        close_btn = QPushButton("\u00d7")
+        close_btn.setFixedSize(26, 26)
         close_btn.setFlat(True)
         close_btn.setStyleSheet(
-            "QPushButton { color: rgba(255,255,255,0.4); font-size: 16px; }"
-            "QPushButton:hover { color: #FF3C48; }")
+            "QPushButton { color: rgba(255,255,255,0.35); font-size: 16px;"
+            " background: transparent; border: 1px solid transparent;"
+            " border-radius: 8px; }"
+            "QPushButton:hover { color: #FF3C48;"
+            " background: rgba(255,60,72,0.12); }")
         close_btn.clicked.connect(self.hide)
         title_bar.addWidget(title_lbl)
         title_bar.addStretch()
@@ -65,7 +68,8 @@ class MiniPlayer(QWidget):
         self._cover = QLabel()
         self._cover.setFixedSize(56, 56)
         self._cover.setStyleSheet(
-            "background: rgba(255,255,255,0.04); border-radius: 8px;")
+            "background: rgba(255,255,255,0.06); border-radius: 10px;"
+            "border: 1px solid rgba(255,255,255,0.08);")
         self._cover.setAlignment(Qt.AlignCenter)
         info_row.addWidget(self._cover)
 
@@ -91,13 +95,18 @@ class MiniPlayer(QWidget):
         self._seek.sliderReleased.connect(self._on_seek_release)
         self._seek.setStyleSheet("""
             QSlider::groove:horizontal {
-                height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px;
+                height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px;
             }
             QSlider::sub-page:horizontal {
-                background: #FF7A00; border-radius: 2px;
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #FF7A00, stop:0.5 #FF243D,
+                    stop:0.8 #D00073, stop:1 #6B1B8F
+                );
+                border-radius: 2px;
             }
             QSlider::handle:horizontal {
-                width: 8px; height: 8px; margin: -3px 0; border-radius: 4px;
+                width: 9px; height: 9px; margin: -3px -4px; border-radius: 5px;
                 background: #FFFFFF;
             }
         """)
@@ -109,13 +118,17 @@ class MiniPlayer(QWidget):
         ctrl.setSpacing(16)
 
         def _make_small_btn(icon_name, sz):
-            btn = QPushButton(QIcon(icon_name), "")
+            from ui.icons import get_icon
+            ipath = get_icon(icon_name)
+            btn = QPushButton(QIcon(ipath) if ipath else QIcon(), "")
             btn.setFlat(True)
             btn.setIconSize(QSize(sz, sz))
             btn.setFixedSize(sz + 12, sz + 12)
             btn.setStyleSheet(
-                "QPushButton { background: transparent; }"
-                "QPushButton:hover { background: rgba(255,255,255,0.065); }")
+                "QPushButton { background: transparent;"
+                " border: 1px solid transparent; border-radius: 9px; }"
+                "QPushButton:hover { background: rgba(255,255,255,0.07);"
+                " border: 1px solid rgba(255,255,255,0.09); }")
             return btn
 
         prev = _make_small_btn("warm_prev", 18)

@@ -1,10 +1,9 @@
-"""Null Recognizer — placeholder, no internet calls."""
+"""Null Recognizer — fallback when no provider is configured."""
+from recognition.base_recognizer import BaseRecognizer
 
-from recognition.models import DetectedTrack
 
-
-class NullRecognizer:
+class NullRecognizer(BaseRecognizer):
     name = "none"
 
-    def identify_current(self, source: str = "", filepath: str | None = None) -> DetectedTrack | None:
+    def identify(self, sample_bytes=None, source="", filepath=""):
         return None

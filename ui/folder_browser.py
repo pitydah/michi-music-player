@@ -39,7 +39,9 @@ class FolderBrowserWidget(QWidget):
         self._history: list[str] = []
         self._load_persistent()
 
-        self.setStyleSheet("background: #090B11;")
+        self.setStyleSheet(
+            "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
+            " stop:0 rgba(20,22,28,0.94), stop:1 rgba(8,10,16,0.94));")
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

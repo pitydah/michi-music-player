@@ -63,6 +63,8 @@ class ArtistDetailView(QWidget):
     playlist_artist_requested = Signal(str)
     metadata_artist_requested = Signal(str)
     metadata_files_requested = Signal(list)
+    shuffle_all_requested = Signal(str)
+    artist_enrich_requested = Signal(str)  # artist_key for refreshing
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -99,6 +101,27 @@ class ArtistDetailView(QWidget):
 
     def set_artist(self, artist: ArtistGroup):
         self._artist = artist
+        self._rebuild()
+
+    def set_external_info(self, info):
+        """Update artist detail with info from TheAudioDB."""
+        if not self._artist or not info:
+            return
+        # Update artist group fields
+        self._artist.external_id = getattr(info, 'artist_id', '')
+        self._artist.mbid = getattr(info, 'mbid', '')
+        self._artist.bio = getattr(info, 'biography_preferred', '')
+        self._artist.thumb_url = getattr(info, 'thumb_url', '')
+        self._artist.banner_url = getattr(info, 'banner_url', '')
+        self._artist.logo_url = getattr(info, 'logo_url', '')
+        self._artist.fanart_urls = getattr(info, 'fanart_urls', [])
+        self._artist.country = getattr(info, 'country', '')
+        self._artist.formed_year = getattr(info, 'formed_year', '')
+        self._artist.style = getattr(info, 'style', '')
+        self._artist.mood = getattr(info, 'mood', '')
+        self._artist.website = getattr(info, 'website', '')
+        self._artist.genre = getattr(info, 'genre', '')
+        self._artist.enrichment_status = "loaded"
         self._rebuild()
 
     def _rebuild(self):
@@ -181,13 +204,62 @@ class ArtistDetailView(QWidget):
         hero.addStretch()
         self._layout.addLayout(hero)
 
+        # Bio section
+        bio_text = artist.bio or ""
+        if bio_text:
+            self._layout.addSpacing(4)
+            bio_card = _GlassCard()
+            bl = QVBoxLayout(bio_card)
+            bl.setContentsMargins(18, 14, 18, 14)
+            bl.setSpacing(6)
+            bio_title = QLabel("Resena")
+            bio_title.setStyleSheet(
+                f"color: {_TEXT}; font-size: 15px; font-weight: 700; background: transparent;")
+            bl.addWidget(bio_title)
+            if len(bio_text) > 400:
+                bio_text = bio_text[:400] + "\u2026"
+            bio_lbl = QLabel(bio_text)
+            bio_lbl.setStyleSheet(
+                f"color: {_TEXT3}; font-size: 11.5px; background: transparent;")
+            bio_lbl.setWordWrap(True)
+            bl.addWidget(bio_lbl)
+
+            # Data row
+            data_parts = []
+            external_genre = (
+                getattr(artist, "genre", "") or
+                getattr(artist, "style", "") or
+                ", ".join(getattr(artist, "genres", [])[:2]))
+            if external_genre:
+                data_parts.append(external_genre)
+            if artist.country:
+                data_parts.append(artist.country)
+            if artist.formed_year:
+                data_parts.append(str(artist.formed_year))
+            if data_parts:
+                data_lbl = QLabel(" \u00b7 ".join(data_parts))
+                data_lbl.setStyleSheet(
+                    f"color: {_TEXT3}; font-size: 10.5px; background: transparent;")
+                bl.addWidget(data_lbl)
+
+            self._layout.addWidget(bio_card)
+
+        # Refresh info button
+        refresh_btn = QPushButton("Actualizar info TheAudioDB")
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.setStyleSheet(_BTN_CSS.replace("8px 14px", "6px 12px").replace("12.5px", "11px"))
+        refresh_btn.clicked.connect(
+            lambda: self.artist_enrich_requested.emit(artist.key))
+        self._layout.addWidget(refresh_btn)
+        self._layout.addSpacing(4)
+
     def _build_actions(self, artist: ArtistGroup):
         row = QHBoxLayout()
         row.setSpacing(10)
 
         for label, signal in [
             ("Reproducir todo", lambda: self.play_all_requested.emit(artist.key)),
-            ("Aleatorio", lambda: self.play_all_requested.emit(artist.key)),  # shuffle not implemented yet
+            ("Aleatorio", lambda: self.shuffle_all_requested.emit(artist.key)),
             ("Añadir a cola", lambda: self.queue_all_requested.emit(artist.key)),
             ("Crear playlist", lambda: self.playlist_artist_requested.emit(artist.key)),
             ("Editar metadatos", lambda: self.metadata_artist_requested.emit(artist.key)),
@@ -359,3 +431,13 @@ class ArtistDetailView(QWidget):
             table.setItem(ti, 3, QTableWidgetItem(ext))
 
         self._layout.addWidget(table)
+
+
+class _GlassCard(QFrame):
+    def __init__(self):
+        super().__init__()
+        self.setStyleSheet(
+            "QFrame { background: rgba(255,255,255,0.035);"
+            "  border-radius: 14px;"
+            "  border: 1px solid rgba(255,255,255,0.065); }"
+            "QLabel { background: transparent; }")

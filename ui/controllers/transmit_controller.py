@@ -38,12 +38,80 @@ class TransmitController:
             empty = menu.addAction("No hay dispositivos configurados")
             empty.setEnabled(False)
 
+        # Snapcast zones
+        groups = _get_snapcast_groups(self._win)
+        if groups:
+            menu.addSeparator()
+            sc_section = menu.addAction("Snapcast / Zonas")
+            sc_section.setEnabled(False)
+            for g in groups:
+                label = f"  {g.get('name', 'Zona')}"
+                if g.get("active"):
+                    label += " · activa"
+                action = menu.addAction(label)
+                action.triggered.connect(
+                    lambda checked=False, gr=g: self._activate_zone(gr))
+
+        # Home Audio / Home Assistant devices
+        ha_devices = _get_ha_devices(self._win)
+        if ha_devices:
+            menu.addSeparator()
+            ha_section = menu.addAction("Home Audio")
+            ha_section.setEnabled(False)
+            for dev in ha_devices:
+                label = f"  {dev.get('name', 'Dispositivo')}"
+                action = menu.addAction(label)
+                action.triggered.connect(
+                    lambda checked=False, d=dev: self._cast_to_ha_device(d))
+
         menu.addSeparator()
         menu.addAction("Añadir dispositivo…", self.add_transmit_device)
         menu.addAction("Administrar dispositivos…", self.manage_transmit_devices)
 
         btn = self._win._ctx.player_bar.transmit_button()
         menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
+
+    def _cast_to_ha_device(self, device: dict):
+        if hasattr(self._win, '_ha_client') and getattr(self._win, '_ha_connected', False):
+            current = self._win._ctx.playback.current
+            if not current:
+                self._win._ctx.toast.show("No hay reproduccion activa", "info")
+                return
+            if current.startswith("http"):
+                self._win._ha_client.play_media(
+                    device.get("entity_id", ""), current, "music")
+                self._win._ctx.player_bar.set_transmit_active(
+                    True, device.get("name", "Dispositivo"))
+                self._win._ctx.toast.show(
+                    f"Enviando a {device.get('name', 'Dispositivo')}", "success")
+            elif hasattr(self._win, '_local_media'):
+                if not self._win._local_media.is_running:
+                    self._win._local_media.configure(8125)
+                    self._win._local_media.start()
+                try:
+                    url = self._win._local_media.register_file(current)
+                    self._win._ha_client.play_media(
+                        device.get("entity_id", ""), url, "music")
+                    self._win._ctx.player_bar.set_transmit_active(
+                        True, device.get("name", "Dispositivo"))
+                    self._win._ctx.toast.show(
+                        f"Enviando a {device.get('name', 'Dispositivo')}",
+                        "success")
+                except ValueError as e:
+                    self._win._ctx.toast.show(
+                        f"No se pudo servir el archivo: {e}", "error")
+
+    def _activate_zone(self, group: dict):
+        # Auto-start snapserver if not running
+        if (hasattr(self._win, '_snapserver') and not self._win._snapserver.is_running
+                and self._win._snapserver.is_binary_available()
+                and hasattr(self._win, '_audio_capture')):
+            self._win._audio_capture.create_sink()
+        if hasattr(self._win, '_group_mgr'):
+            self._win._group_mgr.activate_group(group.get("id", ""))
+            name = group.get("name", "Zona")
+            self._win._ctx.player_bar.set_transmit_active(True, name)
+            self._win._ctx.toast.show(f"Zona activada: {name}", "success")
 
     def activate_transmit_device(self, device):
         if device is None:
@@ -138,7 +206,8 @@ class TransmitController:
                 title = name
         else:
             title = "Sin reproducción"
-        self._win._ctx.mini_player.set_track(title, artist)
+        cover_path = CoverArtService.find_cover(current) if current else ""
+        self._win._ctx.mini_player.set_track(title, artist, cover_path)
         self._win._ctx.mini_player.show()
         self._win._ctx.mini_player.raise_()
         self._win._ctx.mini_player.activateWindow()
@@ -237,3 +306,20 @@ class TransmitController:
         btn_row.addWidget(close_btn)
         layout.addLayout(btn_row)
         dlg.exec()
+
+
+def _get_ha_devices(win) -> list[dict]:
+    """Return Home Assistant media_player devices if connected."""
+    if not hasattr(win, '_ha_client') or not getattr(win, '_ha_connected', False):
+        return []
+    view = getattr(win, '_home_audio_view', None)
+    if view and view._devices:
+        return [d for d in view._devices if d.get("available")]
+    return []
+
+
+def _get_snapcast_groups(win) -> list[dict]:
+    """Return Snapcast zones from GroupManager."""
+    if not hasattr(win, '_group_mgr'):
+        return []
+    return win._group_mgr.groups()
