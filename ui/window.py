@@ -16,6 +16,13 @@ from ui.view_switcher import SegmentedViewSwitcher
 from ui.view_controller import ViewController
 from ui.sidebar_controller import SidebarController
 
+from ui.central.central_styles import (
+    search_qss as _cs_search_qss,
+    count_badge_qss, tool_button_qss, menu_qss as _cs_menu_qss,
+    table_qss, scrollbar_qss, section_icon_box_qss,
+    section_title_qss, section_subtitle_qss, header_qss,
+)
+
 from ui.icons import get_icon, app_icon
 from ui.nowplaying_bar import NowPlayingBar
 from audio.player import PlayerEngine, PlaybackState
@@ -450,18 +457,7 @@ class MainWindow(QMainWindow):
         # ── Header ──
         header = QFrame()
         header.setObjectName("headerBar")
-        header.setStyleSheet("""
-            QFrame#headerBar {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(255,255,255,0.070),
-                    stop:0.48 rgba(255,255,255,0.045),
-                    stop:1 rgba(255,255,255,0.030)
-                );
-                border: 1px solid rgba(255,255,255,0.080);
-                border-radius: 18px;
-            }
-        """)
+        header.setStyleSheet(header_qss())
         hl = QHBoxLayout(header)
         hl.setContentsMargins(14, 10, 14, 10)
         hl.setSpacing(12)
@@ -470,13 +466,7 @@ class MainWindow(QMainWindow):
         self._section_icon_box = QFrame()
         self._section_icon_box.setObjectName("sectionIconBox")
         self._section_icon_box.setFixedSize(42, 42)
-        self._section_icon_box.setStyleSheet("""
-            QFrame#sectionIconBox {
-                background: rgba(255,255,255,0.060);
-                border: 1px solid rgba(255,255,255,0.090);
-                border-radius: 13px;
-            }
-        """)
+        self._section_icon_box.setStyleSheet(section_icon_box_qss())
         icon_box_inner = QVBoxLayout(self._section_icon_box)
         icon_box_inner.setContentsMargins(0, 0, 0, 0)
         icon_box_inner.setAlignment(Qt.AlignCenter)
@@ -491,22 +481,10 @@ class MainWindow(QMainWindow):
         title_box.setSpacing(1)
         self._section_title = QLabel("Todas las canciones")
         self._section_title.setObjectName("sectionTitle")
-        self._section_title.setStyleSheet("""
-            QLabel#sectionTitle {
-                color: #FFFFFF;
-                font-size: 17px; font-weight: 800;
-                background: transparent; border: none;
-            }
-        """)
+        self._section_title.setStyleSheet(section_title_qss())
         self._section_subtitle = QLabel("Toda tu música local")
         self._section_subtitle.setObjectName("sectionSubtitle")
-        self._section_subtitle.setStyleSheet("""
-            QLabel#sectionSubtitle {
-                color: rgba(255,255,255,0.72);
-                font-size: 12px; font-weight: 540;
-                background: transparent; border: none;
-            }
-        """)
+        self._section_subtitle.setStyleSheet(section_subtitle_qss())
         title_box.addWidget(self._section_title)
         title_box.addWidget(self._section_subtitle)
 
@@ -519,43 +497,15 @@ class MainWindow(QMainWindow):
         hl.addSpacing(16)
 
         self._search = QLineEdit()
+        self._search.setObjectName("headerSearch")
         self._search.setPlaceholderText("Buscar canciones...")
         self._search.setClearButtonEnabled(True)
         self._search.setFixedWidth(240)
         self._search.textChanged.connect(self._on_search)
-        self._search.setStyleSheet("""
-            QLineEdit {
-                background: rgba(255,255,255,0.060);
-                color: #FFFFFF;
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 14px;
-                padding: 8px 14px;
-                font-size: 12.5px;
-                selection-background-color: rgba(255,255,255,0.18);
-                selection-color: #FFFFFF;
-            }
-            QLineEdit:hover {
-                background: rgba(255,255,255,0.080);
-                border: 1px solid rgba(255,255,255,0.14);
-            }
-            QLineEdit:focus {
-                background: rgba(255,255,255,0.095);
-                border: 1px solid rgba(255,255,255,0.18);
-            }
-        """)
+        self._search.setStyleSheet(_cs_search_qss())
         self._count = QLabel("0 elementos")
         self._count.setObjectName("countBadge")
-        self._count.setStyleSheet("""
-            QLabel#countBadge {
-                background: rgba(255,255,255,0.055);
-                border: 1px solid rgba(255,255,255,0.080);
-                border-radius: 12px;
-                padding: 7px 11px;
-                color: rgba(255,255,255,0.78);
-                font-size: 11.5px;
-                font-weight: 660;
-            }
-        """)
+        self._count.setStyleSheet(count_badge_qss())
 
         # View selector (segmented capsule)
         self._view_switcher = SegmentedViewSwitcher(get_icon)
@@ -569,50 +519,10 @@ class MainWindow(QMainWindow):
         self._settings_btn.setFixedSize(44, 44)
         self._settings_btn.setToolTip("Configuración y acciones")
         self._settings_btn.setPopupMode(QToolButton.InstantPopup)
-        self._settings_btn.setStyleSheet("""
-            QToolButton#settingsButton {
-                background: rgba(255,255,255,0.065);
-                border: 1px solid rgba(255,255,255,0.100);
-                border-radius: 14px;
-            }
-            QToolButton#settingsButton:hover {
-                background: rgba(255,255,255,0.095);
-                border: 1px solid rgba(255,255,255,0.150);
-            }
-            QToolButton#settingsButton:pressed {
-                background: rgba(255,255,255,0.135);
-                border: 1px solid rgba(255,255,255,0.20);
-            }
-            QToolButton#settingsButton::menu-indicator {
-                image: none;
-                width: 0px;
-            }
-        """)
+        self._settings_btn.setStyleSheet(tool_button_qss("icon"))
 
         settings_menu = QMenu(self)
-        settings_menu.setStyleSheet("""
-            QMenu {
-                background: rgba(18,20,28,0.98);
-                color: rgba(255,255,255,0.88);
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 12px;
-                padding: 7px 4px;
-            }
-            QMenu::item {
-                padding: 8px 30px 8px 14px;
-                border-radius: 8px;
-                font-size: 12.5px;
-            }
-            QMenu::item:selected {
-                background: rgba(255,255,255,0.095);
-                color: #FFFFFF;
-            }
-            QMenu::separator {
-                height: 1px;
-                background: rgba(255,255,255,0.08);
-                margin: 5px 8px;
-            }
-        """)
+        settings_menu.setStyleSheet(_cs_menu_qss())
         settings_menu.addAction(self._open_file_action)
         settings_menu.addAction(self._add_folder_action)
         settings_menu.addSeparator()
@@ -638,19 +548,7 @@ class MainWindow(QMainWindow):
         self._album_sort_btn.setToolTip("Ordenar álbumes")
         self._album_sort_btn.setPopupMode(QToolButton.InstantPopup)
         self._album_sort_btn.setFixedHeight(32)
-        self._album_sort_btn.setStyleSheet("""
-            QToolButton {
-                background: rgba(255,255,255,0.055);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 8px;
-                color: rgba(255,255,255,0.78); font-size: 11.5px;
-                padding: 0 11px;
-            }
-            QToolButton:hover {
-                background: rgba(255,255,255,0.085);
-                border: 1px solid rgba(255,255,255,0.14);
-            }
-        """)
+        self._album_sort_btn.setStyleSheet(tool_button_qss())
         self._setup_album_sort_menu()
         self._album_sort_btn.hide()
 
@@ -659,19 +557,7 @@ class MainWindow(QMainWindow):
         self._album_filter_btn.setToolTip("Filtrar álbumes")
         self._album_filter_btn.setPopupMode(QToolButton.InstantPopup)
         self._album_filter_btn.setFixedHeight(32)
-        self._album_filter_btn.setStyleSheet("""
-            QToolButton {
-                background: rgba(255,255,255,0.055);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 8px;
-                color: rgba(255,255,255,0.78); font-size: 11.5px;
-                padding: 0 11px;
-            }
-            QToolButton:hover {
-                background: rgba(255,255,255,0.085);
-                border: 1px solid rgba(255,255,255,0.14);
-            }
-        """)
+        self._album_filter_btn.setStyleSheet(tool_button_qss())
         self._setup_album_filter_menu()
         self._album_filter_btn.hide()
 
@@ -704,120 +590,23 @@ class MainWindow(QMainWindow):
         self._table.verticalHeader().setDefaultSectionSize(30)
         self._table.setColumnHidden(7, True)  # hide URI column
         self._table.setSortingEnabled(True)
-        self._table.setStyleSheet("""
-            QTableView {
-                background: #090B11;
-                alternate-background-color: #0E1118;
-                color: #FFFFFF;
-                gridline-color: rgba(255,255,255,0.05);
-                border: none;
-                selection-background-color: rgba(255,255,255,0.115);
-                selection-color: #FFFFFF;
-                outline: 0;
-            }
-            QTableView::item {
-                min-height: 28px;
-                padding: 4px 8px;
-                border: none;
-            }
-            QTableView::item:hover {
-                background: rgba(255,255,255,0.055);
-            }
-            QHeaderView {
-                background: #10131A;
-                border: none;
-            }
-            QHeaderView::section {
-                background: qlineargradient(
-                    x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #181C25,
-                    stop:1 #10131A
-                );
-                color: rgba(255,255,255,0.82);
-                font-size: 12px;
-                font-weight: 650;
-                padding: 7px 10px;
-                border: none;
-                border-right: 1px solid rgba(255,255,255,0.06);
-                border-bottom: 1px solid rgba(255,255,255,0.08);
-            }
-            QHeaderView::section:hover {
-                background: rgba(255,255,255,0.08);
-                color: #FFFFFF;
-            }
-            QHeaderView::section:checked {
-                background: rgba(255,255,255,0.115);
-                color: #FFFFFF;
-            }
-            QTableCornerButton::section {
-                background: #10131A;
-                border: none;
-                border-bottom: 1px solid rgba(255,255,255,0.08);
-            }
-            QScrollBar:vertical {
-                background: rgba(255,255,255,0.025);
-                width: 10px;
-                margin: 0px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(255,255,255,0.18);
-                min-height: 40px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(255,122,0,0.42);
-            }
-            QScrollBar::add-line:vertical,
-            QScrollBar::sub-line:vertical {
-                height: 0px;
-                background: transparent;
-            }
-            QScrollBar:horizontal {
-                background: rgba(255,255,255,0.025);
-                height: 10px;
-                margin: 0px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle:horizontal {
-                background: rgba(255,255,255,0.18);
-                min-width: 40px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle:horizontal:hover {
-                background: rgba(255,122,0,0.42);
-            }
-            QScrollBar::add-line:horizontal,
-            QScrollBar::sub-line:horizontal {
-                width: 0px;
-                background: transparent;
-            }
-            QScrollBar::add-page,
-            QScrollBar::sub-page {
-                background: transparent;
-            }
-        """)
+        self._table.setStyleSheet(table_qss() + scrollbar_qss())
         self._table.doubleClicked.connect(self._on_table_dbl)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._on_table_menu)
 
-        placeholder = QLabel()
-        placeholder.setAlignment(Qt.AlignCenter)
-        placeholder.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.68); font-size: 16px;"
-            "  background: transparent; border: none; padding: 48px; }")
-        placeholder.setText(
-            "Añade música a tu biblioteca\n"
-            "Abre una carpeta o arrastra archivos para comenzar")
+        from ui.central.empty_state import CentralEmptyState
+        placeholder = CentralEmptyState()
+        placeholder.set_icon("\U0001f3b5")
+        placeholder.set_title("Añade música a tu biblioteca")
+        placeholder.set_subtitle("Abre una carpeta o arrastra archivos para comenzar")
+        placeholder.set_primary_action("Añadir carpeta", self._add_folder)
 
-        placeholder_albums = QLabel()
-        placeholder_albums.setAlignment(Qt.AlignCenter)
-        placeholder_albums.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.62); font-size: 15px;"
-            "  background: transparent; border: none; padding: 48px; }")
-        placeholder_albums.setText(
-            "Sin álbumes en la biblioteca\n"
-            "Añade carpetas de música para ver carátulas aquí")
+        placeholder_albums = CentralEmptyState()
+        placeholder_albums.set_icon("\U0001f4c0")
+        placeholder_albums.set_title("Sin álbumes en la biblioteca")
+        placeholder_albums.set_subtitle("Añade carpetas de música para ver carátulas aquí")
+        placeholder_albums.set_primary_action("Añadir carpeta", self._add_folder)
 
         placeholder_expanded = QLabel("")
         placeholder_expanded.setAlignment(Qt.AlignCenter)
@@ -965,18 +754,8 @@ class MainWindow(QMainWindow):
         self._playback_ctrl = PlaybackController(self)
 
         # ── Content wrapper ──
-        cw = QWidget()
-        cw.setObjectName("contentSurface")
-        cw.setStyleSheet(
-            "QWidget#contentSurface {"
-            "  background: #090B11;"
-            "  border-left: 1px solid rgba(255,255,255,0.045);"
-            "}")
-        self._content.setStyleSheet(
-            "QStackedWidget {"
-            "  background: #090B11;"
-            "  border: none;"
-            "}")
+        from ui.central.content_surface import CentralContentSurface
+        cw = CentralContentSurface()
         cl = QVBoxLayout(cw)
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(0)
