@@ -71,6 +71,18 @@ astra-music-player/
 - Naming: `track_changed`, `playback_started`, `library_scanned`, `navigation_requested`
 - Use `Signal` from PySide6 for cross-layer communication
 
+### Key Glue Files (connectors between layers)
+
+| File | Role |
+|------|------|
+| `ui/window.py:937-1212` | `_on_sidebar_navigate()` — dispatches ALL sidebar clicks to views (giant if/elif chain) |
+| `ui/sidebar_controller.py:18-69` | `rebuild()` — builds 7 sidebar sections and all items in order |
+| `core/app_context.py` | DI container — all controllers access services via `ctx` |
+| `ui/icon_registry.py` | Source of truth for all 38+ icons (key, path, family, render_mode) |
+| `core/settings_manager.py` | QSettings wrapper — `DEFAULTS` dict has all config keys; `get()`/`set_()` API |
+| `ui/window.py:110-127` | `SECTION_CONFIG` — header titles, icons, views, search visibility per section |
+| `ui/window.py:28` | `VIEW_MODE_DEFS` — view mode configs for the view switcher |
+
 ## 4. Code Conventions
 
 ### Style
@@ -155,6 +167,17 @@ QIcon(path)
 QPixmap(path)
 QIcon(get_icon(key))
 ```
+
+### Icon Resolution Chain
+Understanding how an icon key like `"home_audio"` becomes a visible QPixmap:
+
+1. **Registry lookup** — `icon_registry.py` → `IconSpec(key="home_audio", path="icons/sidebar/home-audio.svg", render_mode="native_color")`
+2. **Path resolution** — `icon_path("home_audio")` → resolves relative path to absolute filesystem path
+3. **Loader dispatch** — `get_sidebar_icon("home_audio")` detects `.svg` + `render_mode == "native_color"`
+4. **Safe render** — `render_svg_icon(path, size, padding=2)` → QImage 4x supersampling + dual-pass alpha sanitize → QPixmap
+5. **Widget display** — `SidebarItem._load_icon()` → `QLabel.setPixmap(pix)`
+
+For tinted SVGs (`render_mode="symbolic_tint"`): step 4 uses `_tinted_pixmap()` with `CompositionMode_SourceIn` + a `QColor` from `SIDEBAR_NORMAL/HOVER/ACTIVE`.
 
 ### QSS — Always Centralized
 ```python
@@ -244,4 +267,146 @@ f219611 fix: extend SVG alpha-safe renderer to entire app
 5730faa fix: sidebar section headers — white text 0.88
 6233287 fix: SVG native_color — remove pure black pixels + edge cleanup
 9614995 fix: Home Audio — own sidebar section + transparent background
+```
+
+## 10. Key Data Flows
+
+### Playback
+```
+sidebar click → _on_sidebar_navigate("library")
+  → _apply_filters() → table populated
+  → table double-click → _on_table_dbl → _play_file(fp)
+  → PlayerService.play(fp)
+    → GStreamerEngine.play()
+      → probe_format(filepath)
+      → get_profile(audio_profile)
+      → DspState(eq, replaygain, spectrum, transmit)
+      → DacManager.select_output_route(fmt, profile, device)
+      → PipelineFactory.build_for_uri(uri, fmt, route, dsp, transmit_device)
+        → _make_sink_bin() [queue→volume→EQ→convert→tee→output+spectrum+transmit]
+      → Gst.Pipeline.set_state(PLAYING) → audio output
+```
+
+### Search (FTS5 + field filters)
+```
+search box textChanged → _on_search(text)
+  → _apply_filters()
+    → SearchController.search(text)
+      → LocalSource.search(text)
+        → SearchEngine.search(text)
+          → SearchIndex.search_fts(text) [FTS5 MATCH with prefix *]
+          → OR SearchIndex.search_like(text) [LIKE fallback]
+        → results as dicts → TrackRef list
+    → TrackRefTableModel.populate(refs)
+    → QTableView updated
+
+Field filters: artist:Genesis album:"Lamb" format:flac year:>2000 bitrate:>=320
+Parsed by query_parser.py → SQL WHERE clauses with numeric operators
+```
+
+### Scanning (Indexer 2.0)
+```
+folder add → FileActions.scan_path(path)
+  → Indexer.from_db_path(path).run()
+    → Phase 1: _walk_files() [ignore hidden dirs]
+    → Phase 2: ChangeDetector [skip unchanged: size + mtime match]
+    → Phase 3: MetadataExtractor [GStreamer + mutagen]
+    → Phase 4: AlbumKeyBuilder [SHA1 key per album]
+    → Phase 5: BatchWriter.add(record) [flush every 100]
+    → Phase 6: _rebuild_indexes() + rebuild_fts()
+    → Phase 7: _schedule_enrichment() [TheAudioDB artist enrichment]
+  → _on_done: load_library() + reset CoverFlow cache + Toast
+```
+
+### Navigation
+```
+sidebar item clicked
+  → SidebarItem.clicked.emit(key) [e.g. "home_audio"]
+  → SidebarController._on_item_click(key)
+    → navigation_requested.emit(key)
+  → window._on_sidebar_navigate(key) [giant if/elif chain, line 937]
+    → _configure_header_for_section(section_key)
+      → reads SECTION_CONFIG dict for title/subtitle/icon/views/search
+      → updates header labels + icon + search placeholder
+    → _views.show(view_name) [switches QStackedWidget]
+```
+
+### Radio (station playback + filtering)
+```
+radio view shown → _on_sidebar_navigate("radio")
+  → _radio_widget.reload()
+  → RadioWidget._load_stations() → filter by _filter_text → render cards
+
+search in radio → _on_search(text)
+  → _radio_widget.set_filter(text) → filters cards in-place (never switches to table)
+
+station click → RadioWidget.station_selected.emit(url, name)
+  → window._play_radio(url, name)
+    → TrackRef(source_type="radio", source_label=name)
+    → GStreamerEngine.play_url(url)
+```
+
+### Recognition (continuous identification)
+```
+stream starts → IdentifierController.set_current_track(source_type="radio", ...)
+  → _should_listen("radio") → True → _start_listening()
+  → DetectionService.start()
+    → creates AudioCaptureService + QTimer(15s)
+    → every 15s: identify_once()
+      → capture PCM bytes (22050Hz mono S16LE)
+      → recognizer.identify(sample_bytes) [ShazamIO/AudD/AcoustID]
+      → if match → _on_detection_result → RecognitionMatcher → history
+
+local file starts → IdentifierController.set_current_track(source_type="local_file", ...)
+  → _should_listen("local_file") → False → _pause("Archivo local: Astra ya conoce sus metadatos")
+```
+
+## 11. Common Tasks
+
+### Add a sidebar item
+1. `ui/sidebar_controller.py:rebuild()` — add `add_section()` + `add_item()` call
+2. Icon: register in `ui/icon_registry.py` (PNG or SVG with correct `render_mode`)
+3. Navigation: add `elif key == "my_key":` in `window.py:_on_sidebar_navigate()` (line ~937)
+4. Header config: add entry in `SECTION_CONFIG` dict (`window.py` line ~110)
+5. View: register in `window.py:_views.register("my_view", widget)` (line ~720)
+
+### Add a new QSS style
+1. Define function in `ui/central/central_styles.py` or `ui/sidebar/sidebar_styles.py`
+2. Return the QSS string — use the central/sidebar tokens for colors/radii
+3. Never write inline QSS in widget files — always `widget.setStyleSheet(my_qss())`
+
+### Add a new icon
+1. Place file in `icons/` subdirectory (SVG or PNG at multiple sizes: 24/48/64/128px)
+2. Register in `ui/icon_registry.py`:
+   ```python
+   "my_icon": IconSpec(key="my_icon", path="icons/my_icon.svg",
+       family="sidebar", render_mode="native_color", description="My Icon")
+   ```
+3. Use via `get_qicon("my_icon")`, `get_pixmap("my_icon")`, or `get_sidebar_icon("my_icon")`
+4. SVG `render_mode`: `"native_color"` for colored SVGs, `"symbolic_tint"` for monochrome tint
+
+### Add a settings key
+1. Add default to `core/settings_manager.py:DEFAULTS` dict (line ~10-110)
+2. Read: `from core.settings_manager import get; value = get("category/key")`
+3. Write: `from core.settings_manager import set_; set_("category/key", value)`
+4. Add UI control in `ui/settings_pages.py` — extend the appropriate `SettingsPage` subclass
+
+### Add a new audio profile
+1. Define in `audio/output_profiles.py:PROFILES` dict
+2. Set properties: `allows_eq`, `allows_replaygain`, `bitperfect`, `dsd_mode`, `preferred_backend`, `allows_transmit`
+3. The profile is available immediately via `get_profile("key")`
+
+### Debug stale cache
+```bash
+# If code changes don't appear at runtime:
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+python3 -m compileall -q .
+python3 main.py
+```
+
+### Run before every commit
+```bash
+ruff check . --output-format concise     # must be 0
+python -m compileall -q .                # must be clean
+python -m pytest tests/ -q               # must be 206 passed
 ```
