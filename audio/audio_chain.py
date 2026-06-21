@@ -1,17 +1,24 @@
-"""Audio chain builder — GStreamer pipelines with DSP, DAC config, bit-perfect, EQ."""
-
+"""Audio chain — DAC config, quality labels, and parametric EQ builder."""
 from dataclasses import dataclass
-
 
 
 @dataclass
 class DacConfig:
     device: str = "default"          # ALSA device name
     mode: str = "standard"           # standard | bitperfect | dop
+    profile: str = "standard"        # standard | hifi_pcm | bitperfect_pcm ...
+    backend: str = "auto"            # auto | pipewire | pulseaudio | alsa | jack
+    output_device_id: str = ""       # id from AudioDeviceInfo
+    alsa_device: str = "default"     # e.g. hw:1,0
     target_rate: int = 0             # 0 = auto-match source
     target_format: str = "auto"      # auto | S16LE | S24_3LE | S32LE
     buffer_ms: int = 100
     period_count: int = 4
+    allow_resample: bool = True
+    resample_quality: str = "medium"
+    dsd_mode: str = "pcm"            # pcm | dop | native
+    dsd_pcm_rate: int = 0            # 0 = auto
+    allow_fallback: bool = True
 
     @property
     def alsa_device_str(self) -> str:
@@ -28,62 +35,6 @@ class DacConfig:
             target_format=settings.get("audio/target_format", "auto"),
             buffer_ms=settings.get("audio/buffer_ms", 100),
         )
-
-
-def build_audio_sink(dac: DacConfig, has_video: bool = False) -> str:
-    """Build GStreamer audio-sink pipeline suffix based on DAC config."""
-
-    parts = []
-
-    if dac.mode == "bitperfect":
-        # Match source exactly — no resampling, no conversion beyond what's needed
-        parts.append("audioconvert")
-        # Use exact alsasink
-        parts.append(f"alsasink device={dac.alsa_device_str} "
-                     f"buffer-time={dac.buffer_ms * 1000}")
-
-    elif dac.mode == "dop":
-        # DSD over PCM: force S32LE at half rate
-        parts.append("audioconvert")
-        parts.append("audio/x-raw,format=S32LE")
-        parts.append(f"alsasink device={dac.alsa_device_str}")
-
-    else:
-        # Standard: audioconvert + audioresample, let PipeWire/PulseAudio handle
-        parts.append("audioconvert")
-        parts.append("audioresample")
-        parts.append(f"alsasink device={dac.alsa_device_str}")
-
-    return " ! ".join(parts)
-
-
-def build_dsd_pipeline(filepath: str, dac: DacConfig, is_dsf: bool) -> str:
-    """Build GStreamer pipeline string for DSD playback."""
-
-    sink = build_audio_sink(dac)
-
-    if is_dsf:
-        # playbin handles avdemux_dsf → avdec_dsd_lsbf automatically
-        return (
-            f"playbin uri=file://{filepath} "
-            f"audio-sink=\"{sink}\""
-        )
-
-    # DFF: need manual pipeline with appsrc
-    from audio.dff_parser import parse_dff
-    header = parse_dff(filepath)
-
-    caps = (
-        f"audio/x-dsd,format=DSDU8,reversed-bytes=false,"
-        f"layout=interleaved,channels={header.channels},"
-        f"rate={header.sample_rate}"
-    )
-
-    return (
-        f"appsrc name=dsdsrc emit-signals=true format=time caps={caps} "
-        f"! avdec_dsd_msbf "
-        f"! {sink}"
-    )
 
 
 def get_quality_label(filepath: str) -> tuple[str, str]:
@@ -118,41 +69,27 @@ def get_quality_label(filepath: str) -> tuple[str, str]:
     return ("", "")
 
 
-# ═══════════════════════════════════════════════
-#  EQ Pipeline Builders
-# ═══════════════════════════════════════════════
-
-def build_eq_graphic_chain(bands_db: list[float]) -> str:
-    """Build 31-band graphic equalizer chain (sink not included).
-
-    NOTE: equalizer-nbands does not support setting individual bands via
-    pipeline description (no band0/band1 properties). Band values must be
-    set programmatically via GStreamer element API after pipeline creation.
-    For now, equalizer-nbands defaults to unity gain (0 dB per band).
-    """
-    return "equalizer-nbands name=eq_nbands"
-
-
 def build_eq_parametric_chain(bands: list[dict], preamp_db: float) -> str:
-    """Build parametric EQ chain with biquads (sink not included).
+    """Build parametric EQ chain with audioiirfilter biquads.
 
-    NOTE: audioiirfilter b0/b1/b2/a0/a1/a2 cannot be set via pipeline
-    description. Filter coefficients must be set programmatically after
-    pipeline creation. For now, returns empty chain (flat pass-through).
-
-    Roadmap:
-      1. Create audioiirfilter via Gst.ElementFactory.make("audioiirfilter")
-      2. Set "a0", "a1", "a2", "b0", "b1", "b2" properties via set_property()
-      3. Link into the pipeline chain: audioconvert → audioiirfilter → sink
-    See: gst-inspect-1.0 audioiirfilter for property names and ranges.
+    Each band is a dict with type, frequency, q, gain, and biquad coefficients
+    (b0/b1/b2, a0/a1/a2) computed by eq_biquad.py.
     """
-    return ""
-
-
-def build_spectrum_branch() -> str:
-    """Build spectrum capture branch (tee + appsink)."""
-    return (
-        "tee name=spectrum_tee "
-        "spectrum_tee. ! queue ! appsink name=spectrum_sink emit-signals=true "
-        "max-buffers=10 drop=true sync=false"
-    )
+    if not bands:
+        return ""
+    parts = []
+    for i, band in enumerate(bands):
+        a0 = band.get("a0", 1.0)
+        a1 = band.get("a1", 0.0)
+        a2 = band.get("a2", 0.0)
+        b0 = band.get("b0", 1.0)
+        b1 = band.get("b1", 0.0)
+        b2 = band.get("b2", 0.0)
+        parts.append(
+            f"audioiirfilter name=param_eq_{i} "
+            f"a0={a0} a1={a1} a2={a2} "
+            f"b0={b0} b1={b1} b2={b2}")
+    chain = " ! ".join(parts)
+    if preamp_db != 0.0:
+        chain += f" ! volume name=eq_preamp volume={10.0 ** (preamp_db / 20.0):.4f}"
+    return chain

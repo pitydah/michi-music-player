@@ -1,4 +1,4 @@
-"""Detection Service — orchestrates music identification lifecycle."""
+"""Detection Service — orchestrates music identification lifecycle with real audio capture."""
 import logging
 
 from PySide6.QtCore import QObject, Signal
@@ -70,8 +70,23 @@ class DetectionService(QObject):
 
     def identify_once(self):
         self._set_status("processing")
-        # For now, use NullRecognizer which returns None
-        result = self.recognizer.identify()
+
+        # Attempt real audio capture before recognition
+        sample_bytes = None
+        try:
+            from recognition.audio_capture_service import AudioCaptureService
+            capture = AudioCaptureService()
+            if capture.is_available:
+                self._set_status("capturing")
+                sample_bytes = capture.capture_once()
+                self.sample_captured.emit(
+                    {"size": len(sample_bytes) if sample_bytes else 0,
+                     "format": "S16LE/22050Hz/mono"})
+        except Exception as e:
+            logger.debug("Audio capture skip: %s", e)
+
+        result = self.recognizer.identify(sample_bytes=sample_bytes,
+                                          source=self._current_source if hasattr(self, '_current_source') else "")
         if result:
             self._handle_identified(result)
         else:

@@ -253,38 +253,111 @@ class PlaybackPage(_Page):
 
 class AudioPage(_Page):
     def __init__(self):
-        super().__init__("Audio / DAC", "Salida, calidad y modo de reproducción", "warm_eq")
+        super().__init__("Audio / DAC", "Salida, calidad y modo de reproduccion", "warm_eq")
 
-        card = SettingsCard("Salida")
-        self._dev = SettingsCombo(
-            ["default", "hw:0,0", "hw:1,0", "pipewire", "pulse"], sm.get("audio/device"))
-        detect_btn = SettingsActionButton("Detectar dispositivos")
-        card.add_row(SettingsRow("Dispositivo", "Dispositivo de salida de audio", self._dev))
-        card.add_row(SettingsRow("", "Buscar dispositivos conectados", detect_btn))
+        card = SettingsCard("Perfil")
+        self._profile = SettingsCombo(
+            ["standard", "hifi_pcm", "bitperfect_pcm",
+             "dsd_to_pcm", "dop_experimental",
+             "pure_audio", "studio_monitor"],
+            sm.get("audio/profile"))
+        self._backend = SettingsCombo(
+            ["auto", "pipewire", "pulseaudio", "alsa", "jack"],
+            sm.get("audio/device_backend"))
+        card.add_row(SettingsRow("Perfil de audio", "Standard, Hi-Fi, Bit-Perfect, DSD",
+                                  self._profile))
+        card.add_row(SettingsRow("Backend", "Motor de salida de audio",
+                                  self._backend))
         self.add_card(card)
 
-        card2 = SettingsCard("Modo")
-        self._mode = SettingsCombo(
-            ["standard", "bitperfect", "dop", "dsd_native"], sm.get("audio/mode"))
-        card2.add_row(SettingsRow("Modo", "Standard, bit‑perfect, DoP o DSD nativo", self._mode))
-        self.add_card(card2)
+        card_dev = SettingsCard("Dispositivo")
+        self._dev = SettingsCombo(
+            self._list_real_devices(), sm.get("audio/output_device_id") or "auto")
+        detect_btn = SettingsActionButton("Actualizar dispositivos")
+        detect_btn.clicked.connect(self._refresh_devices)
+        test_btn = SettingsActionButton("Probar DAC")
+        card_dev.add_row(SettingsRow("Dispositivo", "Salida de audio detectada",
+                                      self._dev))
+        card_dev.add_row(SettingsRow("", "Buscar dispositivos conectados", detect_btn))
+        card_dev.add_row(SettingsRow("", "Probar dispositivo seleccionado", test_btn))
+        self._detect_btn = detect_btn
+        self._test_btn = test_btn
+        self.add_card(card_dev)
 
-        card3 = SettingsCard("Calidad")
+        card_dsd = SettingsCard("DSD")
+        self._dsd_mode = SettingsCombo(
+            ["pcm", "dop_experimental"],
+            sm.get("audio/dsd_mode"))
+        self._dsd_rate = SettingsCombo(
+            ["auto", "176400", "352800"],
+            str(sm.get("audio/dsd_pcm_rate") or "auto"))
+        card_dsd.add_row(SettingsRow("Modo DSD", "DSD to PCM o DoP",
+                                      self._dsd_mode))
+        card_dsd.add_row(SettingsRow("Rate DSD→PCM", "Sample rate para conversion",
+                                      self._dsd_rate))
+        self.add_card(card_dsd)
+
+        card_q = SettingsCard("Calidad y buffer")
         self._rate = SettingsCombo(
-            ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000", "384000"],
+            ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"],
             str(sm.get("audio/sample_rate")))
         self._buf = SettingsCombo(
             ["50", "100", "200", "500", "1000"], str(sm.get("audio/buffer_ms")))
-        card3.add_row(SettingsRow("Sample rate", "Frecuencia de muestreo", self._rate))
-        card3.add_row(SettingsRow("Buffer (ms)", "Latencia de reproducción", self._buf))
-        self.add_card(card3)
+        self._resample = SettingsSwitch(sm.get("audio/allow_resample"))
+        self._fallback = SettingsSwitch(sm.get("audio/allow_fallback"))
+        card_q.add_row(SettingsRow("Sample rate", "Frecuencia de muestreo", self._rate))
+        card_q.add_row(SettingsRow("Buffer (ms)", "Latencia de reproduccion", self._buf))
+        card_q.add_row(SettingsRow("Permitir resample", "Convertir sample rate si es necesario",
+                                    self._resample))
+        card_q.add_row(SettingsRow("Fallback automatico", "Degradar perfil si falla",
+                                    self._fallback))
+        self.add_card(card_q)
+
+        card_dsp = SettingsCard("DSP")
+        self._gapless = SettingsSwitch(sm.get("audio/gapless_enabled"))
+        self._rg = SettingsSwitch(sm.get("audio/replaygain_enabled"))
+        self._rg_mode = SettingsCombo(
+            ["track", "album"], sm.get("audio/replaygain_mode"))
+        self._spectrum = SettingsSwitch(sm.get("audio/spectrum_enabled"))
+        card_dsp.add_row(SettingsRow("Gapless", "Reproduccion sin pausas",
+                                      self._gapless))
+        card_dsp.add_row(SettingsRow("ReplayGain", "Normalizar volumen",
+                                      self._rg))
+        card_dsp.add_row(SettingsRow("Modo RG", "Track o Album",
+                                      self._rg_mode))
+        card_dsp.add_row(SettingsRow("Spectrum", "Visualizador de espectro",
+                                      self._spectrum))
+        self.add_card(card_dsp)
         self.add_stretch()
 
+    def _list_real_devices(self) -> list:
+        try:
+            from audio.output_device_manager import list_devices
+            return [d.id for d in list_devices()]
+        except Exception:
+            return ["auto", "pipewire", "pulseaudio", "alsa_default", "test"]
+
+    def _refresh_devices(self):
+        items = self._list_real_devices()
+        self._dev.clear()
+        self._dev.addItems(items)
+
     def apply(self):
-        sm.set_("audio/device", self._dev.currentText())
-        sm.set_("audio/mode", self._mode.currentText())
-        sm.set_("audio/sample_rate", int(self._rate.currentText().split()[0]))
+        sm.set_("audio/profile", self._profile.currentText())
+        sm.set_("audio/device_backend", self._backend.currentText())
+        sm.set_("audio/output_device_id", self._dev.currentText())
+        sm.set_("audio/sample_rate",
+                int(self._rate.currentText().split()[0]))
         sm.set_("audio/buffer_ms", int(self._buf.currentText()))
+        sm.set_("audio/allow_resample", self._resample.isChecked())
+        sm.set_("audio/allow_fallback", self._fallback.isChecked())
+        sm.set_("audio/dsd_mode", self._dsd_mode.currentText())
+        rate = self._dsd_rate.currentText()
+        sm.set_("audio/dsd_pcm_rate", int(rate) if rate.isdigit() else 0)
+        sm.set_("audio/gapless_enabled", self._gapless.isChecked())
+        sm.set_("audio/replaygain_enabled", self._rg.isChecked())
+        sm.set_("audio/replaygain_mode", self._rg_mode.currentText())
+        sm.set_("audio/spectrum_enabled", self._spectrum.isChecked())
 
 
 # ═══════════════════════════════════════════

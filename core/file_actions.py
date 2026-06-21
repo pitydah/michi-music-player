@@ -4,7 +4,7 @@ import os
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QFileDialog
 
-from library.library_db import ScannerWorker
+from library.library_db import DB_PATH
 from ui.loading_overlay import LoadingOverlay
 from ui.toast_notification import ToastNotification
 
@@ -13,6 +13,7 @@ class FileActions:
     def __init__(self, window):
         self._win = window
         self._db = window._db
+        self._db_path = DB_PATH
 
     def open_file(self, all_exts: frozenset):
         exts = " ".join(f"*{e}" for e in sorted(all_exts))
@@ -41,7 +42,8 @@ class FileActions:
                 f"Playlist \"{name}\" creada con {len(filepaths)} canciones", self._win)
 
     def scan_path(self, path: str):
-        worker = ScannerWorker(self._db, path)
+        from library.indexer import Indexer
+        worker = Indexer.from_db_path(self._db_path, path)
         thread = QThread()
 
         overlay = LoadingOverlay(self._win._content)
@@ -51,6 +53,21 @@ class FileActions:
         worker.progress.connect(
             lambda c, t, f: overlay.set_text(
                 f"Escaneando [{c}/{t}]\n{os.path.basename(f)[:60]}"))
+
+        def _on_detail(d):
+            """Update overlay with detailed stats."""
+            skipped = d.get("skipped", 0)
+            errors = d.get("errors", 0)
+            extra = ""
+            if skipped:
+                extra += f" · {skipped} sin cambios"
+            if errors:
+                extra += f" · {errors} errores"
+            overlay.set_text(
+                f"Escaneando [{d.get('current', 0)}/{d.get('total', 0)}]{extra}\n"
+                f"{os.path.basename(d.get('filepath', ''))[:60]}")
+
+        worker.progress_detail.connect(_on_detail)
 
         def _on_done(added):
             overlay.hide()

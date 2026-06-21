@@ -62,7 +62,11 @@ class IPlaybackController(ABC):
         ...
 
     @abstractmethod
-    def set_output_device(self, device):
+    def set_output_device_id(self, device_id: str):
+        ...
+
+    @abstractmethod
+    def set_transmit_device(self, device):
         ...
 
     @property

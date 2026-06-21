@@ -1,6 +1,7 @@
 """Metadata extraction — GStreamer discoverer + Mutagen full tags."""
 import os
 import logging
+import contextlib
 
 import gi
 gi.require_version("Gst", "1.0")
@@ -20,7 +21,9 @@ ALL_EXTS = AUDIO_EXTS
 def extract_metadata(filepath: str) -> dict:
     """Extract duration, sample_rate, channels, bitrate, tags via GStreamer."""
     info = {"duration": 0.0, "channels": 0, "sample_rate": 0,
-            "bitrate": 0, "title": "", "artist": "", "album": ""}
+            "bitrate": 0, "title": "", "artist": "", "album": "",
+            "albumartist": "", "date": "", "tracknumber": 0,
+            "trackcount": 0}
     try:
         uri = "file://" + os.path.abspath(filepath)
         discoverer = GstPbutils.Discoverer.new(5 * Gst.SECOND)
@@ -43,6 +46,18 @@ def extract_metadata(filepath: str) -> dict:
             ok, v = tags.get_string(Gst.TAG_ALBUM)
             if ok:
                 info["album"] = v
+            ok, v = tags.get_string(Gst.TAG_ALBUM_ARTIST)
+            if ok:
+                info["albumartist"] = v
+            ok, v = tags.get_string(Gst.TAG_DATE)
+            if ok:
+                info["date"] = v
+            ok, v = tags.get_uint(Gst.TAG_TRACK_NUMBER)
+            if ok:
+                info["tracknumber"] = v
+            ok, v = tags.get_uint(Gst.TAG_TRACK_COUNT)
+            if ok:
+                info["trackcount"] = v
 
         streams = disc.get_audio_streams()
         if streams:
@@ -58,7 +73,12 @@ def extract_metadata(filepath: str) -> dict:
 def extract_metadata_full(filepath: str) -> dict:
     """Extract full metadata including year, genre, track, composer, cover art via mutagen."""
     info = {"year": 0, "genre": "", "track_number": 0, "composer": "",
-            "cover_mime": "", "cover_data": b""}
+            "cover_mime": "", "cover_data": b"", "albumartist": "",
+            "disc_number": 0, "disc_total": 0, "track_total": 0,
+            "originaldate": "", "mb_albumartist_id": "",
+            "mb_album_id": "", "mb_track_id": "",
+            "replaygain_track": 0.0,
+            "replaygain_album": 0.0, "bit_depth": 0, "bpm": 0}
     try:
         from mutagen import File as MutagenFile
         mf = MutagenFile(filepath)
@@ -73,8 +93,11 @@ def extract_metadata_full(filepath: str) -> dict:
                             return str(val[0])
                         return str(val)
                 return ""
-            info["composer"] = get_tag(mf.tags, "composer", "TPE1", "©wrt", "TCOM")
-            genre_val = get_tag(mf.tags, "genre", "TCON", "©gen")
+            info["composer"] = get_tag(mf.tags, "composer", "TPE1", "\u00a9wrt", "TCOM")
+            info["albumartist"] = get_tag(mf.tags,
+                "albumartist", "ALBUMARTIST", "album artist",
+                "TPE2", "aART", "\u00a9ART")
+            genre_val = get_tag(mf.tags, "genre", "TCON", "\u00a9gen")
             try:
                 if genre_val and genre_val.startswith("(") and ")" in genre_val:
                     genre_val = genre_val.split(")", 1)[-1].strip()
@@ -89,8 +112,44 @@ def extract_metadata_full(filepath: str) -> dict:
             track_val = get_tag(mf.tags, "tracknumber", "TRCK", "track", "trkn")
             try:
                 info["track_number"] = int(track_val.split("/")[0]) if track_val else 0
+                info["track_total"] = int(track_val.split("/")[1]) if track_val and "/" in track_val else 0
             except Exception:
                 info["track_number"] = 0
+            disc_val = get_tag(mf.tags, "discnumber", "TPOS", "disc")
+            try:
+                info["disc_number"] = int(disc_val.split("/")[0]) if disc_val else 0
+                info["disc_total"] = int(disc_val.split("/")[1]) if disc_val and "/" in disc_val else 0
+            except Exception:
+                pass
+            info["originaldate"] = get_tag(mf.tags, "originaldate", "ORIGINALYEAR",
+                                            "TDOR", "TORY", "\u00a9day")
+            info["mb_albumartist_id"] = get_tag(mf.tags,
+                "MUSICBRAINZ_ALBUMARTISTID", "MusicBrainz Album Artist Id",
+                "MUSICBRAINZ_ALBUMARTISTID:")
+            info["mb_album_id"] = get_tag(mf.tags,
+                "MUSICBRAINZ_ALBUMID", "MusicBrainz Album Id",
+                "MUSICBRAINZ_ALBUMID:")
+            info["mb_track_id"] = get_tag(mf.tags,
+                "MUSICBRAINZ_TRACKID", "MusicBrainz Track Id",
+                "MUSICBRAINZ_TRACKID:")
+            bpm_val = get_tag(mf.tags, "bpm", "TBPM", "BPM")
+            with contextlib.suppress(ValueError, Exception):
+                info["bpm"] = int(float(bpm_val)) if bpm_val else 0
+            rg_track = get_tag(mf.tags, "REPLAYGAIN_TRACK_GAIN",
+                                "replaygain_track_gain")
+            with contextlib.suppress(ValueError, Exception):
+                info["replaygain_track"] = float(rg_track.split(" ")[0]) if rg_track else 0.0
+            rg_album = get_tag(mf.tags, "REPLAYGAIN_ALBUM_GAIN",
+                                "replaygain_album_gain")
+            with contextlib.suppress(ValueError, Exception):
+                info["replaygain_album"] = float(rg_album.split(" ")[0]) if rg_album else 0.0
+            # Bit depth — try GStreamer first, then mutagen
+            if hasattr(mf, 'info') and hasattr(mf.info, 'bits_per_sample'):
+                info["bit_depth"] = mf.info.bits_per_sample
+            elif hasattr(mf, 'info') and mf.info is not None:
+                bps = getattr(mf.info, 'bits_per_sample', 0)
+                if bps:
+                    info["bit_depth"] = bps
         for tag_type in mf or []:
             if tag_type and (b'APIC' in str(tag_type).encode() or 'APIC' in str(tag_type)):
                 try:

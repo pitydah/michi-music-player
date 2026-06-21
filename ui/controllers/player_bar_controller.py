@@ -19,6 +19,11 @@ class PlayerBarController:
     def set_quality(self, text: str):
         self._bar.set_quality(text)
 
+    def set_quality_info(self, label: str, category: str = "unknown",
+                         tooltip: str = ""):
+        """Set quality badge with category-colored styling."""
+        self._bar.set_quality_info(label, category, tooltip)
+
     def set_state(self, state: str):
         self._bar.set_state(state)
 

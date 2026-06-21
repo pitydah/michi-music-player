@@ -660,9 +660,19 @@ class NowPlayingBar(QWidget):
     def set_quality(self, text: str):
         self._source_quality = text
         if text:
-            self._quality_badge.setText(f" {text} ")
+            self._quality_badge.set_text(f" {text} ")
         else:
-            self._quality_badge.setText(" LOCAL ")
+            self._quality_badge.set_text(" LOCAL ")
+        self._refresh_source_badge()
+
+    def set_quality_info(self, label: str, category: str = "unknown",
+                         tooltip: str = ""):
+        """Set quality badge with category-colored styling."""
+        self._source_quality = label
+        self._quality_badge.set_text(f" {label} ")
+        self._quality_badge.set_quality_category(category)
+        if tooltip:
+            self._quality_badge.setToolTip(tooltip)
         self._refresh_source_badge()
 
     def set_source_status(self, source_type: str = "local_file", quality: str = "",

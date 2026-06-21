@@ -10,11 +10,9 @@ import os
 import sqlite3
 import logging
 import contextlib
-from typing import Callable
 
 logger = logging.getLogger("astra.library")
 
-from PySide6.QtCore import Signal, QObject  # noqa: E402
 
 # ── Re-exports from split modules ──
 from library.metadata_extractor import AUDIO_EXTS, ALL_EXTS, extract_metadata, extract_metadata_full  # noqa: E402, F401
@@ -123,17 +121,59 @@ class LibraryDB:
         self._conn.commit()
         self._run_migrations()
 
+        # Create indexes after migrations ensure columns exist
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_media_artist ON media_items(artist)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_media_album ON media_items(album)")
+        with contextlib.suppress(sqlite3.OperationalError):
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_media_albumartist ON media_items(albumartist)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_media_genre ON media_items(genre)")
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_media_year ON media_items(year)")
+        self._conn.commit()
+
+        # Scan roots table
+        self._conn.execute("""CREATE TABLE IF NOT EXISTS scan_roots (
+            path TEXT PRIMARY KEY,
+            enabled INTEGER DEFAULT 1,
+            last_scan_started REAL,
+            last_scan_finished REAL,
+            file_count INTEGER DEFAULT 0,
+            added_count INTEGER DEFAULT 0,
+            updated_count INTEGER DEFAULT 0,
+            skipped_count INTEGER DEFAULT 0,
+            missing_count INTEGER DEFAULT 0
+        )""")
+
+        # Index errors table
+        self._conn.execute("""CREATE TABLE IF NOT EXISTS index_errors (
+            filepath TEXT,
+            error TEXT,
+            stage TEXT,
+            updated_at REAL DEFAULT (strftime('%s','now'))
+        )""")
+
+        self._conn.commit()
+        self._run_migrations()
+
     def _run_migrations(self):
         existing = {r[0] for r in self._conn.execute("PRAGMA table_info(media_items)").fetchall()}
         for col, col_def in [("year", "INTEGER"), ("genre", "TEXT"),
                               ("track_number", "INTEGER"), ("composer", "TEXT"),
                               ("albumartist", "TEXT"), ("disc_number", "INTEGER"),
                               ("disc_total", "INTEGER"), ("track_total", "INTEGER"),
-                              ("mb_track_id", "TEXT"), ("mb_album_id", "TEXT"),
-                              ("cover_hash", "TEXT"), ("rating", "INTEGER DEFAULT 0"),
+                               ("mb_track_id", "TEXT"), ("mb_album_id", "TEXT"),
+                               ("mb_albumartist_id", "TEXT DEFAULT ''"),
+                               ("cover_hash", "TEXT"), ("rating", "INTEGER DEFAULT 0"),
                               ("play_count", "INTEGER DEFAULT 0"), ("skip_count", "INTEGER DEFAULT 0"),
                               ("last_played", "REAL"), ("bpm", "INTEGER"),
-                              ("replaygain_track", "REAL"), ("replaygain_album", "REAL")]:
+                               ("replaygain_track", "REAL"), ("replaygain_album", "REAL"),
+                               ("bit_depth", "INTEGER DEFAULT 0"),
+                               ("mb_track_id", "TEXT DEFAULT ''"),
+                               ("bpm", "INTEGER DEFAULT 0")]:
             if col not in existing:
                 with contextlib.suppress(sqlite3.OperationalError):
                     self._conn.execute(f"ALTER TABLE media_items ADD COLUMN {col} {col_def}")
@@ -183,41 +223,142 @@ class LibraryDB:
         artist = meta["artist"] or ""
         album = meta["album"] or ""
         year = meta_full.get("year", 0)
+        # Prefer originaldate/date from mutagen over GStreamer
+        date_str = meta_full.get("originaldate", "") or meta.get("date", "")
+        if date_str:
+            import contextlib
+            with contextlib.suppress(ValueError, TypeError):
+                year = int(date_str[:4])
         genre = meta_full.get("genre", "")
         track_number = meta_full.get("track_number", 0)
         composer = meta_full.get("composer", "")
+        albumartist = meta_full.get("albumartist", "")
+        disc_number = meta_full.get("disc_number", 0)
+        disc_total = meta_full.get("disc_total", 0)
+        track_total = meta_full.get("track_total", 0)
+        mb_albumartist_id = meta_full.get("mb_albumartist_id", "")
+        mb_album_id = meta_full.get("mb_album_id", "")
+        mb_track_id = meta_full.get("mb_track_id", "")
+        bit_depth = meta_full.get("bit_depth", 0) or 0
+        bpm = meta_full.get("bpm", 0) or 0
 
-        # Store embedded cover art in album_art_cache
+        # Store embedded cover art in album_art_cache using stable album_key
         cover_data = meta_full.get("cover_data", b"")
         if cover_data and album:
-            import hashlib
-            album_hash = hashlib.md5(album.encode()).hexdigest()
-            cover_mime = meta_full.get("cover_mime", "image/jpeg")
             try:
+                from library.album_key import make_album_key
+                ak = make_album_key(albumartist, artist, album)
+                cover_mime = meta_full.get("cover_mime", "image/jpeg")
                 self._conn.execute(
                     "INSERT OR REPLACE INTO album_art_cache (album_hash, mime, data) VALUES (?,?,?)",
-                    (album_hash, cover_mime, cover_data))
+                    (ak, cover_mime, cover_data))
                 self._conn.commit()
             except Exception:
                 import logging
-                logging.getLogger("astra").debug("Failed to cache embedded cover for %s", album)
+                logging.getLogger("astra").debug("Failed to cache embedded cover")
 
         try:
             cur = self._conn.execute(
-                "INSERT OR REPLACE INTO media_items "
+                "INSERT INTO media_items "
                 "(filepath, filename, directory, ext, kind, size, mtime, duration, "
                 " channels, sample_rate, bitrate, title, artist, album, year, genre, "
-                " track_number, composer) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " track_number, composer, albumartist, disc_number, disc_total, "
+                " track_total, mb_albumartist_id, mb_album_id, bit_depth, mb_track_id, bpm) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(filepath) DO UPDATE SET "
+                " filename=excluded.filename, directory=excluded.directory,"
+                " ext=excluded.ext, kind=excluded.kind,"
+                " size=excluded.size, mtime=excluded.mtime,"
+                " duration=excluded.duration, channels=excluded.channels,"
+                " sample_rate=excluded.sample_rate, bitrate=excluded.bitrate,"
+                " title=excluded.title, artist=excluded.artist,"
+                " album=excluded.album, albumartist=excluded.albumartist,"
+                " year=excluded.year, genre=excluded.genre,"
+                " track_number=excluded.track_number, track_total=excluded.track_total,"
+                " disc_number=excluded.disc_number, disc_total=excluded.disc_total,"
+                " composer=excluded.composer,"
+                " mb_track_id=excluded.mb_track_id, mb_album_id=excluded.mb_album_id,"
+                " mb_albumartist_id=excluded.mb_albumartist_id,"
+                " bit_depth=excluded.bit_depth, bpm=excluded.bpm",
                 (filepath, fname, dname, ext, kind, stat.st_size, stat.st_mtime,
                  meta["duration"], meta["channels"], meta["sample_rate"], meta["bitrate"],
                  title[:256], artist[:256], album[:256], year, genre[:128],
-                 track_number, composer[:256]))
+                 track_number, composer[:256], albumartist[:256],
+                 disc_number, disc_total, track_total,
+                 mb_albumartist_id[:128], mb_album_id[:128], bit_depth,
+                 mb_track_id[:128], bpm))
             self._conn.commit()
             return cur.lastrowid
         except Exception:
             import logging
             logging.getLogger("astra").debug("Scanner: commit after add_file failed")
+
+    def get_file_signature(self, filepath: str) -> tuple[int, float] | None:
+        """Return (size, mtime) for a filepath, or None if not in DB."""
+        row = self._conn.execute(
+            "SELECT size, mtime FROM media_items WHERE filepath=?",
+            (filepath,)).fetchone()
+        return (row[0], row[1]) if row else None
+
+    def log_index_error(self, filepath: str, error: str, stage: str = ""):
+        with contextlib.suppress(sqlite3.Error):
+            self._conn.execute(
+                "INSERT INTO index_errors (filepath, error, stage) VALUES (?,?,?)",
+                (filepath, error, stage))
+            self._conn.commit()
+
+    def upsert_media_items_batch(self, records: list[dict]) -> int:
+        """Batch insert/update media items. Returns count of affected rows."""
+        if not records:
+            return 0
+        columns = [
+            "filepath", "filename", "directory", "ext", "kind", "size", "mtime",
+            "duration", "channels", "sample_rate", "bitrate",
+            "title", "artist", "album", "albumartist",
+            "year", "genre", "track_number", "track_total",
+            "disc_number", "disc_total", "composer",
+            "mb_track_id", "mb_album_id", "mb_albumartist_id",
+            "bit_depth", "bpm", "replaygain_track", "replaygain_album",
+        ]
+        update_cols = [c for c in columns if c != "filepath"]
+        set_clause = ", ".join(f"{c}=excluded.{c}" for c in update_cols)
+        sql = (
+            f"INSERT INTO media_items ({', '.join(columns)}) "
+            f"VALUES ({', '.join(['?'] * len(columns))}) "
+            f"ON CONFLICT(filepath) DO UPDATE SET {set_clause}")
+        params = []
+        for r in records:
+            params.append(tuple(
+                r.get(c, "" if c not in ("size", "mtime", "duration", "year",
+                                          "track_number", "track_total",
+                                          "disc_number", "disc_total",
+                                          "bit_depth", "bpm",
+                                          "replaygain_track", "replaygain_album")
+                    else 0 if c not in ("mtime", "duration",
+                                         "replaygain_track", "replaygain_album")
+                    else 0.0)
+                for c in columns))
+        try:
+            self._conn.execute("BEGIN")
+            self._conn.executemany(sql, params)
+            self._conn.commit()
+            return len(records)
+        except sqlite3.Error as e:
+            self._conn.rollback()
+            raise e
+
+    def update_scan_root(self, path: str, **kwargs):
+        """Update scan root statistics."""
+        cols = ["path", "enabled", "last_scan_started", "last_scan_finished",
+                "file_count", "added_count", "updated_count",
+                "skipped_count", "missing_count"]
+        vals = [path]
+        for c in cols[1:]:
+            vals.append(kwargs.get(c, 1 if c == "enabled" else 0))
+        self._conn.execute(
+            f"INSERT OR REPLACE INTO scan_roots ({','.join(cols)}) "
+            f"VALUES ({','.join(['?']*len(cols))})", vals)
+        self._conn.commit()
 
     def remove_file(self, filepath: str):
         self._conn.execute("DELETE FROM media_items WHERE filepath=?", (filepath,))
@@ -267,23 +408,6 @@ class LibraryDB:
         dur = self._conn.execute(
             "SELECT COALESCE(SUM(duration),0) FROM media_items").fetchone()[0] or 0
         return {"total": total, "audio": audio, "video": video, "duration": dur}
-
-    def scan_directory(self, path: str,
-                       progress_callback: Callable | None = None) -> int:
-        files = []
-        for root, dirs, fnames in os.walk(path):
-            dirs[:] = [d for d in dirs if not d.startswith(".")]
-            for fn in fnames:
-                if os.path.splitext(fn)[1].lower() in ALL_EXTS:
-                    files.append(os.path.join(root, fn))
-        added = 0
-        total = len(files)
-        for i, fp in enumerate(files):
-            if self.add_file(fp) is not None:
-                added += 1
-            if progress_callback:
-                progress_callback(i + 1, total)
-        return added
 
     # ── Playlists ──
 
@@ -435,42 +559,3 @@ class LibraryDB:
         cols = [desc[0] for desc in self._conn.execute(
             "PRAGMA table_info(detected_tracks)").fetchall()]
         return dict(zip(cols, rows[0], strict=False))
-
-
-# ── Scanner Worker (QThread-safe) ──
-
-class ScannerWorker(QObject):
-    finished = Signal(int)
-    progress = Signal(int, int, str)
-
-    def __init__(self, db: LibraryDB, path: str, parent=None):
-        super().__init__(parent)
-        self._db = db
-        self._path = path
-        self._cancelled = False
-
-    def cancel(self):
-        self._cancelled = True
-
-    def run(self):
-        total = sum(1 for _ in self._walk_files())
-        added = 0
-        files = list(self._walk_files())
-        for i, fp in enumerate(files):
-            if self._cancelled:
-                break
-            if self._db.add_file(fp) is not None:
-                added += 1
-            self.progress.emit(i + 1, total, fp)
-        self.finished.emit(added)
-
-    def _walk_files(self):
-        for root, dirs, fnames in os.walk(self._path):
-            dirs[:] = [d for d in dirs if not d.startswith(".")]
-            for fn in fnames:
-                if os.path.splitext(fn)[1].lower() in ALL_EXTS:
-                    yield os.path.join(root, fn)
-
-
-# Extracted to library/devices.py
-# get_mounted_devices and scan_device_music are now in library/devices.py

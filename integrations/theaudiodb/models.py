@@ -24,6 +24,10 @@ class ArtistExternalInfo:
     logo_url: str = ""
     banner_url: str = ""
     fanart_urls: list[str] = field(default_factory=list)
+    thumb_path: str = ""
+    banner_path: str = ""
+    logo_path: str = ""
+    fanart_paths: list[str] = field(default_factory=list)
     source_url: str = ""
     last_updated: str = ""
 

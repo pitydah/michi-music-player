@@ -44,6 +44,10 @@ class ArtistGroup:
     banner_url: str = ""
     logo_url: str = ""
     fanart_urls: list[str] = field(default_factory=list)
+    thumb_path: str = ""
+    banner_path: str = ""
+    logo_path: str = ""
+    fanart_paths: list[str] = field(default_factory=list)
     country: str = ""
     formed_year: str = ""
     style: str = ""
@@ -60,7 +64,7 @@ _VARIOUS_NAMES = {"various artists", "varios artistas", "va", "various", "varios
 
 def normalize_artist_name(name: str) -> str:
     """Normalize artist name for grouping (not for display)."""
-    n = name.strip()
+    n = str(name or "").strip()
     n = " ".join(n.split())
     if n.lower().startswith("the "):
         n = n[4:].strip()
@@ -68,23 +72,26 @@ def normalize_artist_name(name: str) -> str:
 
 
 def _artist_key(item: MediaItem) -> str:
-    """Get the grouping key for an item's artist."""
-    ai = getattr(item, "albumartist", "") or ""
-    ar = item.artist or ""
+    """Get the grouping key for an item's artist. Prefers MusicBrainz ID."""
+    mb_raw = getattr(item, "mb_albumartist_id", None)  # noqa: B009
+    if mb_raw and isinstance(mb_raw, str) and mb_raw.strip():
+        return "mb:" + mb_raw.strip()
+    ai = str(getattr(item, "albumartist", "") or "")
+    ar = str(item.artist or "")
     return normalize_artist_name(ai or ar) or "artista desconocido"
 
 
 def _artist_display(item: MediaItem) -> str:
     """Get the display name for an item's artist."""
-    ai = getattr(item, "albumartist", "") or ""
-    ar = item.artist or ""
+    ai = str(getattr(item, "albumartist", "") or "")
+    ar = str(item.artist or "")
     return ai or ar or "Artista desconocido"
 
 
 def _album_key(item: MediaItem) -> str:
     """Get the grouping key for an album."""
-    al = item.album or ""
-    return normalize_artist_name(getattr(item, "albumartist", "") or item.artist or "") + "||" + al.lower().strip()
+    al = str(item.album or "")
+    return normalize_artist_name(str(getattr(item, "albumartist", "") or item.artist or "")) + "||" + al.lower().strip()
 
 
 def build_artist_albums(items: list[MediaItem]) -> dict[str, tuple[list[ArtistAlbumGroup], list[MediaItem]]]:
@@ -105,8 +112,8 @@ def build_artist_albums(items: list[MediaItem]) -> dict[str, tuple[list[ArtistAl
 
     for akey, atracks in by_artist.items():
         # Split tracks with album from those without
-        album_tracks = [t for t in atracks if (t.album or "").strip()]
-        loose = [t for t in atracks if not (t.album or "").strip()]
+        album_tracks = [t for t in atracks if str(t.album or "").strip()]
+        loose = [t for t in atracks if not str(t.album or "").strip()]
 
         # Group by album
         album_map: dict[str, list[MediaItem]] = defaultdict(list)

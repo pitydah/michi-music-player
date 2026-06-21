@@ -33,6 +33,11 @@ class MediaItem:
     disc_number: int = 0
     disc_total: int = 0
     track_total: int = 0
+    mb_track_id: str = ""
+    mb_album_id: str = ""
+    mb_albumartist_id: str = ""
+    bit_depth: int = 0
+    bpm: int = 0
 
     @property
     def display_title(self) -> str:
@@ -60,13 +65,19 @@ class MediaItem:
             mtime=row[7] or 0.0, duration=row[8] or 0.0,
             channels=row[9] or 0, sample_rate=row[10] or 0,
             bitrate=row[11] or 0, title=row[12] or "",
-            artist=row[13] or "", album=row[14] or "",
+            artist=str(row[13]) if row[13] else "",
+            album=str(row[14]) if row[14] else "",
             year=row[15] if len(row) > 15 and row[15] else 0,
             genre=row[16] if len(row) > 16 and row[16] else "",
             track_number=row[17] if len(row) > 17 and row[17] else 0,
             composer=row[18] if len(row) > 18 and row[18] else "",
-            albumartist=row[19] if len(row) > 19 and row[19] else "",
+            albumartist=str(row[19]) if len(row) > 19 and row[19] else "",
             disc_number=row[20] if len(row) > 20 and row[20] else 0,
             disc_total=row[21] if len(row) > 21 and row[21] else 0,
             track_total=row[22] if len(row) > 22 and row[22] else 0,
+            mb_track_id=str(row[23]) if len(row) > 23 and row[23] else "",
+            mb_album_id=str(row[24]) if len(row) > 24 and row[24] else "",
+            mb_albumartist_id=str(row[25]) if len(row) > 25 and row[25] else "",
+            bit_depth=row[26] if len(row) > 26 and row[26] else 0,
+            bpm=row[27] if len(row) > 27 and row[27] else 0,
         )

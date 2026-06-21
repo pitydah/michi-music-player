@@ -1,4 +1,5 @@
 """Shared fixtures for controller tests."""
+import sqlite3
 from unittest.mock import MagicMock
 import pytest
 from ui.controllers.artist_repository import ArtistRepository
@@ -57,6 +58,7 @@ class MockWindow:
 
     def __init__(self):
         self._db = MagicMock()
+        self._db._conn = sqlite3.connect(":memory:")
         self._playback = MagicMock()
         self._player = MagicMock()
         self._toast_svc = MagicMock()
@@ -79,6 +81,8 @@ class MockWindow:
         self._bg_theme = MagicMock()
         self._tray_ctrl = MagicMock()
         self._transmit_mgr = MagicMock()
+        from audio.audio_chain import DacConfig
+        self._dac = DacConfig()
         self._fade_content = MagicMock()
         self._configure_header_for_section = MagicMock()
         self._rebuild_sidebar = MagicMock()

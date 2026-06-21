@@ -136,12 +136,77 @@ class PlayerService(QObject):
             self.track_changed.emit(title, artist)
 
     # ── Output ──
+    # Use set_output_device_id() for local output, set_transmit_device() for network transmit
 
-    def set_output_device(self, device):
-        self._engine.set_output_device(device)
+    # ── Audio profile / DAC ──
 
-    def get_output_device(self):
-        return self._engine.get_output_device()
+    def set_audio_profile(self, profile: str):
+        if hasattr(self._engine, 'set_audio_profile'):
+            self._engine.set_audio_profile(profile)
+
+    def set_output_device_id(self, device_id: str):
+        if hasattr(self._engine, 'set_output_device_id'):
+            self._engine.set_output_device_id(device_id)
+
+    def get_audio_devices(self):
+        from audio.output_device_manager import list_devices
+        return list_devices()
+
+    def refresh_audio_devices(self):
+        return self.get_audio_devices()
+
+    def get_audio_diagnostics(self):
+        if hasattr(self._engine, 'get_audio_diagnostics'):
+            return self._engine.get_audio_diagnostics()
+        return None
+
+    def test_output_device(self, device_id: str) -> tuple:
+        return True, "OK"
+
+    def set_dsd_mode(self, mode: str):
+        if hasattr(self._engine, '_dac'):
+            self._engine._dac.dsd_mode = mode
+
+    def set_gapless_enabled(self, enabled: bool):
+        if hasattr(self._engine, '_gapless_enabled'):
+            self._engine._gapless_enabled = enabled
+
+    def set_replaygain_mode(self, mode: str):
+        if hasattr(self._engine, '_replaygain'):
+            self._engine._replaygain = (mode != "off")
+
+    # ── Transmit ──
+
+    def set_transmit_device(self, device):
+        if hasattr(self._engine, 'set_transmit_device'):
+            self._engine.set_transmit_device(device)
+
+    def get_transmit_device(self):
+        if hasattr(self._engine, 'get_transmit_device'):
+            return self._engine.get_transmit_device()
+        return None
+
+    # ── EQ ──
+
+    def set_eq_graphic(self, bands):
+        if hasattr(self._engine, 'set_eq_graphic'):
+            self._engine.set_eq_graphic(bands)
+
+    def set_eq_parametric(self, bands):
+        if hasattr(self._engine, 'set_eq_parametric'):
+            self._engine.set_eq_parametric(bands)
+
+    def set_eq_bypass(self, bypass: bool):
+        if hasattr(self._engine, 'set_eq_bypass'):
+            self._engine.set_eq_bypass(bypass)
+
+    def set_eq_preamp(self, db: float):
+        if hasattr(self._engine, 'set_eq_preamp'):
+            self._engine.set_eq_preamp(db)
+
+    def set_spectrum_enabled(self, enabled: bool):
+        if hasattr(self._engine, 'set_spectrum_enabled'):
+            self._engine.set_spectrum_enabled(enabled)
 
     # ── Accessors ──
 

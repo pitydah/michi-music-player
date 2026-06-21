@@ -3,6 +3,40 @@ from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import QPushButton
 
 
+_CATEGORY_STYLES = {
+    "unknown": {
+        "bg": "rgba(255,255,255,0.060)",
+        "border": "rgba(255,255,255,0.100)",
+        "dot": "rgba(180,180,180,0.90)",
+    },
+    "lossy": {
+        "bg": "rgba(255,170,60,0.105)",
+        "border": "rgba(255,170,60,0.220)",
+        "dot": "#FFB454",
+    },
+    "lossless": {
+        "bg": "rgba(80,150,255,0.110)",
+        "border": "rgba(80,150,255,0.240)",
+        "dot": "#5CA8FF",
+    },
+    "hires": {
+        "bg": "rgba(70,220,130,0.120)",
+        "border": "rgba(70,220,130,0.280)",
+        "dot": "#55E28A",
+    },
+    "dsd": {
+        "bg": "rgba(180,120,255,0.120)",
+        "border": "rgba(180,120,255,0.280)",
+        "dot": "#B985FF",
+    },
+    "error": {
+        "bg": "rgba(255,80,80,0.110)",
+        "border": "rgba(255,80,80,0.260)",
+        "dot": "#FF6868",
+    },
+}
+
+
 class SourceStatusBadge(QPushButton):
     clicked_details = Signal()
 
@@ -11,40 +45,8 @@ class SourceStatusBadge(QPushButton):
         self.setObjectName("sourceStatusBadge")
         self.setCursor(Qt.PointingHandCursor)
         self.setFlat(True)
-        self.setStyleSheet("""
-            QPushButton#sourceStatusBadge {
-                background: rgba(255,255,255,0.060);
-                color: rgba(255,255,255,0.88);
-                border: 1px solid rgba(255,255,255,0.110);
-                border-radius: 10px;
-                padding: 3px 10px;
-                font-size: 10.5px;
-                font-weight: 720;
-                letter-spacing: 0.35px;
-                min-height: 22px;
-                min-width: 112px;
-                max-width: 176px;
-            }
-            QPushButton#sourceStatusBadge:hover {
-                background: rgba(255,255,255,0.090);
-                border: 1px solid rgba(255,255,255,0.165);
-                color: #FFFFFF;
-            }
-            QPushButton#sourceStatusBadge[source="streaming"] {
-                background: rgba(255,255,255,0.075);
-                border: 1px solid rgba(255,255,255,0.16);
-            }
-            QPushButton#sourceStatusBadge[source="transmitting"] {
-                background: rgba(52,199,89,0.13);
-                border: 1px solid rgba(52,199,89,0.28);
-                color: #BFFFD0;
-            }
-            QPushButton#sourceStatusBadge[source="error"] {
-                background: rgba(255,69,58,0.13);
-                border: 1px solid rgba(255,69,58,0.28);
-                color: #FFB4AE;
-            }
-        """)
+        self._quality_cat = "unknown"
+        self._apply_style()
 
         self._pages: list[str] = []
         self._page_index = 0
@@ -54,10 +56,76 @@ class SourceStatusBadge(QPushButton):
         self._timer.timeout.connect(self._show_next_page)
         self._hovering = False
 
+    def _apply_style(self):
+        s = _CATEGORY_STYLES.get(self._quality_cat, _CATEGORY_STYLES["unknown"])
+        self.setStyleSheet(f"""
+            QPushButton#sourceStatusBadge {{
+                background: {s['bg']};
+                color: rgba(255,255,255,0.90);
+                border: 1px solid {s['border']};
+                border-radius: 12px;
+                padding: 4px 14px 4px 10px;
+                font-size: 10.5px;
+                font-weight: 750;
+                letter-spacing: 0.35px;
+                min-height: 24px;
+                min-width: 124px;
+                max-width: 176px;
+            }}
+            QPushButton#sourceStatusBadge:hover {{
+                background: rgba(255,255,255,0.090);
+                border: 1px solid rgba(255,255,255,0.165);
+                color: #FFFFFF;
+            }}
+            QPushButton#sourceStatusBadge[source="streaming"] {{
+                background: rgba(255,255,255,0.075);
+                border: 1px solid rgba(255,255,255,0.16);
+            }}
+            QPushButton#sourceStatusBadge[source="transmitting"] {{
+                background: rgba(52,199,89,0.13);
+                border: 1px solid rgba(52,199,89,0.28);
+                color: #BFFFD0;
+            }}
+            QPushButton#sourceStatusBadge[source="error"] {{
+                background: rgba(255,69,58,0.13);
+                border: 1px solid rgba(255,69,58,0.28);
+                color: #FFB4AE;
+            }}
+        """)
+
+    def set_quality_category(self, category: str):
+        """Set the quality category for color styling."""
+        if category in _CATEGORY_STYLES:
+            self._quality_cat = category
+            self._apply_style()
+            self.style().unpolish(self)
+            self.style().polish(self)
+
+    def set_text(self, text: str):
+        """Set badge text with a colored dot prefix."""
+        prefix = "\u25cf "  # ● unicode bullet
+        if self._quality_cat in ("hires", "dsd"):
+            prefix = ""  # no extra dot — the badge itself is the indicator
+        display = prefix + text.strip()
+        self.setText(display)
+
     def set_context(self, **kwargs):
         """Set all context at once."""
         self._context = kwargs
         self._build_pages()
+
+    def set_route_tooltip(self, diag):
+        """Set tooltip from audio route diagnostics."""
+        lines = [str(self.text()).strip()]
+        if diag:
+            if hasattr(diag, 'to_tooltip'):
+                lines.append(diag.to_tooltip())
+            elif isinstance(diag, dict):
+                bp = diag.get("bitperfect_status", "unknown")
+                lines.append(f"Bit-Perfect: {bp.upper()}")
+                if diag.get("profile"):
+                    lines.append(f"Perfil: {diag['profile']}")
+        self.setToolTip("\n".join(lines))
 
     def _build_pages(self):
         ctx = getattr(self, '_context', {})
@@ -135,7 +203,7 @@ class SourceStatusBadge(QPushButton):
         self._page_index = 0
 
         if pages:
-            self._set_text(pages[0])
+            self.set_text(pages[0])
 
         if len(pages) > 1:
             self._timer.start()
@@ -166,10 +234,7 @@ class SourceStatusBadge(QPushButton):
         if self._hovering or not self._pages:
             return
         self._page_index = (self._page_index + 1) % len(self._pages)
-        self._set_text(self._pages[self._page_index])
-
-    def _set_text(self, text: str):
-        self.setText(text)
+        self.set_text(self._pages[self._page_index])
 
     def enterEvent(self, event):
         self._hovering = True

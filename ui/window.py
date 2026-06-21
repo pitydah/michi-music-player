@@ -181,6 +181,18 @@ class MainWindow(QMainWindow):
         self._album_ctrl = AlbumController(self, refresh_grid=self._show_album_grid)
         from ui.controllers.transmit_controller import TransmitController
         self._transmit_ctrl = TransmitController(self)
+        from ui.controllers.audio_output_controller import AudioOutputController
+        self._audio_output_ctrl = AudioOutputController(self)
+        from ui.controllers.snapcast_controller import SnapcastController
+        self._snapcast_ctrl = SnapcastController(self, self)
+        from ui.controllers.home_audio_controller import HomeAudioController
+        self._ha_ctrl = HomeAudioController(self, self)
+        from ui.controllers.cast_controller import CastController
+        self._cast_ctrl = CastController(self)
+        from ui.controllers.local_media_server_controller import LocalMediaServerController
+        self._local_media_ctrl = LocalMediaServerController(self, self)
+        from ui.controllers.mini_player_controller import MiniPlayerController
+        self._mini_player_ctrl = MiniPlayerController(self, self)
         from ui.controllers.expanded_controller import ExpandedController
         self._expanded_ctrl = ExpandedController(self)
         self._all_items: list[MediaItem] = []
@@ -267,6 +279,10 @@ class MainWindow(QMainWindow):
             api_key=sget("artist_enrichment/api_key") or "2",
             enabled=sget("artist_enrichment/enabled") is not False)
 
+        # Album info repository + enrichment
+        from metadata.album_info_repository import AlbumInfoRepository
+        self._album_repo = AlbumInfoRepository()
+
         self._setup_actions()
         self._setup_ui()
         self._connect_signals()
@@ -308,7 +324,6 @@ class MainWindow(QMainWindow):
         self._mpris = self._mpris_ctrl.adapter  # backward compatibility
 
         self._transmit_mgr = TransmitManager(self)
-        self._transmit_mgr.device_changed.connect(self._on_transmit_devices_changed)
         self._transmit_mgr.active_changed.connect(self._on_transmit_active_changed)
 
     def _setup_actions(self):
@@ -862,13 +877,13 @@ class MainWindow(QMainWindow):
 
         self._playlist_hub.playlist_edit_requested.connect(self._edit_playlist_dialog)
         self._playlist_hub.create_from_album_requested.connect(
-            self._on_stub_action)
+            self._playlist_ctrl.create_from_album)
         self._playlist_hub.create_from_artist_requested.connect(
-            self._on_stub_action)
+            self._playlist_ctrl.create_from_artist)
         self._playlist_hub.create_from_genre_requested.connect(
-            self._on_stub_action)
+            self._playlist_ctrl.create_from_genre)
         self._playlist_hub.create_from_search_requested.connect(
-            self._on_stub_action)
+            self._playlist_ctrl.create_from_search)
 
         self._metadata_editor = MetadataEditorWidget()
         self._metadata_editor.files_saved.connect(self._on_metadata_saved)
@@ -1029,6 +1044,7 @@ class MainWindow(QMainWindow):
         pb.audio_output_clicked.connect(self._show_audio_output_menu)
         pb.mini_player_clicked.connect(self._open_mini_player)
         pb.cover_loaded.connect(self._bg_theme.apply)
+        pb._quality_badge.clicked_details.connect(self._show_audio_diagnostics)
 
     def _setup_tray(self):
         from ui.controllers.tray_controller import TrayController
@@ -1185,6 +1201,9 @@ class MainWindow(QMainWindow):
                 self._view_mode = "grid"
                 self._view_switcher.set_view("grid", emit=False)
             self._show_artists_view(self._view_mode)
+            # Force switching to artist_grid in the stacked widget
+            self._content.setCurrentWidget(self._artist_grid)
+            self._artist_grid.show()
             self._count.setText(f"{self._artist_repo.count} artistas")
             self._search.show()
 
@@ -1885,7 +1904,22 @@ class MainWindow(QMainWindow):
             self._coverflow.details_album_requested.connect(self._on_coverflow_details_album)
             self._coverflow.cover_search_requested.connect(self._on_coverflow_search_cover)
             self._coverflow.open_folder_requested.connect(self._on_coverflow_open_folder)
-            self._views.replace("coverflow", self._coverflow)
+
+            # AlbumInfoBanner below CoverFlow
+            from ui.album_info_banner import AlbumInfoBanner
+            self._album_banner = AlbumInfoBanner()
+            self._album_banner.play_requested.connect(self._on_banner_play)
+            self._album_banner.queue_requested.connect(self._on_banner_queue)
+            self._album_banner.details_requested.connect(self._on_banner_details)
+
+            coverflow_page = QWidget()
+            coverflow_page.setStyleSheet("background: #090B11;")
+            cv_layout = QVBoxLayout(coverflow_page)
+            cv_layout.setContentsMargins(0, 0, 0, 0)
+            cv_layout.setSpacing(8)
+            cv_layout.addWidget(self._coverflow, stretch=1)
+            cv_layout.addWidget(self._album_banner, stretch=0)
+            self._views.register("coverflow", coverflow_page)
 
         self._coverflow.set_items(covers)
         self._views.show("coverflow")
@@ -1906,10 +1940,28 @@ class MainWindow(QMainWindow):
     def _on_coverflow_snap(self, index: int):
         if not self._coverflow or index >= len(self._coverflow._items):
             return
-        # Desactivado: CoverFlow ya tiene backdrop premium propio
-        # item = self._coverflow._items[index]
-        # if item and item.pixmap and not item.pixmap.isNull():
-        #     self._bg_theme.apply(item.pixmap)
+
+        # Update album info banner using repository
+        if hasattr(self, '_album_banner') and hasattr(self, '_album_repo'):
+            item = self._coverflow._items[index]
+            tracks = item.data.get("tracks", []) if item.data else []
+            key = _album_key(item, tracks)
+            summary = self._album_repo.get_summary(key, fallback_data=tracks)
+            if summary:
+                self._album_banner.set_album_summary(summary)
+
+            # Trigger TheAudioDB album enrichment for external metadata
+            self._enrich_album_background(key, item, tracks)
+
+            # Precarga vecinos ±2
+            for off in (-2, -1, 1, 2):
+                ni = index + off
+                if 0 <= ni < len(self._coverflow._items):
+                    n_item = self._coverflow._items[ni]
+                    n_tracks = n_item.data.get("tracks", []) if n_item.data else []
+                    n_key = _album_key(n_item, n_tracks)
+                    if n_key not in self._album_repo._lru:
+                        self._album_repo.get_summary(n_key, fallback_data=n_tracks)
 
     def _coverflow_album_tracks(self, idx: int) -> list:
         item = self._coverflow.item_at(idx) if self._coverflow else None
@@ -1947,6 +1999,35 @@ class MainWindow(QMainWindow):
         if fps:
             self._open_metadata_for_files(fps)
 
+    def _enrich_album_background(self, key: str, item, tracks):
+        """Trigger TheAudioDB album enrichment for CoverFlow-navigated albums."""
+        if not key or not tracks:
+            return
+        try:
+            from integrations.theaudiodb.album_enrichment_service import AlbumEnrichmentService
+            from library.album_key import make_artist_key
+            if not hasattr(self, '_album_enrich'):
+                self._album_enrich = AlbumEnrichmentService()
+                self._album_enrich.album_enriched.connect(self._on_album_enriched)
+            album_name = getattr(tracks[0], 'album', '') if tracks else ''
+            artist_name = item.subtitle if item and item.subtitle else (
+                getattr(tracks[0], 'albumartist', '') or getattr(tracks[0], 'artist', ''))
+            if album_name and artist_name:
+                artist_key = make_artist_key(artist_name)
+                self._album_enrich.enrich_album(key, album_name, artist_key, artist_name)
+        except Exception:
+            pass
+
+    def _on_album_enriched(self, album_key: str, data: dict):
+        """Handle TheAudioDB album enrichment result — update banner if visible."""
+        if not hasattr(self, '_album_repo') or not data:
+            return
+        self._album_repo.update_enrichment(album_key, data)
+        if hasattr(self, '_album_banner') and self._album_banner:
+            summary = self._album_repo.get_cached(album_key)
+            if summary:
+                self._album_banner.set_album_summary(summary)
+
     def _on_coverflow_details_album(self, idx: int):
         item = self._coverflow.item_at(idx) if self._coverflow else None
         if not item:
@@ -1973,6 +2054,18 @@ class MainWindow(QMainWindow):
             d = os.path.dirname(tracks[0].filepath)
             import subprocess
             subprocess.Popen(["xdg-open", d])
+
+    def _on_banner_play(self, album_key: str = ""):
+        idx = int(album_key) if album_key.isdigit() else self._coverflow.current_index()
+        self._on_coverflow_play_album(idx)
+
+    def _on_banner_queue(self, album_key: str = ""):
+        idx = int(album_key) if album_key.isdigit() else self._coverflow.current_index()
+        self._on_coverflow_queue_album(idx)
+
+    def _on_banner_details(self, album_key: str = ""):
+        idx = int(album_key) if album_key.isdigit() else self._coverflow.current_index()
+        self._on_coverflow_details_album(idx)
 
     def _on_coverflow_cover_request(self, idx: int, item):
         """Lazy-load cover art for a CoverFlow item."""
@@ -2020,9 +2113,6 @@ class MainWindow(QMainWindow):
     def _on_hub_create_from_queue(self):
         self._playlist_ctrl.hub_create_from_queue()
 
-    def _on_stub_action(self):
-        self._playlist_ctrl.stub_action()
-
     def _on_metadata_saved(self, filepaths: list):
         self._playlist_ctrl.metadata_saved(filepaths)
 
@@ -2067,21 +2157,38 @@ class MainWindow(QMainWindow):
     def _refresh_artist_info(self, artist_key: str):
         repo = self._ctx.artist_repo
         group = repo.get_group(artist_key)
-        if group and hasattr(self, '_artist_enrich'):
-            self._artist_enrich.cancel_pending()
-            self._artist_enrich.refresh_artist(artist_key)
-            self._artist_enrich.enrich_artist(group)
-            self._toast_svc.show(
-                f"Actualizando info de {group.display_name}...", "info")
+        if not group or not hasattr(self, '_artist_enrich'):
+            return
+
+        if hasattr(repo, 'mark_enrichment_loading'):
+            repo.mark_enrichment_loading(artist_key)
+
+        self._artist_enrich.refresh_artist(artist_key)
+        self._artist_enrich.enrich_artist(group, force=True)
+
+        if hasattr(self._artist_grid, 'set_artists'):
+            self._artist_grid.set_artists(repo.groups)
+
+        self._toast_svc.show(
+            f"Actualizando info de {group.display_name}...", "info")
 
     def _on_artist_enriched(self, artist_key: str, info):
+        repo = self._ctx.artist_repo
+        if hasattr(repo, 'apply_external_info'):
+            repo.apply_external_info(artist_key, info)
+
+        # Refresh detail if open for this artist
         if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
                 and self._artist_detail._artist
                 and self._artist_detail._artist.key == artist_key):
-            self._artist_detail.set_external_info(info)
-        # Refresh grid to show updated badges
+            group = repo.get_group(artist_key)
+            if group:
+                self._artist_detail.set_artist(group)
+            else:
+                self._artist_detail.set_external_info(info)
+
+        # Refresh grid
         if hasattr(self._artist_grid, 'set_artists'):
-            repo = self._ctx.artist_repo
             self._artist_grid.set_artists(repo.groups)
 
     def _on_artist_image_loaded(self, artist_key: str, local_path: str):
@@ -2220,31 +2327,78 @@ class MainWindow(QMainWindow):
     def _open_eq(self):
         self._playback_ctrl.open_eq()
 
-    # Extracted to ui/controllers/transmit_controller.py — streaming + snapcast
+    # Streaming/Cast/AudioOutput — now split into focused controllers
+    # CastController → unified transmit menu (local + net + snapcast + HA)
+    # AudioOutputController → local output device selection
+    # SnapcastController → Snapcast zone lifecycle
+    # HomeAudioController → Home Assistant casting
+    # TransmitController → TransmitManager devices (add/manage/activate)
+    # LocalMediaServerController → local HTTP file server lifecycle
+    # MiniPlayerController → mini player window lifecycle
 
     def _show_transmit_menu(self):
-        self._transmit_ctrl.show_transmit_menu()
+        self._cast_ctrl.show_cast_menu()
 
     def _activate_transmit_device(self, device):
-        self._transmit_ctrl.activate_transmit_device(device)
-
-    def _on_transmit_devices_changed(self):
-        self._transmit_ctrl.on_transmit_devices_changed()
+        self._transmit_ctrl.activate_device(device)
 
     def _on_transmit_active_changed(self):
-        self._transmit_ctrl.on_transmit_active_changed()
+        self._transmit_ctrl.on_active_changed()
 
     def _show_audio_output_menu(self):
-        self._transmit_ctrl.show_audio_output_menu()
+        self._audio_output_ctrl.show_menu()
+
+    def _show_audio_diagnostics(self):
+        """Show audio route diagnostics dialog."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Diagnostico de ruta de audio")
+        dlg.setMinimumWidth(420)
+        dlg.setStyleSheet(
+            "QDialog { background: rgba(15,17,22,0.96);"
+            " border: 1px solid rgba(255,255,255,0.07);"
+            " border-radius: 16px; }"
+            "QLabel { background: transparent; }")
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(6)
+
+        try:
+            diag = self._playback.get_audio_diagnostics()
+            lines = diag.to_tooltip().split("\n") if diag else ["Sin diagnostico"]
+        except Exception:
+            lines = ["Diagnostico no disponible"]
+
+        title = QLabel("Ruta de audio activa")
+        title.setStyleSheet(
+            "font-size: 16px; font-weight: 740; color: rgba(255,255,255,0.92);")
+        layout.addWidget(title)
+        layout.addSpacing(8)
+
+        for line in lines:
+            lbl = QLabel(line)
+            lbl.setStyleSheet(
+                "font-size: 12px; color: rgba(255,255,255,0.62);"
+                "font-family: monospace;")
+            layout.addWidget(lbl)
+
+        layout.addSpacing(12)
+        close_btn = QLabel("Clic para cerrar")
+        close_btn.setStyleSheet(
+            "font-size: 11px; color: rgba(255,255,255,0.32);")
+        close_btn.setAlignment(Qt.AlignCenter)
+        layout.addWidget(close_btn)
+        dlg.mousePressEvent = lambda e: dlg.accept()
+        dlg.exec()
 
     def _open_mini_player(self):
-        self._transmit_ctrl.open_mini_player()
+        self._mini_player_ctrl.open()
 
     def _add_transmit_device(self):
-        self._transmit_ctrl.add_transmit_device()
+        self._transmit_ctrl.add_device()
 
     def _manage_transmit_devices(self):
-        self._transmit_ctrl.manage_transmit_devices()
+        self._transmit_ctrl.manage_devices()
 
     # ── Home Audio ──
 
@@ -2643,3 +2797,17 @@ class MainWindow(QMainWindow):
                 self._play_file(files[0])
             else:
                 self._play_filepaths(files, play_now=True)
+
+
+def _album_key(item, tracks: list = None) -> str:
+    """Stable SHA1 album key from albumartist/artist + album title."""
+    import hashlib
+    artist_val = ""
+    album = item.title or ""
+    if tracks:
+        artist_val = getattr(tracks[0], 'albumartist', '') or getattr(
+            tracks[0], 'artist', '') or ""
+    if not artist_val and item.subtitle:
+        artist_val = item.subtitle.split(" \u00b7 ")[0]
+    raw = f"{artist_val}|{album}".lower().strip()
+    return hashlib.sha1(raw.encode()).hexdigest()[:16]

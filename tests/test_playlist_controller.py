@@ -3,13 +3,27 @@ from ui.controllers.playlist_controller import PlaylistController
 
 
 class TestPlaylistController:
-    def test_stub_action(self, mock_window):
+    def test_create_from_album(self, mock_window):
+        """Create playlist from album should work when library has items."""
         ctrl = PlaylistController(mock_window)
-        ctrl.stub_action()
+        # With no library items, it shows a toast
+        ctrl.create_from_album()
         mock_window._toast_svc.show.assert_called_once()
 
-    def test_export_playlists(self, mock_window):
+    def test_create_from_artist(self, mock_window):
         ctrl = PlaylistController(mock_window)
+        ctrl.create_from_artist()
+        mock_window._toast_svc.show.assert_called()
+
+    def test_create_from_genre(self, mock_window):
+        ctrl = PlaylistController(mock_window)
+        ctrl.create_from_genre()
+        mock_window._toast_svc.show.assert_called()
+
+    def test_export_playlists(self, mock_window):
+        """Export with no playlists shows toast."""
+        ctrl = PlaylistController(mock_window)
+        mock_window._ctx.db.get_playlists.return_value = []
         ctrl.export_playlists()
         mock_window._toast_svc.show.assert_called_once()
 

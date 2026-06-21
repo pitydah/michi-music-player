@@ -4,7 +4,7 @@ import time
 
 from PySide6.QtCore import QObject, Signal
 
-from recognition.matching import match_detected_track
+from recognition.recognition_matcher import RecognitionMatcher
 from recognition.provider_manager import ProviderManager
 
 logger = logging.getLogger("astra.identifier")
@@ -32,8 +32,17 @@ class IdentifierController(QObject):
         self._current_title = ""
         self._current_artist = ""
         self._paused_reason = ""
-        self._last_detections: list[dict] = []
         self._dedupe_minutes = 10
+
+        # Enhanced matcher (fuzzy tiers + source-aware skip)
+        self._matcher = RecognitionMatcher(db)
+
+        # Persistent detection history repository
+        try:
+            from recognition.detection_history_repository import DetectionHistoryRepository
+            self._history = DetectionHistoryRepository(db, self)
+        except Exception:
+            self._history = None
 
         # Wire detection signals
         self._detection.track_detected.connect(self._on_detection_result)
@@ -126,15 +135,21 @@ class IdentifierController(QObject):
         title = getattr(track, 'title', '')
         artist = getattr(track, 'artist', '')
         album = getattr(track, 'album', '')
-        provider = getattr(track, 'provider', '')
 
-        if self._is_recent_duplicate(title, artist):
-            logger.debug("Skipping duplicate: %s — %s", title, artist)
-            return
+        # Persistent dedup via DetectionHistoryRepository
+        if self._history:
+            existing = self._history.get_recent(title, artist)
+            if existing:
+                logger.debug("Skipping duplicate (DB): %s — %s", title, artist)
+                return
 
-        match = match_detected_track(self._db, title, artist, album)
+        # Enhanced matching via RecognitionMatcher (fuzzy tiers, source-aware)
+        match = self._matcher.match(
+            title, artist, album, source_type=self._current_source_type)
         matched_filepath = match.get("filepath", "")
         match_status = match.get("status", "not_found")
+
+        provider = getattr(track, 'provider', '')
 
         record = {
             "title": title, "artist": artist, "album": album,
@@ -146,19 +161,7 @@ class IdentifierController(QObject):
             "match_status": match_status,
             "detected_at": time.time(),
         }
-        self._last_detections.insert(0, record)
-        if len(self._last_detections) > 100:
-            self._last_detections.pop()
         self.detected.emit(record)
 
     def _on_detection_failed(self, error: str):
         logger.debug("Detection failed: %s", error)
-
-    # ── Dedup + Match helpers ──
-
-    def _is_recent_duplicate(self, title: str, artist: str) -> bool:
-        cutoff = time.time() - self._dedupe_minutes * 60
-        for r in self._last_detections:
-            if r["title"] == title and r["artist"] == artist and r.get("detected_at", 0) > cutoff:
-                return True
-        return False

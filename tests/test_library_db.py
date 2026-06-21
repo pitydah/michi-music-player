@@ -37,6 +37,7 @@ def test_playlist_crud():
 
 def test_scanner():
     from library.library_db import LibraryDB
+    from library.indexer import Indexer
     import os
     with tempfile.TemporaryDirectory() as d:
         for ext in [".mp3", ".txt", ".ogg"]:
@@ -44,6 +45,7 @@ def test_scanner():
             with open(path, "w") as f:
                 f.write("")
         db = LibraryDB(":memory:")
-        added = db.scan_directory(d)
-        assert added == 2  # mp3 + ogg, no txt
+        idx = Indexer(db, d)
+        idx.run()
+        assert db.get_stats()["audio"] == 2  # mp3 + ogg, no txt
         db.close()

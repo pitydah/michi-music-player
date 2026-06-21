@@ -23,7 +23,7 @@ from gi.repository import Gst, GLib  # noqa: E402
 
 from PySide6.QtCore import QObject, Signal, QTimer  # noqa: E402
 
-from audio.audio_chain import DacConfig, build_eq_graphic_chain, build_eq_parametric_chain  # noqa: E402
+from audio.audio_chain import DacConfig  # noqa: E402
 from audio.dff_parser import parse_dff  # noqa: E402
 
 Gst.init(None)
@@ -59,6 +59,8 @@ class GStreamerEngine(QObject):
     error_occurred = Signal(str)
     spectrum_data = Signal(object)      # numpy array for FFT
     queue_changed = Signal(list)
+    audio_route_changed = Signal(object)  # AudioRouteDiagnostics
+    eq_bitperfect_warning = Signal()  # Emitted when EQ conflicts with bit-perfect
 
     POLL_MS = 250
 
@@ -101,6 +103,8 @@ class GStreamerEngine(QObject):
         self._volume = 0.70
         self._crossfade = 0       # seconds
         self._replaygain = False
+        self._gapless_enabled = True
+        self._audio_profile = "standard"
 
     def set_library_db(self, db):
         self._db = db
@@ -112,6 +116,56 @@ class GStreamerEngine(QObject):
 
         self._load_settings()
 
+    def set_audio_profile(self, profile_key: str):
+        self._audio_profile = profile_key
+
+    def set_output_device_id(self, device_id: str):
+        """Select a local audio output device (ALSA hw:, PipeWire, etc.).
+
+        This is the LOCAL output branch — does NOT affect network transmit.
+        """
+        from audio.output_device_manager import get_device
+        dev = get_device(device_id)
+        if dev:
+            self._dac.device = dev.device_string
+        else:
+            self._dac.output_device_id = device_id or "auto"
+        self._restart_if_playing()
+
+    def get_output_device_id(self) -> str:
+        return self._dac.output_device_id
+
+    def set_transmit_device(self, device) -> None:
+        """Set the network transmit device (TransmitDevice or None for none).
+
+        This is the TRANSMIT branch — sends audio over TCP to remote device.
+        Does NOT affect the local audio output sink.
+        """
+        self._transmit_device = device
+        self._restart_if_playing()
+
+    def get_transmit_device(self):
+        return self._transmit_device
+
+    def get_audio_diagnostics(self):
+        from audio.audio_diagnostics import AudioRouteDiagnostics
+        from audio.output_profiles import get_profile
+        profile = get_profile(self._audio_profile)
+        return AudioRouteDiagnostics(
+            current_uri=self._current or "",
+            profile=profile.key,
+            backend=self._dac.mode,
+            device_name=self._dac.device,
+            device_string=self._dac.alsa_device_str,
+            bitperfect_status=(
+                "yes" if profile.bitperfect and not self._is_dsd else "no"),
+            dsp_active=self._eq.mode != "bypass" if hasattr(self, '_eq') else False,
+            eq_active=getattr(getattr(self, '_eq', None), 'mode', 'bypass') != 'bypass',
+            replaygain_active=self._replaygain,
+            spectrum_active=self._spectrum_enabled,
+            resampling_active=self._dac.target_rate > 0,
+        )
+
     def _load_settings(self):
         try:
             import core.settings_manager as sm
@@ -122,6 +176,8 @@ class GStreamerEngine(QObject):
             self._eq.preamp_db = sm.get("eq/preamp")
             self._crossfade = sm.get("playback/crossfade")
             self._replaygain = sm.get("playback/replaygain")
+            self._gapless_enabled = sm.get("audio/gapless_enabled")
+            self._audio_profile = sm.get("audio/profile") or "standard"
         except Exception as e:
             logging.getLogger("astra.player").debug("Settings load failed: %s", e)
 
@@ -142,16 +198,105 @@ class GStreamerEngine(QObject):
         self.stop()
 
         try:
-            if filepath_or_url.startswith(("http://", "https://", "icy://")):
-                self._play_uri(filepath_or_url)
-            elif filepath_or_url.lower().endswith(".dff"):
+            # DFF uses separate appsrc pipeline
+            if filepath_or_url.lower().endswith(".dff"):
                 self._play_dff(filepath_or_url)
-            elif filepath_or_url.lower().endswith(".dsf"):
-                self._play_uri(self._to_uri(filepath_or_url), is_dsd=True)
-            else:
-                self._play_uri(self._to_uri(filepath_or_url))
+                self._current = filepath_or_url
+                return
+
+            uri = self._to_uri(filepath_or_url)
+            self._is_dsd = filepath_or_url.lower().endswith(".dsf")
+
+            # Build pipeline via PipelineFactory
+            from audio.format_probe import probe_format
+            from audio.output_profiles import get_profile
+            from audio.output_device_manager import get_device
+            from audio.pipeline_factory import PipelineFactory
+            from audio.dsp_state import DspState
+            from audio.audio_diagnostics import AudioRouteDiagnostics
+
+            fmt = probe_format(filepath_or_url)
+            profile = get_profile(self._audio_profile)
+            dev = get_device(self._dac.output_device_id or "auto")
+            if not dev:
+                from audio.output_device_manager import list_devices
+                devs = list_devices()
+                dev = devs[0] if devs else None
+
+            # ReplayGain advanced — extract tags, compute safe gain
+            rg_gain_db: float | None = None
+            if self._replaygain and profile.allows_replaygain:
+                try:
+                    from audio.replaygain import ReplayGainConfig, apply_full, linear_to_db
+                    from library.metadata_extractor import extract_metadata_full
+                    meta_full = extract_metadata_full(filepath_or_url)
+                    track_gain = meta_full.get("replaygain_track") or 0.0
+                    album_gain = meta_full.get("replaygain_album") or 0.0
+                    config = ReplayGainConfig(
+                        mode=self._replaygain_mode if hasattr(self, '_replaygain_mode') else "track",
+                        preamp_db=getattr(self, '_replaygain_preamp', 0.0),
+                        headroom_db=getattr(self, '_replaygain_headroom', 0.0),
+                        anti_clip=getattr(self, '_replaygain_anticlip', True),
+                    )
+                    gain, _label = apply_full(config, track_gain, album_gain)
+                    if gain != 1.0:
+                        rg_gain_db = linear_to_db(gain)
+                except Exception:
+                    pass
+
+            dsp = DspState(
+                eq_enabled=(hasattr(self, '_eq') and self._eq.mode != "bypass"),
+                eq_mode=getattr(self._eq, 'mode', 'bypass'),
+                eq_bands_parametric=getattr(self._eq, 'bands_parametric', []),
+                eq_preamp_db=getattr(self._eq, 'preamp_db', 0.0),
+                replaygain_enabled=(self._replaygain and rg_gain_db is not None),
+                replaygain_db=(rg_gain_db or 0.0),
+                spectrum_enabled=self._spectrum_enabled,
+                transmit_enabled=self._transmit_device is not None,
+            )
+            from audio.dac_manager import DacManager
+            dm = DacManager(self)
+            dm.refresh_devices()
+            route = dm.select_output_route(fmt, profile, dev)
+
+            factory = PipelineFactory()
+            self._pipeline = factory.build_for_uri(
+                uri, fmt, route, dsp,
+                transmit_device=(
+                    self._transmit_device if profile.allows_transmit else None))
+
+            if not self._pipeline:
+                self.error_occurred.emit("Failed to create pipeline")
+                self._state = PlaybackState.STOPPED
+                self.state_changed.emit(self._state)
+                return
 
             self._current = filepath_or_url
+            self._setup_bus()
+            self._setup_timer()
+            self._pipeline.set_state(Gst.State.PLAYING)
+            self._state = PlaybackState.PLAYING
+            self.state_changed.emit(self._state)
+
+            # Audio diagnostics
+            diag = AudioRouteDiagnostics(
+                current_uri=filepath_or_url,
+                profile=profile.key,
+                backend=dev.backend if dev else "auto",
+                device_name=dev.display_name if dev else "",
+                device_string=dev.device_string if dev else "autoaudiosink",
+                input_codec=fmt.codec,
+                input_sample_rate=fmt.sample_rate,
+                input_bit_depth=fmt.bit_depth,
+                input_channels=fmt.channels,
+                dsd_mode=fmt.dsd_speed if fmt.is_dsd else "",
+                eq_active=(hasattr(self, '_eq') and self._eq.mode != "bypass"),
+                replaygain_active=self._replaygain if hasattr(self, '_replaygain') else False,
+                spectrum_active=self._spectrum_enabled,
+                bitperfect_status="yes" if profile.bitperfect and not fmt.is_dsd else "no",
+            )
+            self.audio_route_changed.emit(diag)
+
             if self._db and not filepath_or_url.startswith(("http://", "https://", "icy://")):
                 from sync.sync_protocol import make_track_id
                 self._db.update_play_history(make_track_id(filepath_or_url))
@@ -162,81 +307,12 @@ class GStreamerEngine(QObject):
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)
 
-    def _play_uri(self, uri: str, is_dsd: bool = False):
-        self._is_dsd = is_dsd
-        sink = self._build_sink()
-
-        try:
-            self._pipeline = Gst.ElementFactory.make("playbin", "player")
-            if not self._pipeline:
-                self.error_occurred.emit("Failed to create playbin")
-                return
-
-            self._pipeline.set_property("uri", uri)
-
-            audio_sink = Gst.parse_bin_from_description(sink, True)
-            if not audio_sink:
-                self.error_occurred.emit("Failed to create audio sink")
-                return
-
-            self._pipeline.set_property("audio-sink", audio_sink)
-
-        except GLib.Error as e:
-            logging.getLogger("astra.player").exception("GStreamer pipeline creation failed")
-            self.error_occurred.emit(f"GStreamer: {e.message}")
-            self._pipeline = None
-            self._state = PlaybackState.STOPPED
-            self.state_changed.emit(self._state)
-            return
-        except Exception as e:
-            logging.getLogger("astra.player").exception("Pipeline creation failed")
-            self.error_occurred.emit(f"No se pudo crear el pipeline: {e}")
-            self._pipeline = None
-            self._state = PlaybackState.STOPPED
-            self.state_changed.emit(self._state)
-            return
-
-        self._setup_bus()
-        self._setup_timer()
-        self._setup_spectrum()
-
-        # Configure EQ bands programmatically (GstChildProxy)
-        if self._eq.mode == "graphic" and not self._is_dsd:
-            try:
-                eq_elem = self._pipeline.get_by_name("eq_nbands")
-                if not eq_elem:
-                    # Try to find in the audio-sink bin
-                    audio_sink = self._pipeline.get_property("audio-sink")
-                    if audio_sink:
-                        eq_elem = audio_sink.get_by_name("eq_nbands")
-                if eq_elem:
-                    for i, db in enumerate(self._eq.bands_31[:31]):
-                        band = eq_elem.get_child_by_index(i)
-                        if band:
-                            band.set_property("gain", float(db))
-            except Exception:
-                logging.getLogger("astra").debug("EQ bands application failed")
-
-        ret = self._pipeline.set_state(Gst.State.PLAYING)
-        if ret == Gst.StateChangeReturn.FAILURE:
-            logging.getLogger("astra.player").error(
-                "set_state PLAYING failed for URI: %s, sink: %s", uri, sink)
-            self.error_occurred.emit("No se pudo iniciar reproducción")
-            self._state = PlaybackState.STOPPED
-            self.state_changed.emit(self._state)
-            return
-
-        logging.getLogger("astra.player").info(
-            "Playing URI: %s, sink chain: %s", uri[:100], sink[:100])
-        self._state = PlaybackState.PLAYING
-        self.state_changed.emit(self._state)
-
     def _play_dff(self, filepath: str):
         self._is_dsd = True
         try:
             header = parse_dff(filepath)
         except Exception as e:
-            logging.getLogger("astra.player").warning("DSF/DFF parse failed: %s", e)
+            logging.getLogger("astra.player").warning("DFF parse failed: %s", e)
             self.error_occurred.emit(str(e))
             return
 
@@ -247,29 +323,34 @@ class GStreamerEngine(QObject):
 
         self._dff_header = header
 
-        caps = (f"audio/x-dsd,format=DSDU8,reversed-bytes=false,"
-                f"layout=interleaved,channels={header.channels},"
-                f"rate={header.sample_rate}")
+        # Use PipelineFactory for unified pipeline construction
+        from audio.format_probe import probe_format
+        from audio.output_profiles import get_profile
+        from audio.dac_manager import DacManager
+        from audio.pipeline_factory import PipelineFactory
 
-        sink = self._build_sink()
-        pipeline_str = (
-            f"appsrc name=dsdsrc emit-signals=true format=time caps={caps} "
-            f"! avdec_dsd_msbf "
-            f"! audioconvert "
-            f"! {sink}"
-        )
-        try:
-            self._pipeline = Gst.parse_launch(pipeline_str)
-        except GLib.Error as e:
-            logging.getLogger("astra.player").exception("DFF pipeline failed")
-            self.error_occurred.emit(f"DFF: {e.message}")
-            return
+        fmt = probe_format(filepath)
+        profile = get_profile(self._audio_profile)
+        dm = DacManager(self)
+        dm.refresh_devices()
+        route = dm.select_output_route(fmt, profile, None)
+
+        factory = PipelineFactory()
+        self._pipeline = factory.build_dff_pipeline(filepath, fmt, route)
         if not self._pipeline:
             self.error_occurred.emit("Failed to create DFF pipeline")
             return
 
-        self._appsrc = self._pipeline.get_by_name("dsdsrc")
-        self._file_handle = open(filepath, "rb")  # noqa: SIM115 — handle lives across thread
+        # Set caps on appsrc
+        caps_str = (f"audio/x-dsd,format=DSDU8,reversed-bytes=false,"
+                    f"layout=interleaved,channels={header.channels},"
+                    f"rate={header.sample_rate}")
+        appsrc = self._pipeline.get_by_name("dff-appsrc")
+        if appsrc:
+            caps = Gst.Caps.from_string(caps_str)
+            appsrc.set_property("caps", caps)
+        self._appsrc = appsrc
+        self._file_handle = open(filepath, "rb")  # noqa: SIM115 — handle lives across DFF thread
 
         self._setup_bus()
         self._setup_timer()
@@ -367,20 +448,29 @@ class GStreamerEngine(QObject):
     def set_eq_graphic(self, bands: list[float]):
         self._eq.mode = "graphic"
         self._eq.bands_31 = bands[:31]
+        self._check_dsp_vs_bitperfect()
         self._restart_if_playing()
 
     def set_eq_parametric(self, bands: list[dict]):
         self._eq.mode = "parametric"
         self._eq.bands_parametric = list(bands)
-        self._restart_if_playing()
-
-    def set_eq_preamp(self, db: float):
-        self._eq.preamp_db = db
+        self._check_dsp_vs_bitperfect()
         self._restart_if_playing()
 
     def set_eq_bypass(self, bypass: bool):
         self._eq.mode = "bypass" if bypass else (
-            "graphic" if self._eq.bands_parametric else "graphic")
+            "parametric" if self._eq.bands_parametric else "graphic")
+        self._restart_if_playing()
+
+    def _check_dsp_vs_bitperfect(self):
+        """Emit warning if DSP is active in bit-perfect mode."""
+        from audio.output_profiles import get_profile
+        profile = get_profile(self._audio_profile)
+        if profile.bitperfect and self._eq.mode != "bypass":
+            self.eq_bitperfect_warning.emit()
+
+    def set_eq_preamp(self, db: float):
+        self._eq.preamp_db = db
         self._restart_if_playing()
 
     def set_spectrum_enabled(self, enabled: bool):
@@ -399,91 +489,11 @@ class GStreamerEngine(QObject):
             if pos > 0.5:
                 self.seek(pos)
 
-    def set_output_device(self, device) -> None:
-        self._transmit_device = device
-        self._restart_if_playing()
-
-    def get_output_device(self):
-        return self._transmit_device
-
     # ── Pipeline Building ──
 
     @staticmethod
     def _gst_element_exists(name: str) -> bool:
         return Gst.ElementFactory.find(name) is not None
-
-    def _output_sink_str(self) -> str:
-        """Return the best available output sink string."""
-        if self._dac.mode in ("bitperfect", "dop"):
-            return f"alsasink device={self._dac.alsa_device_str}"
-
-        # Standard mode: prefer PipeWire > PulseAudio > Auto > ALSA
-        if self._gst_element_exists("pipewiresink"):
-            logging.getLogger("astra.player").debug("Using pipewiresink")
-            return "pipewiresink"
-        if self._gst_element_exists("pulsesink"):
-            logging.getLogger("astra.player").debug("Using pulsesink")
-            return "pulsesink"
-        if self._gst_element_exists("autoaudiosink"):
-            logging.getLogger("astra.player").debug("Using autoaudiosink")
-            return "autoaudiosink"
-        logging.getLogger("astra.player").debug("Falling back to alsasink")
-        return f"alsasink device={self._dac.alsa_device_str}"
-
-    def _build_sink(self) -> str:
-        parts = []
-
-        # Volume control (always first)
-        parts.append(f"volume name=astra_volume volume={self._volume:.4f}")
-
-        # EQ chain (before audioconvert)
-        if not self._is_dsd:
-            if self._eq.mode == "graphic":
-                parts.append(build_eq_graphic_chain(self._eq.bands_31))
-            elif self._eq.mode == "parametric":
-                eq_part = build_eq_parametric_chain(
-                    self._eq.bands_parametric, self._eq.preamp_db)
-                if eq_part:
-                    parts.append(eq_part)
-
-        # ReplayGain
-        if self._replaygain and not self._is_dsd:
-            parts.append("rganalysis ! rgvolume album-mode=0 fallback-gain=0 preamp-headroom=0")
-
-        # Converter + resampler
-        parts.append("audioconvert")
-        parts.append("audioresample")
-
-        # Output sink
-        sink = self._output_sink_str()
-        parts.append(sink)
-
-        base = " ! ".join(p for p in parts if p)
-
-        # Transmit
-        if self._transmit_device and not self._is_dsd:
-            dev = self._transmit_device
-            if dev.stype == "snapcast":
-                host = dev.address or "127.0.0.1"
-                port = dev.port or 1704
-                base = (f"tee name=transmit_tee {base} "
-                        f"transmit_tee. ! queue ! audioconvert ! audioresample ! "
-                        f"audio/x-raw,rate=48000,channels=2 ! "
-                        f"tcpclientsink host={host} port={port}")
-            elif dev.stype == "http":
-                port = dev.port or 8554
-                base = (f"tee name=transmit_tee {base} "
-                        f"transmit_tee. ! queue ! audioconvert ! audioresample ! "
-                        f"audio/x-raw,rate=44100,channels=2 ! "
-                        f"tcpserversink host=0.0.0.0 port={port}")
-
-        # Spectrum
-        if self._spectrum_enabled and not self._is_dsd:
-            base += (" ! tee name=spectrum_tee "
-                     "spectrum_tee. ! queue ! appsink name=spectrum_sink "
-                     "emit-signals=true max-buffers=10 drop=true sync=false")
-
-        return base
 
     def _setup_spectrum(self):
         if not self._spectrum_enabled or not self._pipeline:
@@ -515,6 +525,41 @@ class GStreamerEngine(QObject):
         bus = self._pipeline.get_bus()
         bus.add_signal_watch()
         self._bus_id = bus.connect("message", self._on_bus_message)
+        # Gapless: preload next URI when current track is about to end
+        self._gapless_active = False
+        playbin = self._pipeline.get_by_name("playbin")
+        if not playbin:
+            playbin = self._pipeline.get_by_name("player")
+        if not playbin:
+            playbin = self._pipeline
+        if hasattr(playbin, "connect"):
+            playbin.connect("about-to-finish", self._on_about_to_finish)
+
+    def _on_about_to_finish(self, playbin):
+        """Preload next track URI for gapless playback."""
+        if not getattr(self, '_gapless_enabled', True):
+            return
+        current_uri = getattr(self, '_current', '')
+        if current_uri and (current_uri.startswith("http") or "icy" in current_uri):
+            return  # No gapless for streams
+        if (self._queue_index >= 0
+                and self._queue_index < len(self._queue) - 1):
+            next_fp = self._queue[self._queue_index + 1]
+            next_uri = self._to_uri(next_fp)
+            playbin.set_property("uri", next_uri)
+            self._gapless_active = True
+
+    def _on_media_finished_eos(self):
+        """Handle track end — gapless-aware."""
+        if self._gapless_active:
+            # Gapless already preloaded next track via about-to-finish
+            # Just advance queue index without restarting
+            self._gapless_active = False
+            self._queue_index += 1
+            if self._db:
+                self._db.save_queue(self._queue, self._queue_index)
+        else:
+            self._on_media_finished()
 
     def _setup_timer(self):
         if self._timer:
@@ -526,7 +571,7 @@ class GStreamerEngine(QObject):
     def _on_bus_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
-            self._on_media_finished()
+            self._on_media_finished_eos()
         elif t == Gst.MessageType.ERROR:
             err, _ = message.parse_error()
             self.error_occurred.emit(f"GStreamer: {err}")

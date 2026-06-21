@@ -93,11 +93,11 @@ class PlaybackController:
             ext = item.ext.upper().lstrip(".")
             if item.sample_rate:
                 quality_str = (
-                    f"{ext} · {item.sample_rate / 1000:.1f}kHz"
+                    f"{ext} \u00b7 {item.sample_rate / 1000:.1f}kHz"
                     if item.sample_rate >= 1000
-                    else f"{ext} · {item.sample_rate}Hz")
+                    else f"{ext} \u00b7 {item.sample_rate}Hz")
             elif item.bitrate and item.bitrate >= 1000:
-                quality_str = f"{ext} · {item.bitrate // 1000}kbps"
+                quality_str = f"{ext} \u00b7 {item.bitrate // 1000}kbps"
             elif item.ext:
                 quality_str = ext
 
@@ -108,6 +108,23 @@ class PlaybackController:
         # Resolve cover + quality and update NowPlayingBar
         self._win._ctx.player_bar.set_track_from_ref(track)
         self._win._ctx.player_bar.set_quality(quality_str)
+
+        # Quality classification (color-coded badge)
+        from audio.quality_classifier import classify_audio_quality
+        qc = classify_audio_quality(item) if item else {"category": "unknown", "label": quality_str, "tooltip": ""}
+        self._win._ctx.player_bar.set_quality_info(
+            qc.get("label", quality_str),
+            qc.get("category", "unknown"),
+            qc.get("tooltip", ""))
+
+        # Audio route diagnostics for badge tooltip
+        try:
+            diag = self._win._ctx.player.get_audio_diagnostics() if hasattr(
+                self._win._ctx.player, 'get_audio_diagnostics') else None
+            if diag and hasattr(self._win._player_bar, '_quality_badge'):
+                self._win._player_bar._quality_badge.set_route_tooltip(diag)
+        except Exception:
+            pass
 
         if track.uri.startswith("http") and track.cover_path:
             pix = QPixmap(track.cover_path)

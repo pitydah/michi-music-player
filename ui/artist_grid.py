@@ -91,8 +91,21 @@ class ArtistGridWidget(QWidget):
         outer.addWidget(self._scroll)
         outer.addWidget(self._list)
 
+        self._empty_label = QLabel(
+            "No hay artistas en tu biblioteca\n\n"
+            "Escanea una carpeta musical o revisa los\n"
+            "metadatos de tus archivos.")
+        self._empty_label.setAlignment(Qt.AlignCenter)
+        self._empty_label.setWordWrap(True)
+        self._empty_label.setStyleSheet(
+            "font-size: 14px; color: rgba(255,255,255,0.38);"
+            "background: transparent; border: none; padding: 48px;")
+        self._empty_label.hide()
+        outer.addWidget(self._empty_label)
+
     def set_artists(self, artists: list[ArtistGroup]):
         self._artists = artists
+        self._last_cols = -1  # force rebuild on new artist list
         self._refresh()
 
     def set_view_mode(self, mode: str):
@@ -114,19 +127,28 @@ class ArtistGridWidget(QWidget):
         if self._view_mode == "grid":
             self._rebuild_grid()
 
-    def _rebuild_grid(self):
+    def _clear_grid(self):
         while self._grid.count():
-            w = self._grid.takeAt(0).widget()
-            if w:
-                w.deleteLater()
+            item = self._grid.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
 
+    def _rebuild_grid(self):
         if not self._artists:
+            self._clear_grid()
+            self._last_cols = -1
+            self._empty_label.show()
+            self._scroll.hide()
             return
+        self._empty_label.hide()
+        self._scroll.show()
 
         cols = max(1, (self._scroll.viewport().width() - 48) // (self._cover_size + 40))
-        if cols == self._last_cols:
+        if cols == self._last_cols and self._grid.count() > 0:
             return
         self._last_cols = cols
+        self._clear_grid()
 
         for i, artist in enumerate(self._artists):
             card = _ArtistCard(artist, self._cover_size, i)
@@ -139,6 +161,13 @@ class ArtistGridWidget(QWidget):
             self._grid.addWidget(card, row, col, Qt.AlignTop)
 
     def _rebuild_list(self):
+        if not self._artists:
+            self._list.clear()
+            self._empty_label.show()
+            self._list.hide()
+            return
+        self._empty_label.hide()
+        self._list.show()
         self._list.clear()
         for artist in self._artists:
             dur = _format_dur(artist.total_duration)
@@ -237,9 +266,10 @@ class _ArtistCard(QFrame):
         # Try external thumb first
         thumb_local = ""
         if artist.thumb_url:
-            from integrations.theaudiodb.cache import IMAGES_DIR
             import os as _os
-            thumb_local = _os.path.join(IMAGES_DIR, f"{artist.key}_thumb.jpg")
+            thumb_local = _os.path.join(
+                _os.path.expanduser("~/.cache/astra/theaudiodb/artists/images"),
+                f"{artist.key}_thumb.jpg")
         external_img = None
         if thumb_local and _os.path.exists(thumb_local):
             external_img = QPixmap(thumb_local)
