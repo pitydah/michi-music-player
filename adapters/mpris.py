@@ -87,11 +87,10 @@ class MPRISObject(dbus.service.Object):
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player",
                          in_signature="x")
     def Seek(self, offset):
-        if self._engine and self._engine._pipeline:
-            ok, pos_ns = self._engine._pipeline.query_position(1)
-            if ok:
-                secs = pos_ns / 1e9 + offset / 1e6
-                self._engine.seek(max(0, secs))
+        pos_ns = self._engine.get_position_ns() if self._engine and hasattr(self._engine, 'get_position_ns') else 0
+        if pos_ns:
+            secs = pos_ns / 1e9 + offset / 1e6
+            self._engine.seek(max(0, secs))
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player",
                          in_signature="ox")

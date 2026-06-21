@@ -81,3 +81,36 @@ class MediaItem:
             bit_depth=row[26] if len(row) > 26 and row[26] else 0,
             bpm=row[27] if len(row) > 27 and row[27] else 0,
         )
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MediaItem":
+        return cls(
+            id=d.get("id", 0),
+            filepath=d.get("filepath", ""),
+            filename=d.get("filename", ""),
+            directory=d.get("directory", ""),
+            ext=d.get("ext", ""),
+            kind=d.get("kind", ""),
+            size=d.get("size", 0),
+            mtime=d.get("mtime", 0.0),
+            duration=d.get("duration", 0.0),
+            channels=d.get("channels", 0),
+            sample_rate=d.get("sample_rate", 0),
+            bitrate=d.get("bitrate", 0),
+            title=d.get("title", ""),
+            artist=str(d.get("artist") or ""),
+            album=str(d.get("album") or ""),
+            year=d.get("year", 0),
+            genre=d.get("genre", ""),
+            track_number=d.get("track_number", 0),
+            composer=d.get("composer", ""),
+            albumartist=str(d.get("albumartist") or ""),
+            disc_number=d.get("disc_number", 0),
+            disc_total=d.get("disc_total", 0),
+            track_total=d.get("track_total", 0),
+            mb_track_id=str(d.get("mb_track_id") or ""),
+            mb_album_id=str(d.get("mb_album_id") or ""),
+            mb_albumartist_id=str(d.get("mb_albumartist_id") or ""),
+            bit_depth=d.get("bit_depth", 0),
+            bpm=d.get("bpm", 0),
+        )

@@ -48,7 +48,7 @@ class PlaybackController:
                 self._win._ctx.model.index(idx.row(), TrackRefTableModel.COL_TITLE),
                 Qt.DisplayRole)
             if artist_name:
-                items = self._win._ctx.db.get_all(search=artist_name)
+                items = self._win._ctx.db.search_advanced(f"artist:{artist_name}")
                 refs = [TrackRef(uri=i.filepath,
                                  title=i.title or os.path.basename(i.filepath),
                                  artist=i.artist, album=i.album,

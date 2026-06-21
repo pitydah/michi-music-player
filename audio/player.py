@@ -119,6 +119,28 @@ class GStreamerEngine(QObject):
     def set_audio_profile(self, profile_key: str):
         self._audio_profile = profile_key
 
+    def set_dsd_mode(self, mode: str):
+        self._dac.dsd_mode = mode
+
+    def set_gapless_enabled(self, enabled: bool):
+        self._gapless_enabled = enabled
+
+    def set_replaygain_mode(self, mode: str):
+        self._replaygain = (mode != "off")
+
+    def get_position_ns(self) -> int:
+        """Return current playback position in nanoseconds, or 0."""
+        if self._pipeline:
+            ok, pos_ns = self._pipeline.query_position(Gst.Format.TIME)
+            if ok:
+                return pos_ns
+        return 0
+
+    @property
+    def current(self) -> str:
+        """Current playing filepath or URL."""
+        return self._current
+
     def set_output_device_id(self, device_id: str):
         """Select a local audio output device (ALSA hw:, PipeWire, etc.).
 

@@ -207,7 +207,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             if srv is None or srv._db is None:
                 self._send_json({"results": []})
                 return
-            items = srv._db.get_all(search=query)
+            items = srv._db.search_advanced(query) if hasattr(srv._db, 'search_advanced') else []
             results = []
             for item in items[:50]:
                 results.append({

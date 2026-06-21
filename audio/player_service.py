@@ -164,16 +164,16 @@ class PlayerService(QObject):
         return True, "OK"
 
     def set_dsd_mode(self, mode: str):
-        if hasattr(self._engine, '_dac'):
-            self._engine._dac.dsd_mode = mode
+        if hasattr(self._engine, 'set_dsd_mode'):
+            self._engine.set_dsd_mode(mode)
 
     def set_gapless_enabled(self, enabled: bool):
-        if hasattr(self._engine, '_gapless_enabled'):
-            self._engine._gapless_enabled = enabled
+        if hasattr(self._engine, 'set_gapless_enabled'):
+            self._engine.set_gapless_enabled(enabled)
 
     def set_replaygain_mode(self, mode: str):
-        if hasattr(self._engine, '_replaygain'):
-            self._engine._replaygain = (mode != "off")
+        if hasattr(self._engine, 'set_replaygain_mode'):
+            self._engine.set_replaygain_mode(mode)
 
     # ── Transmit ──
 
@@ -217,7 +217,7 @@ class PlayerService(QObject):
     @property
     def current(self) -> str:
         """Current playing filepath or URL."""
-        return self._engine._current
+        return self._engine.current if hasattr(self._engine, 'current') else ""
 
     @property
     def engine(self) -> GStreamerEngine:

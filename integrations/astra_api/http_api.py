@@ -263,7 +263,7 @@ class _AstraHandler(BaseHTTPRequestHandler):
 
         elif parent_id.startswith("artist:"):
             artist_name = parent_id[len("artist:"):]
-            tracks = db.get_all(search=artist_name)
+            tracks = db.search_advanced(f"artist:{artist_name}") if hasattr(db, 'search_advanced') else []
             items = _tracks_to_media_items(tracks)
 
         elif parent_id.startswith("album:"):

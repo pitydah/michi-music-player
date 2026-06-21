@@ -394,6 +394,17 @@ class LibraryDB:
         rows = self._conn.execute(query, params).fetchall()
         return [MediaItem.from_row(r) for r in rows]
 
+    def search_advanced(self, query: str, limit: int = 200) -> list[MediaItem]:
+        """Search using SearchEngine 2.0 (FTS5 + field filters)."""
+        from library.search_engine import SearchEngine
+        engine = SearchEngine(self._conn)
+        results = engine.search(query, limit=limit)
+        items = []
+        for r in results:
+            with contextlib.suppress(Exception):
+                items.append(MediaItem.from_dict(r))
+        return items
+
     def get_directories(self) -> list[str]:
         rows = self._conn.execute(
             "SELECT DISTINCT directory FROM media_items ORDER BY directory").fetchall()

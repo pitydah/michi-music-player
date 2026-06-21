@@ -55,7 +55,11 @@ class RecognitionMatcher:
         na = normalize(artist) if artist else ""
         nalbum = normalize(album) if album else ""
 
-        items = self._db.get_all(search=nt) if hasattr(self._db, 'get_all') else []
+        items = []
+        if hasattr(self._db, 'search_advanced'):
+            items = self._db.search_advanced(f"title:{nt}")
+        elif hasattr(self._db, 'get_all'):
+            items = self._db.get_all(search=nt)  # LIKE fallback
 
         # Tier 1: Exact title + artist
         for item in items:

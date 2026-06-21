@@ -105,7 +105,6 @@ DEFAULTS = {
     "identifier/save_history": True,
     "identifier/download_artwork": True,
     "identifier/api_key_audd": "",
-    "identifier/api_key_acrcloud": "",
     "identifier/api_key_acoustid": "",
 }
 
