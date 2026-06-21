@@ -1035,9 +1035,6 @@ class MainWindow(QMainWindow):
                 self._view_mode = "grid"
                 self._view_switcher.set_view("grid", emit=False)
             self._show_artists_view(self._view_mode)
-            # Force switching to artist_grid in the stacked widget
-            self._content.setCurrentWidget(self._artist_grid)
-            self._artist_grid.show()
             self._count.setText(f"{self._artist_repo.count} artistas")
             self._search.show()
 
@@ -1789,7 +1786,7 @@ class MainWindow(QMainWindow):
             if summary:
                 self._album_banner.set_album_summary(summary)
 
-            # Trigger TheAudioDB album enrichment for external metadata
+            # Trigger MusicBrainz album enrichment for external metadata
             self._enrich_album_background(key, item, tracks)
 
             # Trigger artist enrichment for CoverFlow-navigated artist
@@ -1843,7 +1840,7 @@ class MainWindow(QMainWindow):
             self._open_metadata_for_files(fps)
 
     def _enrich_album_background(self, key: str, item, tracks):
-        """Trigger TheAudioDB album enrichment for CoverFlow-navigated albums."""
+        """Trigger MusicBrainz album enrichment for CoverFlow-navigated albums."""
         if not key or not tracks:
             return
         try:
@@ -1852,14 +1849,6 @@ class MainWindow(QMainWindow):
             if not hasattr(self, '_album_enrich'):
                 self._album_enrich = AlbumEnrichmentService()
                 self._album_enrich.album_enriched.connect(self._on_album_enriched)
-                # Configure with API key from settings if available
-                try:
-                    import core.settings_manager as sm
-                    api_key = sm.get("integrations/theaudiodb_api_key")
-                    if api_key:
-                        self._album_enrich._client.api_key = api_key
-                except Exception:
-                    pass
             album_name = getattr(tracks[0], 'album', '') if tracks else ''
             artist_name = item.subtitle if item and item.subtitle else (
                 getattr(tracks[0], 'albumartist', '') or getattr(tracks[0], 'artist', ''))
@@ -1870,7 +1859,7 @@ class MainWindow(QMainWindow):
             pass
 
     def _on_album_enriched(self, album_key: str, data: dict):
-        """Handle TheAudioDB album enrichment result — update banner if visible."""
+        """Handle MusicBrainz album enrichment result — update banner if visible."""
         if not hasattr(self, '_album_repo') or not data:
             return
         self._album_repo.update_enrichment(album_key, data)

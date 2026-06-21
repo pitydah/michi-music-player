@@ -1,0 +1,3 @@
+# Astra Music Player — Recognition dependencies (optional)
+shazamio
+pyaudio

@@ -104,7 +104,7 @@ class ArtistDetailView(QWidget):
         self._rebuild()
 
     def set_external_info(self, info):
-        """Update artist detail with info from TheAudioDB."""
+        """Update artist detail with external info (MusicBrainz, Wikipedia)."""
         if not self._artist or not info:
             return
         self._artist.external_id = getattr(info, 'artist_id', '')

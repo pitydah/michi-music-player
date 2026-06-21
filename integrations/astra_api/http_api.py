@@ -407,8 +407,9 @@ class AstraHttpApi:
     def start(self):
         if self._running:
             return
+        host = "127.0.0.1"
         self._server = HTTPServer(
-            ("0.0.0.0", self._port),
+            (host, self._port),
             make_handler(self._window, self._token))
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
         self._thread.start()

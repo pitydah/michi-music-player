@@ -1,4 +1,4 @@
-"""AlbumCache — local SQLite + file storage for TheAudioDB album metadata."""
+"""AlbumCache — local SQLite + file storage for album metadata."""
 import json
 import os
 import sqlite3
@@ -7,7 +7,7 @@ import time
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-CACHE_DIR = os.path.expanduser("~/.cache/astra/theaudiodb/albums")
+CACHE_DIR = os.path.expanduser("~/.cache/astra/artist_metadata/albums")
 DB_PATH = os.path.join(CACHE_DIR, "index.sqlite")
 
 

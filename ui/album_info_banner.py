@@ -165,7 +165,8 @@ class AlbumInfoBanner(QWidget):
             self._desc_lbl.setText("")
 
         # Source badge
-        src_labels = {"theaudiodb": "TheAudioDB", "cache": "Cache",
+        src_labels = {"theaudiodb": "Info externa", "cache": "Cache",
+                       "musicbrainz": "MusicBrainz",
                       "local": "Local", "enriching": "Cargando..."}
         self._source_badge.setText(src_labels.get(summary.source, summary.source))
         self._source_badge.setVisible(bool(summary.source and summary.source != "local"))

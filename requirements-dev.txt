@@ -1,0 +1,4 @@
+# Astra Music Player — Development dependencies
+pytest>=7
+pytest-qt>=4
+ruff

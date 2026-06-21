@@ -74,6 +74,24 @@ class PlayerService(QObject):
         if title:
             self.track_changed.emit(title, artist)
 
+    def pause(self):
+        self._engine.pause()
+
+    def resume(self):
+        self._engine.resume()
+
+    def play_or_resume(self):
+        from audio.player import PlaybackState
+        current = self._engine.current
+        state = getattr(self._engine, '_state', None)
+        if current:
+            if state in (PlaybackState.PAUSED, PlaybackState.STOPPED):
+                self._engine.resume()
+            else:
+                self._engine.play(current)
+        else:
+            self.error_occurred.emit("No hay archivo para reproducir")
+
     def toggle(self):
         self._engine.toggle()
 

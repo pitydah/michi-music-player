@@ -32,7 +32,7 @@ class ArtistRepository:
         return [t.filepath for t in group.all_tracks if os.path.isfile(t.filepath)]
 
     def apply_external_info(self, artist_key: str, info) -> bool:
-        """Apply TheAudioDB info to an ArtistGroup. Returns True if applied."""
+        """Apply external artist info to an ArtistGroup. Returns True if applied."""
         group = self._by_key.get(artist_key)
         if not group or not info:
             return False

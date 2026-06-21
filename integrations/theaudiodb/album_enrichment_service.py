@@ -1,13 +1,14 @@
-"""Album Enrichment Service — queries TheAudioDB for album metadata in background."""
+"""Album Enrichment Service — queries MusicBrainz for album metadata in background."""
 import time
+import os
 
 from PySide6.QtCore import QObject, Signal, QTimer
 
-from integrations.theaudiodb.client import TheAudioDBClient
+from integrations.musicbrainz.client import MusicBrainzClient
 from integrations.theaudiodb.album_cache import AlbumCache
 from metadata.album_summary import AlbumSummary
 
-CACHE_DIR = "~/.cache/astra/theaudiodb/albums"
+CACHE_DIR = os.path.expanduser("~/.cache/astra/artist_metadata/albums")
 
 
 class AlbumEnrichmentService(QObject):
@@ -17,10 +18,10 @@ class AlbumEnrichmentService(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._client = TheAudioDBClient("2", self)
+        self._client = MusicBrainzClient(self)
         self._cache = AlbumCache(self)
         self._pending: list[tuple[str, str, str]] = []
-        self._rate_limit = 0.5
+        self._rate_limit = 1.0
         self._last_call = 0.0
         self._enabled = True
 
@@ -28,7 +29,8 @@ class AlbumEnrichmentService(QObject):
         self._timer.timeout.connect(self._process_queue)
         self._timer.setInterval(600)
 
-        self._client.artist_found.connect(self._on_album_info)
+        self._client.artists_found.connect(self._on_album_info)
+        self._client.error_occurred.connect(self._on_error)
 
     def enrich_album(self, album_key: str, artist: str, album: str):
         if not self._enabled or not artist or not album:
@@ -69,30 +71,39 @@ class AlbumEnrichmentService(QObject):
         self.enrichment_progress.emit(
             1, 1 + len(self._pending))
 
-    def _on_album_info(self, info):
+    def _on_album_info(self, results):
         key = getattr(self, '_active_key', None)
         album = getattr(self, '_active_album', None)
-        if not key or not info:
+        if not key or not album or not results:
             return
+        info = results[0] if isinstance(results, list) and results else None
+        if not info:
+            return
+        name = info.get("name", "")
+        genre = info.get("genre", "")
 
         summary = AlbumSummary(
             album_key=key,
             title=album,
-            artist=info.name if hasattr(info, 'name') else info.artist_id,
-            genre=getattr(info, 'genre', ''),
-            style=getattr(info, 'style', ''),
-            mood=getattr(info, 'mood', ''),
-            description=getattr(info, 'biography_preferred', ''),
-            source="theaudiodb",
+            artist=name,
+            genre=genre,
+            style=info.get("style", ""),
+            mood=info.get("mood", ""),
+            description="",
+            source="musicbrainz",
         )
 
-        # Save to cache
         self._cache.save_metadata(key, {
             "album_key": key, "album": album,
-            "artist": summary.artist, "genre": summary.genre,
-            "style": summary.style, "mood": summary.mood,
-            "description": summary.description,
-            "source": "theaudiodb",
+            "artist": name, "genre": genre,
+            "style": info.get("style", ""), "mood": info.get("mood", ""),
+            "description": "",
+            "source": "musicbrainz",
         })
 
         self.album_enriched.emit(key, summary)
+
+    def _on_error(self, msg):
+        key = getattr(self, '_active_key', None)
+        if key:
+            self.enrichment_failed.emit(key, msg)

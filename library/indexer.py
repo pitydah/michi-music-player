@@ -322,7 +322,7 @@ class Indexer(QObject):
             logger.warning(f"Index rebuild failed: {e}")
 
     def _schedule_enrichment(self):
-        """Request TheAudioDB enrichment for newly indexed artists."""
+        """Request MusicBrainz enrichment for newly indexed artists."""
         try:
             rows = self._db._conn.execute(
                 "SELECT DISTINCT albumartist, artist FROM media_items "
