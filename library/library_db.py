@@ -135,6 +135,9 @@ class LibraryDB:
             "CREATE INDEX IF NOT EXISTS idx_media_year ON media_items(year)")
         self._conn.commit()
 
+        # FTS5 full-text search index (gated — falls back to LIKE if unavailable)
+        self._init_fts()
+
         # Scan roots table
         self._conn.execute("""CREATE TABLE IF NOT EXISTS scan_roots (
             path TEXT PRIMARY KEY,
@@ -202,6 +205,22 @@ class LibraryDB:
             if col not in dt_existing:
                 with contextlib.suppress(sqlite3.OperationalError):
                     self._conn.execute(f"ALTER TABLE detected_tracks ADD COLUMN {col} {col_def}")
+
+    def _init_fts(self):
+        """Create FTS5 full-text search index on media_items (if available)."""
+        try:
+            self._conn.execute("SELECT fts5('test')")
+        except sqlite3.OperationalError:
+            return  # FTS5 not available — LIKE fallback will be used
+        try:
+            self._conn.execute("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS media_fts
+                USING fts5(title, artist, album, albumartist, genre, composer,
+                            filepath, filename, content='media_items', content_rowid='id')
+            """)
+            self._conn.commit()
+        except sqlite3.Error:
+            pass
 
     def close(self):
         self._conn.close()
