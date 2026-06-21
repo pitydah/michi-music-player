@@ -5,8 +5,6 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QScrollArea, QFrame, QPushButton, QSlider,
 )
-from PySide6.QtGui import QIcon
-
 
 class HomeAudioView(QWidget):
     connect_requested = Signal()
@@ -30,6 +28,7 @@ class HomeAudioView(QWidget):
         self._snapserver_running = False
         self._transmit_active = False
         self._transmit_device_name = ""
+        self._snap_ctrl_port = 1705
         self._devices = []
         self._groups = []
         self._activity_log = []
@@ -65,13 +64,15 @@ class HomeAudioView(QWidget):
         self._add_activity("Sistema listo")
 
     def set_data(self, ha_connected, multiroom_active, snapserver_running,
-                 devices, groups, transmit_active=False, transmit_device_name=""):
+                 devices, groups, transmit_active=False, transmit_device_name="",
+                 snap_ctrl_port=1705):
         prev_devices = len(self._devices)
         self._ha_connected = ha_connected
         self._multiroom_active = multiroom_active
         self._snapserver_running = snapserver_running
         self._transmit_active = transmit_active
         self._transmit_device_name = transmit_device_name
+        self._snap_ctrl_port = snap_ctrl_port
         self._devices = devices or []
         self._groups = groups or []
         self._needs_refresh = False
@@ -164,10 +165,10 @@ class HomeAudioView(QWidget):
         hero.setStyleSheet(
             "QFrame#hero {"
             "  background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            "    stop:0 rgba(255,255,255,0.075),"
-            "    stop:0.55 rgba(255,255,255,0.045),"
-            "    stop:1 rgba(40,110,255,0.080));"
-            "  border: 1px solid rgba(255,255,255,0.10);"
+            "    stop:0 rgba(255,255,255,0.065),"
+            "    stop:0.55 rgba(255,255,255,0.035),"
+            "    stop:1 rgba(143,183,255,0.065));"
+            "  border: 1px solid rgba(143,183,255,0.12);"
             "  border-radius: 22px; }"
             "QLabel { background: transparent; }")
         hero.setObjectName("hero")
@@ -182,13 +183,13 @@ class HomeAudioView(QWidget):
         left = QVBoxLayout()
         left.setSpacing(6)
 
-        hero_title = QLabel("Centro de audio domestico")
+        hero_title = QLabel("Centro de audio doméstico")
         hero_title.setStyleSheet(
             "font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.94);")
         left.addWidget(hero_title)
 
         hero_sub = QLabel(
-            "Conecta Home Assistant, Snapcast y tus parlantes para enviar musica")
+            "Conecta Home Assistant, Snapcast y tus parlantes para enviar música")
         hero_sub.setStyleSheet(
             "font-size: 12px; color: rgba(255,255,255,0.48);")
         left.addWidget(hero_sub)
@@ -381,7 +382,7 @@ class HomeAudioView(QWidget):
             cl.addWidget(StatusPill("Activo", "En ejecucion", "success"))
             info = QHBoxLayout()
             info.setSpacing(12)
-            for kv in [("Stream", "FLAC 44.1kHz"), ("Puerto", "1705"),
+            for kv in [("Stream", "FLAC 44.1kHz"), ("Puerto", str(self._snap_ctrl_port or 1705)),
                         ("Receptores", str(len(self._devices)))]:
                 k = QLabel(kv[0])
                 k.setStyleSheet("font-size: 10px; color: rgba(255,255,255,0.42);")
@@ -529,18 +530,23 @@ class HomeAudioView(QWidget):
         for z in zones[:4]:
             row = QHBoxLayout()
             row.setSpacing(8)
-            icon = QLabel("")
-            icon.setFixedSize(32, 32)
-            icon.setStyleSheet(
-                "background: rgba(255,255,255,0.06); border-radius: 10px;"
-                "border: 1px solid rgba(255,255,255,0.08);")
+            zone_icon = QLabel("")
+            zone_icon.setFixedSize(32, 32)
+            zone_icon.setStyleSheet(
+                "background: rgba(143,183,255,0.08); border-radius: 10px;"
+                "border: 1px solid rgba(143,183,255,0.14);")
+            from ui.icons import get_pixmap
+            zpx = get_pixmap("sidebar_devices", size=18)
+            if not zpx.isNull():
+                zone_icon.setPixmap(zpx)
+                zone_icon.setAlignment(Qt.AlignCenter)
             zname = QLabel(z.get("name", ""))
             zname.setStyleSheet(
                 "font-size: 12px; color: rgba(255,255,255,0.78); font-weight: 600;")
             count = QLabel(f"{z.get('members', 0)} parlantes")
             count.setStyleSheet(
                 "font-size: 10px; color: rgba(255,255,255,0.38);")
-            row.addWidget(icon)
+            row.addWidget(zone_icon)
             row.addWidget(zname)
             row.addStretch()
             row.addWidget(count)
@@ -552,6 +558,8 @@ class HomeAudioView(QWidget):
             cl.addLayout(row)
 
         create_btn = _GhostButton("+ Crear grupo")
+        create_btn.clicked.connect(
+            lambda: self.open_settings_requested.emit())
         cl.addWidget(create_btn)
         cl.addStretch()
         return card
@@ -660,8 +668,12 @@ class HomeAudioView(QWidget):
                 msg.setStyleSheet(
                     "font-size: 11px; color: rgba(255,255,255,0.56);")
                 delta = max(0, int(now - entry["time"]))
-                time_str = f"{delta}s" if delta < 60 else (
-                    f"{delta // 60}m" if delta < 3600 else f"{delta // 3600}h")
+                if delta < 60:
+                    time_str = f"{delta}s"
+                elif delta < 3600:
+                    time_str = f"{delta // 60} min"
+                else:
+                    time_str = f"{delta // 3600}h"
                 ts = QLabel(time_str)
                 ts.setStyleSheet(
                     "font-size: 10px; color: rgba(255,255,255,0.28);")
@@ -686,9 +698,13 @@ class HomeAudioView(QWidget):
         icon = QLabel("")
         icon.setFixedSize(48, 48)
         icon.setStyleSheet(
-            "background: rgba(255,255,255,0.04); border-radius: 16px;"
-            "border: 1px solid rgba(255,255,255,0.08);")
+            "background: rgba(143,183,255,0.08); border-radius: 16px;"
+            "border: 1px solid rgba(143,183,255,0.14);")
         icon.setAlignment(Qt.AlignCenter)
+        from ui.icons import get_pixmap
+        epix = get_pixmap("sidebar_devices", size=24)
+        if not epix.isNull():
+            icon.setPixmap(epix)
         lay.addWidget(icon, alignment=Qt.AlignCenter)
 
         t = QLabel(title)
@@ -723,8 +739,8 @@ class HomeAudioView(QWidget):
 # ── Widget primitives ──
 
 _STATUS_COLORS = {
-    "success": "#34C759", "warning": "#FFD60A",
-    "error": "#FF453A", "neutral": "rgba(255,255,255,0.52)",
+    "success": "#8FB7FF", "warning": "rgba(143,183,255,0.72)",
+    "error": "rgba(143,183,255,0.48)", "neutral": "rgba(255,255,255,0.52)",
 }
 
 
@@ -762,13 +778,13 @@ class StatusPill(QFrame):
 
 _TAB_QSS = (
     "QPushButton { font-size: 11px; font-weight: 600;"
-    "  color: rgba(255,255,255,0.42);"
+    "  color: rgba(255,255,255,0.56);"
     "  background: rgba(255,255,255,0.03);"
     "  border: 1px solid rgba(255,255,255,0.05);"
     "  border-radius: 9px; padding: 6px 14px; }"
-    "QPushButton:checked { color: rgba(255,255,255,0.88);"
-    "  background: rgba(255,255,255,0.08);"
-    "  border: 1px solid rgba(255,255,255,0.12); }"
+    "QPushButton:checked { color: rgba(255,255,255,0.92);"
+    "  background: rgba(143,183,255,0.14);"
+    "  border: 1px solid rgba(143,183,255,0.28); }"
     "QPushButton:hover { background: rgba(255,255,255,0.06);"
     "  border: 1px solid rgba(255,255,255,0.10); }")
 
@@ -778,12 +794,12 @@ class _PrimaryButton(QPushButton):
         super().__init__(text)
         self.setStyleSheet(
             "QPushButton { color: #FFFFFF; font-size: 12px; font-weight: 700;"
-            "  background: rgba(70,145,255,0.22);"
-            "  border: 1px solid rgba(90,165,255,0.42);"
+            "  background: rgba(143,183,255,0.18);"
+            "  border: 1px solid rgba(143,183,255,0.32);"
             "  border-radius: 13px; padding: 10px 18px; }"
-            "QPushButton:hover { background: rgba(90,165,255,0.30);"
-            "  border: 1px solid rgba(120,190,255,0.56); }"
-            "QPushButton:pressed { background: rgba(50,120,255,0.16); }")
+            "QPushButton:hover { background: rgba(143,183,255,0.28);"
+            "  border: 1px solid rgba(143,183,255,0.48); }"
+            "QPushButton:pressed { background: rgba(143,183,255,0.12); }")
         self.setCursor(Qt.PointingHandCursor)
 
 
@@ -836,12 +852,12 @@ class _HeroVisual(QWidget):
         row = QHBoxLayout()
         row.setAlignment(Qt.AlignCenter)
         row.setSpacing(12)
-        for size, alpha in [(36, 0.14), (24, 0.10), (16, 0.07)]:
+        for size, alpha in [(36, 0.12), (24, 0.08), (16, 0.06)]:
             dot = QLabel("")
             dot.setFixedSize(size, size)
             dot.setStyleSheet(
-                f"background: rgba(70,145,255,{alpha});"
-                f"border: 1px solid rgba(90,165,255,{alpha + 0.06});"
+                f"background: rgba(143,183,255,{alpha});"
+                f"border: 1px solid rgba(143,183,255,{alpha + 0.05});"
                 f"border-radius: {size // 2}px;")
             row.addWidget(dot)
         cl.addLayout(row)
@@ -928,10 +944,10 @@ class _DeviceTile(QFrame):
                 "QPushButton:hover { background: rgba(255,255,255,0.14);"
                 "  border: 1px solid rgba(255,255,255,0.16); }")
             btn.setCursor(Qt.PointingHandCursor)
-            from ui.icons import get_icon
-            ipath = get_icon(icon_name)
-            if ipath:
-                btn.setIcon(QIcon(ipath))
+            from ui.icons import get_qicon
+            qicon = get_qicon(icon_name, size=18)
+            if not qicon.isNull():
+                btn.setIcon(qicon)
             sig = getattr(self, signal_name)
             btn.clicked.connect(sig.emit)
             btn.setToolTip({"warm_play": "Play", "warm_pause": "Pause",

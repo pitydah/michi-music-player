@@ -2500,14 +2500,19 @@ class MainWindow(QMainWindow):
             devices=all_devices,
             groups=groups,
             transmit_active=tx_active,
-            transmit_device_name=tx_name)
+            transmit_device_name=tx_name,
+            snap_ctrl_port=self._snapserver.control_port if hasattr(self, '_snapserver') else 1705)
 
         self._home_audio_view.set_diagnostics({
+            "Home Assistant": "Conectado" if getattr(self, '_ha_connected', False) else "No conectado",
             "API Astra": "Activa" if api_running else "No activa",
             "mDNS": "Activo" if mdns_running else (
                 "No disponible" if not (hasattr(self, '_mdns') and self._mdns.is_available) else "No activo"),
             "Snapserver": "Activo" if snap_running else "Detenido",
             "Servidor local": "Activo" if local_media_running else "No activo",
+            "Ultimo error": (getattr(self._snapserver, 'last_error', "") or "—")[:40] if hasattr(self, '_snapserver') else "—",
+            "IP local": getattr(self, '_local_ip', "—"),
+            "Firewall": "Acepta tráfico local" if (api_running or local_media_running or mdns_running) else "—",
         })
 
     # ── Identifier ──
