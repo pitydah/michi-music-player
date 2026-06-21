@@ -150,6 +150,29 @@ def menu_qss() -> str:
     """
 
 
+def table_header_qss() -> str:
+    return """
+        QHeaderView::section {
+            background: qlineargradient(
+                x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(255,255,255,0.065),
+                stop:1 rgba(255,255,255,0.025)
+            );
+            border: none;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255,255,255,0.10);
+            padding: 8px 12px;
+            color: rgba(255,255,255,0.84);
+            font-size: 12px;
+            font-weight: 600;
+        }
+        QHeaderView::section:hover {
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.96);
+        }
+    """
+
+
 def table_qss() -> str:
     return """
         QTableView {
@@ -168,24 +191,6 @@ def table_qss() -> str:
         }
         QTableView::item:hover {
             background: rgba(255,255,255,0.045);
-        }
-        QHeaderView::section {
-            background: qlineargradient(
-                x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(255,255,255,0.065),
-                stop:1 rgba(255,255,255,0.025)
-            );
-            border: none;
-            border-right: 1px solid rgba(255,255,255,0.05);
-            border-bottom: 1px solid rgba(255,255,255,0.10);
-            padding: 8px 12px;
-            color: rgba(255,255,255,0.84);
-            font-size: 12px;
-            font-weight: 600;
-        }
-        QHeaderView::section:hover {
-            background: rgba(255,255,255,0.07);
-            color: rgba(255,255,255,0.96);
         }
     """
 

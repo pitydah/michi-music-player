@@ -21,6 +21,7 @@ from ui.central.central_styles import (
     count_badge_qss, tool_button_qss, menu_qss as _cs_menu_qss,
     table_qss, scrollbar_qss, section_icon_box_qss,
     section_title_qss, section_subtitle_qss, header_qss,
+    table_header_qss,
 )
 
 from ui.icons import get_icon, app_icon
@@ -590,6 +591,7 @@ class MainWindow(QMainWindow):
         self._table.setColumnHidden(7, True)  # hide URI column
         self._table.setSortingEnabled(True)
         self._table.setStyleSheet(table_qss() + scrollbar_qss())
+        self._table.horizontalHeader().setStyleSheet(table_header_qss())
         self._table.doubleClicked.connect(self._on_table_dbl)
         self._table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._on_table_menu)
