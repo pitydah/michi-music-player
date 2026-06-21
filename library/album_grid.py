@@ -70,28 +70,10 @@ class AlbumGridWidget(QWidget):
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QScrollArea.NoFrame)
-        self._scroll.setStyleSheet("""
-            QScrollArea {
-                background: transparent; border: none;
-            }
-            QScrollBar:vertical {
-                background: rgba(255,255,255,0.025);
-                width: 10px;
-                margin: 4px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle:vertical {
-                background: rgba(255,255,255,0.18);
-                min-height: 44px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: rgba(255,255,255,0.30);
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0;
-            }
-        """)
+        from ui.central.central_styles import scrollbar_qss
+        self._scroll.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }" +
+            scrollbar_qss())
 
         self._container = QWidget()
         self._container.setStyleSheet("background: transparent;")
@@ -531,28 +513,9 @@ class _AlbumCard(QFrame):
         super().mouseDoubleClickEvent(event)
 
     def contextMenuEvent(self, event):
+        from ui.central.central_styles import menu_qss
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background: rgba(22,24,31,0.97);
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 10px;
-                padding: 6px 4px;
-                color: rgba(255,255,255,0.88); font-size: 12.5px;
-            }
-            QMenu::item {
-                padding: 7px 32px 7px 16px;
-                border-radius: 6px;
-            }
-            QMenu::item:selected {
-                background: rgba(255,255,255,0.09);
-            }
-            QMenu::separator {
-                height: 1px;
-                background: rgba(255,255,255,0.08);
-                margin: 4px 8px;
-            }
-        """)
+        menu.setStyleSheet(menu_qss())
 
         play_action = menu.addAction("Reproducir álbum")
         queue_action = menu.addAction("Añadir a la cola")

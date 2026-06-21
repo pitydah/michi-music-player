@@ -160,10 +160,10 @@ def table_qss() -> str:
             selection-background-color: rgba(143,183,255,0.16);
             selection-color: rgba(255,255,255,1.00);
             color: rgba(255,255,255,0.85);
-            font-size: 13px;
+            font-size: 13.5px;
         }
         QTableView::item {
-            padding: 6px 10px;
+            padding: 7px 14px;
             border: none;
         }
         QTableView::item:hover {
@@ -172,7 +172,7 @@ def table_qss() -> str:
         QHeaderView::section {
             background: rgba(255,255,255,0.04);
             border: none;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.09);
             padding: 7px 10px;
             color: rgba(255,255,255,0.62);
             font-size: 11px;

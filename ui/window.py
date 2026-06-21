@@ -597,10 +597,10 @@ class MainWindow(QMainWindow):
         placeholder = QLabel()
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.82); font-size: 16px;"
-            "  background: transparent; border: none; padding: 48px; }")
+            "QLabel { color: rgba(255,255,255,0.82); font-size: 16px; font-weight: 500;"
+            "  background: transparent; border: none; padding: 48px 48px 12px 48px; }")
         placeholder.setText(
-            "Añade música a tu biblioteca\n"
+            "🎵  Añade música a tu biblioteca\n\n"
             "Abre una carpeta o arrastra archivos para comenzar")
 
         placeholder_albums = QLabel()
@@ -609,7 +609,7 @@ class MainWindow(QMainWindow):
             "QLabel { color: rgba(255,255,255,0.82); font-size: 15px;"
             "  background: transparent; border: none; padding: 48px; }")
         placeholder_albums.setText(
-            "Sin álbumes en la biblioteca\n"
+            "📀  Sin álbumes en la biblioteca\n\n"
             "Añade carpetas de música para ver carátulas aquí")
 
         placeholder_expanded = QLabel("")
