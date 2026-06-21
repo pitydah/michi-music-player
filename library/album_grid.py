@@ -61,14 +61,11 @@ class AlbumGridWidget(QWidget):
         self._sort_key = "title"
         self._filter_mode = "all"
         self._group_mode = None
-        self._last_cols = -1
-        self._last_count = -1
+        self._last_sig = None
         self._selected_index = -1
         self._cards: list[_AlbumCard] = []
 
-        self.setStyleSheet(
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
-            "  stop:0 rgba(20,22,28,0.92), stop:1 rgba(10,12,18,0.92));")
+        self.setStyleSheet("background: transparent;")
 
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
@@ -135,15 +132,21 @@ class AlbumGridWidget(QWidget):
 
     def _rebuild_grid(self):
         groups = load_covers_for_albums(self._items, self._cover_size)
+        groups = self._apply_filter(groups)
         self._sort_groups(groups)
         self._groups = groups
         cols = self._calculate_columns()
 
-        if cols == self._last_cols and len(groups) == self._last_count:
+        # Complete signature: cols, count, sort_key, filter_mode, first 50 titles
+        sig = (cols, len(groups), self._sort_key, self._filter_mode,
+               self._group_mode, tuple(g.title for g in groups[:50]))
+        if sig == self._last_sig:
             return
+        self._last_sig = sig
 
-        self._last_cols = cols
-        self._last_count = len(groups)
+        # Clamp selected_index after filter changes
+        if self._selected_index >= len(groups):
+            self._selected_index = -1
 
         while self._grid.count():
             w = self._grid.takeAt(0).widget()

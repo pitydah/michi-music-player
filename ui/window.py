@@ -429,8 +429,8 @@ class MainWindow(QMainWindow):
             ("Ctrl+Q", "Salir"),
         ]
         text = "<table>"
-        text += "<tr><th style='text-align:left;padding:4px 12px;color:#FF7A00'>Atajo</th>" \
-                "<th style='text-align:left;padding:4px 12px;color:#FF7A00'>Acción</th></tr>"
+        text += "<tr><th style='text-align:left;padding:4px 12px;color:#8FB7FF'>Atajo</th>" \
+                "<th style='text-align:left;padding:4px 12px;color:#8FB7FF'>Acción</th></tr>"
         for key, action in shortcuts:
             text += f"<tr><td style='padding:3px 12px'>{key}</td>" \
                     f"<td style='padding:3px 12px;color:rgba(245,245,247,0.7)'>{action}</td></tr>"

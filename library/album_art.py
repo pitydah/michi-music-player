@@ -55,11 +55,11 @@ def make_default_cover(title: str = "", size: int = 280) -> QPixmap:
     cx, cy = size / 2 - 20, size / 2 + 10
     r = min(size / 8, 20)
     painter.setPen(Qt.NoPen)
-    painter.setBrush(QColor("#FF7A00"))
+    painter.setBrush(QColor("#8FB7FF"))
     painter.drawEllipse(QPointF(cx, cy), r, r)
 
     # Stem
-    pen = QPen(QColor("#FF7A00"), max(2, int(size / 60)))
+    pen = QPen(QColor("#8FB7FF"), max(2, int(size / 60)))
     pen.setCapStyle(Qt.RoundCap)
     painter.setPen(pen)
     painter.drawLine(QPointF(cx + r, cy), QPointF(cx + r, cy - r * 2.5))
@@ -69,7 +69,7 @@ def make_default_cover(title: str = "", size: int = 280) -> QPixmap:
     path.moveTo(cx + r, cy - r * 2.5)
     path.cubicTo(cx + r + r * 1.2, cy - r * 2.2, cx + r + r * 1.5, cy - r * 1.5,
                  cx + r + r * 0.5, cy - r * 0.8)
-    painter.setBrush(QColor("#FF7A00"))
+    painter.setBrush(QColor("#8FB7FF"))
     painter.setPen(Qt.NoPen)
     painter.drawPath(path)
 

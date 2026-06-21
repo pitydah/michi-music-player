@@ -29,11 +29,11 @@ class SongGridWidget(QWidget):
         self._scroll.setFrameShape(QScrollArea.NoFrame)
         self._scroll.setStyleSheet(
             "QScrollArea { background: transparent; border: none; }"
-            "QScrollBar:vertical { width: 8px; background: rgba(255,255,255,0.025);"
-            "  border-radius: 4px; }"
-            "QScrollBar::handle:vertical { background: rgba(255,255,255,0.16);"
-            "  min-height: 40px; border-radius: 4px; }"
-            "QScrollBar::handle:vertical:hover { background: rgba(255,122,0,0.42); }"
+            "QScrollBar:vertical { width: 3px; background: transparent;"
+            "  border: none; }"
+            "QScrollBar::handle:vertical { background: rgba(255,255,255,0.12);"
+            "  min-height: 32px; border-radius: 2px; }"
+            "QScrollBar::handle:vertical:hover { background: rgba(255,255,255,0.24); }"
             "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }")
 
         self._container = QWidget()
@@ -110,7 +110,7 @@ class _SongCard(QFrame):
             }
             QFrame:hover {
                 background: rgba(255,255,255,0.075);
-                border: 1px solid rgba(255,122,0,0.25);
+                border: 1px solid rgba(143,183,255,0.28);
             }
         """)
 
