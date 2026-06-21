@@ -2665,12 +2665,22 @@ class MainWindow(QMainWindow):
         local_media_running = self._local_media.is_running if hasattr(
             self, '_local_media') else False
 
+        tx_active = False
+        tx_name = ""
+        if hasattr(self, '_ctx') and hasattr(self._ctx, 'transmit_mgr'):
+            tx_dev = self._ctx.transmit_mgr.get_active()
+            if tx_dev:
+                tx_active = True
+                tx_name = tx_dev.name
+
         self._home_audio_view.set_data(
             ha_connected=getattr(self, '_ha_connected', False),
             multiroom_active=snap_running,
             snapserver_running=snap_running,
             devices=all_devices,
-            groups=groups)
+            groups=groups,
+            transmit_active=tx_active,
+            transmit_device_name=tx_name)
 
         self._home_audio_view.set_diagnostics({
             "API Astra": "Activa" if api_running else "No activa",

@@ -81,6 +81,10 @@ class RadioManager:
         gi.require_version("Gst", "1.0")
         from gi.repository import Gst
         Gst.init(None)
+        # NOTE: Recording pipeline uses Gst.parse_launch directly because
+        # PipelineFactory handles audio OUTPUT pipelines (playbin+sink), not
+        # recording/encoding pipelines (uridecodebin+encoder+filesink).
+        # A RecordingPipelineFactory would be overkill for this single use case.
         pipeline_str = (
             f"uridecodebin uri={url} ! audioconvert ! "
             f"lamemp3enc target=bitrate bitrate=192 ! "

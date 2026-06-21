@@ -152,11 +152,12 @@ class GStreamerEngine(QObject):
         if dev:
             self._dac.device = dev.device_string
         else:
+            self._dac.device = device_id or "Predeterminada del sistema"
             self._dac.output_device_id = device_id or "auto"
         self._restart_if_playing()
 
     def get_output_device_id(self) -> str:
-        return self._dac.output_device_id
+        return self._dac.device or self._dac.output_device_id
 
     def set_transmit_device(self, device) -> None:
         """Set the network transmit device (TransmitDevice or None for none).

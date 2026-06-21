@@ -65,11 +65,13 @@ class HomeAudioView(QWidget):
         self._add_activity("Sistema listo")
 
     def set_data(self, ha_connected, multiroom_active, snapserver_running,
-                 devices, groups):
+                 devices, groups, transmit_active=False, transmit_device_name=""):
         prev_devices = len(self._devices)
         self._ha_connected = ha_connected
         self._multiroom_active = multiroom_active
         self._snapserver_running = snapserver_running
+        self._transmit_active = transmit_active
+        self._transmit_device_name = transmit_device_name
         self._devices = devices or []
         self._groups = groups or []
         self._needs_refresh = False
@@ -200,10 +202,12 @@ class HomeAudioView(QWidget):
         self._hero_badge_mr = StatusPill("Multiroom", "Inactivo", "warning")
         self._hero_badge_snap = StatusPill("Snapserver", "Detenido", "error")
         self._hero_badge_dev = StatusPill("Receptores", "0", "neutral")
+        self._hero_badge_tx = StatusPill("Transmitiendo", "Local", "neutral")
         badges.addWidget(self._hero_badge_ha)
         badges.addWidget(self._hero_badge_mr)
         badges.addWidget(self._hero_badge_snap)
         badges.addWidget(self._hero_badge_dev)
+        badges.addWidget(self._hero_badge_tx)
         badges.addStretch()
         left.addLayout(badges)
 
@@ -252,6 +256,9 @@ class HomeAudioView(QWidget):
         self._hero_badge_mr.set_state(mr_state, mr_level)
         self._hero_badge_snap.set_state(snap_state, snap_level)
         self._hero_badge_dev.set_state(dev_count, dev_level)
+        tx_state = self._transmit_device_name if self._transmit_active and self._transmit_device_name else "Local"
+        tx_level = "success" if self._transmit_active else "neutral"
+        self._hero_badge_tx.set_state(tx_state, tx_level)
 
         # Update multiroom button text
         if hasattr(self, '_hero_btn_mr'):
