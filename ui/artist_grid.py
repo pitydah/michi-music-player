@@ -320,6 +320,27 @@ class _ArtistCard(QFrame):
                 "font-size: 9px; font-weight: 700; border-radius: 5px; padding: 1px 6px;")
             ext_badge.setFixedHeight(16)
             badge_row.addWidget(ext_badge)
+        elif artist.enrichment_status == "loading":
+            ext_badge = QLabel("Cargando")
+            ext_badge.setStyleSheet(
+                "background: rgba(143,183,255,0.08); color: rgba(143,183,255,0.56);"
+                "font-size: 9px; font-weight: 600; border-radius: 5px; padding: 1px 6px;")
+            ext_badge.setFixedHeight(16)
+            badge_row.addWidget(ext_badge)
+        elif artist.enrichment_status == "error":
+            ext_badge = QLabel("Error")
+            ext_badge.setStyleSheet(
+                "background: rgba(143,183,255,0.06); color: rgba(143,183,255,0.38);"
+                "font-size: 9px; font-weight: 600; border-radius: 5px; padding: 1px 6px;")
+            ext_badge.setFixedHeight(16)
+            badge_row.addWidget(ext_badge)
+        elif artist.enrichment_status == "not_found":
+            ext_badge = QLabel("Sin info")
+            ext_badge.setStyleSheet(
+                "background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.28);"
+                "font-size: 9px; font-weight: 600; border-radius: 5px; padding: 1px 6px;")
+            ext_badge.setFixedHeight(16)
+            badge_row.addWidget(ext_badge)
 
         meta = f"{artist.album_count} alb · {artist.track_count} canc"
         if len(meta) > 28:

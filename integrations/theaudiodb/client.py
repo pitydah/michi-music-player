@@ -13,6 +13,8 @@ BASE_URL = "https://www.theaudiodb.com/api/v1/json"
 class TheAudioDBClient(QObject):
     artist_found = Signal(object)         # ArtistExternalInfo | None
     artists_found = Signal(list)          # list[ArtistExternalInfo]
+    artist_albums_found = Signal(list)    # list[AlbumExternalInfo]
+    artist_top_tracks_found = Signal(list)  # list[dict] track data
     error_occurred = Signal(str)
 
     def __init__(self, api_key: str = "2", parent=None):
@@ -35,6 +37,18 @@ class TheAudioDBClient(QObject):
     def get_discography(self, name: str):
         url = f"{self._base}/{self._api_key}/discography.php?s={quote(name)}"
         self._get(url, self._on_disco_result)
+
+    def get_artist_by_mbid(self, mbid: str):
+        url = f"{self._base}/{self._api_key}/artist-mb.php?i={quote(mbid)}"
+        self._get(url, self._on_artist_result)
+
+    def get_artist_albums(self, artist_id: str):
+        url = f"{self._base}/{self._api_key}/album.php?i={quote(artist_id)}"
+        self._get(url, self._on_albums_result)
+
+    def get_top_tracks(self, name: str):
+        url = f"{self._base}/{self._api_key}/track-top10.php?s={quote(name)}"
+        self._get(url, self._on_top_tracks_result)
 
     def _get(self, url: str, callback):
         req = QNetworkRequest(QUrl(url))
@@ -82,6 +96,20 @@ class TheAudioDBClient(QObject):
             return
         results = [_parse_artist(a) for a in albums_data if a]
         self.artists_found.emit(results)
+
+    def _on_albums_result(self, data: dict):
+        albums_data = data.get("album")
+        if not albums_data:
+            self.artist_albums_found.emit([])
+            return
+        self.artist_albums_found.emit([a for a in albums_data if a])
+
+    def _on_top_tracks_result(self, data: dict):
+        tracks_data = data.get("track")
+        if not tracks_data:
+            self.artist_top_tracks_found.emit([])
+            return
+        self.artist_top_tracks_found.emit([t for t in tracks_data if t])
 
 
 def _parse_artist(raw: dict) -> ArtistExternalInfo:

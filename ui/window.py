@@ -734,6 +734,7 @@ class MainWindow(QMainWindow):
         # Enrichment service signals
         self._artist_enrich.artist_enriched.connect(self._on_artist_enriched)
         self._artist_enrich.artist_image_loaded.connect(self._on_artist_image_loaded)
+        self._artist_enrich.enrichment_failed.connect(self._on_artist_enrichment_failed)
 
         self._folder_browser = FolderBrowserWidget()
         self._folder_browser.folder_selected.connect(
@@ -2030,10 +2031,27 @@ class MainWindow(QMainWindow):
             self._artist_grid.set_artists(repo.groups)
 
     def _on_artist_image_loaded(self, artist_key: str, local_path: str):
+        repo = self._ctx.artist_repo
         # Refresh grid to show new thumb
         if hasattr(self._artist_grid, 'set_artists'):
-            repo = self._ctx.artist_repo
             self._artist_grid.set_artists(repo.groups)
+        # Refresh detail if open for this artist
+        if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
+                and self._artist_detail._artist
+                and self._artist_detail._artist.key == artist_key):
+            group = repo.get_group(artist_key)
+            if group:
+                self._artist_detail.set_artist(group)
+
+    def _on_artist_enrichment_failed(self, artist_key: str, error: str):
+        repo = self._ctx.artist_repo
+        if hasattr(repo, 'mark_enrichment_error'):
+            repo.mark_enrichment_error(artist_key, error)
+        # Refresh grid to show error badge
+        if hasattr(self._artist_grid, 'set_artists'):
+            self._artist_grid.set_artists(repo.groups)
+        self._toast_svc.show(
+            f"TheAudioDB: {error}", "error")
 
     def _open_metadata_for_files(self, filepaths: list[str]):
         self._artist_ctrl.open_metadata_for_files(filepaths)

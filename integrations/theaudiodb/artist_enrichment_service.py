@@ -42,7 +42,7 @@ class ArtistEnrichmentService(QObject):
         self._client.set_api_key(api_key)
         self._enabled = enabled
 
-    def enrich_artist(self, group: ArtistGroup, force: bool = False):
+    def enrich_artist(self, group, force: bool = False):
         if not self._enabled or not group or not group.key:
             return
         key = group.key
@@ -50,8 +50,10 @@ class ArtistEnrichmentService(QObject):
 
         # Check cache first (unless forced)
         if not force:
+            from core.settings_manager import get as sget
+            refresh_days = sget("artist_enrichment/refresh_days") or 30
             cached = self._cache.get_cached_artist(key)
-            if cached and not self._cache.is_stale(key):
+            if cached and not self._cache.is_stale(key, days=refresh_days):
                 info = _dict_to_info(cached)
                 if info and info.has_any_data:
                     self.artist_enriched.emit(key, info)
@@ -136,6 +138,13 @@ class ArtistEnrichmentService(QObject):
         info.banner_path = banner_path
         info.logo_path = logo_path
 
+        # Set fanart paths
+        fanart_paths = []
+        for fi, _url in enumerate(info.fanart_urls[:4]):
+            fp = os.path.join(IMAGES_DIR, f"{key}_fanart_{fi}.jpg")
+            fanart_paths.append(fp)
+        info.fanart_paths = fanart_paths
+
         self._cache.save_artist(key, _info_to_dict(info))
         self.artist_enriched.emit(key, info)
         # Download images in background
@@ -145,6 +154,9 @@ class ArtistEnrichmentService(QObject):
             self._cache.download_image(info.banner_url, banner_path, key)
         if info.logo_url:
             self._cache.download_image(info.logo_url, logo_path, key)
+        for fi, url in enumerate(info.fanart_urls[:4]):
+            fp = os.path.join(IMAGES_DIR, f"{key}_fanart_{fi}.jpg")
+            self._cache.download_image(url, fp, key)
 
     def _cache_not_found(self, key: str):
         self._cache.save_artist(key, {
