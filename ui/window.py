@@ -504,8 +504,8 @@ class MainWindow(QMainWindow):
 
     def _make_michi_api(self):
         from core.state_store import AppStateStore
-        from integrations.astra_api.bridge import MichiApiBridge
-        from integrations.astra_api.http_api import MichiHttpApi
+        from integrations.http_api.bridge import MichiApiBridge
+        from integrations.http_api.http_api import MichiHttpApi
         store = AppStateStore(self)
         bridge = MichiApiBridge(self)
         # Wire bridge signals to window handlers
@@ -532,7 +532,7 @@ class MainWindow(QMainWindow):
         return svc
 
     def _make_mdns(self):
-        from integrations.astra_api.mdns_advertiser import MDNSAdvertiser
+        from integrations.http_api.mdns_advertiser import MDNSAdvertiser
         svc = MDNSAdvertiser(self)
         svc.configure()
         self._shutdown.register("mdns", lambda: svc.stop())

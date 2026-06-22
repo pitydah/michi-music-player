@@ -1,4 +1,4 @@
-"""Astra API client — async wrapper for the Astra HTTP API."""
+"""Michi API client — async wrapper for the Michi HTTP API."""
 import logging
 import aiohttp
 from homeassistant.core import HomeAssistant

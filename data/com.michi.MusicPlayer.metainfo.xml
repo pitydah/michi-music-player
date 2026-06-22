@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.astra.MusicPlayer</id>
+  <id>com.michi.MusicPlayer</id>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>Astra Music Player</name>
+  <name>Michi Music Player</name>
   <summary>Modern music player for Linux/KDE</summary>
 
   <description>
-    <p>Astra Music Player is a premium music player for Linux built with Python,
+    <p>Michi Music Player is a premium music player for Linux built with Python,
     PySide6 (Qt6), and GStreamer. Features include:</p>
     <ul>
       <li>Local music library with SQLite</li>
@@ -23,7 +23,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">com.astra.MusicPlayer.desktop</launchable>
+  <launchable type="desktop-id">com.michi.MusicPlayer.desktop</launchable>
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/pitydah/astra-music-player/main/docs/screenshot.png</image>
