@@ -25,6 +25,10 @@ class HomeAudioController(QObject):
     def ha_client(self):
         return getattr(self._win, '_ha_client', None)
 
+    @property
+    def _ctx(self):
+        return getattr(self._win, '_ctx', None)
+
     def get_devices(self) -> list[dict]:
         """Return available Home Assistant media_player devices."""
         if not self.is_connected or not self.ha_client:
@@ -40,7 +44,12 @@ class HomeAudioController(QObject):
             self.error_occurred.emit("Home Assistant no conectado")
             return
 
-        current = self._win._ctx.playback.current
+        ctx = self._ctx
+        if not ctx or not hasattr(ctx, 'playback'):
+            self.error_occurred.emit("Reproductor no disponible")
+            return
+
+        current = ctx.playback.current
         if not current:
             self._win._ctx.toast.show("No hay reproducción activa", "info")
             return
@@ -74,6 +83,9 @@ class HomeAudioController(QObject):
             self.cast_failed.emit(entity_id, str(e))
 
     def _on_cast_success(self, entity_id: str, device_name: str):
-        self._win._ctx.player_bar.set_transmit_active(True, device_name)
-        self._win._ctx.toast.show(f"Enviando a {device_name}", "success")
+        ctx = self._ctx
+        if ctx and hasattr(ctx, 'player_bar'):
+            ctx.player_bar.set_transmit_active(True, device_name)
+        if ctx and hasattr(ctx, 'toast'):
+            ctx.toast.show(f"Enviando a {device_name}", "success")
         self.cast_started.emit(entity_id, device_name)

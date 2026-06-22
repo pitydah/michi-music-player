@@ -156,7 +156,7 @@ class AppContext:
 
     @property
     def eq_dlg(self):
-        return self._win._eq_dlg
+        return getattr(self._win, '_eq_dlg', None)
 
     @eq_dlg.setter
     def eq_dlg(self, value):

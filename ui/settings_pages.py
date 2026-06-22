@@ -473,6 +473,18 @@ class MetadataPage(_Page):
         self.add_card(card3)
         self.add_stretch()
 
+    def apply(self):
+        sm.set_("metadata/confirm_save", self._confirm_save.isChecked())
+        sm.set_("metadata/create_backup", self._backup.isChecked())
+        sm.set_("metadata/warn_empty", self._warn_empty.isChecked())
+        sm.set_("metadata/art_size", self._art_size.currentText())
+        sm.set_("metadata/art_format", self._art_format.currentText())
+        sm.set_("metadata/art_crop", self._art_crop.isChecked())
+        sm.set_("metadata/art_quality", self._art_quality.value())
+        sm.set_("metadata/norm_spaces", self._norm_spaces.isChecked())
+        sm.set_("metadata/norm_genre", self._norm_genre.isChecked())
+        sm.set_("metadata/detect_missing", self._detect_missing.isChecked())
+
 
 # ═══════════════════════════════════════════
 # 8. Playlists
@@ -503,6 +515,15 @@ class PlaylistPage(_Page):
         self.add_card(card2)
         self.add_stretch()
 
+    def apply(self):
+        sm.set_("playlists/auto_open", self._auto_open.isChecked())
+        sm.set_("playlists/confirm_delete", self._confirm_del.isChecked())
+        sm.set_("playlists/allow_duplicates", self._allow_dup.isChecked())
+        sm.set_("playlists/detect_lost", self._detect_lost.isChecked())
+        sm.set_("playlists/m3u_format", self._m3u_format.currentText())
+        sm.set_("playlists/encoding", self._encoding.currentText())
+        sm.set_("playlists/relative_paths", self._relative.isChecked())
+
 
 # ═══════════════════════════════════════════
 # 9. Artistas y álbumes
@@ -531,6 +552,14 @@ class ArtistsAlbumsPage(_Page):
         card2.add_row(SettingsRow("Vista por defecto", "", self._album_view))
         self.add_card(card2)
         self.add_stretch()
+
+    def apply(self):
+        sm.set_("artists/use_albumartist", self._use_albumartist.isChecked())
+        sm.set_("artists/group_collaborations", self._group_collab.isChecked())
+        sm.set_("artists/separate_compilations", self._separate_comp.isChecked())
+        sm.set_("artists/default_view", self._artist_default.currentText())
+        sm.set_("albums/default_sort", self._album_sort.currentText())
+        sm.set_("albums/default_view", self._album_view.currentText())
 
 
 # ═══════════════════════════════════════════
@@ -593,6 +622,11 @@ class ServersPage(_Page):
         self.add_card(card2)
         self.add_stretch()
 
+    def apply(self):
+        sm.set_("servers/timeout", int(self._timeout.currentText()))
+        sm.set_("servers/retries", int(self._retries.currentText()))
+        sm.set_("servers/prefer_https", self._https.isChecked())
+
 
 # ═══════════════════════════════════════════
 # 12. Dispositivos
@@ -611,6 +645,11 @@ class DevicesPage(_Page):
         card.add_row(SettingsRow("Confirmar antes de desmontar", "", self._confirm_unmount))
         self.add_card(card)
         self.add_stretch()
+
+    def apply(self):
+        sm.set_("devices/auto_detect", self._auto_detect.isChecked())
+        sm.set_("devices/show_local", self._show_local.isChecked())
+        sm.set_("devices/confirm_unmount", self._confirm_unmount.isChecked())
 
 
 # ═══════════════════════════════════════════

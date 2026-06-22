@@ -81,10 +81,10 @@ class SnapServerManager(QObject):
     def stop(self):
         if self._process and self._process.state() != QProcess.NotRunning:
             self._process.terminate()
-            if not self._process.waitForFinished(3000):
-                self._process.kill()
+            # finished signal already connected → _on_finished handles cleanup
         self._running = False
-        self.stopped.emit()
+        if not self._process or self._process.state() == QProcess.NotRunning:
+            self.stopped.emit()
 
     def _write_config(self) -> str:
         cfg = DEFAULT_CONFIG.format(

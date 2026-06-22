@@ -636,6 +636,7 @@ class GStreamerEngine(QObject):
                     bus = self._pipeline.get_bus()
                     bus.disconnect(self._bus_id)
                     bus.remove_signal_watch()
+            self._bus_id = 0
             self._pipeline = None
             self._appsrc = None
             self._state = PlaybackState.STOPPED

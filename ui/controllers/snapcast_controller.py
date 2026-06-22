@@ -30,8 +30,11 @@ class SnapcastController(QObject):
             zone_id = group.get("id", "")
             group_mgr.activate_group(zone_id)
             name = group.get("name", "Zona")
-            self._win._ctx.player_bar.set_transmit_active(True, name)
-            self._win._ctx.toast.show(f"Zona activada: {name}", "success")
+            ctx = getattr(self._win, '_ctx', None)
+            if ctx and hasattr(ctx, 'player_bar'):
+                ctx.player_bar.set_transmit_active(True, name)
+            if ctx and hasattr(ctx, 'toast'):
+                ctx.toast.show(f"Zona activada: {name}", "success")
             self.zone_activated.emit(zone_id, name)
 
     def get_zones(self) -> list[dict]:

@@ -14,6 +14,10 @@ class CastController:
 
     def show_cast_menu(self):
         """Show the unified transmit/cast menu: local output + net devices + zones + HA."""
+        ctx = getattr(self._win, '_ctx', None)
+        if not ctx or not hasattr(ctx, 'transmit_mgr'):
+            return
+
         from ui.premium_menus import premium_menu_qss
         menu = QMenu(self._win)
         menu.setStyleSheet(premium_menu_qss())
@@ -21,12 +25,12 @@ class CastController:
         # Local output
         local = menu.addAction("Salida local")
         local.setCheckable(True)
-        active = self._win._ctx.transmit_mgr.get_active()
+        active = ctx.transmit_mgr.get_active()
         local.setChecked(active is None)
         local.triggered.connect(lambda: self._win._activate_transmit_device(None))
 
         # TransmitManager network devices
-        devices = self._win._ctx.transmit_mgr.get_devices()
+        devices = ctx.transmit_mgr.get_devices()
         if devices:
             menu.addSeparator()
             for dev in devices:
@@ -77,5 +81,8 @@ class CastController:
         menu.addAction("Administrar dispositivos…",
                        self._win._manage_transmit_devices)
 
-        btn = self._win._ctx.player_bar.transmit_button()
-        menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
+        btn = None
+        if ctx and hasattr(ctx, 'player_bar'):
+            btn = ctx.player_bar.transmit_button()
+        if btn:
+            menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))

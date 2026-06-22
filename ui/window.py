@@ -216,11 +216,18 @@ class MainWindow(QMainWindow):
 
         self._coverflow_cache_key: tuple | None = None
 
-        # ── Music Identifier (must exist before _setup_ui) ──
-        self._detection = DetectionService(self._db, parent=self)
-        self._identifier_view = MusicIdentifierView()
-        from recognition.identifier_controller import IdentifierController
-        self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
+        # ── Music Identifier ──
+        try:
+            self._detection = DetectionService(self._db, parent=self)
+            self._identifier_view = MusicIdentifierView()
+            from recognition.identifier_controller import IdentifierController
+            self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
+        except Exception as e:
+            import logging
+            logging.getLogger("astra.setup").warning("DetectionService init failed — identifier disabled: %s", e)
+            self._detection = None
+            self._identifier_view = MusicIdentifierView()
+            self._identifier_ctrl = None
 
         self._home_audio_view = HomeAudioView()
         self._home_audio_view.connect_requested.connect(self._on_home_audio_connect)
@@ -247,38 +254,68 @@ class MainWindow(QMainWindow):
             self._on_home_audio_create_group)
 
         # Snapcast integration
-        from integrations.snapcast.snapserver_manager import SnapServerManager
-        self._snapserver = SnapServerManager(self)
-        self._snapserver.started.connect(self._on_snapserver_started)
-        self._snapserver.stopped.connect(self._on_snapserver_stopped)
-        self._snapserver.error_occurred.connect(self._on_snapserver_error)
+        import logging
+        _log = logging.getLogger("astra.setup")
+        try:
+            from integrations.snapcast.snapserver_manager import SnapServerManager
+            self._snapserver = SnapServerManager(self)
+            self._snapserver.started.connect(self._on_snapserver_started)
+            self._snapserver.stopped.connect(self._on_snapserver_stopped)
+            self._snapserver.error_occurred.connect(self._on_snapserver_error)
+        except Exception as e:
+            _log.warning("SnapServerManager init failed — Snapcast disabled: %s", e)
+            self._snapserver = None
 
-        from integrations.snapcast.audio_capture import AudioCaptureManager
-        self._audio_capture = AudioCaptureManager(self)
-        self._audio_capture.sink_ready.connect(self._on_audio_sink_ready)
-        self._audio_capture.error_occurred.connect(self._on_snapserver_error)
+        try:
+            from integrations.snapcast.audio_capture import AudioCaptureManager
+            self._audio_capture = AudioCaptureManager(self)
+            self._audio_capture.sink_ready.connect(self._on_audio_sink_ready)
+            self._audio_capture.error_occurred.connect(self._on_snapserver_error)
+        except Exception as e:
+            _log.warning("AudioCapture init failed — disabled: %s", e)
+            self._audio_capture = None
 
-        from integrations.snapcast.discovery import SnapClientDiscovery
-        self._snap_discovery = SnapClientDiscovery(self)
-        self._snap_discovery.clients_found.connect(self._on_snap_clients_found)
+        try:
+            from integrations.snapcast.discovery import SnapClientDiscovery
+            self._snap_discovery = SnapClientDiscovery(self)
+            self._snap_discovery.clients_found.connect(self._on_snap_clients_found)
+        except Exception as e:
+            _log.warning("SnapClientDiscovery init failed — disabled: %s", e)
+            self._snap_discovery = None
 
-        from integrations.snapcast.group_manager import GroupManager
-        self._group_mgr = GroupManager(self)
-        self._group_mgr.groups_changed.connect(self._on_groups_changed)
+        try:
+            from integrations.snapcast.group_manager import GroupManager
+            self._group_mgr = GroupManager(self)
+            self._group_mgr.groups_changed.connect(self._on_groups_changed)
+        except Exception as e:
+            _log.warning("GroupManager init failed — disabled: %s", e)
+            self._group_mgr = None
 
         # Astra API + mDNS
-        from integrations.astra_api.http_api import AstraHttpApi
-        self._astra_api = AstraHttpApi(self)
-        self._astra_api.configure()
+        try:
+            from integrations.astra_api.http_api import AstraHttpApi
+            self._astra_api = AstraHttpApi(self)
+            self._astra_api.configure()
+        except Exception as e:
+            _log.warning("AstraHttpApi init failed — API disabled: %s", e)
+            self._astra_api = None
 
-        from integrations.astra_api.mdns_advertiser import MDNSAdvertiser
-        self._mdns = MDNSAdvertiser(self)
-        self._mdns.configure()
+        try:
+            from integrations.astra_api.mdns_advertiser import MDNSAdvertiser
+            self._mdns = MDNSAdvertiser(self)
+            self._mdns.configure()
+        except Exception as e:
+            _log.warning("MDNSAdvertiser init failed — mDNS disabled: %s", e)
+            self._mdns = None
 
         # Local media server for file streaming to HA
-        from integrations.home_assistant.local_media_server import (
-            LocalMediaServer)
-        self._local_media = LocalMediaServer(self)
+        try:
+            from integrations.home_assistant.local_media_server import (
+                LocalMediaServer)
+            self._local_media = LocalMediaServer(self)
+        except Exception as e:
+            _log.warning("LocalMediaServer init failed — disabled: %s", e)
+            self._local_media = None
 
         # Detect LAN IP for serving files to Home Assistant
         self._local_ip = self._resolve_lan_ip()
@@ -345,9 +382,14 @@ class MainWindow(QMainWindow):
             self._identifier_view.set_provider_status)
 
         from ui.controllers.mpris_controller import MPRISController
-        self._mpris_ctrl = MPRISController(self)
-        self._mpris_ctrl.init()
-        self._mpris = self._mpris_ctrl.adapter  # backward compatibility
+        try:
+            self._mpris_ctrl = MPRISController(self)
+            self._mpris_ctrl.init()
+            self._mpris = self._mpris_ctrl.adapter
+        except Exception as e:
+            _log.warning("MPRISController init failed — MPRIS disabled: %s", e)
+            self._mpris_ctrl = None
+            self._mpris = None
 
         self._transmit_mgr = TransmitManager(self)
         self._transmit_mgr.active_changed.connect(self._on_transmit_active_changed)
@@ -2669,17 +2711,44 @@ class MainWindow(QMainWindow):
             self._view_switcher.update_for_width(self.width())
 
     def closeEvent(self, event):
+        import logging
+        _log = logging.getLogger("astra.shutdown")
         try:
-            if hasattr(self, '_sync_mgr') and self._sync_mgr.is_active:
-                self._sync_mgr.stop()
+            # Save queue state
             engine = self._playback.engine
             if engine._queue and self._db:
                 self._db.save_queue(engine._queue, engine._queue_index)
-        except Exception:
-            import logging
-            logging.getLogger("astra").debug("Error saving queue on shutdown")
-        self._playback.stop()
-        self._db.close()
+        except Exception as e:
+            _log.debug("Error saving queue on shutdown: %s", e)
+
+        # Stop playback
+        try:
+            self._playback.stop()
+        except Exception as e:
+            _log.debug("Error stopping playback: %s", e)
+
+        # Stop optional services
+        for attr, name in [
+            ("_detection", "DetectionService"),
+            ("_astra_api", "AstraHttpApi"),
+            ("_mdns", "MDNSAdvertiser"),
+            ("_snapserver", "SnapServerManager"),
+            ("_audio_capture", "AudioCapture"),
+            ("_local_media", "LocalMediaServer"),
+            ("_mpris_ctrl", "MPRISController"),
+        ]:
+            svc = getattr(self, attr, None)
+            if svc is not None and hasattr(svc, 'stop'):
+                try:
+                    svc.stop()
+                except Exception as e:
+                    _log.debug("Error stopping %s: %s", name, e)
+
+        # Close DB
+        try:
+            self._db.close()
+        except Exception as e:
+            _log.debug("Error closing DB: %s", e)
         event.accept()
 
     def dragEnterEvent(self, event: QDragEnterEvent):

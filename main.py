@@ -18,6 +18,10 @@ from ui.window import MainWindow
 def main():
     os.environ.setdefault("QT_MEDIA_BACKEND", "gstreamer")
 
+    # Setup persistent logging
+    from core.logger import setup_logging
+    setup_logging()
+
     app = QApplication(sys.argv)
     app.setApplicationName("AstraMusicPlayer")
     app.setStyle("Fusion")
@@ -31,12 +35,22 @@ def main():
         font = QFont("sans-serif", 11)
     app.setFont(font)
 
-    window = MainWindow()
-    window.show()
+    import logging
+    _log = logging.getLogger("astra.main")
+    try:
+        window = MainWindow()
+        window.show()
+    except Exception as e:
+        _log.exception("Fatal error creating MainWindow: %s", e)
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.critical(
+            None, "Astra Music Player — Error",
+            f"Error fatal al iniciar:\n\n{e}\n\n"
+            f"Revisa el log en ~/.cache/astra/logs/astra.log")
+        sys.exit(1)
 
-    # Initialize theme manager (detects system theme, starts polling)
+    # Initialize theme manager
     theme_mgr = create_theme_manager(window)
-    # Keep reference alive
     window._theme_mgr = theme_mgr
 
     sys.exit(app.exec())
