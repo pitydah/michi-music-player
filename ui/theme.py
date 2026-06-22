@@ -31,7 +31,7 @@ def build_plasma_palette() -> QPalette:
     p.setColor(QPalette.ToolTipBase,     QColor("#f5f5f7"))
     p.setColor(QPalette.ToolTipText,     QColor("#1c1c1e"))
     p.setColor(QPalette.Link,            QColor("#8FB7FF"))
-    p.setColor(QPalette.LinkVisited,     QColor("#DD007A"))
+    p.setColor(QPalette.LinkVisited,     QColor("#8FB7FF"))
     p.setColor(QPalette.PlaceholderText, QColor("#8e8e93"))
     return p
 
