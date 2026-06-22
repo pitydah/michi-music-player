@@ -67,6 +67,8 @@ class AlbumGridWidget(QWidget):
         self._last_cols = -1
         self._selected_index = -1
         self._cards: list[_AlbumCard] = []
+        self._worker_mgr = None
+        self._pending_covers = False
 
         self.setStyleSheet("background: transparent;")
 
@@ -115,10 +117,36 @@ class AlbumGridWidget(QWidget):
         card_w = self._cover_size + 24
         return max(1, width // (card_w + 20))
 
+    def set_worker_manager(self, mgr):
+        """Set a WorkerManager for async cover loading. If set, covers load in background."""
+        self._worker_mgr = mgr
+        if mgr:
+            mgr.covers_ready.connect(self._on_covers_ready)
+
+    def _on_covers_ready(self, groups):
+        groups = self._apply_filter(groups)
+        self._sort_groups(groups)
+        self._groups_cache = groups
+        self._groups = groups
+        self._pending_covers = False
+        self._rebuild_cards()
+
+    def _rebuild_cards(self):
+        groups = self._groups
+        cols = self._calculate_columns()
+        sig = (cols, len(groups), self._sort_key, self._filter_mode,
+               self._group_mode, tuple(g.title for g in groups[:50]))
+        if sig == self._last_sig:
+            return
+        self._last_sig = sig
+        self._render_cards(groups)
+
+    def _rebuild_cards_from(self, cached_groups):
+        self._render_cards(cached_groups)
+
     def _rebuild_grid(self):
         cols = self._calculate_columns()
 
-        # Reuse cached groups on resize if only columns changed
         if self._groups_cache is not None and cols == self._last_cols:
             sig = (cols, len(self._groups_cache), self._sort_key,
                    self._filter_mode, self._group_mode)
@@ -126,28 +154,31 @@ class AlbumGridWidget(QWidget):
                 return
         self._last_cols = cols
 
+        # Offload cover loading to WorkerManager if available
+        if self._worker_mgr and self._items:
+            self._pending_covers = True
+            self._worker_mgr.load_covers(self._items, self._cover_size)
+            # Show cached groups while loading
+            if self._groups_cache:
+                self._rebuild_cards_from(self._groups_cache)
+            return
+
+        # Synchronous fallback
         groups = load_covers_for_albums(self._items, self._cover_size)
         groups = self._apply_filter(groups)
         self._sort_groups(groups)
         self._groups_cache = groups
         self._groups = groups
+        self._rebuild_cards()
 
-        # Complete signature
-        sig = (cols, len(groups), self._sort_key, self._filter_mode,
-               self._group_mode, tuple(g.title for g in groups[:50]))
-        if sig == self._last_sig:
-            return
-        self._last_sig = sig
-
-        # Clamp selected_index after filter changes
+    def _render_cards(self, groups):
+        cols = self._calculate_columns()
         if self._selected_index >= len(groups):
             self._selected_index = -1
-
         while self._grid.count():
             w = self._grid.takeAt(0).widget()
             if w:
                 w.deleteLater()
-
         self._cards = []
 
         if not groups:

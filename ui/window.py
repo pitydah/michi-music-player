@@ -235,6 +235,8 @@ class MainWindow(QMainWindow):
         self._search_ctrl.results_ready.connect(self._on_search_results)
         from core.toast_service import ToastService
         self._toast_svc = ToastService(self)
+        from core.worker_manager import WorkerManager
+        self._workers = WorkerManager(self)
         self._shutdown.register("playback", lambda: self._playback.stop())
         self._shutdown.register("db", lambda: self._db.close())
 
@@ -294,6 +296,7 @@ class MainWindow(QMainWindow):
         if self._detection:
             from recognition.identifier_controller import IdentifierController
             self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
+            self._detection.set_worker_manager(self._workers)
         else:
             self._identifier_ctrl = None
 
@@ -846,6 +849,7 @@ class MainWindow(QMainWindow):
         self._radio_widget.count_changed.connect(self._on_radio_count)
 
         self._album_grid = AlbumGridWidget()
+        self._album_grid.set_worker_manager(self._workers)
         self._album_grid.album_double_clicked.connect(
             lambda fps: self._play_filepaths(fps, play_now=True))
         self._album_grid.queue_requested.connect(

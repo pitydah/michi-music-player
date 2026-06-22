@@ -29,6 +29,7 @@ class DetectionService(QObject):
         self._capture = None
         self._capture_timer = None
         self._identifying = False
+        self._worker_mgr = None
 
         self._provider_mgr.provider_changed.connect(
             lambda n, ok: self.provider_changed.emit(n, ok))
@@ -86,12 +87,35 @@ class DetectionService(QObject):
         else:
             self.start(source)
 
+    def set_worker_manager(self, mgr):
+        """Set WorkerManager for async identification. Offloads capture+identify."""
+        self._worker_mgr = mgr
+        if mgr:
+            mgr.identify_done.connect(self._on_worker_identify)
+            mgr.identify_error.connect(lambda e: self.detection_failed.emit(e))
+
+    def _on_worker_identify(self, result):
+        if result:
+            self._handle_identified(result)
+        else:
+            self._set_status("no_match")
+            self.detection_failed.emit("Sin coincidencia")
+        self._identifying = False
+
     def identify_once(self):
         if not self._active:
             return
         if self._identifying:
-            return  # prevent overlapping capture/recognition cycles
+            return
         self._identifying = True
+
+        # Offload to WorkerManager if available
+        if self._worker_mgr:
+            self._set_status("processing")
+            self._worker_mgr.identify(self._capture, self.recognizer)
+            return
+
+        # Synchronous fallback
         try:
             self._set_status("processing")
 
