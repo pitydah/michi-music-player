@@ -5,8 +5,9 @@ from ui.icon_loader import get_tray_icon
 
 
 class TrayController:
-    def __init__(self, window):
+    def __init__(self, window, services=None):
         self._win = window
+        self._svc = services
         self._icon: QSystemTrayIcon | None = None
 
     def setup(self):

@@ -13,9 +13,10 @@ class MiniPlayerController(QObject):
     mini_player_opened = Signal()
     mini_player_closed = Signal()
 
-    def __init__(self, window, parent=None):
+    def __init__(self, window, parent=None, services=None):
         super().__init__(parent)
         self._win = window
+        self._svc = services
 
     def open(self):
         """Create or show the mini player window."""

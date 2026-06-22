@@ -12,8 +12,9 @@ class TransmitController:
     Network transmit (TCP) is separate from the local audio output branch.
     """
 
-    def __init__(self, window):
+    def __init__(self, window, services=None):
         self._win = window
+        self._svc = services
 
     def activate_device(self, device):
         """Activate a network transmit device, or None for local-only."""

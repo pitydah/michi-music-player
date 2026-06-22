@@ -4,8 +4,9 @@ import logging
 
 
 class MPRISController:
-    def __init__(self, window):
+    def __init__(self, window, services=None):
         self._win = window
+        self._svc = services
         self._adapter = None
 
     def init(self):

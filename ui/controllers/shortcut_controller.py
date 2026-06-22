@@ -3,8 +3,9 @@ from PySide6.QtGui import QShortcut, QKeySequence
 
 
 class ShortcutController:
-    def __init__(self, window):
+    def __init__(self, window, services=None):
         self._win = window
+        self._svc = services
 
     def setup(self):
         QShortcut(QKeySequence("Space"), self._win, self._win._ctx.playback.toggle)

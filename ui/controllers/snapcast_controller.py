@@ -13,9 +13,10 @@ class SnapcastController(QObject):
     zone_deactivated = Signal(str)         # zone_id
     error_occurred = Signal(str)
 
-    def __init__(self, window, parent=None):
+    def __init__(self, window, parent=None, services=None):
         super().__init__(parent)
         self._win = window
+        self._svc = services
 
     def activate_zone(self, group: dict):
         """Activate a Snapcast zone — start snapserver + audio capture if needed."""

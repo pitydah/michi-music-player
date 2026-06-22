@@ -7,8 +7,9 @@ from PySide6.QtWidgets import QMenu
 class AudioOutputController:
     """Manages local audio output device selection via GStreamer DeviceMonitor."""
 
-    def __init__(self, window):
+    def __init__(self, window, services=None):
         self._win = window
+        self._svc = services
 
     def show_menu(self):
         """Show the audio output device selection menu."""

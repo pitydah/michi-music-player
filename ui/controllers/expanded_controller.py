@@ -7,8 +7,9 @@ from ui.expanded_view import ExpandedNowPlaying
 
 
 class ExpandedController:
-    def __init__(self, window):
+    def __init__(self, window, services=None):
         self._win = window
+        self._svc = services
 
     def show_expanded(self):
         if not self._win._ctx.playback.current:
