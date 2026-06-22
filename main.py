@@ -46,7 +46,7 @@ def main():
         QMessageBox.critical(
             None, "Michi Music Player — Error",
             f"Error fatal al iniciar:\n\n{e}\n\n"
-            f"Revisa el log en ~/.cache/michi/logs/astra.log")
+            f"Revisa el log en ~/.cache/michi/logs/michi.log")
         sys.exit(1)
 
     # Initialize theme manager
