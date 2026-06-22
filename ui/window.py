@@ -235,6 +235,10 @@ class MainWindow(QMainWindow):
         self._search_ctrl.results_ready.connect(self._on_search_results)
         from ui.controllers.playlist_controller import PlaylistController
         self._playlist_ctrl = PlaylistController(self)
+        from ui.controllers.genre_repository import GenreRepository
+        self._genre_repo = GenreRepository()
+        from ui.controllers.genre_controller import GenreController
+        self._genre_ctrl = GenreController(self, services=None)
         from core.toast_service import ToastService
         self._toast_svc = ToastService(self)
         from core.worker_manager import WorkerManager
@@ -272,12 +276,8 @@ class MainWindow(QMainWindow):
         self._expanded_ctrl = ExpandedController(self)
         from ui.controllers.artist_repository import ArtistRepository
         self._artist_repo = ArtistRepository()
-        from ui.controllers.genre_repository import GenreRepository
-        self._genre_repo = GenreRepository()
         from ui.controllers.artist_controller import ArtistController
         self._artist_ctrl = ArtistController(self)
-        from ui.controllers.genre_controller import GenreController
-        self._genre_ctrl = GenreController(self)
 
         # AppContext
         from core.app_context import AppContext
@@ -1040,12 +1040,6 @@ class MainWindow(QMainWindow):
         ]
         from core.background_theme_service import BackgroundThemeService
         self._bg_theme = BackgroundThemeService(self._content)
-        from ui.controllers.artist_repository import ArtistRepository
-        self._artist_repo = ArtistRepository()
-        from ui.controllers.genre_repository import GenreRepository
-        self._genre_repo = GenreRepository()
-        from ui.controllers.artist_controller import ArtistController
-        self._artist_ctrl = ArtistController(self)
         from core.playback_controller import PlaybackController
         self._playback_ctrl = PlaybackController(self)
 
