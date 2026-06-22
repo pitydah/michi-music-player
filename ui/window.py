@@ -233,6 +233,8 @@ class MainWindow(QMainWindow):
         self._search_ctrl.register("local", LocalSource(self._db))
         self._search_ctrl.register("radio", RadioSource(self._radio_manager))
         self._search_ctrl.results_ready.connect(self._on_search_results)
+        from ui.controllers.playlist_controller import PlaylistController
+        self._playlist_ctrl = PlaylistController(self)
         from core.toast_service import ToastService
         self._toast_svc = ToastService(self)
         from core.worker_manager import WorkerManager
@@ -248,8 +250,6 @@ class MainWindow(QMainWindow):
 
     def _init_controllers(self):
         """Required controllers — navigation, playback, playlist, library."""
-        from ui.controllers.playlist_controller import PlaylistController
-        self._playlist_ctrl = PlaylistController(self)
         from core.file_actions import FileActions
         self._file_actions = FileActions(self)
         from ui.controllers.album_controller import AlbumController
