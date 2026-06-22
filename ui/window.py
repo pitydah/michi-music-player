@@ -2,6 +2,7 @@
 
 import os
 import random
+import logging
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QPixmap, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
 from PySide6.QtWidgets import (
@@ -152,19 +153,74 @@ def _resolve_section_config(key: str, extra: dict = None) -> dict:
             "icon": "sidebar_library", "views": ["list", "grid"],
             "search": True, "default": "list"}
 
+# Navigation routes — maps sidebar keys to handler methods
+NAV_ROUTES = {
+    "library": "_show_library", "albums": "_show_albums",
+    "artists": "_show_artists", "genres": "_show_genres",
+    "radio": "_show_radio", "home_audio": "_show_home_audio",
+    "identifier": "_show_identifier", "discover": "_show_discover",
+    "folders": "_show_folders", "playlist_hub": "_show_playlist_hub",
+    "metadata_editor": "_show_metadata_editor",
+    "favs": "_show_favs", "recent": "_show_recent",
+    "new_playlist": "_show_new_playlist", "add_server": "_show_add_server",
+}
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        from time import perf_counter
+        _t0 = perf_counter()
+        _log = logging.getLogger("astra.startup")
+
         super().__init__()
+        self._safe_mode = os.environ.get("ASTRA_SAFE_MODE") == "1"
+        self._view_cache: dict[str, QWidget] = {}
+        from core.shutdown_manager import ShutdownManager
+        self._shutdown = ShutdownManager()
+        from core.feature_manager import FeatureManager
+        self._features = FeatureManager()
+
+        self._init_state()
+        _log.info("Phase state: %.0f ms", (perf_counter() - _t0) * 1000)
+        self._init_core()
+        _log.info("Phase core: %.0f ms", (perf_counter() - _t0) * 1000)
+        self._init_ui()
+        _log.info("Phase ui: %.0f ms", (perf_counter() - _t0) * 1000)
+        self._init_controllers()
+        _log.info("Phase controllers: %.0f ms", (perf_counter() - _t0) * 1000)
+        self._init_optional_services()
+        _log.info("Phase optional: %.0f ms", (perf_counter() - _t0) * 1000)
+        self._connect_signals()
+        _log.info("Phase signals: %.0f ms", (perf_counter() - _t0) * 1000)
+        self._load_initial_data()
+        _log.info("Phase data: %.0f ms", (perf_counter() - _t0) * 1000)
+        _log.info("Startup complete: %.0f ms total", (perf_counter() - _t0) * 1000)
+
+    def _init_state(self):
+        """Simple attribute declarations — no imports or allocations."""
         self.setWindowTitle("Astra Music Player")
         self.resize(1100, 700)
         self.setMinimumSize(800, 500)
         self.setAcceptDrops(True)
-
         icon = app_icon()
         if icon:
             self.setWindowIcon(QIcon(icon))
+        self._player_bar_ctrl = None
+        self._current_ref = None
+        self._all_items: list[MediaItem] = []
+        self._items_index: dict[str, MediaItem] = {}
+        self._current_section_key: str = "library"
+        self._kind_filter: str | None = None
+        self._search_text = ""
+        self._current_playlist: int | None = None
+        self._playlist_refs: list = []
+        self._current_refs: list = []
+        self._album_sort_key = "title"
+        self._album_filter_mode = "all"
+        self._coverflow_cache_key: tuple | None = None
 
+    def _init_core(self):
+        """DB, player engine, playback service, model, search — must not fail."""
         self._db = LibraryDB(DB_PATH)
         self._player = PlayerEngine(parent=self)
         from audio.player_service import PlayerService
@@ -179,8 +235,16 @@ class MainWindow(QMainWindow):
         self._search_ctrl.results_ready.connect(self._on_search_results)
         from core.toast_service import ToastService
         self._toast_svc = ToastService(self)
-        self._player_bar_ctrl = None  # initialized after _setup_ui creates _player_bar
-        self._current_ref = None
+        self._shutdown.register("playback", lambda: self._playback.stop())
+        self._shutdown.register("db", lambda: self._db.close())
+
+    def _init_ui(self):
+        """Sidebar, header, content stack, nowplaying, views."""
+        self._setup_actions()
+        self._setup_ui()
+
+    def _init_controllers(self):
+        """Required controllers — navigation, playback, playlist, library."""
         from ui.controllers.playlist_controller import PlaylistController
         self._playlist_ctrl = PlaylistController(self)
         from core.file_actions import FileActions
@@ -203,145 +267,119 @@ class MainWindow(QMainWindow):
         self._mini_player_ctrl = MiniPlayerController(self, self)
         from ui.controllers.expanded_controller import ExpandedController
         self._expanded_ctrl = ExpandedController(self)
-        self._all_items: list[MediaItem] = []
-        self._items_index: dict[str, MediaItem] = {}
-        self._current_section_key: str = "library"
-        self._kind_filter: str | None = None
-        self._search_text = ""
-        self._current_playlist: int | None = None
-        self._playlist_refs: list = []
-        self._current_refs: list = []
-        self._album_sort_key = "title"
-        self._album_filter_mode = "all"
+        from ui.controllers.artist_repository import ArtistRepository
+        self._artist_repo = ArtistRepository()
+        from ui.controllers.genre_repository import GenreRepository
+        self._genre_repo = GenreRepository()
+        from ui.controllers.artist_controller import ArtistController
+        self._artist_ctrl = ArtistController(self)
+        from ui.controllers.genre_controller import GenreController
+        self._genre_ctrl = GenreController(self)
 
-        self._coverflow_cache_key: tuple | None = None
-
-        # ── Music Identifier ──
-        try:
-            self._detection = DetectionService(self._db, parent=self)
-            self._identifier_view = MusicIdentifierView()
-            from recognition.identifier_controller import IdentifierController
-            self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
-        except Exception as e:
-            import logging
-            logging.getLogger("astra.setup").warning("DetectionService init failed — identifier disabled: %s", e)
-            self._detection = None
-            self._identifier_view = MusicIdentifierView()
-            self._identifier_ctrl = None
-
-        self._home_audio_view = HomeAudioView()
-        self._home_audio_view.connect_requested.connect(self._on_home_audio_connect)
-        self._home_audio_view.refresh_requested.connect(self._on_home_audio_refresh)
-        self._home_audio_view.enable_multiroom_requested.connect(
-            self._on_home_audio_multiroom)
-        self._home_audio_view.open_settings_requested.connect(
-            self._on_home_audio_settings)
-        self._home_audio_view.open_receiver_wizard_requested.connect(
-            self._on_home_audio_receiver_wizard)
-        self._home_audio_view.device_cast_current_requested.connect(
-            self._on_home_audio_cast)
-        self._home_audio_view.device_play_requested.connect(
-            self._on_home_audio_device_play)
-        self._home_audio_view.device_pause_requested.connect(
-            self._on_home_audio_device_pause)
-        self._home_audio_view.device_stop_requested.connect(
-            self._on_home_audio_device_stop)
-        self._home_audio_view.device_volume_changed.connect(
-            self._on_home_audio_device_volume)
-        self._home_audio_view.group_selected_requested.connect(
-            self._on_home_audio_group_selected)
-        self._home_audio_view.create_group_requested.connect(
-            self._on_home_audio_create_group)
-
-        # Snapcast integration
-        import logging
-        _log = logging.getLogger("astra.setup")
-        try:
-            from integrations.snapcast.snapserver_manager import SnapServerManager
-            self._snapserver = SnapServerManager(self)
-            self._snapserver.started.connect(self._on_snapserver_started)
-            self._snapserver.stopped.connect(self._on_snapserver_stopped)
-            self._snapserver.error_occurred.connect(self._on_snapserver_error)
-        except Exception as e:
-            _log.warning("SnapServerManager init failed — Snapcast disabled: %s", e)
-            self._snapserver = None
-
-        try:
-            from integrations.snapcast.audio_capture import AudioCaptureManager
-            self._audio_capture = AudioCaptureManager(self)
-            self._audio_capture.sink_ready.connect(self._on_audio_sink_ready)
-            self._audio_capture.error_occurred.connect(self._on_snapserver_error)
-        except Exception as e:
-            _log.warning("AudioCapture init failed — disabled: %s", e)
-            self._audio_capture = None
-
-        try:
-            from integrations.snapcast.discovery import SnapClientDiscovery
-            self._snap_discovery = SnapClientDiscovery(self)
-            self._snap_discovery.clients_found.connect(self._on_snap_clients_found)
-        except Exception as e:
-            _log.warning("SnapClientDiscovery init failed — disabled: %s", e)
-            self._snap_discovery = None
-
-        try:
-            from integrations.snapcast.group_manager import GroupManager
-            self._group_mgr = GroupManager(self)
-            self._group_mgr.groups_changed.connect(self._on_groups_changed)
-        except Exception as e:
-            _log.warning("GroupManager init failed — disabled: %s", e)
-            self._group_mgr = None
-
-        # Astra API + mDNS
-        try:
-            from integrations.astra_api.http_api import AstraHttpApi
-            self._astra_api = AstraHttpApi(self)
-            self._astra_api.configure()
-        except Exception as e:
-            _log.warning("AstraHttpApi init failed — API disabled: %s", e)
-            self._astra_api = None
-
-        try:
-            from integrations.astra_api.mdns_advertiser import MDNSAdvertiser
-            self._mdns = MDNSAdvertiser(self)
-            self._mdns.configure()
-        except Exception as e:
-            _log.warning("MDNSAdvertiser init failed — mDNS disabled: %s", e)
-            self._mdns = None
-
-        # Local media server for file streaming to HA
-        try:
-            from integrations.home_assistant.local_media_server import (
-                LocalMediaServer)
-            self._local_media = LocalMediaServer(self)
-        except Exception as e:
-            _log.warning("LocalMediaServer init failed — disabled: %s", e)
-            self._local_media = None
-
-        # Detect LAN IP for serving files to Home Assistant
-        self._local_ip = self._resolve_lan_ip()
-
-        # Artist enrichment via MusicBrainz + Wikipedia + Cover Art Archive
-        from integrations.theaudiodb.artist_enrichment_service import (
-            ArtistEnrichmentService)
-        from core.settings_manager import get_bool
-        self._artist_enrich = ArtistEnrichmentService(self)
-        self._artist_enrich.configure(
-            enabled=get_bool("artist_enrichment/enabled"))
-
-        # Album info repository + enrichment
-        from metadata.album_info_repository import AlbumInfoRepository
-        self._album_repo = AlbumInfoRepository()
-
-        self._setup_actions()
-        self._setup_ui()
-        self._connect_signals()
-
-        # AppContext — created after _setup_ui but before shortcuts/controllers use it
+        # AppContext
         from core.app_context import AppContext
         self._ctx = AppContext(self)
 
+    def _init_optional_services(self):
+        """Music identifier, HomeAudioView, Snapcast, API, mDNS, enrichment, MPRIS."""
+        import core.settings_manager as sm
+        _log = logging.getLogger("astra.setup")
+
+        # Music Identifier
+        self._features.register("recognition", enabled=self._safe_mode is False)
+        self._detection = self._safe_init("recognition",
+            lambda: DetectionService(self._db, parent=self))
+        self._identifier_view = self._get_view("identifier",
+            lambda: MusicIdentifierView())
+        if self._detection:
+            from recognition.identifier_controller import IdentifierController
+            self._identifier_ctrl = IdentifierController(self._db, self._detection, self)
+        else:
+            self._identifier_ctrl = None
+
+        # HomeAudioView
+        self._home_audio_view = self._get_view("home_audio",
+            lambda: HomeAudioView())
+
+        # Snapcast
+        for key, _name, factory in [
+            ("snapcast", "SnapServerManager",
+             lambda: self._make_snapserver()),
+            ("audio_capture", "AudioCaptureManager",
+             lambda: self._make_audio_capture()),
+            ("snap_discovery", "SnapClientDiscovery",
+             lambda: self._make_snap_discovery()),
+            ("group_manager", "GroupManager",
+             lambda: self._make_group_manager()),
+        ]:
+            self._features.register(key, enabled=not self._safe_mode)
+            svc = self._safe_init(key, factory)
+            if key == "snapcast":
+                self._snapserver = svc
+            elif key == "audio_capture":
+                self._audio_capture = svc
+            elif key == "snap_discovery":
+                self._snap_discovery = svc
+            elif key == "group_manager":
+                self._group_mgr = svc
+
+        # Astra API
+        self._features.register("astra_api",
+            enabled=sm.get_bool("home_audio/astra_api_enabled") and not self._safe_mode)
+        if self._features.is_enabled("astra_api"):
+            self._astra_api = self._safe_init("astra_api",
+                lambda: self._make_astra_api())
+        else:
+            self._astra_api = None
+
+        # mDNS
+        self._features.register("mdns",
+            enabled=sm.get_bool("home_audio/mdns_enabled") and not self._safe_mode)
+        if self._features.is_enabled("mdns"):
+            self._mdns = self._safe_init("mdns",
+                lambda: self._make_mdns())
+        else:
+            self._mdns = None
+
+        # Local media server
+        self._features.register("local_media",
+            enabled=not self._safe_mode)
+        self._local_media = self._safe_init("local_media",
+            lambda: self._make_local_media())
+        self._local_ip = self._resolve_lan_ip()
+
+        # Artist enrichment
+        self._features.register("enrichment",
+            enabled=sm.get_bool("artist_enrichment/enabled") and not self._safe_mode)
+        self._artist_enrich = self._safe_init("enrichment",
+            lambda: self._make_artist_enrichment())
+
+        # Album info repository
+        from metadata.album_info_repository import AlbumInfoRepository
+        self._album_repo = AlbumInfoRepository()
+
+        # MPRIS
+        self._features.register("mpris", enabled=not self._safe_mode)
+        self._mpris_ctrl = self._safe_init("mpris",
+            lambda: self._make_mpris())
+        if self._mpris_ctrl:
+            self._mpris = getattr(self._mpris_ctrl, 'adapter', None)
+        else:
+            self._mpris = None
+
+        # TransmitManager
+        self._transmit_mgr = TransmitManager(self)
+        self._transmit_mgr.active_changed.connect(self._on_transmit_active_changed)
+        self._shutdown.register("transmit", lambda: None)  # no explicit stop needed
+
         self._setup_shortcuts()
-        # Clean up missing files before loading library
+        # Wire HomeAudioView signals
+        self._wire_home_audio_signals()
+        # Wire Music Identifier signals
+        self._wire_identifier_signals()
+
+    def _load_initial_data(self):
+        """Library loading, cleanup, enrichment, tray — after everything is wired."""
         removed = self._db.cleanup_missing()
         self._load_library()
         if removed:
@@ -349,50 +387,139 @@ class MainWindow(QMainWindow):
                 f"{removed} archivos eliminados de la biblioteca (ya no existen)",
                 "info")
 
-        # Auto-enrich artists on startup (respects cache and refresh_days)
-        from core.settings_manager import get_bool
-        if (get_bool("artist_enrichment/enabled")
-                and hasattr(self, '_artist_enrich')
+        if (hasattr(self, '_artist_enrich') and self._artist_enrich
                 and hasattr(self._artist_repo, 'groups')):
-            self._artist_enrich.enrich_visible_artists(
-                self._artist_repo.groups, limit=20)
+            from core.settings_manager import get_bool
+            if get_bool("artist_enrichment/enabled"):
+                self._artist_enrich.enrich_visible_artists(
+                    self._artist_repo.groups, limit=20)
 
         self._setup_tray()
 
-        # ── Music Identifier signal connections ──
-        self._identifier_view.toggle_requested.connect(self._toggle_identifier)
-        self._identifier_view.clear_requested.connect(self._clear_detected_tracks)
-        self._identifier_view.track_selected.connect(self._on_detected_track_selected)
-        self._identifier_view.identify_once_requested.connect(
-            lambda: self._identifier_ctrl.identify_once() if hasattr(self, '_identifier_ctrl') else None)
-        self._identifier_view.settings_requested.connect(self._on_identifier_settings)
-        self._identifier_view.play_track_requested.connect(self._on_identifier_play)
-        self._identifier_view.search_track_requested.connect(self._on_identifier_search)
-        self._identifier_view.delete_track_requested.connect(self._on_identifier_delete)
-        self._detection.track_detected.connect(self._on_track_detected)
-        self._detection.detection_failed.connect(self._on_detection_failed)
+    # ── Safe init helper ──
 
-        self._identifier_ctrl.state_changed.connect(self._identifier_view.set_identifier_state)
-        self._identifier_ctrl.source_changed.connect(self._identifier_view.set_source_status)
-        self._identifier_ctrl.pause_reason_changed.connect(
-            lambda r: self._identifier_view.set_source_status(
-                self._identifier_ctrl.current_source_type,
-                self._identifier_ctrl.current_source_label, r))
-        self._identifier_ctrl.provider_changed.connect(
-            self._identifier_view.set_provider_status)
-
-        from ui.controllers.mpris_controller import MPRISController
+    def _safe_init(self, name: str, factory):
+        """Initialize an optional feature. Returns service or None on failure."""
         try:
-            self._mpris_ctrl = MPRISController(self)
-            self._mpris_ctrl.init()
-            self._mpris = self._mpris_ctrl.adapter
+            svc = factory()
+            self._features.mark_available(name)
+            return svc
         except Exception as e:
-            _log.warning("MPRISController init failed — MPRIS disabled: %s", e)
-            self._mpris_ctrl = None
-            self._mpris = None
+            _log = logging.getLogger("astra.setup")
+            _log.warning("%s init failed — disabled: %s", name, e)
+            self._features.mark_error(name, str(e))
+            return None
 
-        self._transmit_mgr = TransmitManager(self)
-        self._transmit_mgr.active_changed.connect(self._on_transmit_active_changed)
+    def _get_view(self, key: str, factory) -> QWidget:
+        """Lazy-load a view widget. Created once, cached forever."""
+        if key not in self._view_cache:
+            self._view_cache[key] = factory()
+        return self._view_cache[key]
+
+    # ── Optional service factories ──
+
+    def _make_snapserver(self):
+        from integrations.snapcast.snapserver_manager import SnapServerManager
+        svc = SnapServerManager(self)
+        svc.started.connect(self._on_snapserver_started)
+        svc.stopped.connect(self._on_snapserver_stopped)
+        svc.error_occurred.connect(self._on_snapserver_error)
+        self._shutdown.register("snapserver", lambda: svc.stop())
+        return svc
+
+    def _make_audio_capture(self):
+        from integrations.snapcast.audio_capture import AudioCaptureManager
+        svc = AudioCaptureManager(self)
+        svc.sink_ready.connect(self._on_audio_sink_ready)
+        svc.error_occurred.connect(self._on_snapserver_error)
+        self._shutdown.register("audio_capture", lambda: svc.remove_sink()
+                                if hasattr(svc, 'remove_sink') else None)
+        return svc
+
+    def _make_snap_discovery(self):
+        from integrations.snapcast.discovery import SnapClientDiscovery
+        svc = SnapClientDiscovery(self)
+        svc.clients_found.connect(self._on_snap_clients_found)
+        return svc
+
+    def _make_group_manager(self):
+        from integrations.snapcast.group_manager import GroupManager
+        svc = GroupManager(self)
+        svc.groups_changed.connect(self._on_groups_changed)
+        return svc
+
+    def _make_astra_api(self):
+        from integrations.astra_api.http_api import AstraHttpApi
+        svc = AstraHttpApi(self)
+        svc.configure()
+        self._shutdown.register("astra_api", lambda: svc.stop())
+        return svc
+
+    def _make_mdns(self):
+        from integrations.astra_api.mdns_advertiser import MDNSAdvertiser
+        svc = MDNSAdvertiser(self)
+        svc.configure()
+        self._shutdown.register("mdns", lambda: svc.stop())
+        return svc
+
+    def _make_local_media(self):
+        from integrations.home_assistant.local_media_server import LocalMediaServer
+        svc = LocalMediaServer(self)
+        self._shutdown.register("local_media", lambda: svc.stop())
+        return svc
+
+    def _make_artist_enrichment(self):
+        from integrations.theaudiodb.artist_enrichment_service import ArtistEnrichmentService
+        from core.settings_manager import get_bool
+        svc = ArtistEnrichmentService(self)
+        svc.configure(enabled=get_bool("artist_enrichment/enabled"))
+        return svc
+
+    def _make_mpris(self):
+        from ui.controllers.mpris_controller import MPRISController
+        svc = MPRISController(self)
+        svc.init()
+        self._shutdown.register("mpris", lambda: svc.shutdown()
+                                if hasattr(svc, 'shutdown') else None)
+        return svc
+
+    def _wire_home_audio_signals(self):
+        v = self._home_audio_view
+        v.connect_requested.connect(self._on_home_audio_connect)
+        v.refresh_requested.connect(self._on_home_audio_refresh)
+        v.enable_multiroom_requested.connect(self._on_home_audio_multiroom)
+        v.open_settings_requested.connect(self._on_home_audio_settings)
+        v.open_receiver_wizard_requested.connect(self._on_home_audio_receiver_wizard)
+        v.device_cast_current_requested.connect(self._on_home_audio_cast)
+        v.device_play_requested.connect(self._on_home_audio_device_play)
+        v.device_pause_requested.connect(self._on_home_audio_device_pause)
+        v.device_stop_requested.connect(self._on_home_audio_device_stop)
+        v.device_volume_changed.connect(self._on_home_audio_device_volume)
+        v.group_selected_requested.connect(self._on_home_audio_group_selected)
+        v.create_group_requested.connect(self._on_home_audio_create_group)
+
+    def _wire_identifier_signals(self):
+        v = self._identifier_view
+        v.toggle_requested.connect(self._toggle_identifier)
+        v.clear_requested.connect(self._clear_detected_tracks)
+        v.track_selected.connect(self._on_detected_track_selected)
+        v.identify_once_requested.connect(
+            lambda: self._identifier_ctrl.identify_once()
+            if self._identifier_ctrl else None)
+        v.settings_requested.connect(self._on_identifier_settings)
+        v.play_track_requested.connect(self._on_identifier_play)
+        v.search_track_requested.connect(self._on_identifier_search)
+        v.delete_track_requested.connect(self._on_identifier_delete)
+        if self._detection:
+            self._detection.track_detected.connect(self._on_track_detected)
+            self._detection.detection_failed.connect(self._on_detection_failed)
+        if self._identifier_ctrl:
+            self._identifier_ctrl.state_changed.connect(
+                self._identifier_view.set_identifier_state)
+            self._identifier_ctrl.source_changed.connect(
+                self._identifier_view.set_source_status)
+            self._identifier_ctrl.provider_changed.connect(
+                self._identifier_view.set_provider_status)
 
     def _setup_actions(self):
         from PySide6.QtGui import QAction
@@ -1055,7 +1182,6 @@ class MainWindow(QMainWindow):
 
         # Configure header based on section
         section_key = key.split(":")[0] if ":" in key else key
-        # Normalize some section keys
         if section_key == "srv":
             section_key = "servers"
         elif section_key == "dev":
@@ -1064,241 +1190,244 @@ class MainWindow(QMainWindow):
             section_key = "playlists"
         self._configure_header_for_section(section_key)
 
-        if key == "library":
-            self._kind_filter = None
-            self._search_ctrl.set_active("local")
-            self._apply_filters()
-            self._view_mode = "list"
-            self._view_switcher.set_view("list", emit=False)
+        # Dynamic pattern routes
+        if key and key.startswith("pl:"):
+            self._show_playlist_detail(key)
+            return
+        if key and key.startswith("srv:"):
+            self._show_server(key)
+            return
+        if key and key.startswith("dev:"):
+            self._show_device(key)
+            return
+        if key and key.startswith("mix_"):
+            self._show_smart_mix(key)
+            return
 
-        elif key == "playlist_hub":
-            pls = self._db.get_playlists()
-            self._playlist_hub.set_playlists(pls)
-            self._fade_content("playlist_hub")
+        # Static route dispatch
+        method = NAV_ROUTES.get(key)
+        if method and hasattr(self, method):
+            getattr(self, method)(key)
 
-        elif key == "metadata_editor":
-            self._fade_content("metadata_editor")
+    # ── Static route handlers ──
 
-        elif key and key.startswith("pl:"):
-            pid = int(key.split(":", 1)[1])
-            self._current_playlist = pid
-            items = self._db.get_playlist_items(pid)
-            pl = next((p for p in self._db.get_playlists() if p["id"] == pid), {"name": "Playlist"})
-            self._playlist_detail.set_playlist(pl, items)
+    def _show_library(self, key):
+        self._kind_filter = None
+        self._search_ctrl.set_active("local")
+        self._apply_filters()
+        self._view_mode = "list"
+        self._view_switcher.set_view("list", emit=False)
 
-            total_dur = int(sum(getattr(i, 'duration', 0) or 0 for i in items))
-            h = total_dur // 3600
-            m = (total_dur % 3600) // 60
-            dur_str = f"{h} h {m} min" if h > 0 else f"{m} min" if m > 0 else ""
-            subtitle = f"{len(items)} canciones"
-            if dur_str:
-                subtitle += f" · {dur_str}"
-            self._section_title.setText(pl.get("name", "Playlist"))
-            self._section_subtitle.setText(subtitle)
-            self._search.show()
-            self._fade_content("playlist_detail")
+    def _show_playlist_hub(self, key):
+        pls = self._db.get_playlists()
+        self._playlist_hub.set_playlists(pls)
+        self._fade_content("playlist_hub")
 
-        elif key == "artists":
-            if not self._all_items and self._db:
-                self._load_library()
-            self._artist_repo.clear_current()
-            self._artist_repo.build(self._all_items)
-            self._artist_grid.set_artists(self._artist_repo.groups)
-            if hasattr(self, '_artist_enrich'):
-                from core.settings_manager import get_bool
-                if get_bool("artist_enrichment/preload_visible"):
-                    self._artist_enrich.enrich_visible_artists(
-                        self._artist_repo.groups, limit=12)
-            if self._view_mode not in ("grid", "list"):
-                self._view_mode = "grid"
-                self._view_switcher.set_view("grid", emit=False)
-            self._show_artists_view(self._view_mode)
-            self._count.setText(f"{self._artist_repo.count} artistas")
-            self._search.show()
+    def _show_metadata_editor(self, key):
+        self._fade_content("metadata_editor")
 
-        elif key == "albums":
-            self._section_title.setText("Álbumes")
-            # Use default view from SECTION_CONFIG
-            self._configure_header_for_section(key)
-            self._show_album_grid()
-            self._search.show()
+    def _show_playlist_detail(self, key):
+        pid = int(key.split(":", 1)[1])
+        self._current_playlist = pid
+        items = self._db.get_playlist_items(pid)
+        pl = next((p for p in self._db.get_playlists() if p["id"] == pid), {"name": "Playlist"})
+        self._playlist_detail.set_playlist(pl, items)
+        total_dur = int(sum(getattr(i, 'duration', 0) or 0 for i in items))
+        h = total_dur // 3600
+        m = (total_dur % 3600) // 60
+        dur_str = f"{h} h {m} min" if h > 0 else f"{m} min" if m > 0 else ""
+        subtitle = f"{len(items)} canciones"
+        if dur_str:
+            subtitle += f" · {dur_str}"
+        self._section_title.setText(pl.get("name", "Playlist"))
+        self._section_subtitle.setText(subtitle)
+        self._search.show()
+        self._fade_content("playlist_detail")
 
-        elif key == "genres":
-            if not self._all_items and self._db:
-                self._load_library()
-            self._genre_ctrl.show_genres_overview(self._view_mode)
+    def _show_artists(self, key):
+        if not self._all_items and self._db:
+            self._load_library()
+        self._artist_repo.clear_current()
+        self._artist_repo.build(self._all_items)
+        self._artist_grid.set_artists(self._artist_repo.groups)
+        if hasattr(self, '_artist_enrich'):
+            from core.settings_manager import get_bool
+            if get_bool("artist_enrichment/preload_visible"):
+                self._artist_enrich.enrich_visible_artists(
+                    self._artist_repo.groups, limit=12)
+        if self._view_mode not in ("grid", "list"):
+            self._view_mode = "grid"
+            self._view_switcher.set_view("grid", emit=False)
+        self._show_artists_view(self._view_mode)
+        self._count.setText(f"{self._artist_repo.count} artistas")
+        self._search.show()
 
-        elif key == "folders":
-            self._section_title.setText("Carpetas")
-            from sources.folder_source import FolderSource
-            self._search_ctrl.register("folders", FolderSource(os.path.expanduser("~")))
-            self._search_ctrl.set_active("folders")
-            self._views.show("folders")
-            self._search.show()
+    def _show_albums(self, key):
+        self._section_title.setText("Álbumes")
+        self._configure_header_for_section(key)
+        self._show_album_grid()
+        self._search.show()
 
-        elif key == "radio":
-            self._configure_header_for_section(key)
-            self._search_ctrl.set_active("radio")
-            self._current_section_key = "radio"
-            self._radio_widget.reload()
-            self._fade_content("radio")
+    def _show_genres(self, key):
+        if not self._all_items and self._db:
+            self._load_library()
+        self._genre_ctrl.show_genres_overview(self._view_mode)
 
-        elif key == "add_server":
-            self._add_server()
+    def _show_folders(self, key):
+        self._section_title.setText("Carpetas")
+        from sources.folder_source import FolderSource
+        self._search_ctrl.register("folders", FolderSource(os.path.expanduser("~")))
+        self._search_ctrl.set_active("folders")
+        self._views.show("folders")
+        self._search.show()
 
-        elif key and key.startswith("srv:"):
-            name = key.split(":", 1)[1]
-            self._open_server(name)
+    def _show_radio(self, key):
+        self._configure_header_for_section(key)
+        self._search_ctrl.set_active("radio")
+        self._current_section_key = "radio"
+        self._radio_widget.reload()
+        self._fade_content("radio")
 
-        elif key and key.startswith("dev:"):
-            mount = key.split(":", 1)[1]
-            import shutil
-            # Device info
-            usage = shutil.disk_usage(mount) if os.path.exists(mount) else None
-            files = scan_device_music(mount)
-            refs = [TrackRef(
-                uri=fp, title=os.path.basename(fp),
-            duration=0.0,
-        ) for fp in files]
-            self._model.populate(refs)
-            device_name = os.path.basename(mount)
-            if usage:
-                total_gb = usage.total / (1024**3)
-                free_gb = usage.free / (1024**3)
-                used_pct = (1 - usage.free / usage.total) * 100
-                self._section_title.setText(device_name)
-                self._section_subtitle.setText(
-                    f"{free_gb:.1f} GB libre de {total_gb:.1f} GB · "
-                    f"{used_pct:.0f}% usado · {len(files)} canciones")
+    def _show_add_server(self, key):
+        self._add_server()
+
+    def _show_server(self, key):
+        name = key.split(":", 1)[1]
+        self._open_server(name)
+
+    def _show_device(self, key):
+        mount = key.split(":", 1)[1]
+        import shutil
+        usage = shutil.disk_usage(mount) if os.path.exists(mount) else None
+        files = scan_device_music(mount)
+        refs = [TrackRef(uri=fp, title=os.path.basename(fp), duration=0.0) for fp in files]
+        self._model.populate(refs)
+        device_name = os.path.basename(mount)
+        if usage:
+            total_gb = usage.total / (1024**3)
+            free_gb = usage.free / (1024**3)
+            used_pct = (1 - usage.free / usage.total) * 100
+            self._section_title.setText(device_name)
+            self._section_subtitle.setText(
+                f"{free_gb:.1f} GB libre de {total_gb:.1f} GB · "
+                f"{used_pct:.0f}% usado · {len(files)} canciones")
+        else:
+            self._section_title.setText(device_name)
+            self._section_subtitle.setText(f"{len(files)} canciones")
+        self._count.setText(f"{len(files)} archivos")
+        self._views.show("library")
+        self._table.setModel(self._model)
+        self._search.show()
+
+    def _show_discover(self, key):
+        self._configure_header_for_section(key)
+        self._views.show("discover")
+
+    def _show_smart_mix(self, key):
+        from library.smart_mixes import (get_daily_mix, get_unplayed,
+                                        get_popular, get_favorites_recent)
+        self._section_title.setText({
+            "mix_daily": "Mix diario", "mix_unplayed": "No escuchadas",
+            "mix_popular": "Más escuchadas",
+            "mix_favorites": "Favoritos recientes",
+        }.get(key, "Mix"))
+        mixes = {"mix_daily": get_daily_mix, "mix_unplayed": get_unplayed,
+                "mix_popular": get_popular, "mix_favorites": get_favorites_recent}
+        fn = mixes.get(key)
+        if fn:
+            files = fn()
+            files = [f for f in files
+                     if isinstance(f, str) and (f.startswith("http") or os.path.isfile(f))]
+            if key in ("mix_unplayed", "mix_favorites"):
+                items = [self._items_index.get(f) for f in files]
+                items = [i for i in items if i]
+                refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
+                                 artist=i.artist, album=i.album, duration=i.duration,
+                                 year=i.year, genre=i.genre) for i in items]
+                self._model.populate(refs)
+                self._current_refs = refs
+                self._count.setText(f"{len(refs)} canciones")
+                self._playlist_refs = refs
+                if refs:
+                    self._views.show("library")
+                    self._table.setModel(self._model)
+                    self._table.setColumnWidth(0, 72)
+                    self._table.setColumnWidth(1, 260)
+                    self._table.setColumnWidth(2, 170)
+                    self._table.setColumnWidth(3, 170)
+                    self._table.setColumnWidth(4, 55)
+                    self._table.setColumnWidth(5, 110)
+                    self._table.setColumnWidth(6, 75)
+                else:
+                    self._views.show("empty")
+            elif files:
+                self._play_filepaths(files, play_now=True)
+                self._show_expanded()
             else:
-                self._section_title.setText(device_name)
-                self._section_subtitle.setText(f"{len(files)} canciones")
-            self._count.setText(f"{len(files)} archivos")
+                self._toast_svc.warning("El mix no contiene archivos disponibles")
+
+    def _show_favs(self, key):
+        self._configure_header_for_section(key)
+        favs = self._db.get_favorites()
+        items = [self._items_index.get(fp) for fp in favs if self._items_index.get(fp)]
+        refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
+                         artist=i.artist, album=i.album, duration=i.duration,
+                         year=i.year, genre=i.genre) for i in items]
+        self._model.populate(refs)
+        self._current_refs = refs
+        self._count.setText(f"{len(refs)} canciones")
+        if refs:
             self._views.show("library")
             self._table.setModel(self._model)
-            self._search.show()
-
-        elif key == "discover":
-            self._configure_header_for_section(key)
-            self._views.show("discover")
-
-        elif key and key.startswith("mix_"):
-            from library.smart_mixes import (get_daily_mix, get_unplayed,
-                                            get_popular, get_favorites_recent)
-            self._section_title.setText({
-                "mix_daily": "Mix diario", "mix_unplayed": "No escuchadas",
-                "mix_popular": "Más escuchadas",
-                "mix_favorites": "Favoritos recientes",
-            }.get(key, "Mix"))
-            mixes = {"mix_daily": get_daily_mix, "mix_unplayed": get_unplayed,
-                    "mix_popular": get_popular, "mix_favorites": get_favorites_recent}
-            fn = mixes.get(key)
-            if fn:
-                files = fn()
-                files = [f for f in files
-                         if isinstance(f, str) and (f.startswith("http") or os.path.isfile(f))]
-                if key in ("mix_unplayed", "mix_favorites"):
-                    # Show table view instead of auto-play
-                    items = [self._items_index.get(f) for f in files]
-                    items = [i for i in items if i]
-                    refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                                     artist=i.artist, album=i.album, duration=i.duration,
-                                     year=i.year, genre=i.genre) for i in items]
-                    self._model.populate(refs)
-                    self._current_refs = refs
-                    self._count.setText(f"{len(refs)} canciones")
-                    self._playlist_refs = refs
-                    if refs:
-                        self._views.show("library")
-                        self._table.setModel(self._model)
-                        self._table.setColumnWidth(0, 72)
-                        self._table.setColumnWidth(1, 260)
-                        self._table.setColumnWidth(2, 170)
-                        self._table.setColumnWidth(3, 170)
-                        self._table.setColumnWidth(4, 55)
-                        self._table.setColumnWidth(5, 110)
-                        self._table.setColumnWidth(6, 75)
-                    else:
-                        self._views.show("empty")
-
-                elif files:
-                    self._play_filepaths(files, play_now=True)
-                    self._show_expanded()
-                else:
-                    self._toast_svc.warning(
-                        "El mix no contiene archivos disponibles")
-
-        elif key == "favs":
-            self._configure_header_for_section(key)
-            favs = self._db.get_favorites()
-            items = []
-            for fp in favs:
-                item = self._items_index.get(fp)
-                if item:
-                    items.append(item)
-            refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                             artist=i.artist, album=i.album, duration=i.duration,
-                             year=i.year, genre=i.genre) for i in items]
-            self._model.populate(refs)
-            self._current_refs = refs
-            self._count.setText(f"{len(refs)} canciones")
-            if refs:
-                self._views.show("library")
-                self._table.setModel(self._model)
-                self._table.setColumnWidth(0, 72)
-                self._table.setColumnWidth(1, 260)
-                self._table.setColumnWidth(2, 170)
-                self._table.setColumnWidth(3, 170)
-                self._table.setColumnWidth(4, 55)
-                self._table.setColumnWidth(5, 110)
-                self._table.setColumnWidth(6, 75)
-            else:
-                self._views.show("empty")
-            self._search.show()
-
-        elif key == "recent":
-            self._configure_header_for_section(key)
-            history = self._db.get_play_history()
-            items = []
-            for h in history[:50]:
-                fp = h.get("track_id", "")
-                item = self._items_index.get(fp)
-                if item:
-                    items.append(item)
-            refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                             artist=i.artist, album=i.album, duration=i.duration,
-                             year=i.year, genre=i.genre) for i in items]
-            self._model.populate(refs)
-            self._current_refs = refs
-            self._count.setText(f"{len(refs)} canciones")
-            if refs:
-                self._views.show("library")
-                self._table.setModel(self._model)
-                self._table.setColumnWidth(0, 72)
-                self._table.setColumnWidth(1, 260)
-                self._table.setColumnWidth(2, 170)
-                self._table.setColumnWidth(3, 170)
-                self._table.setColumnWidth(4, 55)
-                self._table.setColumnWidth(5, 110)
-                self._table.setColumnWidth(6, 75)
-            else:
-                self._views.show("empty")
-            self._search.show()
+            self._table.setColumnWidth(0, 72)
+            self._table.setColumnWidth(1, 260)
             self._table.setColumnWidth(2, 170)
             self._table.setColumnWidth(3, 170)
             self._table.setColumnWidth(4, 55)
             self._table.setColumnWidth(5, 110)
             self._table.setColumnWidth(6, 75)
-            self._search.show()
+        else:
+            self._views.show("empty")
+        self._search.show()
 
-        elif key == "identifier":
-            self._configure_header_for_section(key)
-            self._identifier_view.set_detected_tracks(
-                self._db.get_detected_tracks(100))
-            self._fade_content("identifier")
+    def _show_recent(self, key):
+        self._configure_header_for_section(key)
+        history = self._db.get_play_history()
+        items = [self._items_index.get(h.get("track_id", ""))
+                 for h in history[:50] if self._items_index.get(h.get("track_id", ""))]
+        refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
+                         artist=i.artist, album=i.album, duration=i.duration,
+                         year=i.year, genre=i.genre) for i in items]
+        self._model.populate(refs)
+        self._current_refs = refs
+        self._count.setText(f"{len(refs)} canciones")
+        if refs:
+            self._views.show("library")
+            self._table.setModel(self._model)
+            self._table.setColumnWidth(0, 72)
+            self._table.setColumnWidth(1, 260)
+            self._table.setColumnWidth(2, 170)
+            self._table.setColumnWidth(3, 170)
+            self._table.setColumnWidth(4, 55)
+            self._table.setColumnWidth(5, 110)
+            self._table.setColumnWidth(6, 75)
+        else:
+            self._views.show("empty")
+        self._search.show()
 
-        elif key == "home_audio":
-            self._show_home_audio()
+    def _show_identifier(self, key):
+        self._configure_header_for_section(key)
+        self._identifier_view.set_detected_tracks(
+            self._db.get_detected_tracks(100))
+        self._fade_content("identifier")
+
+    def _show_home_audio(self, key=None):
+        self._configure_header_for_section("home_audio")
+        self._home_audio_view.refresh_if_needed()
+        self._fade_content("home_audio")
+
+    def _show_new_playlist(self, key):
+        self._create_playlist()
 
     def _on_sidebar_menu(self, pos):
         widget = self._sidebar.childAt(pos)
@@ -2357,11 +2486,6 @@ class MainWindow(QMainWindow):
         except Exception:
             return ""
 
-    def _show_home_audio(self):
-        self._configure_header_for_section("home_audio")
-        self._home_audio_view.refresh_if_needed()
-        self._fade_content("home_audio")
-
     def _on_home_audio_connect(self):
         from core.settings_manager import get as sget, get_bool
         from PySide6.QtWidgets import (
@@ -2711,44 +2835,14 @@ class MainWindow(QMainWindow):
             self._view_switcher.update_for_width(self.width())
 
     def closeEvent(self, event):
-        import logging
-        _log = logging.getLogger("astra.shutdown")
+        # Save queue state before shutdown
         try:
-            # Save queue state
             engine = self._playback.engine
             if engine._queue and self._db:
                 self._db.save_queue(engine._queue, engine._queue_index)
-        except Exception as e:
-            _log.debug("Error saving queue on shutdown: %s", e)
-
-        # Stop playback
-        try:
-            self._playback.stop()
-        except Exception as e:
-            _log.debug("Error stopping playback: %s", e)
-
-        # Stop optional services
-        for attr, name in [
-            ("_detection", "DetectionService"),
-            ("_astra_api", "AstraHttpApi"),
-            ("_mdns", "MDNSAdvertiser"),
-            ("_snapserver", "SnapServerManager"),
-            ("_audio_capture", "AudioCapture"),
-            ("_local_media", "LocalMediaServer"),
-            ("_mpris_ctrl", "MPRISController"),
-        ]:
-            svc = getattr(self, attr, None)
-            if svc is not None and hasattr(svc, 'stop'):
-                try:
-                    svc.stop()
-                except Exception as e:
-                    _log.debug("Error stopping %s: %s", name, e)
-
-        # Close DB
-        try:
-            self._db.close()
-        except Exception as e:
-            _log.debug("Error closing DB: %s", e)
+        except Exception:
+            pass
+        self._shutdown.shutdown()
         event.accept()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
