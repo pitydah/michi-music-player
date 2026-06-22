@@ -368,19 +368,20 @@ class _ArtistCard(QFrame):
         v.addStretch()
 
     def _apply_qss(self):
+        self.setObjectName("artistCard")
         self.setStyleSheet("""
-            QFrame {
-                background: rgba(255,255,255,0.035);
-                border: 1px solid rgba(255,255,255,0.065);
+            QFrame#artistCard {
+                background: rgba(255,255,255,0.030);
+                border: 1px solid rgba(255,255,255,0.025);
                 border-radius: 18px;
             }
-            QFrame:hover {
-                background: rgba(255,255,255,0.065);
-                border: 1px solid rgba(255,255,255,0.12);
+            QFrame#artistCard:hover {
+                background: rgba(255,255,255,0.050);
+                border: 1px solid rgba(143,183,255,0.10);
             }
-            QFrame[active="true"] {
-                background: rgba(255,255,255,0.105);
-                border: 1px solid rgba(255,255,255,0.16);
+            QFrame#artistCard[active="true"] {
+                background: rgba(143,183,255,0.10);
+                border: 1px solid rgba(143,183,255,0.14);
             }
         """)
 

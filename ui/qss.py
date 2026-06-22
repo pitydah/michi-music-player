@@ -74,7 +74,7 @@ def premium_menu_qss() -> str:
 def section_header_qss() -> str:
     """Sidebar section header uppercase style."""
     return (
-        "font-size: 11px; font-weight: 720;"
+        "font-size: 11px; font-weight: 700;"
         "color: rgba(255,255,255,0.42);"
         "background: transparent; border: none;")
 

@@ -128,7 +128,7 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
         }
         QPushButton[active="true"] {
             background: rgba(255,255,255,0.10);
-            border: 1px solid rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.06);
         }
     """)
     return btn
@@ -306,7 +306,7 @@ class NowPlayingBar(QWidget):
                     stop:0.55 rgba(45,49,60,0.92),
                     stop:1 rgba(20,22,30,0.95)
                 );
-                border: 1px solid rgba(255,255,255,0.10);
+                border: 1px solid rgba(255,255,255,0.06);
                 border-radius: 16px;
             }
         """)
@@ -336,7 +336,7 @@ class NowPlayingBar(QWidget):
         self._cover.setStyleSheet("""
             QPushButton#coverButton {
                 background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(255,255,255,0.14);
+                border: 1px solid rgba(255,255,255,0.08);
                 border-radius: 13px;
                 padding: 0px;
                 margin: 0px;
@@ -370,7 +370,7 @@ class NowPlayingBar(QWidget):
         self._artist_lbl.setObjectName("nowPlayingArtist")
         self._artist_lbl.setStyleSheet(
             "QLabel#nowPlayingArtist {"
-            "  font-size: 12px; font-weight: 540;"
+            "  font-size: 12px; font-weight: 500;"
             "  color: rgba(255,255,255,0.92);"
             "  background: transparent; border: none;"
             "}")

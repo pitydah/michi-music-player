@@ -398,7 +398,7 @@ class _AlbumCard(QFrame):
         sub_lbl.setAlignment(Qt.AlignCenter)
         sub_lbl.setWordWrap(False)
         sub_lbl.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.82); font-size: 11.2px; font-weight: 520;"
+            "QLabel { color: rgba(255,255,255,0.82); font-size: 11.2px; font-weight: 500;"
             "  background: transparent; }")
         layout.addWidget(sub_lbl)
 
@@ -453,8 +453,8 @@ class _AlbumCard(QFrame):
                 QLabel {{
                     color: rgba(255,255,255,0.78);
                     font-size: 9.5px;
-                    background: rgba(255,255,255,{0.085 if warn else 0.065});
-                    border: 1px solid rgba(255,255,255,{0.10 if warn else 0.08});
+                    background: rgba(255,255,255,{0.06 if warn else 0.04});
+                    border: 1px solid rgba(255,255,255,{0.05 if warn else 0.03});
                     border-radius: 7px;
                     padding: 2px 7px;
                 }}
@@ -476,19 +476,20 @@ class _AlbumCard(QFrame):
     # ── visual state ──
 
     def _apply_qss(self):
+        self.setObjectName("albumCard")
         self.setStyleSheet("""
-            QFrame {
-                background: rgba(255,255,255,0.040);
-                border: 1px solid rgba(255,255,255,0.075);
+            QFrame#albumCard {
+                background: rgba(255,255,255,0.030);
+                border: 1px solid rgba(255,255,255,0.025);
                 border-radius: 18px;
             }
-            QFrame:hover {
-                background: rgba(255,255,255,0.075);
-                border: 1px solid rgba(255,255,255,0.135);
+            QFrame#albumCard:hover {
+                background: rgba(255,255,255,0.048);
+                border: 1px solid rgba(143,183,255,0.10);
             }
-            QFrame[active="true"] {
-                background: rgba(255,255,255,0.105);
-                border: 1px solid rgba(255,255,255,0.18);
+            QFrame#albumCard[active="true"] {
+                background: rgba(143,183,255,0.12);
+                border: 1px solid rgba(143,183,255,0.16);
             }
         """)
 

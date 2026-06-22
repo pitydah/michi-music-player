@@ -103,8 +103,8 @@ def _font_weight(state: str) -> int:
 def item_qss(state: str) -> str:
     if state == "active":
         return (
-            "background: rgba(255,255,255,0.14);"
-            "border: 1px solid rgba(255,255,255,0.18);"
+            "background: rgba(143,183,255,0.12);"
+            "border: 1px solid rgba(143,183,255,0.14);"
             "border-radius: 13px; margin: 1px 6px;"
         )
     if state == "hover":

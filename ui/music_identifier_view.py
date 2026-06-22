@@ -82,7 +82,7 @@ class MusicIdentifierView(QWidget):
         left.setSpacing(4)
         t = QLabel("Identificador musical")
         t.setStyleSheet(
-            "font-size: 20px; font-weight: 750; color: rgba(255,255,255,0.94);")
+            "font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.94);")
         left.addWidget(t)
         s = QLabel("Reconoce musica desde radio y streams, guarda el historial y cruza resultados con tu biblioteca.")
         s.setWordWrap(True)

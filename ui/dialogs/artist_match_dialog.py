@@ -28,7 +28,7 @@ class ArtistMatchDialog(QDialog):
 
         title = QLabel(f"Coincidencias para \"{artist_name}\"")
         title.setStyleSheet(
-            "font-size: 16px; font-weight: 750; color: rgba(255,255,255,0.88);")
+            "font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.88);")
         layout.addWidget(title)
 
         sub = QLabel(

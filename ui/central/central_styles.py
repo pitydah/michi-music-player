@@ -1,5 +1,16 @@
 """Central area QSS styles — dark glass premium, no orange/neon."""
 
+# ── Visual tokens ──
+_GLASS_BG = "rgba(255,255,255,0.030)"
+_GLASS_BORDER = "rgba(255,255,255,0.022)"
+_GLASS_HOVER = "rgba(255,255,255,0.048)"
+_GLASS_ACTIVE = "rgba(143,183,255,0.12)"
+_ACCENT = "#8FB7FF"
+_ACCENT_BORDER = "rgba(143,183,255,0.16)"
+_TEXT_PRIMARY = "rgba(255,255,255,0.94)"
+_TEXT_SECONDARY = "rgba(255,255,255,0.62)"
+_TEXT_MUTED = "rgba(255,255,255,0.38)"
+
 
 def content_surface_qss() -> str:
     return """
@@ -24,11 +35,11 @@ def header_qss() -> str:
         QFrame#headerBar {
             background: qlineargradient(
                 x1:0, y1:0, x2:1, y2:0,
-                stop:0 rgba(255,255,255,0.070),
-                stop:0.48 rgba(255,255,255,0.045),
-                stop:1 rgba(255,255,255,0.030)
+                stop:0 rgba(255,255,255,0.06),
+                stop:0.48 rgba(255,255,255,0.04),
+                stop:1 rgba(255,255,255,0.025)
             );
-            border: 1px solid rgba(255,255,255,0.080);
+            border: 1px solid rgba(255,255,255,0.04);
             border-radius: 18px;
         }
     """
@@ -37,8 +48,8 @@ def header_qss() -> str:
 def section_icon_box_qss() -> str:
     return """
         QFrame#sectionIconBox {
-            background: rgba(255,255,255,0.060);
-            border: 1px solid rgba(255,255,255,0.090);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
             border-radius: 13px;
         }
     """
@@ -48,7 +59,7 @@ def section_title_qss() -> str:
     return """
         QLabel#sectionTitle {
             font-size: 19px;
-            font-weight: bold;
+            font-weight: 700;
             color: rgba(255,255,255,0.96);
             background: transparent;
             border: none;
@@ -70,8 +81,8 @@ def section_subtitle_qss() -> str:
 def search_qss() -> str:
     return """
         QLineEdit {
-            background: rgba(255,255,255,0.10);
-            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.06);
             border-radius: 13px;
             padding: 5px 32px 5px 12px;
             color: rgba(255,255,255,0.94);
@@ -79,8 +90,8 @@ def search_qss() -> str:
             selection-background-color: rgba(143,183,255,0.30);
         }
         QLineEdit:focus {
-            background: rgba(255,255,255,0.14);
-            border: 1px solid rgba(143,183,255,0.34);
+            background: rgba(255,255,255,0.11);
+            border: 1px solid rgba(143,183,255,0.28);
         }
     """
 
@@ -90,8 +101,8 @@ def count_badge_qss() -> str:
         QLabel#countBadge {
             font-size: 11px;
             color: rgba(255,255,255,0.62);
-            background: rgba(255,255,255,0.055);
-            border: 1px solid rgba(255,255,255,0.075);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.04);
             border-radius: 9px;
             padding: 4px 12px;
             qproperty-alignment: AlignCenter;
@@ -102,8 +113,8 @@ def count_badge_qss() -> str:
 def tool_button_qss(kind: str = "default") -> str:
     base = """
         QToolButton {
-            background: rgba(255,255,255,0.065);
-            border: 1px solid rgba(255,255,255,0.085);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
             border-radius: 10px;
             padding: 5px 14px;
             color: rgba(255,255,255,0.82);
@@ -111,12 +122,9 @@ def tool_button_qss(kind: str = "default") -> str:
             font-weight: 500;
         }
         QToolButton:hover {
-            background: rgba(255,255,255,0.105);
-            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.08);
             color: rgba(255,255,255,0.96);
-        }
-        QToolButton:pressed {
-            background: rgba(255,255,255,0.135);
         }
     """
     if kind == "icon":
@@ -133,7 +141,7 @@ def menu_qss() -> str:
     return """
         QMenu {
             background: rgba(20,22,28,0.96);
-            border: 1px solid rgba(255,255,255,0.09);
+            border: 1px solid rgba(255,255,255,0.06);
             border-radius: 14px;
             padding: 6px;
             color: rgba(255,255,255,0.88);
@@ -144,7 +152,7 @@ def menu_qss() -> str:
             margin: 2px 4px;
         }
         QMenu::item:selected {
-            background: rgba(143,183,255,0.18);
+            background: rgba(143,183,255,0.16);
             color: rgba(255,255,255,1.00);
         }
     """
@@ -167,22 +175,18 @@ def table_header_qss() -> str:
             font-weight: 600;
             padding: 7px 10px;
             border: none;
-            border-right: 1px solid rgba(255,255,255,0.055);
-            border-bottom: 1px solid rgba(255,255,255,0.085);
         }
         QHeaderView::section:hover {
-            background: rgba(143,183,255,0.16);
+            background: rgba(143,183,255,0.14);
             color: rgba(255,255,255,0.96);
         }
         QHeaderView::section:checked {
-            background: rgba(143,183,255,0.22);
+            background: rgba(143,183,255,0.20);
             color: rgba(255,255,255,1.00);
         }
         QTableCornerButton::section {
             background: #10131A;
             border: none;
-            border-bottom: 1px solid rgba(255,255,255,0.085);
-            border-right: 1px solid rgba(255,255,255,0.055);
         }
     """
 
@@ -191,10 +195,10 @@ def table_qss() -> str:
     return """
         QTableView {
             background: transparent;
-            alternate-background-color: rgba(255,255,255,0.022);
+            alternate-background-color: rgba(255,255,255,0.020);
             border: none;
-            gridline-color: rgba(255,255,255,0.04);
-            selection-background-color: rgba(143,183,255,0.16);
+            gridline-color: transparent;
+            selection-background-color: rgba(143,183,255,0.14);
             selection-color: rgba(255,255,255,1.00);
             color: rgba(255,255,255,0.85);
             font-size: 13.5px;
@@ -204,7 +208,7 @@ def table_qss() -> str:
             border: none;
         }
         QTableView::item:hover {
-            background: rgba(255,255,255,0.045);
+            background: rgba(255,255,255,0.035);
         }
     """
 
@@ -218,12 +222,12 @@ def scrollbar_qss() -> str:
             margin: 0;
         }
         QScrollBar::handle:vertical {
-            background: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.10);
             min-height: 32px;
             border-radius: 2px;
         }
         QScrollBar::handle:vertical:hover {
-            background: rgba(255,255,255,0.24);
+            background: rgba(255,255,255,0.20);
         }
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical {
@@ -235,12 +239,12 @@ def scrollbar_qss() -> str:
             border: none;
         }
         QScrollBar::handle:horizontal {
-            background: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.10);
             min-width: 32px;
             border-radius: 2px;
         }
         QScrollBar::handle:horizontal:hover {
-            background: rgba(255,255,255,0.24);
+            background: rgba(255,255,255,0.20);
         }
         QScrollBar::add-line:horizontal,
         QScrollBar::sub-line:horizontal {
@@ -263,7 +267,7 @@ def empty_state_qss() -> str:
         }
         QLabel#emptyTitle {
             font-size: 17px;
-            font-weight: 640;
+            font-weight: 700;
             color: rgba(255,255,255,0.72);
             background: transparent;
             border: none;
@@ -280,8 +284,8 @@ def empty_state_qss() -> str:
 def primary_action_button_qss() -> str:
     return """
         QPushButton {
-            background: rgba(143,183,255,0.18);
-            border: 1px solid rgba(143,183,255,0.30);
+            background: rgba(143,183,255,0.16);
+            border: 1px solid rgba(143,183,255,0.18);
             border-radius: 10px;
             padding: 8px 20px;
             color: rgba(255,255,255,0.96);
@@ -289,11 +293,11 @@ def primary_action_button_qss() -> str:
             font-weight: 600;
         }
         QPushButton:hover {
-            background: rgba(143,183,255,0.28);
-            border: 1px solid rgba(143,183,255,0.44);
+            background: rgba(143,183,255,0.24);
+            border: 1px solid rgba(143,183,255,0.28);
         }
         QPushButton:pressed {
-            background: rgba(143,183,255,0.36);
+            background: rgba(143,183,255,0.32);
         }
     """
 
@@ -301,17 +305,176 @@ def primary_action_button_qss() -> str:
 def secondary_action_button_qss() -> str:
     return """
         QPushButton {
-            background: rgba(255,255,255,0.055);
-            border: 1px solid rgba(255,255,255,0.09);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.04);
             border-radius: 10px;
             padding: 8px 20px;
             color: rgba(255,255,255,0.74);
             font-size: 13px;
-            font-weight: 540;
+            font-weight: 500;
         }
         QPushButton:hover {
-            background: rgba(255,255,255,0.09);
-            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.07);
             color: rgba(255,255,255,0.90);
+        }
+    """
+
+
+# ── Reusable premium glass styles ──
+
+def glass_card_qss(name: str) -> str:
+    """Premium glass card with soft border. Use with QFrame#{name}."""
+    return f"""
+        QFrame#{name} {{
+            background: rgba(255,255,255,0.030);
+            border: 1px solid rgba(255,255,255,0.025);
+            border-radius: 18px;
+        }}
+        QFrame#{name}:hover {{
+            background: rgba(255,255,255,0.048);
+            border: 1px solid rgba(143,183,255,0.10);
+        }}
+        QFrame#{name} QLabel {{
+            background: transparent;
+            border: none;
+        }}
+    """
+
+
+def glass_chip_qss() -> str:
+    """Soft pill/chip badge — no hard borders."""
+    return """
+        QLabel {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.025);
+            border-radius: 9px;
+            padding: 3px 8px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.62);
+        }
+    """
+
+
+def clean_table_header_qss() -> str:
+    """Table header without vertical separators."""
+    return """
+        QHeaderView {
+            background: #10131A;
+            border: none;
+        }
+        QHeaderView::section {
+            background: rgba(255,255,255,0.030);
+            color: rgba(255,255,255,0.78);
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 8px;
+            border: none;
+        }
+        QHeaderView::section:hover {
+            background: rgba(143,183,255,0.12);
+        }
+        QTableCornerButton::section {
+            background: #10131A;
+            border: none;
+        }
+    """
+
+
+def clean_table_qss() -> str:
+    """Premium table with no visible gridlines."""
+    return """
+        QTableWidget {
+            background: transparent;
+            border: none;
+            gridline-color: transparent;
+            selection-background-color: rgba(143,183,255,0.14);
+            selection-color: rgba(255,255,255,1.00);
+            color: rgba(255,255,255,0.78);
+        }
+        QTableWidget::item {
+            padding: 5px 8px;
+            border: none;
+        }
+        QTableWidget::item:hover {
+            background: rgba(255,255,255,0.035);
+        }
+    """
+
+
+def glass_button_qss(kind: str = "secondary") -> str:
+    """Unified glass button: primary | secondary | ghost."""
+    if kind == "primary":
+        return """
+            QPushButton {
+                background: rgba(143,183,255,0.16);
+                border: 1px solid rgba(143,183,255,0.18);
+                border-radius: 12px;
+                padding: 8px 18px;
+                color: rgba(255,255,255,0.96);
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: rgba(143,183,255,0.24);
+                border: 1px solid rgba(143,183,255,0.28);
+            }
+        """
+    elif kind == "ghost":
+        return """
+            QPushButton {
+                background: transparent;
+                border: 1px solid rgba(255,255,255,0.04);
+                border-radius: 10px;
+                padding: 6px 12px;
+                color: rgba(255,255,255,0.52);
+                font-size: 11px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.08);
+                color: rgba(255,255,255,0.78);
+            }
+        """
+    else:  # secondary
+        return """
+            QPushButton {
+                background: rgba(255,255,255,0.05);
+                border: 1px solid rgba(255,255,255,0.04);
+                border-radius: 12px;
+                padding: 8px 18px;
+                color: rgba(255,255,255,0.78);
+                font-size: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.07);
+                color: rgba(255,255,255,0.92);
+            }
+        """
+
+
+def transparent_scrollbar_qss() -> str:
+    """Thin, minimal scrollbar — clean glass aesthetic."""
+    return """
+        QScrollBar:vertical {
+            width: 4px;
+            background: transparent;
+            border: none;
+            margin: 0;
+        }
+        QScrollBar::handle:vertical {
+            background: rgba(255,255,255,0.08);
+            min-height: 30px;
+            border-radius: 2px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: rgba(255,255,255,0.16);
+        }
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {
+            height: 0;
         }
     """

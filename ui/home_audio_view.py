@@ -759,8 +759,8 @@ class StatusPill(QFrame):
         super().__init__()
         color = _STATUS_COLORS.get(level, _STATUS_COLORS["neutral"])
         self.setStyleSheet(
-            "QFrame { background: rgba(255,255,255,0.04);"
-            "  border: 1px solid rgba(255,255,255,0.07);"
+            "QFrame { background: rgba(255,255,255,0.03);"
+            "  border: 1px solid rgba(255,255,255,0.02);"
             "  border-radius: 10px; padding: 5px 10px; }"
             "QLabel { background: transparent; }")
         lay = QHBoxLayout(self)
@@ -876,12 +876,14 @@ class _HeroVisual(QWidget):
 
 
 class _GlassCard(QFrame):
-    def __init__(self):
+    def __init__(self, name: str = ""):
         super().__init__()
+        if name:
+            self.setObjectName(name)
         self.setStyleSheet(
-            "QFrame { background: rgba(255,255,255,0.035);"
+            "QFrame { background: rgba(255,255,255,0.025);"
             "  border-radius: 14px;"
-            "  border: 1px solid rgba(255,255,255,0.065); }"
+            "  border: 1px solid rgba(255,255,255,0.020); }"
             "QLabel { background: transparent; }")
 
 

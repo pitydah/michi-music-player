@@ -49,7 +49,7 @@ class EqDialog(QDialog):
         title_col.setSpacing(1)
         title_lbl = QLabel("Ecualizador")
         title_lbl.setStyleSheet(
-            "font-size: 17px; font-weight: 750; color: rgba(255,255,255,0.94);"
+            "font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.94);"
             "background: transparent;")
         subtitle = QLabel("Ajuste fino de frecuencias")
         subtitle.setStyleSheet(

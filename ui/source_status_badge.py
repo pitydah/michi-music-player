@@ -66,7 +66,7 @@ class SourceStatusBadge(QPushButton):
                 border-radius: 12px;
                 padding: 4px 14px 4px 10px;
                 font-size: 10.5px;
-                font-weight: 750;
+                font-weight: 700;
                 letter-spacing: 0.35px;
                 min-height: 24px;
                 min-width: 124px;

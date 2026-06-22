@@ -32,7 +32,7 @@ class DiscoverDashboard(QWidget):
         # Title
         title = QLabel("Descubrir")
         title.setStyleSheet(
-            "font-size: 22px; font-weight: 750; color: rgba(255,255,255,0.94);"
+            "font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.94);"
             "background: transparent;")
         layout.addWidget(title)
 
@@ -50,15 +50,15 @@ class DiscoverDashboard(QWidget):
         cards = [
             ("mix_daily", "Mix diario", "Reproducido en los últimos 7 días",
              "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
-             "stop:0 rgba(255,122,0,0.15), stop:1 rgba(232,0,109,0.10))",
+             "stop:0 rgba(143,183,255,0.14), stop:1 rgba(143,183,255,0.08))",
              "sidebar_mix"),
             ("mix_unplayed", "No escuchadas", "Canciones que aún no has reproducido",
              "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
-             "stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0.04))",
+             "stop:0 rgba(255,255,255,0.06), stop:1 rgba(255,255,255,0.03))",
              "sidebar_unplayed"),
             ("mix_popular", "Más escuchadas", "Tus canciones con más reproducciones",
              "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
-             "stop:0 rgba(255,122,0,0.10), stop:1 rgba(232,0,109,0.08))",
+             "stop:0 rgba(143,183,255,0.10), stop:1 rgba(143,183,255,0.06))",
              "sidebar_popular"),
             ("favs", "Favoritos", "Canciones que has marcado como favoritas",
              "qlineargradient(x1:0, y1:0, x2:1, y2:1, "
@@ -101,7 +101,7 @@ class _DiscoverCard(QFrame):
                 border-radius: 16px;
             }}
             QFrame:hover {{
-                border: 1px solid rgba(255,122,0,0.25);
+                border: 1px solid rgba(143,183,255,0.16);
             }}
         """)
 

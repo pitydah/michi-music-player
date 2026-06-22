@@ -63,7 +63,7 @@ _QSS = """
         margin: 1px;
         padding: 0px 8px;
         font-size: 11.5px;
-        font-weight: 720;
+        font-weight: 700;
     }
     QWidget#segmentedViewSwitcher QPushButton:hover {
         background: rgba(255,255,255,0.060);
