@@ -25,8 +25,8 @@ except ImportError:
     HAVE_OPENGL = False
 
 # ── Render mode ──
-_MODE = os.environ.get("ASTRA_COVERFLOW_MODE", "classic_3d")
-_DEBUG = os.environ.get("ASTRA_COVERFLOW_DEBUG", "0") == "1"
+_MODE = os.environ.get("MICHI_COVERFLOW_MODE", "classic_3d")
+_DEBUG = os.environ.get("MICHI_COVERFLOW_DEBUG", "0") == "1"
 
 
 def _clamp(x, a, b):

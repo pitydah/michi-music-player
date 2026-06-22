@@ -72,7 +72,7 @@ class ViewNavigator:
         except Exception:
             logging.getLogger("michi").debug("Central opacity restore failed")
 
-        if os.getenv("ASTRA_UI_DEBUG") == "1":
+        if os.getenv("MICHI_UI_DEBUG") == "1":
             self._debug_state(all_widgets)
 
     def _debug_state(self, widgets):
@@ -82,7 +82,7 @@ class ViewNavigator:
             eff = w.graphicsEffect()
             opacity = eff.opacity() if isinstance(eff, QGraphicsOpacityEffect) else None
             print(
-                f"[ASTRA UI DEBUG] widget[{i}]: "
+                f"[MICHI UI DEBUG] widget[{i}]: "
                 f"enabled={w.isEnabled()} "
                 f"visible={w.isVisible()} "
                 f"effect={type(eff).__name__ if eff else 'None'} "

@@ -246,7 +246,7 @@ class PipelineFactory:
         return pipeline
 
     def _build_dop(self, uri, fmt, route):
-        if not os.environ.get("ASTRA_DOP_EXPERIMENTAL"):
+        if not os.environ.get("MICHI_DOP_EXPERIMENTAL"):
             return None
 
         pipeline = Gst.Pipeline.new("michi-dop")

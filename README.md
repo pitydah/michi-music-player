@@ -409,7 +409,7 @@ michi-music-player/
 | Subsonic / Navidrome / Jellyfin | ✅ Completo |
 | Radio por Internet (HTTP/ICY) | ✅ Completo |
 | Sincronización Android (REST API + UDP discovery) | ✅ Completo |
-| DSD/DFF nativo (PCM + DoP experimental vía `ASTRA_DOP_EXPERIMENTAL=1`) | ✅ Completo |
+| DSD/DFF nativo (PCM + DoP experimental vía `MICHI_DOP_EXPERIMENTAL=1`) | ✅ Completo |
 | Gapless playback + crossfade | ✅ Completo |
 | Mini Player (ventana compacta independiente) | ✅ Completo |
 | Fondo adaptativo (gradiente basado en carátula) | ✅ Completo |

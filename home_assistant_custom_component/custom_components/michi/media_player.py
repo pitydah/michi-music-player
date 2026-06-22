@@ -12,7 +12,7 @@ from .const import CONF_HOST, CONF_PORT, CONF_TOKEN
 
 _LOGGER = logging.getLogger(__name__)
 
-SUPPORT_ASTRA = (
+SUPPORT_MICHI = (
     MediaPlayerEntityFeature.PLAY
     | MediaPlayerEntityFeature.PAUSE
     | MediaPlayerEntityFeature.STOP
@@ -46,7 +46,7 @@ class AstraMediaPlayer(MediaPlayerEntity):
         self._attr_volume_level = 0.7
         self._attr_source_list = ["local"]
         self._attr_source = "local"
-        self._attr_supported_features = SUPPORT_ASTRA
+        self._attr_supported_features = SUPPORT_MICHI
         self._attr_media_image_url = ""
 
     @property
