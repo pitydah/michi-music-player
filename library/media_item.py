@@ -83,12 +83,18 @@ class MediaItem:
             v = row[idx] if len(row) > idx else None
             if v is None or v == "":
                 return default
-            return int(float(v)) if isinstance(v, str) else int(v)
+            try:
+                return int(float(v)) if isinstance(v, str) else int(v)
+            except (ValueError, TypeError):
+                return default
         def _f(idx, default=0.0):
             v = row[idx] if len(row) > idx else None
             if v is None or v == "":
                 return default
-            return float(v)
+            try:
+                return float(v)
+            except (ValueError, TypeError):
+                return default
 
         return cls(
             id=_i(0), filepath=_s(1), filename=_s(2), directory=_s(3),

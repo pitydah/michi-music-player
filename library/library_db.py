@@ -443,7 +443,17 @@ class LibraryDB:
 
     def get_all(self, kind: str | None = None, search: str | None = None,
                  group_by: str = "") -> list[MediaItem]:
-        query = "SELECT * FROM media_items"
+        query = (
+            "SELECT id, filepath, filename, directory, ext, kind, "
+            "size, mtime, duration, channels, sample_rate, bitrate, "
+            "title, artist, album, year, genre, track_number, composer, "
+            "albumartist, disc_number, disc_total, track_total, "
+            "mb_track_id, mb_album_id, mb_albumartist_id, "
+            "bit_depth, bpm, isrc, label, conductor, compilation, "
+            "media_type, encoder, copyright, originaldate, remixer, "
+            "grouping, mood, replaygain_track, replaygain_album, "
+            "replaygain_track_peak, play_count, last_played, rating "
+            "FROM media_items")
         params = []
         conditions = []
         if kind:
