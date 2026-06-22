@@ -35,8 +35,8 @@ class MDNSAdvertiser(QObject):
         self._process.finished.connect(self._on_finished)
         self._process.readyReadStandardError.connect(self._on_error)
         self._process.start(AVAHI_PUBLISH, [
-            "Astra Music Player",
-            "_astra-http._tcp",
+            "Michi Music Player",
+            "_michi-http._tcp",
             str(self._port),
         ])
         self._running = True

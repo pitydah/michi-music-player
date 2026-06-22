@@ -7,7 +7,7 @@ import hashlib
 from library.album_art import find_cover_in_dir
 from audio.audio_chain import get_quality_label
 
-CACHE_DIR = os.path.expanduser("~/.cache/astra/covers")
+CACHE_DIR = os.path.expanduser("~/.cache/michi/covers")
 
 
 class CoverArtService:
@@ -49,7 +49,7 @@ class CoverArtService:
             return ""
         except Exception:
             import logging
-            logging.getLogger("astra").debug(
+            logging.getLogger("michi").debug(
                 "find_cover failed for %s", filepath, exc_info=True)
             return ""
 

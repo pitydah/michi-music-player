@@ -11,7 +11,7 @@ import urllib.request
 
 from recognition.base_recognizer import BaseRecognizer
 
-logger = logging.getLogger("astra.recognition.audd")
+logger = logging.getLogger("michi.recognition.audd")
 
 AUDD_API_URL = "https://api.audd.io/"
 

@@ -1,4 +1,4 @@
-# Astra Music Player — Roadmap
+# Michi Music Player — Roadmap
 
 ## v0.1.0-alpha (Current)
 

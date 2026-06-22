@@ -78,5 +78,5 @@ class AudioOutputController:
                 results.append((name, device_id or name))
             return results
         except Exception:
-            logging.getLogger("astra").debug("Audio device detection failed")
+            logging.getLogger("michi").debug("Audio device detection failed")
             return []

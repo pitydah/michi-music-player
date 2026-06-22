@@ -404,7 +404,7 @@ class PlaylistHubWidget(QWidget):
                 return load_cover_pixmap(filepath, size)
             except Exception:
                 import logging
-            logging.getLogger("astra").debug("Playlist cover loading failed")
+            logging.getLogger("michi").debug("Playlist cover loading failed")
         pix = QPixmap(size, size)
         pix.fill(QColor(255, 255, 255, 12))
         return pix

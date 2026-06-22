@@ -3,7 +3,7 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont, QPen, QLinearGradient
 
-COVER_DIR = os.path.expanduser("~/.local/share/astra-music-player/playlist-covers/")
+COVER_DIR = os.path.expanduser("~/.local/share/michi-music-player/playlist-covers/")
 
 
 def _ensure_dir():
@@ -48,7 +48,7 @@ def remove_custom_cover(playlist_id: int):
         if os.path.isfile(path) and os.path.commonpath([path, cover_real]) == cover_real:
             os.remove(path)
         elif os.path.isfile(path):
-            logging.getLogger("astra").warning("remove_custom_cover: path outside COVER_DIR — skipped %s", path)
+            logging.getLogger("michi").warning("remove_custom_cover: path outside COVER_DIR — skipped %s", path)
 
 
 def generate_mosaic(tracks: list, size: int = 180) -> QPixmap | None:

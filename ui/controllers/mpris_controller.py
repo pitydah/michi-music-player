@@ -16,7 +16,7 @@ class MPRISController:
             self._adapter = MPRISAdapter(self._win)
             self._adapter.player.set_engine(self._win._ctx.player)
         except Exception:
-            logging.getLogger("astra").debug("MPRIS integration not available (no dbus)")
+            logging.getLogger("michi").debug("MPRIS integration not available (no dbus)")
 
     @property
     def adapter(self):

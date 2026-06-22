@@ -1,4 +1,4 @@
-# Astra Music Player
+# Michi Music Player
 
 Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · 206 tests · ruff 0
 
@@ -62,44 +62,44 @@ Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · 206 tes
 
 ### Arch Linux / CachyOS / Manjaro
 ```bash
-git clone https://github.com/pitydah/astra-music-player.git
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player.git
+cd michi-music-player
 ./scripts/install_arch.sh
 source .venv/bin/activate
-astra-music-player
+michi-music-player
 ```
 
 ### Ubuntu / Debian / Linux Mint
 ```bash
-git clone https://github.com/pitydah/astra-music-player.git
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player.git
+cd michi-music-player
 ./scripts/install_debian_ubuntu.sh
 source .venv/bin/activate
-astra-music-player
+michi-music-player
 ```
 
 ### Fedora
 ```bash
-git clone https://github.com/pitydah/astra-music-player.git
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player.git
+cd michi-music-player
 ./scripts/install_fedora.sh
 source .venv/bin/activate
-astra-music-player
+michi-music-player
 ```
 
 ### openSUSE (Tumbleweed / Leap)
 ```bash
-git clone https://github.com/pitydah/astra-music-player.git
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player.git
+cd michi-music-player
 ./scripts/install_opensuse.sh
 source .venv/bin/activate
-astra-music-player
+michi-music-player
 ```
 
 ### Ejecutar desde fuente (sin instalar al sistema)
 ```bash
-git clone https://github.com/pitydah/astra-music-player.git
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player.git
+cd michi-music-player
 ./scripts/run_from_source.sh
 ```
 
@@ -170,10 +170,10 @@ source .venv/bin/activate.fish
 ## Instalación desde fuente
 
 ```bash
-git clone https://github.com/pitydah/astra-music-player
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player
+cd michi-music-player
 pip install .
-astra-music-player
+michi-music-player
 ```
 
 | Atajo | Acción |
@@ -189,14 +189,14 @@ astra-music-player
 ## Estructura del proyecto
 
 ```
-astra-music-player/
+michi-music-player/
 ├── main.py                          # Entry point
 ├── LICENSE                           # GPL-3.0-or-later
 ├── NOTICE                            # Miro Player origin credit
 ├── pyproject.toml                    # Package config
 ├── requirements.txt                  # Pip dependencies
 ├── install_arch.sh / install_ubuntu.sh
-├── data/astra-music-player.desktop
+├── data/michi-music-player.desktop
 │
 ├── audio/                            # Motor de audio (24 archivos)
 │   ├── player.py                     # GStreamerEngine — playback central
@@ -268,7 +268,7 @@ astra-music-player/
 │   │   ├── discovery.py              # avahi-browse — Snapclient discovery
 │   │   ├── group_manager.py          # Zonas CRUD en QSettings
 │   │   └── receivers.py              # ReceiverWizard (RPi/ESP32/Docker)
-│   ├── astra_api/                    # Astra HTTP API
+│   ├── http_api/                   # Astra HTTP API
 │   │   ├── http_api.py               # REST server (puerto 8124)
 │   │   └── mdns_advertiser.py        # avahi-publish-service
 │   ├── artist_metadata/              # Enriquecimiento de metadatos externos
@@ -438,17 +438,17 @@ astra-music-player/
 ## Instalación desde fuente
 
 ```bash
-git clone https://github.com/pitydah/astra-music-player
-cd astra-music-player
+git clone https://github.com/pitydah/michi-music-player
+cd michi-music-player
 pip install .
-astra-music-player
+michi-music-player
 ```
 
 ### Flatpak
 
 ```bash
-flatpak-builder --user --install build-dir data/com.astra.MusicPlayer.yml
-flatpak run com.astra.MusicPlayer
+flatpak-builder --user --install build-dir data/com.michi.MusicPlayer.yml
+flatpak run com.michi.MusicPlayer
 ```
 
 ## Licencia

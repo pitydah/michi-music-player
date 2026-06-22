@@ -376,7 +376,7 @@ class NowPlayingBar(QWidget):
             "}")
         text_layout.addWidget(self._artist_lbl)
 
-        self._meta_lbl = QLabel("Astra Music Player")
+        self._meta_lbl = QLabel("Michi Music Player")
         self._meta_lbl.setObjectName("nowPlayingMeta")
         self._meta_lbl.setStyleSheet(
             "QLabel#nowPlayingMeta {"
@@ -589,7 +589,7 @@ class NowPlayingBar(QWidget):
     def set_track(self, title: str, artist: str, cover_path: str = ""):
         self._raw_title = title or "Sin reproducción"
         self._raw_artist = artist or "Añade música"
-        self._raw_meta = "Astra Music Player"
+        self._raw_meta = "Michi Music Player"
 
         if " · " in self._raw_artist:
             parts = self._raw_artist.split(" · ")

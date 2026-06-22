@@ -11,7 +11,7 @@ import sqlite3
 import logging
 import contextlib
 
-logger = logging.getLogger("astra.library")
+logger = logging.getLogger("michi.library")
 
 
 # ── Re-exports from split modules ──
@@ -19,7 +19,7 @@ from library.metadata_extractor import AUDIO_EXTS, ALL_EXTS, extract_metadata, e
 from library.media_item import MediaItem, media_kind  # noqa: E402
 from library.devices import get_mounted_devices, scan_device_music  # noqa: E402, F401
 
-DB_PATH = os.path.expanduser("~/.local/share/astra-music-player/library.db")
+DB_PATH = os.path.expanduser("~/.local/share/michi-music-player/library.db")
 
 
 # ── Schema ──
@@ -297,7 +297,7 @@ class LibraryDB:
                 self._conn.commit()
             except Exception:
                 import logging
-                logging.getLogger("astra").debug("Failed to cache embedded cover")
+                logging.getLogger("michi").debug("Failed to cache embedded cover")
 
         try:
             cur = self._conn.execute(
@@ -333,7 +333,7 @@ class LibraryDB:
             return cur.lastrowid
         except Exception:
             import logging
-            logging.getLogger("astra").debug("Scanner: commit after add_file failed")
+            logging.getLogger("michi").debug("Scanner: commit after add_file failed")
 
     def _insert_basic(self, filepath, fname, dname, ext, kind, stat):
         """Insert basic file info (no metadata) — fast, non-blocking."""

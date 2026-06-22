@@ -1,14 +1,14 @@
-# AGENTS.md — AI Assistant Context for Astra Music Player
+# AGENTS.md — AI Assistant Context for Michi Music Player
 
 ## 1. Project Identity
 
-**Astra Music Player** — Audiophile music player for Linux desktop (KDE Plasma / Qt 6).
+**Michi Music Player** — Audiophile music player for Linux desktop (KDE Plasma / Qt 6).
 Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shazamio, PyAudio.
 
 | Field | Value |
 |-------|-------|
 | License | GPL-3.0-or-later (derived from Miro Player — see NOTICE) |
-| Repository | https://github.com/pitydah/astra-music-player |
+| Repository | https://github.com/pitydah/michi-music-player |
 | Python | 3.11+ |
 | UI toolkit | PySide6 (Qt 6) — native widgets only, no QML, no Electron |
 | Audio engine | GStreamer 1.28 (playbin, audioiirfilter, equalizer-nbands, rgvolume, tee, appsrc) |
@@ -20,7 +20,7 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 ## 2. Directory Structure
 
 ```
-astra-music-player/
+michi-music-player/
 ├── audio/          → Motor GStreamer: player.py, player_service.py,
 │                     pipeline_factory.py, dac_manager.py, eq_*.py, replaygain.py,
 │                     quality_classifier.py, dsp_state.py, output_profiles.py (9 perfiles)

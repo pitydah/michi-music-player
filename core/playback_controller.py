@@ -152,7 +152,7 @@ class PlaybackController:
                 album=album, duration=dur)
 
         self._win._ctx.notify_track(name, artist)
-        self._win._ctx.set_window_title(f"Astra Music Player — {name}")
+        self._win._ctx.set_window_title(f"Michi Music Player — {name}")
 
     def play_file(self, filepath: str, add_to_queue: bool = False):
         track = TrackRef(uri=filepath, title=os.path.basename(filepath))
@@ -169,7 +169,7 @@ class PlaybackController:
         self._win._ctx.playback.stop()
         self._win._ctx.player_bar.reset()
         self._win._ctx.bg_theme.reset()
-        self._win._ctx.set_window_title("Astra Music Player")
+        self._win._ctx.set_window_title("Michi Music Player")
 
     def open_eq(self):
         from ui.eq_panel import EqDialog

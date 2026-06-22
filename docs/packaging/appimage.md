@@ -1,8 +1,8 @@
-# AppImage packaging for Astra Music Player
+# AppImage packaging for Michi Music Player
 
 ## Status
 
-⚠️ Not recommended for Astra Music Player
+⚠️ Not recommended for Michi Music Player
 
 ## Limitations with AppImage
 

@@ -2,7 +2,7 @@
 import sqlite3
 import logging
 
-logger = logging.getLogger("astra.indexer.batch_writer")
+logger = logging.getLogger("michi.indexer.batch_writer")
 
 BATCH_COLUMNS = [
     "filepath", "filename", "directory", "ext", "kind", "size", "mtime",

@@ -170,10 +170,10 @@ class MainWindow(QMainWindow):
     def __init__(self):
         from time import perf_counter
         _t0 = perf_counter()
-        _log = logging.getLogger("astra.startup")
+        _log = logging.getLogger("michi.startup")
 
         super().__init__()
-        self._safe_mode = os.environ.get("ASTRA_SAFE_MODE") == "1"
+        self._safe_mode = os.environ.get("MICHI_SAFE_MODE") == "1"
         self._view_cache: dict[str, QWidget] = {}
         from core.shutdown_manager import ShutdownManager
         self._shutdown = ShutdownManager()
@@ -200,7 +200,7 @@ class MainWindow(QMainWindow):
 
     def _init_state(self):
         """Simple attribute declarations — no imports or allocations."""
-        self.setWindowTitle("Astra Music Player")
+        self.setWindowTitle("Michi Music Player")
         self.resize(1100, 700)
         self.setMinimumSize(800, 500)
         self.setAcceptDrops(True)
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
         self._audio_capture = None
         self._snap_discovery = None
         self._group_mgr = None
-        self._astra_api = None
+        self._michi_api = None
         self._mdns = None
         self._local_media = None
         self._detection = None
@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
     def _init_optional_services(self):
         """Music identifier, HomeAudioView, Snapcast, API, mDNS, enrichment, MPRIS."""
         import core.settings_manager as sm
-        _log = logging.getLogger("astra.setup")
+        _log = logging.getLogger("michi.setup")
 
         # Music Identifier
         self._features.register("recognition", enabled=self._safe_mode is False)
@@ -377,13 +377,13 @@ class MainWindow(QMainWindow):
                 self._group_mgr = svc
 
         # Astra API
-        self._features.register("astra_api",
-            enabled=sm.get_bool("home_audio/astra_api_enabled") and not self._safe_mode)
-        if self._features.is_enabled("astra_api"):
-            self._astra_api = self._safe_init("astra_api",
-                lambda: self._make_astra_api())
+        self._features.register("michi_api",
+            enabled=sm.get_bool("home_audio/michi_api_enabled") and not self._safe_mode)
+        if self._features.is_enabled("michi_api"):
+            self._michi_api = self._safe_init("michi_api",
+                lambda: self._make_michi_api())
         else:
-            self._astra_api = None
+            self._michi_api = None
 
         # mDNS
         self._features.register("mdns",
@@ -459,7 +459,7 @@ class MainWindow(QMainWindow):
             self._features.mark_available(name)
             return svc
         except Exception as e:
-            _log = logging.getLogger("astra.setup")
+            _log = logging.getLogger("michi.setup")
             _log.warning("%s init failed — disabled: %s", name, e)
             self._features.mark_error(name, str(e))
             return None
@@ -502,12 +502,12 @@ class MainWindow(QMainWindow):
         svc.groups_changed.connect(self._on_groups_changed)
         return svc
 
-    def _make_astra_api(self):
+    def _make_michi_api(self):
         from core.state_store import AppStateStore
-        from integrations.astra_api.bridge import AstraApiBridge
-        from integrations.astra_api.http_api import AstraHttpApi
+        from integrations.astra_api.bridge import MichiApiBridge
+        from integrations.astra_api.http_api import MichiHttpApi
         store = AppStateStore(self)
-        bridge = AstraApiBridge(self)
+        bridge = MichiApiBridge(self)
         # Wire bridge signals to window handlers
         bridge.play_requested.connect(lambda: self._playback.play_or_resume())
         bridge.pause_requested.connect(lambda: self._playback.pause())
@@ -520,7 +520,7 @@ class MainWindow(QMainWindow):
         bridge.library_play_requested.connect(self._on_api_library_play)
         self._state_store = store
         self._api_bridge = bridge
-        svc = AstraHttpApi(self)
+        svc = MichiHttpApi(self)
         svc.configure()
         svc.set_store_and_bridge(store, bridge)
         # Update state store on player changes
@@ -528,7 +528,7 @@ class MainWindow(QMainWindow):
             lambda s: store.update_player(state=self._state_to_str(s)))
         self._playback.volume_changed.connect(
             lambda v: store.update_player(volume=v))
-        self._shutdown.register("astra_api", lambda: svc.stop())
+        self._shutdown.register("michi_api", lambda: svc.stop())
         return svc
 
     def _make_mdns(self):
@@ -708,7 +708,7 @@ class MainWindow(QMainWindow):
 
     def _show_about(self):
         QMessageBox.about(self, "Acerca de",
-            "<h2>Astra Music Player</h2><p>Sincronización Android, ecualizador paramétrico, "
+            "<h2>Michi Music Player</h2><p>Sincronización Android, ecualizador paramétrico, "
             "CoverFlow 3D, streaming Navidrome/Jellyfin.</p>"
             "<p>Python 3 · PySide6 · GStreamer</p>")
 
@@ -2667,15 +2667,15 @@ class MainWindow(QMainWindow):
         from core.settings_manager import get_int
         if enable:
             # Start Astra API
-            if not self._astra_api.is_running:
-                self._astra_api.start()
+            if not self._michi_api.is_running:
+                self._michi_api.start()
             # Start local media server
             if not self._local_media.is_running:
                 self._local_media.configure(get_int("home_audio/local_media_server_port"))
                 self._local_media.start()
             # Start mDNS
             if not self._mdns.is_running and self._mdns.is_available:
-                self._mdns.configure(port=self._astra_api.port)
+                self._mdns.configure(port=self._michi_api.port)
                 self._mdns.start()
 
             if not self._snapserver.is_binary_available():
@@ -2698,7 +2698,7 @@ class MainWindow(QMainWindow):
             self._snapserver.stop()
             self._audio_capture.remove_sink()
             self._mdns.stop()
-            self._astra_api.stop()
+            self._michi_api.stop()
             self._local_media.stop()
 
     def _on_home_audio_settings(self):
@@ -2802,8 +2802,8 @@ class MainWindow(QMainWindow):
         groups = self._group_mgr.groups() if hasattr(
             self, '_group_mgr') else []
 
-        api_running = self._astra_api.is_running if hasattr(
-            self, '_astra_api') else False
+        api_running = self._michi_api.is_running if hasattr(
+            self, '_michi_api') else False
         mdns_running = self._mdns.is_running if hasattr(
             self, '_mdns') else False
         snap_running = self._snapserver.is_running if hasattr(

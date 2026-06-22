@@ -3,7 +3,7 @@ import logging
 
 from PySide6.QtWidgets import QMenu
 
-logger = logging.getLogger("astra.cast.controller")
+logger = logging.getLogger("michi.cast.controller")
 
 
 class CastController:

@@ -59,7 +59,7 @@ class ViewNavigator:
                     w.setGraphicsEffect(None)
                 w.setEnabled(True)
             except Exception:
-                logging.getLogger("astra").debug("Opacity restore failed on a child widget")
+                logging.getLogger("michi").debug("Opacity restore failed on a child widget")
 
         try:
             cw = self._content.parentWidget()
@@ -70,7 +70,7 @@ class ViewNavigator:
                     cw.setGraphicsEffect(None)
                 cw.setEnabled(True)
         except Exception:
-            logging.getLogger("astra").debug("Central opacity restore failed")
+            logging.getLogger("michi").debug("Central opacity restore failed")
 
         if os.getenv("ASTRA_UI_DEBUG") == "1":
             self._debug_state(all_widgets)

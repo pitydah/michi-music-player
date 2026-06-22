@@ -1,4 +1,4 @@
-# Astra Music Player — Architecture
+# Michi Music Player — Architecture
 
 ## Overview
 
@@ -54,11 +54,11 @@ User clicks play → window._play_file()
 
 | Data | Storage | Path |
 |------|---------|------|
-| Library | SQLite | `~/.local/share/astra-music-player/library.db` |
+| Library | SQLite | `~/.local/share/michi-music-player/library.db` |
 | Playlists | SQLite | (same DB) |
 | Queue | SQLite | (same DB) |
-| Radio stations | JSON | `~/.local/share/astra-music-player/radio_stations.json` |
-| Subsonic servers | JSON | `~/.local/share/astra-music-player/subsonic_servers.json` |
-| Transmit devices | JSON | `~/.local/share/astra-music-player/transmit_devices.json` |
+| Radio stations | JSON | `~/.local/share/michi-music-player/radio_stations.json` |
+| Subsonic servers | JSON | `~/.local/share/michi-music-player/subsonic_servers.json` |
+| Transmit devices | JSON | `~/.local/share/michi-music-player/transmit_devices.json` |
 | Settings | QSettings | `~/.config/Astra/MusicPlayer.conf` |
 | Album art cache | SQLite | (same DB) |

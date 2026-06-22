@@ -20,7 +20,7 @@ from library.metadata_extractor import ALL_EXTS, extract_metadata, extract_metad
 from library.media_item import media_kind
 from library.album_key import make_album_key, make_artist_key
 
-logger = logging.getLogger("astra.indexer")
+logger = logging.getLogger("michi.indexer")
 
 
 class Indexer(QObject):

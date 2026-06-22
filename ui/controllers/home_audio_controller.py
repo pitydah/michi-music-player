@@ -3,7 +3,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-logger = logging.getLogger("astra.home_audio.controller")
+logger = logging.getLogger("michi.home_audio.controller")
 
 
 class HomeAudioController(QObject):

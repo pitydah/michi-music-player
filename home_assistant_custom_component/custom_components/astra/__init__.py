@@ -1,4 +1,4 @@
-"""Astra Music Player integration — async setup."""
+"""Michi Music Player integration — async setup."""
 import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry

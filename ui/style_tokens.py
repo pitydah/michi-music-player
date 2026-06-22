@@ -1,4 +1,4 @@
-"""Style Tokens — centralized visual constants for Astra Music Player."""
+"""Style Tokens — centralized visual constants for Michi Music Player."""
 
 COLORS = {
     "app_bg": "#070A11",

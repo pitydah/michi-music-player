@@ -63,7 +63,7 @@ class PlayerService(QObject):
             if title:
                 self.track_changed.emit(title, artist)
             import logging
-            logging.getLogger("astra.service").info(
+            logging.getLogger("michi.service").info(
                 "Retrying stream: %s", url)
 
     # ── Core playback ──

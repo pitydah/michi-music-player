@@ -13,7 +13,7 @@ import urllib.parse
 
 from recognition.base_recognizer import BaseRecognizer
 
-logger = logging.getLogger("astra.recognition.acoustid")
+logger = logging.getLogger("michi.recognition.acoustid")
 
 ACOUSTID_API_URL = "https://api.acoustid.org/v2/lookup"
 ACOUSTID_CLIENT_KEY = "8XaBELgH"  # Default demo key

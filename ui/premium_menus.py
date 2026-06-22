@@ -1,4 +1,4 @@
-"""Premium menu QSS — reusable dark/glass menu styling for Astra Music Player."""
+"""Premium menu QSS — reusable dark/glass menu styling for Michi Music Player."""
 
 
 def premium_menu_qss() -> str:

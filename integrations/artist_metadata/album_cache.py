@@ -7,7 +7,7 @@ import time
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-CACHE_DIR = os.path.expanduser("~/.cache/astra/artist_metadata/albums")
+CACHE_DIR = os.path.expanduser("~/.cache/michi/artist_metadata/albums")
 DB_PATH = os.path.join(CACHE_DIR, "index.sqlite")
 
 # Full column set — everything the cache knows about

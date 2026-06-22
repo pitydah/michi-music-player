@@ -1,8 +1,8 @@
-id: com.astra.MusicPlayer
+id: com.michi.MusicPlayer
 runtime: org.kde.Platform
 runtime-version: "6.10"
 sdk: org.kde.Sdk
-command: astra-music-player
+command: michi-music-player
 finish-args:
   - --socket=wayland
   - --socket=fallback-x11
@@ -16,7 +16,7 @@ finish-args:
   - --talk-name=org.kde.StatusNotifierWatcher
   - --system-talk-name=org.freedesktop.UPower
 modules:
-  - name: astra-music-player
+  - name: michi-music-player
     buildsystem: simple
     build-commands:
       - pip install --no-deps --prefix=${FLATPAK_DEST} .

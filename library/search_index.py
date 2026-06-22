@@ -2,7 +2,7 @@
 import sqlite3
 import logging
 
-logger = logging.getLogger("astra.search_index")
+logger = logging.getLogger("michi.search_index")
 
 # Columns to include in the FTS5 index
 FTS_COLUMNS = ["title", "artist", "album", "albumartist",

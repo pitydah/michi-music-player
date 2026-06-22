@@ -138,7 +138,7 @@ def extract_artwork(filepath: str, dest_path: str) -> bool:
             return True
     except Exception:
         import logging
-    logging.getLogger("astra").debug("Artwork extraction failed")
+    logging.getLogger("michi").debug("Artwork extraction failed")
     return False
 
 

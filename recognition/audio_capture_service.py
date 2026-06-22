@@ -10,7 +10,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-logger = logging.getLogger("astra.recognition.capture")
+logger = logging.getLogger("michi.recognition.capture")
 
 SAMPLE_RATE = 22050
 CHANNELS = 1

@@ -1,6 +1,6 @@
-"""Centralized logger for Astra Music Player.
+"""Centralized logger for Michi Music Player.
 
-Logs to ~/.local/share/astra-music-player/astra.log
+Logs to ~/.local/share/michi-music-player/michi.log
 Console output only when ASTRA_DEBUG=1 or --debug flag.
 """
 
@@ -8,8 +8,8 @@ import logging
 import os
 import sys
 
-LOG_DIR = os.path.expanduser("~/.local/share/astra-music-player")
-LOG_FILE = os.path.join(LOG_DIR, "astra.log")
+LOG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
+LOG_FILE = os.path.join(LOG_DIR, "michi.log")
 
 
 def _is_debug() -> bool:
@@ -19,7 +19,7 @@ def _is_debug() -> bool:
 def setup_logging():
     os.makedirs(LOG_DIR, exist_ok=True)
 
-    logger = logging.getLogger("astra")
+    logger = logging.getLogger("michi")
     logger.setLevel(logging.DEBUG if _is_debug() else logging.INFO)
 
     if logger.handlers:
@@ -46,7 +46,7 @@ def setup_logging():
 
 
 def get_logger(name: str) -> logging.Logger:
-    return logging.getLogger(f"astra.{name}")
+    return logging.getLogger(f"michi.{name}")
 
 
 # Auto-setup on import

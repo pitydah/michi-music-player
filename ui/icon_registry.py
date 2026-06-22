@@ -1,4 +1,4 @@
-"""Icon Registry — centralized icon specification for Astra Music Player."""
+"""Icon Registry — centralized icon specification for Michi Music Player."""
 from dataclasses import dataclass
 
 

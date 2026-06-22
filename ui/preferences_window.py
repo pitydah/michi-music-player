@@ -73,7 +73,7 @@ class PreferencesWindow(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Preferencias — Astra Music Player")
+        self.setWindowTitle("Preferencias — Michi Music Player")
         self.resize(1020, 700)
         self.setMinimumSize(900, 600)
         self.setModal(True)
@@ -334,7 +334,7 @@ class PreferencesWindow(QDialog):
 
     def _do_export(self):
         from PySide6.QtWidgets import QFileDialog
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar configuración", "astra_config.json", "JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar configuración", "michi_config.json", "JSON (*.json)")
         if path:
             sm.export_to_file(path)
 

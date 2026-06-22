@@ -2,7 +2,7 @@
 
 Sizes: thumb (96), medium (260), large (512).
 Key: SHA256(filepath + mtime + size).
-Cache dir: ~/.cache/astra/covers/
+Cache dir: ~/.cache/michi/covers/
 """
 
 import hashlib
@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 
 
-CACHE_DIR = os.path.expanduser("~/.cache/astra/covers")
+CACHE_DIR = os.path.expanduser("~/.cache/michi/covers")
 SIZES = {"thumb": 96, "medium": 260, "large": 512}
 
 

@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 BASE_URL = "https://musicbrainz.org/ws/2"
-USER_AGENT = "AstraMusicPlayer/0.1 (https://github.com/pitydah/astra-music-player)"
+USER_AGENT = "MichiMusicPlayer/0.1 (https://github.com/pitydah/michi-music-player)"
 
 
 def _parse_mb_artist(raw: dict) -> dict:

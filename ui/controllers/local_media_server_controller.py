@@ -3,7 +3,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-logger = logging.getLogger("astra.local_media.controller")
+logger = logging.getLogger("michi.local_media.controller")
 
 
 class LocalMediaServerController(QObject):

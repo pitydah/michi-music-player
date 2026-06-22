@@ -56,7 +56,7 @@ class LrcLibClient:
             url = f"{self.BASE}/get?{urllib.parse.urlencode(params)}"
 
             req = urllib.request.Request(url)
-            req.add_header("User-Agent", "AstraMusicPlayer/1.0 (lyrics)")
+            req.add_header("User-Agent", "MichiMusicPlayer/1.0 (lyrics)")
             req.add_header("Accept", "application/json")
 
             with urllib.request.urlopen(req, timeout=10) as resp:
@@ -135,7 +135,7 @@ class LrcLibClient:
         try:
             url = f"{self.BASE}/search?q={urllib.parse.quote(query)}"
             req = urllib.request.Request(url)
-            req.add_header("User-Agent", "AstraMusicPlayer/1.0 (lyrics)")
+            req.add_header("User-Agent", "MichiMusicPlayer/1.0 (lyrics)")
             req.add_header("Accept", "application/json")
 
             with urllib.request.urlopen(req, timeout=10) as resp:

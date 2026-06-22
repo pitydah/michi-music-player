@@ -83,7 +83,7 @@ def _read_artwork(f, kind: str) -> tuple[bool, str, bytes | None]:
                 return True, fmt, bytes(covr[0])
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
     return False, "", None
 
 
@@ -110,7 +110,7 @@ def _read_id3_tags(f, desc: TrackTags):
             desc.comment = str(comms[0])
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
 
     # USLT → lyrics
     try:
@@ -119,7 +119,7 @@ def _read_id3_tags(f, desc: TrackTags):
             desc.lyrics = str(uslts[0])
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
 
     # TXXX frames
     _txxx_map = {
@@ -139,7 +139,7 @@ def _read_id3_tags(f, desc: TrackTags):
                     setattr(desc, mapped, str(tags[key]))
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
 
     # Track number — may contain "/N"
     if desc.tracknumber and "/" in desc.tracknumber:
@@ -203,7 +203,7 @@ def _read_mp4_tags(f, desc: TrackTags):
             desc.isrc = str(isrc[0])
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
 
     # MusicBrainz via Xtra
     try:
@@ -212,14 +212,14 @@ def _read_mp4_tags(f, desc: TrackTags):
             desc.musicbrainz_trackid = str(mb_track[0])
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
     try:
         mb_album = tags.get("----:com.apple.iTunes:MusicBrainz Album Id")
         if mb_album:
             desc.musicbrainz_albumid = str(mb_album[0])
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Non-critical operation failed")
+        logging.getLogger("michi").debug("Non-critical operation failed")
 
 
 def read_tags(filepath: str) -> TrackTags:

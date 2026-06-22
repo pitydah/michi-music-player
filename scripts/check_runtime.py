@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime checker — verifies critical and optional dependencies for Astra Music Player."""
+"""Runtime checker — verifies critical and optional dependencies for Michi Music Player."""
 import sys
 import os
 import shutil
@@ -146,7 +146,7 @@ def check():
     repo_root = pathlib.Path(__file__).parent.parent
     icons_dir = repo_root / "icons"
     data_dir = repo_root / "data"
-    desktop = data_dir / "astra-music-player.desktop"
+    desktop = data_dir / "michi-music-player.desktop"
 
     if icons_dir.exists() and list(icons_dir.rglob("*.svg")):
         ok(f"icons/ ({len(list(icons_dir.rglob('*.svg')))} SVGs)")
@@ -155,12 +155,12 @@ def check():
         errors += 1
 
     if desktop.exists():
-        ok("data/astra-music-player.desktop")
+        ok("data/michi-music-player.desktop")
     else:
         warn("Desktop file no encontrado", critical=False)
 
     print("\n=== App entry point ===")
-    # Test astra-music-player entry point
+    # Test michi-music-player entry point
     if importlib.util.find_spec("main"):
         ok("main entry point")
     else:

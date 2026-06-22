@@ -1,4 +1,4 @@
-"""Toast service — unified toast notification API for Astra Music Player."""
+"""Toast service — unified toast notification API for Michi Music Player."""
 from ui.toast_notification import ToastNotification
 
 

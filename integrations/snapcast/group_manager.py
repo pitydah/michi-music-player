@@ -12,7 +12,7 @@ class GroupManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._groups = []
-        self._settings = QSettings("Astra", "MusicPlayer")
+        self._settings = QSettings("Michi", "MusicPlayer")
         self._load()
 
     def groups(self) -> list[dict]:

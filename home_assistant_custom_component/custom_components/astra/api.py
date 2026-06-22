@@ -9,7 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class AstraApiClient:
-    """Async client for Astra Music Player HTTP API."""
+    """Async client for Michi Music Player HTTP API."""
 
     def __init__(self, host: str, port: int, token: str):
         self._host = host

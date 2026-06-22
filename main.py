@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Astra Music Player — Plasma-native music player with KWin blur, Apple Music layout.
+"""Michi Music Player — Plasma-native music player with KWin blur, Apple Music layout.
 
 Self-contained. Python 3 + PySide6 + Qt Multimedia (GStreamer).
 """
@@ -23,7 +23,7 @@ def main():
     setup_logging()
 
     app = QApplication(sys.argv)
-    app.setApplicationName("AstraMusicPlayer")
+    app.setApplicationName("MichiMusicPlayer")
     app.setStyle("Fusion")
     app.setPalette(build_plasma_palette())
     app.setStyleSheet(PLASMA_QSS)
@@ -36,7 +36,7 @@ def main():
     app.setFont(font)
 
     import logging
-    _log = logging.getLogger("astra.main")
+    _log = logging.getLogger("michi.main")
     try:
         window = MainWindow()
         window.show()
@@ -44,9 +44,9 @@ def main():
         _log.exception("Fatal error creating MainWindow: %s", e)
         from PySide6.QtWidgets import QMessageBox
         QMessageBox.critical(
-            None, "Astra Music Player — Error",
+            None, "Michi Music Player — Error",
             f"Error fatal al iniciar:\n\n{e}\n\n"
-            f"Revisa el log en ~/.cache/astra/logs/astra.log")
+            f"Revisa el log en ~/.cache/michi/logs/astra.log")
         sys.exit(1)
 
     # Initialize theme manager

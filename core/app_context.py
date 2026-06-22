@@ -1,4 +1,4 @@
-"""AppContext — dependency injection container for Astra Music Player controllers."""
+"""AppContext — dependency injection container for Michi Music Player controllers."""
 from __future__ import annotations
 
 

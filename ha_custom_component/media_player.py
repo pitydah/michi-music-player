@@ -1,4 +1,4 @@
-"""Astra Music Player — Home Assistant media_player entity."""
+"""Michi Music Player — Home Assistant media_player entity."""
 import logging
 import aiohttp
 from homeassistant.components.media_player import (
@@ -37,8 +37,8 @@ class AstraMediaPlayer(MediaPlayerEntity):
         self._host = host
         self._port = port
         self._token = token
-        self._attr_name = "Astra Music Player"
-        self._attr_unique_id = f"astra_{host}_{port}"
+        self._attr_name = "Michi Music Player"
+        self._attr_unique_id = f"michi_{host}_{port}"
         self._attr_state = MediaPlayerState.IDLE
         self._attr_media_title = ""
         self._attr_media_artist = ""

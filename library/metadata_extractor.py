@@ -78,7 +78,7 @@ def extract_metadata(filepath: str) -> dict:
             info["channels"] = s.get_channels() or 0
             info["bitrate"] = s.get_bitrate() or 0
     except Exception as e:
-        logging.getLogger("astra").debug(f"Metadata extraction failed for {filepath}: {e}")
+        logging.getLogger("michi").debug(f"Metadata extraction failed for {filepath}: {e}")
     return info
 
 
@@ -117,7 +117,7 @@ def extract_metadata_full(filepath: str) -> dict:
                 if genre_val and genre_val.startswith("(") and ")" in genre_val:
                     genre_val = genre_val.split(")", 1)[-1].strip()
             except Exception:
-                logging.getLogger("astra").debug("Genre parsing failed, using raw value")
+                logging.getLogger("michi").debug("Genre parsing failed, using raw value")
             info["genre"] = genre_val
             year_val = get_tag(mf.tags, "date", "year", "TYER", "©day", "TDRC")
             try:
@@ -189,7 +189,7 @@ def extract_metadata_full(filepath: str) -> dict:
                         info["cover_mime"] = cover.mime if hasattr(cover, 'mime') else "image/jpeg"
                         info["cover_data"] = cover.data if hasattr(cover, 'data') else b""
                 except Exception:
-                    logging.getLogger("astra").debug("Cover art APIC extraction failed")
+                    logging.getLogger("michi").debug("Cover art APIC extraction failed")
                 break
         if not info["cover_data"]:
             for key in (b'APIC:', 'APIC:'):
@@ -200,7 +200,7 @@ def extract_metadata_full(filepath: str) -> dict:
                         info["cover_data"] = getattr(val, 'data', b'')
                         break
                 except Exception:
-                    logging.getLogger("astra").debug("Cover art key extraction failed")
+                    logging.getLogger("michi").debug("Cover art key extraction failed")
         if not info["cover_data"] and hasattr(mf, 'pictures'):
             pics = getattr(mf, 'pictures', [])
             if pics:
@@ -209,7 +209,7 @@ def extract_metadata_full(filepath: str) -> dict:
                     info["cover_mime"] = getattr(p, 'mime', 'image/jpeg')
                     info["cover_data"] = getattr(p, 'data', b'')
                 except Exception:
-                    logging.getLogger("astra").debug("Cover art picture extraction failed")
+                    logging.getLogger("michi").debug("Cover art picture extraction failed")
     except Exception as e:
-        logging.getLogger("astra").debug(f"Full metadata extraction failed for {filepath}: {e}")
+        logging.getLogger("michi").debug(f"Full metadata extraction failed for {filepath}: {e}")
     return info

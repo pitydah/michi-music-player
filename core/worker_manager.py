@@ -91,7 +91,7 @@ class WorkerManager(QObject):
         super().__init__(parent)
         self._pool = QThreadPool()
         self._pool.setMaxThreadCount(4)
-        self._log = logging.getLogger("astra.workers")
+        self._log = logging.getLogger("michi.workers")
 
     def load_covers(self, items, cover_size):
         """Load album covers in background. Emits covers_ready."""

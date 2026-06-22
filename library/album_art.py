@@ -101,7 +101,7 @@ def _get_embedded_cover(album_name: str, artist: str = "") -> QPixmap | None:
                 return pix
     except Exception:
         import logging
-        logging.getLogger("astra").debug("Album art: embedded cover extraction failed")
+        logging.getLogger("michi").debug("Album art: embedded cover extraction failed")
     return None
 
 

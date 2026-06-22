@@ -3,7 +3,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-logger = logging.getLogger("astra.snapcast.controller")
+logger = logging.getLogger("michi.snapcast.controller")
 
 
 class SnapcastController(QObject):

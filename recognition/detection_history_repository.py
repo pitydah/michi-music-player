@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Signal
 
 from recognition.models import DetectedTrack
 
-logger = logging.getLogger("astra.recognition.history")
+logger = logging.getLogger("michi.recognition.history")
 
 
 class DetectionHistoryRepository(QObject):

@@ -13,7 +13,7 @@ from PySide6.QtDBus import QDBusConnection
 
 from ui.design_tokens import set_theme
 
-logger = logging.getLogger("astra.theme")
+logger = logging.getLogger("michi.theme")
 
 
 class ThemeManager(QObject):

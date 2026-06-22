@@ -5,7 +5,7 @@ import contextlib
 
 from recognition.base_recognizer import BaseRecognizer
 
-logger = logging.getLogger("astra.recognition.shazam")
+logger = logging.getLogger("michi.recognition.shazam")
 
 
 class ShazamProvider(BaseRecognizer):

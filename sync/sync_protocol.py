@@ -174,7 +174,7 @@ def make_track_id(filepath: str) -> str:
 def make_device_id() -> str:
     """Generate persistent device ID."""
     import os
-    config_dir = os.path.expanduser("~/.local/share/astra-music-player")
+    config_dir = os.path.expanduser("~/.local/share/michi-music-player")
     id_file = os.path.join(config_dir, "device_id")
     if os.path.exists(id_file):
         with open(id_file) as f:

@@ -5,7 +5,7 @@ import logging
 from library.query_parser import FieldOp, FieldTerm, parse_query
 from library.search_index import SearchIndex
 
-logger = logging.getLogger("astra.search_engine")
+logger = logging.getLogger("michi.search_engine")
 
 # Numeric columns that support range operators
 NUMERIC_COLS = frozenset({

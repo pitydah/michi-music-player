@@ -41,7 +41,7 @@ class WikipediaClient(QObject):
     def _get(self, url: str, callback):
         req = QNetworkRequest(QUrl(url))
         req.setRawHeader(b"User-Agent",
-                         b"AstraMusicPlayer/0.1")
+                         b"MichiMusicPlayer/0.1")
         reply = self._nam.get(req)
         reply.finished.connect(lambda r=reply, cb=callback: self._handle(r, cb))
 

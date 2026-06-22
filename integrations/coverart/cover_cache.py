@@ -6,7 +6,7 @@ import logging
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-COVER_DIR = os.path.expanduser("~/.cache/astra/covers")
+COVER_DIR = os.path.expanduser("~/.cache/michi/covers")
 MAX_SIZE = 8 * 1024 * 1024  # 8 MB
 NEGATIVE_TTL = 3600  # 1 hour for negative cache
 VALID_MIME = {"image/jpeg", "image/png", "image/webp"}
@@ -50,7 +50,7 @@ class CoverCache(QObject):
         # Download
         req = QNetworkRequest(QUrl(image_url))
         req.setRawHeader(b"User-Agent",
-                         b"AstraMusicPlayer/0.1 (CoverArtArchive)")
+                         b"MichiMusicPlayer/0.1 (CoverArtArchive)")
         reply = self._nam.get(req)
         reply.finished.connect(
             lambda r=reply, k=album_key, t=target, m=mbid:
@@ -78,7 +78,7 @@ class CoverCache(QObject):
         ct_str = ct_str.split(";")[0].strip().lower()
 
         if ct_str not in VALID_MIME:
-            logging.getLogger("astra.covers").debug(
+            logging.getLogger("michi.covers").debug(
                 "Rejected content-type: %s for %s", ct_str, album_key)
             self._log_negative(album_key)
             self.cache_failed.emit(album_key, f"Invalid content-type: {ct_str}")

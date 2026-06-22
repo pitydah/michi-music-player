@@ -326,7 +326,7 @@ class FolderBrowserWidget(QWidget):
     # ── Persistent storage ──
 
     def _load_persistent(self):
-        s = QSettings("AstraMusicPlayer", "FolderBrowser")
+        s = QSettings("MichiMusicPlayer", "FolderBrowser")
         try:
             self._favorites = json.loads(s.value(SETTINGS_KEY_FAVS, "[]"))
         except Exception:
@@ -337,11 +337,11 @@ class FolderBrowserWidget(QWidget):
             self._history = []
 
     def _save_favorites(self):
-        QSettings("AstraMusicPlayer", "FolderBrowser").setValue(
+        QSettings("MichiMusicPlayer", "FolderBrowser").setValue(
             SETTINGS_KEY_FAVS, json.dumps(self._favorites))
 
     def _save_history(self):
-        QSettings("AstraMusicPlayer", "FolderBrowser").setValue(
+        QSettings("MichiMusicPlayer", "FolderBrowser").setValue(
             SETTINGS_KEY_HIST, json.dumps(self._history))
 
     def _add_to_history(self, path: str):
@@ -665,4 +665,4 @@ class FolderBrowserWidget(QWidget):
             subprocess.Popen(["xdg-open", target])
         except Exception:
             import logging
-            logging.getLogger("astra").debug("Folder browser: xdg-open failed")
+            logging.getLogger("michi").debug("Folder browser: xdg-open failed")

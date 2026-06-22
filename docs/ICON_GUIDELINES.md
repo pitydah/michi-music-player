@@ -1,4 +1,4 @@
-# Guía de iconos — Astra Music Player
+# Guía de iconos — Michi Music Player
 
 ## Estructura de carpetas
 

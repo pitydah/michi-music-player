@@ -1,6 +1,6 @@
-# Flatpak packaging for Astra Music Player
+# Flatpak packaging for Michi Music Player
 
-Flatpak is the recommended way to distribute Astra Music Player universally across Linux distributions.
+Flatpak is the recommended way to distribute Michi Music Player universally across Linux distributions.
 
 ## Status
 
@@ -38,11 +38,11 @@ Flatpak is the recommended way to distribute Astra Music Player universally acro
 ## Manifest draft
 
 ```yaml
-app-id: io.github.pitydah.AstraMusicPlayer
+app-id: io.github.pitydah.MichiMusicPlayer
 runtime: org.kde.Platform
 runtime-version: "6.7"
 sdk: org.kde.Sdk
-command: astra-music-player
+command: michi-music-player
 finish-args:
   - --socket=wayland
   - --socket=x11
@@ -55,18 +55,18 @@ finish-args:
   - --talk-name=org.mpris.MediaPlayer2.*
 
 modules:
-  - name: astra-music-player
+  - name: michi-music-player
     buildsystem: simple
     build-commands:
       - pip3 install --no-deps --prefix=/app .
     sources:
       - type: git
-        url: https://github.com/pitydah/astra-music-player.git
+        url: https://github.com/pitydah/michi-music-player.git
 ```
 
 ## Building
 
 ```bash
-flatpak-builder --user --install build-dir packaging/flatpak/io.github.pitydah.AstraMusicPlayer.yml
-flatpak run io.github.pitydah.AstraMusicPlayer
+flatpak-builder --user --install build-dir packaging/flatpak/io.github.pitydah.MichiMusicPlayer.yml
+flatpak run io.github.pitydah.MichiMusicPlayer
 ```

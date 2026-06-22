@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "astra-music-player"
+name = "michi-music-player"
 version = "0.1.0-alpha"
 description = "Modern music player for Linux/KDE built with Python, PySide6 and GStreamer"
 readme = "README.md"
@@ -53,12 +53,12 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pitydah/astra-music-player"
-Repository = "https://github.com/pitydah/astra-music-player.git"
-Issues = "https://github.com/pitydah/astra-music-player/issues"
+Homepage = "https://github.com/pitydah/michi-music-player"
+Repository = "https://github.com/pitydah/michi-music-player.git"
+Issues = "https://github.com/pitydah/michi-music-player/issues"
 
 [project.scripts]
-astra-music-player = "main:main"
+michi-music-player = "main:main"
 
 [tool.setuptools]
 py-modules = ["main"]

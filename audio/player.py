@@ -204,7 +204,7 @@ class GStreamerEngine(QObject):
             self._gapless_enabled = sm.get("audio/gapless_enabled")
             self._audio_profile = sm.get("audio/profile") or "standard"
         except Exception as e:
-            logging.getLogger("astra.player").debug("Settings load failed: %s", e)
+            logging.getLogger("michi.player").debug("Settings load failed: %s", e)
 
     @property
     def state(self) -> PlaybackState:
@@ -332,7 +332,7 @@ class GStreamerEngine(QObject):
                 self._db.update_play_history(make_track_id(filepath_or_url))
 
         except Exception as e:
-            logging.getLogger("astra.player").exception("Playback failed: %s", filepath_or_url)
+            logging.getLogger("michi.player").exception("Playback failed: %s", filepath_or_url)
             self.error_occurred.emit(f"No se pudo reproducir: {e}")
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)
@@ -342,12 +342,12 @@ class GStreamerEngine(QObject):
         try:
             header = parse_dff(filepath)
         except Exception as e:
-            logging.getLogger("astra.player").warning("DFF parse failed: %s", e)
+            logging.getLogger("michi.player").warning("DFF parse failed: %s", e)
             self.error_occurred.emit(str(e))
             return
 
         if header.is_dst:
-            logging.getLogger("astra.player").warning("DST-compressed DFF not supported: %s", filepath)
+            logging.getLogger("michi.player").warning("DST-compressed DFF not supported: %s", filepath)
             self.error_occurred.emit("DST-compressed DFF not supported")
             return
 
@@ -425,7 +425,7 @@ class GStreamerEngine(QObject):
         buf.fill(0, data)
         ret = self._appsrc.emit("push-buffer", buf)
         if ret != Gst.FlowReturn.OK:
-            logging.getLogger("astra.player").warning("DFF push-buffer failed: %s", ret)
+            logging.getLogger("michi.player").warning("DFF push-buffer failed: %s", ret)
         return False  # one-shot via GLib.idle_add
 
     def _push_dff_eos(self) -> bool:
@@ -466,7 +466,7 @@ class GStreamerEngine(QObject):
             result = self._pipeline.get_state(2 * Gst.SECOND)
             if result[0] == Gst.StateChangeReturn.FAILURE:
                 import logging
-                logging.getLogger("astra.player").warning(
+                logging.getLogger("michi.player").warning(
                     "Pipeline NULL transition failed in stop()")
         if self._bus_id and self._pipeline:
             bus = self._pipeline.get_bus()
@@ -623,7 +623,7 @@ class GStreamerEngine(QObject):
             self._on_media_finished_eos()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
-            logging.getLogger("astra.player").warning(
+            logging.getLogger("michi.player").warning(
                 "GStreamer error: %s | %s", err, debug)
             self.error_occurred.emit(f"GStreamer: {err}")
             # Cleanup pipeline after error
@@ -648,11 +648,11 @@ class GStreamerEngine(QObject):
             self._timer.stop() if hasattr(self, '_timer') and self._timer else None
         elif t == Gst.MessageType.WARNING:
             err, debug = message.parse_warning()
-            logging.getLogger("astra.player").debug(
+            logging.getLogger("michi.player").debug(
                 "GStreamer warning: %s | %s", err, debug)
         elif t == Gst.MessageType.BUFFERING:
             pct = message.parse_buffering()
-            logging.getLogger("astra.player").debug("Buffering: %d%%", pct)
+            logging.getLogger("michi.player").debug("Buffering: %d%%", pct)
             if pct < 100 and self._state == PlaybackState.PLAYING:
                 self._pipeline.set_state(Gst.State.PAUSED)
             elif pct >= 100 and self._state == PlaybackState.PLAYING:
@@ -662,7 +662,7 @@ class GStreamerEngine(QObject):
         elif t == Gst.MessageType.STATE_CHANGED:
             if message.src == self._pipeline:
                 old, new, pending = message.parse_state_changed()
-                logging.getLogger("astra.player").debug(
+                logging.getLogger("michi.player").debug(
                     "State: %s → %s (pending: %s)",
                     old.value_nick, new.value_nick, pending.value_nick)
         elif t == Gst.MessageType.DURATION_CHANGED:
@@ -757,7 +757,7 @@ class GStreamerEngine(QObject):
     def set_volume(self, vol: int):
         self._volume = max(0.0, min(1.0, vol / 100.0))
         if self._pipeline:
-            vol_elem = self._pipeline.get_by_name("astra_volume")
+            vol_elem = self._pipeline.get_by_name("michi_volume")
             if vol_elem:
                 vol_elem.set_property("volume", self._volume)
 
@@ -767,7 +767,7 @@ class GStreamerEngine(QObject):
             result = self._pipeline.get_state(2 * Gst.SECOND)
             if result[0] == Gst.StateChangeReturn.FAILURE:
                 import logging
-                logging.getLogger("astra.player").warning(
+                logging.getLogger("michi.player").warning(
                     "Pipeline NULL transition failed in _on_media_finished")
             self._state = PlaybackState.STOPPED
             self.state_changed.emit(self._state)

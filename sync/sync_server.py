@@ -355,7 +355,7 @@ class SyncServer(QObject):
                 self._httpd.server_close()
             except Exception:
                 import logging
-                logging.getLogger("astra").debug("Sync server operation failed")
+                logging.getLogger("michi").debug("Sync server operation failed")
         if self._executor:
             self._executor.shutdown(wait=False)
         self._sessions.clear()

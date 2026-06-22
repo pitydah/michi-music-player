@@ -14,7 +14,7 @@ class ShutdownManager:
 
     def shutdown(self):
         """Execute all registered stop functions. Errors are logged, not re-raised."""
-        log = logging.getLogger("astra.shutdown")
+        log = logging.getLogger("michi.shutdown")
         for name, fn in reversed(self._items):
             try:
                 fn()

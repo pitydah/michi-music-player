@@ -1,4 +1,4 @@
-"""AppServices — immutable DI container for Astra Music Player controllers.
+"""AppServices — immutable DI container for Michi Music Player controllers.
 
 Design: frozen dataclass. Controllers receive only the services they need,
 not a mutable proxy to the entire MainWindow. Use AppContext for backward

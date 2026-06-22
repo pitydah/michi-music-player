@@ -13,7 +13,7 @@ from ui.icon_renderer import render_svg_icon
 HERE = Path(__file__).parent.parent
 BREEZE = "/usr/share/icons/breeze"
 
-_log = logging.getLogger("astra.icons")
+_log = logging.getLogger("michi.icons")
 
 # ── Color tokens for tinting ──
 

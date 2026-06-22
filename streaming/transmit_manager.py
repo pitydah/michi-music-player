@@ -6,7 +6,7 @@ from dataclasses import dataclass, asdict
 
 from PySide6.QtCore import QObject, Signal
 
-CONFIG_DIR = os.path.expanduser("~/.local/share/astra-music-player")
+CONFIG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
 DEVICES_PATH = os.path.join(CONFIG_DIR, "transmit_devices.json")
 
 
@@ -48,7 +48,7 @@ class TransmitManager(QObject):
                 self._devices = [TransmitDevice.from_dict(d) for d in data]
             except Exception:
                 import logging
-                logging.getLogger("astra").debug("Failed to load transmit devices config")
+                logging.getLogger("michi").debug("Failed to load transmit devices config")
                 self._devices = []
 
     def save(self):

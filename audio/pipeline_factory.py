@@ -46,12 +46,12 @@ class PipelineFactory:
         sink = self._make_sink_from_route(route)
         if not all([src, dec, conv, sink]):
             import logging
-            logging.getLogger("astra.pipeline").warning(
+            logging.getLogger("michi.pipeline").warning(
                 "DFF pipeline: missing elements — appsrc=%s avdec_dsd_msbf=%s audioconvert=%s sink=%s",
                 src is not None, dec is not None, conv is not None, sink is not None)
             return None
 
-        pipeline = Gst.Pipeline.new("astra-dff")
+        pipeline = Gst.Pipeline.new("michi-dff")
         for e in [src, dec, conv, sink]:
             pipeline.add(e)
         src.link(dec)
@@ -66,7 +66,7 @@ class PipelineFactory:
     # ── Internal builders ──
 
     def _build_standard(self, uri, route, dsp, transmit_device) -> Gst.Element | None:
-        pipeline = Gst.Pipeline.new("astra-pipeline")
+        pipeline = Gst.Pipeline.new("michi-pipeline")
         playbin = Gst.ElementFactory.make("playbin", "playbin")
         if not playbin:
             return None
@@ -84,7 +84,7 @@ class PipelineFactory:
         """Build audio-sink bin with tee for output + spectrum + transmit."""
         audio_sink = Gst.Bin.new("audio-sink-bin")
         queue = Gst.ElementFactory.make("queue", None)
-        volume = Gst.ElementFactory.make("volume", "astra_volume")
+        volume = Gst.ElementFactory.make("volume", "michi_volume")
         if not queue or not volume:
             return None
 
@@ -117,11 +117,11 @@ class PipelineFactory:
                             last = eq_bin
                         else:
                             import logging
-                            logging.getLogger("astra.pipeline").warning(
+                            logging.getLogger("michi.pipeline").warning(
                                 "Parametric EQ: parse_bin_from_description returned None (audioiirfilter missing?)")
                     except Exception as e:
                         import logging
-                        logging.getLogger("astra.pipeline").debug(
+                        logging.getLogger("michi.pipeline").debug(
                             "Parametric EQ build failed: %s", e)
             else:
                 eq = Gst.ElementFactory.make("equalizer-nbands", "eq_nbands")
@@ -207,7 +207,7 @@ class PipelineFactory:
         return audio_sink
 
     def _build_bitperfect(self, uri, route) -> Gst.Element | None:
-        pipeline = Gst.Pipeline.new("astra-bp")
+        pipeline = Gst.Pipeline.new("michi-bp")
         playbin = Gst.ElementFactory.make("playbin", "playbin")
         if not playbin:
             return None
@@ -221,7 +221,7 @@ class PipelineFactory:
         return pipeline
 
     def _build_dsd_to_pcm(self, uri, fmt, route) -> Gst.Element | None:
-        pipeline = Gst.Pipeline.new("astra-dsd-pcm")
+        pipeline = Gst.Pipeline.new("michi-dsd-pcm")
         playbin = Gst.ElementFactory.make("playbin", "playbin")
         if not playbin:
             return None
@@ -249,7 +249,7 @@ class PipelineFactory:
         if not os.environ.get("ASTRA_DOP_EXPERIMENTAL"):
             return None
 
-        pipeline = Gst.Pipeline.new("astra-dop")
+        pipeline = Gst.Pipeline.new("michi-dop")
         src = Gst.ElementFactory.make("filesrc", "dop-src")
         if not src:
             return None

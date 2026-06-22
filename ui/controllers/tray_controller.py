@@ -12,7 +12,7 @@ class TrayController:
 
     def setup(self):
         self._icon = QSystemTrayIcon(get_tray_icon(), self._win)
-        self._icon.setToolTip("Astra Music Player")
+        self._icon.setToolTip("Michi Music Player")
         tray_menu = QMenu()
         tray_menu.addAction("Mostrar", self._win.show)
         tray_menu.addAction("Reproducir/Pausa", self._win._ctx.playback.toggle)

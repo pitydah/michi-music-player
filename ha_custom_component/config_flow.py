@@ -1,4 +1,4 @@
-"""Config flow for Astra Music Player."""
+"""Config flow for Michi Music Player."""
 import voluptuous as vol
 from homeassistant import config_entries
 from .const import DOMAIN, CONF_HOST, CONF_PORT, CONF_TOKEN, DEFAULT_NAME

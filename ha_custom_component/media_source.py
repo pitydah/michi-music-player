@@ -1,4 +1,4 @@
-"""Astra Music Player — media_source for library browsing in Home Assistant."""
+"""Michi Music Player — media_source for library browsing in Home Assistant."""
 import logging
 import aiohttp
 from homeassistant.components.media_player import MediaClass, MediaType
@@ -13,8 +13,8 @@ from .const import DOMAIN, CONF_HOST, CONF_PORT, CONF_TOKEN
 
 _LOGGER = logging.getLogger(__name__)
 
-ASTRA_URI_SCHEME = "astra-source"
-ASTRA_MEDIA_ID_PREFIX = f"{ASTRA_URI_SCHEME}://"
+MICHI_URI_SCHEME = "michi-source"
+MICHI_MEDIA_ID_PREFIX = f"{MICHI_URI_SCHEME}://"
 
 
 class AstraMediaSource(MediaSource):
@@ -45,8 +45,8 @@ class AstraMediaSource(MediaSource):
 
     async def async_browse_media(self, item: MediaSourceItem) -> BrowseMediaSource:
         parent_id = item.identifier or ""
-        if parent_id.startswith(ASTRA_MEDIA_ID_PREFIX):
-            parent_id = parent_id[len(ASTRA_MEDIA_ID_PREFIX):]
+        if parent_id.startswith(MICHI_MEDIA_ID_PREFIX):
+            parent_id = parent_id[len(MICHI_MEDIA_ID_PREFIX):]
 
         if not parent_id:
             data = await self._api_get("/api/library/browse")
@@ -55,12 +55,12 @@ class AstraMediaSource(MediaSource):
                 domain=DOMAIN, identifier="",
                 media_class=MediaClass.DIRECTORY,
                 media_content_type=MediaType.MUSIC,
-                title="Astra Music Player",
+                title="Michi Music Player",
                 can_play=False, can_expand=True,
                 children=[
                     BrowseMediaSource(
                         domain=DOMAIN,
-                        identifier=f"{ASTRA_MEDIA_ID_PREFIX}{c['id']}",
+                        identifier=f"{MICHI_MEDIA_ID_PREFIX}{c['id']}",
                         media_class=MediaClass.DIRECTORY if c.get("can_expand")
                                     else MediaClass.TRACK,
                         media_content_type=MediaType.MUSIC,
@@ -100,8 +100,8 @@ class AstraMediaSource(MediaSource):
 
     async def async_resolve_media(self, item: MediaSourceItem) -> PlayMedia:
         media_id = item.identifier or ""
-        if media_id.startswith(ASTRA_MEDIA_ID_PREFIX):
-            media_id = media_id[len(ASTRA_MEDIA_ID_PREFIX):]
+        if media_id.startswith(MICHI_MEDIA_ID_PREFIX):
+            media_id = media_id[len(MICHI_MEDIA_ID_PREFIX):]
 
         cfg = self._get_config()
         if not cfg:
@@ -109,7 +109,7 @@ class AstraMediaSource(MediaSource):
 
         return PlayMedia(
             url=f"astra://{media_id}",
-            mime_type="audio/x-astra-local",
+            mime_type="audio/x-michi-local",
         )
 
 

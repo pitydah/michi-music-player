@@ -2,7 +2,7 @@
 import difflib
 import logging
 
-logger = logging.getLogger("astra.recognition.matcher")
+logger = logging.getLogger("michi.recognition.matcher")
 
 # Sources that should never be matched against local library
 # (radio, streams, remote — they are NOT in the local DB)

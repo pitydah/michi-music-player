@@ -1,7 +1,7 @@
 """Subsonic API client — Navidrome + Jellyfin shared client.
 
 API docs: http://www.subsonic.org/pages/api.jsp
-Auth: token = MD5(password + salt), sent as &t=token&s=salt&u=user&v=1.16.0&c=AstraMusicPlayer&f=json
+Auth: token = MD5(password + salt), sent as &t=token&s=salt&u=user&v=1.16.0&c=MichiMusicPlayer&f=json
 """
 
 import hashlib
@@ -16,7 +16,7 @@ import time
 import logging
 from dataclasses import dataclass
 
-logger = logging.getLogger("astra.subsonic")
+logger = logging.getLogger("michi.subsonic")
 
 
 class SubsonicError(Exception):
@@ -101,7 +101,7 @@ class SubsonicClient:
         self._token = token
         return (f"u={urllib.parse.quote(self.server.username)}"
                 f"&t={token}&s={self._salt}"
-                f"&v=1.16.0&c=AstraMusicPlayer&f=json")
+                f"&v=1.16.0&c=MichiMusicPlayer&f=json")
 
     def _get(self, endpoint: str, params: dict = None) -> dict:
         auth = self._auth()
@@ -116,7 +116,7 @@ class SubsonicClient:
                 raise SubsonicError("Request cancelled", recoverable=False)
             try:
                 req = urllib.request.Request(url)
-                req.add_header("User-Agent", "AstraMusicPlayer/1.0")
+                req.add_header("User-Agent", "MichiMusicPlayer/1.0")
                 with urllib.request.urlopen(req, timeout=self._timeout) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                 sub = data.get("subsonic-response", {})
@@ -241,7 +241,7 @@ class SubsonicClient:
 
 # ── Server persistence ──
 
-CONFIG_DIR = os.path.expanduser("~/.local/share/astra-music-player")
+CONFIG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
 SERVERS_PATH = os.path.join(CONFIG_DIR, "subsonic_servers.json")
 
 

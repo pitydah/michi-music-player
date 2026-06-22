@@ -4,7 +4,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-logger = logging.getLogger("astra.mini_player.controller")
+logger = logging.getLogger("michi.mini_player.controller")
 
 
 class MiniPlayerController(QObject):

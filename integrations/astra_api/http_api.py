@@ -10,7 +10,7 @@ API_PORT_DEFAULT = 8124
 
 
 class _AstraHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for Astra API. Reads from AppStateStore, writes via AstraApiBridge."""
+    """HTTP request handler for Astra API. Reads from AppStateStore, writes via MichiApiBridge."""
 
     def __init__(self, *args, state_store=None, bridge=None, token="", db=None, **kwargs):
         self._store = state_store
@@ -290,7 +290,7 @@ def make_handler(store, bridge, token, db):
     return _handler
 
 
-class AstraHttpApi:
+class MichiHttpApi:
     """Manages the Astra HTTP API server lifecycle."""
 
     def __init__(self, window, port: int = API_PORT_DEFAULT):
@@ -318,7 +318,7 @@ class AstraHttpApi:
     def generate_token(self) -> str:
         self._token = uuid.uuid4().hex[:32]
         from core.settings_manager import set_
-        set_("home_audio/astra_api_token", self._token)
+        set_("home_audio/michi_api_token", self._token)
         return self._token
 
     def configure(self, port: int = API_PORT_DEFAULT, token: str = ""):
@@ -327,7 +327,7 @@ class AstraHttpApi:
             self._token = token
         elif not self._token:
             from core.settings_manager import get
-            saved = get("home_audio/astra_api_token") or ""
+            saved = get("home_audio/michi_api_token") or ""
             self._token = saved or self.generate_token()
 
     def set_store_and_bridge(self, store, bridge):

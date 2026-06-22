@@ -9,7 +9,7 @@ try:
 except ImportError:
     Gst = None
 
-CONFIG_DIR = os.path.expanduser("~/.local/share/astra-music-player")
+CONFIG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
 RADIO_FILE = os.path.join(CONFIG_DIR, "radio_stations.json")
 
 
@@ -59,7 +59,7 @@ class RadioManager:
             self._next_id = max([s.id for s in self._stations] + [0]) + 1
         except Exception:
             import logging
-            logging.getLogger("astra").debug("Failed to load radio stations config")
+            logging.getLogger("michi").debug("Failed to load radio stations config")
             self._stations = []
             self._next_id = 1
 
@@ -171,7 +171,7 @@ class RadioManager:
         sink = Gst.ElementFactory.make("filesink", None)
         if not all([src, conv, enc, sink]):
             import logging
-            logging.getLogger("astra.radio").warning(
+            logging.getLogger("michi.radio").warning(
                 "Missing GStreamer elements for recording: uridecodebin=%s, audioconvert=%s, enc=%s/opusenc=%s, filesink=%s",
                 src is not None, conv is not None, enc is not None, enc_name, sink is not None)
             return False
@@ -189,7 +189,7 @@ class RadioManager:
         ret = pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:
             import logging
-            logging.getLogger("astra.radio").warning("Failed to start recording pipeline")
+            logging.getLogger("michi.radio").warning("Failed to start recording pipeline")
             self._record_pipeline = None
             return False
         return True

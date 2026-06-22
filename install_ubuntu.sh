@@ -1,8 +1,8 @@
 #!/bin/bash
-# Astra Music Player — Ubuntu / Debian installation
+# Michi Music Player — Ubuntu / Debian installation
 set -e
 
-echo "=== Astra Music Player — Ubuntu Install ==="
+echo "=== Michi Music Player — Ubuntu Install ==="
 
 echo "→ Installing system dependencies..."
 sudo apt install -y \
@@ -18,17 +18,17 @@ sudo apt install -y \
   python3-numpy \
   python3-dbus
 
-echo "→ Installing Astra Music Player..."
+echo "→ Installing Michi Music Player..."
 pip install --user .
 
 echo "→ Installing .desktop file..."
 mkdir -p ~/.local/share/applications
-cp data/astra-music-player.desktop ~/.local/share/applications/
+cp data/michi-music-player.desktop ~/.local/share/applications/
 
 echo "→ Installing app icon..."
 mkdir -p ~/.local/share/icons/hicolor/256x256/apps
-cp icons/app_icon.png ~/.local/share/icons/hicolor/256x256/apps/astra-music-player.png
+cp icons/app_icon.png ~/.local/share/icons/hicolor/256x256/apps/michi-music-player.png
 
-echo "✅ Astra Music Player installed!"
-echo "   Run: astra-music-player"
-echo "   Or find 'Astra Music Player' in your app menu."
+echo "✅ Michi Music Player installed!"
+echo "   Run: michi-music-player"
+echo "   Or find 'Michi Music Player' in your app menu."

@@ -1,1 +1,1 @@
-"""Metadata editing package for Astra Music Player."""
+"""Metadata editing package for Michi Music Player."""

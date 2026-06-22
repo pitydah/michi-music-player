@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Signal
 from recognition.models import DetectedTrack
 from recognition.provider_manager import ProviderManager
 
-logger = logging.getLogger("astra.detection")
+logger = logging.getLogger("michi.detection")
 
 
 class DetectionService(QObject):

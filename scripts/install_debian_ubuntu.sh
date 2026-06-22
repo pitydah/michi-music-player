@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Astra Music Player — Installer for Ubuntu / Debian / Linux Mint
+# Michi Music Player — Installer for Ubuntu / Debian / Linux Mint
 set -e
 
-echo "=== Astra Music Player — Instalación Ubuntu/Debian ==="
+echo "=== Michi Music Player — Instalación Ubuntu/Debian ==="
 echo
 
 # ── System dependencies ──
@@ -42,8 +42,8 @@ pip install -e ".[dev]"
 # ── Desktop file & icon ──
 echo "[4/5] Instalando .desktop e icono..."
 mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/256x256/apps/
-cp data/astra-music-player.desktop ~/.local/share/applications/
-cp icons/app_icon.png ~/.local/share/icons/hicolor/256x256/apps/astra-music-player.png
+cp data/michi-music-player.desktop ~/.local/share/applications/
+cp icons/app_icon.png ~/.local/share/icons/hicolor/256x256/apps/michi-music-player.png
 command -v update-desktop-database &>/dev/null && update-desktop-database ~/.local/share/applications/ || true
 command -v gtk-update-icon-cache &>/dev/null && gtk-update-icon-cache ~/.local/share/icons/hicolor || true
 
@@ -53,6 +53,6 @@ python3 scripts/check_runtime.py
 
 echo
 echo "=== Instalación completa ==="
-echo "  Ejecutar: source .venv/bin/activate && astra-music-player"
-echo "  Ó desde menú de aplicaciones: Astra Music Player"
+echo "  Ejecutar: source .venv/bin/activate && michi-music-player"
+echo "  Ó desde menú de aplicaciones: Michi Music Player"
 echo

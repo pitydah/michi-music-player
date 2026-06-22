@@ -5,7 +5,7 @@ import logging
 
 from library.metadata_extractor import ALL_EXTS
 
-logger = logging.getLogger("astra.devices")
+logger = logging.getLogger("michi.devices")
 
 
 def get_mounted_devices() -> list[dict]:

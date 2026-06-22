@@ -1,4 +1,4 @@
-"""Settings Pages — all 16 preference categories for Astra Music Player."""
+"""Settings Pages — all 16 preference categories for Michi Music Player."""
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QScrollArea, QFileDialog, QMessageBox,
@@ -763,12 +763,12 @@ class AdvancedPage(_Page):
 
         self._export.clicked.connect(self._do_export)
         self._import.clicked.connect(self._do_import)
-        self._open_logs.clicked.connect(lambda: _open_path("~/.local/share/astra-music-player/"))
+        self._open_logs.clicked.connect(lambda: _open_path("~/.local/share/michi-music-player/"))
         self._open_config.clicked.connect(lambda: _open_path("~/.config/Astra/"))
         self._reset_all.clicked.connect(self._do_reset)
 
     def _do_export(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar", "astra_config.json", "JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(self, "Exportar", "michi_config.json", "JSON (*.json)")
         if path:
             sm.export_to_file(path)
 
@@ -801,7 +801,7 @@ class AdvancedPage(_Page):
 
 class AboutPage(_Page):
     def __init__(self):
-        super().__init__("Acerca de", "Información de Astra Music Player", "warm_settings")
+        super().__init__("Acerca de", "Información de Michi Music Player", "warm_settings")
 
         card = SettingsCard()
         # App info
@@ -810,7 +810,7 @@ class AboutPage(_Page):
         iv = QVBoxLayout(info_widget)
         iv.setSpacing(4)
 
-        name = QLabel("Astra Music Player")
+        name = QLabel("Michi Music Player")
         name.setStyleSheet(f"color: {_TEXT}; font-size: 18px; font-weight: 800; background: transparent;")
         iv.addWidget(name)
 
@@ -838,7 +838,7 @@ class AboutPage(_Page):
 
         iv.addSpacing(8)
         gh = SettingsActionButton("GitHub")
-        gh.clicked.connect(lambda: _open_path("https://github.com/pitydah/astra-music-player"))
+        gh.clicked.connect(lambda: _open_path("https://github.com/pitydah/michi-music-player"))
         iv.addWidget(gh)
 
         card.add_row(info_widget)
@@ -887,9 +887,9 @@ class HomeAudioPage(_Page):
 
         # API + mDNS card
         card3 = SettingsCard("Astra API + mDNS")
-        self._api_enabled = SettingsSwitch(sm.get("home_audio/astra_api_enabled"))
-        self._api_port = SettingsSlider(1024, 65535, sm.get("home_audio/astra_api_port"))
-        self._api_token = _line_edit(sm.get("home_audio/astra_api_token") or "")
+        self._api_enabled = SettingsSwitch(sm.get("home_audio/michi_api_enabled"))
+        self._api_port = SettingsSlider(1024, 65535, sm.get("home_audio/michi_api_port"))
+        self._api_token = _line_edit(sm.get("home_audio/michi_api_token") or "")
         self._mdns_enabled = SettingsSwitch(sm.get("home_audio/mdns_enabled"))
         card3.add_row(SettingsRow("Activar API Astra", "Control remoto desde HA",
                                   self._api_enabled))
@@ -922,9 +922,9 @@ class HomeAudioPage(_Page):
         sm.set_("home_audio/snapserver_tcp_port", self._snap_tcp.value())
         sm.set_("home_audio/snapserver_control_port", self._snap_ctrl.value())
         sm.set_("home_audio/snapserver_http_port", self._snap_http.value())
-        sm.set_("home_audio/astra_api_enabled", self._api_enabled.isChecked())
-        sm.set_("home_audio/astra_api_port", self._api_port.value())
-        sm.set_("home_audio/astra_api_token", self._api_token.text())
+        sm.set_("home_audio/michi_api_enabled", self._api_enabled.isChecked())
+        sm.set_("home_audio/michi_api_port", self._api_port.value())
+        sm.set_("home_audio/michi_api_token", self._api_token.text())
         sm.set_("home_audio/mdns_enabled", self._mdns_enabled.isChecked())
         sm.set_("home_audio/local_media_server_enabled", self._lms_enabled.isChecked())
         sm.set_("home_audio/local_media_server_port", self._lms_port.value())
@@ -934,8 +934,8 @@ class HomeAudioPage(_Page):
         try:
             from PySide6.QtWidgets import QApplication
             for w in QApplication.topLevelWidgets():
-                if hasattr(w, '_astra_api'):
-                    api = w._astra_api
+                if hasattr(w, '_michi_api'):
+                    api = w._michi_api
                     api.configure(port=self._api_port.value(),
                                   token=self._api_token.text())
                     if self._api_enabled.isChecked() and not api.is_running:

@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Astra Music Player
+Name=Michi Music Player
 Comment=Modern music player for Linux/KDE
-Exec=astra-music-player
-Icon=astra-music-player
+Exec=michi-music-player
+Icon=michi-music-player
 Terminal=false
 Type=Application
 Categories=Audio;Music;Player;Qt;

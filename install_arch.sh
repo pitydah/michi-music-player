@@ -1,8 +1,8 @@
 #!/bin/bash
-# Astra Music Player — Arch Linux / CachyOS installation
+# Michi Music Player — Arch Linux / CachyOS installation
 set -e
 
-echo "=== Astra Music Player — Arch Linux Install ==="
+echo "=== Michi Music Player — Arch Linux Install ==="
 
 echo "→ Installing system dependencies..."
 sudo pacman -S --needed \
@@ -20,17 +20,17 @@ sudo pacman -S --needed \
   gst-plugins-ugly \
   gst-libav
 
-echo "→ Installing Astra Music Player..."
+echo "→ Installing Michi Music Player..."
 pip install --user .
 
 echo "→ Installing .desktop file..."
 mkdir -p ~/.local/share/applications
-cp data/astra-music-player.desktop ~/.local/share/applications/
+cp data/michi-music-player.desktop ~/.local/share/applications/
 
 echo "→ Installing app icon..."
 mkdir -p ~/.local/share/icons/hicolor/256x256/apps
-cp icons/app_icon.png ~/.local/share/icons/hicolor/256x256/apps/astra-music-player.png
+cp icons/app_icon.png ~/.local/share/icons/hicolor/256x256/apps/michi-music-player.png
 
-echo "✅ Astra Music Player installed!"
-echo "   Run: astra-music-player"
-echo "   Or find 'Astra Music Player' in your app menu."
+echo "✅ Michi Music Player installed!"
+echo "   Run: michi-music-player"
+echo "   Or find 'Michi Music Player' in your app menu."

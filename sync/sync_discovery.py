@@ -25,7 +25,7 @@ class DiscoveryServer(QObject):
     discovery_stopped = Signal()
     error_occurred = Signal(str)
 
-    def __init__(self, alias: str = "AstraMusicPlayer", parent=None):
+    def __init__(self, alias: str = "MichiMusicPlayer", parent=None):
         super().__init__(parent)
         self._alias = alias
         self._running = False
@@ -49,7 +49,7 @@ class DiscoveryServer(QObject):
                 self._sock.close()
             except Exception:
                 import logging
-                logging.getLogger("astra").debug("Sync discovery task failed")
+                logging.getLogger("michi").debug("Sync discovery task failed")
             self._sock = None
         self.discovery_stopped.emit()
 
@@ -96,7 +96,7 @@ class DiscoveryServer(QObject):
                 self._sock.close()
             except Exception:
                 import logging
-                logging.getLogger("astra").debug("Sync discovery task failed")
+                logging.getLogger("michi").debug("Sync discovery task failed")
             self._sock = None
 
     def _announce(self):
@@ -121,7 +121,7 @@ class DiscoveryServer(QObject):
             self._sock.sendto(data, (MULTICAST_GROUP, MULTICAST_PORT))
         except Exception:
                 import logging
-                logging.getLogger("astra").debug("Sync discovery: failed to close socket")
+                logging.getLogger("michi").debug("Sync discovery: failed to close socket")
 
     def _handle_message(self, data: bytes, ip: str):
         try:

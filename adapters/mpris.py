@@ -10,7 +10,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 from PySide6.QtCore import QObject
 from audio.player import PlaybackState, PlayerEngine
 
-SERVICE_NAME = "org.mpris.MediaPlayer2.astra"
+SERVICE_NAME = "org.mpris.MediaPlayer2.michi"
 OBJECT_PATH = "/org/mpris/MediaPlayer2"
 
 
@@ -43,7 +43,7 @@ class MPRISObject(dbus.service.Object):
 
     def set_metadata(self, title="", artist="", album="", duration=0):
         self._metadata = {
-            "mpris:trackid": dbus.ObjectPath(f"/astra/{title or 'unknown'}"),
+            "mpris:trackid": dbus.ObjectPath(f"/michi/{title or 'unknown'}"),
             "xesam:title": title or "Unknown",
             "xesam:artist": dbus.Array([artist or "Unknown"], signature="s"),
             "xesam:album": album or "",
@@ -127,8 +127,8 @@ class MPRISObject(dbus.service.Object):
                 "CanQuit": True,
                 "CanRaise": True,
                 "HasTrackList": False,
-                "Identity": "Astra Music Player",
-                "DesktopEntry": "astra-music-player",
+                "Identity": "Michi Music Player",
+                "DesktopEntry": "michi-music-player",
                 "SupportedUriSchemes": ["file", "http", "https"],
                 "SupportedMimeTypes": ["audio/mpeg", "audio/flac",
                                       "audio/ogg", "audio/wav",

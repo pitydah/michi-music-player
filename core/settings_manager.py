@@ -1,11 +1,11 @@
-"""Settings Manager — unified QSettings for Astra Music Player."""
+"""Settings Manager — unified QSettings for Michi Music Player."""
 
 import os
 import json
 from PySide6.QtCore import QSettings
 
 
-SETTINGS = QSettings("Astra", "MusicPlayer")
+SETTINGS = QSettings("Michi", "MusicPlayer")
 
 DEFAULTS = {
     "general/start_minimized": False,
@@ -74,9 +74,9 @@ DEFAULTS = {
     "home_audio/snapserver_tcp_port": 1704,
     "home_audio/snapserver_control_port": 1705,
     "home_audio/snapserver_http_port": 1780,
-    "home_audio/astra_api_enabled": False,
-    "home_audio/astra_api_port": 8124,
-    "home_audio/astra_api_token": "",
+    "home_audio/michi_api_enabled": False,
+    "home_audio/michi_api_port": 8124,
+    "home_audio/michi_api_token": "",
     "home_audio/mdns_enabled": False,
     "home_audio/local_media_server_enabled": False,
     "home_audio/local_media_server_port": 8125,

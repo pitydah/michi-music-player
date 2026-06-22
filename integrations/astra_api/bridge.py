@@ -1,8 +1,8 @@
-"""AstraApiBridge — thread-safe bridge between HTTP handler and Qt main thread."""
+"""MichiApiBridge — thread-safe bridge between HTTP handler and Qt main thread."""
 from PySide6.QtCore import QObject, Signal
 
 
-class AstraApiBridge(QObject):
+class MichiApiBridge(QObject):
     """Receives commands from HTTP handler thread, executes on main thread."""
 
     play_requested = Signal()

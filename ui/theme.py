@@ -1,4 +1,4 @@
-"""Plasma-native palette and modern QSS for Astra Music Player."""
+"""Plasma-native palette and modern QSS for Michi Music Player."""
 
 from PySide6.QtGui import QPalette, QColor
 

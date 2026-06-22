@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, Signal
 from recognition.recognition_matcher import RecognitionMatcher
 from recognition.provider_manager import ProviderManager
 
-logger = logging.getLogger("astra.identifier")
+logger = logging.getLogger("michi.identifier")
 
 LISTEN_SOURCES = {"radio", "navidrome", "jellyfin", "remote_stream"}
 LOCAL_SOURCES = {"local_file", "device_file"}

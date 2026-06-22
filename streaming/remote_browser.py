@@ -19,7 +19,7 @@ from streaming.subsonic_client import (
 def _download_pixmap(url: str, size: int = 64) -> QPixmap:
     try:
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "AstraMusicPlayer/1.0")
+        req.add_header("User-Agent", "MichiMusicPlayer/1.0")
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = resp.read()
         pix = QPixmap()
