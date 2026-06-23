@@ -130,6 +130,10 @@ SECTION_CONFIG = {
                     "subtitle": "IA local para explorar tu biblioteca",
                     "icon": "sidebar_mix", "views": [],
                     "search": False, "default": None},
+    "metadata_review": {"title": "Revision de metadata",
+                         "subtitle": "Compara y aprueba cambios sugeridos",
+                         "icon": "metadata_editor", "views": [],
+                         "search": False, "default": None},
 }
 
 
@@ -171,6 +175,7 @@ NAV_ROUTES = {
     "favs": "_show_favs", "recent": "_show_recent",
     "new_playlist": "_show_new_playlist", "add_server": "_show_add_server",
     "assistant": "_show_assistant",
+    "metadata_review": "_show_metadata_review",
 }
 
 
@@ -233,6 +238,8 @@ class MainWindow(QMainWindow):
         self._playlist_ctrl = None
         self._genre_ctrl = None
         self._genre_repo = None
+        self._album_repo = None
+        self._identifier_view = None
         self._artist_ctrl = None
         self._artist_repo = None
         self._artist_enrich = None
@@ -261,6 +268,9 @@ class MainWindow(QMainWindow):
         self._tray_ctrl = None
         self._assistant_panel = None
         self._assistant_ctrl = None
+        self._metadata_review_panel = None
+        self._metadata_review_ctrl = None
+        self._album_repo = None
 
     def _init_core(self):
         """DB, player engine, playback service, model, search — must not fail."""
@@ -686,12 +696,17 @@ class MainWindow(QMainWindow):
     def _show_preferences(self, section: str = ""):
         from ui.preferences_window import PreferencesWindow, PAGE_DEFS
         dlg = PreferencesWindow(self)
+        dlg.settings_applied.connect(self._on_settings_applied)
         if section:
             for i, (_name, key, _icon) in enumerate(PAGE_DEFS):
                 if key == section:
                     dlg._nav.setCurrentRow(i)
                     break
         dlg.exec()
+
+    def _on_settings_applied(self, settings: dict):
+        if self._toast_svc:
+            self._toast_svc.show("Preferencias aplicadas", "info")
 
     def _show_shortcuts(self):
         shortcuts = [
@@ -1145,6 +1160,8 @@ class MainWindow(QMainWindow):
         self._player.state_changed.connect(self._on_state)
         self._player.error_occurred.connect(lambda m: self._toast_svc.show(f"Error: {m}", "error"))
         pb.play_clicked.connect(self._playback.toggle)
+        pb.prev_clicked.connect(self._playback.play_prev)
+        pb.next_clicked.connect(self._playback.play_next)
         pb.shuffle_clicked.connect(self._playback.toggle_shuffle)
         pb.repeat_clicked.connect(self._playback.toggle_repeat)
         pb.seek_requested.connect(self._playback.seek)
@@ -1338,7 +1355,6 @@ class MainWindow(QMainWindow):
 
     def _show_albums(self, key):
         self._section_title.setText("Álbumes")
-        self._configure_header_for_section(key)
         self._show_album_grid()
         self._search.show()
 
@@ -1356,7 +1372,6 @@ class MainWindow(QMainWindow):
         self._search.show()
 
     def _show_radio(self, key):
-        self._configure_header_for_section(key)
         self._search_ctrl.set_active("radio")
         self._current_section_key = "radio"
         self._radio_widget.reload()
@@ -1394,7 +1409,6 @@ class MainWindow(QMainWindow):
         self._search.show()
 
     def _show_discover(self, key):
-        self._configure_header_for_section(key)
         self._views.show("discover")
 
     def _show_smart_mix(self, key):
@@ -1441,7 +1455,6 @@ class MainWindow(QMainWindow):
                 self._toast_svc.warning("El mix no contiene archivos disponibles")
 
     def _show_favs(self, key):
-        self._configure_header_for_section(key)
         favs = self._db.get_favorites()
         items = [self._items_index.get(fp) for fp in favs if self._items_index.get(fp)]
         refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
@@ -1465,7 +1478,6 @@ class MainWindow(QMainWindow):
         self._search.show()
 
     def _show_recent(self, key):
-        self._configure_header_for_section(key)
         history = self._db.get_play_history()
         items = [self._items_index.get(h.get("track_id", ""))
                  for h in history[:50] if self._items_index.get(h.get("track_id", ""))]
@@ -1490,18 +1502,15 @@ class MainWindow(QMainWindow):
         self._search.show()
 
     def _show_identifier(self, key):
-        self._configure_header_for_section(key)
         self._identifier_view.set_detected_tracks(
             self._db.get_detected_tracks(100))
         self._fade_content("identifier")
 
     def _show_home_audio(self, key=None):
-        self._configure_header_for_section("home_audio")
         self._home_audio_view.refresh_if_needed()
         self._fade_content("home_audio")
 
     def _show_assistant(self, key=None):
-        self._configure_header_for_section("assistant")
         if self._assistant_panel is None:
             from ui.ai_assistant_panel import AiAssistantPanel
             from ui.controllers.ai_assistant_controller import AiAssistantController
@@ -1547,6 +1556,30 @@ class MainWindow(QMainWindow):
                 self._on_sidebar_navigate(data["_navigate"])
         else:
             self._assistant_panel.add_message_r(str(response))
+
+    def _show_metadata_review(self, key=None):
+        if self._metadata_review_panel is None:
+            from ui.metadata_review_panel import MetadataReviewPanel
+            from ui.controllers.metadata_review_controller import MetadataReviewController
+            self._metadata_review_panel = MetadataReviewPanel()
+            self._metadata_review_ctrl = MetadataReviewController(
+                db=self._db, parent=self,
+            )
+            self._metadata_review_panel.review_apply_requested.connect(
+                lambda rid, af: self._metadata_review_ctrl.apply_review(rid, af),
+            )
+            self._metadata_review_panel.review_reject_requested.connect(
+                self._metadata_review_ctrl.reject_review,
+            )
+            self._metadata_review_ctrl.apply_result.connect(
+                lambda r: self._toast_svc.show(
+                    f"Metadata: {r.get('applied',0)} cambios aplicados, "
+                    f"{r.get('skipped',0)} omitidos", "info",
+                ) if self._toast_svc else None,
+            )
+        if not self._views.widget("metadata_review"):
+            self._views.register("metadata_review", self._metadata_review_panel)
+        self._fade_content("metadata_review")
 
     def _show_new_playlist(self, key):
         self._create_playlist()
@@ -1908,6 +1941,7 @@ class MainWindow(QMainWindow):
             "discover": "", "identifier": "", "metadata_editor": "",
             "home_audio": "",
             "assistant": "",
+            "metadata_review": "",
         }
         self._search.setPlaceholderText(searchers.get(section_key, "Buscar..."))
         self._search.setVisible(search)

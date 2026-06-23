@@ -41,6 +41,8 @@ class MetadataApplyService:
         return self._apply_to_db_target(review_id, review, accepted_fields)
 
     def _apply_to_db_target(self, review_id: str, review, accepted_fields: dict[int, list[str]]) -> dict[str, Any]:
+        if self._require_confirm and not accepted_fields:
+            return {"status": "error", "error": "Debes confirmar al menos un campo para aplicar los cambios."}
         applied = 0
         skipped = 0
         for proposal in review.proposals:
