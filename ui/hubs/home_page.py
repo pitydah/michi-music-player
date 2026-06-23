@@ -76,7 +76,7 @@ class HomePage(QWidget):
 
         continue_card = self._build_card(
             "continue", "Continuar escuchando",
-            "Retoma donde lo dejaste. La ultima cancion o playlist que estabas reproduciendo.",
+            "Retoma donde lo dejaste. La última canción o playlist que estabas reproduciendo.",
             "Reanudar",
         )
         cards_layout.addWidget(continue_card, 1)
@@ -158,19 +158,16 @@ class HomePage(QWidget):
         for key in ("continue", "recent"):
             card = self.findChild(QFrame, f"homeCard_{key}")
             if card:
-                card.setStyleSheet(glass_card_qss(f"homeCard_{key}"))
-            title_lbl = self.findChild(QLabel, "homeCardTitle")
-            desc_lbl = self.findChild(QLabel, "homeCardDesc")
-            if title_lbl:
-                title_lbl.setStyleSheet(
-                    "QLabel { color: rgba(255,255,255,0.88); font-size: 16px; "
-                    "font-weight: 600; background: transparent; border: none; }"
-                )
-            if desc_lbl:
-                desc_lbl.setStyleSheet(
-                    "QLabel { color: rgba(255,255,255,0.56); font-size: 12px; "
-                    "background: transparent; border: none; }"
-                )
+                card.setStyleSheet(glass_card_qss(f"homeCard_{key}", "elevated"))
+                for lbl in card.findChildren(QLabel):
+                    if "font-size" not in (lbl.styleSheet() or ""):
+                        lbl.setStyleSheet(
+                            "QLabel { color: rgba(255,255,255,0.62); font-size: 12px; "
+                            "background: transparent; border: none; }"
+                        )
+                btns = card.findChildren(QPushButton)
+                for btn in btns:
+                    btn.setStyleSheet(glass_button_qss("primary"))
         for btn in self.findChildren(QPushButton):
             if btn.objectName():
                 continue

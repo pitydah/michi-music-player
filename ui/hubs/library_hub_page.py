@@ -68,8 +68,8 @@ class LibraryHubPage(QWidget):
         self._tabs.setObjectName("libraryHubTabs")
 
         tabs_data = [
-            ("canciones", "Canciones", "library", "Toda tu música local en una tabla con busqueda y filtros."),
-            ("albums", "Álbumes", "albums", "Carátulas y navegación visual por album."),
+            ("canciones", "Canciones", "library",             "Toda tu música local en una tabla con búsqueda y filtros."),
+            ("albums", "Álbumes", "albums", "Carátulas y navegación visual por álbum."),
             ("artists", "Artistas", "artists", "Explora tu biblioteca por artista y sus álbumes."),
             ("genres", "Géneros", "genres", "Atlas de estilos y familias musicales."),
             ("folders", "Carpetas", "folders", "Explorador de archivos por carpeta en tu disco."),
@@ -165,7 +165,7 @@ class LibraryHubPage(QWidget):
         btn.clicked.connect(lambda checked=None, k=nav_key: self._navigate(k))
         c_layout.addWidget(btn)
 
-        card.setStyleSheet(glass_card_qss(f"libTabCard_{key}"))
+        card.setStyleSheet(glass_card_qss(f"libTabCard_{key}", "elevated"))
         btn.setStyleSheet(glass_button_qss("primary"))
 
         w_layout.addWidget(card)
@@ -191,11 +191,14 @@ class LibraryHubPage(QWidget):
             QTabWidget#libraryHubTabs::pane { border: none; background: transparent; }
             QTabBar::tab {
                 background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
-                border-radius: 8px; padding: 8px 20px; color: rgba(255,255,255,0.52);
+                border-radius: 8px; padding: 8px 20px; color: rgba(255,255,255,0.68);
                 font-size: 13px; margin-right: 4px;
             }
+            QTabBar::tab:hover {
+                color: rgba(255,255,255,0.86);
+            }
             QTabBar::tab:selected {
-                background: rgba(143,183,255,0.08); border: 1px solid rgba(143,183,255,0.12);
-                color: rgba(143,183,255,0.85);
+                background: rgba(143,183,255,0.13); border: 1px solid rgba(143,183,255,0.22);
+                color: rgba(255,255,255,0.96);
             }
         """)

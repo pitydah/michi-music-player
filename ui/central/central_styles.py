@@ -2,13 +2,14 @@
 
 from ui.central.central_tokens import (
     SURFACE_GLASS, SURFACE_GLASS_HOVER, SURFACE_POPUP,
-    BORDER_SUBTLE,
-    ACCENT_BLUE, ACCENT_FAINT, ACCENT_SURFACE, ACCENT_SELECTION,
+    BORDER_SUBTLE, ACCENT_BLUE, ACCENT_FAINT, ACCENT_SURFACE, ACCENT_SELECTION,
     TEXT_PRIMARY, TEXT_NORMAL, TEXT_SECONDARY, TEXT_DISABLED,
     BADGE_LOCAL_BG, BADGE_LOCAL_TEXT, BADGE_REMOTE_BG, BADGE_REMOTE_TEXT,
     BADGE_ACTIVE_BG, BADGE_ACTIVE_TEXT,
     BADGE_ERROR_BG, BADGE_ERROR_TEXT,
     BADGE_EXPERIMENTAL_BG, BADGE_EXPERIMENTAL_TEXT,
+    SURFACE_CARD, SURFACE_CARD_HOVER, SURFACE_CARD_ELEVATED,
+    SURFACE_CARD_ACCENT, BORDER_CARD, BORDER_CARD_ACCENT, BORDER_CARD_ELEVATED,
 )
 
 # ── Legacy aliases (for existing code that references old names) ──
@@ -21,21 +22,6 @@ _ACCENT_BORDER = ACCENT_FAINT
 _TEXT_PRIMARY = TEXT_PRIMARY
 _TEXT_SECONDARY = TEXT_SECONDARY
 _TEXT_MUTED = TEXT_DISABLED
-
-# ── Intermediate tokens (reused across multiple functions) ──
-_TOKEN_05 = "rgba(255,255,255,0.05)"
-_TOKEN_08 = "rgba(255,255,255,0.08)"
-_TOKEN_10 = "rgba(255,255,255,0.10)"
-_TOKEN_20 = "rgba(255,255,255,0.20)"
-_ACCENT_10 = "rgba(143,183,255,0.10)"
-_ACCENT_16 = "rgba(143,183,255,0.16)"
-_ACCENT_18 = "rgba(143,183,255,0.18)"
-_ACCENT_24 = "rgba(143,183,255,0.24)"
-_ACCENT_28 = "rgba(143,183,255,0.28)"
-_ACCENT_30 = "rgba(143,183,255,0.30)"
-_TEXT_78 = "rgba(255,255,255,0.78)"
-_TEXT_88 = "rgba(255,255,255,0.88)"
-_TEXT_96 = "rgba(255,255,255,0.96)"
 
 
 def content_surface_qss() -> str:
@@ -149,7 +135,7 @@ def tool_button_qss(kind: str = "default") -> str:
         }
         QToolButton:hover {
             background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.06);
             color: rgba(255,255,255,0.96);
         }
     """
@@ -341,7 +327,7 @@ def secondary_action_button_qss() -> str:
         }
         QPushButton:hover {
             background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.05);
             color: rgba(255,255,255,0.90);
         }
     """
@@ -349,17 +335,27 @@ def secondary_action_button_qss() -> str:
 
 # ── Reusable premium glass styles ──
 
-def glass_card_qss(name: str) -> str:
-    """Premium glass card with soft border. Use with QFrame#{name}."""
+def glass_card_qss(name: str, variant: str = "base") -> str:
+    """Premium glass card. variant: base | elevated | accent."""
+    if variant == "elevated":
+        bg = SURFACE_CARD_ELEVATED
+        bd = BORDER_CARD_ELEVATED
+    elif variant == "accent":
+        bg = SURFACE_CARD_ACCENT
+        bd = BORDER_CARD_ACCENT
+    else:
+        bg = SURFACE_CARD
+        bd = BORDER_CARD
+
     return f"""
         QFrame#{name} {{
-            background: rgba(255,255,255,0.030);
-            border: 1px solid rgba(255,255,255,0.025);
+            background: {bg};
+            border: 1px solid {bd};
             border-radius: 18px;
         }}
         QFrame#{name}:hover {{
-            background: rgba(255,255,255,0.048);
-            border: 1px solid rgba(143,183,255,0.10);
+            background: {SURFACE_CARD_HOVER};
+            border: 1px solid {BORDER_CARD_ACCENT};
         }}
         QFrame#{name} QLabel {{
             background: transparent;
@@ -459,7 +455,7 @@ def glass_button_qss(kind: str = "secondary") -> str:
             }
             QPushButton:hover {
                 background: rgba(255,255,255,0.05);
-                border: 1px solid rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.06);
                 color: rgba(255,255,255,0.78);
             }
         """
@@ -476,7 +472,7 @@ def glass_button_qss(kind: str = "secondary") -> str:
             }
             QPushButton:hover {
                 background: rgba(255,255,255,0.08);
-                border: 1px solid rgba(255,255,255,0.07);
+                border: 1px solid rgba(255,255,255,0.05);
                 color: rgba(255,255,255,0.92);
             }
         """

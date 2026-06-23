@@ -23,8 +23,8 @@ def brand_card_qss() -> str:
 def search_qss() -> str:
     return """
         QLineEdit#sidebarSearch {
-            background: rgba(255,255,255,0.10);
-            border: 1px solid rgba(255,255,255,0.13);
+            background: rgba(255,255,255,0.055);
+            border: 1px solid rgba(255,255,255,0.055);
             border-radius: 15px;
             padding: 7px 32px 7px 12px;
             color: rgba(255,255,255,0.94);
@@ -32,8 +32,8 @@ def search_qss() -> str:
             selection-background-color: rgba(143,183,255,0.35);
         }
         QLineEdit#sidebarSearch:focus {
-            background: rgba(255,255,255,0.14);
-            border: 1px solid rgba(143,183,255,0.34);
+            background: rgba(143,183,255,0.055);
+            border: 1px solid rgba(143,183,255,0.22);
         }
     """
 
@@ -46,12 +46,12 @@ def scroll_area_qss() -> str:
             background: transparent;
         }
         QScrollBar::handle:vertical {
-            background: rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.08);
             min-height: 36px;
             border-radius: 2px;
         }
         QScrollBar::handle:vertical:hover {
-            background: rgba(255,255,255,0.32);
+            background: rgba(255,255,255,0.16);
         }
         QScrollBar::add-line:vertical,
         QScrollBar::sub-line:vertical {
@@ -62,14 +62,14 @@ def scroll_area_qss() -> str:
 
 def section_header_qss(dark: bool = True, hover: bool = False) -> str:
     if not dark:
-        normal_c = "rgba(28,28,30,0.78)"
-        hover_c = "rgba(28,28,30,0.92)"
+        normal_c = "rgba(28,28,30,0.52)"
+        hover_c = "rgba(28,28,30,0.64)"
     else:
-        normal_c = "rgba(255,255,255,0.94)"
-        hover_c = "rgba(255,255,255,1.00)"
+        normal_c = "rgba(255,255,255,0.48)"
+        hover_c = "rgba(255,255,255,0.65)"
     c = hover_c if hover else normal_c
     return (
-        f"font-size:10.5px;font-weight:bold;color:{c};"
+        f"font-size:10px;font-weight:600;color:{c};letter-spacing:0.8px;"
         "background:transparent;border:none;"
     )
 
