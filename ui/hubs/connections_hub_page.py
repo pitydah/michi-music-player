@@ -98,6 +98,12 @@ class ConnectionsHubPage(QWidget):
         self._scan_results.setVisible(False)
         btn_row.addWidget(self._scan_results)
 
+        self._connect_btn = QPushButton("Conectar servidor detectado")
+        self._connect_btn.setCursor(Qt.PointingHandCursor)
+        self._connect_btn.setVisible(False)
+        self._connect_btn.clicked.connect(self._on_connect_discovered)
+        btn_row.addWidget(self._connect_btn)
+
         dc_layout.addLayout(btn_row)
         discover_card.setStyleSheet(
             "QFrame { background: rgba(255,255,255,0.020); border: 1px solid rgba(255,255,255,0.04); "
@@ -133,9 +139,11 @@ class ConnectionsHubPage(QWidget):
             finished = Signal(list)
             def run(self):
                 from integrations.connections.discovery_manager import DiscoveryManager
-                mgr = DiscoveryManager(timeout=0.5)
-                results = mgr.scan_known_ports()
-                classified = [mgr.build_discovered_server(r) for r in results]
+                mgr = DiscoveryManager(timeout=0.3)
+                results = mgr.scan_known_ports("127.0.0.1")
+                mdns = mgr.scan_mdns()
+                all_results = results + mdns
+                classified = [mgr.build_discovered_server(r) for r in all_results]
                 self.finished.emit(classified)
 
         self._worker = ScanWorker(self)
@@ -147,11 +155,21 @@ class ConnectionsHubPage(QWidget):
         self._scan_progress.setVisible(False)
         if not results:
             self._scan_results.setText("No se encontraron servidores en la red local.")
+            self._connect_btn.setVisible(False)
         else:
+            self._discovered = results
             lines = ["Servidores detectados:"]
-            for s in results[:10]:
-                lines.append(f"  {s.server_type}: {s.host}:{s.port} ({s.discovered_by})")
+            for i, s in enumerate(results[:5]):
+                lines.append(f"  [{i+1}] {s.server_type}: {s.host}:{s.port}")
             self._scan_results.setText("\n".join(lines))
+            self._connect_btn.setVisible(True)
+
+    def _on_connect_discovered(self):
+        if not hasattr(self, '_discovered') or not self._discovered:
+            return
+        w = self.window()
+        if w and hasattr(w, '_add_server'):
+            w._add_server()
 
     def _get_servers(self) -> list:
         try:

@@ -56,6 +56,8 @@ class SubsonicSource(MusicSource):
                         if s.get("coverArt") else ""
                     ),
                     genre=s.get("genre", ""),
+                    source_type=getattr(self._client, '_server', None).stype if hasattr(self._client, '_server') else "navidrome",
+                    source_label=getattr(self._client, '_server', None).name if hasattr(self._client, '_server') else "",
                 ))
             return refs
         except Exception:
@@ -88,6 +90,8 @@ class SubsonicSource(MusicSource):
                     self._client.get_cover_url(album_id, 200)
                     if album_id else ""
                 ),
+                source_type=getattr(self._client, '_server', None).stype if hasattr(self._client, '_server') else "navidrome",
+                source_label=getattr(self._client, '_server', None).name if hasattr(self._client, '_server') else "",
             ) for t in self._client.get_album_tracks(album_id)]
         except Exception:
             return []

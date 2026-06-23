@@ -66,6 +66,17 @@ class MixHubPage(QWidget):
 
         content_layout.addLayout(cards_layout)
 
+        scopes = self._get_scopes()
+        mixed = [s for s in scopes if s.mode == "mixed_sources"]
+        if mixed:
+            scope_card = self._build_card(
+                "mixed", "Scopes de mezcla",
+                "Combinaciones de fuentes disponibles para descubrimiento y mixes inteligentes.",
+                "Explorar scopes",
+                "discover",
+            )
+            content_layout.addWidget(scope_card)
+
         playlist_card = self._build_card(
             "playlists", "Playlists y listas inteligentes",
             "Organiza, mezcla e importa tus listas de reproduccion. "
@@ -111,6 +122,12 @@ class MixHubPage(QWidget):
         w = self.window()
         if w and hasattr(w, '_on_sidebar_navigate'):
             w._on_sidebar_navigate(target)
+
+    @staticmethod
+    def _get_scopes() -> list:
+        from library.library_source import build_default_sources, build_default_scopes
+        sources = build_default_sources()
+        return build_default_scopes(sources)
 
     def _apply_qss(self):
         self.setStyleSheet("""

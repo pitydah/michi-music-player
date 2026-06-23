@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QTabWidget, QPushButton,
 )
 
@@ -41,6 +41,28 @@ class LibraryHubPage(QWidget):
         header_layout.addWidget(subtitle)
 
         layout.addWidget(header)
+
+        sources = self._get_sources()
+        if len(sources) > 1:
+            src_bar = QFrame()
+            src_bar.setObjectName("librarySourcesBar")
+            sr_layout = QHBoxLayout(src_bar)
+            sr_layout.setContentsMargins(20, 8, 20, 8)
+            sr_layout.setSpacing(8)
+
+            sr_label = QLabel("Fuentes:")
+            sr_label.setStyleSheet("QLabel { color: rgba(255,255,255,0.42); font-size: 11px; }")
+            sr_layout.addWidget(sr_label)
+
+            for s in sources:
+                chip = QLabel(f"{s.name} ({s.source_type})")
+                chip.setStyleSheet(
+                    "QLabel { background: rgba(143,183,255,0.06); border: 1px solid rgba(143,183,255,0.08); "
+                    "border-radius: 8px; padding: 4px 10px; color: rgba(143,183,255,0.62); font-size: 10px; }"
+                )
+                sr_layout.addWidget(chip)
+            sr_layout.addStretch()
+            layout.addWidget(src_bar)
 
         self._tabs = QTabWidget()
         self._tabs.setObjectName("libraryHubTabs")
@@ -154,6 +176,11 @@ class LibraryHubPage(QWidget):
         w = self._win or self.window()
         if w and hasattr(w, '_on_sidebar_navigate'):
             w._on_sidebar_navigate(target)
+
+    @staticmethod
+    def _get_sources() -> list:
+        from library.library_source import build_default_sources
+        return build_default_sources()
 
     def _apply_qss(self):
         self.setStyleSheet("""
