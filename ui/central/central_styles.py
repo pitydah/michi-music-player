@@ -606,3 +606,63 @@ def tab_bar_qss() -> str:
             color: {TEXT_PRIMARY};
         }}
     """
+
+
+def card_title_qss() -> str:
+    """Card title — 16px, semibold, premium."""
+    return (
+        "QLabel { color: rgba(255,255,255,0.88); font-size: 16px; "
+        "font-weight: 600; background: transparent; border: none; }"
+    )
+
+
+def card_desc_qss() -> str:
+    """Card description — 12px, medium weight, muted."""
+    return (
+        "QLabel { color: rgba(255,255,255,0.56); font-size: 12px; "
+        "font-weight: 500; background: transparent; border: none; }"
+    )
+
+
+def section_label_qss() -> str:
+    """Section label — 11px, muted, for category headers in cards."""
+    return (
+        "QLabel { color: rgba(255,255,255,0.48); font-size: 11px; "
+        "font-weight: 600; background: transparent; border: none; }"
+    )
+
+
+def glass_progress_qss() -> str:
+    """Glass progress bar — accent chunk on dark glass track."""
+    return f"""
+        QProgressBar {{
+            background: rgba(255,255,255,0.04);
+            border: 1px solid {BORDER_CARD};
+            border-radius: 8px;
+            height: 8px;
+            text-align: center;
+            color: transparent;
+        }}
+        QProgressBar::chunk {{
+            background: {ACCENT_SELECTION};
+            border-radius: 6px;
+        }}
+    """
+
+
+def glass_chip_button_qss() -> str:
+    """Chip button — compact glass pill for tags/devices."""
+    return (
+        "QPushButton {"
+        "  background: rgba(255,255,255,0.04);"
+        "  border: 1px solid rgba(255,255,255,0.03);"
+        "  border-radius: 9px;"
+        "  padding: 4px 10px;"
+        "  color: rgba(255,255,255,0.62);"
+        "  font-size: 10px;"
+        "}"
+        "QPushButton:hover {"
+        "  background: rgba(143,183,255,0.08);"
+        "  border: 1px solid rgba(143,183,255,0.12);"
+        "}"
+    )

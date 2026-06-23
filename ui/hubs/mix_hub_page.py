@@ -50,7 +50,7 @@ class MixHubPage(QWidget):
 
         discover_card = self._build_card(
             "discover", "Descubrir",
-            "Smart mixes diarios, no escuchadas, mas populares y redescubrimiento.",
+            "Smart mixes diarios, no escuchadas, más populares y redescubrimiento.",
             "Explorar",
             "discover",
         )
@@ -58,7 +58,7 @@ class MixHubPage(QWidget):
 
         recommend_card = self._build_card(
             "recommend", "Recomendaciones IA",
-            "Michi Assistant te recomienda música basada en tus gustos, generos y estado de animo.",
+            "Michi Assistant te recomienda música basada en tus gustos, géneros y estado de ánimo.",
             "Abrir asistente",
             "assistant",
         )

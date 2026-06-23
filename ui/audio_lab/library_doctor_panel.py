@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QPushButton, QFrame, QScrollArea, QProgressBar,
 )
 
-from ui.central.central_styles import glass_button_qss
+from ui.central.central_styles import glass_button_qss, glass_progress_qss
 
 
 class LibraryDoctorPanel(QWidget):
@@ -53,6 +53,7 @@ class LibraryDoctorPanel(QWidget):
         self._progress.setObjectName("doctorProgress")
         self._progress.setRange(0, 100)
         self._progress.setValue(0)
+        self._progress.setStyleSheet(glass_progress_qss())
         self._progress.setVisible(False)
         btn_row.addWidget(self._progress)
 
@@ -96,7 +97,7 @@ class LibraryDoctorPanel(QWidget):
 
     def show_results(self, scan: dict, repair_plan: dict):
         self._status.setText(
-            f"{repair_plan.get('total_issues', 0)} problemas detectados. "
+            f"{repair_plan.get('total_issues', 0)} problemás detectados. "
             f"{repair_plan.get('fixable', 0)} se pueden corregir automáticamente."
         )
 

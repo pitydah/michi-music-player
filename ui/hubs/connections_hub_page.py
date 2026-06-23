@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QPushButton, QProgressBar,
 )
 
-from ui.central.central_styles import glass_card_qss, glass_button_qss, glass_chip_qss
+from ui.central.central_styles import glass_card_qss, glass_button_qss, glass_chip_button_qss, glass_progress_qss
 
 
 class ConnectionsHubPage(QWidget):
@@ -91,7 +91,7 @@ class ConnectionsHubPage(QWidget):
                 chip = QPushButton(dname)
                 chip.setToolTip(dmount)
                 chip.setCursor(Qt.PointingHandCursor)
-                chip.setStyleSheet(glass_chip_qss().replace("QLabel", "QPushButton") + "QPushButton:hover { background: rgba(143,183,255,0.08); }")
+                chip.setStyleSheet(glass_chip_button_qss())
                 chip.setFlat(True)
                 chip.clicked.connect(lambda checked=None, m=dmount: self._navigate(f"dev:{m}"))
                 dev_row.addWidget(chip)
@@ -123,6 +123,7 @@ class ConnectionsHubPage(QWidget):
         self._scan_progress = QProgressBar()
         self._scan_progress.setRange(0, 0)
         self._scan_progress.setVisible(False)
+        self._scan_progress.setStyleSheet(glass_progress_qss())
         btn_row.addWidget(self._scan_progress)
 
         self._scan_results = QLabel("")

@@ -102,7 +102,7 @@ class MetadataEditorWidget(QWidget):
         title_box = QVBoxLayout()
         title_box.setSpacing(2)
         t = QLabel("Editor de metadatos")
-        t.setStyleSheet(f"color: {_TEXT}; font-size: 24px; font-weight: 800; background: transparent; border: none;")
+        t.setStyleSheet(f"color: {_TEXT}; font-size: 24px; font-weight: 700; background: transparent; border: none;")
         title_box.addWidget(t)
         s = QLabel("Limpia, completa y normaliza la información de tus archivos")
         s.setStyleSheet(f"color: {_TEXT2}; font-size: 13px; font-weight: 500; background: transparent; border: none;")
@@ -130,17 +130,17 @@ class MetadataEditorWidget(QWidget):
         header.setStyleSheet(
             "QFrame#metadataHero {"
             "  background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            "    stop:0 rgba(255,255,255,0.090),"
-            "    stop:0.55 rgba(255,255,255,0.050),"
-            "    stop:1 rgba(255,255,255,0.030));"
-            "  border: 1px solid rgba(255,255,255,0.10);"
+            "    stop:0 rgba(255,255,255,0.065),"
+            "    stop:0.55 rgba(255,255,255,0.045),"
+            "    stop:1 rgba(143,183,255,0.030));"
+            "  border: 1px solid rgba(255,255,255,0.050);"
             "  border-radius: 22px; }")
         header.setContentsMargins(24, 20, 24, 20)
         header.setLayout(header_row)
 
         # ── Splitter (3 panels) ──
         self._splitter = QSplitter(Qt.Horizontal)
-        self._splitter.setStyleSheet("QSplitter::handle { background: rgba(255,255,255,0.06); width: 2px; }")
+        self._splitter.setStyleSheet("QSplitter::handle { background: rgba(255,255,255,0.04); width: 2px; }")
 
         self._left_panel = self._build_left_panel()
         self._center_panel = self._build_center_panel()
