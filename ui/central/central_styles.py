@@ -1,15 +1,19 @@
-"""Central area QSS styles — dark glass premium, no orange/neon."""
+"""Central area QSS styles — dark glass premium, single visual system."""
 
-# ── Visual tokens ──
-_GLASS_BG = "rgba(255,255,255,0.030)"
-_GLASS_BORDER = "rgba(255,255,255,0.022)"
-_GLASS_HOVER = "rgba(255,255,255,0.048)"
-_GLASS_ACTIVE = "rgba(143,183,255,0.12)"
-_ACCENT = "#8FB7FF"
-_ACCENT_BORDER = "rgba(143,183,255,0.16)"
-_TEXT_PRIMARY = "rgba(255,255,255,0.94)"
-_TEXT_SECONDARY = "rgba(255,255,255,0.62)"
-_TEXT_MUTED = "rgba(255,255,255,0.38)"
+from ui.central.central_tokens import (
+    SURFACE_GLASS, SURFACE_GLASS_HOVER, BORDER_SUBTLE, ACCENT_BLUE, ACCENT_FAINT, ACCENT_SURFACE, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_DISABLED,
+)
+
+# ── Legacy aliases (for existing code that references old names) ──
+_GLASS_BG = SURFACE_GLASS
+_GLASS_BORDER = BORDER_SUBTLE
+_GLASS_HOVER = SURFACE_GLASS_HOVER
+_GLASS_ACTIVE = ACCENT_SURFACE
+_ACCENT = ACCENT_BLUE
+_ACCENT_BORDER = ACCENT_FAINT
+_TEXT_PRIMARY = TEXT_PRIMARY
+_TEXT_SECONDARY = TEXT_SECONDARY
+_TEXT_MUTED = TEXT_DISABLED
 
 
 def content_surface_qss() -> str:

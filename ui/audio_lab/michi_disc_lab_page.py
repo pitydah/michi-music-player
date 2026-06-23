@@ -56,7 +56,7 @@ class MichiDiscLabPage(QWidget):
         content_layout.addWidget(title)
 
         subtitle = QLabel(
-            "Importacion Hi-Fi, ripeo seguro y conversion inteligente "
+            "Importación Hi-Fi, ripeo seguro y conversion inteligente "
             "de discos de música."
         )
         subtitle.setObjectName("discLabSubtitle")

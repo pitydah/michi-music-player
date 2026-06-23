@@ -35,7 +35,7 @@ class PlaybackHubPage(QWidget):
         content_layout.setContentsMargins(40, 32, 40, 32)
         content_layout.setSpacing(20)
 
-        title = QLabel("Reproduccion")
+        title = QLabel("Reproducción")
         title.setObjectName("playbackHubTitle")
         content_layout.addWidget(title)
 

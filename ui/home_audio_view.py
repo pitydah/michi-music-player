@@ -130,7 +130,7 @@ class HomeAudioView(QWidget):
             ("resumen", "Resumen"),
             ("dispositivos", "Dispositivos"),
             ("grupos", "Grupos"),
-            ("diagnostico", "Diagnostico"),
+            ("diagnóstico", "Diagnostico"),
             ("receptores", "Receptores"),
         ]
         for key, label in self._tab_keys:
@@ -161,7 +161,7 @@ class HomeAudioView(QWidget):
             self._build_devices_full()
         elif tab == "grupos":
             self._build_groups_full()
-        elif tab == "diagnostico":
+        elif tab == "diagnóstico":
             self._build_diag_full()
         elif tab == "receptores":
             self._build_receivers_full()

@@ -1,19 +1,48 @@
-"""Central area design tokens — dark glass premium."""
-CENTRAL_BG = "#090B11"
-CENTRAL_SURFACE_BG = "rgba(255,255,255,0.025)"
-CENTRAL_SURFACE_BORDER = "rgba(255,255,255,0.06)"
-CENTRAL_HEADER_BG_TOP = "rgba(255,255,255,0.070)"
-CENTRAL_HEADER_BG_MID = "rgba(255,255,255,0.045)"
-CENTRAL_HEADER_BG_BOTTOM = "rgba(255,255,255,0.030)"
-CENTRAL_BORDER = "rgba(255,255,255,0.08)"
-CENTRAL_BORDER_HOVER = "rgba(255,255,255,0.14)"
-CENTRAL_TEXT_PRIMARY = "rgba(255,255,255,1.00)"
-CENTRAL_TEXT_SECONDARY = "rgba(255,255,255,0.72)"
-CENTRAL_TEXT_MUTED = "rgba(255,255,255,0.56)"
-CENTRAL_ACCENT = "#8FB7FF"
-CENTRAL_ACCENT_FAINT = "rgba(143,183,255,0.34)"
-CENTRAL_RADIUS_LG = 24
-CENTRAL_RADIUS_MD = 16
-CENTRAL_RADIUS_SM = 12
-CENTRAL_CONTROL_H = 36
-CENTRAL_SEARCH_W = 240
+"""Central area design tokens — dark glass premium, single source of truth."""
+
+# ── Backgrounds ──
+BG_APP                 = "#070A10"
+BG_CONTENT             = "#090B11"
+SURFACE_GLASS          = "rgba(255,255,255,0.040)"
+SURFACE_GLASS_HOVER    = "rgba(255,255,255,0.060)"
+SURFACE_POPUP          = "rgba(13,16,24,0.985)"
+
+# ── Borders ──
+BORDER_SUBTLE          = "rgba(255,255,255,0.035)"
+BORDER_FOCUS           = "rgba(143,183,255,0.22)"
+BORDER_NORMAL          = "rgba(255,255,255,0.06)"
+
+# ── Text ──
+TEXT_PRIMARY           = "rgba(255,255,255,0.95)"
+TEXT_NORMAL            = "rgba(255,255,255,0.86)"
+TEXT_SECONDARY         = "rgba(255,255,255,0.68)"
+TEXT_MUTED             = "rgba(255,255,255,0.54)"
+TEXT_DISABLED          = "rgba(255,255,255,0.42)"
+
+# ── Accent ──
+ACCENT_BLUE            = "#8FB7FF"
+ACCENT_FAINT           = "rgba(143,183,255,0.34)"
+ACCENT_SURFACE         = "rgba(143,183,255,0.08)"
+ACCENT_SELECTION       = "rgba(143,183,255,0.14)"
+
+# ── Badge colors ──
+BADGE_LOCAL_BG         = "rgba(143,183,255,0.10)"
+BADGE_LOCAL_TEXT       = "rgba(143,183,255,0.60)"
+BADGE_REMOTE_BG        = "rgba(200,180,100,0.10)"
+BADGE_REMOTE_TEXT      = "rgba(200,180,100,0.60)"
+BADGE_ACTIVE_BG        = "rgba(100,220,140,0.10)"
+BADGE_ACTIVE_TEXT      = "rgba(100,220,140,0.60)"
+BADGE_ERROR_BG         = "rgba(255,100,100,0.10)"
+BADGE_ERROR_TEXT       = "rgba(255,100,100,0.55)"
+BADGE_EXPERIMENTAL_BG  = "rgba(180,150,255,0.08)"
+BADGE_EXPERIMENTAL_TEXT = "rgba(180,150,255,0.55)"
+
+# ── Radii ──
+RADIUS_LG              = 24
+RADIUS_MD              = 16
+RADIUS_SM              = 12
+RADIUS_XS              = 8
+
+# ── Sizing ──
+CONTROL_H              = 36
+SEARCH_W               = 240

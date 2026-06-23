@@ -35,7 +35,7 @@ class MetadataReviewPanel(QWidget):
         header_layout = QVBoxLayout(header)
         header_layout.setContentsMargins(20, 16, 20, 12)
 
-        self._title_label = QLabel("Revision de metadata")
+        self._title_label = QLabel("Revisión de metadata")
         self._title_label.setObjectName("reviewTitle")
         header_layout.addWidget(self._title_label)
 
@@ -142,7 +142,7 @@ class MetadataReviewPanel(QWidget):
         self._checkboxes.clear()
         self._field_rows.clear()
 
-        self._title_label.setText(f"Revision de metadata — {review_data.get('status', '')}")
+        self._title_label.setText(f"Revisión de metadata — {review_data.get('status', '')}")
         proposals = review_data.get("proposals", [])
         total = sum(len(p.get("changes", [])) for p in proposals)
         self._subtitle_label.setText(

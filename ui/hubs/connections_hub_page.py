@@ -40,7 +40,7 @@ class ConnectionsHubPage(QWidget):
 
         servers = self._get_servers()
         subtitle = QLabel(
-            f"Servidores musicales, Home Audio, dispositivos y diagnostico de red. "
+            f"Servidores musicales, Home Audio, dispositivos y diagnóstico de red. "
             f"{len(servers)} servidores configurados."
         )
         subtitle.setObjectName("connectionsHubSubtitle")

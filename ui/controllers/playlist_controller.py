@@ -105,7 +105,7 @@ class PlaylistController:
     def hub_create_from_queue(self):
         queue = getattr(self._win._ctx.playback, '_queue', [])
         if not queue:
-            self._toast("La cola de reproduccion esta vacia", "info")
+            self._toast("La cola de reproducción esta vacia", "info")
             return
         name, ok = QInputDialog.getText(
             self._win, "Crear playlist desde cola", "Nombre:")

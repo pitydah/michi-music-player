@@ -33,12 +33,12 @@ class SettingsHubPage(QWidget):
         content_layout.setContentsMargins(40, 32, 40, 32)
         content_layout.setSpacing(20)
 
-        title = QLabel("Configuracion")
+        title = QLabel("Configuración")
         title.setObjectName("settingsHubTitle")
         content_layout.addWidget(title)
 
         subtitle = QLabel(
-            "General, apariencia, biblioteca, reproduccion, conexiones y ajustes avanzados."
+            "General, apariencia, biblioteca, reproducción, conexiones y ajustes avanzados."
         )
         subtitle.setObjectName("settingsHubSubtitle")
         subtitle.setWordWrap(True)
@@ -48,10 +48,10 @@ class SettingsHubPage(QWidget):
             ("general", "General", "Inicio, carpetas y comportamiento."),
             ("appearance", "Apariencia", "Tema, fuentes y opacidad."),
             ("library", "Biblioteca", "Escaneo, indexado y carpetas."),
-            ("playback", "Reproduccion", "Crossfade, replaygain y buffer."),
+            ("playback", "Reproducción", "Crossfade, replaygain y buffer."),
             ("audio", "Audio / DAC", "Dispositivo, perfil y calidad."),
             ("connections", "Conexiones", "Servidores, Home Audio y Snapcast."),
-            ("advanced", "Avanzado", "Cache, logs, depuracion y modo seguro."),
+            ("advanced", "Avanzado", "Cache, logs, depuración y modo seguro."),
         ]
 
         for key, label, desc in sections:

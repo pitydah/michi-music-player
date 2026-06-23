@@ -148,8 +148,9 @@ def badge_qss(state: str) -> str:
 def accent_qss(active: bool) -> str:
     if active:
         return (
-            "background: #8FB7FF;"
-            "border-radius: 2px; border: none;"
+            "background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+            " stop:0 rgba(143,183,255,0.6), stop:1 rgba(143,183,255,0.25));"
+            " border-radius: 2px; border: none;"
         )
     return "background: transparent; border-radius: 2px; border: none;"
 

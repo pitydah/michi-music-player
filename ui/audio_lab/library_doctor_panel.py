@@ -109,7 +109,7 @@ class LibraryDoctorPanel(QWidget):
             ("missing_metadata", "Metadata faltante", scan.get("missing_metadata", 0), "medium"),
             ("duplicate_artists", "Artistas duplicados", scan.get("duplicate_artists", 0), "medium"),
             ("split_albums", "Albumes partidos", scan.get("split_albums", 0), "low"),
-            ("missing_artwork", "Caratulas faltantes", scan.get("missing_artwork", 0), "low"),
+            ("missing_artwork", "Carátulas faltantes", scan.get("missing_artwork", 0), "low"),
             ("possible_duplicates", "Posibles duplicados", scan.get("possible_duplicates", 0), "info"),
         ]
 

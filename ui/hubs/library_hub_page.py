@@ -34,7 +34,7 @@ class LibraryHubPage(QWidget):
         header_layout.addWidget(title)
 
         subtitle = QLabel(
-            "Musica local, archivos disponibles y estadísticas de tu colección."
+            "Música local, archivos disponibles y estadísticas de tu colección."
         )
         subtitle.setObjectName("libraryHubSubtitle")
         subtitle.setWordWrap(True)
@@ -69,9 +69,9 @@ class LibraryHubPage(QWidget):
 
         tabs_data = [
             ("canciones", "Canciones", "library", "Toda tu música local en una tabla con busqueda y filtros."),
-            ("albums", "Albumes", "albums", "Caratulas y navegacion visual por album."),
+            ("albums", "Álbumes", "albums", "Carátulas y navegación visual por album."),
             ("artists", "Artistas", "artists", "Explora tu biblioteca por artista y sus álbumes."),
-            ("genres", "Generos", "genres", "Atlas de estilos y familias músicales."),
+            ("genres", "Géneros", "genres", "Atlas de estilos y familias músicales."),
             ("folders", "Carpetas", "folders", "Explorador de archivos por carpeta en tu disco."),
         ]
 

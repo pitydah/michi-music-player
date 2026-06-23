@@ -252,7 +252,7 @@ class PlaybackPage(_Page):
 
 class AudioPage(_Page):
     def __init__(self):
-        super().__init__("Audio / DAC", "Salida, calidad y modo de reproduccion", "warm_eq")
+        super().__init__("Audio / DAC", "Salida, calidad y modo de reproducción", "warm_eq")
 
         card = SettingsCard("Perfil")
         self._profile = SettingsCombo(
@@ -305,7 +305,7 @@ class AudioPage(_Page):
         self._resample = SettingsSwitch(sm.get("audio/allow_resample"))
         self._fallback = SettingsSwitch(sm.get("audio/allow_fallback"))
         card_q.add_row(SettingsRow("Sample rate", "Frecuencia de muestreo", self._rate))
-        card_q.add_row(SettingsRow("Buffer (ms)", "Latencia de reproduccion", self._buf))
+        card_q.add_row(SettingsRow("Buffer (ms)", "Latencia de reproducción", self._buf))
         card_q.add_row(SettingsRow("Permitir resample", "Convertir sample rate si es necesario",
                                     self._resample))
         card_q.add_row(SettingsRow("Fallback automatico", "Degradar perfil si falla",

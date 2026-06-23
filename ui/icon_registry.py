@@ -31,7 +31,7 @@ ICON_REGISTRY: dict[str, IconSpec] = {
         key="sidebar_albums", path="icons/sidebar_clean/sidebar_albums_24.png",
         family="sidebar", symbolic=True,
         theme_fallback="media-album-cover",
-        description="Albumes"),
+        description="Álbumes"),
     "sidebar_artists": IconSpec(
         key="sidebar_artists", path="icons/sidebar_artist.svg",
         family="sidebar", symbolic=True, allow_background=False,
@@ -40,7 +40,7 @@ ICON_REGISTRY: dict[str, IconSpec] = {
     "sidebar_genres": IconSpec(
         key="sidebar_genres", path="icons/sidebar_clean/sidebar_mix_24.png",
         family="sidebar", symbolic=True,
-        description="Generos"),
+        description="Géneros"),
     "sidebar_folders": IconSpec(
         key="sidebar_folders", path="icons/sidebar_clean/sidebar_folders_24.png",
         family="sidebar", symbolic=True,
@@ -193,7 +193,7 @@ ICON_REGISTRY: dict[str, IconSpec] = {
     "warm_settings": IconSpec(
         key="warm_settings", path="icons/warm_settings.svg",
         family="action", symbolic=True,
-        description="Configuracion"),
+        description="Configuración"),
 
     # ── View modes ──
     "warm_view_grid": IconSpec(

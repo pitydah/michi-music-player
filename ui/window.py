@@ -106,7 +106,7 @@ SECTION_CONFIG = {
     "mix_unplayed": {"title": "No escuchadas", "subtitle": "Canciones por descubrir",
                      "icon": "sidebar_unplayed", "views": ["list", "grid"],
                      "search": True, "default": "list"},
-    "mix_popular": {"title": "Más escuchadas", "subtitle": "Mayor número de reproducciones",
+    "mix_popular": {"title": "Más escuchadas", "subtitle": "Mayor número de reproducciónes",
                     "icon": "sidebar_popular", "views": [],
                     "search": False, "default": None},
     "add_server": {"title": "Añadir servidor", "subtitle": "Conecta Navidrome o Jellyfin",
@@ -123,23 +123,23 @@ SECTION_CONFIG = {
                     "subtitle": "Audio multiroom, parlantes y Home Assistant",
                     "icon": "home_audio", "views": [],
                     "search": False, "default": None},
-    "new_playlist": {"title": "Nueva playlist", "subtitle": "Crear una playlist vacia",
+    "new_playlist": {"title": "Nueva playlist", "subtitle": "Crear una playlist vacía",
                      "icon": "sidebar_add", "views": [],
                      "search": False, "default": None},
     "assistant":  {"title": "Asistente",
                     "subtitle": "IA local para explorar tu biblioteca",
                     "icon": "sidebar_mix", "views": [],
                     "search": False, "default": None},
-    "metadata_review": {"title": "Revision de metadata",
+    "metadata_review": {"title": "Revisión de metadata",
                          "subtitle": "Compara y aprueba cambios sugeridos",
                          "icon": "metadata_editor", "views": [],
                          "search": False, "default": None},
     "audio_lab":      {"title": "Audio Lab",
-                        "subtitle": "Importa, corrige y enriquece tu coleccion",
+                        "subtitle": "Importa, corrige y enriquece tu colección",
                         "icon": "sidebar_mix", "views": [],
                         "search": False, "default": None},
     "michi_disc_lab": {"title": "Michi Disc Lab",
-                       "subtitle": "Importacion Hi-Fi y ripeo seguro de CDs",
+                       "subtitle": "Importación Hi-Fi y ripeo seguro de CDs",
                        "icon": "sidebar_mix", "views": [],
                        "search": False, "default": None},
     "home":           {"title": "Inicio",
@@ -147,14 +147,14 @@ SECTION_CONFIG = {
                         "icon": "sidebar_library", "views": [],
                         "search": False, "default": None},
     "library_hub":    {"title": "Biblioteca",
-                        "subtitle": "Musica local, servidores y archivos offline",
+                        "subtitle": "Música local, servidores y archivos offline",
                         "icon": "sidebar_library", "views": [],
                         "search": False, "default": None},
     "mix_hub":        {"title": "Mix",
                         "subtitle": "Smart mixes, recomendaciones y playlists mixtas",
                         "icon": "sidebar_mix", "views": [],
                         "search": False, "default": None},
-    "playback_hub":   {"title": "Reproduccion",
+    "playback_hub":   {"title": "Reproducción",
                         "subtitle": "Cola, historial, favoritos y radio",
                         "icon": "warm_play", "views": [],
                         "search": False, "default": None},
@@ -162,7 +162,7 @@ SECTION_CONFIG = {
                         "subtitle": "Servidores, Home Audio y dispositivos",
                         "icon": "sidebar_servers", "views": [],
                         "search": False, "default": None},
-    "settings_hub":   {"title": "Configuracion",
+    "settings_hub":   {"title": "Configuración",
                         "subtitle": "Preferencias de la aplicacion",
                         "icon": "warm_settings", "views": [],
                         "search": False, "default": None},
@@ -273,6 +273,9 @@ class MainWindow(QMainWindow):
         self._album_sort_key = "title"
         self._album_filter_mode = "all"
         self._coverflow_cache_key: tuple | None = None
+        self._nav_history: list[str] = []
+        self._nav_history_index: int = -1
+        self._nav_restoring: bool = False
 
         # Optional attributes — initialized as None, filled by their init phase
         self._playlist_ctrl = None
@@ -696,6 +699,16 @@ class MainWindow(QMainWindow):
         self._preferences_action.triggered.connect(self._show_preferences)
         self.addAction(self._preferences_action)
 
+        back_action = QAction(self)
+        back_action.setShortcut("Alt+Left")
+        back_action.triggered.connect(self._navigate_back)
+        self.addAction(back_action)
+
+        forward_action = QAction(self)
+        forward_action.setShortcut("Alt+Right")
+        forward_action.triggered.connect(self._navigate_forward)
+        self.addAction(forward_action)
+
         self._add_transmit_device_action = QAction("Añadir dispositivo...", self)
         self._add_transmit_device_action.triggered.connect(self._add_transmit_device)
         self.addAction(self._add_transmit_device_action)
@@ -779,6 +792,26 @@ class MainWindow(QMainWindow):
         text += "</table>"
         QMessageBox.information(self, "Atajos de teclado", text)
 
+    def _build_breadcrumb_subtitle(self, subtitle: str, section_key: str) -> str:
+        if not self._nav_history or self._nav_history_index <= 0:
+            return subtitle
+        prev_key = self._nav_history[self._nav_history_index - 1]
+        hub_names = {
+            "home": "Inicio", "library_hub": "Biblioteca", "mix_hub": "Mix",
+            "playback_hub": "Reproducción", "connections_hub": "Conexiones",
+            "radio": "Radio", "audio_lab": "Audio Lab",
+            "settings_hub": "Configuración", "home_audio": "Home Audio",
+            "library": "Biblioteca", "albums": "Biblioteca",
+            "artists": "Biblioteca", "genres": "Biblioteca",
+            "folders": "Biblioteca",
+        }
+        hub = hub_names.get(prev_key, "")
+        if hub and section_key not in ("home", "library_hub", "mix_hub",
+                                         "playback_hub", "connections_hub",
+                                         "settings_hub", "audio_lab"):
+            return f"{hub} / {subtitle}" if subtitle else hub
+        return subtitle
+
     def _show_about(self):
         QMessageBox.about(self, "Acerca de",
             "<h2>Michi Music Player</h2><p>Sincronización Android, ecualizador paramétrico, "
@@ -832,7 +865,28 @@ class MainWindow(QMainWindow):
 
         title_wrap = QHBoxLayout()
         title_wrap.setContentsMargins(0, 0, 0, 0)
-        title_wrap.setSpacing(10)
+        title_wrap.setSpacing(6)
+
+        self._back_btn = QToolButton()
+        self._back_btn.setText("←")
+        self._back_btn.setToolTip("Atrás (Alt+Izquierda)")
+        self._back_btn.setCursor(Qt.PointingHandCursor)
+        self._back_btn.setStyleSheet(tool_button_qss("icon"))
+        self._back_btn.setFixedSize(36, 36)
+        self._back_btn.setEnabled(False)
+        self._back_btn.clicked.connect(self._navigate_back)
+        title_wrap.addWidget(self._back_btn)
+
+        self._forward_btn = QToolButton()
+        self._forward_btn.setText("→")
+        self._forward_btn.setToolTip("Adelante (Alt+Derecha)")
+        self._forward_btn.setCursor(Qt.PointingHandCursor)
+        self._forward_btn.setStyleSheet(tool_button_qss("icon"))
+        self._forward_btn.setFixedSize(36, 36)
+        self._forward_btn.setEnabled(False)
+        self._forward_btn.clicked.connect(self._navigate_forward)
+        title_wrap.addWidget(self._forward_btn)
+
         title_wrap.addWidget(self._section_icon_box)
         title_wrap.addLayout(title_box)
         hl.addLayout(title_wrap)
@@ -1328,6 +1382,8 @@ class MainWindow(QMainWindow):
         elif key.startswith("pl:"):
             section_key = "playlists"
         self._configure_header_for_section(section_key)
+        if not self._nav_restoring:
+            self._push_nav(key)
 
         # Dynamic pattern routes
         if key and key.startswith("pl:"):
@@ -1347,6 +1403,39 @@ class MainWindow(QMainWindow):
         method = NAV_ROUTES.get(key)
         if method and hasattr(self, method):
             getattr(self, method)(key)
+
+    def _push_nav(self, key: str):
+        if self._nav_history and self._nav_history[self._nav_history_index] == key:
+            return
+        if self._nav_history_index < len(self._nav_history) - 1:
+            self._nav_history = self._nav_history[:self._nav_history_index + 1]
+        self._nav_history.append(key)
+        self._nav_history_index = len(self._nav_history) - 1
+        self._update_nav_buttons()
+
+    def _navigate_back(self):
+        if self._nav_history_index > 0:
+            self._nav_history_index -= 1
+            self._nav_restoring = True
+            key = self._nav_history[self._nav_history_index]
+            self._on_sidebar_navigate(key)
+            self._nav_restoring = False
+            self._update_nav_buttons()
+
+    def _navigate_forward(self):
+        if self._nav_history_index < len(self._nav_history) - 1:
+            self._nav_history_index += 1
+            self._nav_restoring = True
+            key = self._nav_history[self._nav_history_index]
+            self._on_sidebar_navigate(key)
+            self._nav_restoring = False
+
+    def _update_nav_buttons(self):
+        if hasattr(self, '_back_btn'):
+            self._back_btn.setEnabled(self._nav_history_index > 0)
+        if hasattr(self, '_forward_btn'):
+            self._forward_btn.setEnabled(
+                self._nav_history_index < len(self._nav_history) - 1)
 
     # ── Static route handlers ──
 
@@ -2039,6 +2128,7 @@ class MainWindow(QMainWindow):
         default = config.get("default", "list")
 
         self._section_title.setText(title)
+        subtitle = self._build_breadcrumb_subtitle(subtitle, section_key)
         self._section_subtitle.setText(subtitle)
 
         # Set section icon
@@ -2744,7 +2834,7 @@ class MainWindow(QMainWindow):
 
         try:
             diag = self._playback.get_audio_diagnostics()
-            lines = diag.to_tooltip().split("\n") if diag else ["Sin diagnostico"]
+            lines = diag.to_tooltip().split("\n") if diag else ["Sin diagnóstico"]
         except Exception:
             lines = ["Diagnostico no disponible"]
 
