@@ -39,7 +39,7 @@ class MixHubPage(QWidget):
 
         subtitle = QLabel(
             "Smart mixes, recomendaciones inteligentes y playlists que combinan "
-            "musica local y remota."
+            "música local y remota."
         )
         subtitle.setObjectName("mixHubSubtitle")
         subtitle.setWordWrap(True)
@@ -58,7 +58,7 @@ class MixHubPage(QWidget):
 
         recommend_card = self._build_card(
             "recommend", "Recomendaciones IA",
-            "Michi Assistant te recomienda musica basada en tus gustos, generos y estado de animo.",
+            "Michi Assistant te recomienda música basada en tus gustos, generos y estado de animo.",
             "Abrir asistente",
             "assistant",
         )

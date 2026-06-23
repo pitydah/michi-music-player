@@ -81,7 +81,7 @@ class PlaylistController:
 
     def hub_create_from_folder(self):
         folder = QFileDialog.getExistingDirectory(
-            self._win, "Seleccionar carpeta musical")
+            self._win, "Seleccionar carpeta músical")
         if not folder:
             return
         from library.library_db import AUDIO_EXTS
@@ -124,7 +124,7 @@ class PlaylistController:
     def create_from_album(self):
         all_items = getattr(self._win, '_all_items', [])
         if not all_items:
-            self._toast("No hay musica en la biblioteca", "info")
+            self._toast("No hay música en la biblioteca", "info")
             return
         from library.artist_grouping import build_artist_albums
         artist_data = build_artist_albums(all_items)
@@ -155,7 +155,7 @@ class PlaylistController:
     def create_from_artist(self):
         all_items = getattr(self._win, '_all_items', [])
         if not all_items:
-            self._toast("No hay musica en la biblioteca", "info")
+            self._toast("No hay música en la biblioteca", "info")
             return
         from library.artist_grouping import build_artist_groups
         groups = build_artist_groups(all_items)
@@ -181,7 +181,7 @@ class PlaylistController:
     def create_from_genre(self):
         all_items = getattr(self._win, '_all_items', [])
         if not all_items:
-            self._toast("No hay musica en la biblioteca", "info")
+            self._toast("No hay música en la biblioteca", "info")
             return
         genres = sorted(set(i.genre for i in all_items if i.genre))
         if not genres:

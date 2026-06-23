@@ -64,7 +64,7 @@ class HomePage(QWidget):
 
         stats = self._get_home_stats()
         subtitle = QLabel(
-            f"Tu musica, tus dispositivos y tus servidores en un solo lugar. "
+            f"Tu música, tus dispositivos y tus servidores en un solo lugar. "
             f"{stats.get('total_songs', 0):,} canciones en tu biblioteca."
         )
         subtitle.setObjectName("homeSubtitle")
@@ -94,7 +94,7 @@ class HomePage(QWidget):
         quick_row.setSpacing(12)
 
         for label, target in [
-            ("Buscar musica", "library"),
+            ("Buscar música", "library"),
             ("Playlists", "playlist_hub"),
             ("Recomendaciones", "assistant"),
         ]:

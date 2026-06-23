@@ -40,7 +40,7 @@ class ConnectionsHubPage(QWidget):
 
         servers = self._get_servers()
         subtitle = QLabel(
-            f"Servidores musicales, Home Audio, dispositivos y diagnóstico de red. "
+            f"Servidores músicales, Home Audio, dispositivos y diagnóstico de red. "
             f"{len(servers)} servidores configurados."
         )
         subtitle.setObjectName("connectionsHubSubtitle")
@@ -147,8 +147,8 @@ class ConnectionsHubPage(QWidget):
         content_layout.addWidget(discover_card)
 
         actions = [
-            ("add_server", "Añadir servidor musical",
-             "Conecta Navidrome, Jellyfin o Subsonic para acceder a tu musica remota."),
+            ("add_server", "Añadir servidor músical",
+             "Conecta Navidrome, Jellyfin o Subsonic para acceder a tu música remota."),
             ("home_audio", "Home Audio",
              "Audio multiroom, parlantes Snapcast y Home Assistant."),
         ]
