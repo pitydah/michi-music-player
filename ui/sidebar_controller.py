@@ -36,6 +36,8 @@ class SidebarController(QObject):
 
         # ── Dispositivos ──
         self._sidebar.add_section("dev", "Dispositivos", "sidebar_devices")
+        self._sidebar.add_item("dev", "devices_page", "Michi Sync Suite",
+                                "sidebar_devices")
         for d in get_mounted_devices():
             self._sidebar.add_item("dev", f"dev:{d['mount']}", d['name'],
                                     "sidebar_devices")

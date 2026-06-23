@@ -170,6 +170,10 @@ SECTION_CONFIG = {
                         "subtitle": "Unidades y discos externos",
                         "icon": "sidebar_devices", "views": [],
                         "search": False, "default": None},
+    "devices_page":   {"title": "Michi Sync Suite",
+                        "subtitle": "Sincroniza musica con tus dispositivos",
+                        "icon": "sidebar_devices", "views": [],
+                        "search": False, "default": None},
 }
 
 
@@ -220,6 +224,7 @@ NAV_ROUTES = {
     "playback_hub": "_show_playback_hub_page",
     "connections_hub": "_show_connections_hub_page",
     "settings_hub": "_show_settings_hub_page",
+    "devices_page": "_show_devices_page",
 }
 
 
@@ -326,6 +331,7 @@ class MainWindow(QMainWindow):
         self._playback_hub_page = None
         self._connections_hub_page = None
         self._settings_hub_page = None
+        self._devices_page = None
 
     def _init_core(self):
         """DB, player engine, playback service, model, search — must not fail."""
@@ -1796,6 +1802,14 @@ class MainWindow(QMainWindow):
             self._views.register("settings_hub", self._settings_hub_page)
         self._fade_content("settings_hub")
 
+    def _show_devices_page(self, key=None):
+        if self._devices_page is None:
+            from ui.devices_page import DevicesPage
+            self._devices_page = DevicesPage(db=self._db, window=self)
+        if not self._views.widget("devices_page"):
+            self._views.register("devices_page", self._devices_page)
+        self._fade_content("devices_page")
+
     def _show_new_playlist(self, key):
         self._create_playlist()
 
@@ -2166,6 +2180,7 @@ class MainWindow(QMainWindow):
             "playback_hub": "",
             "connections_hub": "",
             "settings_hub": "",
+            "devices_page": "",
             "devices": "",
         }
         self._search.setPlaceholderText(searchers.get(section_key, "Buscar..."))
