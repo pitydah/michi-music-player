@@ -1,15 +1,16 @@
-"""Michi Sync Suite — professional device sync hub."""
+"""Michi Sync Suite — professional device sync hub using existing SyncManager."""
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QFrame, QScrollArea, QPushButton,
 )
 
 from ui.central.central_styles import (
-    glass_card_qss, glass_button_qss, card_title_qss, card_desc_qss, section_label_qss,
+    glass_card_qss, glass_button_qss,
+    card_title_qss, card_desc_qss, section_label_qss,
 )
 from ui.services.device_registry import PairedDevice
 from ui.services.device_sync_controller import DeviceSyncController
@@ -17,14 +18,17 @@ from ui.services.transcode_service import TRANSCODE_PROFILES
 
 
 class DevicesPage(QWidget):
-    def __init__(self, db=None, window=None, parent: QWidget | None = None):
+    def __init__(self, db=None, sync_manager=None,
+                 parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("devicesPage")
         self._db = db
-        self._win = window
+        self._sync_mgr = sync_manager
         self._controller = DeviceSyncController(db) if db else None
+        self._discovered: list[dict] = []
         self._build_ui()
-        QTimer.singleShot(500, self._refresh_devices)
+        self._wire_sync_manager()
+        self._refresh()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -33,171 +37,245 @@ class DevicesPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        sbar = scroll.verticalScrollBar()
+        sbar.setSingleStep(20)
         scroll.setObjectName("devicesScroll")
 
         content = QWidget()
         content.setObjectName("devicesContent")
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(40, 32, 40, 32)
-        content_layout.setSpacing(20)
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(40, 32, 40, 32)
+        cl.setSpacing(20)
 
         title = QLabel("Michi Sync Suite")
         title.setObjectName("devicesTitle")
-        content_layout.addWidget(title)
+        cl.addWidget(title)
 
-        subtitle = QLabel(
-            "Sincroniza tu música con teléfonos, tablets, reproductores y "
-            "dispositivos USB. Transferencia local tipo LocalSend."
+        self._subtitle = QLabel(
+            "Sincroniza tu musica con telefonos, tablets y dispositivos."
         )
-        subtitle.setObjectName("devicesSubtitle")
-        subtitle.setWordWrap(True)
-        content_layout.addWidget(subtitle)
+        self._subtitle.setObjectName("devicesSubtitle")
+        self._subtitle.setWordWrap(True)
+        cl.addWidget(self._subtitle)
 
-        sec_label = QLabel("DISPOSITIVOS EMPAREJADOS")
-        sec_label.setStyleSheet(section_label_qss())
-        content_layout.addWidget(sec_label)
+        # ── Sync status ──
+        status_row = QHBoxLayout()
+        self._status_label = QLabel("Sync: inactivo")
+        self._status_label.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 12px; }")
+        status_row.addWidget(self._status_label)
+        status_row.addStretch()
 
-        self._paired_container = QVBoxLayout()
-        self._paired_container.setSpacing(10)
-        content_layout.addLayout(self._paired_container)
+        self._toggle_sync_btn = QPushButton("Activar Michi Sync")
+        self._toggle_sync_btn.setCursor(Qt.PointingHandCursor)
+        self._toggle_sync_btn.clicked.connect(self._on_toggle_sync)
+        status_row.addWidget(self._toggle_sync_btn)
+        cl.addLayout(status_row)
 
-        sec_label2 = QLabel("RED LOCAL")
-        sec_label2.setStyleSheet(section_label_qss())
-        content_layout.addWidget(sec_label2)
+        cl.addSpacing(4)
 
-        scan_row = QHBoxLayout()
-        self._scan_btn = QPushButton("Buscar dispositivos")
-        self._scan_btn.setCursor(Qt.PointingHandCursor)
-        self._scan_btn.clicked.connect(self._on_scan)
-        scan_row.addWidget(self._scan_btn)
-        scan_row.addStretch()
-        content_layout.addLayout(scan_row)
+        # ── Paired devices ──
+        sec1 = QLabel("EMPAREJADOS")
+        sec1.setStyleSheet(section_label_qss())
+        cl.addWidget(sec1)
+        self._paired_layout = QVBoxLayout()
+        self._paired_layout.setSpacing(10)
+        cl.addLayout(self._paired_layout)
 
-        self._scan_results = QLabel("")
-        self._scan_results.setWordWrap(True)
-        self._scan_results.setStyleSheet("QLabel { color: rgba(255,255,255,0.52); font-size: 12px; }")
-        content_layout.addWidget(self._scan_results)
+        # ── Discovered on network ──
+        sec2 = QLabel("RED LOCAL")
+        sec2.setStyleSheet(section_label_qss())
+        cl.addWidget(sec2)
+        self._discovered_layout = QVBoxLayout()
+        self._discovered_layout.setSpacing(10)
+        cl.addLayout(self._discovered_layout)
 
-        sec_label3 = QLabel("PERFILES DE SINCRONIZACIÓN")
-        sec_label3.setStyleSheet(section_label_qss())
-        content_layout.addWidget(sec_label3)
+        # ── Profiles ──
+        sec3 = QLabel("PERFILES")
+        sec3.setStyleSheet(section_label_qss())
+        cl.addWidget(sec3)
 
         profiles_row = QHBoxLayout()
         profiles_row.setSpacing(12)
         for pid, pinfo in TRANSCODE_PROFILES.items():
             card = QFrame()
-            card.setObjectName(f"profileCard_{pid}")
-            c_layout = QVBoxLayout(card)
-            c_layout.setContentsMargins(16, 12, 16, 12)
-            c_layout.setSpacing(4)
-            pname = QLabel(pinfo["name"])
-            pname.setStyleSheet(card_title_qss().replace("16px", "13px"))
-            c_layout.addWidget(pname)
-            pdesc = QLabel(pinfo["description"])
-            pdesc.setWordWrap(True)
-            pdesc.setStyleSheet(card_desc_qss())
-            c_layout.addWidget(pdesc)
-            card.setStyleSheet(glass_card_qss(f"profileCard_{pid}"))
+            card.setObjectName(f"profile_{pid}")
+            cl2 = QVBoxLayout(card)
+            cl2.setContentsMargins(16, 12, 16, 12)
+            cl2.setSpacing(4)
+            pn = QLabel(pinfo["name"])
+            pn.setStyleSheet(card_title_qss().replace("16px", "13px"))
+            cl2.addWidget(pn)
+            pd = QLabel(pinfo["description"])
+            pd.setWordWrap(True)
+            pd.setStyleSheet(card_desc_qss())
+            cl2.addWidget(pd)
+            card.setStyleSheet(glass_card_qss(f"profile_{pid}"))
             profiles_row.addWidget(card)
-        content_layout.addLayout(profiles_row)
+        cl.addLayout(profiles_row)
 
-        content_layout.addStretch()
+        cl.addStretch()
         scroll.setWidget(content)
         layout.addWidget(scroll)
-
         self._apply_qss()
 
-    def _refresh_devices(self):
-        self._show_paired_devices()
+    def _wire_sync_manager(self):
+        if not self._sync_mgr:
+            return
+        self._sync_mgr.peer_found.connect(self._on_peer_found)
+        self._sync_mgr.peer_lost.connect(self._on_peer_lost)
+        self._sync_mgr.client_connected.connect(self._on_client_connected)
 
-    def _show_paired_devices(self):
-        while self._paired_container.count():
-            item = self._paired_container.takeAt(0)
-            if item and item.widget():
-                item.widget().deleteLater()
+    def _refresh(self):
+        self._update_sync_status()
+        self._show_paired()
+        self._show_discovered()
+
+    def _update_sync_status(self):
+        active = self._sync_mgr and self._sync_mgr.is_active
+        if active:
+            self._status_label.setText("Sync: activo — puerto 53318")
+            self._toggle_sync_btn.setText("Desactivar")
+            self._toggle_sync_btn.setStyleSheet(glass_button_qss("secondary"))
+            self._subtitle.setText(
+                "Servidor activo. Tu biblioteca esta disponible para "
+                "dispositivos en la red local."
+            )
+        else:
+            self._status_label.setText("Sync: inactivo")
+            self._toggle_sync_btn.setText("Activar Michi Sync")
+            self._toggle_sync_btn.setStyleSheet(glass_button_qss("primary"))
+            self._subtitle.setText(
+                "Activa el servidor para sincronizar musica con tus "
+                "dispositivos en la red local."
+            )
+
+    def _show_paired(self):
+        while self._paired_layout.count():
+            w = self._paired_layout.takeAt(0).widget()
+            if w:
+                w.deleteLater()
 
         if not self._controller:
             return
 
         devices = self._controller.paired_devices
         if not devices:
-            empty = QLabel("No hay dispositivos emparejados. Busca dispositivos en la red local.")
-            empty.setStyleSheet("QLabel { color: rgba(255,255,255,0.42); font-size: 12px; padding: 16px; }")
-            self._paired_container.addWidget(empty)
+            empty = QLabel("Sin dispositivos emparejados.")
+            empty.setStyleSheet("QLabel { color: rgba(255,255,255,0.38); font-size: 12px; padding: 8px; }")
+            self._paired_layout.addWidget(empty)
             return
 
         for d in devices:
-            card = self._build_device_card(d)
-            self._paired_container.addWidget(card)
+            card = self._build_device_card(d, paired=True)
+            self._paired_layout.addWidget(card)
 
-    def _build_device_card(self, device: PairedDevice) -> QFrame:
+    def _show_discovered(self):
+        while self._discovered_layout.count():
+            w = self._discovered_layout.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+
+        if not self._discovered:
+            empty = QLabel("No hay dispositivos en la red local.")
+            empty.setStyleSheet("QLabel { color: rgba(255,255,255,0.38); font-size: 12px; padding: 8px; }")
+            self._discovered_layout.addWidget(empty)
+            return
+
+        for d in self._discovered:
+            card = self._build_device_card(d, paired=False)
+            self._discovered_layout.addWidget(card)
+
+    def _build_device_card(self, device, paired: bool = False) -> QFrame:
         card = QFrame()
-        card.setObjectName(f"pairedCard_{device.device_id}")
+        card_id = device.get("device_id", device.get("alias", "unknown"))
+        card.setObjectName(f"devCard_{card_id}")
 
-        c_layout = QHBoxLayout(card)
-        c_layout.setContentsMargins(16, 14, 16, 14)
-        c_layout.setSpacing(12)
+        cl2 = QHBoxLayout(card)
+        cl2.setContentsMargins(16, 14, 16, 14)
+        cl2.setSpacing(12)
 
         info = QVBoxLayout()
         info.setSpacing(4)
-        name = QLabel(device.name)
-        name.setStyleSheet("QLabel { color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 600; }")
-        info.addWidget(name)
-        meta = QLabel(f"{device.device_type} · {device.host}:{device.port} · {device.last_seen or 'nunca'}")
-        meta.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 11px; }")
-        info.addWidget(meta)
-        c_layout.addLayout(info, 1)
 
-        sync_btn = QPushButton("Sincronizar")
-        sync_btn.setCursor(Qt.PointingHandCursor)
-        sync_btn.setStyleSheet(glass_button_qss("primary"))
-        c_layout.addWidget(sync_btn)
+        name = device.get("name", device.get("alias", "Dispositivo"))
+        nl = QLabel(str(name))
+        nl.setStyleSheet("QLabel { color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 600; }")
+        info.addWidget(nl)
 
-        forget_btn = QPushButton("Olvidar")
-        forget_btn.setCursor(Qt.PointingHandCursor)
-        forget_btn.clicked.connect(lambda: self._on_unpair(device.device_id))
-        c_layout.addWidget(forget_btn)
+        if paired and isinstance(device, PairedDevice):
+            meta = f"{device.device_type} · {device.host}:{device.port}"
+        else:
+            host = device.get("host", device.get("ip", ""))
+            meta = f"Red local · {host}"
+        ml = QLabel(meta)
+        ml.setStyleSheet("QLabel { color: rgba(255,255,255,0.44); font-size: 11px; }")
+        info.addWidget(ml)
+        cl2.addLayout(info, 1)
 
-        card.setStyleSheet(glass_card_qss(f"pairedCard_{device.device_id}", "elevated"))
+        if paired:
+            sync_btn = QPushButton("Sincronizar ahora")
+            sync_btn.setCursor(Qt.PointingHandCursor)
+            sync_btn.setStyleSheet(glass_button_qss("primary"))
+            cl2.addWidget(sync_btn)
+
+            forget_btn = QPushButton("Olvidar")
+            forget_btn.setCursor(Qt.PointingHandCursor)
+            if hasattr(device, "device_id"):
+                did = device.device_id
+                forget_btn.clicked.connect(lambda c=None, d=did: self._on_unpair(d))
+            cl2.addWidget(forget_btn)
+        else:
+            pair_btn = QPushButton("Emparejar")
+            pair_btn.setCursor(Qt.PointingHandCursor)
+            alias = device.get("alias", "")
+            ip_val = device.get("ip", device.get("host", ""))
+            pair_btn.clicked.connect(
+                lambda c=None, a=alias, h=ip_val: self._on_pair(a, h))
+            cl2.addWidget(pair_btn)
+
+        card.setStyleSheet(glass_card_qss(f"devCard_{card_id}",
+                            "elevated" if paired else "base"))
         return card
 
-    def _on_scan(self):
-        self._scan_btn.setEnabled(False)
-        self._scan_results.setText("Escaneando red local...")
+    def _on_toggle_sync(self):
+        if self._sync_mgr:
+            self._sync_mgr.toggle()
+        self._update_sync_status()
 
-        from integrations.connections.discovery_manager import DiscoveryManager
-        mgr = DiscoveryManager(timeout=0.3)
-        hosts = mgr.scan_known_ports()
-        mdns = mgr.scan_mdns()
-        all_found = hosts + mdns
+    def _on_peer_found(self, alias: str, ip: str):
+        for d in self._discovered:
+            if d.get("alias") == alias:
+                d["ip"] = ip
+                self._show_discovered()
+                return
+        self._discovered.append({"alias": alias, "ip": ip})
+        self._show_discovered()
 
-        found_devices = []
-        for s in all_found:
-            if hasattr(self._controller, 'check_device_available'):
-                available = self._controller.check_device_available(s.host, s.port)
-                if available:
-                    found_devices.append(s)
+    def _on_peer_lost(self, alias: str):
+        self._discovered = [d for d in self._discovered
+                           if d.get("alias") != alias]
+        self._show_discovered()
 
-        self._scan_btn.setEnabled(True)
-        if found_devices:
-            lines = ["Dispositivos detectados:"]
-            for s in found_devices[:5]:
-                lines.append(
-                    f"  {s.host}:{s.port} ({s.server_type}) — "
-                    f"Click para emparejar"
-                )
-            self._scan_results.setText("\n".join(lines))
-        else:
-            self._scan_results.setText(
-                "No se detectaron dispositivos. Asegúrate de que la app "
-                "Michi Sync esté abierta en tu Android."
-            )
+    def _on_client_connected(self, alias: str):
+        for d in self._discovered:
+            if d.get("alias") == alias:
+                d["connected"] = True
+                self._show_discovered()
+                return
+
+    def _on_pair(self, alias: str, ip: str):
+        if self._controller:
+            did = f"sync_{alias}"
+            self._controller.pair_device(did, alias, host=ip)
+            self._discovered = [d for d in self._discovered
+                               if d.get("alias") != alias]
+            self._show_discovered()
+            self._show_paired()
 
     def _on_unpair(self, device_id: str):
         if self._controller:
             self._controller.unpair_device(device_id)
-            self._show_paired_devices()
+            self._show_paired()
 
     def _apply_qss(self):
         self.setStyleSheet("""
@@ -207,4 +285,3 @@ class DevicesPage(QWidget):
             QLabel#devicesTitle { color: rgba(255,255,255,0.92); font-size: 22px; font-weight: 700; }
             QLabel#devicesSubtitle { color: rgba(255,255,255,0.56); font-size: 13px; }
         """)
-        self._scan_btn.setStyleSheet(glass_button_qss("primary"))

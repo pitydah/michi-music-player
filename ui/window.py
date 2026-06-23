@@ -1805,7 +1805,8 @@ class MainWindow(QMainWindow):
     def _show_devices_page(self, key=None):
         if self._devices_page is None:
             from ui.devices_page import DevicesPage
-            self._devices_page = DevicesPage(db=self._db, window=self)
+            sync_mgr = getattr(self, '_sync_mgr', None)
+            self._devices_page = DevicesPage(db=self._db, sync_manager=sync_mgr)
         if not self._views.widget("devices_page"):
             self._views.register("devices_page", self._devices_page)
         self._fade_content("devices_page")
