@@ -50,7 +50,7 @@ SEARCH_W               = 240
 # ── Card surfaces (semantic) ──
 SURFACE_CARD            = "rgba(255,255,255,0.040)"
 SURFACE_CARD_HOVER      = "rgba(255,255,255,0.060)"
-SURFACE_CARD_ELEVATED   = "qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 rgba(255,255,255,0.060), stop:1 rgba(255,255,255,0.040))"
+SURFACE_CARD_ELEVATED   = "qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 rgba(255,255,255,0.060), stop:0.7 rgba(255,255,255,0.040), stop:1 rgba(143,183,255,0.035))"
 SURFACE_CARD_ACCENT     = "rgba(143,183,255,0.04)"
 SURFACE_CONTROL         = "rgba(255,255,255,0.045)"
 SURFACE_CONTROL_HOVER   = "rgba(255,255,255,0.065)"

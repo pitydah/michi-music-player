@@ -122,17 +122,18 @@ class HomePage(QWidget):
         card_layout.setSpacing(10)
 
         card_title = QLabel(title)
-        card_title.setObjectName("homeCardTitle")
+        card_title.setObjectName(f"homeCardTitle_{key}")
         card_layout.addWidget(card_title)
 
         card_desc = QLabel(description)
-        card_desc.setObjectName("homeCardDesc")
+        card_desc.setObjectName(f"homeCardDesc_{key}")
         card_desc.setWordWrap(True)
         card_layout.addWidget(card_desc)
 
         card_layout.addStretch()
 
         btn = QPushButton(btn_text)
+        btn.setObjectName(f"homeCardBtn_{key}")
         btn.setCursor(Qt.PointingHandCursor)
         card_layout.addWidget(btn)
 
@@ -155,20 +156,39 @@ class HomePage(QWidget):
                 color: rgba(255,255,255,0.56); font-size: 13px;
             }
         """)
+        button_kinds = {
+            "Reanudar": "primary",
+            "Ver recientes": "secondary",
+            "Buscar música": "secondary",
+            "Playlists": "ghost",
+            "Recomendaciones": "secondary",
+        }
         for key in ("continue", "recent"):
             card = self.findChild(QFrame, f"homeCard_{key}")
-            if card:
-                card.setStyleSheet(glass_card_qss(f"homeCard_{key}", "elevated"))
-                for lbl in card.findChildren(QLabel):
-                    if "font-size" not in (lbl.styleSheet() or ""):
-                        lbl.setStyleSheet(
-                            "QLabel { color: rgba(255,255,255,0.62); font-size: 12px; "
-                            "background: transparent; border: none; }"
-                        )
-                btns = card.findChildren(QPushButton)
-                for btn in btns:
-                    btn.setStyleSheet(glass_button_qss("primary"))
+            if not card:
+                continue
+            card.setStyleSheet(glass_card_qss(f"homeCard_{key}", "elevated"))
+
+            title_lbl = card.findChild(QLabel, f"homeCardTitle_{key}")
+            if title_lbl:
+                title_lbl.setStyleSheet(
+                    "QLabel { color: rgba(255,255,255,0.88); font-size: 16px; "
+                    "font-weight: 600; background: transparent; border: none; }"
+                )
+            desc_lbl = card.findChild(QLabel, f"homeCardDesc_{key}")
+            if desc_lbl:
+                desc_lbl.setStyleSheet(
+                    "QLabel { color: rgba(255,255,255,0.56); font-size: 12px; "
+                    "font-weight: 500; background: transparent; border: none; }"
+                )
+            card_btn = card.findChild(QPushButton, f"homeCardBtn_{key}")
+            if card_btn:
+                kind = button_kinds.get(card_btn.text(), "primary")
+                card_btn.setStyleSheet(glass_button_qss(kind))
+
         for btn in self.findChildren(QPushButton):
             if btn.objectName():
                 continue
-            btn.setStyleSheet(glass_button_qss("primary"))
+            label = btn.text()
+            kind = button_kinds.get(label, "ghost")
+            btn.setStyleSheet(glass_button_qss(kind))

@@ -51,7 +51,7 @@ def header_qss() -> str:
                 stop:0.48 rgba(255,255,255,0.04),
                 stop:1 rgba(255,255,255,0.025)
             );
-            border: 1px solid rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.035);
             border-radius: 18px;
         }
     """
