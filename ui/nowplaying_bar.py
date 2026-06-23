@@ -188,22 +188,14 @@ class NowPlayingBar(QWidget):
 
         self.setAutoFillBackground(True)
 
-        from ui.theme import is_dark_mode
-        self._dark_mode = is_dark_mode()
-        if self._dark_mode:
-            self._bg_rgba = "#050608"
-            self._text_color = "#F4F4F5"
-            self._text_sec = "#A1A1AA"
-            self._accent = "#ffffff"
-            self._border = "rgba(255,255,255,0.07)"
-            self._shadow_alpha = 110
-        else:
-            self._bg_rgba = "rgba(245, 245, 247, 220)"
-            self._text_color = "#1c1c1e"
-            self._text_sec = "rgba(28,28,30,0.6)"
-            self._accent = "#8FB7FF"
-            self._border = "rgba(0,0,0,0.06)"
-            self._shadow_alpha = 30
+        # Force dark aesthetic — this bar is always black
+        self._dark_mode = True
+        self._bg_rgba = "#050608"
+        self._text_color = "#F4F4F5"
+        self._text_sec = "#A1A1AA"
+        self._accent = "#ffffff"
+        self._border = "rgba(255,255,255,0.07)"
+        self._shadow_alpha = 110
 
         # ─── 3-COLUMN LAYOUT: left(0) | center(1) | right(0) ───
         layout = QHBoxLayout(self)
@@ -217,6 +209,7 @@ class NowPlayingBar(QWidget):
         self._raw_meta = ""
 
         left_widget = QWidget()
+        self._info_card = left_widget
         left_widget.setObjectName("nowPlayingInfoCard")
         left_widget.setFixedWidth(270)
         left_widget.setFixedHeight(86)
@@ -404,12 +397,16 @@ class NowPlayingBar(QWidget):
 
         # Widgets
         self._vol_btn = _make_btn("warm_vol_high", 22, 38)
+        self._vol_btn.setToolTip("Click para silenciar")
+        self._vol_btn.clicked.connect(self._on_mute_toggle)
+        self._vol_level_before_mute = 70
+        self._vol_muted = False
 
         self._vol = PremiumSlider(Qt.Horizontal)
         self._vol.setObjectName("volumeSlider")
         self._vol.setRange(0, 100)
         self._vol.setValue(70)
-        self._vol.setFixedWidth(86)
+        self._vol.setFixedWidth(90)
         self._vol.setFixedHeight(28)
         self._vol.valueChanged.connect(lambda v: self.volume_changed.emit(v))
 
@@ -486,9 +483,7 @@ class NowPlayingBar(QWidget):
 
     def _on_seek_end(self):
         self._seeking = False
-        if self._duration > 0:
-            self.seek_requested.emit(
-                self._seek.value() / 1000.0 * self._duration)
+        # seek now handled exclusively by _on_seek_click (mouseReleaseEvent)
 
     def _on_seek_drag(self, v):
         if self._duration > 0:
@@ -560,12 +555,11 @@ class NowPlayingBar(QWidget):
         self._apply_elide()
 
     def _apply_elide(self):
-        """Apply text elision to prevent overflow."""
-        w = self.width()
-        left_card_w = 300
-        if hasattr(self, '_cover'):
-            left_card_w = self._cover.width() + 120
-        avail = max(60, w - left_card_w - 240)
+        """Apply text elision to prevent overflow in the info card."""
+        left_w = 270
+        if hasattr(self, '_info_card'):
+            left_w = self._info_card.width()
+        avail = max(60, left_w - 50)
         fm = self._title_lbl.fontMetrics()
         self._title_lbl.setText(
             fm.elidedText(self._raw_title, Qt.ElideRight, avail))
@@ -580,16 +574,66 @@ class NowPlayingBar(QWidget):
         self._vol.blockSignals(True)
         self._vol.setValue(vol)
         self._vol.blockSignals(False)
+        self._vol_muted = (vol <= 0)
         if vol <= 0:
             name = "warm_mute"
+            self._vol_btn.setToolTip("Silenciado — click para restaurar")
         elif vol <= 33:
             name = "warm_vol_low"
+            self._vol_btn.setToolTip(f"Volumen: {vol}%")
         elif vol <= 66:
             name = "warm_vol_medium"
+            self._vol_btn.setToolTip(f"Volumen: {vol}%")
         else:
             name = "warm_vol_high"
+            self._vol_btn.setToolTip(f"Volumen: {vol}%")
         self._vol_btn.setIcon(QIcon(get_icon(name)))
         self._vol_btn.setIconSize(QSize(22, 22))
+
+    def _on_mute_toggle(self):
+        if self._vol_muted:
+            vol = self._vol_level_before_mute
+            self._vol_muted = False
+            self.set_volume(vol)
+            self.volume_changed.emit(vol)
+        else:
+            self._vol_level_before_mute = self._vol.value()
+            self._vol_muted = True
+            self.set_volume(0)
+            self.volume_changed.emit(0)
+
+    def reset_visual_state(self):
+        """Complete visual reset — no track loaded."""
+        self._raw_title = ""
+        self._raw_artist = ""
+        self._raw_meta = ""
+        self._duration = 0.0
+        self._source_quality = ""
+        self._source_type = "local_file"
+        self._transmitting = False
+        self._transmit_device_name = ""
+
+        self._title_lbl.setText("Sin reproducción")
+        self._artist_lbl.setText("Añade música")
+        self._meta_lbl.setText("Michi Music Player")
+        self._time_lbl.setText("0:00")
+        self._dur_lbl.setText("0:00")
+        self._seek.setValue(0)
+        self._seek.setEnabled(False)
+        self._seeking = False
+        self._shuffle = False
+        self._repeat = "none"
+
+        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
+        self._play_btn.setIcon(QIcon(get_icon("warm_play")))
+        _set_button_active(self._shuffle_btn, False)
+        _set_button_active(self._repeat_btn, False)
+        _set_button_active(self._transmit_btn, False)
+
+        self._quality_badge.set_text("")
+        self._quality_badge.setToolTip("")
+        self._refresh_source_badge()
+        self._apply_elide()
     def set_quality(self, text: str):
         self._source_quality = text
         if text:
@@ -806,7 +850,7 @@ class PremiumSlider(QSlider):
 
         # Capsule border — subtle
         painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(QColor(255, 255, 255, 16), 1.0))
+        painter.setPen(QPen(QColor(255, 255, 255, 14), 1.0))
         painter.drawRoundedRect(track_rect, track_r, track_r)
 
         # Thumb
@@ -829,7 +873,7 @@ class PremiumSlider(QSlider):
                 fill = QColor("#F92141")
                 bd = QColor("#F5F5F7")
 
-            painter.setPen(QPen(bd, 2.0))
+            painter.setPen(QPen(bd, 1.6))
             painter.setBrush(fill)
             painter.drawEllipse(thumb_rect)
 
@@ -861,7 +905,6 @@ class PremiumSlider(QSlider):
                 event.position().x() if hasattr(event, "position") else event.x()
             )
             self.setValue(value)
-            self.seek_clicked.emit(value)
             event.accept()
             return
         super().mousePressEvent(event)
@@ -882,6 +925,7 @@ class PremiumSlider(QSlider):
             self._pressed = False
             self.setSliderDown(False)
             self.update()
+            self.seek_clicked.emit(self.value())
             event.accept()
             return
         super().mouseReleaseEvent(event)

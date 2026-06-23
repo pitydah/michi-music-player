@@ -34,11 +34,13 @@ class PlayerBarController:
         self._player_bar.set_duration(dur)
 
     def reset(self):
-        """Full stop — reset all player bar state."""
-        self._player_bar.set_state("stopped")
-        self._player_bar.set_position(0)
-        self._player_bar.set_duration(0)
-        self._player_bar.set_track("Sin reproducción", "Añade música a la biblioteca")
+        """Full stop — complete visual reset."""
+        if hasattr(self._player_bar, 'reset_visual_state'):
+            self._player_bar.reset_visual_state()
+        else:
+            self._player_bar.set_state("stopped")
+            self._player_bar.set_position(0)
+            self._player_bar.set_duration(0)
 
     def set_transmit_active(self, active: bool, device_name: str = ""):
         self._player_bar.set_transmit_active(active, device_name)
