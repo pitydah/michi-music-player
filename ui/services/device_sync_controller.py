@@ -32,8 +32,13 @@ class DeviceSyncController(QObject):
         return self._registry.list_all()
 
     def pair_device(self, device_id: str, name: str, host: str = "",
-                    port: int = 53318, device_type: str = "android") -> bool:
-        ok = self._registry.register(device_id, name, host, port, device_type)
+                    port: int = 53318, device_type: str = "android",
+                    device_model: str = "", client_version: str = "",
+                    capabilities: list | None = None) -> bool:
+        ok = self._registry.register(
+            device_id, name, host, port, device_type,
+            device_model=device_model, client_version=client_version,
+        )
         if ok:
             self.device_paired.emit(device_id)
         return ok

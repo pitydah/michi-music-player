@@ -31,7 +31,7 @@ class DiscoveryServer(QObject):
         self._running = False
         self._thread: threading.Thread | None = None
         self._sock: socket.socket | None = None
-        self._peers: dict[str, float] = {}    # alias → last_seen
+        self._peers: dict[str, dict] = {}       # alias → {ts, msg, ip}
         self._peer_timeout = 15.0              # seconds before "lost"
 
     def start(self):
