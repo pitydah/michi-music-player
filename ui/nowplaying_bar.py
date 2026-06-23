@@ -61,7 +61,7 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
 
 
 def _set_button_active(btn: QPushButton, active: bool):
-    btn.setProperty("active", active)
+    btn.setProperty("active", "true" if active else "false")
     btn.style().unpolish(btn)
     btn.style().polish(btn)
     btn.update()
@@ -96,7 +96,8 @@ from functools import lru_cache  # noqa: E402
 
 
 @lru_cache(maxsize=4)
-def _placeholder_cover_pixmap(size: int = 76, radius: int = 16) -> QPixmap:
+def _placeholder_cover_pixmap(size: int = 76, radius: int = 16,
+                               active: bool = False) -> QPixmap:
     pix = QPixmap(size, size)
     pix.fill(Qt.transparent)
 
@@ -107,22 +108,31 @@ def _placeholder_cover_pixmap(size: int = 76, radius: int = 16) -> QPixmap:
     path.addRoundedRect(0, 0, size, size, radius, radius)
     painter.setClipPath(path)
 
-    grad = QLinearGradient(0, 0, size, size)
-    grad.setColorAt(0.0, QColor(62, 66, 80))
-    grad.setColorAt(1.0, QColor(42, 46, 58))
+    if active:
+        grad = QLinearGradient(0, 0, size, size)
+        grad.setColorAt(0.0, QColor(72, 76, 90))
+        grad.setColorAt(1.0, QColor(52, 56, 68))
+        glow = QRadialGradient(size * 0.65, size * 0.3, size * 0.7)
+        glow.setColorAt(0.0, QColor(255, 122, 0, 60))
+        glow.setColorAt(1.0, QColor(255, 77, 46, 0))
+        note_alpha = 80
+    else:
+        grad = QLinearGradient(0, 0, size, size)
+        grad.setColorAt(0.0, QColor(62, 66, 80))
+        grad.setColorAt(1.0, QColor(42, 46, 58))
+        glow = QRadialGradient(size * 0.65, size * 0.3, size * 0.7)
+        glow.setColorAt(0.0, QColor(255, 122, 0, 38))
+        glow.setColorAt(1.0, QColor(255, 77, 46, 0))
+        note_alpha = 55
+
     painter.setBrush(grad)
     painter.setPen(Qt.NoPen)
     painter.drawRoundedRect(0, 0, size, size, radius, radius)
 
-    # Subtle accent glow
-    glow = QRadialGradient(size * 0.65, size * 0.3, size * 0.7)
-    glow.setColorAt(0.0, QColor(255, 122, 0, 38))
-    glow.setColorAt(1.0, QColor(255, 77, 46, 0))
     painter.setBrush(glow)
     painter.drawRoundedRect(0, 0, size, size, radius, radius)
 
-    # Musical note
-    pen = QPen(QColor(255, 255, 255, 55), 2.0)
+    pen = QPen(QColor(255, 255, 255, note_alpha), 2.0)
     pen.setCapStyle(Qt.RoundCap)
     pen.setJoinStyle(Qt.RoundJoin)
     painter.setPen(pen)
@@ -130,7 +140,6 @@ def _placeholder_cover_pixmap(size: int = 76, radius: int = 16) -> QPixmap:
     cx, cy = size / 2, size / 2
     painter.drawLine(int(cx + 4), int(cy - 8), int(cx + 4), int(cy + 8))
     painter.drawLine(int(cx + 4), int(cy - 8), int(cx + 12), int(cy - 5))
-    painter.setBrush(QColor(255, 255, 255, 55))
     painter.drawEllipse(int(cx - 6), int(cy + 4), 9, 8)
 
     painter.end()
@@ -225,6 +234,11 @@ class NowPlayingBar(QWidget):
                 border-radius: 16px;
             }
             QWidget#nowPlayingInfoCard:hover {
+                background: qlineargradient(
+                    x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(255,255,255,0.072),
+                    stop:1 rgba(255,255,255,0.040)
+                );
                 border: 1px solid rgba(255,255,255,0.080);
             }
         """)
@@ -264,8 +278,8 @@ class NowPlayingBar(QWidget):
                 background: rgba(255,255,255,0.10);
             }
         """)
-        self._cover.clicked.connect(self.cover_preview_requested.emit)
-        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
+        self._cover.clicked.connect(self._on_cover_clicked)
+        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13, active=False)))
         card_layout.addWidget(self._cover, 0, Qt.AlignVCenter)
 
         # Text column
@@ -515,7 +529,7 @@ class NowPlayingBar(QWidget):
     def set_track(self, title: str, artist: str, cover_path: str = ""):
         self._raw_title = title or "Sin reproducción"
         self._raw_artist = artist or "Añade música"
-        self._raw_meta = "Michi Music Player"
+        self._raw_meta = self._build_meta()
         self._has_track = bool(title and title != "Sin reproducción")
 
         if " · " in self._raw_artist:
@@ -538,7 +552,7 @@ class NowPlayingBar(QWidget):
                 self.cover_loaded.emit(pix)
                 self._apply_elide()
                 return
-        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
+        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13, active=True)))
         self.cover_loaded.emit(None)
 
         self._apply_elide()
@@ -621,10 +635,12 @@ class NowPlayingBar(QWidget):
             self._info_card.setCursor(Qt.PointingHandCursor)
             self._info_card.setToolTip(
                 "Click: detalles del tema · Doble click: vista expandida")
+            self._cover.setCursor(Qt.PointingHandCursor)
             self._cover.setToolTip("Ver carátula")
         else:
             self._info_card.setCursor(Qt.ArrowCursor)
             self._info_card.setToolTip("Sin pista cargada")
+            self._cover.setCursor(Qt.ArrowCursor)
             self._cover.setToolTip("")
 
     def reset_visual_state(self):
@@ -650,7 +666,7 @@ class NowPlayingBar(QWidget):
         self._repeat = "none"
         self._update_info_card_state()
 
-        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13)))
+        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13, active=False)))
         self._play_btn.setIcon(QIcon(get_icon("warm_play")))
         _set_button_active(self._shuffle_btn, False)
         _set_button_active(self._repeat_btn, False)
@@ -660,6 +676,26 @@ class NowPlayingBar(QWidget):
         self._quality_badge.setToolTip("")
         self._refresh_source_badge()
         self._apply_elide()
+    def _build_meta(self) -> str:
+        """Build meta text from source, quality and codec info."""
+        parts = []
+        if self._transmitting and self._transmit_device_name:
+            return f"TRANSMITIENDO · {self._transmit_device_name}"
+        if self._source_type == "radio":
+            return "RADIO · STREAMING"
+        if self._source_label and self._source_label != "local":
+            parts.append(self._source_label.upper())
+        elif self._source_type == "local_file":
+            parts.append("LOCAL")
+        if self._source_quality:
+            parts.append(self._source_quality)
+        elif self._codec:
+            q = self._codec.upper()
+            if self._bitrate:
+                q += f" {self._bitrate}kbps"
+            parts.append(q)
+        return " · ".join(parts) if parts else "Michi Music Player"
+
     def set_quality(self, text: str):
         self._source_quality = text
         if text:
@@ -667,6 +703,10 @@ class NowPlayingBar(QWidget):
         else:
             self._quality_badge.set_text("")
         self._refresh_source_badge()
+        if self._has_track:
+            self._raw_meta = self._build_meta()
+            self._meta_lbl.setText(self._raw_meta)
+            self._apply_elide()
 
     def set_quality_info(self, label: str, category: str = "unknown",
                          tooltip: str = ""):
@@ -698,6 +738,10 @@ class NowPlayingBar(QWidget):
         self._transmitting = transmitting
         self._transmit_device_name = transmit_device
         self._refresh_source_badge()
+        if self._has_track:
+            self._raw_meta = self._build_meta()
+            self._meta_lbl.setText(self._raw_meta)
+            self._apply_elide()
 
     def _refresh_source_badge(self):
         self._quality_badge.set_context(
@@ -805,6 +849,10 @@ class NowPlayingBar(QWidget):
             event.accept()
             return
         event.ignore()
+
+    def _on_cover_clicked(self):
+        if self._has_track:
+            self.cover_preview_requested.emit()
 
 
 class PremiumSlider(QSlider):
