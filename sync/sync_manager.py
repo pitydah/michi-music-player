@@ -76,6 +76,10 @@ class SyncManager(QObject):
         self._save_alias(alias)
         self._discovery._alias = alias
 
+    def set_manifest_provider(self, provider):
+        """Register a manifest provider for GET /api/sync/manifest."""
+        self._server.set_manifest_provider(provider)
+
     def _load_alias(self) -> str:
         path = os.path.expanduser("~/.local/share/michi-music-player/sync_alias")
         if os.path.exists(path):

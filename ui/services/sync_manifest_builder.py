@@ -77,20 +77,27 @@ class SyncManifestBuilder:
 
             track_key = make_track_id(fp)
             size = os.path.getsize(fp)
+            title = str(getattr(item, "title", "") or "")
+            artist = str(getattr(item, "artist", "") or "")
+            album_name = str(getattr(item, "album", "") or "")
+            cover_hash = ""
+            if album_name:
+                import hashlib as _hashlib
+                cover_hash = _hashlib.md5(album_name.encode()).hexdigest()
 
             manifest.items.append({
                 "track_id": track_key,
                 "db_id": tid,
                 "source_path": fp,
-                "title": str(getattr(item, "title", "") or ""),
-                "artist": str(getattr(item, "artist", "") or ""),
-                "album": str(getattr(item, "album", "") or ""),
+                "title": title,
+                "artist": artist,
+                "album": album_name,
                 "size": size,
                 "format": str(getattr(item, "ext", "") or "").lstrip("."),
                 "duration": float(getattr(item, "duration", 0) or 0),
                 "year": int(getattr(item, "year", 0) or 0),
                 "genre": str(getattr(item, "genre", "") or ""),
-                "cover_id": str(getattr(item, "mb_album_id", "") or ""),
+                "cover_id": cover_hash,
                 "checksum": _checksum(fp),
                 "download_path": f"/api/stream/{track_key}",
             })

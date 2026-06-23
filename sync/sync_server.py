@@ -81,6 +81,21 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/ping":
             self._send_json({"status": "ok", "version": "1.0"})
 
+        elif path == "/api/sync/manifest":
+            if not self._check_token():
+                return self._send_error("Unauthorized", 401)
+            if srv is None or srv._manifest_provider is None:
+                return self._send_error("Manifest service not available", 503)
+            qs = urllib.parse.parse_qs(
+                self.path.split("?")[1] if "?" in self.path else "")
+            device_id = (qs.get("device_id") or [""])[0]
+            if not device_id:
+                return self._send_error("Missing device_id parameter", 400)
+            manifest = srv._manifest_provider(device_id)
+            if manifest is None:
+                return self._send_error("No manifest for this device", 404)
+            self._send_json(manifest)
+
         elif path == "/api/library":
             if not self._check_token():
                 return self._send_error("Unauthorized", 401)
@@ -309,7 +324,12 @@ class SyncServer(QObject):
         self._running = False
         self._thread: threading.Thread | None = None
         self._sessions: dict[str, SessionToken] = {}
-        self._track_index: dict[str, str] = {}  # track_id → filepath
+        self._track_index: dict[str, str] = {}
+        self._manifest_provider: callable | None = None
+
+    def set_manifest_provider(self, provider):
+        """Register a callable that returns public manifest dict for a device_id."""
+        self._manifest_provider = provider
 
     def _build_index(self):
         """Build track_id → filepath lookup."""

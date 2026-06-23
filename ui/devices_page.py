@@ -25,6 +25,9 @@ class DevicesPage(QWidget):
         self._db = db
         self._sync_mgr = sync_manager
         self._controller = DeviceSyncController(db) if db else None
+        if self._controller and self._sync_mgr:
+            self._sync_mgr.set_manifest_provider(
+                self._controller.get_manifest_public)
         self._discovered: list[dict] = []
         self._build_ui()
         self._wire_sync_manager()
