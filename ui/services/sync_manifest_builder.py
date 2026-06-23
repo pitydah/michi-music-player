@@ -1,4 +1,4 @@
-"""Sync manifest builder — generates transfer manifests from local library."""
+"""Sync manifest builder — generates Android-compatible transfer manifests."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import hashlib
 import os
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -18,6 +19,33 @@ class SyncManifest:
     total_tracks: int = 0
     destination_root: str = ""
 
+    def to_public_dict(self) -> dict[str, Any]:
+        """Android-safe payload — no local file paths exposed."""
+        return {
+            "manifest_id": self.manifest_id,
+            "device_id": self.device_id,
+            "created_at": self.created_at,
+            "total_tracks": self.total_tracks,
+            "total_size": self.total_size,
+            "tracks": [
+                {
+                    "track_id": item["track_id"],
+                    "title": item.get("title", ""),
+                    "artist": item.get("artist", ""),
+                    "album": item.get("album", ""),
+                    "size": item.get("size", 0),
+                    "format": item.get("format", ""),
+                    "duration": item.get("duration", 0),
+                    "year": item.get("year", 0),
+                    "genre": item.get("genre", ""),
+                    "cover_id": item.get("cover_id", ""),
+                    "checksum": item.get("checksum", ""),
+                    "download_path": item.get("download_path", ""),
+                }
+                for item in self.items
+            ],
+        }
+
 
 class SyncManifestBuilder:
     def __init__(self, db):
@@ -27,6 +55,8 @@ class SyncManifestBuilder:
                           destination_root: str = "",
                           device_id: str = "") -> SyncManifest:
         import uuid
+        from sync.sync_protocol import make_track_id
+
         manifest = SyncManifest(
             manifest_id=str(uuid.uuid4())[:12],
             device_id=device_id,
@@ -44,23 +74,25 @@ class SyncManifestBuilder:
             fp = getattr(item, "filepath", "")
             if not fp or not os.path.isfile(fp):
                 continue
+
+            track_key = make_track_id(fp)
             size = os.path.getsize(fp)
-            name = os.path.basename(fp)
-            title = str(getattr(item, "title", "") or "")
-            artist = str(getattr(item, "artist", "") or "")
-            album = str(getattr(item, "album", "") or "")
-            dest = os.path.join(destination_root, artist, album, name)
 
             manifest.items.append({
-                "track_id": tid,
+                "track_id": track_key,
+                "db_id": tid,
                 "source_path": fp,
-                "dest_path": dest,
-                "title": title,
-                "artist": artist,
-                "album": album,
+                "title": str(getattr(item, "title", "") or ""),
+                "artist": str(getattr(item, "artist", "") or ""),
+                "album": str(getattr(item, "album", "") or ""),
                 "size": size,
                 "format": str(getattr(item, "ext", "") or "").lstrip("."),
+                "duration": float(getattr(item, "duration", 0) or 0),
+                "year": int(getattr(item, "year", 0) or 0),
+                "genre": str(getattr(item, "genre", "") or ""),
+                "cover_id": str(getattr(item, "mb_album_id", "") or ""),
                 "checksum": _checksum(fp),
+                "download_path": f"/api/stream/{track_key}",
             })
             manifest.total_size += size
             manifest.total_tracks += 1

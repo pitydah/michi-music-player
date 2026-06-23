@@ -16,7 +16,7 @@ logger = logging.getLogger("michi.sync.controller")
 class DeviceSyncController(QObject):
     device_paired = Signal(str)
     device_removed = Signal(str)
-    manifest_ready = Signal(str, int)
+    manifest_ready = Signal(str, int, int)
     sync_error = Signal(str, str)
 
     def __init__(self, db, parent=None):
@@ -25,6 +25,7 @@ class DeviceSyncController(QObject):
         self._registry = DeviceRegistry()
         self._manifest_builder = SyncManifestBuilder(db)
         self._queue = SyncQueue()
+        self._manifests: dict[str, SyncManifest] = {}
 
     @property
     def paired_devices(self) -> list[PairedDevice]:
@@ -39,6 +40,7 @@ class DeviceSyncController(QObject):
 
     def unpair_device(self, device_id: str):
         self._registry.remove(device_id)
+        self._manifests.pop(device_id, None)
         self.device_removed.emit(device_id)
 
     def build_manifest(self, track_ids: list[int], device_id: str,
@@ -47,7 +49,8 @@ class DeviceSyncController(QObject):
             track_ids, destination_root=destination, device_id=device_id,
         )
         if manifest.total_tracks > 0:
-            self.manifest_ready.emit(device_id, manifest.total_tracks)
+            self._manifests[device_id] = manifest
+            self.manifest_ready.emit(device_id, manifest.total_tracks, manifest.total_size)
         return manifest
 
     def build_manifest_from_playlist(self, playlist_id: int, device_id: str,
@@ -56,7 +59,8 @@ class DeviceSyncController(QObject):
             playlist_id, destination_root=destination, device_id=device_id,
         )
         if manifest.total_tracks > 0:
-            self.manifest_ready.emit(device_id, manifest.total_tracks)
+            self._manifests[device_id] = manifest
+            self.manifest_ready.emit(device_id, manifest.total_tracks, manifest.total_size)
         return manifest
 
     def build_manifest_from_favorites(self, device_id: str,
@@ -65,8 +69,18 @@ class DeviceSyncController(QObject):
             destination_root=destination, device_id=device_id,
         )
         if manifest.total_tracks > 0:
-            self.manifest_ready.emit(device_id, manifest.total_tracks)
+            self._manifests[device_id] = manifest
+            self.manifest_ready.emit(device_id, manifest.total_tracks, manifest.total_size)
         return manifest
+
+    def get_manifest(self, device_id: str) -> SyncManifest | None:
+        return self._manifests.get(device_id)
+
+    def get_manifest_public(self, device_id: str) -> dict | None:
+        manifest = self._manifests.get(device_id)
+        if manifest:
+            return manifest.to_public_dict()
+        return None
 
     def get_sync_history(self) -> list[SyncJob]:
         return self._queue.get_history()

@@ -288,8 +288,8 @@ class DevicesPage(QWidget):
         if manifest and manifest.total_tracks > 0:
             size_mb = manifest.total_size / (1024 * 1024)
             self._subtitle.setText(
-                f"Manifiesto preparado: {manifest.total_tracks} canciones, "
-                f"{size_mb:.1f} MB para dispositivo {device_id}"
+                f"Manifiesto listo: {manifest.total_tracks} canciones, "
+                f"{size_mb:.1f} MB. Abre Michi Sync en tu Android para descargar."
             )
         else:
             items = self._db.get_all()[:30] if hasattr(self._db, "get_all") else []
@@ -298,12 +298,12 @@ class DevicesPage(QWidget):
             if manifest and manifest.total_tracks > 0:
                 size_mb = manifest.total_size / (1024 * 1024)
                 self._subtitle.setText(
-                    f"Manifiesto preparado: {manifest.total_tracks} canciones "
-                    f"({size_mb:.1f} MB). El dispositivo puede descargar ahora."
+                    f"Manifiesto listo: {manifest.total_tracks} canciones, "
+                    f"{size_mb:.1f} MB. Abre Michi Sync en tu Android para descargar."
                 )
             else:
                 self._subtitle.setText(
-                    "No se pudo generar manifiesto. Verifica que haya "
+                    "No se pudo generar el manifiesto. Verifica que haya "
                     "canciones en tu biblioteca."
                 )
 
