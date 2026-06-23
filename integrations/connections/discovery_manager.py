@@ -148,7 +148,7 @@ class DiscoveryManager:
             parts = ip.rsplit(".", 1)
             if len(parts) == 2:
                 prefix = parts[0]
-                for i in range(1, 255):
+                for i in range(1, 21):
                     hosts.append(f"{prefix}.{i}")
         except Exception:
             pass
