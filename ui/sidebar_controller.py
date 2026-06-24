@@ -12,9 +12,11 @@ class SidebarController(QObject):
         super().__init__(parent)
         self._sidebar = sidebar_widget
         self._db = db
+        self._last_active = None
         sidebar_widget.item_clicked.connect(self._on_item_click)
 
     def _on_item_click(self, key: str):
+        self._last_active = key
         self.navigation_requested.emit(key)
 
     def rebuild(self, servers: list, sync_peers: list | None = None):
@@ -33,6 +35,7 @@ class SidebarController(QObject):
         self._sidebar.add_item("hub", "home_audio", "Home Audio", "home_audio")
         self._sidebar.add_item("hub", "identifier", "Identificador", "sidebar_identifier")
         self._sidebar.add_item("hub", "assistant", "Asistente", "sidebar_mix")
+        self._sidebar.add_item("hub", "settings_hub", "Configuración", "sidebar_mix")
 
         # ── Dispositivos ──
         self._sidebar.add_section("dev", "Dispositivos", "sidebar_devices")
@@ -56,4 +59,8 @@ class SidebarController(QObject):
             self._sidebar.add_item("dev", f"dev:{d['mount']}", d['name'],
                                     "sidebar_devices")
 
-        self._sidebar.set_active("home")
+        # Restore last active or default to home
+        if self._last_active:
+            self._sidebar.set_active(self._last_active)
+        else:
+            self._sidebar.set_active("home")

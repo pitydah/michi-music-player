@@ -1425,7 +1425,10 @@ class MainWindow(QMainWindow):
         if key and key.startswith("dev:"):
             self._show_device(key)
             return
-        if key and key.startswith("mix_"):
+        if key and key.startswith("mix_") and key in (
+            "mix_daily", "mix_unplayed", "mix_popular", "mix_favorites",
+            "mix_flac", "mix_no_cover",
+        ):
             self._show_smart_mix(key)
             return
 
