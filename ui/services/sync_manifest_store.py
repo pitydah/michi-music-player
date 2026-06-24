@@ -6,10 +6,12 @@ import json
 import logging
 import os
 import time
+import contextlib
 
 logger = logging.getLogger("michi.sync.manifest_store")
 
 _BASE_DIR = os.path.expanduser("~/.local/share/michi-music-player/sync_manifests")
+_MAX_HISTORY = 20  # keep last N manifests + timestamped files per device
 
 
 class SyncManifestStore:
@@ -51,7 +53,15 @@ class SyncManifestStore:
             "file": f"{ts}_{mid}.json",
         })
         with open(history_path, "w") as f:
-            json.dump(history[-20:], f, indent=2, ensure_ascii=False)
+            json.dump(history[-_MAX_HISTORY:], f, indent=2, ensure_ascii=False)
+
+        # Clean up old timestamped files beyond the limit
+        if len(history) > _MAX_HISTORY:
+            for entry in history[: -_MAX_HISTORY]:
+                fn = entry.get("file", "")
+                if fn:
+                    with contextlib.suppress(OSError):
+                        os.remove(os.path.join(device_dir, fn))
 
     def load_latest(self, device_id: str) -> dict | None:
         path = os.path.join(self._base, device_id, "latest.json")

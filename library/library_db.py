@@ -261,7 +261,9 @@ class LibraryDB:
         try:
             current_mtime = os.path.getmtime(filepath)
         except OSError:
+            logger.warning("ensure_file_hash: cannot stat %s", filepath)
             return ""
+
         if db_hash and abs(current_mtime - (db_mtime or 0)) < 1.0:
             return db_hash
         import hashlib

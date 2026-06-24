@@ -15,6 +15,7 @@ Endpoints:
 
 import os
 import json
+import logging
 import threading
 import hashlib
 import urllib.parse
@@ -121,6 +122,8 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             try:
                 since = float(since_str)
             except ValueError:
+                logging.getLogger("michi.sync").warning(
+                    "Invalid since parameter in delta manifest: %r", since_str)
                 since = 0.0
             delta = srv._delta_provider(device_id, since)
             if delta is None:
@@ -422,7 +425,6 @@ class SyncServer(QObject):
             try:
                 self._httpd.server_close()
             except Exception:
-                import logging
                 logging.getLogger("michi").debug("Sync server operation failed")
         if self._executor:
             self._executor.shutdown(wait=False)
