@@ -37,7 +37,7 @@ class SidebarController(QObject):
         # ── Dispositivos ──
         self._sidebar.add_section("dev", "Dispositivos", "sidebar_devices")
         self._sidebar.add_item("dev", "devices_page", "Michi Sync Suite",
-                                "sidebar_devices")
+                                "michi_sync")
 
         # Sync peers (discovered on network)
         if sync_peers:
