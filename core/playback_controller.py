@@ -28,12 +28,40 @@ class PlaybackController:
         menu.addAction("Reproducir", lambda: self._win._ctx.play_file(fp))
         menu.addAction("Añadir a cola",
                        lambda: self._win._ctx.playback.enqueue([fp], play_now=False))
+
+        # ── Add to playlist submenu ──
+        pl_menu = menu.addMenu("Añadir a playlist")
+        try:
+            playlists = self._win._ctx.db.get_playlists()
+            for pl in playlists:
+                name = pl.get("name", "Sin nombre")
+                pid = pl.get("id", 0)
+                pl_menu.addAction(name[:40], lambda p=pid, f=fp: (
+                    self._win._ctx.db.add_to_playlist(p, f),
+                    self._win._ctx.rebuild_sidebar()))
+            pl_menu.addSeparator()
+        except Exception:
+            pass
+        pl_menu.addAction("+ Nueva playlist...",
+                          lambda f=fp: self._add_to_new_playlist(f))
+
         menu.addSeparator()
         if is_remote:
             menu.addAction("Copiar URL", lambda: QApplication.clipboard().setText(fp))
         else:
             menu.addAction("Editar metadatos...", lambda: self.edit_tags(fp))
         menu.exec(self._win._ctx.table.viewport().mapToGlobal(pos))
+
+    def _add_to_new_playlist(self, filepath: str):
+        """Create a new playlist with the given track."""
+        from PySide6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(
+            self._win, "Nueva playlist", "Nombre de la playlist:")
+        if not ok or not name.strip():
+            return
+        pid = self._win._ctx.db.create_playlist(name.strip())
+        self._win._ctx.db.add_to_playlist(pid, filepath)
+        self._win._ctx.rebuild_sidebar()
 
     def edit_tags(self, filepath: str):
         from library.tag_editor import TagEditorDialog

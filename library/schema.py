@@ -135,6 +135,8 @@ LIBRARY_ROOTS_SQL = """CREATE TABLE IF NOT EXISTS library_roots (
 INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_pl_filepath ON playlist_items(filepath)",
     "CREATE INDEX IF NOT EXISTS idx_pl_playlist ON playlist_items(playlist_id)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_pl_unique_track "
+    "ON playlist_items(playlist_id, track_id) WHERE track_id IS NOT NULL",
     "CREATE INDEX IF NOT EXISTS idx_detected_tracks_time ON detected_tracks(detected_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_detected_tracks_artist_title ON detected_tracks(artist, title)",
     "CREATE INDEX IF NOT EXISTS idx_media_artist ON media_items(artist)",
@@ -234,13 +236,13 @@ class Schema:
             conn.execute(sql)
         conn.commit()
 
-        for sql in INDEX_SQL[:4]:
+        for sql in INDEX_SQL[:5]:
             conn.execute(sql)
         conn.commit()
 
         Schema.run_migrations(conn)
 
-        for sql in INDEX_SQL[4:]:
+        for sql in INDEX_SQL[5:]:
             conn.execute(sql)
         with contextlib.suppress(sqlite3.OperationalError):
             conn.execute(

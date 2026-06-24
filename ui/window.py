@@ -1103,6 +1103,8 @@ class MainWindow(QMainWindow):
         self._playlist_detail.edit_requested.connect(self._edit_playlist_dialog)
         self._playlist_detail.track_double_clicked.connect(
             lambda fp: self._play_filepaths([fp], play_now=True))
+        self._playlist_detail.track_activated.connect(
+            self._on_playlist_track_activated)
 
         self._playlist_hub.playlist_edit_requested.connect(self._edit_playlist_dialog)
         self._playlist_hub.create_from_album_requested.connect(
@@ -1405,13 +1407,19 @@ class MainWindow(QMainWindow):
             section_key = "servers"
         elif section_key == "dev":
             section_key = "devices"
-        elif key.startswith("pl:"):
+        elif key.startswith("pl:") or key.startswith("playlist:"):
             section_key = "playlists"
         self._configure_header_for_section(section_key)
         if not self._nav_restoring:
             self._push_nav(key)
 
         # Dynamic pattern routes
+        if key and key.startswith("playlist:new"):
+            self._create_playlist()
+            return
+        if key and key.startswith("playlist:"):
+            self._show_playlist_detail(key)
+            return
         if key and key.startswith("pl:"):
             self._show_playlist_detail(key)
             return
@@ -1505,6 +1513,23 @@ class MainWindow(QMainWindow):
         self._section_subtitle.setText(subtitle)
         self._search.show()
         self._fade_content("playlist_detail")
+
+    def _on_playlist_track_activated(self, row: int, filepath: str):
+        """Play entire playlist starting from the clicked track."""
+        pid = getattr(self, '_current_playlist', 0)
+        if not pid:
+            return
+        items = self._db.get_playlist_items(pid)
+        paths = [i.filepath for i in items if getattr(i, 'filepath', '')]
+        if not paths:
+            return
+        start_idx = max(0, min(row, len(paths) - 1))
+        from core.app_context import get_context
+        ctx = get_context()
+        if hasattr(ctx.playback, 'play_queue'):
+            ctx.playback.play_queue(paths, start_idx)
+        else:
+            self._play_filepaths(paths[start_idx:], play_now=True)
 
     def _show_artists(self, key):
         if not self._all_items and self._db:

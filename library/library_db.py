@@ -591,18 +591,34 @@ class LibraryDB:
     def add_to_playlist(self, pid: int, filepath: str = "", track_id: int | None = None):
         """Add a track to a playlist. Accepts filepath (legacy) and/or track_id.
 
-        If only filepath is given, track_id is resolved automatically from the DB.
-        Stores both filepath (for legacy compat) and track_id (canonical reference).
+        Auto-calculates position = MAX(position) + 1 within the playlist.
+        Deduplicates by track_id when available, then by filepath.
         """
         tid = track_id
         if tid is None and filepath:
             row = self._conn.execute(
                 "SELECT id FROM media_items WHERE filepath=?", (filepath,)).fetchone()
             tid = row[0] if row else None
+        # Check duplicate
+        if tid is not None:
+            dup = self._conn.execute(
+                "SELECT 1 FROM playlist_items WHERE playlist_id=? AND track_id=?",
+                (pid, tid)).fetchone()
+        else:
+            dup = self._conn.execute(
+                "SELECT 1 FROM playlist_items WHERE playlist_id=? AND filepath=?",
+                (pid, filepath)).fetchone()
+        if dup:
+            return  # already exists, skip silently
+        # Calculate next position
+        pos_row = self._conn.execute(
+            "SELECT MAX(position) FROM playlist_items WHERE playlist_id=?",
+            (pid,)).fetchone()
+        next_pos = (pos_row[0] + 1) if pos_row[0] is not None else 0
         self._conn.execute(
-            "INSERT OR IGNORE INTO playlist_items (playlist_id, filepath, track_id) "
-            "VALUES (?,?,?)",
-            (pid, filepath or "", tid))
+            "INSERT INTO playlist_items (playlist_id, filepath, track_id, position) "
+            "VALUES (?,?,?,?)",
+            (pid, filepath or "", tid, next_pos))
         self._conn.commit()
 
     def get_playlist_items(self, pid: int) -> list[MediaItem]:

@@ -12,6 +12,7 @@ class SidebarController(QObject):
         super().__init__(parent)
         self._sidebar = sidebar_widget
         self._db = db
+        self._last_active = None
         sidebar_widget.item_clicked.connect(self._on_item_click)
 
     def _on_item_click(self, key: str):
@@ -33,6 +34,23 @@ class SidebarController(QObject):
         self._sidebar.add_item("hub", "home_audio", "Home Audio", "home_audio")
         self._sidebar.add_item("hub", "identifier", "Identificador", "sidebar_identifier")
         self._sidebar.add_item("hub", "assistant", "Asistente", "sidebar_mix")
+
+        # ── Playlists dinámicas ──
+        try:
+            playlists = self._db.get_playlists()
+            if playlists:
+                self._sidebar.add_section("pl", "Playlists", "sidebar_playlists")
+                self._sidebar.add_item("pl", "playlist:new", "+ Nueva playlist",
+                                        "sidebar_playlists")
+                for pl in playlists[:20]:
+                    pid = pl.get("id", 0)
+                    name = pl.get("name", "Sin nombre")
+                    if len(name) > 24:
+                        name = name[:23] + "…"
+                    self._sidebar.add_item("pl", f"playlist:{pid}", name,
+                                            "sidebar_playlists")
+        except Exception:
+            pass
 
         # ── Dispositivos ──
         self._sidebar.add_section("dev", "Dispositivos", "sidebar_devices")
@@ -56,4 +74,11 @@ class SidebarController(QObject):
             self._sidebar.add_item("dev", f"dev:{d['mount']}", d['name'],
                                     "sidebar_devices")
 
-        self._sidebar.set_active("home")
+        if self._last_active:
+            self._sidebar.set_active(self._last_active)
+        else:
+            self._sidebar.set_active("home")
+
+    def set_active(self, key: str):
+        self._last_active = key
+        self._sidebar.set_active(key)

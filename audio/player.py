@@ -701,6 +701,16 @@ class GStreamerEngine(QObject):
         if self._db:
             self._db.save_queue(self._queue, self._queue_index)
 
+    def set_queue(self, filepaths: list[str], start_index: int = 0):
+        """Replace the entire queue and start playing from start_index."""
+        self._queue = list(filepaths)
+        self._queue_index = max(0, min(start_index, len(self._queue) - 1)) if self._queue else 0
+        self.queue_changed.emit(self._queue)
+        if self._db:
+            self._db.save_queue(self._queue, self._queue_index)
+        if self._queue and self._queue_index < len(self._queue):
+            self.play(self._queue[self._queue_index])
+
     def clear_queue(self):
         self._queue = []
         self._queue_index = -1

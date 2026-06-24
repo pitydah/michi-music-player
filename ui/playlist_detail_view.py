@@ -40,6 +40,7 @@ class PlaylistDetailView(QWidget):
     edit_requested = Signal(int)
     export_requested = Signal(int)
     track_double_clicked = Signal(str)
+    track_activated = Signal(int, str)  # row index, filepath
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -232,7 +233,9 @@ class PlaylistDetailView(QWidget):
             table.setItem(i, 3, QTableWidgetItem(dur_s))
 
         table.itemDoubleClicked.connect(
-            lambda item: self.track_double_clicked.emit(
-                getattr(tracks[item.row()], 'filepath', '')))
+            lambda item: (self.track_double_clicked.emit(
+                getattr(tracks[item.row()], 'filepath', '')),
+                self.track_activated.emit(
+                item.row(), getattr(tracks[item.row()], 'filepath', ''))))
 
         self._layout.addWidget(table)

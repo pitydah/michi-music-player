@@ -125,6 +125,11 @@ class PlayerService(QObject):
             return
         self._engine.enqueue(clean, play_now)
 
+    def play_queue(self, filepaths: list[str], start_index: int = 0):
+        """Replace the queue with given tracks and start playing from index."""
+        self._retry_url = None
+        self._engine.set_queue(filepaths, start_index)
+
     def clear_queue(self):
         self._engine.clear_queue()
 
