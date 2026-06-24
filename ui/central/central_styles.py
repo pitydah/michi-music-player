@@ -726,6 +726,16 @@ def page_title_qss() -> str:
     )
 
 
+# ── Page-level helpers ──
+
+def page_title_qss() -> str:
+    """Page title — 22px bold, high contrast."""
+    return (
+        "QLabel { color: rgba(255,255,255,0.92); font-size: 22px; "
+        "font-weight: 700; background: transparent; border: none; }"
+    )
+
+
 def page_subtitle_qss() -> str:
     """Page subtitle — 13px, muted."""
     return (

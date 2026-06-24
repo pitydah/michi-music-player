@@ -1,4 +1,4 @@
-"""AI Assistant chat panel — glass dark themed, with Fase 2 action confirmations."""
+"""AI Assistant chat panel — premium, privacy-focused, with pending action cards."""
 
 from __future__ import annotations
 
@@ -8,13 +8,18 @@ from PySide6.QtWidgets import (
     QLineEdit, QPushButton, QLabel, QFrame, QSizePolicy,
 )
 
-
 _PRIVACY_NOTICE = (
-    "El asistente usa IA local (Ollama). "
-    "No se envian rutas ni biblioteca completa al modelo."
+    "IA local · Datos protegidos · Sin rutas sensibles"
 )
 
 _PLACEHOLDER = "Pregunta algo sobre tu biblioteca musical..."
+
+_EXAMPLE_CHIPS = [
+    "Recomiéndame algo para escuchar",
+    "Busca álbumes sin carátula",
+    "Crea una playlist tranquila",
+    "Revisa metadatos pendientes",
+]
 
 
 class AiAssistantPanel(QWidget):
@@ -26,6 +31,7 @@ class AiAssistantPanel(QWidget):
         super().__init__(parent)
         self.setObjectName("aiAssistantPanel")
         self._messages: list[dict[str, str]] = []
+        self._ollama_available = False
         self._build_ui()
         self._apply_qss()
 
@@ -34,6 +40,30 @@ class AiAssistantPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        # ── Header ──
+        header = QFrame()
+        header.setObjectName("assistantHeader")
+        hl = QVBoxLayout(header)
+        hl.setContentsMargins(20, 16, 20, 12)
+        hl.setSpacing(4)
+
+        hrow = QHBoxLayout()
+        h_title = QLabel("Michi Assistant")
+        h_title.setObjectName("assistantHeaderTitle")
+        hrow.addWidget(h_title)
+        hrow.addStretch()
+        self._status_badge = QLabel("Ollama no disponible")
+        self._status_badge.setObjectName("assistantStatusBadge")
+        hrow.addWidget(self._status_badge)
+        hl.addLayout(hrow)
+
+        h_sub = QLabel("IA local para explorar, organizar y mejorar tu biblioteca.")
+        h_sub.setWordWrap(True)
+        h_sub.setObjectName("assistantHeaderSubtitle")
+        hl.addWidget(h_sub)
+        layout.addWidget(header)
+
+        # ── Chat area ──
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -44,17 +74,22 @@ class AiAssistantPanel(QWidget):
         self._chat_layout = QVBoxLayout(self._chat_container)
         self._chat_layout.setContentsMargins(16, 12, 16, 12)
         self._chat_layout.setSpacing(10)
+
+        self._empty_state = self._build_empty_state()
+        self._chat_layout.addWidget(self._empty_state)
         self._chat_layout.addStretch()
 
         self._scroll.setWidget(self._chat_container)
         layout.addWidget(self._scroll, 1)
 
+        # ── Privacy badge ──
         self._privacy_badge = QLabel(_PRIVACY_NOTICE)
         self._privacy_badge.setObjectName("assistantPrivacyBadge")
         self._privacy_badge.setWordWrap(True)
         self._privacy_badge.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._privacy_badge)
 
+        # ── Input ──
         input_row = QHBoxLayout()
         input_row.setContentsMargins(12, 8, 12, 12)
         input_row.setSpacing(8)
@@ -73,11 +108,81 @@ class AiAssistantPanel(QWidget):
 
         layout.addLayout(input_row)
 
+    def _build_empty_state(self) -> QWidget:
+        w = QWidget()
+        w.setObjectName("assistantEmptyState")
+        vl = QVBoxLayout(w)
+        vl.setContentsMargins(0, 40, 0, 40)
+        vl.setAlignment(Qt.AlignCenter)
+        vl.setSpacing(12)
+
+        et = QLabel("Pregunta por tu música")
+        et.setObjectName("assistantEmptyTitle")
+        et.setAlignment(Qt.AlignCenter)
+        vl.addWidget(et)
+
+        ed = QLabel("Podés pedir recomendaciones, revisar metadatos o explorar tu biblioteca.")
+        ed.setObjectName("assistantEmptyDesc")
+        ed.setAlignment(Qt.AlignCenter)
+        ed.setWordWrap(True)
+        vl.addWidget(ed)
+
+        chip_row = QHBoxLayout()
+        chip_row.setAlignment(Qt.AlignCenter)
+        chip_row.setSpacing(8)
+        for chip_text in _EXAMPLE_CHIPS:
+            chip = QPushButton(chip_text)
+            chip.setCursor(Qt.PointingHandCursor)
+            chip.setObjectName("assistantChip")
+            chip.clicked.connect(lambda c=None, t=chip_text: self._fill_example(t))
+            chip_row.addWidget(chip)
+        vl.addLayout(chip_row)
+
+        return w
+
+    def _fill_example(self, text: str):
+        self._input.setText(text)
+        self._input.setFocus()
+
+    def _hide_empty_state(self):
+        if self._empty_state and not self._empty_state.isHidden():
+            self._empty_state.hide()
+
     @staticmethod
     def _build_panel_qss() -> str:
         return (
             "QWidget#aiAssistantPanel {"
             "  background: #090B11;"
+            "}"
+            "QFrame#assistantHeader {"
+            "  background: rgba(255,255,255,0.025);"
+            "  border-bottom: 1px solid rgba(255,255,255,0.04);"
+            "}"
+            "QLabel#assistantHeaderTitle {"
+            "  color: rgba(255,255,255,0.92); font-size: 18px; font-weight: 700; background: transparent;"
+            "}"
+            "QLabel#assistantHeaderSubtitle {"
+            "  color: rgba(255,255,255,0.56); font-size: 12px; background: transparent;"
+            "}"
+            "QLabel#assistantStatusBadge {"
+            "  color: rgba(255,255,255,0.54); font-size: 11px; font-weight: 500;"
+            "  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.04);"
+            "  border-radius: 8px; padding: 3px 10px;"
+            "}"
+            "QLabel#assistantEmptyTitle {"
+            "  color: rgba(255,255,255,0.56); font-size: 17px; font-weight: 600; background: transparent;"
+            "}"
+            "QLabel#assistantEmptyDesc {"
+            "  color: rgba(255,255,255,0.42); font-size: 13px; background: transparent; max-width: 400px;"
+            "}"
+            "QPushButton#assistantChip {"
+            "  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.04);"
+            "  border-radius: 10px; padding: 6px 14px; color: rgba(255,255,255,0.62);"
+            "  font-size: 11px; font-weight: 500;"
+            "}"
+            "QPushButton#assistantChip:hover {"
+            "  background: rgba(143,183,255,0.08); border: 1px solid rgba(143,183,255,0.12);"
+            "  color: rgba(255,255,255,0.84);"
             "}"
             "QScrollArea#assistantChatScroll {"
             "  background: transparent;"
@@ -87,15 +192,15 @@ class AiAssistantPanel(QWidget):
             "  background: transparent;"
             "}"
             "QLabel#assistantPrivacyBadge {"
-            "  color: rgba(255,255,255,0.42);"
-            "  font-size: 10px;"
+            "  color: rgba(255,255,255,0.48);"
+            "  font-size: 11px;"
             "  padding: 6px 16px;"
             "  background: rgba(143,183,255,0.04);"
-            "  border-top: 1px solid rgba(255,255,255,0.03);"
+            "  border-top: 1px solid rgba(255,255,255,0.04);"
             "}"
             "QLineEdit#assistantInput {"
-            "  background: rgba(255,255,255,0.035);"
-            "  border: 1px solid rgba(255,255,255,0.06);"
+            "  background: rgba(255,255,255,0.04);"
+            "  border: 1px solid rgba(255,255,255,0.05);"
             "  border-radius: 12px;"
             "  padding: 10px 14px;"
             "  color: rgba(255,255,255,0.92);"
@@ -103,7 +208,7 @@ class AiAssistantPanel(QWidget):
             "}"
             "QLineEdit#assistantInput:focus {"
             "  border: 1px solid rgba(143,183,255,0.18);"
-            "  background: rgba(255,255,255,0.048);"
+            "  background: rgba(255,255,255,0.05);"
             "}"
             "QPushButton#assistantSendBtn {"
             "  background: rgba(143,183,255,0.12);"
@@ -122,82 +227,6 @@ class AiAssistantPanel(QWidget):
             "  background: rgba(143,183,255,0.08);"
             "}"
         )
-
-    def _apply_qss(self):
-        self.setStyleSheet(self._build_panel_qss())
-
-    def _on_send(self):
-        text = self._input.text().strip()
-        if not text:
-            return
-        self._input.clear()
-        self.add_message("user", text)
-        self.send_requested.emit(text)
-
-    def add_message(self, role: str, content: str, pending: dict | None = None):
-        bubble = _ChatBubble(role, content, self._chat_container)
-        idx = self._chat_layout.count() - 1
-        self._chat_layout.insertWidget(max(0, idx), bubble)
-        if pending:
-            card = _PendingActionCard(pending, self._chat_container)
-            card.confirmed.connect(self.action_confirmed.emit)
-            card.cancelled.connect(self.action_cancelled.emit)
-            self._chat_layout.insertWidget(self._chat_layout.count() - 1, card)
-        self._scroll_to_bottom()
-
-    def add_message_r(self, content: str):
-        """Convenience slot for response_received signal — adds as 'assistant'."""
-        self.add_message("assistant", content)
-
-    def add_response(self, response: dict):
-        """Handle structured response from service: {reply, pending}."""
-        reply = response.get("reply", "")
-        if reply:
-            self.add_message("assistant", reply)
-        pending = response.get("pending")
-        if pending:
-            card = _PendingActionCard(pending, self._chat_container)
-            card.confirmed.connect(
-                lambda aid=pending.get("action_id", ""): self.action_confirmed.emit(aid)
-            )
-            card.cancelled.connect(
-                lambda aid=pending.get("action_id", ""): self.action_cancelled.emit(aid)
-            )
-            self._chat_layout.insertWidget(self._chat_layout.count() - 1, card)
-            self._scroll_to_bottom()
-
-    def set_thinking(self, thinking: bool):
-        if thinking:
-            self._send_btn.setEnabled(False)
-            self._input.setEnabled(False)
-            self._send_btn.setText("Pensando...")
-        else:
-            self._send_btn.setEnabled(True)
-            self._input.setEnabled(True)
-            self._send_btn.setText("Enviar")
-            self._input.setFocus()
-
-    def set_ollama_status(self, available: bool, model: str = ""):
-        if available:
-            self._privacy_badge.setText(
-                f"{_PRIVACY_NOTICE} — {model} conectado"
-            )
-        else:
-            self._privacy_badge.setText(
-                f"{_PRIVACY_NOTICE} — Ollama no disponible"
-            )
-
-    def clear_messages(self):
-        while self._chat_layout.count() > 1:
-            item = self._chat_layout.takeAt(0)
-            if item and item.widget():
-                item.widget().deleteLater()
-        self._messages.clear()
-
-    def _scroll_to_bottom(self):
-        sb = self._scroll.verticalScrollBar()
-        sb.setValue(sb.maximum())
-
 
 class _ChatBubble(QFrame):
     def __init__(self, role: str, content: str, parent: QWidget):
@@ -259,7 +288,7 @@ class _PendingActionCard(QFrame):
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(8)
 
-        title = QLabel(pending.get("title", "Accion pendiente"))
+        title = QLabel(pending.get("title", "Acción pendiente"))
         title.setObjectName("pendingTitle")
         title.setStyleSheet(
             "QLabel#pendingTitle {"

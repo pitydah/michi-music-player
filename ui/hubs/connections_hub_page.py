@@ -1,10 +1,10 @@
-"""ConnectionsHubPage — real servers, Home Audio, devices, diagnostics."""
+"""ConnectionsHubPage — premium service hub for music servers, devices and network."""
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
     QFrame, QScrollArea, QPushButton, QProgressBar,
 )
 
@@ -13,6 +13,16 @@ from ui.central.central_styles import (
     card_title_qss, card_desc_qss, card_meta_qss,
     page_title_qss, page_subtitle_qss,
 )
+
+_SERVICE_DEFS = [
+    ("navidrome", "Navidrome", "Servidor de música Subsonic moderno.", "add_server"),
+    ("jellyfin", "Jellyfin", "Centro multimedia completo.", "add_server"),
+    ("subsonic", "Subsonic", "Servidor de música compatible Subsonic.", "add_server"),
+    ("home_assistant", "Home Assistant", "Domótica y multiroom.", "home_audio"),
+    ("snapcast", "Snapcast", "Audio sincronizado multiroom.", "home_audio"),
+    ("michi_local", "Michi Local", "Servidor propio en esta máquina.", "add_server"),
+    ("custom", "Servidor manual", "Conecta cualquier servidor Subsonic.", "add_server"),
+]
 
 
 class ConnectionsHubPage(QWidget):
@@ -34,59 +44,53 @@ class ConnectionsHubPage(QWidget):
 
         content = QWidget()
         content.setObjectName("connectionsHubContent")
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(40, 32, 40, 32)
-        content_layout.setSpacing(20)
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(40, 32, 40, 32)
+        cl.setSpacing(24)
 
         title = QLabel("Conexiones")
         title.setObjectName("connectionsHubTitle")
-        content_layout.addWidget(title)
+        cl.addWidget(title)
 
         servers = self._get_servers()
         subtitle = QLabel(
-            f"Servidores musicales, Home Audio, dispositivos y diagnóstico de red. "
-            f"{len(servers)} servidores configurados."
+            "Conecta servidores musicales, servicios de red "
+            "y dispositivos locales sin salir de Michi."
         )
         subtitle.setObjectName("connectionsHubSubtitle")
         subtitle.setWordWrap(True)
-        content_layout.addWidget(subtitle)
+        cl.addWidget(subtitle)
 
+        # ── Saved servers ──
         if servers:
-            server_card = QFrame()
-            server_card.setObjectName("connectionsCard_servers")
-            sc_layout = QVBoxLayout(server_card)
-            sc_layout.setContentsMargins(20, 16, 20, 16)
-            sc_layout.setSpacing(8)
+            sec = QLabel("SERVIDORES CONFIGURADOS")
+            sec.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 11px; font-weight: 600; letter-spacing: 1px; }")
+            cl.addWidget(sec)
+            grid = QGridLayout()
+            grid.setSpacing(12)
+            cols = max(1, (self.width() or 800) // 320)
+            for i, srv in enumerate(servers):
+                grid.addWidget(self._build_server_card(srv), i // cols, i % cols, Qt.AlignTop)
+            cl.addLayout(grid)
 
-            srv_title = QLabel(f"Servidores guardados ({len(servers)})")
-            srv_title.setStyleSheet("QLabel { color: rgba(255,255,255,0.72); font-size: 13px; font-weight: 600; }")
-            sc_layout.addWidget(srv_title)
+        # ── Service grid ──
+        sec2 = QLabel("SERVICIOS DISPONIBLES")
+        sec2.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 11px; font-weight: 600; letter-spacing: 1px; }")
+        cl.addWidget(sec2)
+        svc_grid = QGridLayout()
+        svc_grid.setSpacing(14)
+        cols2 = max(1, (self.width() or 800) // 200)
+        for i, (key, name, desc, nav) in enumerate(_SERVICE_DEFS):
+            svc_grid.addWidget(
+                self._build_service_card(key, name, desc, nav), i // cols2, i % cols2, Qt.AlignTop)
+        cl.addLayout(svc_grid)
 
-            for srv in servers:
-                srv_label = QLabel(f"  {srv.get('name', 'Servidor')} — {srv.get('stype', 'navidrome')} ({srv.get('url', '')})")
-                srv_label.setStyleSheet(
-                    "QLabel { color: rgba(143,183,255,0.62); font-size: 12px; }"
-                )
-                sc_layout.addWidget(srv_label)
-
-            server_card.setStyleSheet(
-                "QFrame { background: rgba(143,183,255,0.04); border: 1px solid rgba(143,183,255,0.08); "
-                "border-radius: 12px; }"
-            )
-            content_layout.addWidget(server_card)
-
+        # ── Mounted devices ──
         devices = self._get_devices()
         if devices:
-            dev_card = QFrame()
-            dev_card.setObjectName("connectionsCard_devices")
-            dc_layout = QVBoxLayout(dev_card)
-            dc_layout.setContentsMargins(20, 16, 20, 16)
-            dc_layout.setSpacing(8)
-
-            dev_title = QLabel(f"Dispositivos ({len(devices)})")
-            dev_title.setStyleSheet("QLabel { color: rgba(255,255,255,0.72); font-size: 13px; font-weight: 600; }")
-            dc_layout.addWidget(dev_title)
-
+            sec3 = QLabel("DISPOSITIVOS MONTADOS")
+            sec3.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 11px; font-weight: 600; letter-spacing: 1px; }")
+            cl.addWidget(sec3)
             dev_row = QHBoxLayout()
             dev_row.setSpacing(8)
             for d in devices:
@@ -96,84 +100,125 @@ class ConnectionsHubPage(QWidget):
                 chip.setToolTip(dmount)
                 chip.setCursor(Qt.PointingHandCursor)
                 chip.setStyleSheet(glass_chip_button_qss())
-                chip.setFlat(True)
-                chip.clicked.connect(lambda checked=None, m=dmount: self._navigate(f"dev:{m}"))
+                chip.clicked.connect(lambda c=None, m=dmount: self._navigate(f"dev:{m}"))
                 dev_row.addWidget(chip)
             dev_row.addStretch()
-            dc_layout.addLayout(dev_row)
+            cl.addLayout(dev_row)
 
-            dev_card.setStyleSheet(
-                "QFrame { background: rgba(255,255,255,0.020); border: 1px solid rgba(255,255,255,0.04); "
-                "border-radius: 12px; }"
-            )
-            content_layout.addWidget(dev_card)
+        # ── Network scan ──
+        sec4 = QLabel("RED LOCAL")
+        sec4.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 11px; font-weight: 600; letter-spacing: 1px; }")
+        cl.addWidget(sec4)
+        scan_card = QFrame()
+        scan_card.setObjectName("connectionsScanCard")
+        sc = QVBoxLayout(scan_card)
+        sc.setContentsMargins(20, 16, 20, 16)
+        sc.setSpacing(10)
 
-        discover_card = QFrame()
-        discover_card.setObjectName("connectionsCard_discover")
-        dc_layout = QVBoxLayout(discover_card)
-        dc_layout.setContentsMargins(20, 16, 20, 16)
-        dc_layout.setSpacing(8)
-
-        dc_title = QLabel("Buscar servidores en la red")
-        dc_title.setStyleSheet("QLabel { color: rgba(255,255,255,0.78); font-size: 13px; font-weight: 600; }")
-        dc_layout.addWidget(dc_title)
-
-        btn_row = QVBoxLayout()
+        btn_row = QHBoxLayout()
         self._scan_btn = QPushButton("Escanear red local")
         self._scan_btn.setCursor(Qt.PointingHandCursor)
         self._scan_btn.setStyleSheet(glass_button_qss("secondary"))
         self._scan_btn.clicked.connect(self._on_scan_network)
         btn_row.addWidget(self._scan_btn)
+        btn_row.addStretch()
+        sc.addLayout(btn_row)
 
         self._scan_progress = QProgressBar()
         self._scan_progress.setRange(0, 0)
         self._scan_progress.setVisible(False)
         self._scan_progress.setStyleSheet(glass_progress_qss())
-        btn_row.addWidget(self._scan_progress)
+        sc.addWidget(self._scan_progress)
 
         self._scan_results = QLabel("")
         self._scan_results.setWordWrap(True)
-        self._scan_results.setStyleSheet("QLabel { color: rgba(143,183,255,0.52); font-size: 11px; }")
+        self._scan_results.setStyleSheet("QLabel { color: rgba(143,183,255,0.60); font-size: 12px; }")
         self._scan_results.setVisible(False)
-        btn_row.addWidget(self._scan_results)
+        sc.addWidget(self._scan_results)
 
         self._connect_btn = QPushButton("Conectar servidor detectado")
         self._connect_btn.setCursor(Qt.PointingHandCursor)
         self._connect_btn.setStyleSheet(glass_button_qss("primary"))
         self._connect_btn.setVisible(False)
         self._connect_btn.clicked.connect(self._on_connect_discovered)
-        btn_row.addWidget(self._connect_btn)
+        sc.addWidget(self._connect_btn)
 
-        dc_layout.addLayout(btn_row)
-        discover_card.setStyleSheet(
-            "QFrame { background: rgba(255,255,255,0.020); border: 1px solid rgba(255,255,255,0.04); "
-            "border-radius: 12px; }"
-        )
-        content_layout.addWidget(discover_card)
+        scan_card.setStyleSheet(glass_card_qss("connectionsScanCard", "elevated"))
+        cl.addWidget(scan_card)
 
-        actions = [
-            ("add_server", "Añadir servidor musical",
-             "Conecta Navidrome, Jellyfin o Subsonic para acceder a tu música remota."),
-            ("home_audio", "Home Audio",
-             "Audio multiroom, parlantes Snapcast y Home Assistant."),
-        ]
-
-        for key, label, desc in actions:
-            card = self._build_card(key, label, desc)
-            content_layout.addWidget(card)
-
-        content_layout.addStretch()
-
+        cl.addStretch()
         scroll.setWidget(content)
         layout.addWidget(scroll)
-
         self._apply_qss()
+
+    def _build_service_card(self, key: str, name: str, desc: str, nav: str) -> QFrame:
+        card = QFrame()
+        card.setObjectName(f"svcCard_{key}")
+        card.setMinimumHeight(170)
+        card.setCursor(Qt.PointingHandCursor)
+        vl = QVBoxLayout(card)
+        vl.setContentsMargins(16, 14, 16, 14)
+        vl.setSpacing(6)
+
+        name_lbl = QLabel(name)
+        name_lbl.setObjectName(f"svcTitle_{key}")
+        name_lbl.setStyleSheet(card_title_qss())
+        vl.addWidget(name_lbl)
+
+        icon_area = QLabel(name[0] if name else "?")
+        icon_area.setAlignment(Qt.AlignCenter)
+        icon_area.setStyleSheet(
+            "QLabel { font-size: 28px; font-weight: 700; color: rgba(255,255,255,0.22); "
+            "background: transparent; border: none; }")
+        vl.addWidget(icon_area, 1)
+
+        desc_lbl = QLabel(desc)
+        desc_lbl.setWordWrap(True)
+        desc_lbl.setStyleSheet(card_desc_qss())
+        vl.addWidget(desc_lbl)
+
+        btn = QPushButton(f"Abrir {name}")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(glass_button_qss("secondary"))
+        btn.clicked.connect(lambda c=None, n=nav: self._navigate(n))
+        vl.addWidget(btn)
+
+        card.setStyleSheet(glass_card_qss(f"svcCard_{key}", "base"))
+        return card
+
+    def _build_server_card(self, srv: dict) -> QFrame:
+        card = QFrame()
+        name = srv.get("name", "Servidor")
+        stype = srv.get("stype", "navidrome")
+        url = srv.get("url", "")
+        key = f"srv_{name.replace(' ','_')}"
+        card.setObjectName(key)
+        vl = QVBoxLayout(card)
+        vl.setContentsMargins(16, 14, 16, 14)
+        vl.setSpacing(6)
+
+        title = QLabel(name)
+        title.setStyleSheet(card_title_qss())
+        vl.addWidget(title)
+
+        t = QLabel(f"{stype.title()} · {url}")
+        t.setStyleSheet(card_meta_qss())
+        vl.addWidget(t)
+
+        btn = QPushButton("Abrir servidor")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(glass_button_qss("secondary"))
+        btn.clicked.connect(lambda c=None, u=url: self._navigate(f"srv:{name}"))
+        vl.addWidget(btn)
+
+        card.setStyleSheet(glass_card_qss(key, "elevated"))
+        return card
 
     def _on_scan_network(self):
         self._scan_btn.setEnabled(False)
         self._scan_progress.setVisible(True)
         self._scan_results.setVisible(True)
-        self._scan_results.setText("Escaneando red local...")
+        self._scan_results.setText("Buscando servicios locales...")
 
         class ScanWorker(QThread):
             finished = Signal(list)
@@ -182,8 +227,7 @@ class ConnectionsHubPage(QWidget):
                 mgr = DiscoveryManager(timeout=0.3)
                 results = mgr.scan_known_ports()
                 mdns = mgr.scan_mdns()
-                all_results = results + mdns
-                classified = [mgr.build_discovered_server(r) for r in all_results]
+                classified = [mgr.build_discovered_server(r) for r in results + mdns]
                 self.finished.emit(classified)
 
         self._worker = ScanWorker(self)
@@ -231,29 +275,6 @@ class ConnectionsHubPage(QWidget):
         except Exception:
             return []
 
-    def _build_card(self, key: str, title: str, description: str) -> QFrame:
-        card = QFrame()
-        card.setObjectName(f"connectionsCard_{key}")
-
-        c_layout = QVBoxLayout(card)
-        c_layout.setContentsMargins(20, 20, 20, 20)
-        c_layout.setSpacing(8)
-
-        c_title = QLabel(title)
-        c_layout.addWidget(c_title)
-
-        c_desc = QLabel(description)
-        c_desc.setWordWrap(True)
-        c_layout.addWidget(c_desc)
-
-        btn = QPushButton(f"Abrir {title}")
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(lambda checked=None, k=key: self._navigate(k))
-        c_layout.addWidget(btn)
-
-        card.setStyleSheet(glass_card_qss(f"connectionsCard_{key}"))
-        return card
-
     def _navigate(self, target: str):
         w = self.window()
         if w and hasattr(w, '_on_sidebar_navigate'):
@@ -268,17 +289,3 @@ class ConnectionsHubPage(QWidget):
             QLabel#connectionsHubTitle { color: rgba(255,255,255,0.92); font-size: 22px; font-weight: 700; }
             QLabel#connectionsHubSubtitle { color: rgba(255,255,255,0.56); font-size: 13px; }
         """)
-        for key, act in [("add_server", "secondary"), ("home_audio", "accent")]:
-            card = self.findChild(QFrame, f"connectionsCard_{key}")
-            if card:
-                card.setStyleSheet(glass_card_qss(f"connectionsCard_{key}", "elevated"))
-            for lbl in (card.findChildren(QLabel) if card else []):
-                name = lbl.objectName()
-                if "Title" in name:
-                    lbl.setStyleSheet(card_title_qss())
-                elif "Desc" in name:
-                    lbl.setStyleSheet(card_desc_qss())
-                elif "Meta" in name:
-                    lbl.setStyleSheet(card_meta_qss())
-            for btn in (card.findChildren(QPushButton) if card else []):
-                btn.setStyleSheet(glass_button_qss(act))
