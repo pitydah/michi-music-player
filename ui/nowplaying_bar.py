@@ -11,18 +11,31 @@ from PySide6.QtWidgets import (
 from ui.icons import get_icon
 
 
-def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) -> QPushButton:
+def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
+              role: str = "utility") -> QPushButton:
     from ui.icons import get_qicon
+
+    # Visual size calibration per icon — balances perceptual weight
+    _ICON_CALIBRATION = {
+        "warm_play": 34, "warm_pause": 32,
+        "warm_prev": 26, "warm_next": 26,
+        "warm_shuffle": 20, "warm_repeat": 20,
+        "warm_vol_high": 22, "warm_vol_medium": 22,
+        "warm_vol_low": 22, "warm_mute": 22,
+        "warm_eq": 24, "warm_transmit": 24,
+        "warm_audio_source": 22, "warm_mini_player": 22,
+    }
+    visual_size = _ICON_CALIBRATION.get(icon_name, icon_size)
+
     btn = QPushButton("")
     btn.setFlat(True)
 
-    icon = get_qicon(icon_name, size=icon_size)
+    icon = get_qicon(icon_name, size=visual_size)
     if not icon.isNull():
         btn.setIcon(icon)
+    btn.setIconSize(QSize(visual_size, visual_size))
 
-    btn.setIconSize(QSize(icon_size, icon_size))
-
-    final_size = button_size or icon_size + 6
+    final_size = button_size or visual_size + 6
     btn.setFixedSize(final_size, final_size)
     btn.setMinimumSize(final_size, final_size)
     btn.setMaximumSize(final_size, final_size)
@@ -31,31 +44,70 @@ def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None) ->
     btn.setFocusPolicy(Qt.NoFocus)
     btn.setAutoDefault(False)
     btn.setDefault(False)
+    btn.setProperty("role", role)
 
-    btn.setStyleSheet("""
-        QPushButton {
+    # Border-radius proportional to button size
+    radius_map = {"primary_transport": 18, "secondary_transport": 14,
+                  "tertiary_transport": 13, "utility": 12, "volume": 12}
+    radius = radius_map.get(role, 11)
+
+    btn.setStyleSheet(f"""
+        QPushButton {{
             background: transparent;
             border: 1px solid transparent;
             outline: none;
             padding: 0px;
             margin: 0px;
-            border-radius: 11px;
-        }
-        QPushButton:focus {
+            border-radius: {radius}px;
+        }}
+        QPushButton:focus {{
             outline: none;
             border: none;
-        }
-        QPushButton:hover {
+        }}
+        QPushButton:hover {{
             background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.06);
-        }
-        QPushButton:pressed {
+            border: 1px solid rgba(255,255,255,0.055);
+        }}
+        QPushButton:pressed {{
             background: rgba(255,255,255,0.04);
-        }
-        QPushButton[active="true"] {
-            background: rgba(255,255,255,0.14);
-            border: 1px solid rgba(255,255,255,0.06);
-        }
+            border: 1px solid rgba(255,255,255,0.04);
+        }}
+        QPushButton[role="secondary_transport"]:hover {{
+            background: rgba(255,255,255,0.075);
+            border: 1px solid rgba(255,255,255,0.065);
+        }}
+        QPushButton[role="secondary_transport"]:pressed {{
+            background: rgba(255,255,255,0.040);
+            border: 1px solid rgba(255,255,255,0.040);
+        }}
+        QPushButton[role="tertiary_transport"]:hover {{
+            background: rgba(255,255,255,0.055);
+        }}
+        QPushButton[role="utility"]:hover {{
+            background: rgba(255,255,255,0.050);
+            border: 1px solid rgba(255,255,255,0.045);
+        }}
+        QPushButton[active="true"] {{
+            background: rgba(249,33,65,0.135);
+            border: 1px solid rgba(249,33,65,0.260);
+        }}
+        QPushButton[active="true"]:hover {{
+            background: rgba(249,33,65,0.180);
+            border: 1px solid rgba(249,33,65,0.320);
+        }}
+        QPushButton#transmitButton[active="true"] {{
+            background: rgba(52,199,89,0.130);
+            border: 1px solid rgba(52,199,89,0.280);
+        }}
+        QPushButton#transmitButton[active="true"]:hover {{
+            background: rgba(52,199,89,0.180);
+            border: 1px solid rgba(52,199,89,0.340);
+        }}
+        QPushButton:disabled {{
+            color: rgba(255,255,255,0.25);
+            background: transparent;
+            border: 1px solid transparent;
+        }}
     """)
     return btn
 
@@ -241,6 +293,12 @@ class NowPlayingBar(QWidget):
                 );
                 border: 1px solid rgba(255,255,255,0.080);
             }
+            QWidget#nowPlayingInfoCard[playing="true"] {
+                border: 1px solid rgba(249,33,65,0.180);
+            }
+            QWidget#nowPlayingInfoCard[playing="true"]:hover {
+                border: 1px solid rgba(249,33,65,0.260);
+            }
         """)
         left_widget.setCursor(Qt.ArrowCursor)
         left_widget.setToolTip("Sin pista cargada")
@@ -258,28 +316,11 @@ class NowPlayingBar(QWidget):
         card_layout.setContentsMargins(12, 8, 14, 8)
         card_layout.setSpacing(14)
 
-        # Cover button
-        self._cover = QPushButton()
+        # Cover button — high-quality paint
+        self._cover = CoverButton()
         self._cover.setObjectName("coverButton")
-        self._cover.setFixedSize(64, 64)
-        self._cover.setIconSize(QSize(64, 64))
-        self._cover.setCursor(Qt.PointingHandCursor)
-        self._cover.setFlat(True)
-        self._cover.setStyleSheet("""
-            QPushButton#coverButton {
-                background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 13px;
-                padding: 0px;
-                margin: 0px;
-            }
-            QPushButton#coverButton:hover {
-                border: 1px solid rgba(255,255,255,0.20);
-                background: rgba(255,255,255,0.10);
-            }
-        """)
-        self._cover.clicked.connect(self._on_cover_clicked)
-        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13, active=False)))
+        self._cover.set_placeholder(_placeholder_cover_pixmap(64, 13, active=False), False)
+        self._cover.clicked_preview.connect(self._on_cover_clicked)
         card_layout.addWidget(self._cover, 0, Qt.AlignVCenter)
 
         # Text column
@@ -370,23 +411,46 @@ class NowPlayingBar(QWidget):
         ctrl_row.setSpacing(12)
         ctrl_row.setAlignment(Qt.AlignCenter)
 
-        self._shuffle_btn = _make_btn("warm_shuffle", 20, 40)
-        self._prev_btn = _make_btn("warm_prev", 26, 44)
-        self._play_btn = _make_btn("warm_play", 34, 54)
-        self._next_btn = _make_btn("warm_next", 26, 44)
-        self._repeat_btn = _make_btn("warm_repeat", 20, 40)
+        self._shuffle_btn = _make_btn("warm_shuffle", 20, 40, role="tertiary_transport")
+        self._prev_btn = _make_btn("warm_prev", 26, 44, role="secondary_transport")
+        self._play_btn = _make_btn("warm_play", 34, 54, role="primary_transport")
+        self._next_btn = _make_btn("warm_next", 26, 44, role="secondary_transport")
+        self._repeat_btn = _make_btn("warm_repeat", 20, 40, role="tertiary_transport")
 
         self._shuffle_btn.clicked.connect(self._on_shuffle)
+        self._shuffle_btn.setToolTip("Aleatorio desactivado")
         self._prev_btn.clicked.connect(self.prev_clicked.emit)
+        self._prev_btn.setToolTip("Canción anterior")
         self._play_btn.clicked.connect(self.play_clicked.emit)
+        self._play_btn.setToolTip("Reproducir")
         self._next_btn.clicked.connect(self.next_clicked.emit)
+        self._next_btn.setToolTip("Canción siguiente")
         self._repeat_btn.clicked.connect(self._on_repeat)
+        self._repeat_btn.setToolTip("Repetición desactivada")
 
-        self._audio_output_btn = _make_btn("warm_audio_source", 22, 40)
+        # Play button — visual center of the bar
+        self._play_btn.setObjectName("playButton")
+        self._play_btn.setStyleSheet(self._play_btn.styleSheet() + """
+            QPushButton#playButton {
+                background: rgba(255,255,255,0.075);
+                border: 1px solid rgba(255,255,255,0.090);
+                border-radius: 18px;
+            }
+            QPushButton#playButton:hover {
+                background: rgba(255,255,255,0.120);
+                border: 1px solid rgba(255,255,255,0.145);
+            }
+            QPushButton#playButton:pressed {
+                background: rgba(255,255,255,0.055);
+                border: 1px solid rgba(255,255,255,0.090);
+            }
+        """)
+
+        self._audio_output_btn = _make_btn("warm_audio_source", 22, 40, role="utility")
         self._audio_output_btn.setToolTip("Seleccionar salida de audio")
         self._audio_output_btn.clicked.connect(self.audio_output_clicked.emit)
 
-        self._mini_player_btn = _make_btn("warm_mini_player", 22, 40)
+        self._mini_player_btn = _make_btn("warm_mini_player", 22, 40, role="utility")
         self._mini_player_btn.setToolTip("Abrir mini reproductor")
         self._mini_player_btn.clicked.connect(self.mini_player_clicked.emit)
 
@@ -419,7 +483,7 @@ class NowPlayingBar(QWidget):
         # ═══ RIGHT: VOLUME + TOOLS + BADGE (stretch=0) ═══
 
         # Widgets
-        self._vol_btn = _make_btn("warm_vol_high", 22, 38)
+        self._vol_btn = _make_btn("warm_vol_high", 22, 38, role="volume")
         self._vol_btn.setToolTip("Click para silenciar")
         self._vol_btn.clicked.connect(self._on_mute_toggle)
         self._vol_level_before_mute = 70
@@ -433,11 +497,12 @@ class NowPlayingBar(QWidget):
         self._vol.setFixedHeight(28)
         self._vol.valueChanged.connect(lambda v: self.volume_changed.emit(v))
 
-        self._eq_btn = _make_btn("warm_eq", 26, 44)
+        self._eq_btn = _make_btn("warm_eq", 24, 40, role="utility")
         self._eq_btn.setToolTip("Ecualizador")
         self._eq_btn.clicked.connect(self.eq_clicked.emit)
 
-        self._transmit_btn = _make_btn("warm_transmit", 28, 44)
+        self._transmit_btn = _make_btn("warm_transmit", 24, 40, role="utility")
+        self._transmit_btn.setObjectName("transmitButton")
         self._transmit_btn.setToolTip("Transmitir a dispositivo")
         self._transmit_btn.clicked.connect(lambda: self.transmit_clicked.emit())
 
@@ -496,12 +561,17 @@ class NowPlayingBar(QWidget):
     def _on_shuffle(self):
         self._shuffle = not self._shuffle
         _set_button_active(self._shuffle_btn, self._shuffle)
+        self._shuffle_btn.setToolTip(
+            "Aleatorio activado" if self._shuffle else "Aleatorio desactivado")
         self.shuffle_clicked.emit()
 
     def _on_repeat(self):
         modes = {"none": "all", "all": "one", "one": "none"}
         self._repeat = modes.get(self._repeat, "none")
         _set_button_active(self._repeat_btn, self._repeat != "none")
+        tips = {"none": "Repetición desactivada", "all": "Repetir lista",
+                "one": "Repetir canción"}
+        self._repeat_btn.setToolTip(tips.get(self._repeat, "Repetición desactivada"))
         self.repeat_clicked.emit()
 
     def _on_seek_end(self):
@@ -522,9 +592,20 @@ class NowPlayingBar(QWidget):
 
     def set_state(self, state: str):
         self._state = state
-        name = "warm_pause" if state == "playing" else "warm_play"
-        self._play_btn.setIcon(QIcon(get_icon(name)))
-        self._play_btn.setIconSize(QSize(34, 34))
+        if state == "playing":
+            self._play_btn.setIcon(QIcon(get_icon("warm_pause")))
+            self._play_btn.setIconSize(QSize(32, 32))
+            self._play_btn.setToolTip("Pausar")
+        else:
+            self._play_btn.setIcon(QIcon(get_icon("warm_play")))
+            self._play_btn.setIconSize(QSize(34, 34))
+            self._play_btn.setToolTip("Reproducir")
+        # Playing state on info card
+        if hasattr(self, '_info_card'):
+            playing = "true" if state == "playing" else "false"
+            self._info_card.setProperty("playing", playing)
+            self._info_card.style().unpolish(self._info_card)
+            self._info_card.style().polish(self._info_card)
 
     def set_track(self, title: str, artist: str, cover_path: str = ""):
         self._raw_title = title or "Sin reproducción"
@@ -548,11 +629,11 @@ class NowPlayingBar(QWidget):
             if not pix.isNull():
                 rounded = _rounded_cover_pixmap(pix, 64, 13)
                 self._cover_pixmap = rounded
-                self._cover.setIcon(QIcon(rounded))
+                self._cover.set_cover_pixmap(rounded)
                 self.cover_loaded.emit(pix)
                 self._apply_elide()
                 return
-        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13, active=True)))
+        self._cover.set_placeholder(_placeholder_cover_pixmap(64, 13, active=True), True)
         self.cover_loaded.emit(None)
 
         self._apply_elide()
@@ -635,12 +716,10 @@ class NowPlayingBar(QWidget):
             self._info_card.setCursor(Qt.PointingHandCursor)
             self._info_card.setToolTip(
                 "Click: detalles del tema · Doble click: vista expandida")
-            self._cover.setCursor(Qt.PointingHandCursor)
             self._cover.setToolTip("Ver carátula")
         else:
             self._info_card.setCursor(Qt.ArrowCursor)
             self._info_card.setToolTip("Sin pista cargada")
-            self._cover.setCursor(Qt.ArrowCursor)
             self._cover.setToolTip("")
 
     def reset_visual_state(self):
@@ -666,7 +745,8 @@ class NowPlayingBar(QWidget):
         self._repeat = "none"
         self._update_info_card_state()
 
-        self._cover.setIcon(QIcon(_placeholder_cover_pixmap(64, 13, active=False)))
+        self._cover.set_placeholder(_placeholder_cover_pixmap(64, 13, active=False), False)
+        self._cover_pixmap = QPixmap()
         self._play_btn.setIcon(QIcon(get_icon("warm_play")))
         _set_button_active(self._shuffle_btn, False)
         _set_button_active(self._repeat_btn, False)
@@ -678,11 +758,11 @@ class NowPlayingBar(QWidget):
         self._apply_elide()
     def _build_meta(self) -> str:
         """Build meta text from source, quality and codec info."""
-        parts = []
         if self._transmitting and self._transmit_device_name:
             return f"TRANSMITIENDO · {self._transmit_device_name}"
         if self._source_type == "radio":
             return "RADIO · STREAMING"
+        parts = []
         if self._source_label and self._source_label != "local":
             parts.append(self._source_label.upper())
         elif self._source_type == "local_file":
@@ -691,10 +771,11 @@ class NowPlayingBar(QWidget):
             parts.append(self._source_quality)
         elif self._codec:
             q = self._codec.upper()
-            if self._bitrate:
-                q += f" {self._bitrate}kbps"
+            if self._bitrate and self._bitrate != "0":
+                q += f" {self._bitrate}"
             parts.append(q)
-        return " · ".join(parts) if parts else "Michi Music Player"
+        meta = " · ".join(parts) if parts else "Michi Music Player"
+        return meta[:48] if len(meta) > 48 else meta
 
     def set_quality(self, text: str):
         self._source_quality = text
@@ -709,7 +790,7 @@ class NowPlayingBar(QWidget):
             self._apply_elide()
 
     def set_quality_info(self, label: str, category: str = "unknown",
-                         tooltip: str = ""):
+                          tooltip: str = ""):
         """Set quality badge with category-colored styling."""
         self._source_quality = label
         self._quality_badge.set_text(f" {label} ")
@@ -717,6 +798,10 @@ class NowPlayingBar(QWidget):
         if tooltip:
             self._quality_badge.setToolTip(tooltip)
         self._refresh_source_badge()
+        if self._has_track:
+            self._raw_meta = self._build_meta()
+            self._meta_lbl.setText(self._raw_meta)
+            self._apply_elide()
 
     def set_source_status(self, source_type: str = "local_file", quality: str = "",
                           service: str = "", codec: str = "", bitrate: str = "",
@@ -805,8 +890,8 @@ class NowPlayingBar(QWidget):
         self._refresh_source_badge()
 
     def _set_button_active(self, btn, active: bool):
-        """Toggle active visual state on a button via property."""
-        btn.setProperty("active", str(active).lower())
+        """Toggle active visual state on a button via property (consistent string)."""
+        btn.setProperty("active", "true" if active else "false")
         btn.style().unpolish(btn)
         btn.style().polish(btn)
 
@@ -853,6 +938,88 @@ class NowPlayingBar(QWidget):
     def _on_cover_clicked(self):
         if self._has_track:
             self.cover_preview_requested.emit()
+
+
+class CoverButton(QPushButton):
+    """High-quality cover art button with hover overlay."""
+    clicked_preview = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._pixmap = QPixmap()
+        self._placeholder = QPixmap()
+        self._hovered = False
+        self._has_track = False
+        self._has_cover = False
+        self._radius = 13.0
+        self.setFixedSize(64, 64)
+        self.setMouseTracking(True)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFlat(True)
+        self.clicked.connect(self._on_click)
+
+    def set_cover_pixmap(self, pixmap: QPixmap):
+        self._pixmap = pixmap
+        self._has_cover = not pixmap.isNull()
+        self.update()
+
+    def set_placeholder(self, pixmap: QPixmap, has_track: bool):
+        self._placeholder = pixmap
+        self._has_track = has_track
+        self._has_cover = False
+        self.setCursor(Qt.PointingHandCursor if has_track else Qt.ArrowCursor)
+        self.update()
+
+    def _on_click(self):
+        if self._has_track:
+            self.clicked_preview.emit()
+
+    def enterEvent(self, event):
+        self._hovered = True
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hovered = False
+        self.update()
+        super().leaveEvent(event)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        rect = QRectF(0, 0, 64, 64)
+        path = QPainterPath()
+        path.addRoundedRect(rect, self._radius, self._radius)
+        painter.setClipPath(path)
+
+        # Background
+        painter.setBrush(QColor(255, 255, 255, 15))
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(rect, self._radius, self._radius)
+
+        # Pixmap or placeholder
+        src = self._pixmap if self._has_cover else self._placeholder
+        if not src.isNull():
+            scaled = src.scaled(64, 64, Qt.KeepAspectRatioByExpanding,
+                                Qt.SmoothTransformation)
+            x = (scaled.width() - 64) // 2
+            y = (scaled.height() - 64) // 2
+            painter.drawPixmap(-x, -y, scaled)
+
+        # Hover overlay — darken
+        if self._hovered and (self._has_track or self._has_cover):
+            painter.setBrush(QColor(0, 0, 0, 46))
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(rect, self._radius, self._radius)
+
+        # Border
+        border_alpha = 58 if self._hovered and self._has_track else 28
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(QColor(255, 255, 255, border_alpha), 1.0))
+        painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5),
+                                self._radius, self._radius)
+        painter.end()
 
 
 class PremiumSlider(QSlider):
