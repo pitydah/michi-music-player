@@ -112,5 +112,17 @@ class DeviceSyncController(QObject):
     def get_manifest_history(self, device_id: str) -> list[dict]:
         return self._manifest_store.load_history(device_id)
 
+    def build_delta_manifest(self, device_id: str, since: float = 0.0) -> dict:
+        """Build an incremental delta manifest since a given Unix timestamp."""
+        return self._manifest_builder.build_delta(device_id, since)
+
+    def store_delta_manifest(self, device_id: str, delta: dict):
+        """Store the latest delta version in manifest store and registry."""
+        import time as _time
+        ts = _time.strftime("%Y-%m-%dT%H:%M:%S")
+        self._manifest_store.save(device_id, delta)
+        self._registry.update(device_id, last_sync=ts,
+                             last_manifest_ts=str(_time.time()))
+
     def get_sync_history(self) -> list[SyncJob]:
         return self._queue.get_history()

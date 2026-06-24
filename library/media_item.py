@@ -55,6 +55,10 @@ class MediaItem:
     play_count: int = 0
     last_played: float = 0.0
     rating: int = 0
+    created_at: float = 0.0
+    updated_at: float = 0.0
+    last_scanned: float = 0.0
+    track_uid: str = ""
 
     @property
     def display_title(self) -> str:
@@ -118,6 +122,8 @@ class MediaItem:
             replaygain_album=_f(40), replaygain_track_peak=_f(41),
             play_count=_i(42), last_played=_f(43),
             rating=_i(44),
+            created_at=_f(45), updated_at=_f(46),
+            last_scanned=_f(47), track_uid=_s(48),
         )
 
     @classmethod

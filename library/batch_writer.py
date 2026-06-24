@@ -15,8 +15,14 @@ BATCH_COLUMNS = [
     "replaygain_track_peak",
     "isrc", "label", "conductor", "compilation", "media_type",
     "encoder", "copyright", "originaldate", "remixer", "grouping", "mood",
-    "content_hash", "track_uid",
+    "content_hash", "track_uid", "created_at",
     "updated_at", "last_scanned", "scan_status",
+]
+
+# Columns set ON CONFLICT DO UPDATE (excludes identity columns)
+_CONFLICT_UPDATE_COLS = [
+    c for c in BATCH_COLUMNS
+    if c not in ("filepath", "created_at")
 ]
 
 NUMERIC_DEFAULTS = frozenset({
@@ -30,7 +36,7 @@ NUMERIC_DEFAULTS = frozenset({
 
 FLOAT_DEFAULTS = frozenset({
     "mtime", "duration", "replaygain_track", "replaygain_album",
-    "updated_at", "last_scanned",
+    "created_at", "updated_at", "last_scanned",
 })
 
 
@@ -43,8 +49,8 @@ class BatchWriter:
         self._buffer: list[dict] = []
         self._written = 0
 
-        update_cols = [c for c in BATCH_COLUMNS if c != "filepath"]
-        set_clause = ", ".join(f"{c}=excluded.{c}" for c in update_cols)
+        set_clause = ", ".join(
+            f"{c}=excluded.{c}" for c in _CONFLICT_UPDATE_COLS)
         self._sql = (
             f"INSERT INTO media_items ({', '.join(BATCH_COLUMNS)}) "
             f"VALUES ({', '.join(['?'] * len(BATCH_COLUMNS))}) "

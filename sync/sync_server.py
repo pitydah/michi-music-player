@@ -104,6 +104,29 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 return self._send_error("No manifest for this device", 404)
             self._send_json(manifest)
 
+        elif path == "/api/sync/manifest/delta":
+            session = self._check_token_session()
+            if not session:
+                return self._send_error("Unauthorized", 401)
+            if srv is None or srv._delta_provider is None:
+                return self._send_error("Delta manifest not available", 503)
+            qs = urllib.parse.parse_qs(
+                self.path.split("?")[1] if "?" in self.path else "")
+            device_id = (qs.get("device_id") or [""])[0]
+            since_str = (qs.get("since") or ["0"])[0]
+            if not device_id:
+                return self._send_error("Missing device_id parameter", 400)
+            if session.client_device_id and device_id != session.client_device_id:
+                return self._send_error("Forbidden: token does not match device_id", 403)
+            try:
+                since = float(since_str)
+            except ValueError:
+                since = 0.0
+            delta = srv._delta_provider(device_id, since)
+            if delta is None:
+                return self._send_error("No delta for this device", 404)
+            self._send_json(delta)
+
         elif path == "/api/library":
             if not self._check_token():
                 return self._send_error("Unauthorized", 401)
@@ -344,10 +367,15 @@ class SyncServer(QObject):
         self._sessions: dict[str, SessionToken] = {}
         self._track_index: dict[str, str] = {}
         self._manifest_provider: callable | None = None
+        self._delta_provider: callable | None = None
 
     def set_manifest_provider(self, provider):
         """Register a callable that returns public manifest dict for a device_id."""
         self._manifest_provider = provider
+
+    def set_delta_provider(self, provider):
+        """Register a callable for GET /api/sync/manifest/delta."""
+        self._delta_provider = provider
 
     def _build_index(self):
         """Build track_id → filepath lookup (prefers track_uid when available)."""

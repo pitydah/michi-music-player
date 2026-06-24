@@ -28,6 +28,8 @@ class DevicesPage(QWidget):
         if self._controller and self._sync_mgr:
             self._sync_mgr.set_manifest_provider(
                 self._controller.get_manifest_public)
+            self._sync_mgr.set_delta_provider(
+                self._controller.build_delta_manifest)
         self._discovered: list[dict] = []
         self._content_mode = "favorites"
         self._build_ui()

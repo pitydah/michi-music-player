@@ -23,6 +23,7 @@ class PairedDevice:
     status: str = "disconnected"
     last_seen: str = ""
     last_sync: str = ""
+    last_manifest_ts: str = ""
     preferred_profile: str = "original"
     paired_at: str = ""
     device_model: str = ""

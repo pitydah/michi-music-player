@@ -463,6 +463,38 @@ class LibraryDB:
             (filepath,)).fetchone()
         return (row[0], row[1], row[2]) if row else None
 
+    def ensure_file_hash(self, filepath: str) -> str:
+        """Return a full SHA-256 file hash, computed once then cached in DB.
+
+        Used by the sync manifest builder — avoids re-reading the entire file
+        on every manifest build. Only recomputes if the file's mtime changed.
+        """
+        row = self._conn.execute(
+            "SELECT COALESCE(file_hash,''), mtime FROM media_items "
+            "WHERE filepath=? AND deleted_at IS NULL",
+            (filepath,)).fetchone()
+        db_hash, db_mtime = (row[0], row[1]) if row else ("", 0)
+        try:
+            current_mtime = os.path.getmtime(filepath)
+        except OSError:
+            return ""
+        if db_hash and abs(current_mtime - (db_mtime or 0)) < 1.0:
+            return db_hash
+        import hashlib
+        h = hashlib.sha256()
+        try:
+            with open(filepath, "rb") as f:
+                for chunk in iter(lambda: f.read(65536), b""):
+                    h.update(chunk)
+            full_hash = h.hexdigest()
+            self._conn.execute(
+                "UPDATE media_items SET file_hash=? WHERE filepath=?",
+                (full_hash, filepath))
+            self._conn.commit()
+            return full_hash
+        except OSError:
+            return db_hash or ""
+
     def log_index_error(self, filepath: str, error: str, stage: str = ""):
         with contextlib.suppress(sqlite3.Error):
             self._conn.execute(
@@ -646,7 +678,8 @@ class LibraryDB:
             "bit_depth, bpm, isrc, label, conductor, compilation, "
             "media_type, encoder, copyright, originaldate, remixer, "
             "grouping, mood, replaygain_track, replaygain_album, "
-            "replaygain_track_peak, play_count, last_played, rating "
+            "replaygain_track_peak, play_count, last_played, rating, "
+            "created_at, updated_at, last_scanned, track_uid "
             "FROM media_items")
         params = []
         conditions = ["deleted_at IS NULL"]

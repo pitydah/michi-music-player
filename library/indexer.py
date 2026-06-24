@@ -104,6 +104,9 @@ class Indexer(QObject):
                         record["updated_at"] = stat.st_mtime
                         record["last_scanned"] = time.time()
                         record["scan_status"] = "ok" if is_new else "updated"
+                        now = time.time()
+                        if is_new:
+                            record["created_at"] = now
 
                         # Compute track_uid for new/updated records
                         tuid = self._db._compute_track_uid(
