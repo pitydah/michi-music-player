@@ -1,10 +1,10 @@
-Astra Music Player
-Copyright (C) 2026 Cristian
+Michi Music Player
+Copyright (C) 2026 Cristian Rosas
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Michi Music Player is free software. You may redistribute it and/or modify
+it under the terms of the GNU General Public License as published by the
+Free Software Foundation, version 3 of the License, or (at your option)
+any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,12 +16,119 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This software is derived in part from Miro Player
-(https://github.com/pculture/miro), which is copyright
-Participatory Culture Foundation and licensed under GPL-2.0.
+Third-party attribution, inspiration, and trademark notice
 
-IMPORTANT: The original Miro Player was licensed under GPL-2.0-only.
-GPL-2.0-only and GPL-3.0-or-later are incompatible unless Miro
-included an "or later" clause in its license. Verify the original
-license before distribution. If confirmed GPL-2.0-only, this
-project must use GPL-2.0-only.
+Michi Music Player is an independent Linux/KDE music player project. It is
+not affiliated with, endorsed by, sponsored by, or approved by any
+third-party project, company, foundation, service, or trademark holder
+mentioned in this repository.
+
+Third-party names are used only for descriptive, nominative, compatibility,
+attribution, or documentation purposes.
+
+Unless a specific source file states otherwise, references to third-party
+projects mean conceptual inspiration, user-experience reference, protocol
+compatibility, optional runtime integration, or dependency usage. They
+do not mean that Michi Music Player contains copied source code, copied UI
+assets, proprietary assets, trademarks, logos, screenshots, private APIs,
+reverse-engineered confidential material, or databases from those projects.
+
+Miro / Democracy Player
+
+Earlier project notes mention Miro Player / Democracy Player. Miro was
+developed by the Participatory Culture Foundation and distributed under
+the GNU General Public License, version 2 or later.
+
+If any Michi source file is actually copied, ported, translated, or
+adapted from Miro, that source file must retain a file-level notice
+identifying the original project, copyright holder, license, source URL or
+commit, and modifications.
+
+If no Miro code is present in a file, Miro should be treated only as
+historical or conceptual inspiration.
+
+Open-source metadata and tagging inspirations
+
+Some metadata, tagging, file-organization, and library-management
+workflows in Michi Music Player were conceptually informed by open-source
+music software such as MusicBrainz Picard, beets, Kid3, puddletag,
+EasyTAG, Quod Libet / Ex Falso, Clementine, Strawberry Music Player,
+MusicBrainz, AcoustID, Chromaprint, and Mutagen.
+
+These references are conceptual, architectural, or workflow references
+only unless a file-level notice states otherwise. No source code, icons,
+logos, screenshots, UI assets, databases, or documentation text from
+those projects is intentionally included in Michi Music Player.
+
+Local network synchronization inspirations
+
+Michi Sync was conceptually inspired by local-network discovery and
+transfer workflows found in applications such as LocalSend, as well as
+historical device synchronization workflows associated with desktop music
+libraries and portable music players.
+
+This is a conceptual reference only. No LocalSend source code, assets,
+icons, branding, or protocol implementation is intentionally included
+unless a file-level notice says otherwise.
+
+Music-library and playback inspirations
+
+Michi Music Player may include independently implemented ideas commonly
+found in music software, including visual album browsing, playlist
+management, smart mixes, metadata editing, library search, server
+browsing, internet radio, local playback, multiroom playback, and device
+synchronization.
+
+Conceptual references may include iTunes, iPod-era device management,
+Apple Music, Roon, TIDAL, Spotify, Deezer Flow, Every Noise at Once,
+Audirvana, Clementine, Strawberry Music Player, Quod Libet, and similar
+music applications.
+
+These references do not imply affiliation, endorsement, copying, or
+compatibility with every feature of those products.
+
+Integration and compatibility targets
+
+Michi Music Player may optionally interoperate with external systems such
+as Home Assistant, Snapcast, Navidrome, Jellyfin, Subsonic-compatible
+servers, MusicBrainz, AcoustID, AudD, Shazam-compatible libraries,
+LRCLIB, Wikipedia/Wikimedia, GStreamer, Qt/PySide, KDE/Plasma, Avahi,
+PipeWire, PulseAudio, ALSA, and other user-configured services or tools.
+
+Compatibility or integration does not imply endorsement, certification,
+partnership, or inclusion of their source code.
+
+Users, packagers, and distributors are responsible for complying with the
+licenses, API terms, rate limits, attribution requirements, trademark
+rules, and data-use policies of each external service or dependency.
+
+File-level notice requirement
+
+If a source file is copied, ported, translated, adapted, or substantially
+derived from another project, that file must include a file-level notice
+with:
+
+- original project name;
+- original copyright holder;
+- original license;
+- source URL or commit when available;
+- summary of modifications;
+- compatibility note with Michi Music Player's license.
+
+Without such a file-level notice, third-party projects mentioned in this
+repository must be treated only as conceptual references, integration
+targets, compatibility targets, or dependencies.
+
+Trademark notice
+
+All third-party names, marks, logos, and product names are the property
+of their respective owners.
+
+The use of third-party names in this repository is descriptive and
+nominative only. No trademark license is granted or implied.
+
+Michi Music Player must not include third-party logos, screenshots,
+icons, artwork, fonts, sound files, UI assets, copied documentation,
+private APIs, proprietary protocol dumps, or confidential material unless
+redistribution is explicitly permitted and the required notices are
+included.

@@ -94,7 +94,7 @@ sudo apt update
 sudo apt install snapclient
 sudo systemctl enable snapclient</pre>
 
-<h4 style="color:#34C759;">3. Conectar a tu servidor Astra</h4>
+<h4 style="color:#34C759;">3. Conectar a tu servidor Michi</h4>
 <pre style="background:rgba(255,255,255,0.04); padding:10px; border-radius:6px;
 color:rgba(255,255,255,0.72);">
 # Editar configuracion:
@@ -212,7 +212,7 @@ con IP y puerto en Home Audio → Dispositivos.
 <h4 style="color:#34C759;">5. Agregar manualmente</h4>
 <pre style="background:rgba(255,255,255,0.04); padding:10px; border-radius:6px;
 color:rgba(255,255,255,0.72);">
-# En Astra: Home Audio → Dispositivos → Agregar manual
+# En Michi: Home Audio → Dispositivos → Agregar manual
 # Host: IP del contenedor
 # Puerto: 1704</pre>
 """)

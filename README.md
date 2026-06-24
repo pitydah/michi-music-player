@@ -23,7 +23,7 @@ Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · 206 tes
 ### Biblioteca
 - 📚 **Indexer 2.0 incremental** — FileWalker → ChangeDetector (size+mtime) → MetadataExtractor → AlbumKeyBuilder → BatchWriter (100/lote) → Cleanup → FTS5 rebuild
 - 🔍 **Search 2.0 FTS5** — Búsqueda full-text con filtros: `artist:Genesis`, `album:"The Lamb"`, `format:flac`, `year:>2000`, `bitrate:>=320`, `rating:>=4`
-- 🌀 **CoverFlow 3D clásico Apple** — Física de desplazamiento, reflejos, slider premium, backdrop difuminado, modos render (classic_3d/safe_2d/no_reflection)
+- 🌀 **Cover Flow visual** — Vista de álbumes 3D implementada de forma independiente, con física de desplazamiento, reflejos, slider premium, backdrop difuminado y modos render
 - 🖼️ **AlbumInfoBanner** — Card glass 130-175px, mini cover 88×88, badges Info externa/Caché/Local, botones Reproducir/+Cola/Detalles
 - 🎤 **Artistas enriquecidos** — Bio, imágenes (MusicBrainz + Wikipedia), géneros, estilo, display_name búsqueda
 - 📋 **Playlists** — Importar/exportar M3U, crear desde carpeta/cola/álbum/artista/género/búsqueda
@@ -56,7 +56,7 @@ Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · 206 tes
 - 🏛️ **AppContext DI** — Inyección de dependencias centralizada, 0 accesos directos a window desde controladores
 - 🧩 **14 controladores** — Transmit, AudioOutput, Snapcast, HomeAudio, Cast, LocalMediaServer, MiniPlayer, PlayerBar, Playlist, Artist, Album, Expanded, MPRIS, Tray
 - 🔒 **Encapsulación** — PlayerService como facade único al engine, wrappers públicos para todos los métodos, 0 accesos a atributos privados
-- 🧹 **0 stubs · 0 código muerto** — ~320 líneas muertas eliminadas, todos los módulos cableados a flujos reales
+- 🧹 **Código activo** — módulos cableados a flujos reales, servicios opcionales con degradación segura
 
 ## Instalación
 
@@ -224,7 +224,7 @@ michi-music-player/
 │
 ├── library/                          # Biblioteca + indexer (17 archivos)
 │   ├── library_db.py                 # SQLite schema, migraciones, CRUD, search_advanced
-│   ├── indexer.py                    # Indexer 2.0 — pipeline de indexación completo
+│   ├── indexer.py                    # Indexer 2.0 — pipeline de indexación
 │   ├── index_state.py                # ScanState dataclass + ScanPhase enum
 │   ├── batch_writer.py               # BatchWriter — escritura SQLite en lotes
 │   ├── search_engine.py              # SearchEngine — FTS5 + field filters
@@ -392,7 +392,7 @@ michi-music-player/
 | Biblioteca SQLite + metadatos avanzados (MusicBrainz, BPM, RG, bit_depth) | ✅ Completo |
 | Indexer 2.0 incremental + batch writing | ✅ Completo |
 | Search 2.0 FTS5 + field filters (`artist:`, `year:>`, `format:`) | ✅ Completo |
-| CoverFlow 3D clásico Apple + reflejos + backdrop | ✅ Completo |
+| Cover Flow visual (implementación independiente) | ✅ Completo |
 | AlbumInfoBanner + enriquecimiento externo | ✅ Completo |
 | Artistas (grid premium + ficha detalle + MusicBrainz + Wikipedia) | ✅ Completo |
 | Home Audio multiroom (HA + Snapcast + Michi API + mDNS) | ✅ Completo |
@@ -455,4 +455,18 @@ flatpak run com.michi.MusicPlayer
 
 GPL-3.0-or-later
 
-> **Nota sobre la licencia**: Este proyecto se deriva de Miro Player. Si el código original estaba bajo GPL-2.0-only, la relicencia a GPL-3.0-or-later requiere verificación adicional. Ver el archivo NOTICE para más detalles.
+Ver `NOTICE` y `docs/THIRD_PARTY.md` para declaraciones legales completas, inspiraciones de terceros, dependencias, marcas comerciales y compatibilidad con servicios externos.
+
+---
+
+## Third-party notices, inspirations, and trademarks
+
+Michi Music Player es un reproductor de música independiente para Linux/KDE. No está afiliado, respaldado, patrocinado ni aprobado por ningún proyecto, compañía, fundación, servicio o titular de marca mencionado en este repositorio.
+
+Algunas funciones fueron concebidas a partir de flujos de trabajo comunes en software musical: bibliotecas musicales locales, editores de metadatos, taggers, navegación visual de álbumes, listas inteligentes, búsqueda de metadatos externos, audio multiroom y sincronización local entre dispositivos.
+
+Herramientas open source de metadatos como MusicBrainz Picard, beets, Kid3, puddletag, EasyTAG, Quod Libet, Clementine, Strawberry Music Player, MusicBrainz, AcoustID, Chromaprint y Mutagen se mencionan solo como referencias conceptuales, de flujo de trabajo, de compatibilidad o de dependencia, salvo que un aviso a nivel de archivo indique lo contrario.
+
+Michi Music Player no incluye intencionalmente logos, iconos, screenshots, assets visuales, assets propietarios, bases de datos ni código fuente de esos proyectos, salvo que un aviso específico a nivel de archivo lo indique.
+
+Ver `NOTICE` y `docs/THIRD_PARTY.md` para las declaraciones completas de atribución, inspiración, dependencias, compatibilidad y marcas comerciales.
