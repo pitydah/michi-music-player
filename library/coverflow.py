@@ -6,13 +6,13 @@ from PySide6.QtCore import (
     Property, Signal, QPointF,
 )
 from PySide6.QtGui import (
-    QPainter, QColor, QPen, QRadialGradient, QPixmap,
+    QPainter, QColor, QPen, QLinearGradient, QRadialGradient, QPixmap,
     QTransform, QFont, QPainterPath,
 )
 from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene,
     QGraphicsTextItem, QGraphicsOpacityEffect, QGraphicsProxyWidget,
-    QGraphicsPixmapItem, QSlider,
+    QGraphicsPixmapItem, QSlider, QGraphicsRectItem, QGraphicsEllipseItem,
 )
 
 from library.album_art import CoverFlowItem
@@ -188,6 +188,79 @@ class CoverPixmapItem(QGraphicsPixmapItem):
         self._apply_rounded_clip()
 
 
+class DropShadow(QGraphicsEllipseItem):
+    """Elliptical shadow under each cover — anchors it to the floor."""
+    def __init__(self, cover_width: int):
+        super().__init__()
+        self._cover_w = cover_width
+        self.setBrush(QColor(0, 0, 0, 60))
+        self.setPen(Qt.NoPen)
+        self.setZValue(150)
+        self.hide()
+
+    def update_for_state(self, cover_x: float, cover_y: float,
+                         cover_scale: float, cover_height: int):
+        if cover_scale < 0.5:
+            self.hide()
+            return
+        w = self._cover_w * cover_scale * 0.85
+        h = 16 * cover_scale
+        x = cover_x - w / 2
+        y = cover_y + cover_height * cover_scale / 2
+        self.setRect(0, 0, w, h)
+        self.setPos(x, y)
+        self.show()
+
+
+class CenterGlow(QGraphicsEllipseItem):
+    """Soft halo behind the center cover — guides visual focus."""
+    def __init__(self):
+        super().__init__()
+        g = QRadialGradient(300, 100, 300)
+        g.setColorAt(0.0, QColor(255, 255, 255, 18))
+        g.setColorAt(1.0, QColor(255, 255, 255, 0))
+        self.setBrush(g)
+        self.setPen(Qt.NoPen)
+        self.setZValue(500)
+        self.setVisible(False)
+
+    def update_for_center(self, center_x: float, center_y: float,
+                          cover_w: int, cover_h: int, scale: float):
+        if scale < 0.9:
+            self.setVisible(False)
+            return
+        w = cover_w * scale * 1.8
+        h = cover_h * scale * 0.6
+        self.setRect(0, 0, w, h)
+        self.setPos(center_x - w / 2, center_y - h / 2 - cover_h * scale * 0.1)
+        self.setVisible(True)
+
+
+class ReflectiveFloor(QGraphicsRectItem):
+    """Dark reflective floor covering the bottom half of the viewport."""
+    def __init__(self, viewport_width: int, viewport_height: int):
+        super().__init__()
+        self._vw = viewport_width
+        self._vh = viewport_height
+        self.setRect(0, 0, self._vw, self._vh * 0.42)
+        self.setPos(0, self._vh * 0.58)
+        self.setZValue(100)
+        self.setPen(Qt.NoPen)
+
+    def resize(self, viewport_width: int, viewport_height: int):
+        self._vw = viewport_width
+        self._vh = viewport_height
+        self.setRect(0, 0, self._vw, self._vh * 0.42)
+        self.setPos(0, self._vh * 0.58)
+
+    def paint(self, painter: QPainter, option, widget):
+        grad = QLinearGradient(0, 0, 0, self.rect().height())
+        grad.setColorAt(0.0, QColor(0, 0, 0, 0))
+        grad.setColorAt(0.15, QColor(0, 0, 0, 40))
+        grad.setColorAt(1.0, QColor(0, 0, 0, 200))
+        painter.fillRect(self.rect(), grad)
+
+
 class CoverFlowWidget(QGraphicsView):
     selection_changed = Signal(int)
     double_clicked = Signal(int)
@@ -240,6 +313,9 @@ class CoverFlowWidget(QGraphicsView):
 
         self._items: list[CoverFlowItem] = []
         self._cover_items: list[CoverPixmapItem] = []
+        self._shadows: list[DropShadow] = []
+        self._floor: ReflectiveFloor | None = None
+        self._glow: CenterGlow | None = None
         self._current = 0.0
         self._velocity = 0.0
         self._dragging = False
@@ -277,6 +353,13 @@ class CoverFlowWidget(QGraphicsView):
 
         self._create_overlay_items()
         self._create_slider()
+
+        vw = self.viewport().width() or 800
+        vh = self.viewport().height() or 600
+        self._floor = ReflectiveFloor(vw, vh)
+        self._scene.addItem(self._floor)
+        self._glow = CenterGlow()
+        self._scene.addItem(self._glow)
 
     # ── Current pos property ──
 
@@ -403,6 +486,9 @@ class CoverFlowWidget(QGraphicsView):
         for ci in list(self._cover_items):
             self._scene.removeItem(ci)
         self._cover_items.clear()
+        for sd in list(self._shadows):
+            self._scene.removeItem(sd)
+        self._shadows.clear()
         for attr in ('_title_text', '_artist_text', '_meta_text',
                      '_position_text', '_empty_msg'):
             item = getattr(self, attr, None)
@@ -424,6 +510,9 @@ class CoverFlowWidget(QGraphicsView):
             ci = CoverPixmapItem(item.pixmap, i, self._cover_w, self._cover_h)
             self._scene.addItem(ci)
             self._cover_items.append(ci)
+            shadow = DropShadow(self._cover_w)
+            self._scene.addItem(shadow)
+            self._shadows.append(shadow)
 
         self._slider.setRange(0, max(0, len(items) - 1))
         self._slider.setVisible(len(items) > 1)
@@ -500,7 +589,22 @@ class CoverFlowWidget(QGraphicsView):
                 item = self._items[ci._index]
                 self.request_cover.emit(ci._index, item)
 
+        # Update shadows and center glow
+        for i, ci in enumerate(self._cover_items):
+            if i < len(self._shadows) and ci.isVisible():
+                offset = ci._index - self._current
+                state = coverflow_layout(offset, vw, vh, self._cover_w, self._cover_h)
+                self._shadows[i].update_for_state(
+                    state["x"], state["y"], state["scale"], self._cover_h)
+            elif i < len(self._shadows):
+                self._shadows[i].hide()
+
         idx = self.current_index()
+        if 0 <= idx < len(self._cover_items):
+            ci = self._cover_items[idx]
+            state = coverflow_layout(idx - self._current, vw, vh, self._cover_w, self._cover_h)
+            self._glow.update_for_center(
+                state["x"], state["y"], self._cover_w, self._cover_h, state["scale"])
 
         if self._last_emitted_idx != idx:
             self.selection_changed.emit(idx)
@@ -726,6 +830,7 @@ class CoverFlowWidget(QGraphicsView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_cover_size()
+        self._floor.resize(self.viewport().width(), self.viewport().height())
         self._update_layout()
         self._position_slider()
 
@@ -750,6 +855,9 @@ class CoverFlowWidget(QGraphicsView):
             ci = CoverPixmapItem(item.pixmap, i, self._cover_w, self._cover_h)
             self._scene.addItem(ci)
             self._cover_items.append(ci)
+            shadow = DropShadow(self._cover_w)
+            self._scene.addItem(shadow)
+            self._shadows.append(shadow)
         self._current = max(0, min(len(self._items) - 1, saved))
         self._update_layout()
         self._position_slider()
