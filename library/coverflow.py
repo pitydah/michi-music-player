@@ -1,6 +1,5 @@
 """CoverFlow — QGraphicsView-based carousel with OpenGL, physics, reflections, slider."""
 import os
-from dataclasses import dataclass
 
 from PySide6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QVariantAnimation,
@@ -24,13 +23,26 @@ try:
 except ImportError:
     HAVE_OPENGL = False
 
-# ── Render mode ──
+# ── Calibration (override via env vars) ──
+_CF_GAP = float(os.environ.get("MICHI_CF_GAP", "0.65"))
+_CF_ROT_FACTOR = float(os.environ.get("MICHI_CF_ROT", "22.0"))
+_CF_SCALE_DECAY = float(os.environ.get("MICHI_CF_SCALE", "0.88"))
 _MODE = os.environ.get("MICHI_COVERFLOW_MODE", "classic_3d")
 _DEBUG = os.environ.get("MICHI_COVERFLOW_DEBUG", "0") == "1"
 
 
 def _clamp(x, a, b):
     return max(a, min(b, float(x)))
+
+
+def _format_dur(seconds: float) -> str:
+    if seconds is None or seconds <= 0:
+        return ""
+    m, s = divmod(int(seconds), 60)
+    if seconds >= 3600:
+        h, m = divmod(m, 60)
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
 
 
 def _smoothstep(edge0, edge1, x):
@@ -43,105 +55,47 @@ def _ease_out_cubic(x):
     return 1.0 - pow(1.0 - t, 3.0)
 
 
-@dataclass
-class CoverFlowItemState:
-    x: float = 0.0
-    y: float = 0.0
-    scale: float = 1.0
-    rotation_y: float = 0.0
-    opacity: float = 1.0
-    darken_alpha: int = 0
-    z: int = 0
-    is_center: bool = False
-    visible: bool = True
+def coverflow_layout(offset: float, view_w: float, view_h: float,
+                     cover_w: float, cover_h: float) -> dict:
+    """Pure math: position, rotation, scale, depth for one item.
+
+    Returns dict with keys: x, y, scale, rot, z, visible.
+    Calibrated via MICHI_CF_GAP, MICHI_CF_ROT, MICHI_CF_SCALE env vars.
+    """
+    abs_off = abs(offset)
+    sign = -1.0 if offset < 0 else 1.0
+
+    base_gap = cover_w * _CF_GAP
+    x = view_w / 2.0 + sign * base_gap * (abs_off + 0.2 * abs_off ** 1.4)
+
+    rot = 0.0 if abs_off < 0.15 else sign * min(55.0, abs_off * _CF_ROT_FACTOR)
+
+    scale = max(0.45, 1.0 * (_CF_SCALE_DECAY ** abs_off))
+
+    y = view_h / 2.0 - 20 + abs_off * 6.0 - offset ** 2 * 1.5
+
+    z = int(2000 - abs_off * 20)
+    visible = abs_off <= 10.0
+
+    return {"x": x, "y": y, "scale": scale, "rot": rot,
+            "z": z, "visible": visible}
 
 
-class CoverFlowLayoutEngine:
-    """Pure math: calculates position, rotation, scale for each item."""
+def apply_layout_state(item, state: dict, cover_w: int, cover_h: int):
+    """Apply position, rotation (edge-pivot), scale and z-value."""
+    x, y, s, rot, z = state["x"], state["y"], state["scale"], state["rot"], state["z"]
+    item.setPos(x, y)
+    item.setZValue(z)
 
-    def __init__(self):
-        self.max_rot = 60.0
-        self.center_scale = 1.05
-        self.side_scale = 0.82
-        self.far_scale = 0.52
-        self.near_gap_factor = 0.72
-        self.side_gap_factor = 0.32
-        self.far_gap_factor = 0.18
-        self.center_y_offset = -38
-
-    def visible_indices(self, count: int, offset: float,
-                        viewport_width: int) -> range:
-        if viewport_width < 900:
-            r = 7
-        elif viewport_width > 1600:
-            r = 14
-        else:
-            r = 10
-        mid = round(offset)
-        return range(max(0, mid - r), min(count, mid + r + 1))
-
-    def item_state(self, index: int, offset: float,
-                   cover_w: int, cover_h: int,
-                   view_w: int, view_h: int,
-                   velocity: float = 0.0) -> CoverFlowItemState:
-        dist = index - offset
-        ad = abs(dist)
-        side = -1.0 if dist < 0 else 1.0
-
-        center_t = 1.0 - _smoothstep(0.0, 1.0, ad)
-        far_t = _smoothstep(1.8, 6.0, ad)
-
-        # rotation — classic Apple linear + cap
-        if ad <= 1.0:
-            rot_raw = ad * 50.0
-        elif ad <= 2.2:
-            rot_raw = 50.0 + (ad - 1.0) * 8.0
-        else:
-            rot_raw = 60.0
-        if ad < 0.10:
-            rot_raw = 0.0
-        rot = side * rot_raw
-
-        # position
-        near_gap = cover_w * self.near_gap_factor
-        side_gap = cover_w * self.side_gap_factor
-        far_gap = cover_w * self.far_gap_factor
-        cx = view_w / 2.0
-        if ad < 1.0:
-            x = cx + side * near_gap * _smoothstep(0.0, 1.0, ad)
-        else:
-            x = cx + side * (near_gap + side_gap * (ad - 1.0)
-                             + far_gap * max(0.0, ad - 3.0))
-        cy = view_h / 2.0 + self.center_y_offset
-        y = cy + (1.0 - center_t) * 16.0 + far_t * 12.0
-
-        # scale — classic Apple: center 1.05, ±1 = 0.87, ±2 = 0.65, min 0.45
-        scale = _clamp(self.center_scale - max(0.0, ad - 0.2) * 0.22, 0.45, 1.05)
-
-        # visual state
-        is_center = ad < 0.50
-        darken = 0 if is_center else int(_clamp(ad * 33, 0, 120))
-        z_val = 2000 - int(ad * 22)
-
-        # opacity
-        opacity = 1.0 - min(0.55, ad * 0.07)
-        if ad > 9:
-            opacity = 0.0
-        visible = ad <= 10
-
-        return CoverFlowItemState(
-            x=x, y=y, scale=scale, rotation_y=rot,
-            opacity=max(0.0, opacity), darken_alpha=darken,
-            z=z_val, is_center=is_center, visible=visible)
-
-
-def _format_dur(seconds: float) -> str:
-    if seconds <= 0:
-        return ""
-    s = int(seconds)
-    h = s // 3600
-    m = (s % 3600) // 60
-    return f"{h} h {m} min" if h > 0 else f"{m} min"
+    transform = QTransform()
+    if rot != 0.0:
+        pivot_x = cover_w if rot > 0 else 0
+        transform.translate(pivot_x, cover_h / 2)
+        transform.rotate(rot, Qt.YAxis)
+        transform.translate(-pivot_x, -cover_h / 2)
+    transform.scale(s, s)
+    item.setTransform(transform)
+    item.setVisible(state.get("visible", True))
 
 
 def _make_placeholder(w: int, h: int) -> QPixmap:
@@ -469,8 +423,6 @@ class CoverFlowWidget(QGraphicsView):
         self._phys_timer = QTimer(self)
         self._phys_timer.timeout.connect(self._update_physics)
 
-        self._layout_engine = CoverFlowLayoutEngine()
-
         self._wheel_snap_timer = QTimer(self)
         self._wheel_snap_timer.setSingleShot(True)
         self._wheel_snap_timer.timeout.connect(self._trigger_snap)
@@ -691,18 +643,17 @@ class CoverFlowWidget(QGraphicsView):
         self._empty_msg.setVisible(False)
 
         for ci in self._cover_items:
-            state = self._layout_engine.item_state(
-                ci._index, self._current, self._cover_w, self._cover_h,
-                vw, vh, self._velocity)
-            if not state.visible:
+            offset = ci._index - self._current
+            state = coverflow_layout(offset, vw, vh, self._cover_w, self._cover_h)
+            if not state["visible"]:
                 ci.setVisible(False)
                 continue
             ci.setVisible(True)
             if self._render_mode == "safe_2d":
-                state.rotation_y = 0.0
+                state["rot"] = 0.0
             if self._render_mode == "no_reflection":
                 ci._ref_h = 0
-            ci._apply_state(state, self._cover_w, self._cover_h)
+            apply_layout_state(ci, state, self._cover_w, self._cover_h)
 
             if ci.needs_cover:
                 ci.mark_cover_requested()
@@ -1085,10 +1036,8 @@ class CoverFlowWidget(QGraphicsView):
                 # Horizontal navigation
                 self._current -= angle.x() / 120.0 * 0.42
             elif abs(angle.y()) > 0:
-                # Pure vertical: zoom
-                self._layout_engine.center_scale = _clamp(
-                    self._layout_engine.center_scale + angle.y() / 120.0 * 0.02,
-                    0.90, 1.25)
+                # Zoom disabled — use MICHI_CF_GAP env var instead
+                pass
 
         self._clamp_current_soft()
         self._update_layout()
