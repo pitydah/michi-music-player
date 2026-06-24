@@ -2,6 +2,7 @@
 import os
 import logging
 import contextlib
+import threading
 
 import gi
 gi.require_version("Gst", "1.0")
@@ -18,14 +19,20 @@ AUDIO_EXTS = frozenset({
 ALL_EXTS = AUDIO_EXTS
 
 
-_discoverer_cache = None
+_thread_local = threading.local()
 
 
 def _get_discoverer():
-    global _discoverer_cache
-    if _discoverer_cache is None:
-        _discoverer_cache = GstPbutils.Discoverer.new(5 * Gst.SECOND)
-    return _discoverer_cache
+    """Return a thread-local GStreamer discoverer instance.
+
+    GstPbutils.Discoverer is not thread-safe — each worker thread
+    must have its own instance to avoid crashes during concurrent scans.
+    """
+    d = getattr(_thread_local, "discoverer", None)
+    if d is None:
+        d = GstPbutils.Discoverer.new(5 * Gst.SECOND)
+        _thread_local.discoverer = d
+    return d
 
 
 def extract_metadata(filepath: str) -> dict:

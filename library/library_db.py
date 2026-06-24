@@ -1,16 +1,17 @@
-"""Library database, scanner, and data model for the music player.
+"""Library database — high-level API for the music player's SQLite backend.
 
 Features:
     - SQLite with WAL mode (thread-safe, check_same_thread=False)
-    - Recursive directory scanner with GStreamer Discoverer metadata
-    - Playlist CRUD
-    - Device detection
+    - Playlist CRUD, scan management, search, favorites
+    - Schema management delegated to library/schema.py
 """
 import os
 import time
 import sqlite3
 import logging
 import contextlib
+
+from library.schema import Schema
 
 logger = logging.getLogger("michi.library")
 
@@ -23,11 +24,6 @@ from library.devices import get_mounted_devices, scan_device_music  # noqa: E402
 DB_PATH = os.path.expanduser("~/.local/share/michi-music-player/library.db")
 
 
-# ── Schema ──
-
-# see LibraryDB.__init__ for inline schema creation
-
-
 # ── Database ──
 
 class LibraryDB:
@@ -36,235 +32,23 @@ class LibraryDB:
         if dir_name:
             os.makedirs(dir_name, exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS media_items (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            filepath    TEXT UNIQUE NOT NULL,
-            filename    TEXT NOT NULL,
-            directory   TEXT NOT NULL,
-            ext         TEXT NOT NULL,
-            kind        TEXT NOT NULL,
-            size        INTEGER,
-            mtime       REAL,
-            duration    REAL,
-            channels    INTEGER,
-            sample_rate INTEGER,
-            bitrate     INTEGER,
-            title       TEXT,
-            artist      TEXT,
-            album       TEXT,
-            year        INTEGER,
-            genre       TEXT,
-            track_number INTEGER,
-            composer    TEXT,
-            date_added  REAL DEFAULT (strftime('%s','now'))
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS playlists (
-            id   INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            cover_path TEXT DEFAULT '',
-            cover_type TEXT DEFAULT 'mosaic',
-            description TEXT DEFAULT '',
-            created_at REAL DEFAULT (strftime('%s','now'))
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS playlist_items (
-            playlist_id INTEGER NOT NULL REFERENCES playlists(id),
-            filepath    TEXT NOT NULL,
-            track_id    INTEGER REFERENCES media_items(id),
-            position    INTEGER DEFAULT 0
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS queue_state (
-            id INTEGER PRIMARY KEY,
-            filepath TEXT NOT NULL
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS play_history (
-            track_id   TEXT NOT NULL,
-            device     TEXT DEFAULT 'desktop',
-            played_at  REAL DEFAULT (strftime('%s','now'))
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS favorites (
-            track_id TEXT NOT NULL UNIQUE,
-            device   TEXT DEFAULT 'desktop',
-            added_at REAL DEFAULT (strftime('%s','now'))
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS album_art_cache (
-            album_hash TEXT PRIMARY KEY,
-            mime       TEXT,
-            data       BLOB
-        )""")
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS detected_tracks (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            title     TEXT NOT NULL,
-            artist    TEXT NOT NULL,
-            album     TEXT,
-            year      INTEGER,
-            genre     TEXT,
-            duration  REAL,
-            source    TEXT DEFAULT '',
-            provider  TEXT DEFAULT '',
-            confidence REAL,
-            isrc      TEXT,
-            artwork_url TEXT,
-            external_url TEXT,
-            filepath  TEXT,
-            matched_library_id INTEGER,
-            raw_json  TEXT,
-            detected_at REAL NOT NULL
-        )""")
-        self._conn.commit()
-
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pl_filepath ON playlist_items(filepath)")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_pl_playlist ON playlist_items(playlist_id)")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_detected_tracks_time ON detected_tracks(detected_at DESC)")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_detected_tracks_artist_title ON detected_tracks(artist, title)")
-        self._conn.commit()
-        self._run_migrations()
-
-        # Create indexes after migrations ensure columns exist
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_media_artist ON media_items(artist)")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_media_album ON media_items(album)")
-        with contextlib.suppress(sqlite3.OperationalError):
-            self._conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_media_albumartist ON media_items(albumartist)")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_media_genre ON media_items(genre)")
-        self._conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_media_year ON media_items(year)")
-        self._conn.commit()
-
-        # FTS5 full-text search index (gated — falls back to LIKE if unavailable)
+        Schema.initialize(self._conn)
         self._init_fts()
 
-        # Scan roots table
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS scan_roots (
-            path TEXT PRIMARY KEY,
-            enabled INTEGER DEFAULT 1,
-            last_scan_started REAL,
-            last_scan_finished REAL,
-            file_count INTEGER DEFAULT 0,
-            added_count INTEGER DEFAULT 0,
-            updated_count INTEGER DEFAULT 0,
-            skipped_count INTEGER DEFAULT 0,
-            missing_count INTEGER DEFAULT 0
-        )""")
-
-        # Index errors table
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS index_errors (
-            filepath TEXT,
-            error TEXT,
-            stage TEXT,
-            updated_at REAL DEFAULT (strftime('%s','now'))
-        )""")
-
-        # Library roots table (canonical, with auto-increment id)
-        self._conn.execute("""CREATE TABLE IF NOT EXISTS library_roots (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            path          TEXT UNIQUE NOT NULL,
-            enabled       INTEGER DEFAULT 1,
-            last_scan     REAL,
-            file_count    INTEGER DEFAULT 0,
-            added_count   INTEGER DEFAULT 0,
-            updated_count INTEGER DEFAULT 0,
-            skipped_count INTEGER DEFAULT 0,
-            missing_count INTEGER DEFAULT 0,
-            created_at    REAL DEFAULT (strftime('%s','now')),
-            updated_at    REAL
-        )""")
-
-        self._conn.commit()
-        self._run_migrations()
-        self._migrate_scan_roots_to_library_roots()
-        self._populate_track_uids()
+    # ── Migration / schema delegates (kept for compat) ──
 
     def _run_migrations(self):
-        existing = {r[0] for r in self._conn.execute("PRAGMA table_info(media_items)").fetchall()}
-        for col, col_def in [("year", "INTEGER"), ("genre", "TEXT"),
-                              ("track_number", "INTEGER"), ("composer", "TEXT"),
-                              ("albumartist", "TEXT"), ("disc_number", "INTEGER"),
-                              ("disc_total", "INTEGER"), ("track_total", "INTEGER"),
-                              ("mb_track_id", "TEXT"), ("mb_album_id", "TEXT"),
-                              ("mb_albumartist_id", "TEXT DEFAULT ''"),
-                              ("cover_hash", "TEXT"), ("rating", "INTEGER DEFAULT 0"),
-                              ("play_count", "INTEGER DEFAULT 0"), ("skip_count", "INTEGER DEFAULT 0"),
-                              ("last_played", "REAL"), ("bpm", "INTEGER"),
-                              ("replaygain_track", "REAL"), ("replaygain_album", "REAL"),
-                              ("bit_depth", "INTEGER DEFAULT 0"),
-                              ("isrc", "TEXT DEFAULT ''"), ("label", "TEXT DEFAULT ''"),
-                              ("conductor", "TEXT DEFAULT ''"), ("compilation", "INTEGER DEFAULT 0"),
-                              ("media_type", "TEXT DEFAULT ''"), ("encoder", "TEXT DEFAULT ''"),
-                              ("copyright", "TEXT DEFAULT ''"), ("originaldate", "TEXT DEFAULT ''"),
-                              ("remixer", "TEXT DEFAULT ''"), ("grouping", "TEXT DEFAULT ''"),
-                              ("mood", "TEXT DEFAULT ''"), ("replaygain_track_peak", "REAL"),
-                              ("content_hash", "TEXT DEFAULT ''"),
-                              ("track_uid", "TEXT DEFAULT ''"),
-                              ("file_hash", "TEXT DEFAULT ''"),
-                              ("metadata_hash", "TEXT DEFAULT ''"),
-                              ("created_at", "REAL DEFAULT (strftime('%s','now'))"),
-                              ("updated_at", "REAL"),
-                              ("deleted_at", "REAL"),
-                              ("last_scanned", "REAL"),
-                              ("scan_status", "TEXT DEFAULT 'ok'"),
-                              ("scan_error", "TEXT DEFAULT ''")]:
-            if col not in existing:
-                with contextlib.suppress(sqlite3.OperationalError):
-                    self._conn.execute(f"ALTER TABLE media_items ADD COLUMN {col} {col_def}")
+        Schema.run_migrations(self._conn)
 
-        # Playlist cover fields
-        playlist_existing = {r[0] for r in self._conn.execute("PRAGMA table_info(playlists)").fetchall()}
-        for col, col_def in [("cover_path", "TEXT DEFAULT ''"),
-                              ("cover_type", "TEXT DEFAULT 'mosaic'"),
-                              ("description", "TEXT DEFAULT ''"),
-                              ("created_at", "REAL DEFAULT (strftime('%s','now'))")]:
-            if col not in playlist_existing:
-                with contextlib.suppress(sqlite3.OperationalError):
-                    self._conn.execute(f"ALTER TABLE playlists ADD COLUMN {col} {col_def}")
+    def _migrate_scan_roots_to_library_roots(self):
+        Schema._migrate_scan_roots_to_library_roots(self._conn)
 
-        # Detected tracks extended fields
-        dt_existing = {r[0] for r in self._conn.execute("PRAGMA table_info(detected_tracks)").fetchall()}
-        for col, col_def in [("source_type", "TEXT DEFAULT ''"),
-                              ("source_label", "TEXT DEFAULT ''"),
-                              ("source_uri", "TEXT DEFAULT ''"),
-                              ("match_status", "TEXT DEFAULT ''"),
-                              ("matched_filepath", "TEXT DEFAULT ''"),
-                              ("provider_track_id", "TEXT DEFAULT ''"),
-                              ("provider_artist_id", "TEXT DEFAULT ''"),
-                              ("album_art_path", "TEXT DEFAULT ''"),
-                              ("latency_ms", "INTEGER DEFAULT 0")]:
-            if col not in dt_existing:
-                with contextlib.suppress(sqlite3.OperationalError):
-                    self._conn.execute(f"ALTER TABLE detected_tracks ADD COLUMN {col} {col_def}")
+    def _populate_track_uids(self):
+        Schema._populate_track_uids(self._conn)
 
-        # Playlist items — add track_id and position
-        pi_existing = {r[0] for r in self._conn.execute("PRAGMA table_info(playlist_items)").fetchall()}
-        for col, col_def in [("track_id", "INTEGER REFERENCES media_items(id)"),
-                              ("position", "INTEGER DEFAULT 0")]:
-            if col not in pi_existing:
-                with contextlib.suppress(sqlite3.OperationalError):
-                    self._conn.execute(f"ALTER TABLE playlist_items ADD COLUMN {col} {col_def}")
-
-        # Populate track_id for existing playlist items
-        with contextlib.suppress(sqlite3.OperationalError):
-            self._conn.execute("""
-                UPDATE playlist_items SET track_id = (
-                    SELECT m.id FROM media_items m WHERE m.filepath = playlist_items.filepath
-                ) WHERE track_id IS NULL
-            """)
-
-        # Scan roots — add new columns
-        sr_existing = {r[0] for r in self._conn.execute("PRAGMA table_info(scan_roots)").fetchall()}
-        for col, col_def in [("created_at", "REAL DEFAULT (strftime('%s','now'))"),
-                              ("updated_at", "REAL")]:
-            if col not in sr_existing:
-                with contextlib.suppress(sqlite3.OperationalError):
-                    self._conn.execute(f"ALTER TABLE scan_roots ADD COLUMN {col} {col_def}")
-
-        self._conn.commit()
+    @staticmethod
+    def _compute_track_uid(filepath, artist, album, title, duration, mb_track_id):
+        return Schema._compute_track_uid(filepath, artist, album, title, duration, mb_track_id)
 
     def _populate_track_uids(self):
         """Populate track_uid for existing rows where it was not computed."""

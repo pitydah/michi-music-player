@@ -180,44 +180,20 @@ class Indexer(QObject):
 
     def _is_unchanged(self, filepath: str) -> bool:
         """ChangeDetector — skip files that haven't changed since last scan.
-        Uses size + mtime first, then SHA-256 checksum for precision."""
+        Delegates to library/change_detector.py for the logic."""
         try:
             stat = os.stat(filepath)
         except OSError:
             self._state.error_count += 1
             self._db.log_index_error(filepath, "stat failed", "detect")
-            return True  # skip unreadable
-
-        sig = self._db.get_file_signature(filepath)
-        if sig is None:
-            return False  # not in DB yet
-
-        db_size, db_mtime, db_hash = sig
-        if (stat.st_size, stat.st_mtime) != (db_size, db_mtime):
-            return False  # size or mtime changed — re-scan
-
-        # Size and mtime match — verify with content hash
-        if db_hash:
-            current_hash = self._compute_quick_hash(filepath)
-            return current_hash == db_hash
-
-        return True  # no hash stored yet, trust size+mtime
+            return True
+        from library.change_detector import is_file_unchanged
+        return is_file_unchanged(self._db, filepath, stat)
 
     @staticmethod
     def _compute_quick_hash(filepath: str) -> str:
-        """Compute SHA-256 of first 64KB + last 64KB for fast content verification."""
-        import hashlib
-        h = hashlib.sha256()
-        try:
-            size = os.path.getsize(filepath)
-            with open(filepath, "rb") as f:
-                h.update(f.read(min(65536, size)))
-                if size > 65536:
-                    f.seek(max(0, size - 65536))
-                    h.update(f.read(65536))
-            return h.hexdigest()
-        except OSError:
-            return ""
+        from library.change_detector import compute_quick_hash
+        return compute_quick_hash(filepath)
 
     def _build_record(self, filepath: str) -> dict | None:
         """MetadataExtractor + AlbumKeyBuilder — extract and normalize metadata."""
