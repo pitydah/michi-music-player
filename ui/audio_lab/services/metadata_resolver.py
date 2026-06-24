@@ -1,4 +1,7 @@
-"""Metadata resolver — identifies albums from disc TOC. STUB."""
+"""Metadata resolver — identifies albums from disc TOC.
+
+Basic implementation present. Full MusicBrainz lookup not yet integrated.
+"""
 
 from __future__ import annotations
 

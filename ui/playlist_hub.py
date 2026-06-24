@@ -94,17 +94,17 @@ CREATE_AUTO = [
 ]
 
 IMPORT_TOOLS = [
-    ("import_m3u", "Importar M3U / M3U8", "Carga playlists desde archivos externos"),
-    ("export_all", "Exportar playlists", "Guarda tus playlists como archivos M3U"),
-    ("export_text", "Exportar como texto", "Lista de canciones en formato legible"),
+    ("import_m3u", "Importar M3U / M3U8", "Carga playlists desde archivos externos", False),
+    ("export_all", "Exportar playlists", "Guarda tus playlists como archivos M3U", False),
 ]
 
 UTILITY_TOOLS = [
-    ("duplicates", "Detectar duplicados", "Encuentra canciones repetidas en tu biblioteca"),
-    ("metadata", "Revisar metadatos", "Busca archivos sin etiquetas completas"),
-    ("missing_cover", "Buscar carátulas faltantes", "Álbumes sin portada en la biblioteca"),
-    ("empty_pl", "Limpiar playlists vacías", "Elimina playlists sin canciones"),
-    ("lost_files", "Encontrar canciones perdidas", "Referencias a archivos que ya no existen"),
+    ("duplicates", "Detectar duplicados", "Encuentra canciones repetidas — próximamente", True),
+    ("metadata", "Revisar metadatos", "Busca archivos sin etiquetas completas — próximamente", True),
+    ("missing_cover", "Buscar carátulas faltantes", "Álbumes sin portada — próximamente", True),
+    ("empty_pl", "Limpiar playlists vacías", "Elimina playlists sin canciones — próximamente", True),
+    ("lost_files", "Encontrar canciones perdidas", "Archivos desaparecidos — próximamente", True),
+    ("export_text", "Exportar como texto", "Lista legible — próximamente", True),
 ]
 
 
@@ -524,7 +524,7 @@ class PlaylistHubWidget(QWidget):
         grid = QGridLayout(section)
         grid.setSpacing(10)
         cols = max(1, (self.width() - 64) // 220)
-        for i, (key, title, desc) in enumerate(IMPORT_TOOLS):
+        for i, (key, title, desc, *_exp) in enumerate(IMPORT_TOOLS):
             card = self._make_tool_card(key, title, desc)
             grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
         self._layout.addWidget(section)
@@ -536,25 +536,31 @@ class PlaylistHubWidget(QWidget):
         grid = QGridLayout(section)
         grid.setSpacing(10)
         cols = max(1, (self.width() - 64) // 220)
-        for i, (key, title, desc) in enumerate(UTILITY_TOOLS):
-            card = self._make_tool_card(key, title, desc)
+        for i, (key, title, desc, experimental) in enumerate(UTILITY_TOOLS):
+            card = self._make_tool_card(key, title, desc, experimental=experimental)
             grid.addWidget(card, i // cols, i % cols, Qt.AlignTop)
         self._layout.addWidget(section)
 
-    def _make_tool_card(self, key: str, title: str, desc: str) -> QFrame:
+    def _make_tool_card(self, key: str, title: str, desc: str,
+                        experimental: bool = False) -> QFrame:
         card = QFrame()
         card.setObjectName("toolCard")
         card.setStyleSheet(_card_css("toolCard", "0.050"))
         card.setFixedSize(210, 110)
-        card.setCursor(Qt.PointingHandCursor)
+        if experimental:
+            card.setCursor(Qt.ArrowCursor)
+            card.setToolTip("Funcionalidad en desarrollo — disponible próximamente")
+        else:
+            card.setCursor(Qt.PointingHandCursor)
 
         v = QVBoxLayout(card)
         v.setContentsMargins(14, 12, 14, 12)
         v.setSpacing(4)
 
         t = QLabel(title)
+        color = "rgba(255,255,255,0.52)" if experimental else "#FFFFFF"
         t.setStyleSheet(
-            "QLabel { color: #FFFFFF; font-size: 12.5px; font-weight: 600;"
+            f"QLabel {{ color: {color}; font-size: 12.5px; font-weight: 600;"
             "  background: transparent; border: none; }")
         v.addWidget(t)
 
@@ -567,20 +573,15 @@ class PlaylistHubWidget(QWidget):
 
         v.addStretch()
 
-        # Dispatch by key — tool cards emit signals for window.py to handle
-        tool_signals = {
-            "import_m3u": self.import_m3u_requested,
-            "export_all": self.export_playlists_requested,
-            "export_text": self.export_text_requested,
-            "duplicates": self.find_duplicates_requested,
-            "metadata": self.scan_metadata_requested,
-            "missing_cover": self.scan_missing_covers_requested,
-            "empty_pl": self.clean_empty_playlists_requested,
-            "lost_files": self.find_lost_files_requested,
-        }
-        sig = tool_signals.get(key)
-        if sig:
-            card.mouseDoubleClickEvent = lambda e, s=sig: s.emit()
+        if not experimental:
+            tool_signals = {
+                "import_m3u": self.import_m3u_requested,
+                "export_all": self.export_playlists_requested,
+                "export_text": self.export_text_requested,
+            }
+            sig = tool_signals.get(key)
+            if sig:
+                card.mouseDoubleClickEvent = lambda e, s=sig: s.emit()
         return card
 
     # ── Section heading ──

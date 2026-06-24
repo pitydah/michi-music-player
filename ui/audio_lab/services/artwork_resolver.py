@@ -1,4 +1,7 @@
-"""Artwork resolver — album cover search and download. STUB."""
+"""Artwork resolver — album cover search and download.
+
+Network search not yet implemented. Local cover embedding deferred to TagWriter.
+"""
 
 from __future__ import annotations
 

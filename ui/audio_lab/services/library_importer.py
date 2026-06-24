@@ -1,4 +1,7 @@
-"""Library importer — adds ripped tracks to the music library. STUB."""
+"""Library importer — adds ripped tracks to the music library.
+
+File copy and library registration not yet implemented.
+"""
 
 from __future__ import annotations
 
