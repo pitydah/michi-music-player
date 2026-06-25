@@ -45,16 +45,6 @@ def _format_dur(seconds: float) -> str:
     return f"{m}:{s:02d}"
 
 
-def _smoothstep(edge0, edge1, x):
-    t = _clamp((x - edge0) / (edge1 - edge0) if edge1 != edge0 else 0.0, 0.0, 1.0)
-    return t * t * (3.0 - 2.0 * t)
-
-
-def _ease_out_cubic(x):
-    t = _clamp(x, 0.0, 1.0)
-    return 1.0 - pow(1.0 - t, 3.0)
-
-
 def coverflow_layout(offset: float, view_w: float, view_h: float,
                      cover_w: float, cover_h: float) -> dict:
     """Pure math: position, rotation, scale, depth for one item.
@@ -262,6 +252,23 @@ class ReflectiveFloor(QGraphicsRectItem):
 
 
 class CoverFlowWidget(QGraphicsView):
+    """CoverFlow 3D de alto rendimiento para PySide6.
+
+    Características:
+    - Vista de carátulas con perspectiva 3D y rotación en eje Y.
+    - Aceleración OpenGL (QOpenGLWidget) con pintado mínimo de CPU.
+    - Física de inercia, arrastre con ratón, rueda y teclado.
+    - Slider inferior, menú contextual y señales para acciones de álbum.
+    - Suelo reflectante, sombras proyectadas e iluminación central.
+    - Layout configurable por variables de entorno:
+      MICHI_CF_GAP, MICHI_CF_ROT, MICHI_CF_SCALE.
+    - Diagnóstico de rendimiento con MICHI_COVERFLOW_DEBUG=1.
+
+    Uso:
+        coverflow = CoverFlowWidget()
+        coverflow.set_items(lista_de_CoverFlowItem)
+        coverflow.show()
+    """
     selection_changed = Signal(int)
     double_clicked = Signal(int)
     clicked = Signal(int)
@@ -334,9 +341,10 @@ class CoverFlowWidget(QGraphicsView):
         # physics params
         self._drag_sensitivity = 1.0 / 190.0
         self._wheel_sensitivity = 0.009
-        self._friction = 0.88
-        self._min_velocity = 0.0025
+        self._friction = 0.92
+        self._min_velocity = 0.0015
         self._max_velocity = 0.32
+        self._spring_strength = 0.08
 
         self._phys_timer = QTimer(self)
         self._phys_timer.timeout.connect(self._update_physics)
@@ -758,7 +766,7 @@ class CoverFlowWidget(QGraphicsView):
         elif self._current > max_i + overscroll:
             self._current = max_i + overscroll
             self._velocity *= 0.35
-        spring = 0.065
+        spring = self._spring_strength
         if self._current < 0:
             self._velocity += (0 - self._current) * spring
         elif self._current > max_i:
