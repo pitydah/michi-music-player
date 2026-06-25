@@ -1,7 +1,6 @@
 """NowPlayingBar — bottom bar with cover, info, seek, controls, volume."""
-
-
 from PySide6.QtCore import Qt, Signal, QSize, QRectF
+
 from PySide6.QtGui import QIcon, QPixmap, QColor, QPainter, QPainterPath, QLinearGradient, QRadialGradient, QPen
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
@@ -9,6 +8,24 @@ from PySide6.QtWidgets import (
 )
 
 from ui.icons import get_icon
+
+# ── Technical tokens for left-side filtering ──
+_TECHNICAL_TOKENS = (
+    "LOCAL", "FLAC", "MP3", "AAC", "OGG", "OPUS",
+    "RADIO", "STREAMING", "NAVIDROME", "JELLYFIN",
+    "TRANSMITIENDO", "KBPS", "KHZ", "BIT", "DSD",
+)
+
+
+
+LEFT_CARD_WIDTH = 320
+LEFT_CARD_HEIGHT = 86
+COVER_SIZE = 64
+COVER_RADIUS = 13
+LEFT_MARGIN_L = 12
+LEFT_MARGIN_R = 14
+LEFT_SPACING = 14
+
 
 
 def _make_btn(icon_name: str, icon_size: int, button_size: int | None = None,
@@ -273,8 +290,8 @@ class NowPlayingBar(QWidget):
         left_widget = QWidget()
         self._info_card = left_widget
         left_widget.setObjectName("nowPlayingInfoCard")
-        left_widget.setFixedWidth(270)
-        left_widget.setFixedHeight(86)
+        left_widget.setFixedWidth(LEFT_CARD_WIDTH)
+        left_widget.setFixedHeight(LEFT_CARD_HEIGHT)
         left_widget.setStyleSheet("""
             QWidget#nowPlayingInfoCard {
                 background: qlineargradient(
@@ -610,14 +627,16 @@ class NowPlayingBar(QWidget):
     def set_track(self, title: str, artist: str, cover_path: str = ""):
         self._raw_title = title or "Sin reproducción"
         self._raw_artist = artist or "Añade música"
-        self._raw_meta = self._build_meta()
         self._has_track = bool(title and title != "Sin reproducción")
+        self._raw_meta = self._build_left_meta()
 
+        # Strip technical metadata from artist line if present
         if " · " in self._raw_artist:
             parts = self._raw_artist.split(" · ")
             self._raw_artist = parts[0]
-            if len(parts) > 1:
-                self._raw_meta = parts[1]
+            extra = parts[1].strip() if len(parts) > 1 else ""
+            if extra and not any(tok in extra.upper() for tok in _TECHNICAL_TOKENS):
+                self._raw_meta = extra
 
         self._title_lbl.setText(self._raw_title)
         self._artist_lbl.setText(self._raw_artist)
@@ -665,10 +684,9 @@ class NowPlayingBar(QWidget):
         if not hasattr(self, '_info_card'):
             return
         card_w = self._info_card.width()
-        cover_w = 64
-        margins = 12 + 14
-        spacing = 14
-        avail = max(90, card_w - margins - cover_w - spacing)
+        margins = LEFT_MARGIN_L + LEFT_MARGIN_R
+        spacing = LEFT_SPACING
+        avail = max(120, card_w - margins - COVER_SIZE - spacing)
         fm = self._title_lbl.fontMetrics()
         self._title_lbl.setText(
             fm.elidedText(self._raw_title, Qt.ElideRight, avail))
@@ -756,26 +774,15 @@ class NowPlayingBar(QWidget):
         self._quality_badge.setToolTip("")
         self._refresh_source_badge()
         self._apply_elide()
-    def _build_meta(self) -> str:
-        """Build meta text from source, quality and codec info."""
-        if self._transmitting and self._transmit_device_name:
-            return f"TRANSMITIENDO · {self._transmit_device_name}"
-        if self._source_type == "radio":
-            return "RADIO · STREAMING"
-        parts = []
-        if self._source_label and self._source_label != "local":
-            parts.append(self._source_label.upper())
-        elif self._source_type == "local_file":
-            parts.append("LOCAL")
-        if self._source_quality:
-            parts.append(self._source_quality)
-        elif self._codec:
-            q = self._codec.upper()
-            if self._bitrate and self._bitrate != "0":
-                q += f" {self._bitrate}"
-            parts.append(q)
-        meta = " · ".join(parts) if parts else "Michi Music Player"
-        return meta[:48] if len(meta) > 48 else meta
+    def _build_left_meta(self) -> str:
+        """Build human-readable third line for the left card — no technical data."""
+        if not self._has_track:
+            return "Michi Music Player"
+        if getattr(self, '_album_label', ""):
+            return self._album_label
+        if getattr(self, '_playlist_label', ""):
+            return self._playlist_label
+        return "Reproduciendo ahora"
 
     def set_quality(self, text: str):
         self._source_quality = text
@@ -785,7 +792,7 @@ class NowPlayingBar(QWidget):
             self._quality_badge.set_text("")
         self._refresh_source_badge()
         if self._has_track:
-            self._raw_meta = self._build_meta()
+            self._raw_meta = self._build_left_meta()
             self._meta_lbl.setText(self._raw_meta)
             self._apply_elide()
 
@@ -799,7 +806,7 @@ class NowPlayingBar(QWidget):
             self._quality_badge.setToolTip(tooltip)
         self._refresh_source_badge()
         if self._has_track:
-            self._raw_meta = self._build_meta()
+            self._raw_meta = self._build_left_meta()
             self._meta_lbl.setText(self._raw_meta)
             self._apply_elide()
 
@@ -824,7 +831,7 @@ class NowPlayingBar(QWidget):
         self._transmit_device_name = transmit_device
         self._refresh_source_badge()
         if self._has_track:
-            self._raw_meta = self._build_meta()
+            self._raw_meta = self._build_left_meta()
             self._meta_lbl.setText(self._raw_meta)
             self._apply_elide()
 
@@ -916,6 +923,7 @@ class NowPlayingBar(QWidget):
 
 
     def _on_info_card_clicked(self, event):
+
         if not self._has_track:
             event.ignore()
             return
