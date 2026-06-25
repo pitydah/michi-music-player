@@ -20,7 +20,7 @@ class TrackRefTableModel(QStandardItemModel):
         super().__init__(0, 8, parent)
         self.setHorizontalHeaderLabels(
             ["Nº pista", "Título", "Artista", "Álbum",
-             "Año", "Género", "Duración", ""])
+             "Año", "Género", "Duración", "Ruta"])
 
     def populate(self, items: list[TrackRef]):
         self.removeRows(0, self.rowCount())

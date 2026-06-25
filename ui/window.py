@@ -67,7 +67,7 @@ from recognition.detection_service import DetectionService
 
 
 SECTION_CONFIG = {
-    "library":    {"title": "Todas las canciones", "subtitle": "Toda tu música local",
+    "library":    {"title": "Biblioteca", "subtitle": "Música local, archivos disponibles y estadísticas de tu colección",
                    "icon": "sidebar_library", "views": ["list", "grid"],
                    "search": True, "default": "list"},
     "albums":     {"title": "Álbumes", "subtitle": "Carátulas y navegación visual",
@@ -1004,7 +1004,6 @@ class MainWindow(QMainWindow):
         self._table.horizontalHeader().setHighlightSections(False)
         self._table.verticalHeader().setVisible(False)
         self._table.verticalHeader().setDefaultSectionSize(30)
-        self._table.setColumnHidden(7, True)  # hide URI column
         self._table.setSortingEnabled(True)
         self._table.setStyleSheet(table_qss() + scrollbar_qss())
         self._table.horizontalHeader().setStyleSheet(table_header_qss())
@@ -1688,6 +1687,7 @@ class MainWindow(QMainWindow):
                     self._table.setColumnWidth(4, 55)
                     self._table.setColumnWidth(5, 110)
                     self._table.setColumnWidth(6, 75)
+                    self._table.setColumnWidth(7, 200)
                 else:
                     self._views.show("empty")
             elif files:
