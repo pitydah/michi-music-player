@@ -1477,10 +1477,10 @@ class MainWindow(QMainWindow):
     def _show_library(self, key):
         self._kind_filter = None
         self._search_ctrl.set_active("local")
+        self._ensure_library_header()
         self._apply_filters()
         self._view_mode = "list"
         self._view_switcher.set_view("list", emit=False)
-        self._ensure_library_header()
 
     def _ensure_library_header(self):
         """Create the library page wrapper with title, stats, and tabs."""
