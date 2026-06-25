@@ -1,9 +1,27 @@
 """TrackRefTableModel — adapts list[TrackRef] to QStandardItemModel for QTableView."""
+import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor
 
 from sources.base_source import TrackRef
+
+
+def _title(item: TrackRef) -> str:
+    t = (item.title or "").strip()
+    if t and t != "Sin título":
+        return t
+    if item.uri:
+        return os.path.splitext(os.path.basename(item.uri))[0]
+    return "Sin título"
+
+
+def _artist(item: TrackRef) -> str:
+    return (item.artist or "").strip() or "Artista desconocido"
+
+
+def _album(item: TrackRef) -> str:
+    return (item.album or "").strip() or "Sin álbum"
 
 
 class TrackRefTableModel(QStandardItemModel):
@@ -38,14 +56,14 @@ class TrackRefTableModel(QStandardItemModel):
                 tr.setText("—")
 
             # Title
-            t = QStandardItem(item.title or "Sin título")
+            t = QStandardItem(_title(item))
             t.setEditable(False)
             t.setToolTip(item.uri)
             t.setData(item, Qt.UserRole)
 
-            a = QStandardItem(item.artist)
+            a = QStandardItem(_artist(item))
             a.setEditable(False)
-            al = QStandardItem(item.album)
+            al = QStandardItem(_album(item))
             al.setEditable(False)
 
             # Year: store as int for numeric sorting

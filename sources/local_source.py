@@ -1,6 +1,29 @@
 """LocalSource — wraps LibraryDB as a MusicSource, with FTS5 search engine."""
+import os
 from sources.base_source import MusicSource, TrackRef
 from library.library_db import LibraryDB
+
+
+def _fallback_title(item) -> str:
+    t = getattr(item, "title", "") or ""
+    if t:
+        return t
+    fp = getattr(item, "filepath", "")
+    if fp:
+        return os.path.splitext(os.path.basename(fp))[0]
+    return "Sin título"
+
+
+def _fallback_artist(item) -> str:
+    return getattr(item, "artist", "") or "Artista desconocido"
+
+
+def _fallback_album(item) -> str:
+    return getattr(item, "album", "") or "Sin álbum"
+
+
+def _fallback_genre(item) -> str:
+    return getattr(item, "genre", "") or "—"
 
 
 class LocalSource(MusicSource):
@@ -32,27 +55,27 @@ class LocalSource(MusicSource):
     def _to_refs(self, items) -> list[TrackRef]:
         return [TrackRef(
             uri=i.filepath,
-            title=i.title,
-            artist=i.artist,
-            album=i.album,
-            duration=i.duration,
+            title=_fallback_title(i),
+            artist=_fallback_artist(i),
+            album=_fallback_album(i),
+            duration=getattr(i, "duration", 0.0) or 0.0,
             cover_path="",
-            track_number=i.track_number,
-            year=i.year,
-            genre=i.genre,
+            track_number=getattr(i, "track_number", 0) or 0,
+            year=getattr(i, "year", 0) or 0,
+            genre=_fallback_genre(i),
         ) for i in items]
 
     def _dicts_to_refs(self, rows: list[dict]) -> list[TrackRef]:
         return [TrackRef(
             uri=row.get("filepath", ""),
-            title=row.get("title", ""),
-            artist=row.get("artist", ""),
-            album=row.get("album", ""),
+            title=row.get("title", "") or os.path.splitext(os.path.basename(row.get("filepath", "")))[0] or "Sin título",
+            artist=row.get("artist", "") or "Artista desconocido",
+            album=row.get("album", "") or "Sin álbum",
             duration=row.get("duration", 0.0),
             cover_path="",
             track_number=row.get("track_number", 0),
             year=row.get("year", 0),
-            genre=row.get("genre", ""),
+            genre=row.get("genre", "") or "—",
         ) for row in rows]
 
     def get_artwork(self, track: TrackRef) -> str | None:

@@ -154,17 +154,37 @@ class LibraryDB:
                     artist = meta.get("artist") or ""
                     album = meta.get("album") or ""
                     year = meta_full.get("year", 0) or 0
+                    date_str = meta_full.get("originaldate", "") or meta.get("date", "")
+                    if date_str:
+                        import contextlib
+                        with contextlib.suppress(ValueError, TypeError):
+                            year = int(date_str[:4])
                     self._conn.execute(
                         "UPDATE media_items SET title=?, artist=?, album=?,"
                         "year=?, genre=?, duration=?, albumartist=?,"
-                        "track_number=?, composer=? WHERE filepath=?",
+                        "track_number=?, track_total=?, disc_number=?, disc_total=?,"
+                        "composer=?, bitrate=?, sample_rate=?, channels=?,"
+                        "bit_depth=?, bpm=?,"
+                        "mb_track_id=?, mb_album_id=?, mb_albumartist_id=?"
+                        " WHERE filepath=?",
                         (title, artist, album,
                          year,
                          str(meta_full.get("genre", "") or ""),
                          meta.get("duration", 0.0) or 0.0,
                          str(meta_full.get("albumartist", "") or ""),
                          int(meta_full.get("track_number", 0) or 0),
+                         int(meta_full.get("track_total", 0) or 0),
+                         int(meta_full.get("disc_number", 0) or 0),
+                         int(meta_full.get("disc_total", 0) or 0),
                          str(meta_full.get("composer", "") or ""),
+                         int(meta.get("bitrate", 0) or 0),
+                         int(meta.get("sample_rate", 0) or 0),
+                         int(meta.get("channels", 0) or 0),
+                         int(meta_full.get("bit_depth", 0) or 0),
+                         int(meta_full.get("bpm", 0) or 0),
+                         str(meta_full.get("mb_track_id", "") or ""),
+                         str(meta_full.get("mb_album_id", "") or ""),
+                         str(meta_full.get("mb_albumartist_id", "") or ""),
                          filepath))
                     self._conn.commit()
                     logger.debug("Async metadata written for %s", filepath)
@@ -265,6 +285,73 @@ class LibraryDB:
                 "VALUES (?,?,?,?,?,?,?)",
                 (filepath, fname, dname, ext, kind, stat.st_size, stat.st_mtime))
             self._conn.commit()
+
+    def backfill_missing_metadata(self, progress_cb=None) -> int:
+        """Repair records with missing metadata by re-extracting from files.
+
+        Finds rows where title is empty/NULL or equals filename, and
+        re-extracts metadata using the existing extractors, updating the DB.
+        Returns the number of rows repaired.
+        """
+        rows = self._conn.execute(
+            "SELECT id, filepath, filename FROM media_items "
+            "WHERE deleted_at IS NULL "
+            "AND (COALESCE(title,'') = '' OR COALESCE(artist,'') = ''"
+            "     OR COALESCE(album,'') = '' OR COALESCE(duration,0) <= 0)"
+            "ORDER BY id").fetchall()
+        if not rows:
+            return 0
+
+        repaired = 0
+        for idx, (row_id, fp, fname) in enumerate(rows, 1):
+            if not os.path.exists(fp):
+                continue
+            try:
+                meta = extract_metadata(fp)
+                meta_full = extract_metadata_full(fp)
+                title = meta.get("title") or fname
+                artist = meta.get("artist") or ""
+                album = meta.get("album") or ""
+                year = meta_full.get("year", 0) or 0
+                date_str = meta_full.get("originaldate", "") or meta.get("date", "")
+                if date_str:
+                    with contextlib.suppress(ValueError, TypeError):
+                        year = int(date_str[:4])
+                self._conn.execute(
+                    "UPDATE media_items SET title=?, artist=?, album=?,"
+                    "year=?, genre=?, duration=?, albumartist=?,"
+                    "track_number=?, track_total=?, disc_number=?, disc_total=?,"
+                    "composer=?, bitrate=?, sample_rate=?, channels=?,"
+                    "bit_depth=?, bpm=?,"
+                    "mb_track_id=?, mb_album_id=?, mb_albumartist_id=?"
+                    " WHERE id=?",
+                    (title, artist, album,
+                     year,
+                     str(meta_full.get("genre", "") or ""),
+                     meta.get("duration", 0.0) or 0.0,
+                     str(meta_full.get("albumartist", "") or ""),
+                     int(meta_full.get("track_number", 0) or 0),
+                     int(meta_full.get("track_total", 0) or 0),
+                     int(meta_full.get("disc_number", 0) or 0),
+                     int(meta_full.get("disc_total", 0) or 0),
+                     str(meta_full.get("composer", "") or ""),
+                     int(meta.get("bitrate", 0) or 0),
+                     int(meta.get("sample_rate", 0) or 0),
+                     int(meta.get("channels", 0) or 0),
+                     int(meta_full.get("bit_depth", 0) or 0),
+                     int(meta_full.get("bpm", 0) or 0),
+                     str(meta_full.get("mb_track_id", "") or ""),
+                     str(meta_full.get("mb_album_id", "") or ""),
+                     str(meta_full.get("mb_albumartist_id", "") or ""),
+                     row_id))
+                repaired += 1
+                if progress_cb and idx % 10 == 0:
+                    progress_cb(idx, len(rows))
+            except Exception as e:
+                logger.debug("Backfill failed for %s: %s", fp, e)
+        self._conn.commit()
+        logger.info("Backfilled metadata for %d/%d records", repaired, len(rows))
+        return repaired
 
     def get_file_signature(self, filepath: str) -> tuple | None:
         """Return (size, mtime, content_hash) for a filepath, or None if not in DB."""
