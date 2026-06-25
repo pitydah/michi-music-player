@@ -16,7 +16,7 @@ from library.metadata_normalizer import (
     normalize_text, normalize_artist_name, normalize_genre, normalize_year,
     normalize_disc_track, normalize_bpm, normalize_mb_id,
 )
-from library.metadata_extractor import ALL_EXTS, extract_metadata, extract_metadata_full
+from library.metadata_extractor import ALL_EXTS, extract_metadata_combined
 from library.media_item import media_kind
 from library.album_key import make_album_key, make_artist_key
 
@@ -206,61 +206,49 @@ class Indexer(QObject):
             return None
 
         stat = os.stat(filepath)
-        meta = extract_metadata(filepath)
-        meta_full = extract_metadata_full(filepath)
+        meta = extract_metadata_combined(filepath)
 
         fname = os.path.basename(filepath)
         dname = os.path.dirname(filepath)
         title = normalize_text(meta.get("title") or "", 256)
         artist = normalize_artist_name(meta.get("artist", ""))
-        # Infer from filename when tags are empty
-        if not title or not artist:
-            from library.metadata_normalizer import infer_metadata_from_filename
-            inferred = infer_metadata_from_filename(filepath)
-            if not title:
-                title = normalize_text(str(inferred.get("title", "") or ""), 256)
-                if not title:
-                    title = os.path.splitext(fname)[0]
-            if not artist:
-                artist = normalize_artist_name(str(inferred.get("artist", "") or ""))
         album = normalize_text(meta.get("album", ""), 256)
-        genre = normalize_genre(meta_full.get("genre", ""))
-        year = normalize_year(
-            meta_full.get("originaldate") or meta.get("date"))
-        albumartist = normalize_artist_name(meta_full.get("albumartist", ""))
-        composer = normalize_text(meta_full.get("composer", ""), 256)
+        genre = normalize_genre(meta.get("genre", ""))
+        year = normalize_year(meta.get("year"))
+        albumartist = normalize_artist_name(meta.get("albumartist", ""))
+        composer = normalize_text(meta.get("composer", ""), 256)
 
         disc_number, disc_total = normalize_disc_track(
-            meta_full.get("disc_total") or "")
-        track_number = meta_full.get("track_number", 0)
-        track_total = meta_full.get("track_total", 0)
+            f"{meta.get('disc_number', 0)}/{meta.get('disc_total', 0)}")
+        track_number = meta.get("track_number", 0)
+        track_total = meta.get("track_total", 0)
 
-        mb_track_id = normalize_mb_id(meta_full.get("mb_track_id", ""))
-        mb_album_id = normalize_mb_id(meta_full.get("mb_album_id", ""))
-        mb_albumartist_id = normalize_mb_id(meta_full.get("mb_albumartist_id", ""))
-        bit_depth = meta_full.get("bit_depth", 0) or 0
-        bpm = normalize_bpm(meta_full.get("bpm"))
-        replaygain_track = meta_full.get("replaygain_track", 0.0)
-        replaygain_album = meta_full.get("replaygain_album", 0.0)
-        replaygain_track_peak = meta_full.get("replaygain_track_peak", 0.0)
-        isrc = normalize_text(meta_full.get("isrc", ""), 128)
-        label = normalize_text(meta_full.get("label", ""), 256)
-        conductor = normalize_text(meta_full.get("conductor", ""), 256)
-        compilation = meta_full.get("compilation", 0)
-        media_type = normalize_text(meta_full.get("media_type", ""), 128)
-        encoder = normalize_text(meta_full.get("encoder", ""), 256)
-        copyright = normalize_text(meta_full.get("copyright", ""), 512)
-        originaldate = normalize_text(meta_full.get("originaldate", ""), 32)
-        remixer = normalize_text(meta_full.get("remixer", ""), 256)
-        grouping = normalize_text(meta_full.get("grouping", ""), 256)
-        mood = normalize_text(meta_full.get("mood", ""), 128)
+        mb_track_id = normalize_mb_id(meta.get("mb_track_id", ""))
+        mb_album_id = normalize_mb_id(meta.get("mb_album_id", ""))
+        mb_albumartist_id = normalize_mb_id(meta.get("mb_albumartist_id", ""))
+        bit_depth = meta.get("bit_depth", 0) or 0
+        bpm = normalize_bpm(meta.get("bpm"))
+        replaygain_track = meta.get("replaygain_track", 0.0)
+        replaygain_album = meta.get("replaygain_album", 0.0)
+        replaygain_track_peak = meta.get("replaygain_track_peak", 0.0)
+        isrc = normalize_text(meta.get("isrc", ""), 128)
+        label = normalize_text(meta.get("label", ""), 256)
+        conductor = normalize_text(meta.get("conductor", ""), 256)
+        compilation = meta.get("compilation", 0)
+        media_type = normalize_text(meta.get("media_type", ""), 128)
+        encoder = normalize_text(meta.get("encoder", ""), 256)
+        copyright = normalize_text(meta.get("copyright", ""), 512)
+        originaldate = normalize_text(meta.get("originaldate", ""), 32)
+        remixer = normalize_text(meta.get("remixer", ""), 256)
+        grouping = normalize_text(meta.get("grouping", ""), 256)
+        mood = normalize_text(meta.get("mood", ""), 128)
 
         # AlbumKeyBuilder — cache embedded cover art with stable key
-        cover_data = meta_full.get("cover_data", b"")
+        cover_data = meta.get("cover_data", b"")
         if cover_data and album:
             try:
                 ak = make_album_key(albumartist or artist, artist, album)
-                cover_mime = meta_full.get("cover_mime", "image/jpeg")
+                cover_mime = meta.get("cover_mime", "image/jpeg")
                 self._db._conn.execute(
                     "INSERT OR REPLACE INTO album_art_cache "
                     "(album_hash, mime, data) VALUES (?,?,?)",

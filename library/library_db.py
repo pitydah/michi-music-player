@@ -17,7 +17,7 @@ logger = logging.getLogger("michi.library")
 
 
 # ── Re-exports from split modules ──
-from library.metadata_extractor import AUDIO_EXTS, ALL_EXTS, extract_metadata, extract_metadata_full  # noqa: E402, F401
+from library.metadata_extractor import AUDIO_EXTS, ALL_EXTS, extract_metadata, extract_metadata_full, extract_metadata_combined  # noqa: E402, F401
 from library.media_item import MediaItem, media_kind  # noqa: E402
 from library.devices import get_mounted_devices, scan_device_music  # noqa: E402, F401
 
@@ -149,7 +149,7 @@ class LibraryDB:
             def _writeback(result: tuple):
                 """Callback: write extracted metadata to DB after async extraction."""
                 try:
-                    meta, meta_full = result or ({}, {})
+                    meta = result[0] if isinstance(result, tuple) else result
                     title = meta.get("title") or ""
                     artist = meta.get("artist") or ""
                     album = meta.get("album") or ""
@@ -161,12 +161,7 @@ class LibraryDB:
                             title = inferred["title"]
                         if not artist:
                             artist = str(inferred.get("artist", "") or "")
-                    year = meta_full.get("year", 0) or 0
-                    date_str = meta_full.get("originaldate", "") or meta.get("date", "")
-                    if date_str:
-                        import contextlib
-                        with contextlib.suppress(ValueError, TypeError):
-                            year = int(date_str[:4])
+                    year = meta.get("year") or 0
                     self._conn.execute(
                         "UPDATE media_items SET title=?, artist=?, album=?,"
                         "year=?, genre=?, duration=?, albumartist=?,"
@@ -177,22 +172,22 @@ class LibraryDB:
                         " WHERE filepath=?",
                         (title, artist, album,
                          year,
-                         str(meta_full.get("genre", "") or ""),
+                         str(meta.get("genre", "") or ""),
                          meta.get("duration", 0.0) or 0.0,
-                         str(meta_full.get("albumartist", "") or ""),
-                         int(meta_full.get("track_number", 0) or 0),
-                         int(meta_full.get("track_total", 0) or 0),
-                         int(meta_full.get("disc_number", 0) or 0),
-                         int(meta_full.get("disc_total", 0) or 0),
-                         str(meta_full.get("composer", "") or ""),
+                         str(meta.get("albumartist", "") or ""),
+                         int(meta.get("track_number", 0) or 0),
+                         int(meta.get("track_total", 0) or 0),
+                         int(meta.get("disc_number", 0) or 0),
+                         int(meta.get("disc_total", 0) or 0),
+                         str(meta.get("composer", "") or ""),
                          int(meta.get("bitrate", 0) or 0),
                          int(meta.get("sample_rate", 0) or 0),
                          int(meta.get("channels", 0) or 0),
-                         int(meta_full.get("bit_depth", 0) or 0),
-                         int(meta_full.get("bpm", 0) or 0),
-                         str(meta_full.get("mb_track_id", "") or ""),
-                         str(meta_full.get("mb_album_id", "") or ""),
-                         str(meta_full.get("mb_albumartist_id", "") or ""),
+                         int(meta.get("bit_depth", 0) or 0),
+                         int(meta.get("bpm", 0) or 0),
+                         str(meta.get("mb_track_id", "") or ""),
+                         str(meta.get("mb_album_id", "") or ""),
+                         str(meta.get("mb_albumartist_id", "") or ""),
                          filepath))
                     self._conn.commit()
                     logger.debug("Async metadata written for %s", filepath)
@@ -200,53 +195,45 @@ class LibraryDB:
                     logger.debug("Async metadata writeback failed for %s: %s", filepath, e)
 
             worker.run_task(f"meta:{os.path.basename(filepath)}",
-                lambda fp=filepath: (extract_metadata(fp), extract_metadata_full(fp)),
+                lambda fp=filepath: extract_metadata_combined(fp),
                 on_done=_writeback)
             return None
 
         # Synchronous fallback
-        stat = os.stat(filepath)
-        meta = extract_metadata(filepath)
-        meta_full = extract_metadata_full(filepath)
+        meta = extract_metadata_combined(filepath)
         fname = os.path.basename(filepath)
         dname = os.path.dirname(filepath)
+        stat = os.stat(filepath)
         title = meta["title"] or fname
         artist = meta["artist"] or ""
         album = meta["album"] or ""
-        year = meta_full.get("year", 0)
-        # Prefer originaldate/date from mutagen over GStreamer
-        date_str = meta_full.get("originaldate", "") or meta.get("date", "")
-        if date_str:
-            import contextlib
-            with contextlib.suppress(ValueError, TypeError):
-                year = int(date_str[:4])
-        genre = meta_full.get("genre", "")
-        track_number = meta_full.get("track_number", 0)
-        composer = meta_full.get("composer", "")
-        albumartist = meta_full.get("albumartist", "")
-        disc_number = meta_full.get("disc_number", 0)
-        disc_total = meta_full.get("disc_total", 0)
-        track_total = meta_full.get("track_total", 0)
-        mb_albumartist_id = meta_full.get("mb_albumartist_id", "")
-        mb_album_id = meta_full.get("mb_album_id", "")
-        mb_track_id = meta_full.get("mb_track_id", "")
-        bit_depth = meta_full.get("bit_depth", 0) or 0
-        bpm = meta_full.get("bpm", 0) or 0
+        year = meta.get("year") or 0
+        genre = meta.get("genre") or ""
+        track_number = meta.get("track_number") or 0
+        composer = meta.get("composer") or ""
+        albumartist = meta.get("albumartist") or ""
+        disc_number = meta.get("disc_number") or 0
+        disc_total = meta.get("disc_total") or 0
+        track_total = meta.get("track_total") or 0
+        mb_albumartist_id = meta.get("mb_albumartist_id") or ""
+        mb_album_id = meta.get("mb_album_id") or ""
+        mb_track_id = meta.get("mb_track_id") or ""
+        bit_depth = meta.get("bit_depth") or 0
+        bpm = meta.get("bpm") or 0
 
         # Store embedded cover art in album_art_cache using stable album_key
-        cover_data = meta_full.get("cover_data", b"")
+        cover_data = meta.get("cover_data", b"")
         if cover_data and album:
             try:
                 from library.album_key import make_album_key
                 ak = make_album_key(albumartist, artist, album)
-                cover_mime = meta_full.get("cover_mime", "image/jpeg")
+                cover_mime = meta.get("cover_mime", "image/jpeg")
                 self._conn.execute(
                     "INSERT OR REPLACE INTO album_art_cache (album_hash, mime, data) VALUES (?,?,?)",
                     (ak, cover_mime, cover_data))
                 self._conn.commit()
             except Exception:
-                import logging
-                logging.getLogger("michi").debug("Failed to cache embedded cover")
+                pass
 
         try:
             cur = self._conn.execute(
@@ -315,24 +302,11 @@ class LibraryDB:
             if not os.path.exists(fp):
                 continue
             try:
-                meta = extract_metadata(fp)
-                meta_full = extract_metadata_full(fp)
+                meta = extract_metadata_combined(fp)
                 title = meta.get("title") or ""
                 artist = meta.get("artist") or ""
-                # Infer from filename when tags are empty
-                if not title or not artist:
-                    from library.metadata_normalizer import infer_metadata_from_filename
-                    inferred = infer_metadata_from_filename(fp)
-                    if not title:
-                        title = str(inferred.get("title", "") or "")
-                    if not artist:
-                        artist = str(inferred.get("artist", "") or "")
                 album = meta.get("album") or ""
-                year = meta_full.get("year", 0) or 0
-                date_str = meta_full.get("originaldate", "") or meta.get("date", "")
-                if date_str:
-                    with contextlib.suppress(ValueError, TypeError):
-                        year = int(date_str[:4])
+                year = meta.get("year") or 0
                 self._conn.execute(
                     "UPDATE media_items SET title=?, artist=?, album=?,"
                     "year=?, genre=?, duration=?, albumartist=?,"
@@ -343,22 +317,22 @@ class LibraryDB:
                     " WHERE id=?",
                     (title, artist, album,
                      year,
-                     str(meta_full.get("genre", "") or ""),
+                     str(meta.get("genre", "") or ""),
                      meta.get("duration", 0.0) or 0.0,
-                     str(meta_full.get("albumartist", "") or ""),
-                     int(meta_full.get("track_number", 0) or 0),
-                     int(meta_full.get("track_total", 0) or 0),
-                     int(meta_full.get("disc_number", 0) or 0),
-                     int(meta_full.get("disc_total", 0) or 0),
-                     str(meta_full.get("composer", "") or ""),
+                     str(meta.get("albumartist", "") or ""),
+                     int(meta.get("track_number", 0) or 0),
+                     int(meta.get("track_total", 0) or 0),
+                     int(meta.get("disc_number", 0) or 0),
+                     int(meta.get("disc_total", 0) or 0),
+                     str(meta.get("composer", "") or ""),
                      int(meta.get("bitrate", 0) or 0),
                      int(meta.get("sample_rate", 0) or 0),
                      int(meta.get("channels", 0) or 0),
-                     int(meta_full.get("bit_depth", 0) or 0),
-                     int(meta_full.get("bpm", 0) or 0),
-                     str(meta_full.get("mb_track_id", "") or ""),
-                     str(meta_full.get("mb_album_id", "") or ""),
-                     str(meta_full.get("mb_albumartist_id", "") or ""),
+                     int(meta.get("bit_depth", 0) or 0),
+                     int(meta.get("bpm", 0) or 0),
+                     str(meta.get("mb_track_id", "") or ""),
+                     str(meta.get("mb_album_id", "") or ""),
+                     str(meta.get("mb_albumartist_id", "") or ""),
                      row_id))
                 repaired += 1
                 if progress_cb and idx % 10 == 0:
