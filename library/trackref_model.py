@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel, QBrush, QColor
 
 from sources.base_source import TrackRef
+from library.metadata_normalizer import infer_metadata_from_filename
 
 
 def _title(item: TrackRef) -> str:
@@ -12,12 +13,24 @@ def _title(item: TrackRef) -> str:
     if t and t != "Sin título":
         return t
     if item.uri:
+        inferred = infer_metadata_from_filename(item.uri)
+        t = str(inferred.get("title", "") or "")
+        if t:
+            return t
         return os.path.splitext(os.path.basename(item.uri))[0]
     return "Sin título"
 
 
 def _artist(item: TrackRef) -> str:
-    return (item.artist or "").strip() or "Artista desconocido"
+    a = (item.artist or "").strip()
+    if a and a != "Artista desconocido":
+        return a
+    if item.uri:
+        inferred = infer_metadata_from_filename(item.uri)
+        a = str(inferred.get("artist", "") or "")
+        if a:
+            return a
+    return "Artista desconocido"
 
 
 def _album(item: TrackRef) -> str:

@@ -211,8 +211,18 @@ class Indexer(QObject):
 
         fname = os.path.basename(filepath)
         dname = os.path.dirname(filepath)
-        title = normalize_text(meta.get("title") or fname, 256)
+        title = normalize_text(meta.get("title") or "", 256)
         artist = normalize_artist_name(meta.get("artist", ""))
+        # Infer from filename when tags are empty
+        if not title or not artist:
+            from library.metadata_normalizer import infer_metadata_from_filename
+            inferred = infer_metadata_from_filename(filepath)
+            if not title:
+                title = normalize_text(str(inferred.get("title", "") or ""), 256)
+                if not title:
+                    title = os.path.splitext(fname)[0]
+            if not artist:
+                artist = normalize_artist_name(str(inferred.get("artist", "") or ""))
         album = normalize_text(meta.get("album", ""), 256)
         genre = normalize_genre(meta_full.get("genre", ""))
         year = normalize_year(

@@ -150,9 +150,17 @@ class LibraryDB:
                 """Callback: write extracted metadata to DB after async extraction."""
                 try:
                     meta, meta_full = result or ({}, {})
-                    title = meta.get("title") or fname
+                    title = meta.get("title") or ""
                     artist = meta.get("artist") or ""
                     album = meta.get("album") or ""
+                    # Infer from filename when tags are empty
+                    if not title or not artist:
+                        from library.metadata_normalizer import infer_metadata_from_filename
+                        inferred = infer_metadata_from_filename(filepath)
+                        if not title:
+                            title = inferred["title"]
+                        if not artist:
+                            artist = str(inferred.get("artist", "") or "")
                     year = meta_full.get("year", 0) or 0
                     date_str = meta_full.get("originaldate", "") or meta.get("date", "")
                     if date_str:
@@ -303,14 +311,22 @@ class LibraryDB:
             return 0
 
         repaired = 0
-        for idx, (row_id, fp, fname) in enumerate(rows, 1):
+        for idx, (row_id, fp, _) in enumerate(rows, 1):
             if not os.path.exists(fp):
                 continue
             try:
                 meta = extract_metadata(fp)
                 meta_full = extract_metadata_full(fp)
-                title = meta.get("title") or fname
+                title = meta.get("title") or ""
                 artist = meta.get("artist") or ""
+                # Infer from filename when tags are empty
+                if not title or not artist:
+                    from library.metadata_normalizer import infer_metadata_from_filename
+                    inferred = infer_metadata_from_filename(fp)
+                    if not title:
+                        title = str(inferred.get("title", "") or "")
+                    if not artist:
+                        artist = str(inferred.get("artist", "") or "")
                 album = meta.get("album") or ""
                 year = meta_full.get("year", 0) or 0
                 date_str = meta_full.get("originaldate", "") or meta.get("date", "")

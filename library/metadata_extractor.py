@@ -44,11 +44,8 @@ def _safe_uri(filepath: str) -> str:
 
 def _infer_from_filename(filepath: str) -> dict:
     """Infer artist and title from filename patterns like 'Artist - Title.ext'."""
-    stem = Path(filepath).stem
-    if " - " in stem:
-        artist, title = stem.split(" - ", 1)
-        return {"artist": artist.strip(), "title": title.strip()}
-    return {"title": stem, "artist": ""}
+    from library.metadata_normalizer import infer_metadata_from_filename
+    return infer_metadata_from_filename(filepath)
 
 
 def _mutagen_basic(filepath: str) -> dict:

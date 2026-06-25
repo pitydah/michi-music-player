@@ -2,20 +2,29 @@
 import os
 from sources.base_source import MusicSource, TrackRef
 from library.library_db import LibraryDB
+from library.metadata_normalizer import infer_metadata_from_filename
 
 
 def _fallback_title(item) -> str:
     t = getattr(item, "title", "") or ""
-    if t:
+    if t and t != os.path.splitext(os.path.basename(getattr(item, "filepath", "")))[0]:
         return t
     fp = getattr(item, "filepath", "")
     if fp:
-        return os.path.splitext(os.path.basename(fp))[0]
+        inferred = infer_metadata_from_filename(fp)
+        return inferred.get("title", "") or os.path.splitext(os.path.basename(fp))[0]
     return "Sin título"
 
 
 def _fallback_artist(item) -> str:
-    return getattr(item, "artist", "") or "Artista desconocido"
+    a = getattr(item, "artist", "") or ""
+    if a:
+        return a
+    fp = getattr(item, "filepath", "")
+    if fp:
+        inferred = infer_metadata_from_filename(fp)
+        return str(inferred.get("artist", "") or "") or "Artista desconocido"
+    return "Artista desconocido"
 
 
 def _fallback_album(item) -> str:
@@ -66,17 +75,29 @@ class LocalSource(MusicSource):
         ) for i in items]
 
     def _dicts_to_refs(self, rows: list[dict]) -> list[TrackRef]:
-        return [TrackRef(
-            uri=row.get("filepath", ""),
-            title=row.get("title", "") or os.path.splitext(os.path.basename(row.get("filepath", "")))[0] or "Sin título",
-            artist=row.get("artist", "") or "Artista desconocido",
-            album=row.get("album", "") or "Sin álbum",
-            duration=row.get("duration", 0.0),
-            cover_path="",
-            track_number=row.get("track_number", 0),
-            year=row.get("year", 0),
-            genre=row.get("genre", "") or "—",
-        ) for row in rows]
+        refs = []
+        for row in rows:
+            fp = row.get("filepath", "")
+            title = row.get("title", "") or ""
+            artist = row.get("artist", "") or ""
+            if (not title or not artist) and fp:
+                inferred = infer_metadata_from_filename(fp)
+                title = title or str(inferred.get("title", "") or "")
+                artist = artist or str(inferred.get("artist", "") or "")
+            title = title or os.path.splitext(os.path.basename(fp))[0] or "Sin título"
+            artist = artist or "Artista desconocido"
+            refs.append(TrackRef(
+                uri=fp,
+                title=title,
+                artist=artist,
+                album=row.get("album", "") or "Sin álbum",
+                duration=row.get("duration", 0.0),
+                cover_path="",
+                track_number=row.get("track_number", 0),
+                year=row.get("year", 0),
+                genre=row.get("genre", "") or "—",
+            ))
+        return refs
 
     def get_artwork(self, track: TrackRef) -> str | None:
         return track.cover_path or None

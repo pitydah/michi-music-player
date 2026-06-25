@@ -1,6 +1,61 @@
 """Metadata normalizer — clean, normalize, and validate extracted tag values."""
+import os
 import re
 import contextlib
+
+
+# ── Filename-to-metadata inference ──
+
+_SEPARATORS = re.compile(r"\s*[-–—−]\s*|\s*_\s*|\s*\|\s*")
+_TRACK_LEAD = re.compile(r"^(\d{1,3})[\s.\-_]*[-–—−]?\s*")
+
+
+def infer_metadata_from_filename(filepath: str) -> dict[str, str | int]:
+    """Infer title, artist, and track_number from a filename.
+
+    Handles patterns like:
+        Artist - Title.mp3
+        01 - Artist - Title.mp3
+        01. Artist - Title.flac
+        Artist – Title.mp3
+        Artist | Title.mp3
+        Artist_Title.mp3
+        JustASong.mp3  -> title = JustASong, artist = ""
+
+    Returns dict with keys: title, artist, album, track_number
+    """
+    stem = os.path.splitext(os.path.basename(str(filepath)))[0].strip()
+    result: dict[str, str | int] = {"title": stem, "artist": "", "album": "", "track_number": 0}
+
+    if not stem:
+        return result
+
+    # Detect and strip leading track number
+    m = _TRACK_LEAD.match(stem)
+    if m:
+        with contextlib.suppress(ValueError):
+            result["track_number"] = int(m.group(1))
+        stem = stem[m.end():].strip()
+
+    if not stem:
+        return result
+
+    # Try to split on separator
+    parts = _SEPARATORS.split(stem, maxsplit=1)
+    parts = [p.strip() for p in parts if p.strip()]
+
+    if len(parts) == 2:
+        result["artist"] = parts[0]
+        result["title"] = parts[1]
+    elif len(parts) == 1:
+        result["title"] = parts[0]
+    # else: keep title=stem, no artist
+
+    # Clean up redundant whitespace
+    result["title"] = " ".join(result["title"].split())
+    result["artist"] = " ".join(str(result["artist"]).split())
+
+    return result
 
 
 def normalize_text(text: str, max_length: int = 256) -> str:
