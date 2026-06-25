@@ -1072,6 +1072,35 @@ class MainWindow(QMainWindow):
         self._song_grid.song_double_clicked.connect(
             lambda fp: self._play_file(fp))
 
+        # Build songs stacked widget inside Canciones tab: list (table) + grid (cards)
+        self._songs_stack = QStackedWidget()
+        self._songs_stack.setObjectName("songsStack")
+        self._songs_stack.setStyleSheet("background: transparent; border: none;")
+        self._songs_stack.addWidget(self._table)
+        self._songs_stack.addWidget(self._song_grid)
+        self._songs_stack.setCurrentIndex(0)
+
+        # Build albums stacked widget: grid (carátulas) + list (table) inside Álbumes tab
+        self._album_list_table = QTableView()
+        self._album_list_table.setShowGrid(False)
+        self._album_list_table.setAlternatingRowColors(True)
+        self._album_list_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._album_list_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._album_list_table.setFrameShape(QFrame.NoFrame)
+        self._album_list_table.horizontalHeader().setStretchLastSection(True)
+        self._album_list_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self._album_list_table.verticalHeader().setVisible(False)
+        self._album_list_table.verticalHeader().setDefaultSectionSize(30)
+        self._album_list_table.setSortingEnabled(True)
+        self._album_list_table.setStyleSheet(table_qss() + scrollbar_qss())
+
+        self._albums_stack = QStackedWidget()
+        self._albums_stack.setObjectName("albumsStack")
+        self._albums_stack.setStyleSheet("background: transparent; border: none;")
+        self._albums_stack.addWidget(self._album_grid)
+        self._albums_stack.addWidget(self._album_list_table)
+        self._albums_stack.setCurrentIndex(0)
+
         self._discover = DiscoverDashboard()
         self._discover.navigate_requested.connect(
             self._on_sidebar_navigate)
@@ -1194,7 +1223,6 @@ class MainWindow(QMainWindow):
         self._views.register("coverflow", placeholder_albums)
         self._views.register("expanded", placeholder_expanded)
         self._views.register("radio", self._radio_widget)
-        self._views.register("song_grid", self._song_grid)
         self._views.register("discover", self._discover)
         self._views.register("playlist_hub", self._playlist_hub)
         self._views.register("playlist_detail", self._playlist_detail)
@@ -1208,7 +1236,7 @@ class MainWindow(QMainWindow):
         from ui.view_navigator import ViewNavigator
         self._nav = ViewNavigator(self._content, self._views, self._views)
         self._nav._widgets = [
-            self._content, self._album_grid, self._song_grid,
+            self._content, self._album_grid,
             self._folder_browser, self._radio_widget,
             self._playlist_hub, self._metadata_editor,
             self._discover, self._identifier_view,
@@ -1819,8 +1847,8 @@ class MainWindow(QMainWindow):
             from ui.hubs.library_hub_page import LibraryHubPage
             self._library_hub_page = LibraryHubPage(
                 db=self._db, window=self,
-                songs_widget=self._songs_table_page,
-                albums_widget=self._album_grid,
+                songs_widget=self._songs_stack,
+                albums_widget=self._albums_stack,
                 artists_widget=self._artist_grid,
                 genres_widget=self._genre_grid,
                 folders_widget=self._folder_browser)
@@ -2158,17 +2186,21 @@ class MainWindow(QMainWindow):
 
         if section == "library":
             if mode == "list":
+                self._songs_stack.setCurrentIndex(0)
                 self._apply_filters()
                 self._fade_content("library_hub")
             elif mode == "grid":
+                self._songs_stack.setCurrentIndex(1)
                 self._show_song_grid()
-                self._fade_content("song_grid")
+                self._fade_content("library_hub")
 
         elif section == "albums":
             if mode == "list":
+                self._albums_stack.setCurrentIndex(1)
                 self._show_album_list()
                 self._fade_content("library_hub")
             elif mode == "grid":
+                self._albums_stack.setCurrentIndex(0)
                 self._show_album_grid()
                 self._fade_content("library_hub")
             elif mode == "coverflow":
@@ -2189,7 +2221,7 @@ class MainWindow(QMainWindow):
                 self._fade_content("library_hub")
             elif mode == "grid":
                 self._song_grid.set_items(self._playlist_refs, card_size=170)
-                self._fade_content("song_grid")
+                self._fade_content("library_hub")
 
         elif section == "folders":
             self._fade_content("library_hub")
@@ -2218,7 +2250,7 @@ class MainWindow(QMainWindow):
                 self._fade_content("library_hub")
             elif mode == "grid":
                 self._song_grid.set_items(refs, card_size=170)
-                self._fade_content("song_grid")
+                self._fade_content("library_hub")
 
     def _show_album_list(self):
         from library.album_art import group_by_album
@@ -2236,15 +2268,15 @@ class MainWindow(QMainWindow):
                 cover_path="",
             ))
         self._model.populate(refs)
-        self._table.setModel(self._model)
-        self._table.setColumnHidden(7, True)  # hide URI column
-        self._table.setColumnWidth(0, 72)
-        self._table.setColumnWidth(1, 240)
-        self._table.setColumnWidth(2, 170)
-        self._table.setColumnWidth(3, 170)
-        self._table.setColumnWidth(4, 55)
-        self._table.setColumnWidth(5, 110)
-        self._table.setColumnWidth(6, 75)
+        self._album_list_table.setModel(self._model)
+        self._album_list_table.setColumnHidden(7, True)
+        self._album_list_table.setColumnWidth(0, 72)
+        self._album_list_table.setColumnWidth(1, 240)
+        self._album_list_table.setColumnWidth(2, 170)
+        self._album_list_table.setColumnWidth(3, 170)
+        self._album_list_table.setColumnWidth(4, 55)
+        self._album_list_table.setColumnWidth(5, 110)
+        self._album_list_table.setColumnWidth(6, 75)
         self._count.setText(f"{len(groups)} álbumes")
 
     def _configure_header_for_section(self, section_key: str):
