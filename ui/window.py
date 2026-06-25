@@ -1480,6 +1480,76 @@ class MainWindow(QMainWindow):
         self._apply_filters()
         self._view_mode = "list"
         self._view_switcher.set_view("list", emit=False)
+        self._ensure_library_header()
+
+    def _ensure_library_header(self):
+        """Create the library page wrapper with title, stats, and tabs."""
+        if hasattr(self, '_library_header') and self._library_header is not None:
+            return
+        self._library_header = QWidget()
+        self._library_header.setObjectName("libraryPage")
+        vl = QVBoxLayout(self._library_header)
+        vl.setContentsMargins(32, 24, 32, 12)
+        vl.setSpacing(8)
+
+        title_row = QHBoxLayout()
+        lib_title = QLabel("Biblioteca")
+        lib_title.setStyleSheet(
+            "QLabel { color: rgba(255,255,255,0.92); font-size: 22px; font-weight: 700; }")
+        title_row.addWidget(lib_title)
+        title_row.addStretch()
+        self._lib_count_badge = QLabel("0 canciones")
+        self._lib_count_badge.setStyleSheet(
+            "QLabel { color: rgba(255,255,255,0.62); font-size: 13px; font-weight: 500;"
+            "  background: rgba(255,255,255,0.05); border-radius: 10px; padding: 4px 14px; }")
+        title_row.addWidget(self._lib_count_badge)
+        vl.addLayout(title_row)
+
+        lib_sub = QLabel(
+            "Música local, archivos disponibles y estadísticas de tu colección.")
+        lib_sub.setWordWrap(True)
+        lib_sub.setStyleSheet(
+            "QLabel { color: rgba(255,255,255,0.54); font-size: 13px; }")
+        vl.addWidget(lib_sub)
+
+        # Internal tabs
+        tab_row = QHBoxLayout()
+        tab_row.setSpacing(4)
+        self._lib_tabs = {}
+        for tab_key, tab_label, nav_target in [
+            ("canciones", "Canciones", None),
+            ("albums", "Álbumes", "albums"),
+            ("artists", "Artistas", "artists"),
+            ("genres", "Géneros", "genres"),
+            ("folders", "Carpetas", "folders"),
+        ]:
+            btn = QPushButton(tab_label)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCheckable(True)
+            if tab_key == "canciones":
+                btn.setChecked(True)
+            if nav_target:
+                btn.clicked.connect(lambda c=None, t=nav_target: self._on_sidebar_navigate(t))
+            tab_row.addWidget(btn)
+            self._lib_tabs[tab_key] = btn
+        tab_row.addStretch()
+        vl.addLayout(tab_row)
+
+        # Style tabs
+        tab_qss = (
+            "QPushButton { color: rgba(255,255,255,0.54); font-size: 13px; font-weight: 600;"
+            "  background: transparent; border: 1px solid transparent; border-radius: 8px;"
+            "  padding: 8px 18px; }"
+            "QPushButton:hover { color: rgba(255,255,255,0.78);"
+            "  background: rgba(255,255,255,0.04); }"
+            "QPushButton:checked { color: rgba(255,255,255,0.92);"
+            "  background: rgba(143,183,255,0.14); border: 1px solid rgba(143,183,255,0.22); }"
+        )
+        for btn in self._lib_tabs.values():
+            btn.setStyleSheet(tab_qss)
+
+        vl.addWidget(self._table, 1)
+        self._views.register("library", self._library_header)
 
     def _show_playlist_hub(self, key):
         pls = self._db.get_playlists()
@@ -2045,12 +2115,16 @@ class MainWindow(QMainWindow):
         self._model.populate(results)
         n = len(results)
         self._count.setText(f"{n} elementos" if n else "0 elementos")
+        if hasattr(self, '_lib_count_badge'):
+            stats = self._db.get_stats() if self._db else {}
+            total = stats.get("total", n) if stats else n
+            self._lib_count_badge.setText(f"{total:,} canciones")
         if n:
             self._views.show("library")
             self._table.setModel(self._model)
             self._table.setColumnWidth(0, 72)
             self._table.setColumnWidth(1, 260)
-            self._table.setColumnWidth(3, 170)
+            self._table.setColumnWidth(2, 170)
             self._table.setColumnWidth(3, 170)
             self._table.setColumnWidth(4, 55)
             self._table.setColumnWidth(5, 110)
