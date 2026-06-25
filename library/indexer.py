@@ -242,6 +242,8 @@ class Indexer(QObject):
         remixer = normalize_text(meta.get("remixer", ""), 256)
         grouping = normalize_text(meta.get("grouping", ""), 256)
         mood = normalize_text(meta.get("mood", ""), 128)
+        comment = normalize_text(meta.get("comment", ""), 512)
+        lyricist = normalize_text(meta.get("lyricist", ""), 256)
 
         # AlbumKeyBuilder — cache embedded cover art with stable key
         cover_data = meta.get("cover_data", b"")
@@ -293,6 +295,14 @@ class Indexer(QObject):
             "encoder": encoder, "copyright": copyright,
             "originaldate": originaldate, "remixer": remixer,
             "grouping": grouping, "mood": mood,
+            "comment": comment, "lyricist": lyricist,
+            "replaygain_album_peak": meta.get("replaygain_album_peak", 0.0),
+            "r128_track_gain": meta.get("r128_track_gain", 0.0),
+            "r128_album_gain": meta.get("r128_album_gain", 0.0),
+            "mb_artist_id": meta.get("mb_artist_id", ""),
+            "mb_releasegroup_id": meta.get("mb_releasegroup_id", ""),
+            "acoustid_id": meta.get("acoustid_id", ""),
+            "acoustid_fingerprint": meta.get("acoustid_fingerprint", ""),
             "content_hash": self._compute_quick_hash(filepath),
         }
 

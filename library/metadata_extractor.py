@@ -436,6 +436,33 @@ def _extract_cover_art(mf, tags) -> dict:
     return result
 
 
+# ── Sidecar cover art ──
+
+_COVER_NAMES = ("cover.jpg", "cover.png", "folder.jpg", "folder.png",
+                "front.jpg", "front.png", "Cover.jpg", "Cover.png",
+                "Folder.jpg", "Folder.png")
+
+
+def extract_sidecar_cover(filepath: str) -> dict:
+    """Look for cover image files in the same directory as the audio file."""
+    result: dict = {"cover_mime": "", "cover_data": b""}
+    try:
+        directory = os.path.dirname(os.path.abspath(filepath))
+        for name in _COVER_NAMES:
+            candidate = os.path.join(directory, name)
+            if os.path.isfile(candidate):
+                ext = os.path.splitext(name)[1].lower()
+                mime_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                            ".png": "image/png"}
+                result["cover_mime"] = mime_map.get(ext, "image/jpeg")
+                with open(candidate, "rb") as fh:
+                    result["cover_data"] = fh.read()
+                return result
+    except Exception:
+        pass
+    return result
+
+
 # ── Combined extraction ──
 
 def extract_metadata_combined(filepath: str) -> dict:
@@ -552,6 +579,12 @@ def extract_metadata_combined(filepath: str) -> dict:
     r["bitrate"] = _p("bitrate", "bitrate") or 0
     r["cover_mime"] = mg.get("cover_mime") or ""
     r["cover_data"] = mg.get("cover_data") or b""
+    # Fallback to sidecar cover if no embedded cover
+    if not r["cover_data"]:
+        sidecar = extract_sidecar_cover(filepath)
+        if sidecar["cover_data"]:
+            r["cover_mime"] = sidecar["cover_mime"]
+            r["cover_data"] = sidecar["cover_data"]
     return r
 
 

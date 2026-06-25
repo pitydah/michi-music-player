@@ -1066,6 +1066,7 @@ class MainWindow(QMainWindow):
             self._on_album_open_folder)
         self._album_grid.details_requested.connect(
             self._on_album_show_details)
+        self._album_grid.add_folder_requested.connect(self._add_folder)
 
         self._song_grid = SongGridWidget()
         self._song_grid.song_double_clicked.connect(
@@ -2181,6 +2182,11 @@ class MainWindow(QMainWindow):
 
         elif section == "folders":
             self._fade_content("library_hub")
+
+        elif section == "genres":
+            self._show_library_hub_page()
+            if self._library_hub_page:
+                self._library_hub_page._tabs.setCurrentIndex(3)
 
         elif section == "radio":
             self._fade_content("radio")

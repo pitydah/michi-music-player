@@ -15,6 +15,9 @@ BATCH_COLUMNS = [
     "replaygain_track_peak",
     "isrc", "label", "conductor", "compilation", "media_type",
     "encoder", "copyright", "originaldate", "remixer", "grouping", "mood",
+    "comment", "lyricist",
+    "replaygain_album_peak", "r128_track_gain", "r128_album_gain",
+    "mb_artist_id", "mb_releasegroup_id", "acoustid_id", "acoustid_fingerprint",
     "content_hash", "track_uid", "created_at",
     "updated_at", "last_scanned", "scan_status",
 ]

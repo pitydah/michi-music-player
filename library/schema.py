@@ -190,6 +190,15 @@ MEDIA_ITEMS_MIGRATIONS = [
     ("last_scanned", "REAL"),
     ("scan_status", "TEXT DEFAULT 'ok'"),
     ("scan_error", "TEXT DEFAULT ''"),
+    ("comment", "TEXT DEFAULT ''"),
+    ("lyricist", "TEXT DEFAULT ''"),
+    ("replaygain_album_peak", "REAL"),
+    ("r128_track_gain", "REAL"),
+    ("r128_album_gain", "REAL"),
+    ("mb_artist_id", "TEXT DEFAULT ''"),
+    ("mb_releasegroup_id", "TEXT DEFAULT ''"),
+    ("acoustid_id", "TEXT DEFAULT ''"),
+    ("acoustid_fingerprint", "TEXT DEFAULT ''"),
 ]
 
 PLAYLISTS_MIGRATIONS = [
