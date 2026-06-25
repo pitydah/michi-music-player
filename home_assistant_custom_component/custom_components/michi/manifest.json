@@ -1,11 +1,13 @@
 {
-  "domain": "astra",
-  "name": "Astra Music Player",
-  "codeowners": ["@astramusicplayer"],
+  "domain": "michi",
+  "name": "Michi Music Player",
+  "codeowners": [
+    "@pitydah"
+  ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/anomalyco/astra",
-  "issue_tracker": "https://github.com/anomalyco/astra/issues",
+  "documentation": "https://github.com/pitydah/michi-music-player",
+  "issue_tracker": "https://github.com/pitydah/michi-music-player/issues",
   "requirements": [],
   "version": "0.1.0",
   "iot_class": "local_push"

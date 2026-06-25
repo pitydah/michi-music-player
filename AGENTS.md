@@ -27,7 +27,7 @@ michi-music-player/
 ├── library/        → SQLite + indexer: library_db.py, indexer.py, search_engine.py,
 │                     coverflow.py, media_item.py, album_key.py
 ├── recognition/    → Identificación: detection_service.py, providers/shazam|audd|acoustid
-├── integrations/   → home_assistant/, snapcast/, astra_api/, artist_metadata/
+├── integrations/   → home_assistant/, snapcast/, michi_api/, artist_metadata/
 ├── ui/             → window.py (MainWindow, 2644 lines), controllers/ (14 controladores),
 │                     style_tokens.py, qss.py, icon_registry.py, icon_loader.py,
 │                     central/ (central_styles.py, central_tokens.py),

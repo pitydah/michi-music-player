@@ -4,7 +4,7 @@ import shutil
 from PySide6.QtCore import QObject, Signal, QProcess
 
 PACTL_BIN = shutil.which("pactl") or ""
-SINK_NAME = "astra_snapcast_sink"
+SINK_NAME = "michi_snapcast_sink"
 
 
 class AudioCaptureManager(QObject):
@@ -45,7 +45,7 @@ class AudioCaptureManager(QObject):
         proc.start(PACTL_BIN, [
             "load-module", "module-null-sink",
             f"sink_name={SINK_NAME}",
-            "sink_properties=device.description=Astra_Multiroom"])
+            "sink_properties=device.description=Michi_Multiroom"])
         proc.waitForFinished(3000)
         out = bytes(proc.readAllStandardOutput()).decode(errors="replace").strip()
         err = bytes(proc.readAllStandardError()).decode(errors="replace").strip()

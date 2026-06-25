@@ -11,7 +11,7 @@ DEFAULT_CONFIG = """\
 tcp_port = {tcp}
 control_port = {ctrl}
 http_port = {http}
-stream = pipe:///tmp/snapfifo?name=astra&codec=flac&sampleformat=44100:16:2
+stream = pipe:///tmp/snapfifo?name=michi&codec=flac&sampleformat=44100:16:2
 """
 
 
@@ -28,7 +28,7 @@ class SnapServerManager(QObject):
         self._tcp_port = 1704
         self._control_port = 1705
         self._http_port = 1780
-        self._config_path = "/tmp/astra_snapserver.conf"
+        self._config_path = "/tmp/michi_snapserver.conf"
         self._last_error = ""
 
     @property

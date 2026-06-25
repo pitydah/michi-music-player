@@ -10,7 +10,7 @@ DATA_SCHEMA = vol.Schema({
 })
 
 
-class AstraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class MichiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):

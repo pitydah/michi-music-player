@@ -145,8 +145,35 @@ class LibraryDB:
             dname = os.path.dirname(filepath)
             stat = os.stat(filepath)
             self._insert_basic(filepath, fname, dname, ext, kind, stat)
+
+            def _writeback(result: tuple):
+                """Callback: write extracted metadata to DB after async extraction."""
+                try:
+                    meta, meta_full = result or ({}, {})
+                    title = meta.get("title") or fname
+                    artist = meta.get("artist") or ""
+                    album = meta.get("album") or ""
+                    year = meta_full.get("year", 0) or 0
+                    self._conn.execute(
+                        "UPDATE media_items SET title=?, artist=?, album=?,"
+                        "year=?, genre=?, duration=?, albumartist=?,"
+                        "track_number=?, composer=? WHERE filepath=?",
+                        (title, artist, album,
+                         year,
+                         str(meta_full.get("genre", "") or ""),
+                         meta.get("duration", 0.0) or 0.0,
+                         str(meta_full.get("albumartist", "") or ""),
+                         int(meta_full.get("track_number", 0) or 0),
+                         str(meta_full.get("composer", "") or ""),
+                         filepath))
+                    self._conn.commit()
+                    logger.debug("Async metadata written for %s", filepath)
+                except Exception as e:
+                    logger.debug("Async metadata writeback failed for %s: %s", filepath, e)
+
             worker.run_task(f"meta:{os.path.basename(filepath)}",
-                lambda fp=filepath: (extract_metadata(fp), extract_metadata_full(fp)))
+                lambda fp=filepath: (extract_metadata(fp), extract_metadata_full(fp)),
+                on_done=_writeback)
             return None
 
         # Synchronous fallback

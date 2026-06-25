@@ -9,7 +9,7 @@ from threading import Thread
 API_PORT_DEFAULT = 8124
 
 
-class _AstraHandler(BaseHTTPRequestHandler):
+class _MichiHandler(BaseHTTPRequestHandler):
     """HTTP request handler for Michi API. Reads from AppStateStore, writes via MichiApiBridge."""
 
     def __init__(self, *args, state_store=None, bridge=None, token="", db=None, **kwargs):
@@ -286,7 +286,7 @@ def _track_to_item(track) -> dict:
 def make_handler(store, bridge, token, db):
     """Factory to create handler instances with state store, bridge, token, and db."""
     def _handler(*args, **kwargs):
-        return _AstraHandler(*args, state_store=store, bridge=bridge, token=token, db=db, **kwargs)
+        return _MichiHandler(*args, state_store=store, bridge=bridge, token=token, db=db, **kwargs)
     return _handler
 
 

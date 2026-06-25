@@ -29,10 +29,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     host = entry.data[CONF_HOST]
     port = entry.data[CONF_PORT]
     token = entry.data[CONF_TOKEN]
-    async_add_entities([AstraMediaPlayer(host, port, token)])
+    async_add_entities([MichiMediaPlayer(host, port, token)])
 
 
-class AstraMediaPlayer(MediaPlayerEntity):
+class MichiMediaPlayer(MediaPlayerEntity):
     def __init__(self, host: str, port: int, token: str):
         self._host = host
         self._port = port

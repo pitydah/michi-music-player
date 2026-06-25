@@ -8,7 +8,7 @@ from .const import DOMAIN, CONF_HOST, CONF_PORT, CONF_TOKEN
 _LOGGER = logging.getLogger(__name__)
 
 
-class AstraApiClient:
+class MichiApiClient:
     """Async client for Michi Music Player HTTP API."""
 
     def __init__(self, host: str, port: int, token: str):
@@ -109,13 +109,13 @@ class AstraApiClient:
         })
 
 
-def get_client(hass: HomeAssistant) -> AstraApiClient | None:
+def get_client(hass: HomeAssistant) -> MichiApiClient | None:
     """Get Michi API client from config entry."""
     entries = hass.config_entries.async_entries(DOMAIN)
     if not entries:
         return None
     data = dict(entries[0].data)
-    return AstraApiClient(
+    return MichiApiClient(
         host=data.get(CONF_HOST, ""),
         port=data.get(CONF_PORT, 8124),
         token=data.get(CONF_TOKEN, ""),

@@ -17,7 +17,7 @@ MICHI_URI_SCHEME = "michi-source"
 MICHI_MEDIA_ID_PREFIX = f"{MICHI_URI_SCHEME}://"
 
 
-class AstraMediaSource(MediaSource):
+class MichiMediaSource(MediaSource):
     def __init__(self, hass: HomeAssistant):
         super().__init__(DOMAIN)
         self.hass = hass
@@ -114,4 +114,4 @@ class AstraMediaSource(MediaSource):
 
 
 async def async_get_media_source(hass: HomeAssistant):
-    return AstraMediaSource(hass)
+    return MichiMediaSource(hass)
