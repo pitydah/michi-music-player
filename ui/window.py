@@ -1432,6 +1432,8 @@ class MainWindow(QMainWindow):
             self._workers.run_task("backfill_meta",
                 self._db.backfill_missing_metadata,
                 on_done=_on_backfill_done)
+            self._workers.run_task("backfill_art",
+                self._db.backfill_missing_album_art)
 
     def _apply_filters(self):
         self._search_ctrl.search(self._search_text)
@@ -1611,7 +1613,9 @@ class MainWindow(QMainWindow):
 
     def _show_folders(self, key):
         from sources.folder_source import FolderSource
-        self._search_ctrl.register("folders", FolderSource(os.path.expanduser("~")))
+        roots = self._db.get_library_roots() if self._db else []
+        start_dir = roots[0] if roots else os.path.expanduser("~")
+        self._search_ctrl.register("folders", FolderSource(start_dir))
         self._search_ctrl.set_active("folders")
         self._show_library_hub_page()
         if self._library_hub_page:
@@ -2146,6 +2150,14 @@ class MainWindow(QMainWindow):
         self._search_text = text.strip()
         if self._current_section_key == "albums":
             self._refresh_active_library_tab(force=True)
+            return
+        if self._current_section_key == "genres":
+            self._refresh_active_library_tab(force=True)
+            return
+        if self._current_section_key == "folders":
+            self._folder_browser.set_filter(self._search_text)
+            return
+        if self._current_section_key in ("favs", "recent", "mix_unplayed"):
             return
         if self._current_section_key == "artists" and not self._artist_repo.current_key:
             query = self._search_text.lower()
