@@ -400,7 +400,11 @@ class SyncServer(QObject):
         self._build_index()
 
         SyncRequestHandler.server_ref = self
-        self._httpd = HTTPServer(("0.0.0.0", self._port), SyncRequestHandler)
+        try:
+            self._httpd = HTTPServer(("0.0.0.0", self._port), SyncRequestHandler)
+        except OSError as e:
+            self.sync_error.emit(f"SyncServer: {e}")
+            return
         self._executor = ThreadPoolExecutor(max_workers=8)
         self._running = True
 
@@ -423,9 +427,11 @@ class SyncServer(QObject):
                 self._httpd.server_close()
             except Exception:
                 import logging
-                logging.getLogger("michi").debug("Sync server operation failed")
+                logging.getLogger("michi").debug("Sync server close failed")
         if self._executor:
             self._executor.shutdown(wait=False)
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=3)
         self._sessions.clear()
         self.server_stopped.emit()
 

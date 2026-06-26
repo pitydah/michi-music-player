@@ -47,7 +47,6 @@ def render_pattern(tags: TrackTags, pattern: str) -> str:
 def preview_rename(items: list[TrackTags], pattern: str) -> list[tuple[str, str]]:
     results = []
 
-    # First try predefined patterns
     fn = _PATTERNS.get(pattern)
     for t in items:
         old = t.filepath
@@ -55,8 +54,13 @@ def preview_rename(items: list[TrackTags], pattern: str) -> list[tuple[str, str]
         base_dir = os.path.dirname(old)
 
         relative = sanitize_filename_part(fn(t)) if fn else render_pattern(t, pattern)
+        if ".." in relative:
+            relative = relative.replace("..", "")
 
         new = os.path.join(base_dir, relative + ext)
+        # Verify new path is within the original directory tree
+        if not os.path.normpath(new).startswith(os.path.normpath(base_dir)):
+            continue
         results.append((old, new))
     return results
 
@@ -68,6 +72,8 @@ def apply_rename(preview: list[tuple[str, str]]) -> tuple[int, int]:
         if old == new:
             continue
         try:
+            if os.path.exists(new):
+                continue  # skip — don't overwrite existing files
             os.makedirs(os.path.dirname(new), exist_ok=True)
             os.rename(old, new)
             ok += 1

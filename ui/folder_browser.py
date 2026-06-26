@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
 
 from library.folder_index import list_audio_files, list_subfolders
 from ui.icons import get_icon
-import contextlib
 
 COVER_NAMES = ("cover.jpg", "cover.png", "folder.jpg", "folder.png",
                "front.jpg", "front.png", "album.jpg", "album.png",
@@ -416,10 +415,7 @@ class FolderBrowserWidget(QWidget):
             item.setIcon(0, QIcon(get_icon("folder")))
             item.setText(0, os.path.basename(folder))
             item.setText(1, "Carpeta")
-            try:
-                item.setText(2, str(len(list_audio_files(folder))))
-            except Exception:
-                item.setText(2, "—")
+            item.setText(2, "—")
             item.setText(3, folder)
             item.setData(0, Qt.UserRole, folder)
             item.setData(0, Qt.UserRole + 1, "folder")
@@ -451,20 +447,8 @@ class FolderBrowserWidget(QWidget):
         except Exception:
             folders = []
 
-        # Formats
-        exts = set()
-        total_size = 0
-        for fp in files:
-            exts.add(os.path.splitext(fp)[1].lower())
-            with contextlib.suppress(OSError):
-                total_size += os.path.getsize(fp)
-
-        fmt_str = ", ".join(exts) if exts else "—"
-        size_str = f"{total_size / (1024*1024):.1f} MB" if total_size > 0 else "—"
-
         self._detail_stats.setText(
-            f"Songs: {len(files)}\nFolders: {len(folders)}\n"
-            f"Formats: {fmt_str}\nTotal: {size_str}")
+            f"Archivos: {len(files)} · Carpetas: {len(folders)}")
 
         # Cover
         cover = self._find_cover(self._root)
