@@ -730,6 +730,19 @@ class GStreamerEngine(QObject):
             if self._db:
                 self._db.save_queue(self._queue, self._queue_index)
             return True
+        # Repeat "one": replay current track
+        if self._repeat == "one" and self._queue:
+            self.play(self._queue[self._queue_index])
+            if self._db:
+                self._db.save_queue(self._queue, self._queue_index)
+            return True
+        # Repeat "all": wrap to start
+        if self._repeat == "all" and self._queue:
+            self._queue_index = 0
+            self.play(self._queue[0])
+            if self._db:
+                self._db.save_queue(self._queue, self._queue_index)
+            return True
         return False
 
     def play_prev(self) -> bool:

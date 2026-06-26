@@ -1,4 +1,5 @@
 """Radio Manager — manages the list of radio stations."""
+import contextlib
 import os
 import json
 import time
@@ -40,6 +41,8 @@ class RadioManager:
         try:
             with open(RADIO_FILE, "r") as f:
                 data = json.load(f)
+            if not isinstance(data, list):
+                raise ValueError("Expected JSON array")
             self._stations = []
             for s in data:
                 normalized = {
@@ -59,14 +62,24 @@ class RadioManager:
             self._next_id = max([s.id for s in self._stations] + [0]) + 1
         except Exception:
             import logging
-            logging.getLogger("michi").debug("Failed to load radio stations config")
+            log = logging.getLogger("michi")
+            log.warning("Radio stations JSON corrupt — backing up as .broken")
+            corrupted = RADIO_FILE + ".broken"
+            with contextlib.suppress(OSError):
+                os.replace(RADIO_FILE, corrupted)
             self._stations = []
             self._next_id = 1
 
     def _save(self):
         os.makedirs(CONFIG_DIR, exist_ok=True)
-        with open(RADIO_FILE, "w") as f:
-            json.dump([asdict(s) for s in self._stations], f, indent=2)
+        tmp = RADIO_FILE + ".tmp"
+        try:
+            with open(tmp, "w") as f:
+                json.dump([asdict(s) for s in self._stations], f, indent=2)
+            os.replace(tmp, RADIO_FILE)
+        except OSError as e:
+            import logging
+            logging.getLogger("michi").warning("Failed to save radio stations: %s", e)
 
     def get_all(self) -> list[RadioStation]:
         return self._stations.copy()

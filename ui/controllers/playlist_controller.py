@@ -213,8 +213,8 @@ class PlaylistController:
         name = name.strip()
         fps = []
         for row in range(model.rowCount()):
-            idx = model.index(row, 1)  # COL_URI
-            fp = model.data(idx)
+            ref = model.get_trackref(row)
+            fp = ref.uri if ref else ""
             if fp and os.path.isfile(fp):
                 fps.append(fp)
         if fps:

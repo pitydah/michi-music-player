@@ -843,6 +843,7 @@ class LibraryDB:
     # Extracted to library/history_store.py — favorites, play history, detected tracks
     def save_queue(self, filepaths: list[str], current_index: int):
         self._conn.execute("DELETE FROM queue_state")
+        self._conn.execute("INSERT INTO queue_state (id, filepath) VALUES (?,?)", (-1, str(current_index)))
         for i, fp in enumerate(filepaths):
             self._conn.execute("INSERT INTO queue_state (id, filepath) VALUES (?,?)", (i, fp))
         self._conn.commit()
@@ -850,8 +851,14 @@ class LibraryDB:
     def load_queue(self) -> tuple[list[str], int]:
         rows = self._conn.execute(
             "SELECT id, filepath FROM queue_state ORDER BY id").fetchall()
-        filepaths = [r[1] for r in rows]
-        return filepaths, 0
+        index = 0
+        filepaths = []
+        for r in rows:
+            if r[0] == -1:
+                index = int(r[1]) if r[1].isdigit() else 0
+            else:
+                filepaths.append(r[1])
+        return filepaths, index
 
     def clear_queue_state(self):
         self._conn.execute("DELETE FROM queue_state")

@@ -95,7 +95,10 @@ class MPRISObject(dbus.service.Object):
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player",
                          in_signature="ox")
     def SetPosition(self, track_id, position):
-        self.Seek(position)
+        # position is absolute in microseconds, convert to offset
+        current_us = (self._engine.get_position_ns() // 1000) if (self._engine and hasattr(self._engine, 'get_position_ns')) else 0
+        offset = position - current_us
+        self.Seek(offset)
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player",
                          in_signature="s")
@@ -142,14 +145,18 @@ class MPRISObject(dbus.service.Object):
                     status = "Playing"
                 elif s == PlaybackState.PAUSED:
                     status = "Paused"
+            pos_us = (self._engine.get_position_ns() // 1000) if (self._engine and hasattr(self._engine, 'get_position_ns')) else 0
+            loop_map = {"none": "None", "one": "Track", "all": "Playlist"}
+            repeat = getattr(self._engine, '_repeat', 'none') or 'none'
+            shuffle = getattr(self._engine, '_shuffle', False)
             return {
                 "PlaybackStatus": status,
-                "LoopStatus": "None",
+                "LoopStatus": loop_map.get(repeat, "None"),
                 "Rate": dbus.Double(1.0),
-                "Shuffle": False,
+                "Shuffle": bool(shuffle),
                 "Metadata": dbus.Dictionary(self._metadata, signature="sv"),
                 "Volume": dbus.Double(self._volume),
-                "Position": dbus.Int64(0),
+                "Position": dbus.Int64(pos_us),
                 "MinimumRate": dbus.Double(1.0),
                 "MaximumRate": dbus.Double(1.0),
                 "CanGoNext": True,
