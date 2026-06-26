@@ -12,7 +12,8 @@ class ArtistController:
         self._win._ctx.artist_grid.set_view_mode(mode)
         self._win._show_library_hub_page()
         if self._win._library_hub_page:
-            self._win._library_hub_page._tabs.setCurrentIndex(2)
+            self._win._library_hub_page.set_current_section("artists")
+            self._win._artists_stack.setCurrentIndex(0)
 
     def open_artist_detail(self, artist_key: str):
         repo = self._win._ctx.artist_repo
@@ -31,7 +32,8 @@ class ArtistController:
                 else f"{s // 60} min")
         self._win._ctx.section_subtitle.setText(" · ".join(parts))
         self._win._ctx.view_switcher.set_available_modes([])
-        self._win._ctx.fade_to("artist_detail")
+        self._win._artists_stack.setCurrentIndex(1)
+        self._win._fade_content("library_hub")
 
     def show_artists_overview(self):
         self._win._ctx.artist_repo.clear_current()

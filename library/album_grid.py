@@ -133,6 +133,8 @@ class AlbumGridWidget(QWidget):
         self._groups_cache = groups
         self._groups = groups
         self._pending_covers = False
+        if not self._items:
+            return
         self._rebuild_cards()
 
     def _rebuild_cards(self):

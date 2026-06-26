@@ -117,10 +117,8 @@ class LibraryHubPage(QWidget):
                 for item in items:
                     a = str(getattr(item, "artist", "") or "").strip().lower()
                     al = str(getattr(item, "album", "") or "").strip().lower()
-                    if a:
-                        artists.add(a)
-                    if al:
-                        albums.add(al)
+                    artists.add(a or "artista desconocido")
+                    albums.add(al or "sin album")
                 stats["total_artists"] = len(artists)
                 stats["total_albums"] = len(albums)
         except Exception:

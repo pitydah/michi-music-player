@@ -42,7 +42,8 @@ class GenreController:
         self._ctx_or_svc("configure_header", lambda k: None)("genres")
         self._win._show_library_hub_page()
         if self._win._library_hub_page:
-            self._win._library_hub_page._tabs.setCurrentIndex(3)
+            self._win._library_hub_page.set_current_section("genres")
+            self._win._genres_stack.setCurrentIndex(0)
 
     def open_genre_detail(self, genre_key: str):
         repo = self._genre_repo
@@ -58,7 +59,8 @@ class GenreController:
                      f"{g.album_count} álbumes"]
             ctx.section_subtitle.setText(" · ".join(parts))
             ctx.view_switcher.set_available_modes([])
-            ctx.fade_to("genre_detail")
+            self._win._genres_stack.setCurrentIndex(1)
+            self._win._fade_content("library_hub")
 
     def back_to_overview(self):
         self._genre_repo.current_key = None
