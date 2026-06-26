@@ -284,6 +284,13 @@ class Schema:
             """)
         conn.commit()
 
+        # Track schema version
+        new_ver = 2  # Bump when adding new migrations
+        old_ver = conn.execute("PRAGMA user_version").fetchone()[0]
+        if old_ver < new_ver:
+            conn.execute(f"PRAGMA user_version={new_ver}")
+            logger.info("Schema migrated: %d → %d", old_ver, new_ver)
+
     # ── Internal helpers ──
 
     @staticmethod

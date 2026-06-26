@@ -114,6 +114,7 @@ def load_cover_pixmap(filepath: str, size: int = 280,
                       albumartist: str = "") -> QPixmap:
     """Try to find and load cover art for a media file. Returns QPixmap."""
     directory = os.path.dirname(filepath)
+    _MAX_COVER_BYTES = 10 * 1024 * 1024  # 10 MB limit for embedded covers
 
     if size <= 96:
         size_name = "thumb"

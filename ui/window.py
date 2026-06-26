@@ -62,8 +62,14 @@ from ui.artist_grid import ArtistGridWidget
 from ui.artist_detail_view import ArtistDetailView
 from ui.genre_grid import GenreGridWidget
 from ui.genre_detail_view import GenreDetailView
-from ui.home_audio_view import HomeAudioView
-from recognition.detection_service import DetectionService
+try:
+    from ui.home_audio_view import HomeAudioView
+except ImportError:
+    HomeAudioView = None
+try:
+    from recognition.detection_service import DetectionService
+except ImportError:
+    DetectionService = None
 
 
 SECTION_CONFIG = {
@@ -642,6 +648,8 @@ class MainWindow(QMainWindow):
 
     def _wire_home_audio_signals(self):
         v = self._home_audio_view
+        if v is None:
+            return
         v.connect_requested.connect(self._on_home_audio_connect)
         v.refresh_requested.connect(self._on_home_audio_refresh)
         v.enable_multiroom_requested.connect(self._on_home_audio_multiroom)
