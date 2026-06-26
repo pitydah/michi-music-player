@@ -1860,9 +1860,16 @@ class MainWindow(QMainWindow):
     def _show_home_page(self, key=None):
         if self._home_page is None:
             from ui.hubs.home_page import HomePage
-            self._home_page = HomePage(db=self._db, playback=self._playback)
+            self._home_page = HomePage(
+                db=self._db, playback=self._playback, window=self)
+            self._home_page.navigation_requested.connect(
+                self._on_sidebar_navigate)
         if not self._views.widget("home"):
             self._views.register("home", self._home_page)
+        self._home_page.refresh(
+            items=self._all_items,
+            servers=load_servers(),
+            devices=getattr(self, '_sync_peers', []))
         self._fade_content("home")
 
     def _show_library_hub_page(self, key=None):
