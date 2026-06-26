@@ -400,13 +400,25 @@ def _extract_cover_art(mf, tags) -> dict:
                 return result
             except Exception:
                 pass
-        # MP3 APIC frame
-        for key in (b"APIC:", "APIC:", "APIC", "\xa9cov"):
+        # MP3 APIC frame — iterate all keys for startswith("APIC")
+        for key in tags:
+            skey = str(key)
+            if skey.startswith("APIC"):
+                try:
+                    v = tags.get(key)
+                    if v and getattr(v, "data", None):
+                        result["cover_mime"] = getattr(v, "mime", "image/jpeg")
+                        result["cover_data"] = v.data
+                        return result
+                except Exception:
+                    pass
+        # Fallback: also try exact keys
+        for key in ("\xa9cov",):
             try:
                 v = tags.get(key)
                 if v:
-                    result["cover_mime"] = getattr(v, 'mime', 'image/jpeg')
-                    result["cover_data"] = getattr(v, 'data', b'')
+                    result["cover_mime"] = getattr(v, "mime", "image/jpeg")
+                    result["cover_data"] = getattr(v, "data", b"")
                     return result
             except Exception:
                 pass

@@ -109,7 +109,9 @@ def _get_embedded_cover(album_name: str, artist: str = "", albumartist: str = ""
     return None
 
 
-def load_cover_pixmap(filepath: str, size: int = 280) -> QPixmap:
+def load_cover_pixmap(filepath: str, size: int = 280,
+                      album: str = "", artist: str = "",
+                      albumartist: str = "") -> QPixmap:
     """Try to find and load cover art for a media file. Returns QPixmap."""
     directory = os.path.dirname(filepath)
 
@@ -123,7 +125,7 @@ def load_cover_pixmap(filepath: str, size: int = 280) -> QPixmap:
     # 1. Try embedded cover from DB cache (keyed by album tag)
     album_name = _get_album_tag(filepath)
     if album_name:
-        embedded = _get_embedded_cover(album_name)
+        embedded = _get_embedded_cover(album_name, artist=artist, albumartist=albumartist)
         if embedded:
             return embedded.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
@@ -230,7 +232,10 @@ def load_covers_for_albums(items: list[MediaItem],
 
     for album, artist, tracks in groups:
         first = tracks[0]
-        pix = None if lazy else load_cover_pixmap(first.filepath, size)
+        pix = None if lazy else load_cover_pixmap(
+            first.filepath, size,
+            album=album, artist=artist,
+            albumartist=getattr(first, "albumartist", "") or artist)
 
         subtitle_parts = [artist]
         year = first.year

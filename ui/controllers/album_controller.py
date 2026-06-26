@@ -28,7 +28,10 @@ class AlbumController:
             from library.cover_art_service import CoverArtService
             cover_path = os.path.join(d, "cover.jpg")
             if os.path.isfile(cover_path):
-                cache_cover(cover_path, None, "large")
+                from PySide6.QtGui import QPixmap
+                pix = QPixmap(cover_path)
+                if not pix.isNull():
+                    cache_cover(cover_path, pix, "large")
                 self._toast("Carátula ya existente", "success")
                 self._refresh_grid()
             elif CoverArtService.find_cover(tracks[0].filepath):

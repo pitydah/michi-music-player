@@ -358,6 +358,47 @@ class LibraryDB:
         logger.info("Backfilled metadata for %d/%d records", repaired, len(rows))
         return repaired
 
+    def backfill_missing_album_art(self, progress_cb=None) -> int:
+        """Repair album_art_cache for tracks with albums but missing cached covers."""
+        rows = self._conn.execute(
+            "SELECT DISTINCT COALESCE(albumartist,''), COALESCE(artist,''), album "
+            "FROM media_items WHERE deleted_at IS NULL "
+            "AND album IS NOT NULL AND album != '' "
+            "ORDER BY album").fetchall()
+        if not rows:
+            return 0
+        repaired = 0
+        for idx, (albumartist, artist, album) in enumerate(rows, 1):
+            from library.album_key import make_album_key
+            ak = make_album_key(albumartist or "", artist or "", album)
+            exists = self._conn.execute(
+                "SELECT 1 FROM album_art_cache WHERE album_hash=?",
+                (ak,)).fetchone()
+            if exists:
+                continue
+            fp_row = self._conn.execute(
+                "SELECT filepath FROM media_items WHERE deleted_at IS NULL "
+                "AND album=? LIMIT 1", (album,)).fetchone()
+            if not fp_row:
+                continue
+            try:
+                meta = extract_metadata_combined(fp_row[0])
+                cd = meta.get("cover_data", b"")
+                if cd:
+                    cm = meta.get("cover_mime", "image/jpeg")
+                    self._conn.execute(
+                        "INSERT OR REPLACE INTO album_art_cache "
+                        "(album_hash, mime, data) VALUES (?,?,?)",
+                        (ak, cm, cd))
+                    repaired += 1
+                    self._conn.commit()
+                    if progress_cb and idx % 10 == 0:
+                        progress_cb(idx, len(rows))
+            except Exception as e:
+                logger.debug("Art backfill failed for %s: %s", album, e)
+        logger.info("Backfilled album art for %d/%d albums", repaired, len(rows))
+        return repaired
+
     def get_file_signature(self, filepath: str) -> tuple | None:
         """Return (size, mtime, content_hash) for a filepath, or None if not in DB."""
         row = self._conn.execute(

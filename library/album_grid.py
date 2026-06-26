@@ -135,13 +135,19 @@ class AlbumGridWidget(QWidget):
         self._pending_covers = False
         if not self._items:
             return
-        self._rebuild_cards()
+        # Force repaint since pixmaps changed even if titles didn't
+        self._last_sig = None
+        self._render_cards(groups)
 
     def _rebuild_cards(self):
         groups = self._groups
         cols = self._calculate_columns()
+        cover_state = tuple(
+            bool(g.pixmap and not g.pixmap.isNull())
+            for g in groups[:50])
         sig = (cols, len(groups), self._sort_key, self._filter_mode,
-               self._group_mode, tuple(g.title for g in groups[:50]))
+               self._group_mode, tuple(g.title for g in groups[:50]),
+               cover_state)
         if sig == self._last_sig:
             return
         self._last_sig = sig
