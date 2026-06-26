@@ -1,4 +1,5 @@
 """Pipeline Factory — builds GStreamer pipelines per profile and format."""
+import logging
 import os
 import gi
 gi.require_version("Gst", "1.0")
@@ -8,6 +9,8 @@ from audio.format_probe import AudioFormatInfo  # noqa: E402
 from audio.audio_route_plan import AudioRoutePlan  # noqa: E402
 from audio.dsp_state import DspState  # noqa: E402
 from audio.audio_chain import build_eq_parametric_chain  # noqa: E402
+
+logger = logging.getLogger("michi.pipeline")
 
 
 class PipelineFactory:
@@ -77,7 +80,9 @@ class PipelineFactory:
         if not audio_sink:
             return None
         playbin.set_property("audio-sink", audio_sink)
-        pipeline.set_state(Gst.State.READY)
+        if pipeline.set_state(Gst.State.READY) == Gst.StateChangeReturn.FAILURE:
+            logger.warning("Standard pipeline failed to reach READY")
+            return None
         return pipeline
 
     def _make_sink_bin(self, route, dsp, transmit_device) -> Gst.Bin | None:
@@ -129,6 +134,8 @@ class PipelineFactory:
                     audio_sink.add(eq)
                     last.link(eq)
                     last = eq
+                else:
+                    logger.warning("Graphic EQ: equalizer-nbands element not available — EQ disabled")
 
         # Convert + resample
         if route.use_audioconvert:
@@ -217,7 +224,9 @@ class PipelineFactory:
         if not sink:
             return None
         playbin.set_property("audio-sink", sink)
-        pipeline.set_state(Gst.State.READY)
+        if pipeline.set_state(Gst.State.READY) == Gst.StateChangeReturn.FAILURE:
+            logger.warning("Bitperfect pipeline failed to reach READY")
+            return None
         return pipeline
 
     def _build_dsd_to_pcm(self, uri, fmt, route) -> Gst.Element | None:
@@ -242,7 +251,9 @@ class PipelineFactory:
         audio_sink.add_pad(
             Gst.GhostPad.new("sink", conv.get_static_pad("sink")))
         playbin.set_property("audio-sink", audio_sink)
-        pipeline.set_state(Gst.State.READY)
+        if pipeline.set_state(Gst.State.READY) == Gst.StateChangeReturn.FAILURE:
+            logger.warning("DSD-to-PCM pipeline failed to reach READY")
+            return None
         return pipeline
 
     def _build_dop(self, uri, fmt, route):
@@ -273,10 +284,22 @@ class PipelineFactory:
     def _make_sink_from_route(self, route: AudioRoutePlan) -> Gst.Element | None:
         ds = route.device_string or "autoaudiosink"
         parts = ds.split(maxsplit=1)
-        sink = Gst.ElementFactory.make(parts[0], None)
-        if sink and len(parts) > 1:
+        sink_name = parts[0]
+        sink = Gst.ElementFactory.make(sink_name, None)
+        if not sink:
+            logger.warning("Sink element '%s' not found, falling back to autoaudiosink", sink_name)
+            sink = Gst.ElementFactory.make("autoaudiosink", None)
+            if not sink:
+                logger.error("autoaudiosink not found — no audio output available")
+                return None
+            logger.info("Using autoaudiosink as fallback for '%s'", sink_name)
+            return sink
+        if len(parts) > 1:
             for param in parts[1:]:
                 if "=" in param:
                     k, v = param.split("=", 1)
-                    sink.set_property(k, v)
-        return sink or Gst.ElementFactory.make("autoaudiosink", None)
+                    try:
+                        sink.set_property(k, v)
+                    except Exception as e:
+                        logger.warning("Failed to set sink property %s=%s: %s", k, v, e)
+        return sink

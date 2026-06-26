@@ -266,8 +266,9 @@ class GStreamerEngine(QObject):
                     gain, _label = apply_full(config, track_gain, album_gain)
                     if gain != 1.0:
                         rg_gain_db = linear_to_db(gain)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logging.getLogger("michi.player").warning(
+                        "ReplayGain extraction failed: %s", e)
 
             dsp = DspState(
                 eq_enabled=(hasattr(self, '_eq') and self._eq.mode != "bypass"),
@@ -464,7 +465,7 @@ class GStreamerEngine(QObject):
         self._dff_running = False
         if self._pipeline:
             self._pipeline.set_state(Gst.State.NULL)
-            result = self._pipeline.get_state(2 * Gst.SECOND)
+            result = self._pipeline.get_state(100 * Gst.MSECOND)
             if result[0] == Gst.StateChangeReturn.FAILURE:
                 import logging
                 logging.getLogger("michi.player").warning(
@@ -655,9 +656,13 @@ class GStreamerEngine(QObject):
             pct = message.parse_buffering()
             logging.getLogger("michi.player").debug("Buffering: %d%%", pct)
             if pct < 100 and self._state == PlaybackState.PLAYING:
-                self._pipeline.set_state(Gst.State.PAUSED)
+                ret = self._pipeline.set_state(Gst.State.PAUSED)
+                if ret == Gst.StateChangeReturn.FAILURE:
+                    logging.getLogger("michi.player").warning("Failed to pause during buffering")
             elif pct >= 100 and self._state == PlaybackState.PLAYING:
-                self._pipeline.set_state(Gst.State.PLAYING)
+                ret = self._pipeline.set_state(Gst.State.PLAYING)
+                if ret == Gst.StateChangeReturn.FAILURE:
+                    logging.getLogger("michi.player").warning("Failed to resume after buffering")
         elif t == Gst.MessageType.TAG:
             pass  # Stream metadata — could emit track_changed for radio
         elif t == Gst.MessageType.STATE_CHANGED:
@@ -775,7 +780,7 @@ class GStreamerEngine(QObject):
     def _on_media_finished(self):
         if not self.play_next():
             self._pipeline.set_state(Gst.State.NULL)
-            result = self._pipeline.get_state(2 * Gst.SECOND)
+            result = self._pipeline.get_state(100 * Gst.MSECOND)
             if result[0] == Gst.StateChangeReturn.FAILURE:
                 import logging
                 logging.getLogger("michi.player").warning(
