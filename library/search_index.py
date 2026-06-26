@@ -120,7 +120,8 @@ class SearchIndex:
         try:
             rows = self._conn.execute(f"""
                 SELECT id FROM media_items
-                WHERE {conditions}
+                WHERE ({conditions})
+                AND deleted_at IS NULL
                 ORDER BY title ASC
                 LIMIT ?
             """, (*params, limit)).fetchall()

@@ -7,20 +7,19 @@ Self-contained. Python 3 + PySide6 + Qt Multimedia (GStreamer).
 import os
 import sys
 
-from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QFont
-
-from ui.theme import build_plasma_palette, PLASMA_QSS
-from ui.theme_manager import create_theme_manager
-from ui.window import MainWindow
-
 
 def main():
     os.environ.setdefault("QT_MEDIA_BACKEND", "gstreamer")
 
-    # Setup persistent logging
-    from core.logger import setup_logging
+    # Setup persistent logging before any other imports
+    from core.logger import setup_logging, LOG_FILE
     setup_logging()
+    import logging
+    _log = logging.getLogger("michi.main")
+
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtGui import QFont
+    from ui.theme import build_plasma_palette, PLASMA_QSS
 
     app = QApplication(sys.argv)
     app.setApplicationName("MichiMusicPlayer")
@@ -35,9 +34,8 @@ def main():
         font = QFont("sans-serif", 11)
     app.setFont(font)
 
-    import logging
-    _log = logging.getLogger("michi.main")
     try:
+        from ui.window import MainWindow
         window = MainWindow()
         window.show()
     except Exception as e:
@@ -46,10 +44,11 @@ def main():
         QMessageBox.critical(
             None, "Michi Music Player — Error",
             f"Error fatal al iniciar:\n\n{e}\n\n"
-            f"Revisa el log en ~/.cache/michi/logs/michi.log")
+            f"Revisa el log en {LOG_FILE}")
         sys.exit(1)
 
     # Initialize theme manager
+    from ui.theme_manager import create_theme_manager
     theme_mgr = create_theme_manager(window)
     window._theme_mgr = theme_mgr
 

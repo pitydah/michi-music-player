@@ -75,7 +75,8 @@ class BatchWriter:
             self.flush()
 
     def flush(self) -> int:
-        """Write all buffered records to the database. Returns count written."""
+        """Write all buffered records to the database. Returns count written.
+        If batch fails, retries records individually to rescue valid ones."""
         if not self._buffer:
             return 0
         count = len(self._buffer)
@@ -89,9 +90,36 @@ class BatchWriter:
             return count
         except sqlite3.Error as e:
             self._conn.rollback()
-            logger.error(f"Batch write failed: {e}")
-            self._buffer.clear()
-            raise
+            logger.error("Batch write failed (%d records): %s — retrying individually", count, e)
+            return self._flush_individual()
+
+    def _flush_individual(self) -> int:
+        """Retry each buffered record one by one; log problematic ones."""
+        saved = 0
+        failed = 0
+        for r in self._buffer:
+            try:
+                row = self._record_to_row(r)
+                self._conn.execute(self._sql, row)
+                self._conn.commit()
+                saved += 1
+                self._written += 1
+            except sqlite3.Error as e:
+                failed += 1
+                fp = r.get("filepath", "unknown")
+                logger.warning("Failed to write record %s: %s", fp, e)
+                try:
+                    self._conn.execute(
+                        "INSERT OR REPLACE INTO index_errors"
+                        " (filepath, error, stage, updated_at) VALUES (?,?,?,?)",
+                        (fp, str(e)[:256], "batch_writer", __import__("time").time()))
+                    self._conn.commit()
+                except Exception:
+                    pass
+        self._buffer.clear()
+        if failed:
+            logger.warning("Batch flush: %d saved, %d failed", saved, failed)
+        return saved
 
     def _record_to_row(self, r: dict) -> tuple:
         """Convert a record dict to a tuple matching BATCH_COLUMNS."""

@@ -8,6 +8,7 @@ class AppContext:
 
     def __init__(self, window):
         self._win = window
+        self._sealed = False
 
         # ── Core services (initialized in __init__ before AppContext) ──
         self.db = window._db
@@ -17,6 +18,8 @@ class AppContext:
         self.search_ctrl = window._search_ctrl
         self.search = window._search_ctrl  # backward compat alias
         self.window = window  # backward compat alias
+
+        self._sealed = True
 
         # ── Extracted services (may not be initialized yet — use getattr) ──
         self.toast = getattr(window, '_toast_svc', None)
@@ -36,7 +39,9 @@ class AppContext:
 
     @playback.setter
     def playback(self, value):
-        pass  # set via __init__, immutable after
+        if getattr(self, '_sealed', False):
+            raise RuntimeError("AppContext.playback is read-only after init")
+        object.__setattr__(self, '_playback', value)
 
     @property
     def db(self):
@@ -44,7 +49,8 @@ class AppContext:
 
     @db.setter
     def db(self, value):
-        pass
+        if getattr(self, '_sealed', False):
+            raise RuntimeError("AppContext.db is read-only after init")
 
     @property
     def model(self):
@@ -52,7 +58,8 @@ class AppContext:
 
     @model.setter
     def model(self, value):
-        pass
+        if getattr(self, '_sealed', False):
+            raise RuntimeError("AppContext.model is read-only after init")
 
     @property
     def player(self):
@@ -60,7 +67,8 @@ class AppContext:
 
     @player.setter
     def player(self, value):
-        pass
+        if getattr(self, '_sealed', False):
+            raise RuntimeError("AppContext.player is read-only after init")
 
     @property
     def views(self):

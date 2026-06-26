@@ -73,7 +73,7 @@ class SearchEngine:
 
         # Build and execute SQL
         where = " AND ".join(conditions) if conditions else "1=1"
-        sql = f"SELECT * FROM media_items WHERE {where} ORDER BY title ASC LIMIT ?"
+        sql = f"SELECT * FROM media_items WHERE ({where}) AND deleted_at IS NULL ORDER BY title ASC LIMIT ?"
         params.append(limit)
 
         try:
@@ -91,7 +91,8 @@ class SearchEngine:
     def _list_all(self, limit: int) -> list[dict]:
         try:
             rows = self._conn.execute(
-                "SELECT * FROM media_items ORDER BY title ASC LIMIT ?",
+                "SELECT * FROM media_items WHERE deleted_at IS NULL"
+                " ORDER BY title ASC LIMIT ?",
                 (limit,)).fetchall()
             return _rows_to_dicts(rows, self._conn)
         except sqlite3.Error:
@@ -131,7 +132,7 @@ def _build_field_clause(term: FieldTerm) -> tuple[str, list]:
 
 
 def _rows_to_dicts(rows: list, conn: sqlite3.Connection) -> list[dict]:
-    """Convert DB rows to dicts."""
-    cols = [desc[0] for desc in
+    """Convert DB rows to dicts using column names from PRAGMA table_info."""
+    cols = [desc[1] for desc in  # desc[1] = name, desc[0] = cid
             conn.execute("PRAGMA table_info(media_items)").fetchall()]
     return [dict(zip(cols, r, strict=False)) for r in rows]

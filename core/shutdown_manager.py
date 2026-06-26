@@ -19,4 +19,4 @@ class ShutdownManager:
             try:
                 fn()
             except Exception as e:
-                log.debug("Error stopping %s: %s", name, e)
+                log.warning("Error stopping %s: %s", name, e)

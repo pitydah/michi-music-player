@@ -359,6 +359,8 @@ class MainWindow(QMainWindow):
         self._workers = WorkerManager(self)
         self._db._worker_mgr = self._workers
         self._shutdown.register("playback", lambda: self._playback.stop())
+        self._shutdown.register("workers", lambda: self._workers.shutdown(2000)
+                               if hasattr(self, '_workers') and self._workers else None)
         self._shutdown.register("db", lambda: self._db.close())
 
     def _init_ui(self):
@@ -511,16 +513,11 @@ class MainWindow(QMainWindow):
         self._shutdown.register("transmit", lambda: None)  # no explicit stop needed
 
     def _load_initial_data(self):
-        """Library loading, cleanup, enrichment, tray — after everything is wired."""
+        """Library loading, enrichment, tray — after everything is wired."""
         if self._safe_mode:
             self._toast_svc.show(
                 "Modo seguro activado — servicios opcionales deshabilitados", "info")
-        removed = self._db.cleanup_missing()
         self._load_library()
-        if removed:
-            self._toast_svc.show(
-                f"{removed} archivos eliminados de la biblioteca (ya no existen)",
-                "info")
 
         if (hasattr(self, '_artist_enrich') and self._artist_enrich
                 and hasattr(self._artist_repo, 'groups')):
