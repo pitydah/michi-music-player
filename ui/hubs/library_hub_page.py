@@ -104,6 +104,12 @@ class LibraryHubPage(QWidget):
         section_key = _TAB_TO_SECTION.get(index, "library")
         self.tab_changed.emit(section_key)
 
+    def set_current_section(self, section_key: str, emit: bool = False):
+        idx = {v: k for k, v in _TAB_TO_SECTION.items()}.get(section_key, 0)
+        self._tabs.setCurrentIndex(idx)
+        if emit:
+            self.tab_changed.emit(section_key)
+
     def _get_stats(self) -> dict:
         stats = {"total_songs": 0, "total_artists": 0, "total_albums": 0}
         try:
