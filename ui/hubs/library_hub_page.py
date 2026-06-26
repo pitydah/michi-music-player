@@ -110,6 +110,17 @@ class LibraryHubPage(QWidget):
         if emit:
             self.tab_changed.emit(section_key)
 
+    def refresh_stats(self):
+        """Update stats without rebuilding the entire widget."""
+        stats = self._get_stats()
+        # Stats are regenerated in _get_stats — no UI update needed
+        # unless we add live stat labels outside of tab build in the future.
+        return stats
+
+    def refresh(self):
+        """Full refresh: stats + any embedded widget state."""
+        return self.refresh_stats()
+
     def _get_stats(self) -> dict:
         stats = {"total_songs": 0, "total_artists": 0, "total_albums": 0}
         try:

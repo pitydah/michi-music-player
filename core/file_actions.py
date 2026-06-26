@@ -14,6 +14,7 @@ class FileActions:
         self._win = window
         self._db = window._db
         self._db_path = DB_PATH
+        self._active_threads: list = []
 
     def open_files(self, all_exts: frozenset):
         exts = " ".join(f"*{e}" for e in sorted(all_exts))
@@ -84,9 +85,9 @@ class FileActions:
             overlay.hide()
             overlay.deleteLater()
 
-            # Offload cleanup to WorkerManager
+            # Offload cleanup to WorkerManager (bounded to scanned root)
             def do_cleanup():
-                self._win._db.cleanup_missing()
+                self._win._db.cleanup_missing_under_root(path)
 
             def on_cleanup_done(_result):
                 self._win._reload_library_after_change(reason="scan")
@@ -107,4 +108,10 @@ class FileActions:
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(lambda _=thread: self._cleanup_thread(thread))
+        self._active_threads.append(thread)
         thread.start()
+
+    def _cleanup_thread(self, thread):
+        if thread in self._active_threads:
+            self._active_threads.remove(thread)

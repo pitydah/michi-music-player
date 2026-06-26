@@ -575,6 +575,28 @@ class LibraryDB:
                 idx.rebuild_fts()
         return len(missing_ids)
 
+    def cleanup_missing_under_root(self, root_path: str) -> int:
+        """Soft-delete missing files ONLY under the given directory root."""
+        root = os.path.normpath(root_path)
+        rows = self._conn.execute(
+            "SELECT id, filepath FROM media_items WHERE deleted_at IS NULL"
+            " AND directory LIKE ?", (root + "%",)).fetchall()
+        if not rows:
+            return 0
+        missing_ids = []
+        for rid, fp in rows:
+            if not os.path.isfile(fp):
+                missing_ids.append(rid)
+        if not missing_ids:
+            return 0
+        now = time.time()
+        for rid in missing_ids:
+            self._conn.execute(
+                "UPDATE media_items SET deleted_at=?, scan_status='missing' WHERE id=?",
+                (now, rid))
+        self._conn.commit()
+        return len(missing_ids)
+
     def purge_deleted(self) -> int:
         """Permanently remove soft-deleted tracks (user-requested cleanup)."""
         rows = self._conn.execute(
@@ -657,8 +679,19 @@ class LibraryDB:
 
     def get_directories(self) -> list[str]:
         rows = self._conn.execute(
-            "SELECT DISTINCT directory FROM media_items ORDER BY directory").fetchall()
+            "SELECT DISTINCT directory FROM media_items"
+            " WHERE deleted_at IS NULL ORDER BY directory").fetchall()
         return [r[0] for r in rows]
+
+    def get_library_roots(self) -> list[str]:
+        """Return active indexed root directories."""
+        try:
+            rows = self._conn.execute(
+                "SELECT path FROM library_roots WHERE enabled=1 ORDER BY path"
+            ).fetchall()
+            return [r[0] for r in rows]
+        except Exception:
+            return []
 
     # ── Partial metadata updates (for AI-assisted metadata review) ──
 
@@ -695,13 +728,14 @@ class LibraryDB:
         return None
 
     def get_stats(self) -> dict:
-        total = self._conn.execute("SELECT COUNT(*) FROM media_items").fetchone()[0]
+        total = self._conn.execute(
+            "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL").fetchone()[0]
         audio = self._conn.execute(
-            "SELECT COUNT(*) FROM media_items WHERE kind='audio'").fetchone()[0]
+            "SELECT COUNT(*) FROM media_items WHERE kind='audio' AND deleted_at IS NULL").fetchone()[0]
         video = self._conn.execute(
-            "SELECT COUNT(*) FROM media_items WHERE kind='video'").fetchone()[0]
+            "SELECT COUNT(*) FROM media_items WHERE kind='video' AND deleted_at IS NULL").fetchone()[0]
         dur = self._conn.execute(
-            "SELECT COALESCE(SUM(duration),0) FROM media_items").fetchone()[0] or 0
+            "SELECT COALESCE(SUM(duration),0) FROM media_items WHERE deleted_at IS NULL").fetchone()[0] or 0
         return {"total": total, "audio": audio, "video": video, "duration": dur}
 
     # ── Playlists ──

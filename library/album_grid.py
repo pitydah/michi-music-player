@@ -127,6 +127,22 @@ class AlbumGridWidget(QWidget):
         if mgr:
             mgr.covers_ready.connect(self._on_covers_ready)
 
+    def _compute_items_sig(self):
+        import hashlib
+        h = hashlib.sha1()
+        for i in self._items:
+            raw = "|".join(map(str, [
+                getattr(i, "filepath", ""),
+                getattr(i, "album", ""),
+                getattr(i, "artist", ""),
+                getattr(i, "albumartist", ""),
+                getattr(i, "year", 0) or 0,
+                getattr(i, "duration", 0) or 0,
+                getattr(i, "mtime", 0) or 0,
+            ]))
+            h.update(raw.encode("utf-8", errors="ignore"))
+        return (len(self._items), h.hexdigest())
+
     def _on_covers_ready(self, groups):
         groups = self._apply_filter(groups)
         self._sort_groups(groups)
