@@ -64,21 +64,23 @@ def download_autoeq_index() -> list[str]:
 
 def download_preset(model: str) -> list[dict]:
     """Download a specific AutoEQ preset from GitHub."""
-    # Construct URL
     slug = model.replace(" ", "%20")
     url = (
         "https://raw.githubusercontent.com/jaakkopasanen/AutoEq/"
         f"master/results/oratory1990/harman_over-ear_2018/{slug}/{slug}.json"
     )
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        # Cache locally
+        from core.http_client import http_get_json
+        result = http_get_json(url, timeout=10, max_bytes=256 * 1024)
+        if not result.ok or result.data is None:
+            raise RuntimeError(result.error or "Download failed")
+        data = result.data
+        # Cache atomically
+        from core.json_store import atomic_write_json
         os.makedirs(CACHE_DIR, exist_ok=True)
         cache_path = os.path.join(
             CACHE_DIR, model.replace(" ", "_").replace("/", "_") + ".json")
-        with open(cache_path, "w") as f:
-            json.dump(data, f)
+        atomic_write_json(cache_path, data)
 
         bands = []
         for entry in data.get("filters", []):

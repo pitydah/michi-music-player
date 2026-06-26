@@ -162,6 +162,8 @@ class DiscDetectionService:
                 logger.debug("ISO unmount failed: %s", e)
         self._loop_device = ""
         self._iso_path = ""
+        self._is_iso_mode = False
+        self._current_drive = ""
 
     @property
     def is_iso_mode(self) -> bool:

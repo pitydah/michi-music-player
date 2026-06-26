@@ -44,6 +44,7 @@ class RemoteBrowser(QWidget):
         self._history = []  # stack of (type, id, name)
         self._current_type = "artists"
         self._current_id = ""
+        self._nav_token = 0
 
         self.setStyleSheet("background: #090B11;")
 
@@ -156,13 +157,15 @@ class RemoteBrowser(QWidget):
         self._list.clear()
         self._status.setText(f"Cargando {label}...")
         self._status.show()
+        self._nav_token += 1
+        token = self._nav_token
 
         workers = getattr(self, '_workers', None)
         if workers:
             workers.run_task(
                 f"subsonic:{label}",
                 loader,
-                on_done=lambda data: self._on_remote_data(data, populator),
+                on_done=lambda data: self._on_remote_data(data, populator, token),
                 on_error=lambda e: self._status.setText(f"Error: {e}"))
             return
 
@@ -188,7 +191,9 @@ class RemoteBrowser(QWidget):
             self._status.setText(f"Error inesperado: {e}")
             self._status.show()
 
-    def _on_remote_data(self, data, populator):
+    def _on_remote_data(self, data, populator, token: int):
+        if token != self._nav_token:
+            return
         populator(data)
         self._status.hide()
 
