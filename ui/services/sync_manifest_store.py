@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
+
+from core.json_store import atomic_write_json, read_json_safe
 
 logger = logging.getLogger("michi.sync.manifest_store")
 
@@ -23,26 +24,20 @@ class SyncManifestStore:
         ts = time.strftime("%Y%m%d_%H%M%S")
         mid = manifest.get("manifest_id", ts)
 
-        # latest.json (public version)
+        # latest.json — always save full manifest dict
         latest_path = os.path.join(device_dir, "latest.json")
-        data_to_save = manifest.get("tracks", manifest) if public else manifest
-        with open(latest_path, "w") as f:
-            json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+        data_to_save = manifest if (public and isinstance(manifest, dict)) else manifest
+        atomic_write_json(latest_path, data_to_save)
 
         # timestamped file
         hist_path = os.path.join(device_dir, f"{ts}_{mid}.json")
-        with open(hist_path, "w") as f:
-            json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+        atomic_write_json(hist_path, data_to_save)
 
         # history index
         history_path = os.path.join(device_dir, "history.json")
-        history = []
-        if os.path.exists(history_path):
-            try:
-                with open(history_path) as f:
-                    history = json.load(f)
-            except Exception:
-                pass
+        history = read_json_safe(history_path, default=[], backup_corrupt=True)
+        if not isinstance(history, list):
+            history = []
         history.append({
             "manifest_id": mid,
             "created_at": manifest.get("created_at", ts),
@@ -50,27 +45,24 @@ class SyncManifestStore:
             "total_size": manifest.get("total_size", 0),
             "file": f"{ts}_{mid}.json",
         })
-        with open(history_path, "w") as f:
-            json.dump(history[-20:], f, indent=2, ensure_ascii=False)
+        atomic_write_json(history_path, history[-20:])
 
     def load_latest(self, device_id: str) -> dict | None:
         path = os.path.join(self._base, device_id, "latest.json")
-        if os.path.exists(path):
-            try:
-                with open(path) as f:
-                    return json.load(f)
-            except Exception as e:
-                logger.debug("Manifest load failed: %s", e)
+        data = read_json_safe(path, default=None, backup_corrupt=True)
+        if isinstance(data, list):
+            # Legacy: old format stored just the tracks list
+            logger.debug("Legacy latest.json (list) detected — wrapping in dict")
+            data = {"tracks": data, "manifest_id": "legacy"}
+        if isinstance(data, dict):
+            return data
         return None
 
     def load_history(self, device_id: str) -> list[dict]:
         path = os.path.join(self._base, device_id, "history.json")
-        if os.path.exists(path):
-            try:
-                with open(path) as f:
-                    return json.load(f)
-            except Exception:
-                pass
+        data = read_json_safe(path, default=[], backup_corrupt=True)
+        if isinstance(data, list):
+            return data
         return []
 
     def list_devices(self) -> list[str]:

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import json
+import contextlib
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
+from core.json_store import atomic_write_json, read_json_safe, field
 
 logger = logging.getLogger("michi.sync.registry")
 
@@ -39,21 +41,17 @@ class DeviceRegistry:
         self._load()
 
     def _load(self):
-        if os.path.exists(self._path):
-            try:
-                with open(self._path) as f:
-                    data = json.load(f)
-                for item in data:
-                    d = PairedDevice(**item)
-                    self._devices[d.device_id] = d
-            except Exception as e:
-                logger.warning("Device registry load failed: %s", e)
+        data = read_json_safe(self._path, default=[], backup_corrupt=True)
+        if not isinstance(data, list):
+            return
+        for item in data:
+            with contextlib.suppress(Exception):
+                d = PairedDevice(**item)
+                self._devices[d.device_id] = d
 
     def _save(self):
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
         data = [d.__dict__ for d in self._devices.values()]
-        with open(self._path, "w") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        atomic_write_json(self._path, data)
 
     def register(self, device_id: str, name: str, host: str = "",
                  port: int = 53318, device_type: str = "android",
