@@ -2757,8 +2757,9 @@ class MainWindow(QMainWindow):
         self._refresh_genres_data()
 
     def _refresh_songs_data(self):
+        """Pure data refresh — updates model without touching counters/view."""
         self._apply_filters()
-        self._show_song_grid()
+        self._song_grid.set_items(self._all_items, card_size=170)
 
     def _refresh_albums_data(self):
         self._album_grid.set_items(self._album_items(), 200,
@@ -3027,9 +3028,6 @@ class MainWindow(QMainWindow):
 
     def _open_file(self):
         self._file_actions.open_files(ALL_EXTS)
-
-    def _add_folder(self):
-        self._file_actions.add_folder()
 
     def _on_folder_create_playlist(self, name: str, filepaths: list):
         self._file_actions.folder_create_playlist(name, filepaths)
