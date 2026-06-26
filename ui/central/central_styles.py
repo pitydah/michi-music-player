@@ -790,3 +790,36 @@ def status_card_qss(status: str) -> str:
             color: {text};
         }}
     """
+
+
+def grid_card_qss(name: str, active: bool = False) -> str:
+    """Compact card for album/artist/genre grids."""
+    border = ACCENT_SELECTION if active else BORDER_CARD
+    bg = SURFACE_CARD_ACCENT if active else SURFACE_CARD
+    return f"""
+        QFrame#{name} {{
+            background: {bg};
+            border: 1px solid {border};
+            border-radius: 14px;
+        }}
+        QFrame#{name}:hover {{
+            background: {SURFACE_CARD_HOVER};
+            border: 1px solid {BORDER_CARD_ACCENT};
+        }}
+        QFrame#{name} QLabel {{
+            background: transparent;
+            border: none;
+        }}
+    """
+
+
+def icon_slot_qss(name: str) -> str:
+    """Square slot for icons — no text, just a centered icon container."""
+    return f"""
+        QLabel#{name} {{
+            background: rgba(143,183,255,0.06);
+            border: 1px solid rgba(143,183,255,0.06);
+            border-radius: 12px;
+            color: rgba(255,255,255,0.52);
+        }}
+    """

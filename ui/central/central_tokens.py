@@ -6,7 +6,7 @@ BG_CONTENT             = "#090B11"
 SURFACE_GLASS          = "rgba(255,255,255,0.040)"
 SURFACE_GLASS_HOVER    = "rgba(255,255,255,0.060)"
 SURFACE_POPUP          = "rgba(13,16,24,0.985)"
-SURFACE_SECTION        = "rgba(255,255,255,0.020)"
+SURFACE_SECTION        = "rgba(255,255,255,0.035)"
 SURFACE_INPUT          = "rgba(255,255,255,0.055)"
 
 # ── Borders ──
@@ -65,7 +65,7 @@ SURFACE_CONTROL         = "rgba(255,255,255,0.045)"
 SURFACE_CONTROL_HOVER   = "rgba(255,255,255,0.065)"
 
 # ── Card borders (semantic) ──
-BORDER_CARD             = "rgba(255,255,255,0.030)"
+BORDER_CARD             = "rgba(255,255,255,0.040)"
 BORDER_CARD_ACCENT      = "rgba(143,183,255,0.10)"
 BORDER_CARD_ELEVATED    = "rgba(255,255,255,0.040)"
 BORDER_CONTROL          = "rgba(255,255,255,0.05)"

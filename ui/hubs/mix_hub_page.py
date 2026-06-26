@@ -107,10 +107,14 @@ class MixHubPage(QWidget):
         card_layout.setSpacing(10)
 
         card_title = QLabel(title)
+        card_title.setObjectName("mixCardTitle")
+        card_title.setStyleSheet(card_title_qss())
         card_layout.addWidget(card_title)
 
         card_desc = QLabel(description)
+        card_desc.setObjectName("mixCardDesc")
         card_desc.setWordWrap(True)
+        card_desc.setStyleSheet(card_desc_qss())
         card_layout.addWidget(card_desc)
 
         card_layout.addStretch()

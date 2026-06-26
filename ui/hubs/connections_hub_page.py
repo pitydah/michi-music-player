@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from ui.central.central_styles import (
     glass_card_qss, glass_button_qss, glass_chip_button_qss, glass_progress_qss,
     card_title_qss, card_desc_qss, card_meta_qss,
-    page_title_qss, page_subtitle_qss,
+    page_title_qss, page_subtitle_qss, section_label_qss,
 )
 
 _SERVICE_DEFS = [
@@ -64,7 +64,7 @@ class ConnectionsHubPage(QWidget):
         # ── Saved servers ──
         if servers:
             sec = QLabel("SERVIDORES CONFIGURADOS")
-            sec.setStyleSheet("QLabel { color: rgba(255,255,255,0.48); font-size: 11px; font-weight: 600; letter-spacing: 1px; }")
+            sec.setStyleSheet(section_label_qss())
             cl.addWidget(sec)
             grid = QGridLayout()
             grid.setSpacing(12)

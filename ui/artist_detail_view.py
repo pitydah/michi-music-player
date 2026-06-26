@@ -708,8 +708,8 @@ class _SectionCard(QFrame):
         self.setObjectName(name)
         self.setStyleSheet(f"""
             QFrame#{name} {{
-                background: rgba(255,255,255,0.020);
-                border: 1px solid rgba(255,255,255,0.020);
+                background: rgba(255,255,255,0.035);
+                border: 1px solid rgba(255,255,255,0.045);
                 border-radius: 16px;
             }}
             QFrame#{name} QLabel {{

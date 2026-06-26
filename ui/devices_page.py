@@ -317,6 +317,7 @@ class DevicesPage(QWidget):
 
             forget = QPushButton("Olvidar")
             forget.setCursor(Qt.PointingHandCursor)
+            forget.setStyleSheet(glass_button_qss("danger"))
             if hasattr(device, "device_id"):
                 did = device.device_id
                 forget.clicked.connect(lambda c=None, d=did: self._on_unpair(d))
@@ -324,6 +325,7 @@ class DevicesPage(QWidget):
 
             view = QPushButton("Manifiesto")
             view.setCursor(Qt.PointingHandCursor)
+            view.setStyleSheet(glass_button_qss("secondary"))
             if isinstance(device, PairedDevice):
                 did = device.device_id
                 view.clicked.connect(
@@ -334,6 +336,7 @@ class DevicesPage(QWidget):
         else:
             pair = QPushButton("Emparejar")
             pair.setCursor(Qt.PointingHandCursor)
+            pair.setStyleSheet(glass_button_qss("accent"))
             alias = device.get("alias", "")
             ip_val = device.get("ip", device.get("host", ""))
             pair.clicked.connect(lambda c=None, a=alias, h=ip_val: self._on_pair(a, h))

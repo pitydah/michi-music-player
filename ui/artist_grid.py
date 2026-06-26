@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 
 from library.artist_grouping import ArtistGroup
 from library.album_art import load_cover_pixmap
+from ui.central.central_styles import menu_qss
 
 _BG = "#090B11"
 _PANEL = "rgba(255,255,255,0.035)"
@@ -98,7 +99,7 @@ class ArtistGridWidget(QWidget):
         self._empty_label.setAlignment(Qt.AlignCenter)
         self._empty_label.setWordWrap(True)
         self._empty_label.setStyleSheet(
-            "font-size: 14px; color: rgba(255,255,255,0.38);"
+            "font-size: 14px; color: rgba(255,255,255,0.54);"
             "background: transparent; border: none; padding: 48px;")
         self._empty_label.hide()
         outer.addWidget(self._empty_label)
@@ -214,13 +215,7 @@ class ArtistGridWidget(QWidget):
 
     def _show_context_menu(self, pos, artist_key: str):
         menu = QMenu(self)
-        menu.setStyleSheet(f"""
-            QMenu {{ background: rgba(22,24,31,0.97); border: 1px solid rgba(255,255,255,0.10);
-              border-radius: 10px; padding: 6px 4px; color: {_TEXT2}; font-size: 12.5px; }}
-            QMenu::item {{ padding: 7px 32px 7px 16px; border-radius: 6px; }}
-            QMenu::item:selected {{ background: rgba(255,255,255,0.09); }}
-            QMenu::separator {{ height: 1px; background: rgba(255,255,255,0.08); margin: 4px 8px; }}
-        """)
+        menu.setStyleSheet(menu_qss())
 
         acts = {
             "Abrir artista": "open",
@@ -330,14 +325,14 @@ class _ArtistCard(QFrame):
         elif artist.enrichment_status == "error":
             ext_badge = QLabel("Error")
             ext_badge.setStyleSheet(
-                "background: rgba(143,183,255,0.06); color: rgba(143,183,255,0.38);"
+                "background: rgba(143,183,255,0.06); color: rgba(143,183,255,0.52);"
                 "font-size: 9px; font-weight: 600; border-radius: 5px; padding: 1px 6px;")
             ext_badge.setFixedHeight(16)
             badge_row.addWidget(ext_badge)
         elif artist.enrichment_status == "not_found":
             ext_badge = QLabel("Sin info")
             ext_badge.setStyleSheet(
-                "background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.28);"
+                "background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.44);"
                 "font-size: 9px; font-weight: 600; border-radius: 5px; padding: 1px 6px;")
             ext_badge.setFixedHeight(16)
             badge_row.addWidget(ext_badge)
@@ -405,12 +400,7 @@ class _ArtistCard(QFrame):
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
-        menu.setStyleSheet(f"""
-            QMenu {{ background: rgba(22,24,31,0.97); border: 1px solid rgba(255,255,255,0.10);
-              border-radius: 10px; padding: 6px 4px; color: {_TEXT2}; font-size: 12.5px; }}
-            QMenu::item {{ padding: 7px 32px 7px 16px; border-radius: 6px; }}
-            QMenu::item:selected {{ background: rgba(255,255,255,0.09); }}
-        """)
+        menu.setStyleSheet(menu_qss())
 
         menu.addAction("Abrir artista", lambda: self.context_action.emit("open"))
         menu.addSeparator()

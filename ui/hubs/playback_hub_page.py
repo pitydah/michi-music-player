@@ -88,10 +88,14 @@ class PlaybackHubPage(QWidget):
         c_layout.setSpacing(8)
 
         c_title = QLabel(title)
+        c_title.setObjectName("playbackCardTitle")
+        c_title.setStyleSheet(card_title_qss())
         c_layout.addWidget(c_title)
 
         c_desc = QLabel(description)
+        c_desc.setObjectName("playbackCardDesc")
         c_desc.setWordWrap(True)
+        c_desc.setStyleSheet(card_desc_qss())
         c_layout.addWidget(c_desc)
 
         btn = QPushButton(f"Abrir {title}")

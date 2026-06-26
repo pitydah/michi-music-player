@@ -314,7 +314,7 @@ class _SectionCard(QFrame):
         super().__init__()
         self.setObjectName(name)
         self.setStyleSheet(f"""
-            QFrame#{name} {{ background: rgba(255,255,255,0.020);
-              border: 1px solid rgba(255,255,255,0.020); border-radius: 14px; }}
+            QFrame#{name} {{ background: rgba(255,255,255,0.035);
+              border: 1px solid rgba(255,255,255,0.045); border-radius: 14px; }}
             QFrame#{name} QLabel {{ background: transparent; border: none; }}
         """)

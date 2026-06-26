@@ -60,10 +60,10 @@ QTreeWidget::item:hover:!selected {
     background: rgba(143,183,255,0.06);
 }
 QTreeWidget::branch { background: transparent; }
-
-QTableView {
-    background: rgba(50, 50, 56, 200); border: none; outline: none;
-    border-radius: 12px; gridline-color: transparent;
+    QTableView {
+        background: transparent;
+        border: none; outline: none;
+        border-radius: 12px; gridline-color: transparent;
 }
 QTableView::item { padding: 6px 12px; border-bottom: none; color: rgba(255,255,255,0.85); }
 QTableView::item:hover { background: """ + ACCENT_SURFACE + """; }
@@ -101,7 +101,7 @@ QComboBox {
 QComboBox:hover { border-color: rgba(255,255,255,0.15); }
 QComboBox QAbstractItemView {
     background: """ + SURFACE_POPUP + """; border: 1px solid """ + BORDER_NORMAL + """;
-    border-radius: 8px; selection-background-color: #8FB7FF;
+    border-radius: 8px; selection-background-color: """ + ACCENT_SELECTION + """;
     selection-color: #fff; outline: none;
 }
 
