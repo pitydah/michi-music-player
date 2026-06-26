@@ -404,6 +404,8 @@ class AiAssistantPanel(QWidget):
             if item and item.widget():
                 item.widget().deleteLater()
         self._messages.clear()
+        if self._empty_state and self._empty_state.isHidden():
+            self._empty_state.show()
 
     def _scroll_to_bottom(self):
         sb = self._scroll.verticalScrollBar()
@@ -415,15 +417,15 @@ class AiAssistantPanel(QWidget):
     def _build_panel_qss() -> str:
         return (
             "QWidget#aiAssistantPanel { background: #090B11; }"
-            "QFrame#assistantHeader { background: rgba(255,255,255,0.025);"
-            "  border-bottom: 1px solid rgba(255,255,255,0.04); }"
+            "QFrame#assistantHeader { background: rgba(255,255,255,0.030);"
+            "  border-bottom: 1px solid rgba(255,255,255,0.05); }"
             "QLabel#assistantHeaderTitle { color: rgba(255,255,255,0.92); font-size: 18px;"
             "  font-weight: 700; background: transparent; }"
-            "QLabel#assistantHeaderSubtitle { color: rgba(255,255,255,0.56); font-size: 12px;"
+            "QLabel#assistantHeaderSubtitle { color: rgba(255,255,255,0.62); font-size: 12px;"
             "  background: transparent; }"
-            "QLabel#assistantEmptyTitle { color: rgba(255,255,255,0.56); font-size: 17px;"
+            "QLabel#assistantEmptyTitle { color: rgba(255,255,255,0.72); font-size: 17px;"
             "  font-weight: 600; background: transparent; }"
-            "QLabel#assistantEmptyDesc { color: rgba(255,255,255,0.42); font-size: 13px;"
+            "QLabel#assistantEmptyDesc { color: rgba(255,255,255,0.54); font-size: 13px;"
             "  background: transparent; max-width: 400px; }"
             "QPushButton#assistantChip { background: rgba(255,255,255,0.04);"
             "  border: 1px solid rgba(255,255,255,0.04); border-radius: 10px;"
@@ -448,13 +450,13 @@ class AiAssistantPanel(QWidget):
             "QPushButton#assistantSendBtn:pressed { background: rgba(143,183,255,0.08); }"
             "QFrame#assistantChatCard { background: rgba(255,255,255,0.025);"
             "  border: 1px solid rgba(255,255,255,0.035); border-radius: 18px; }"
-            "QFrame#assistantSuggestionsPanel { background: rgba(255,255,255,0.020);"
-            "  border: 1px solid rgba(255,255,255,0.030); border-radius: 18px; }"
-            "QLabel#assistantSuggTitle { color: rgba(255,255,255,0.72); font-size: 14px;"
+            "QFrame#assistantSuggestionsPanel { background: rgba(255,255,255,0.030);"
+            "  border: 1px solid rgba(255,255,255,0.04); border-radius: 18px; }"
+            "QLabel#assistantSuggTitle { color: rgba(255,255,255,0.82); font-size: 14px;"
             "  font-weight: 600; background: transparent; }"
-            "QLabel#assistantSuggDesc { color: rgba(255,255,255,0.46); font-size: 11px;"
+            "QLabel#assistantSuggDesc { color: rgba(255,255,255,0.52); font-size: 11px;"
             "  background: transparent; }"
-            "QLabel#assistantSuggEmpty { color: rgba(255,255,255,0.38); font-size: 12px;"
+            "QLabel#assistantSuggEmpty { color: rgba(255,255,255,0.52); font-size: 12px;"
             "  background: transparent; }"
             "QScrollArea#assistantSuggScroll { background: transparent; border: none; }"
             "QWidget#assistantSuggContainer { background: transparent; }"

@@ -338,7 +338,7 @@ class HomeAudioView(QWidget):
         cl.addSpacing(10)
 
         rows_data = [
-            "Home Assistant", "API Michi", "mDNS", "Servidor local", "Ultima sinc",
+            "Home Assistant", "API Michi", "mDNS", "Servidor local", "Última sinc",
         ]
         self._sys_labels = {}
         for label in rows_data:
@@ -383,7 +383,7 @@ class HomeAudioView(QWidget):
                      "#8FB7FF" if self._mdns_running else "rgba(255,255,255,0.20)"),
             "Servidor local": ("Activo" if self._local_media_running else "No activo",
                                "#8FB7FF" if self._local_media_running else "rgba(255,255,255,0.20)"),
-            "Ultima sinc": ("—", "rgba(255,255,255,0.20)"),
+            "Última sinc": ("—", "rgba(255,255,255,0.20)"),
         }
         for label, (dot, val) in self._sys_labels.items():
             text, color = updates.get(label, ("—", "rgba(255,255,255,0.20)"))
@@ -404,7 +404,7 @@ class HomeAudioView(QWidget):
         cl.addWidget(title)
 
         if self._snapserver_running:
-            cl.addWidget(StatusPill("Activo", "En ejecucion", "success"))
+            cl.addWidget(StatusPill("Activo", "En ejecución", "success"))
             info = QHBoxLayout()
             info.setSpacing(12)
             for kv in [("Stream", "FLAC 44.1kHz"), ("Puerto", str(self._snap_ctrl_port or 1705)),
@@ -600,7 +600,7 @@ class HomeAudioView(QWidget):
         cl.setContentsMargins(18, 14, 18, 14)
         cl.setSpacing(0)
 
-        title = QLabel("Diagnostico")
+        title = QLabel("Diagnóstico")
         title.setStyleSheet(
             "font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.88);")
         cl.addWidget(title)
@@ -608,7 +608,7 @@ class HomeAudioView(QWidget):
 
         rows = [
             "Home Assistant", "Snapserver", "mDNS",
-            "API Michi", "Servidor local", "Ultimo error",
+            "API Michi", "Servidor local", "Último error",
             "IP local", "Firewall",
         ]
         self._diag_labels = {}
@@ -654,7 +654,7 @@ class HomeAudioView(QWidget):
             "mDNS": "Activo" if getattr(self, '_mdns_running', False) else "Inactivo",
             "API Michi": "Activa" if getattr(self, '_api_running', False) else "No activa",
             "Servidor local": "Activo" if getattr(self, '_local_media_running', False) else "No activo",
-            "Ultimo error": "—",
+            "Último error": "—",
             "IP local": "—",
             "Firewall": "—",
         }

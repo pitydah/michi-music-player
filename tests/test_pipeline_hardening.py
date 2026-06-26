@@ -1,6 +1,5 @@
 """Pipeline hardening tests — safe fallbacks, error handling, resource cleanup."""
-import logging
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 
 class TestPipelineFactoryHardening:
@@ -97,6 +96,4 @@ class TestPipelineLogging:
         import audio.pipeline_factory
         with open(audio.pipeline_factory.__file__) as f:
             content = f.read()
-        lines = [l for l in content.split("\n") if "set_property" in l and "try" in content]
-        # At minimum, verify property setting exists
         assert "set_property" in content

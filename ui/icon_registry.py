@@ -97,7 +97,7 @@ ICON_REGISTRY: dict[str, IconSpec] = {
     "sidebar_add": IconSpec(
         key="sidebar_add", path="icons/sidebar_clean/sidebar_add_24.png",
         family="sidebar", symbolic=True,
-        description="Anadir"),
+        description="Añadir"),
     "sidebar_assistant": IconSpec(
         key="sidebar_assistant", path="icons/sidebar_assistant.svg",
         family="sidebar", render_mode="native_color",
