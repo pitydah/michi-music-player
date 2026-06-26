@@ -13,6 +13,17 @@ from ui.icon_renderer import render_svg_icon
 HERE = Path(__file__).parent.parent
 BREEZE = "/usr/share/icons/breeze"
 
+_USE_PKG_RESOURCES = not (HERE / "icons").is_dir()
+
+
+def _resolve_resource(path: str) -> str | None:
+    """Resolve icon path using importlib.resources when installed as package."""
+    try:
+        import importlib.resources
+        return str(importlib.resources.files("icons") / path)
+    except Exception:
+        return None
+
 _log = logging.getLogger("michi.icons")
 
 # ── Color tokens for tinting ──
@@ -29,14 +40,24 @@ def _cache_key_func(key, color_str, size):
 
 
 def icon_path(key: str) -> str:
-    """Return absolute path for an icon key, or '' if not found."""
+    """Return absolute path for an icon key, or '' if not found.
+    Works from repo, editable install, and pip install . via importlib.resources."""
     spec = ICON_REGISTRY.get(key)
     if not spec:
         return ""
     p = Path(spec.path)
-    full = p if p.is_absolute() else HERE / spec.path
+    if p.is_absolute():
+        if p.exists():
+            return str(p)
+        return ""
+    # Repo / editable install
+    full = HERE / spec.path
     if full.exists():
         return str(full)
+    # Package install — use importlib.resources
+    resolved = _resolve_resource(spec.path)
+    if resolved and os.path.exists(resolved):
+        return resolved
     # Theme fallback
     if spec.theme_fallback:
         fb = os.path.join(BREEZE, spec.theme_fallback)

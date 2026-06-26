@@ -1,6 +1,6 @@
 # Michi Music Player
 
-Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · 339 tests · ruff 0
+Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · 340+ tests · ruff 0 · alpha avanzada
 
 [![Tests](https://img.shields.io/badge/tests-339%2F339-brightgreen)]()
 [![Ruff](https://img.shields.io/badge/ruff-0-green)]()
@@ -315,7 +315,7 @@ michi-music-player/
 │   │   └── tray_controller.py        # System tray
 │   └── ...
 │
-├── tests/                            # Tests (180 en 25 archivos)
+├── tests/                            # Tests (340+)
 │   ├── test_replaygain.py (14) / test_search_engine.py (7)
 │   ├── test_search_index.py (5) / test_indexer.py (10)
 │   ├── test_dac_manager.py (6) / test_pipeline_factory.py (6)
@@ -384,34 +384,37 @@ michi-music-player/
 
 | Funcionalidad | Estado |
 |--------------|--------|
-| Reproducción local (MP3, FLAC, OGG, Opus, WAV, DSD, AIFF, APE, WV) | ✅ Completo |
-| 9 perfiles de audio (Standard → Multiroom) | ✅ Completo |
-| PipelineFactory + AudioRoutePlan + DspState | ✅ Completo |
-| EQ gráfico 31-bandas + paramétrico biquads reales | ✅ Completo |
-| ReplayGain avanzado (track/album/auto + preamp/headroom/anti-clip) | ✅ Completo |
-| Biblioteca SQLite + metadatos avanzados (MusicBrainz, BPM, RG, bit_depth) | ✅ Completo |
-| Indexer 2.0 incremental + batch writing | ✅ Completo |
-| Search 2.0 FTS5 + field filters (`artist:`, `year:>`, `format:`) | ✅ Completo |
-| Cover Flow visual (implementación independiente) | ✅ Completo |
-| AlbumInfoBanner + enriquecimiento externo | ✅ Completo |
-| Artistas (grid premium + ficha detalle + MusicBrainz + Wikipedia) | ✅ Completo |
-| Home Audio multiroom (HA + Snapcast + Michi API + mDNS) | ✅ Completo |
-| Transmit desacoplado (7 controladores) | ✅ Completo |
-| Recognition real (ShazamIO + AudD HTTP API + AcoustID fpcalc) | ✅ Completo |
-| AudioCaptureService continuo (PyAudio 22050Hz, loop 15s) | ✅ Completo |
-| Quality badge (6 categorías + tooltip + diálogo diagnóstico) | ✅ Completo |
-| UI glassmorphism unificada (14+ vistas) | ✅ Completo |
-| Sistema de iconos centralizado (38+ iconos, IconSpec) | ✅ Completo |
-| Playlist Hub (crear, M3U import/export, crear desde carpeta/cola/artista) | ✅ Completo |
-| PlayerService wrappers públicos (7 métodos) · 0 accesos privados | ✅ Completo |
-| AppContext DI · 0 accesos directos a window desde controladores | ✅ Completo |
-| MPRIS DBus (KDE Plasma) | ✅ Completo |
-| Subsonic / Navidrome / Jellyfin | ✅ Completo |
-| Radio por Internet (HTTP/ICY) | ✅ Completo |
-| Sincronización Android (REST API + UDP discovery) | ✅ Completo |
-| DSD/DFF nativo (PCM + DoP experimental vía `MICHI_DOP_EXPERIMENTAL=1`) | ✅ Completo |
-| Gapless playback + crossfade | ✅ Completo |
-| Mini Player (ventana compacta independiente) | ✅ Completo |
+| Reproducción local (MP3, FLAC, OGG, Opus, WAV, DSD, AIFF, APE, WV) | ✅ Estable |
+| 9 perfiles de audio (Standard → Multiroom) | ✅ Estable |
+| PipelineFactory + AudioRoutePlan + DSP | ✅ Estable |
+| EQ gráfico + paramétrico básico | ✅ Estable |
+| ReplayGain (track/album + preamp) | ✅ Estable |
+| Biblioteca SQLite + metadatos (Mutagen + GStreamer) | ✅ Estable |
+| Indexer 2.0 incremental + batch writing | ✅ Estable |
+| Search 2.0 FTS5 + field filters | ✅ Estable |
+| CoverFlow visual dentro de Álbumes | ✅ Estable |
+| Artistas (grid + detalle interno) | ✅ Estable |
+| Géneros (grid + detalle interno) | ✅ Estable |
+| Playlist Hub (crear, M3U import/export) | ✅ Estable |
+| PlayerService wrappers públicos | ✅ Estable |
+| AppContext DI (migración en progreso) | 🔄 En estabilización |
+| MPRIS DBus (KDE Plasma) | ✅ Estable |
+| Subsonic / Navidrome / Jellyfin | ✅ Estable |
+| Radio por Internet (HTTP/ICY) | ✅ Estable |
+| DSD/DFF nativo (PCM + DoP experimental) | ✅ Estable |
+| Gapless playback | ✅ Estable |
+| Mini Player (ventana compacta) | ✅ Estable |
+| UI glassmorphism unificada | ✅ Estable |
+| Sistema de iconos (38+ iconos) | ✅ Estable |
+| Transmit (streaming a dispositivos) | 🔄 En estabilización |
+| Sincronización Android (REST API + UDP) | 🧪 Experimental |
+| Home Audio multiroom (HA + Snapcast) | 🧪 Experimental |
+| Recognition (ShazamIO + AudD + AcoustID) | 🧪 Experimental |
+| AI Assistant (Ollama local) | 🧪 Experimental |
+| Audio Analysis (similitud, features) | 🧪 Experimental |
+| AutoEQ (presets online) | 🧪 Experimental |
+| Michi Disc Lab (CD rip/ISO) | 🧪 Experimental |
+| Library Doctor (diagnóstico) | 🧪 Experimental |
 | Fondo adaptativo (gradiente basado en carátula) | ✅ Completo |
 | Tag editor (Mutagen ID3/Vorbis/MP4) | ✅ Completo |
 | Persistencia de cola entre sesiones | ✅ Completo |
@@ -422,7 +425,7 @@ michi-music-player/
 
 | Métrica | Valor |
 |---------|-------|
-| Tests | **206** en 25 archivos |
+| Tests | **340+** |
 | Archivos `.py` | **171** |
 | Ruff | **0** |
 | Bugs (F-class) | **0** |
