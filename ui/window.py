@@ -391,12 +391,34 @@ class MainWindow(QMainWindow):
         self._transmit_mgr.active_changed.connect(self._on_transmit_active_changed)
         self._shutdown.register("transmit", lambda: None)  # no explicit stop needed
 
+        # FileWatcher — real-time monitoring of library roots
+        from library.file_watcher import FileWatcher
+        self._file_watcher = FileWatcher(self._db, parent=self)
+        self._file_watcher.files_added.connect(self._on_watcher_files_added)
+        self._file_watcher.files_removed.connect(self._on_watcher_files_removed)
+        self._file_watcher.files_modified.connect(self._on_watcher_files_modified)
+        self._shutdown.register("file_watcher", lambda: self._file_watcher.stop())
+
     def _load_initial_data(self):
         """Library loading, enrichment, tray — after everything is wired."""
         if self._safe_mode:
             self._toast_svc.show(
                 "Modo seguro activado — servicios opcionales deshabilitados", "info")
         self._load_library()
+
+        # Backfill missing metadata after library load
+        if not self._safe_mode and hasattr(self, '_workers'):
+            self._workers.run_task("backfill_metadata",
+                lambda: self._db.backfill_missing_metadata(), priority=5)
+            self._workers.run_task("backfill_album_art",
+                lambda: self._db.backfill_missing_album_art(), priority=5)
+
+        # Start FileWatcher after library is loaded
+        if not self._safe_mode and hasattr(self, '_file_watcher'):
+            try:
+                self._file_watcher.start()
+            except Exception:
+                logging.getLogger("michi.setup").warning("FileWatcher failed to start")
 
         if (hasattr(self, '_artist_enrich') and self._artist_enrich
                 and hasattr(self._artist_repo, 'groups')):
@@ -877,7 +899,7 @@ class MainWindow(QMainWindow):
         from sources.folder_source import FolderSource
         roots = self._db.get_library_roots() if self._db else []
         start_dir = roots[0] if roots else os.path.expanduser("~")
-        self._search_ctrl.register("folders", FolderSource(start_dir))
+        self._search_ctrl.register("folders", FolderSource(start_dir, db=self._db))
         self._search_ctrl.set_active("folders")
         self._show_library_hub_page()
         if self._library_hub_page:
@@ -1375,6 +1397,27 @@ class MainWindow(QMainWindow):
         from PySide6.QtGui import QCursor
         from ui.builder.inline_dialogs import show_nowplaying_details
         show_nowplaying_details(self, QCursor.pos(), self._current_ref)
+
+    # ── FileWatcher handlers ──
+
+    def _on_watcher_files_added(self, paths: list[str]):
+        self._file_actions._add_file_list(paths)
+        self._reload_library_after_change(reason="watcher_added")
+        self._toast_svc.show(f"{len(paths)} archivos nuevos detectados", "info")
+
+    def _on_watcher_files_removed(self, paths: list[str]):
+        now = __import__("time").time()
+        for fp in paths:
+            self._db._conn.execute(
+                "UPDATE media_items SET deleted_at=? WHERE filepath=?",
+                (now, fp))
+        self._db._conn.commit()
+        self._reload_library_after_change(reason="watcher_removed")
+
+    def _on_watcher_files_modified(self, paths: list[str]):
+        self._file_actions._add_file_list(paths)
+        self._reload_library_after_change(reason="watcher_modified")
+
     def _scan_path(self, path: str):
         self._file_actions.scan_path(path)
 
@@ -1487,6 +1530,9 @@ class MainWindow(QMainWindow):
             if reply != QMessageBox.Yes:
                 event.ignore()
                 return
+        # Cancel active scans
+        if hasattr(self, '_file_actions') and self._file_actions:
+            self._file_actions.cancel_all_scans()
         # Save queue state before shutdown
         try:
             paths, idx = self._playback.get_queue_state()
@@ -1512,22 +1558,11 @@ class MainWindow(QMainWindow):
         event.ignore()
 
     def dropEvent(self, event: QDropEvent):
-        files = []
-        dirs = []
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            if os.path.isdir(path):
-                dirs.append(path)
-            elif os.path.splitext(path)[1].lower() in AUDIO_EXTS:
-                files.append(path)
-
-        if dirs:
-            for d in dirs:
-                self._scan_path(d)
+        urls = event.mimeData().urls()
+        self._file_actions.add_files_by_drop(urls)
+        files = [url.toLocalFile() for url in urls
+                 if os.path.splitext(url.toLocalFile())[1].lower() in AUDIO_EXTS]
         if files:
-            for fp in files:
-                self._db.add_file(fp)
-            self._reload_library_after_change(reason="drop_files")
             if len(files) == 1:
                 self._play_file(files[0])
             else:

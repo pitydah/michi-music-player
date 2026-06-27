@@ -135,6 +135,8 @@ class FileActions:
         overlay.set_text("Escaneando...")
         overlay.show(delay_ms=100)
 
+        overlay.cancelled.connect(lambda: self._cancel_scan(thread, worker, overlay))
+
         worker.progress.connect(
             lambda c, t, f: overlay.set_text(
                 f"Escaneando [{c}/{t}]\n{os.path.basename(f)[:60]}"))
@@ -181,6 +183,11 @@ class FileActions:
         thread.finished.connect(lambda _=thread: self._cleanup_thread(thread))
         self._active_threads.append(thread)
         thread.start()
+
+    def _cancel_scan(self, thread, worker, overlay):
+        worker.cancel()
+        thread.quit()
+        thread.wait(2000)
 
     def _cleanup_thread(self, thread):
         if thread in self._active_threads:

@@ -77,16 +77,13 @@ class FolderSource(MusicSource):
 
     def get_folder_stats(self, path: str) -> dict:
         """Return aggregated stats for a directory."""
+        from library.folder_index import list_audio_files, list_subfolders
         files = list_audio_files(path)
         folders = list_subfolders(path)
         total_duration = 0.0
         if self._db:
-            row = self._db._conn.execute(
-                "SELECT COALESCE(SUM(duration), 0) FROM media_items "
-                "WHERE directory = ? AND deleted_at IS NULL",
-                (path,)).fetchone()
-            if row:
-                total_duration = row[0] or 0.0
+            stats = self._db.get_directory_stats(path)
+            total_duration = stats["total_duration"]
         return {
             "file_count": len(files),
             "folder_count": len(folders),

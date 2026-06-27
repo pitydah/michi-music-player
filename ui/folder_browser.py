@@ -7,7 +7,7 @@ import subprocess
 import json
 
 from PySide6.QtCore import Qt, Signal, QSize, QSettings
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QTreeWidget, QTreeWidgetItem,
     QPushButton, QLabel, QFileDialog, QHeaderView, QFrame, QMenu,
@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from library.folder_index import list_audio_files, list_subfolders
-from ui.icons import get_icon
+from ui.icons import get_qicon
 from ui.central.central_styles import glass_button_qss, glass_card_qss
 
 COVER_NAMES = ("cover.jpg", "cover.png", "folder.jpg", "folder.png",
@@ -349,11 +349,14 @@ class FolderBrowserWidget(QWidget):
             a = self._favs_menu.addAction("(vacío)")
             a.setEnabled(False)
         else:
-            for p in self._favorites:
+            for p in list(self._favorites):
                 name = os.path.basename(p) or p
                 self._favs_menu.addAction(name, lambda path=p: self._load(path))
             self._favs_menu.addSeparator()
-            self._favs_menu.addAction("Quitar actual", lambda: self._toggle_favorite())
+            for p in list(self._favorites):
+                name = os.path.basename(p) or p
+                self._favs_menu.addAction(f"✕ {name}",
+                    lambda path=p: self._remove_favorite(path))
 
     def _rebuild_history_menu(self):
         self._hist_menu.clear()
@@ -382,6 +385,14 @@ class FolderBrowserWidget(QWidget):
         self._save_favorites()
         self._fav_toggle.setChecked(path in self._favorites)
         self._rebuild_favs_menu()
+
+    def _remove_favorite(self, path: str):
+        if path in self._favorites:
+            self._favorites.remove(path)
+            self._save_favorites()
+            self._rebuild_favs_menu()
+            if path == self._root:
+                self._fav_toggle.setChecked(False)
 
     # ── Filter / Search ──
 
@@ -450,7 +461,8 @@ class FolderBrowserWidget(QWidget):
 
         for folder in folders_arr:
             item = QTreeWidgetItem(self._tree)
-            item.setIcon(0, QIcon(get_icon("folder")))
+            item.setIcon(0, get_qicon("folder", size=24))
+
             item.setText(0, os.path.basename(folder))
             item.setText(1, "Carpeta")
             item.setText(2, "—")
@@ -477,9 +489,7 @@ class FolderBrowserWidget(QWidget):
 
         for fp, item_data in file_refs:
             tree_item = QTreeWidgetItem(self._tree)
-            song_icon = get_icon("songs") or get_icon("sidebar_library")
-            if song_icon:
-                tree_item.setIcon(0, QIcon(song_icon))
+            tree_item.setIcon(0, get_qicon("songs", size=24) or get_qicon("sidebar_library", size=24))
             if item_data:
                 title = (item_data.title
                          or os.path.splitext(os.path.basename(fp))[0])

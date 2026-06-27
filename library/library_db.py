@@ -137,6 +137,12 @@ class LibraryDB:
         self._conn.close()
 
     def add_file(self, filepath: str) -> int | None:
+        """Add a single file to the library using BatchWriter for consistency.
+
+        Extracts metadata (Mutagen > GStreamer > filename inference),
+        computes track_uid, stores cover art, and upserts via BatchWriter.
+        This ensures the same column set and ON CONFLICT logic as Indexer.
+        """
         if not os.path.exists(filepath):
             return None
         ext = os.path.splitext(filepath)[1].lower()
@@ -144,163 +150,107 @@ class LibraryDB:
         if kind == "unknown":
             return None
 
-        # Offload heavy metadata extraction to WorkerManager if available
-        worker = getattr(self, '_worker_mgr', None)
-        if worker:
-            fname = os.path.basename(filepath)
-            dname = os.path.dirname(filepath)
-            stat = os.stat(filepath)
-            self._insert_basic(filepath, fname, dname, ext, kind, stat)
+        from library.change_detector import compute_quick_hash
+        from library.batch_writer import BatchWriter
+        from library.album_key import make_album_key
+        from library.metadata_normalizer import (
+            normalize_text, normalize_artist_name, normalize_genre,
+            normalize_year, normalize_bpm, normalize_mb_id,
+        )
 
-            def _writeback(result: tuple):
-                """Callback: write extracted metadata to DB after async extraction."""
-                try:
-                    meta = result[0] if isinstance(result, tuple) else result
-                    title = meta.get("title") or ""
-                    artist = meta.get("artist") or ""
-                    album = meta.get("album") or ""
-                    # Infer from filename when tags are empty
-                    if not title or not artist:
-                        from library.metadata_normalizer import infer_metadata_from_filename
-                        inferred = infer_metadata_from_filename(filepath)
-                        if not title:
-                            title = inferred["title"]
-                        if not artist:
-                            artist = str(inferred.get("artist", "") or "")
-                    year = meta.get("year") or 0
-                    self._conn.execute(
-                        "UPDATE media_items SET title=?, artist=?, album=?,"
-                        "year=?, genre=?, duration=?, albumartist=?,"
-                        "track_number=?, track_total=?, disc_number=?, disc_total=?,"
-                        "composer=?, bitrate=?, sample_rate=?, channels=?,"
-                        "bit_depth=?, bpm=?,"
-                        "mb_track_id=?, mb_album_id=?, mb_albumartist_id=?"
-                        " WHERE filepath=?",
-                        (title, artist, album,
-                         year,
-                         str(meta.get("genre", "") or ""),
-                         meta.get("duration", 0.0) or 0.0,
-                         str(meta.get("albumartist", "") or ""),
-                         int(meta.get("track_number", 0) or 0),
-                         int(meta.get("track_total", 0) or 0),
-                         int(meta.get("disc_number", 0) or 0),
-                         int(meta.get("disc_total", 0) or 0),
-                         str(meta.get("composer", "") or ""),
-                         int(meta.get("bitrate", 0) or 0),
-                         int(meta.get("sample_rate", 0) or 0),
-                         int(meta.get("channels", 0) or 0),
-                         int(meta.get("bit_depth", 0) or 0),
-                         int(meta.get("bpm", 0) or 0),
-                         str(meta.get("mb_track_id", "") or ""),
-                         str(meta.get("mb_album_id", "") or ""),
-                         str(meta.get("mb_albumartist_id", "") or ""),
-                         filepath))
-                    self._conn.commit()
-                    # Store embedded cover art in cache
-                    albumartist = str(meta.get("albumartist", "") or "")
-                    cover_data = meta.get("cover_data", b"")
-                    if cover_data and album:
-                        try:
-                            from library.album_key import make_album_key
-                            ak = make_album_key(albumartist, artist, album)
-                            cover_mime = meta.get("cover_mime", "image/jpeg")
-                            self._conn.execute(
-                                "INSERT OR REPLACE INTO album_art_cache "
-                                "(album_hash, mime, data) VALUES (?,?,?)",
-                                (ak, cover_mime, cover_data))
-                            self._conn.commit()
-                        except Exception:
-                            pass
-                    logger.debug("Async metadata written for %s", filepath)
-                except Exception as e:
-                    logger.debug("Async metadata writeback failed for %s: %s", filepath, e)
-
-            worker.run_task(f"meta:{os.path.basename(filepath)}",
-                lambda fp=filepath: extract_metadata_combined(fp),
-                on_done=_writeback)
-            return None
-
-        # Synchronous fallback
         meta = extract_metadata_combined(filepath)
         fname = os.path.basename(filepath)
         dname = os.path.dirname(filepath)
         stat = os.stat(filepath)
-        title = meta["title"] or fname
-        artist = meta["artist"] or ""
-        album = meta["album"] or ""
-        year = meta.get("year") or 0
-        genre = meta.get("genre") or ""
-        track_number = meta.get("track_number") or 0
-        composer = meta.get("composer") or ""
-        albumartist = meta.get("albumartist") or ""
-        disc_number = meta.get("disc_number") or 0
-        disc_total = meta.get("disc_total") or 0
-        track_total = meta.get("track_total") or 0
-        mb_albumartist_id = meta.get("mb_albumartist_id") or ""
-        mb_album_id = meta.get("mb_album_id") or ""
-        mb_track_id = meta.get("mb_track_id") or ""
-        bit_depth = meta.get("bit_depth") or 0
-        bpm = meta.get("bpm") or 0
+        now = time.time()
 
-        # Store embedded cover art in album_art_cache using stable album_key
+        record = {
+            "filepath": filepath,
+            "filename": fname,
+            "directory": dname,
+            "ext": ext,
+            "kind": kind,
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+            "duration": meta.get("duration", 0.0) or 0.0,
+            "channels": meta.get("channels", 0) or 0,
+            "sample_rate": meta.get("sample_rate", 0) or 0,
+            "bitrate": meta.get("bitrate", 0) or 0,
+            "title": normalize_text(meta.get("title", "") or fname, 256),
+            "artist": normalize_artist_name(meta.get("artist", "") or ""),
+            "album": normalize_text(meta.get("album", "") or "", 256),
+            "albumartist": normalize_artist_name(meta.get("albumartist", "") or ""),
+            "year": normalize_year(meta.get("year")),
+            "genre": normalize_genre(meta.get("genre", "") or ""),
+            "track_number": int(meta.get("track_number", 0) or 0),
+            "track_total": int(meta.get("track_total", 0) or 0),
+            "disc_number": int(meta.get("disc_number", 0) or 0),
+            "disc_total": int(meta.get("disc_total", 0) or 0),
+            "composer": normalize_text(meta.get("composer", "") or "", 256),
+            "mb_track_id": normalize_mb_id(meta.get("mb_track_id", "") or ""),
+            "mb_album_id": normalize_mb_id(meta.get("mb_album_id", "") or ""),
+            "mb_albumartist_id": normalize_mb_id(meta.get("mb_albumartist_id", "") or ""),
+            "bit_depth": int(meta.get("bit_depth", 0) or 0),
+            "bpm": normalize_bpm(meta.get("bpm")),
+            "replaygain_track": float(meta.get("replaygain_track", 0.0) or 0.0),
+            "replaygain_album": float(meta.get("replaygain_album", 0.0) or 0.0),
+            "replaygain_track_peak": float(meta.get("replaygain_track_peak", 0.0) or 0.0),
+            "isrc": normalize_text(meta.get("isrc", "") or "", 128),
+            "label": normalize_text(meta.get("label", "") or "", 256),
+            "conductor": normalize_text(meta.get("conductor", "") or "", 256),
+            "compilation": int(meta.get("compilation", 0) or 0),
+            "media_type": normalize_text(meta.get("media_type", "") or "", 128),
+            "encoder": normalize_text(meta.get("encoder", "") or "", 256),
+            "copyright": normalize_text(meta.get("copyright", "") or "", 512),
+            "originaldate": normalize_text(meta.get("originaldate", "") or "", 32),
+            "remixer": normalize_text(meta.get("remixer", "") or "", 256),
+            "grouping": normalize_text(meta.get("grouping", "") or "", 256),
+            "mood": normalize_text(meta.get("mood", "") or "", 128),
+            "comment": normalize_text(meta.get("comment", "") or "", 512),
+            "lyricist": normalize_text(meta.get("lyricist", "") or "", 256),
+            "replaygain_album_peak": float(meta.get("replaygain_album_peak", 0.0) or 0.0),
+            "r128_track_gain": float(meta.get("r128_track_gain", 0.0) or 0.0),
+            "r128_album_gain": float(meta.get("r128_album_gain", 0.0) or 0.0),
+            "mb_artist_id": normalize_mb_id(meta.get("mb_artist_id", "") or ""),
+            "mb_releasegroup_id": normalize_mb_id(meta.get("mb_releasegroup_id", "") or ""),
+            "acoustid_id": normalize_text(meta.get("acoustid_id", "") or "", 128),
+            "acoustid_fingerprint": normalize_text(meta.get("acoustid_fingerprint", "") or "", 512),
+            "content_hash": compute_quick_hash(filepath),
+            "track_uid": self._compute_track_uid(
+                filepath, meta.get("artist"), meta.get("album"),
+                meta.get("title"), meta.get("duration", 0.0),
+                meta.get("mb_track_id")),
+            "created_at": now,
+            "updated_at": stat.st_mtime,
+            "last_scanned": now,
+            "scan_status": "ok",
+        }
+
         cover_data = meta.get("cover_data", b"")
+        album = record["album"]
+        albumartist = record["albumartist"] or record["artist"]
         if cover_data and album:
             try:
-                from library.album_key import make_album_key
-                ak = make_album_key(albumartist, artist, album)
+                ak = make_album_key(albumartist or "", record.get("artist", ""), album)
                 cover_mime = meta.get("cover_mime", "image/jpeg")
                 self._conn.execute(
-                    "INSERT OR REPLACE INTO album_art_cache (album_hash, mime, data) VALUES (?,?,?)",
+                    "INSERT OR REPLACE INTO album_art_cache "
+                    "(album_hash, mime, data) VALUES (?,?,?)",
                     (ak, cover_mime, cover_data))
-                self._conn.commit()
             except Exception:
                 pass
 
         try:
-            cur = self._conn.execute(
-                "INSERT INTO media_items "
-                "(filepath, filename, directory, ext, kind, size, mtime, duration, "
-                " channels, sample_rate, bitrate, title, artist, album, year, genre, "
-                " track_number, composer, albumartist, disc_number, disc_total, "
-                " track_total, mb_albumartist_id, mb_album_id, bit_depth, mb_track_id, bpm) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
-                "ON CONFLICT(filepath) DO UPDATE SET "
-                " filename=excluded.filename, directory=excluded.directory,"
-                " ext=excluded.ext, kind=excluded.kind,"
-                " size=excluded.size, mtime=excluded.mtime,"
-                " duration=excluded.duration, channels=excluded.channels,"
-                " sample_rate=excluded.sample_rate, bitrate=excluded.bitrate,"
-                " title=excluded.title, artist=excluded.artist,"
-                " album=excluded.album, albumartist=excluded.albumartist,"
-                " year=excluded.year, genre=excluded.genre,"
-                " track_number=excluded.track_number, track_total=excluded.track_total,"
-                " disc_number=excluded.disc_number, disc_total=excluded.disc_total,"
-                " composer=excluded.composer,"
-                " mb_track_id=excluded.mb_track_id, mb_album_id=excluded.mb_album_id,"
-                " mb_albumartist_id=excluded.mb_albumartist_id,"
-                " bit_depth=excluded.bit_depth, bpm=excluded.bpm",
-                (filepath, fname, dname, ext, kind, stat.st_size, stat.st_mtime,
-                 meta["duration"], meta["channels"], meta["sample_rate"], meta["bitrate"],
-                 title[:256], artist[:256], album[:256], year, genre[:128],
-                 track_number, composer[:256], albumartist[:256],
-                 disc_number, disc_total, track_total,
-                 mb_albumartist_id[:128], mb_album_id[:128], bit_depth,
-                 mb_track_id[:128], bpm))
+            writer = BatchWriter(self._conn, batch_size=1)
+            writer.add(record)
+            writer.flush()
             self._conn.commit()
-            return cur.lastrowid
-        except Exception:
-            import logging
-            logging.getLogger("michi").debug("Scanner: commit after add_file failed")
-
-    def _insert_basic(self, filepath, fname, dname, ext, kind, stat):
-        """Insert basic file info (no metadata) — fast, non-blocking."""
-        with contextlib.suppress(sqlite3.Error):
-            self._conn.execute(
-                "INSERT OR IGNORE INTO media_items "
-                "(filepath, filename, directory, ext, kind, size, mtime) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (filepath, fname, dname, ext, kind, stat.st_size, stat.st_mtime))
-            self._conn.commit()
+            return self._conn.execute(
+                "SELECT id FROM media_items WHERE filepath=?",
+                (filepath,)).fetchone()[0]
+        except Exception as e:
+            logger.debug("add_file failed for %s: %s", filepath, e)
+            return None
 
     def backfill_missing_metadata(self, progress_cb=None) -> int:
         """Repair records with missing metadata by re-extracting from files.
@@ -793,6 +743,67 @@ class LibraryDB:
         return {"total_songs": total, "total_artists": artists,
                 "total_albums": albums, "total_duration": dur,
                 "missing_metadata": missing_meta}
+
+    def find_duplicates(self) -> list[dict]:
+        """Find duplicate tracks in the library.
+
+        A duplicate is defined as having the same track_uid or the same
+        content_hash (quick hash). Returns a list of dicts with:
+          - key: the duplicate key (track_uid or content_hash)
+          - type: "uid" or "hash"
+          - tracks: list of dicts with id, filepath, title, artist, album
+        """
+        duplicates = []
+        # By track_uid (most reliable — catches renamed/moved files)
+        rows = self._conn.execute(
+            "SELECT track_uid, GROUP_CONCAT(id) as ids, "
+            "GROUP_CONCAT(filepath, '||') as paths, COUNT(*) as cnt "
+            "FROM media_items WHERE deleted_at IS NULL "
+            "AND track_uid != '' AND track_uid IS NOT NULL "
+            "GROUP BY track_uid HAVING cnt > 1"
+        ).fetchall()
+        for row in rows:
+            track_uid, ids_str, paths_str, cnt = row
+            ids = [int(x) for x in ids_str.split(",")]
+            paths = paths_str.split("||")
+            duplicates.append({
+                "key": track_uid, "type": "uid", "count": cnt,
+                "ids": ids, "filepaths": paths,
+            })
+
+        # By content_hash (files with identical first+last 64KB)
+        rows = self._conn.execute(
+            "SELECT content_hash, GROUP_CONCAT(id) as ids, "
+            "GROUP_CONCAT(filepath, '||') as paths, COUNT(*) as cnt "
+            "FROM media_items WHERE deleted_at IS NULL "
+            "AND content_hash != '' AND content_hash IS NOT NULL "
+            "AND content_hash NOT IN ("
+            "  SELECT DISTINCT content_hash FROM media_items "
+            "  WHERE track_uid != '' AND track_uid IS NOT NULL"
+            ") "
+            "GROUP BY content_hash HAVING cnt > 1"
+        ).fetchall()
+        for row in rows:
+            ch, ids_str, paths_str, cnt = row
+            ids = [int(x) for x in ids_str.split(",")]
+            paths = paths_str.split("||")
+            duplicates.append({
+                "key": ch[:16], "type": "hash", "count": cnt,
+                "ids": ids, "filepaths": paths,
+            })
+
+        return duplicates
+
+    def get_directory_stats(self, directory: str) -> dict:
+        """Return aggregated stats for a directory."""
+        row = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(duration), 0) FROM media_items "
+            "WHERE directory = ? AND deleted_at IS NULL",
+            (directory,)).fetchone()
+        return {
+            "file_count": row[0] if row else 0,
+            "total_duration": float(row[1]) if row else 0.0,
+        }
 
     # ── Playlists ──
 

@@ -174,4 +174,8 @@ class MediaItem:
             play_count=d.get("play_count", 0),
             last_played=d.get("last_played", 0.0),
             rating=d.get("rating", 0),
+            created_at=d.get("created_at", 0.0),
+            updated_at=d.get("updated_at", 0.0),
+            last_scanned=d.get("last_scanned", 0.0),
+            track_uid=d.get("track_uid", ""),
         )

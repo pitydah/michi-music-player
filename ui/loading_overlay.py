@@ -1,11 +1,15 @@
-"""Loading Overlay — semi-transparent spinner with fade-in."""
+"""Loading Overlay — semi-transparent spinner with fade-in and cancel button."""
 
 from PySide6.QtCore import Qt, QTimer, QRectF
 from PySide6.QtGui import QPainter, QColor, QPen, QConicalGradient
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QGraphicsOpacityEffect
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QGraphicsOpacityEffect
+
+from ui.central.central_styles import glass_button_qss
 
 
 class LoadingOverlay(QWidget):
+    cancelled = __import__("PySide6.QtCore").QtCore.Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._angle = 0
@@ -27,6 +31,12 @@ class LoadingOverlay(QWidget):
         layout.addSpacing(28)
         layout.addWidget(self._label)
 
+        self._cancel_btn = QPushButton("Cancelar")
+        self._cancel_btn.setStyleSheet(glass_button_qss("secondary"))
+        self._cancel_btn.setFixedWidth(120)
+        self._cancel_btn.clicked.connect(self._on_cancel)
+        layout.addWidget(self._cancel_btn, alignment=Qt.AlignCenter)
+
         self._fade_effect = QGraphicsOpacityEffect(self)
         self._fade_effect.setOpacity(1.0)
         self.setGraphicsEffect(self._fade_effect)
@@ -34,6 +44,10 @@ class LoadingOverlay(QWidget):
         self._delay_timer = QTimer(self)
         self._delay_timer.setSingleShot(True)
         self._delay_timer.timeout.connect(self._show_now)
+
+    def _on_cancel(self):
+        self.hide()
+        self.cancelled.emit()
 
     def _show_now(self):
         if self.parent():
