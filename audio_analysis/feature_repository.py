@@ -13,8 +13,6 @@ from audio_analysis.schemas import AudioFeature
 
 logger = logging.getLogger("michi.audio_analysis.repository")
 
-_DB_PATH = os.path.expanduser("~/.local/share/michi/audio_analysis/audio_features.db")  # keep for compat
-
 def _default_db_path() -> str:
     from core.paths import audio_features_db_path
     return audio_features_db_path()

@@ -10,9 +10,6 @@ import time
 
 logger = logging.getLogger("michi.ai_assistant.action_log")
 
-_LOG_DIR = os.path.expanduser("~/.local/share/michi/ai_assistant")  # legacy compat
-
-
 def _default_log_dir() -> str:
     from core.paths import ai_assistant_dir
     return ai_assistant_dir()

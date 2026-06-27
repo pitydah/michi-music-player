@@ -6,9 +6,6 @@ import logging
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-_COVER_DIR_LEGACY = os.path.expanduser("~/.cache/michi/covers")  # legacy compat
-
-
 def _default_cover_dir() -> str:
     from core.paths import remote_covers_cache_dir
     return remote_covers_cache_dir()

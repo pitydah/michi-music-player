@@ -13,9 +13,6 @@ from integrations.ai_assistant.schemas import ConversationTurn
 
 logger = logging.getLogger("michi.ai_assistant.conversation_store")
 
-_DB_DIR = os.path.expanduser("~/.local/share/michi/ai_assistant")  # legacy compat
-
-
 def _default_db_dir() -> str:
     from core.paths import ai_assistant_dir
     return ai_assistant_dir()

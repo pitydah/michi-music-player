@@ -7,11 +7,6 @@ import time
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-# Legacy paths (kept for migration compatibility)
-_CACHE_DIR_LEGACY = os.path.expanduser("~/.cache/michi/artist_metadata/albums")
-_DB_PATH_LEGACY = os.path.join(_CACHE_DIR_LEGACY, "index.sqlite")
-
-
 def _default_cache_dir() -> str:
     from core.paths import artist_metadata_cache_dir
     return artist_metadata_cache_dir()

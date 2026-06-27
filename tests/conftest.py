@@ -40,6 +40,7 @@ class MockAppContext:
         self.transmit_mgr = mock_win._transmit_mgr
         self.eq_dlg = mock_win._eq_dlg
         self.mini_player = MagicMock()
+        self.all_items_list = getattr(mock_win, '_all_items', [])
         # Delegation methods
         self.navigate_sidebar = MagicMock()
         self.load_library = MagicMock()
@@ -100,7 +101,21 @@ class MockWindow:
         self._eq_dlg = None
         self._view_mode = "grid"
         self._search = MagicMock()
+        self._all_items = []
+        self._workers = MagicMock()
+        self._snapserver = None
+        self._audio_capture = None
+        self._group_mgr = None
+        self._ha_connected = False
+        self._ha_client = None
+        self._home_audio_view = None
+        self._local_media_ctrl = None
+        self._local_ip = None
+        self._local_media = None
+        self._snapcast_ctrl = None
+        self._ha_ctrl = None
         self._nav = MagicMock()
+        self._artist_enrich = None
         self.setWindowTitle = MagicMock()
         self._search_ctrl = MagicMock()
         self._count = MagicMock()

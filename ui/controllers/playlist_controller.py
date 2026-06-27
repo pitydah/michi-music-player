@@ -128,7 +128,7 @@ class PlaylistController:
         """Return all tracks from the library, preferring injected db."""
         if self._svc and hasattr(self._svc, 'db'):
             return self._svc.db.get_all()
-        return getattr(self._win, '_all_items', [])
+        return self._ctx.all_items_list
 
     def create_from_album(self):
         all_items = self._all_library_tracks()

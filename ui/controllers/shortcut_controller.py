@@ -19,4 +19,4 @@ class ShortcutController:
         QShortcut(QKeySequence("Ctrl+M"), self._win,
                   lambda: self._ctx.player_bar.mute())
         QShortcut(QKeySequence("Ctrl+F"), self._win,
-                  lambda: self._win._search.setFocus())
+                  lambda: self._ctx.search_widget.setFocus())

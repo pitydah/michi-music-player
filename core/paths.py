@@ -8,7 +8,6 @@ resolved here. Supports overrides for testing via environment variables:
 import os
 
 APP_NAME = "michi-music-player"
-LEGACY_DIR = os.path.expanduser("~/.local/share/michi")
 
 
 def _xdg_data_home() -> str:
@@ -61,10 +60,6 @@ def remote_covers_cache_dir() -> str:
     return os.path.join(app_cache_dir(), "covers", "remote")
 
 
-def negative_cover_cache_dir() -> str:
-    return os.path.join(app_cache_dir(), "covers", "negative")
-
-
 def audio_analysis_dir() -> str:
     return os.path.join(app_data_dir(), "audio_analysis")
 
@@ -115,11 +110,6 @@ def radio_stations_path() -> str:
 
 def auto_eq_cache_dir() -> str:
     return os.path.join(app_data_dir(), "autoeq")
-
-
-def legacy_data_dir() -> str:
-    """Fallback directory for migrating old data."""
-    return LEGACY_DIR
 
 
 def connection_profiles_path() -> str:

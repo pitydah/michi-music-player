@@ -22,19 +22,19 @@ class HomeAudioController(QObject):
     def is_connected(self) -> bool:
         if self._svc and self._svc.ha_connected:
             return self._svc.ha_connected()
-        return getattr(self._win, '_ha_connected', False)
+        return self._ctx.ha_connected
 
     @property
     def ha_client(self):
         if self._svc and hasattr(self._svc, 'ha_client') and self._svc.ha_client:
             return self._svc.ha_client
-        return getattr(self._win, '_ha_client', None)
+        return self._ctx.ha_client
 
     def get_devices(self) -> list[dict]:
         """Return available Home Assistant media_player devices."""
         if not self.is_connected or not self.ha_client:
             return []
-        view = getattr(self._win, '_home_audio_view', None)
+        view = self._ctx.home_audio_view
         if view and view._devices:
             return [d for d in view._devices if d.get("available")]
         return []
@@ -68,7 +68,7 @@ class HomeAudioController(QObject):
     def _stream_local_to_ha(self, entity_id: str, device_name: str, filepath: str):
         """Stream a local file to an HA device via LocalMediaServerController."""
         lms_ctrl = (self._svc.local_media_ctrl if self._svc and hasattr(self._svc, 'local_media_ctrl')
-                    else getattr(self._win, '_local_media_ctrl', None))
+                    else self._ctx.local_media_ctrl)
         if not lms_ctrl:
             self.error_occurred.emit("Servidor local no disponible")
             return
@@ -77,7 +77,7 @@ class HomeAudioController(QObject):
             if self._svc and self._svc.local_ip:
                 host = self._svc.local_ip()
             else:
-                host = getattr(self._win, '_local_ip', 'localhost') or 'localhost'
+                host = self._ctx.local_ip or 'localhost'
             url = lms_ctrl.register_file(filepath, host=host)
             self.ha_client.play_media(entity_id, url, "music")
             self._on_cast_success(entity_id, device_name)

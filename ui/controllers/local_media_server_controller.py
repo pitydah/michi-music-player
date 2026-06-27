@@ -54,5 +54,5 @@ class LocalMediaServerController(QObject):
 
     def _get_server(self):
         if self._server is None:
-            self._server = getattr(self._win, '_local_media', None)
+            self._server = self._ctx.local_media
         return self._server

@@ -53,7 +53,7 @@ class CastController(QObject):
             empty.setEnabled(False)
 
         # Snapcast zones
-        snapcast_ctrl = getattr(self._win, '_snapcast_ctrl', None)
+        snapcast_ctrl = self._ctx.snapcast_ctrl
         if snapcast_ctrl:
             zones = snapcast_ctrl.get_zones()
             if zones:
@@ -69,7 +69,7 @@ class CastController(QObject):
                         lambda checked=False, gr=g: snapcast_ctrl.activate_zone(gr))
 
         # Home Assistant devices
-        ha_ctrl = getattr(self._win, '_ha_ctrl', None)
+        ha_ctrl = self._ctx.ha_ctrl
         if ha_ctrl:
             ha_devices = ha_ctrl.get_devices()
             if ha_devices:

@@ -6,9 +6,6 @@ import time
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-CACHE_DIR = os.path.expanduser("~/.cache/michi/artist_metadata")  # legacy compat
-
-
 def _default_cache_dir() -> str:
     from core.paths import artist_metadata_cache_dir
     return artist_metadata_cache_dir()

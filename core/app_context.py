@@ -16,8 +16,6 @@ class AppContext:
         self.playback = window._playback
         self.model = window._model
         self.search_ctrl = window._search_ctrl
-        self.search = window._search_ctrl  # backward compat alias
-        self.window = window  # backward compat alias
 
         self._sealed = True
 
@@ -161,6 +159,64 @@ class AppContext:
     @property
     def transmit_mgr(self):
         return self._win._transmit_mgr
+
+    @property
+    def snapserver(self):
+        return getattr(self._win, '_snapserver', None)
+
+    @property
+    def audio_capture(self):
+        return getattr(self._win, '_audio_capture', None)
+
+    @property
+    def group_mgr(self):
+        return getattr(self._win, '_group_mgr', None)
+
+    @property
+    def ha_connected(self):
+        return getattr(self._win, '_ha_connected', False)
+
+    @property
+    def ha_client(self):
+        return getattr(self._win, '_ha_client', None)
+
+    @property
+    def home_audio_view(self):
+        return getattr(self._win, '_home_audio_view', None)
+
+    @property
+    def local_media_ctrl(self):
+        return getattr(self._win, '_local_media_ctrl', None)
+
+    @property
+    def local_ip(self):
+        return getattr(self._win, '_local_ip', None)
+
+    @property
+    def local_media(self):
+        return getattr(self._win, '_local_media', None)
+
+    @property
+    def snapcast_ctrl(self):
+        return getattr(self._win, '_snapcast_ctrl', None)
+
+    @property
+    def ha_ctrl(self):
+        return getattr(self._win, '_ha_ctrl', None)
+
+    @property
+    def workers(self):
+        return self._win._workers
+
+    @property
+    def search_widget(self):
+        """The search QLineEdit widget for keyboard focus."""
+        return self._win._search
+
+    @property
+    def all_items_list(self):
+        """All library tracks (list of MediaItem), from window's cached _all_items."""
+        return self._win._all_items
 
     @property
     def eq_dlg(self):

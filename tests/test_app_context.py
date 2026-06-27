@@ -52,9 +52,7 @@ class TestAppContext:
         assert ctx.player == "mock_player"
         assert ctx.playback == "mock_playback"
         assert ctx.model == "mock_model"
-        assert ctx.search == "mock_search"
         assert ctx.search_ctrl == "mock_search"
-        assert ctx.window is w
 
     def test_window_reference(self):
         w = MagicMock()
@@ -99,4 +97,12 @@ class TestAppContext:
         w._show_album_grid = MagicMock()
 
         ctx = AppContext(w)
-        assert ctx.window is w
+        assert ctx.db is w._db
+        assert ctx.player is w._player
+        assert ctx.playback is w._playback
+        assert ctx.model is w._model
+        assert ctx.search_ctrl is w._search_ctrl
+        assert ctx.toast is w._toast_svc
+        assert ctx.player_bar is w._player_bar_ctrl
+        assert ctx.views is w._views
+        assert ctx.transmit_mgr is w._transmit_mgr

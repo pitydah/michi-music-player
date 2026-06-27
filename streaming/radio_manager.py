@@ -10,10 +10,10 @@ try:
 except ImportError:
     Gst = None
 
-from core.paths import app_data_dir
+from core.paths import app_data_dir, radio_stations_path
 
 CONFIG_DIR = app_data_dir()
-RADIO_FILE = os.path.join(CONFIG_DIR, "radio_stations.json")
+RADIO_FILE = radio_stations_path()
 
 
 @dataclass

@@ -10,8 +10,6 @@ import time
 
 logger = logging.getLogger("michi.recommendation.repository")
 
-_DB_PATH = os.path.expanduser("~/.local/share/michi/recommendations/recommendations.db")  # legacy compat
-
 def _default_db_path() -> str:
     from core.paths import recommendation_dir
     return os.path.join(recommendation_dir(), "recommendations.db")

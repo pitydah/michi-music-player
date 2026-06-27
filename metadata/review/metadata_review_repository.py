@@ -15,8 +15,6 @@ from metadata.review.schemas import (
 
 logger = logging.getLogger("michi.metadata.review_repository")
 
-_DB_PATH = os.path.expanduser("~/.local/share/michi-music-player/metadata_reviews.sqlite")  # legacy compat
-
 def _default_db_path() -> str:
     from core.paths import metadata_review_db_path
     return metadata_review_db_path()
