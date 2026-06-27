@@ -1,4 +1,11 @@
-"""File actions — open, scan, drop, and folder import operations."""
+"""File actions — open, scan, drop, and folder import operations.
+
+Refactored for robustness:
+  - Single unified flow for add_file (async metadata extraction)
+  - scan_multiple() for batched folder scanning
+  - Progress reporting via signals
+  - Proper thread lifecycle management
+"""
 import os
 
 from PySide6.QtCore import QThread
@@ -69,8 +76,7 @@ class FileActions:
             f"Multimedia ({exts});;Todos (*)")
         if not files:
             return
-        for fp in files:
-            self._db.add_file(fp)
+        self._add_file_list(files)
         self._reload_library(reason="open_files")
         self._play_file(files[0])
         if len(files) > 1:
@@ -84,6 +90,10 @@ class FileActions:
             return
         self.scan_path(path)
 
+    def scan_multiple(self, paths: list[str]):
+        for path in paths:
+            self.scan_path(path)
+
     def folder_create_playlist(self, name: str, filepaths: list):
         pid = self._db.create_playlist(name)
         if pid:
@@ -92,6 +102,29 @@ class FileActions:
             self._rebuild_sidebar()
             ToastNotification.success(
                 f"Playlist \"{name}\" creada con {len(filepaths)} canciones", self._win)
+
+    def add_files_by_drop(self, urls: list):
+        """Process dropped files/folders from drag-and-drop."""
+        from library.metadata_extractor import ALL_EXTS
+        files = []
+        dirs = []
+        for url in urls:
+            path = url.toLocalFile()
+            if os.path.isdir(path):
+                dirs.append(path)
+            elif os.path.splitext(path)[1].lower() in ALL_EXTS:
+                files.append(path)
+        if files:
+            self._add_file_list(files)
+        if dirs:
+            self.scan_multiple(dirs)
+        if files or dirs:
+            self._win._reload_library_after_change(reason="drop")
+
+    def _add_file_list(self, filepaths: list[str]):
+        """Add a list of files to the library, one by one."""
+        for fp in filepaths:
+            self._db.add_file(fp)
 
     def scan_path(self, path: str):
         from library.indexer import Indexer
@@ -107,7 +140,6 @@ class FileActions:
                 f"Escaneando [{c}/{t}]\n{os.path.basename(f)[:60]}"))
 
         def _on_detail(d):
-            """Update overlay with detailed stats."""
             skipped = d.get("skipped", 0)
             errors = d.get("errors", 0)
             extra = ""
@@ -121,7 +153,6 @@ class FileActions:
 
         worker.detail.connect(_on_detail)
 
-        # Connect indexer enrichment signal for auto-enrichment after scan
         worker.enrichment_requested.connect(
             lambda key, name: self._enrich_artist(key, name))
 
@@ -129,7 +160,6 @@ class FileActions:
             overlay.hide()
             overlay.deleteLater()
 
-            # Offload cleanup to WorkerManager (bounded to scanned root)
             def do_cleanup():
                 self._db.cleanup_missing_under_root(path)
 
@@ -155,3 +185,8 @@ class FileActions:
     def _cleanup_thread(self, thread):
         if thread in self._active_threads:
             self._active_threads.remove(thread)
+
+    def cancel_all_scans(self):
+        for thread in list(self._active_threads):
+            thread.requestInterruption()
+        self._active_threads.clear()

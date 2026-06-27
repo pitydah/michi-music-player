@@ -3,6 +3,11 @@
 Flow:
     FileWalker → ChangeDetector → MetadataExtractor → AlbumKeyBuilder
     → BatchWriter → Cleanup → Rebuild UI indexes → Schedule enrichment
+
+Resilience:
+    - max_errors cap prevents runaway failures from halting the scan
+    - BatchWriter uses dynamic batch sizing with exponential backoff
+    - Errors per file are logged to index_errors table, never crash
 """
 import os
 import time
@@ -22,6 +27,9 @@ from library.album_key import make_album_key, make_artist_key
 
 logger = logging.getLogger("michi.indexer")
 
+_DEFAULT_BATCH_SIZE = 100
+_DEFAULT_MAX_ERRORS = 100
+
 
 class Indexer(QObject):
     """Main indexer — walks files, detects changes, extracts metadata,
@@ -30,9 +38,9 @@ class Indexer(QObject):
     # Signals
     progress = Signal(int, int, str)           # current, total, filepath
     detail = Signal(dict)                     # full ScanState as dict
-    batch_complete = Signal(int)              # records written
+    batch_complete = Signal(int)              # records written in this batch
     cleanup_complete = Signal(int)            # records removed
-    finished = Signal(int)                    # total added
+    finished = Signal(int)                    # total processed (added + updated)
     enrichment_requested = Signal(str, str)   # artist_key, artist_name
 
     @classmethod
@@ -42,10 +50,14 @@ class Indexer(QObject):
         db = LibraryDB(db_path)
         return cls(db, root_path, parent)
 
-    def __init__(self, db, root_path: str, parent=None):
+    def __init__(self, db, root_path: str, parent=None,
+                 batch_size: int = _DEFAULT_BATCH_SIZE,
+                 max_errors: int = _DEFAULT_MAX_ERRORS):
         super().__init__(parent)
         self._db = db
         self._root_path = root_path
+        self._batch_size = batch_size
+        self._max_errors = max_errors
         self._state = ScanState()
         self._cancelled = False
 
@@ -75,10 +87,16 @@ class Indexer(QObject):
 
             # Process files: detect changes, extract metadata, build album keys
             self._state.set_phase(ScanPhase.EXTRACTING)
-            batch_writer = BatchWriter(self._db._conn)
+            batch_writer = BatchWriter(self._db._conn, batch_size=self._batch_size)
 
             for i, fp in enumerate(files):
                 if self._cancelled:
+                    break
+
+                if self._state.error_count >= self._max_errors:
+                    logger.warning(
+                        "Indexer hit max_errors (%d) — stopping early",
+                        self._max_errors)
                     break
 
                 self._state.current_file = fp
@@ -108,7 +126,6 @@ class Indexer(QObject):
                         if is_new:
                             record["created_at"] = now
 
-                        # Compute track_uid for new/updated records
                         tuid = self._db._compute_track_uid(
                             fp, record.get("artist"), record.get("album"),
                             record.get("title"), record.get("duration", 0),
@@ -126,21 +143,25 @@ class Indexer(QObject):
                     self._state.error_count += 1
                     self._db.log_index_error(fp, str(e), "extract")
 
-                # Flush every 100 records inline
-                if batch_writer.buffered >= 100:
+                # Flush when buffer is ready
+                if batch_writer.buffered >= batch_writer.current_batch_size:
                     self._state.set_phase(ScanPhase.WRITING)
-                    batch_writer.flush()
+                    n = batch_writer.flush()
+                    self.batch_complete.emit(n)
 
                 self._emit_progress(i)
 
             # Phase 5: Flush remaining
             self._state.set_phase(ScanPhase.WRITING)
-            batch_writer.flush()
+            n = batch_writer.flush()
+            if n:
+                self.batch_complete.emit(n)
 
             # Phase 6: Cleanup missing files
             self._state.set_phase(ScanPhase.CLEANING)
             missing = self._db.remove_missing()
             self._state.missing_count = missing
+            self.cleanup_complete.emit(missing)
 
             # Phase 7: Rebuild UI indexes
             self._state.set_phase(ScanPhase.REBUILDING)
@@ -179,8 +200,7 @@ class Indexer(QObject):
                     yield os.path.join(root, fn)
 
     def _is_unchanged(self, filepath: str) -> bool:
-        """ChangeDetector — skip files that haven't changed since last scan.
-        Delegates to library/change_detector.py for the logic."""
+        """ChangeDetector — skip files that haven't changed since last scan."""
         try:
             stat = os.stat(filepath)
         except OSError:
@@ -320,7 +340,6 @@ class Indexer(QObject):
             self._db._conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_media_year ON media_items(year)")
             self._db._conn.commit()
-            # Rebuild FTS5 to sync new/changed rows
             from library.search_index import SearchIndex
             idx = SearchIndex(self._db._conn)
             if idx.fts_exists:

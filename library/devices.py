@@ -36,7 +36,7 @@ def get_mounted_devices() -> list[dict]:
     return devices
 
 
-def scan_device_music(mount: str) -> list[str]:
+def scan_device_music(mount: str, max_files: int = 0) -> list[str]:
     files = []
     try:
         for root, dirs, fnames in os.walk(mount):
@@ -44,7 +44,7 @@ def scan_device_music(mount: str) -> list[str]:
             for fn in fnames:
                 if os.path.splitext(fn)[1].lower() in ALL_EXTS:
                     files.append(os.path.join(root, fn))
-            if len(files) > 500:
+            if max_files > 0 and len(files) >= max_files:
                 break
     except PermissionError:
         pass

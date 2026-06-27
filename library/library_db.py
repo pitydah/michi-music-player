@@ -695,6 +695,31 @@ class LibraryDB:
             " WHERE deleted_at IS NULL ORDER BY directory").fetchall()
         return [r[0] for r in rows]
 
+    def get_all_by_directory(self, directory: str, exact: bool = True) -> list[MediaItem]:
+        """Return MediaItems for a specific directory (exact match or prefix)."""
+        query = (
+            "SELECT id, filepath, filename, directory, ext, kind, "
+            "size, mtime, duration, channels, sample_rate, bitrate, "
+            "title, artist, album, year, genre, track_number, composer, "
+            "albumartist, disc_number, disc_total, track_total, "
+            "mb_track_id, mb_album_id, mb_albumartist_id, "
+            "bit_depth, bpm, isrc, label, conductor, compilation, "
+            "media_type, encoder, copyright, originaldate, remixer, "
+            "grouping, mood, replaygain_track, replaygain_album, "
+            "replaygain_track_peak, play_count, last_played, rating, "
+            "created_at, updated_at, last_scanned, track_uid "
+            "FROM media_items WHERE deleted_at IS NULL")
+        if exact:
+            rows = self._conn.execute(
+                query + " AND directory = ? ORDER BY track_number, title",
+                (directory,)).fetchall()
+        else:
+            prefix = directory + ("/" if not directory.endswith("/") else "")
+            rows = self._conn.execute(
+                query + " AND (directory = ? OR directory LIKE ?) ORDER BY track_number, title",
+                (directory, prefix + "%")).fetchall()
+        return [MediaItem.from_row(r) for r in rows]
+
     def get_library_roots(self) -> list[str]:
         """Return active indexed root directories."""
         try:

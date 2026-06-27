@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from library.folder_index import list_audio_files, list_subfolders
 from ui.icons import get_icon
+from ui.central.central_styles import glass_button_qss, glass_card_qss
 
 COVER_NAMES = ("cover.jpg", "cover.png", "folder.jpg", "folder.png",
                "front.jpg", "front.png", "album.jpg", "album.png",
@@ -31,9 +32,10 @@ class FolderBrowserWidget(QWidget):
     scan_requested = Signal(str)               # directory to scan
     create_playlist_requested = Signal(str, list)  # name, filepaths
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, db=None):
         super().__init__(parent)
         self._root = os.path.expanduser("~")
+        self._db = db
         self._favorites: list[str] = []
         self._history: list[str] = []
         self._load_persistent()
@@ -60,38 +62,21 @@ class FolderBrowserWidget(QWidget):
         toolbar_layout.setContentsMargins(10, 8, 10, 8)
         toolbar_layout.setSpacing(8)
 
-        btn_qss = """
-            QPushButton {
-                background: rgba(255,255,255,0.055);
-                color: rgba(255,255,255,0.82);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 10px;
-                padding: 7px 12px;
-                font-size: 12px;
-                font-weight: 600;
-            }
-            QPushButton:hover { background: rgba(255,255,255,0.09); color: #fff; }
-            QPushButton:pressed { background: rgba(255,255,255,0.12); }
-        """
-
         self._home_btn = QPushButton("Inicio")
-        self._home_btn.setStyleSheet(btn_qss)
+        self._home_btn.setStyleSheet(glass_button_qss("secondary"))
         self._home_btn.clicked.connect(self._go_home)
         toolbar_layout.addWidget(self._home_btn)
 
         self._up_btn = QPushButton("Subir")
-        self._up_btn.setStyleSheet(btn_qss)
+        self._up_btn.setStyleSheet(glass_button_qss("secondary"))
         self._up_btn.clicked.connect(self._go_up)
         toolbar_layout.addWidget(self._up_btn)
 
         self._breadcrumb = QLabel("")
         self._breadcrumb.setObjectName("breadcrumbLabel")
-        self._breadcrumb.setStyleSheet("""
+        self._breadcrumb.setStyleSheet(glass_card_qss("breadcrumbLabel") + """
             QLabel#breadcrumbLabel {
                 color: rgba(255,255,255,0.86);
-                background: rgba(255,255,255,0.04);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 10px;
                 padding: 7px 12px;
                 font-size: 12px;
                 font-weight: 600;
@@ -102,7 +87,7 @@ class FolderBrowserWidget(QWidget):
         # Favorites dropdown
         self._favs_menu = QMenu("Favoritos")
         self._favs_btn = QPushButton("Favoritos ▼")
-        self._favs_btn.setStyleSheet(btn_qss.replace("#fff", "#FF9A3D"))
+        self._favs_btn.setStyleSheet(glass_button_qss("accent"))
         self._favs_btn.clicked.connect(lambda: self._favs_menu.exec(
             self._favs_btn.mapToGlobal(self._favs_btn.rect().bottomLeft())))
         toolbar_layout.addWidget(self._favs_btn)
@@ -110,7 +95,7 @@ class FolderBrowserWidget(QWidget):
         # History dropdown
         self._hist_menu = QMenu("Recientes")
         self._hist_btn = QPushButton("⌛ Recientes ▼")
-        self._hist_btn.setStyleSheet(btn_qss)
+        self._hist_btn.setStyleSheet(glass_button_qss("secondary"))
         self._hist_btn.clicked.connect(lambda: self._hist_menu.exec(
             self._hist_btn.mapToGlobal(self._hist_btn.rect().bottomLeft())))
         toolbar_layout.addWidget(self._hist_btn)
@@ -118,37 +103,43 @@ class FolderBrowserWidget(QWidget):
         toolbar_layout.addStretch()
 
         self._play_btn = QPushButton("▶ Reproducir carpeta")
-        self._play_btn.setStyleSheet(btn_qss + """
-            QPushButton { color: #8FB7FF; border-color: rgba(143,183,255,0.25); }
-            QPushButton:hover { color: #FF9A3D; }
-        """)
+        self._play_btn.setStyleSheet(glass_button_qss("accent"))
         self._play_btn.clicked.connect(self._play_folder)
         toolbar_layout.addWidget(self._play_btn)
 
         self._shuffle_btn = QPushButton("🔀 Aleatorio")
-        self._shuffle_btn.setStyleSheet(btn_qss)
+        self._shuffle_btn.setStyleSheet(glass_button_qss("secondary"))
         self._shuffle_btn.clicked.connect(self._shuffle_folder)
         toolbar_layout.addWidget(self._shuffle_btn)
 
         self._queue_btn = QPushButton("+ Añadir a cola")
-        self._queue_btn.setStyleSheet(btn_qss)
+        self._queue_btn.setStyleSheet(glass_button_qss("secondary"))
         self._queue_btn.clicked.connect(self._queue_folder)
         toolbar_layout.addWidget(self._queue_btn)
 
         self._scan_btn = QPushButton("Escanear")
-        self._scan_btn.setStyleSheet(btn_qss)
+        self._scan_btn.setStyleSheet(glass_button_qss("ghost"))
         self._scan_btn.clicked.connect(lambda: self.scan_requested.emit(self._root))
         toolbar_layout.addWidget(self._scan_btn)
 
         self._refresh_btn = QPushButton("Actualizar")
-        self._refresh_btn.setStyleSheet(btn_qss)
+        self._refresh_btn.setStyleSheet(glass_button_qss("ghost"))
         self._refresh_btn.clicked.connect(lambda: self._load(self._root))
         toolbar_layout.addWidget(self._refresh_btn)
 
         self._browse_btn = QPushButton("Abrir carpeta...")
-        self._browse_btn.setStyleSheet(btn_qss)
+        self._browse_btn.setStyleSheet(glass_button_qss("secondary"))
         self._browse_btn.clicked.connect(self._browse_folder)
         toolbar_layout.addWidget(self._browse_btn)
+
+        toolbar_layout.addStretch()
+
+        self._filter_input = QPushButton("🔍")
+        self._filter_input.setStyleSheet(glass_button_qss("ghost"))
+        self._filter_input.setFixedWidth(36)
+        self._filter_input.setToolTip("Filtrar archivos")
+        self._filter_input.clicked.connect(self._toggle_filter)
+        toolbar_layout.addWidget(self._filter_input)
 
         main_layout.addWidget(toolbar_frame)
 
@@ -163,15 +154,15 @@ class FolderBrowserWidget(QWidget):
         tree_layout.setContentsMargins(0, 0, 0, 0)
 
         self._tree = QTreeWidget()
-        self._tree.setColumnCount(4)
-        self._tree.setHeaderLabels(["Nombre", "Tipo", "Canciones", "Ruta"])
+        self._tree.setColumnCount(5)
+        self._tree.setHeaderLabels(["Nombre", "Tipo", "Canciones", "Duración", "Ruta"])
         self._tree.setIndentation(22)
         self._tree.setIconSize(QSize(32, 32))
         self._tree.setFrameShape(QTreeWidget.NoFrame)
         self._tree.setAlternatingRowColors(True)
         self._tree.setAnimated(True)
         self._tree.setUniformRowHeights(True)
-        self._tree.setSelectionMode(QTreeWidget.SingleSelection)
+        self._tree.setSelectionMode(QTreeWidget.ExtendedSelection)
         self._tree.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._tree.setAllColumnsShowFocus(True)
         self._tree.setRootIsDecorated(False)
@@ -248,6 +239,7 @@ class FolderBrowserWidget(QWidget):
         hdr.setSectionResizeMode(0, QHeaderView.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         hdr.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         self._tree.itemDoubleClicked.connect(self._on_item)
         self._tree.customContextMenuRequested.connect(self._on_context_menu)
         tree_layout.addWidget(self._tree)
@@ -391,6 +383,38 @@ class FolderBrowserWidget(QWidget):
         self._fav_toggle.setChecked(path in self._favorites)
         self._rebuild_favs_menu()
 
+    # ── Filter / Search ──
+
+    def set_filter(self, text: str):
+        """Filter tree items by name. Called by search controller."""
+        text = text.lower()
+        for i in range(self._tree.topLevelItemCount()):
+            item = self._tree.topLevelItem(i)
+            name = item.text(0).lower()
+            path = item.text(4).lower()
+            visible = not text or text in name or text in path
+            item.setHidden(not visible)
+
+    def _toggle_filter(self):
+        from PySide6.QtWidgets import QLineEdit, QDialog, QVBoxLayout
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Filtrar archivos")
+        dlg.setStyleSheet("""
+            QDialog { background: #181C25; border-radius: 14px; }
+            QLineEdit {
+                background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 8px; color: #fff; font-size: 14px; padding: 8px 12px;
+                min-width: 300px;
+            }
+        """)
+        layout = QVBoxLayout(dlg)
+        inp = QLineEdit()
+        inp.setPlaceholderText("Filtrar por nombre...")
+        layout.addWidget(inp)
+        inp.textChanged.connect(self.set_filter)
+        inp.returnPressed.connect(dlg.accept)
+        dlg.exec()
+
     # ── Navigation ──
 
     def _load(self, path: str):
@@ -410,29 +434,81 @@ class FolderBrowserWidget(QWidget):
         except Exception:
             files_arr = []
 
+        self._load_folder_items(folders_arr, files_arr, path)
+
+        self._status.setText(f"{len(folders_arr)} carpetas · {len(files_arr)} canciones")
+
+    def _load_folder_items(self, folders_arr: list[str], files_arr: list[str], path: str):
+        folder_durations = {}
+        if self._db and folders_arr:
+            for f in folders_arr:
+                dur = self._db._conn.execute(
+                    "SELECT COALESCE(SUM(duration), 0) FROM media_items "
+                    "WHERE directory = ? AND deleted_at IS NULL",
+                    (f,)).fetchone()
+                folder_durations[f] = dur[0] if dur else 0.0
+
         for folder in folders_arr:
             item = QTreeWidgetItem(self._tree)
             item.setIcon(0, QIcon(get_icon("folder")))
             item.setText(0, os.path.basename(folder))
             item.setText(1, "Carpeta")
             item.setText(2, "—")
-            item.setText(3, folder)
+            dur = folder_durations.get(folder, 0.0)
+            item.setText(3, self._format_duration(dur) if dur else "")
+            item.setText(4, folder)
             item.setData(0, Qt.UserRole, folder)
             item.setData(0, Qt.UserRole + 1, "folder")
 
-        for fp in files_arr:
-            item = QTreeWidgetItem(self._tree)
+        file_refs = []
+        if self._db and files_arr:
+            items = self._db.get_all_by_directory(path, exact=True)
+            if items:
+                indexed = {i.filepath: i for i in items}
+                for fp in files_arr:
+                    if fp in indexed:
+                        file_refs.append((fp, indexed[fp]))
+                    else:
+                        file_refs.append((fp, None))
+            else:
+                file_refs = [(fp, None) for fp in files_arr]
+        else:
+            file_refs = [(fp, None) for fp in files_arr]
+
+        for fp, item_data in file_refs:
+            tree_item = QTreeWidgetItem(self._tree)
             song_icon = get_icon("songs") or get_icon("sidebar_library")
             if song_icon:
-                item.setIcon(0, QIcon(song_icon))
-            item.setText(0, os.path.basename(fp))
-            item.setText(1, "Canción")
-            item.setText(2, "")
-            item.setText(3, fp)
-            item.setData(0, Qt.UserRole, fp)
-            item.setData(0, Qt.UserRole + 1, "file")
+                tree_item.setIcon(0, QIcon(song_icon))
+            if item_data:
+                title = (item_data.title
+                         or os.path.splitext(os.path.basename(fp))[0])
+                artist = item_data.artist or ""
+                tree_item.setText(0, f"{title}  —  {artist}" if artist else title)
+                tree_item.setText(1, "Canción")
+                tree_item.setText(2, "")
+                tree_item.setText(3, self._format_duration(item_data.duration) if item_data.duration else "")
+                tree_item.setText(4, fp)
+            else:
+                tree_item.setText(0, os.path.basename(fp))
+                tree_item.setText(1, "Canción")
+                tree_item.setText(2, "")
+                tree_item.setText(3, "")
+                tree_item.setText(4, fp)
+            tree_item.setData(0, Qt.UserRole, fp)
+            tree_item.setData(0, Qt.UserRole + 1, "file")
 
-        self._status.setText(f"{len(folders_arr)} carpetas · {len(files_arr)} canciones")
+    @staticmethod
+    def _format_duration(seconds: float) -> str:
+        if not seconds:
+            return ""
+        m = int(seconds // 60)
+        s = int(seconds % 60)
+        if seconds >= 3600:
+            h = int(seconds // 3600)
+            m = int((seconds % 3600) // 60)
+            return f"{h}:{m:02d}:{s:02d}"
+        return f"{m}:{s:02d}"
 
     def _update_details(self):
         self._detail_name.setText(os.path.basename(self._root) or self._root)
