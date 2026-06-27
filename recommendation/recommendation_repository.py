@@ -10,11 +10,17 @@ import time
 
 logger = logging.getLogger("michi.recommendation.repository")
 
-_DB_PATH = os.path.expanduser("~/.local/share/michi/recommendations/recommendations.db")
+_DB_PATH = os.path.expanduser("~/.local/share/michi/recommendations/recommendations.db")  # legacy compat
+
+def _default_db_path() -> str:
+    from core.paths import recommendation_dir
+    return os.path.join(recommendation_dir(), "recommendations.db")
 
 
 class RecommendationRepository:
-    def __init__(self, db_path: str = _DB_PATH):
+    def __init__(self, db_path: str | None = None):
+        if db_path is None:
+            db_path = _default_db_path()
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")

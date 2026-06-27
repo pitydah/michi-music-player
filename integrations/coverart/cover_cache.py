@@ -6,7 +6,15 @@ import logging
 from PySide6.QtCore import QObject, Signal, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-COVER_DIR = os.path.expanduser("~/.cache/michi/covers")
+_COVER_DIR_LEGACY = os.path.expanduser("~/.cache/michi/covers")  # legacy compat
+
+
+def _default_cover_dir() -> str:
+    from core.paths import remote_covers_cache_dir
+    return remote_covers_cache_dir()
+
+
+COVER_DIR = _default_cover_dir()
 MAX_SIZE = 8 * 1024 * 1024  # 8 MB
 NEGATIVE_TTL = 3600  # 1 hour for negative cache
 VALID_MIME = {"image/jpeg", "image/png", "image/webp"}

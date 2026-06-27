@@ -89,6 +89,10 @@ def album_metadata_cache_db_path() -> str:
     return os.path.join(artist_metadata_cache_dir(), "index.sqlite")
 
 
+def knowledge_cache_dir() -> str:
+    return os.path.join(app_cache_dir(), "knowledge")
+
+
 def metadata_review_db_path() -> str:
     return os.path.join(app_data_dir(), "metadata_review.db")
 

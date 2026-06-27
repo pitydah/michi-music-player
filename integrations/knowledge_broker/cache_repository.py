@@ -16,8 +16,14 @@ from integrations.knowledge_broker.schemas import (
 
 logger = logging.getLogger("michi.knowledge_broker.cache")
 
-_KB_DIR = os.path.expanduser("~/.cache/michi/knowledge")
-_KB_PATH = os.path.join(_KB_DIR, "michi_knowledge.db")
+_KB_DIR = os.path.expanduser("~/.cache/michi/knowledge")  # legacy compat
+
+
+def _default_kb_path() -> str:
+    from core.paths import knowledge_cache_dir
+    return os.path.join(knowledge_cache_dir(), "michi_knowledge.db")
+
+_KB_PATH = _default_kb_path()
 _MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "migrations")
 
 

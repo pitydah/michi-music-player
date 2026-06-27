@@ -13,8 +13,18 @@ from integrations.ai_assistant.schemas import ConversationTurn
 
 logger = logging.getLogger("michi.ai_assistant.conversation_store")
 
-_DB_DIR = os.path.expanduser("~/.local/share/michi/ai_assistant")
-_DB_PATH = os.path.join(_DB_DIR, "conversations.sqlite")
+_DB_DIR = os.path.expanduser("~/.local/share/michi/ai_assistant")  # legacy compat
+
+
+def _default_db_dir() -> str:
+    from core.paths import ai_assistant_dir
+    return ai_assistant_dir()
+
+
+def _default_db_path() -> str:
+    return os.path.join(_default_db_dir(), "conversations.sqlite")
+
+_DB_PATH = _default_db_path()
 
 
 class ConversationStore:
@@ -28,7 +38,7 @@ class ConversationStore:
 
     def _init_db(self):
         try:
-            os.makedirs(_DB_DIR, exist_ok=True)
+            os.makedirs(_default_db_dir(), exist_ok=True)
             self._conn = sqlite3.connect(_DB_PATH)
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("""CREATE TABLE IF NOT EXISTS messages (
