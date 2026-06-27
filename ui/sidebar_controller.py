@@ -1,6 +1,6 @@
 """Sidebar controller — rebuilds sidebar sections with hub-focused navigation."""
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QTimer
 
 from library.library_db import get_mounted_devices
 
@@ -13,10 +13,26 @@ class SidebarController(QObject):
         self._sidebar = sidebar_widget
         self._db = db
         self._last_active = None
+        self._debounce_timer = QTimer(self)
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.setInterval(150)
+        self._debounce_timer.timeout.connect(self._emit_navigation)
+        self._pending_key = None
         sidebar_widget.item_clicked.connect(self._on_item_click)
 
     def _on_item_click(self, key: str):
-        self.navigation_requested.emit(key)
+        if key == self._last_active:
+            return
+        self._pending_key = key
+        if self._debounce_timer.isActive():
+            self._debounce_timer.stop()
+        self._debounce_timer.start()
+
+    def _emit_navigation(self):
+        if self._pending_key is not None:
+            self._last_active = self._pending_key
+            self.navigation_requested.emit(self._pending_key)
+            self._pending_key = None
 
     def rebuild(self, servers: list, sync_peers: list | None = None):
         self._sidebar._clear()

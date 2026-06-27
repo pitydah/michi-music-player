@@ -167,6 +167,8 @@ class UIBuilder:
         settings_menu.addAction(w._sync_action)
         settings_menu.addSeparator()
         settings_menu.addAction(w._preferences_action)
+        settings_menu.addAction(w._duplicates_action)
+        settings_menu.addSeparator()
         settings_menu.addAction(w._shortcuts_action)
         settings_menu.addAction(w._about_action)
         settings_menu.addSeparator()

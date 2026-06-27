@@ -906,9 +906,19 @@ class MainWindow(QMainWindow):
 
     def _show_folders(self, key):
         from sources.folder_source import FolderSource
-        roots = self._db.get_library_roots() if self._db else []
-        start_dir = roots[0] if roots else os.path.expanduser("~")
-        self._search_ctrl.register("folders", FolderSource(start_dir, db=self._db))
+        if not hasattr(self, '_folder_source') or self._folder_source is None:
+            roots = self._db.get_library_roots() if self._db else []
+            start_dir = roots[0] if roots else os.path.expanduser("~")
+            self._folder_source = FolderSource(start_dir, db=self._db)
+            self._search_ctrl.register("folders", self._folder_source)
+        else:
+            roots = self._db.get_library_roots() if self._db else []
+            if roots:
+                current_root = self._folder_source.root
+                if current_root not in roots:
+                    start_dir = roots[0]
+                    self._folder_source.root = start_dir
+                    self._search_ctrl.register("folders", self._folder_source)
         self._search_ctrl.set_active("folders")
         self._show_library_hub_page()
         if self._library_hub_page:
@@ -979,8 +989,10 @@ class MainWindow(QMainWindow):
     def _show_identifier(self, key):
         self._id_handlers.show(key)
     def _show_home_audio(self, key=None):
-        self._home_audio_view.refresh_if_needed()
         self._fade_content("home_audio")
+        if self._home_audio_view and self._home_audio_view._needs_refresh:
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(50, self._home_audio_view.refresh_if_needed)
 
     def _show_assistant(self, key=None):
         if self._assistant_panel is None:
@@ -1540,6 +1552,14 @@ class MainWindow(QMainWindow):
                 self._db.save_queue(paths, idx)
         except Exception:
             logging.getLogger("michi").warning("Failed to save queue on close", exc_info=True)
+        # Disconnect player signals to prevent leaks
+        import contextlib
+        with contextlib.suppress(TypeError, RuntimeError, AttributeError):
+            self._player.position_changed.disconnect()
+        with contextlib.suppress(TypeError, RuntimeError, AttributeError):
+            self._player.duration_changed.disconnect()
+        with contextlib.suppress(TypeError, RuntimeError, AttributeError):
+            self._player.state_changed.disconnect()
         self._shutdown.shutdown()
         event.accept()
 

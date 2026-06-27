@@ -48,7 +48,7 @@ class ViewNavigator:
             self._fade_anim.stop()
             self._fade_anim = None
 
-        widgets = all_widgets or []
+        widgets = all_widgets or getattr(self, '_widgets', [])
         for w in widgets:
             if w is None:
                 continue

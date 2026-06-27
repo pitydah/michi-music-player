@@ -40,6 +40,7 @@ class FolderBrowserWidget(QWidget):
         self._favorites: list[str] = []
         self._history: list[str] = []
         self._load_persistent()
+        self.set_watcher_active(False)
 
         self.setStyleSheet(
             "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"

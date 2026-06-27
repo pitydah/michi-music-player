@@ -388,7 +388,16 @@ class NavigationController(QObject):
         # Static routes
         method_name = NAV_ROUTES.get(key)
         if method_name and hasattr(w, method_name):
-            getattr(w, method_name)(key)
+            try:
+                getattr(w, method_name)(key)
+            except Exception as e:
+                import logging
+                logging.getLogger("michi.nav").warning(
+                    "Navigation handler %s failed for key=%s: %s", method_name, key, e)
+        elif not method_name and not any(key.startswith(p) for p in ("playlist:", "pl:", "srv:", "dev:", "mix_")):
+            import logging
+            logging.getLogger("michi.nav").warning(
+                "No navigation handler for key: %s", key)
 
     def _build_breadcrumb(self, subtitle: str, section_key: str) -> str:
         prev_key = self._history.current_key
