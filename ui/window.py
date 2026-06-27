@@ -398,6 +398,18 @@ class MainWindow(QMainWindow):
         self._file_watcher.files_removed.connect(self._on_watcher_files_removed)
         self._file_watcher.files_modified.connect(self._on_watcher_files_modified)
         self._shutdown.register("file_watcher", lambda: self._file_watcher.stop())
+        self._validate_nav_routes()
+
+    def _validate_nav_routes(self):
+        from ui.controllers.navigation_controller import NAV_ROUTES
+        missing = []
+        for key, method_name in NAV_ROUTES.items():
+            if not hasattr(self, method_name):
+                missing.append(f"{key} -> {method_name}")
+        if missing:
+            import logging
+            logging.getLogger("michi.startup").warning(
+                "NAV_ROUTES missing methods: %s", "; ".join(missing))
 
     def _load_initial_data(self):
         """Library loading, enrichment, tray — after everything is wired."""
@@ -881,19 +893,16 @@ class MainWindow(QMainWindow):
         self._show_library_hub_page()
         if self._library_hub_page:
             self._library_hub_page.set_current_section("artists")
-        self._search.show()
 
     def _show_albums(self, key):
         self._show_library_hub_page()
         if self._library_hub_page:
             self._library_hub_page.set_current_section("albums")
-        self._search.show()
 
     def _show_genres(self, key):
         self._show_library_hub_page()
         if self._library_hub_page:
             self._library_hub_page.set_current_section("genres")
-        self._search.show()
 
     def _show_folders(self, key):
         from sources.folder_source import FolderSource
@@ -904,7 +913,6 @@ class MainWindow(QMainWindow):
         self._show_library_hub_page()
         if self._library_hub_page:
             self._library_hub_page.set_current_section("folders")
-        self._search.show()
 
     def _show_radio(self, key):
         self._srv_ctrl.show_radio(key)
@@ -958,7 +966,7 @@ class MainWindow(QMainWindow):
             _on_device_scanned(scan_device_music(mount))
 
     def _show_discover(self, key):
-        self._views.show("discover")
+        self._fade_content("discover")
 
     def _show_smart_mix(self, key):
         self._smart_ctrl.show_smart_mix(key)
@@ -1087,20 +1095,12 @@ class MainWindow(QMainWindow):
         if section_key == getattr(self, '_last_lib_tab', None) and not force:
             return
         self._last_lib_tab = section_key
-        self._current_section_key = section_key
+        self._current_section_key = section_key if section_key in ("library", "albums", "artists", "genres", "folders") else self._current_section_key
         config = _resolve_section_config(section_key, {})
         views = config.get("views", [])
         default = config.get("default", "list")
         self._view_switcher.show()
         self._view_switcher.set_available_modes(views, default, context=section_key)
-
-        # Album-specific controls
-        if section_key == "albums":
-            self._album_sort_btn.show()
-            self._album_filter_btn.show()
-        else:
-            self._album_sort_btn.hide()
-            self._album_filter_btn.hide()
 
         # Lazy-load data for the active tab
         if section_key == "albums":

@@ -144,6 +144,7 @@ NAV_ROUTES: dict[str, str] = {
     "playback_hub": "_show_playback_hub_page",
     "connections_hub": "_show_connections_hub_page",
     "settings_hub": "_show_settings_hub_page",
+    "devices": "_show_devices_page",
     "devices_page": "_show_devices_page",
 }
 
@@ -184,10 +185,14 @@ def resolve_section_config(key: str, extra: dict | None = None) -> dict:
 
 
 class NavigationHistory:
-    """Back/forward nav stack with button state updates."""
+    """Back/forward nav stack with button state updates.
+
+    Stores search text alongside each navigation entry so that
+    pressing back/forward restores the previous search state.
+    """
 
     def __init__(self):
-        self._history: list[str] = []
+        self._history: list[tuple[str, str]] = []  # (key, search_text)
         self._index: int = -1
         self._restoring: bool = False
 
@@ -205,24 +210,25 @@ class NavigationHistory:
 
     @property
     def current_key(self) -> str | None:
-        return self._history[self._index] if 0 <= self._index < len(self._history) else None
+        entry = self._history[self._index] if 0 <= self._index < len(self._history) else None
+        return entry[0] if entry else None
 
-    def push(self, key: str):
+    def push(self, key: str, search_text: str = ""):
         """Add a navigation entry, truncating forward history if not at tip."""
-        if self._history and self._history[self._index] == key:
+        if self._history and self._history[self._index][0] == key:
             return
         if self._index < len(self._history) - 1:
             self._history = self._history[:self._index + 1]
-        self._history.append(key)
+        self._history.append((key, search_text))
         self._index = len(self._history) - 1
 
-    def back(self) -> str | None:
+    def back(self) -> tuple[str, str] | None:
         if not self.can_go_back:
             return None
         self._index -= 1
         return self._history[self._index]
 
-    def forward(self) -> str | None:
+    def forward(self) -> tuple[str, str] | None:
         if not self.can_go_forward:
             return None
         self._index += 1
@@ -258,20 +264,36 @@ class NavigationController(QObject):
     def can_go_forward(self) -> bool:
         return self._history.can_go_forward
 
-    def push(self, key: str):
-        self._history.push(key)
+    def push(self, key: str, search_text: str = ""):
+        if not search_text:
+            w = self._win
+            search_text = getattr(w, '_search_text', "")
+        self._history.push(key, search_text)
 
     def navigate_back(self):
-        key = self._history.back()
-        if key is not None:
-            self._history.restore_call(key, self._win._on_sidebar_navigate)
+        entry = self._history.back()
+        if entry is not None:
+            key, search_text = entry
+            self._restore_call(key, self._win._on_sidebar_navigate, search_text)
         self._update_buttons()
 
     def navigate_forward(self):
-        key = self._history.forward()
-        if key is not None:
-            self._history.restore_call(key, self._win._on_sidebar_navigate)
+        entry = self._history.forward()
+        if entry is not None:
+            key, search_text = entry
+            self._restore_call(key, self._win._on_sidebar_navigate, search_text)
         self._update_buttons()
+
+    def _restore_call(self, key: str, navigate_fn, search_text: str):
+        self._history._restoring = True
+        try:
+            navigate_fn(key)
+            w = self._win
+            if search_text and hasattr(w, '_search') and w._search:
+                w._search_text = search_text
+                w._search.setText(search_text)
+        finally:
+            self._history._restoring = False
 
     def _update_buttons(self):
         w = self._win
@@ -326,6 +348,9 @@ class NavigationController(QObject):
         w = self._win
         w._restore_central_opacity()
         w._current_playlist = None
+        w._search_text = ""
+        if hasattr(w, '_search') and w._search:
+            w._search.clear()
 
         section_key = key.split(":")[0] if ":" in key else key
         if section_key == "srv":
@@ -337,7 +362,7 @@ class NavigationController(QObject):
         self.configure_header(section_key)
 
         if not self._history.is_restoring:
-            self._history.push(key)
+            self._history.push(key, w._search_text)
             self._update_buttons()
 
         # Dynamic prefix routes

@@ -1,7 +1,7 @@
 """ViewController — named view manager for QStackedWidget."""
 
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QStackedWidget, QWidget
+from PySide6.QtWidgets import QStackedWidget, QWidget, QLabel
 
 
 class ViewController(QObject):
@@ -12,6 +12,17 @@ class ViewController(QObject):
         self._stack = stack
         self._views: dict[str, QWidget] = {}
         self._current = ""
+        self._placeholder = None
+
+    def _ensure_placeholder(self):
+        if self._placeholder is None:
+            self._placeholder = QLabel("Vista no disponible")
+            self._placeholder.setAlignment(
+                __import__("PySide6.QtCore").QtCore.Qt.AlignCenter)
+            self._placeholder.setStyleSheet(
+                "color: rgba(255,255,255,0.42); font-size: 14px; "
+                "background: transparent;")
+            self._stack.addWidget(self._placeholder)
 
     def register(self, name: str, widget: QWidget):
         self._views[name] = widget
@@ -32,6 +43,9 @@ class ViewController(QObject):
     def show(self, name: str):
         widget = self._views.get(name)
         if widget is None:
+            self._ensure_placeholder()
+            self._stack.setCurrentWidget(self._placeholder)
+            self._current = ""
             return
         self._stack.setCurrentWidget(widget)
         self._current = name
