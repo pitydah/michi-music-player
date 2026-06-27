@@ -390,24 +390,28 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._validate_critical_widgets()
 
-    def _validate_critical_widgets(self):
-        """Assert that all non-optional UI widgets exist after setup.
+    @staticmethod
+    def _require(condition: bool, message: str):
+        """Fail-fast validation — raises RuntimeError, not affected by python -O."""
+        if not condition:
+            raise RuntimeError(f"Michi startup validation failed: {message}")
 
+    def _validate_critical_widgets(self):
+        """Verify all non-optional UI widgets exist after setup.
         Converts silent hasattr guards into immediate failures at startup.
         """
-        assert self._content, "content stack not created"
-        assert self._search, "search bar not created"
-        assert self._view_switcher, "view switcher not created"
+        self._require(self._content is not None, "content stack not created")
+        self._require(self._search is not None, "search bar not created")
+        self._require(self._view_switcher is not None, "view switcher not created")
 
     def _validate_critical_services(self):
-        """Assert that all core services exist after controllers init.
-
+        """Verify all core services exist after controllers init.
         Converts silent hasattr guards into immediate failures at startup.
         """
-        assert self._workers, "worker manager not initialized"
-        assert self._model, "table model not initialized"
-        assert self._ctx is not None, "AppContext not initialized"
-        assert self._ctx.player_bar is not None, "player_bar not in AppContext"
+        self._require(self._workers is not None, "worker manager not initialized")
+        self._require(self._model is not None, "table model not initialized")
+        self._require(self._ctx is not None, "AppContext not initialized")
+        self._require(self._ctx.player_bar is not None, "player_bar not in AppContext")
 
     def _init_controllers(self):
         """Required controllers — navigation, playback, playlist, library."""
@@ -1412,13 +1416,13 @@ class MainWindow(QMainWindow):
         pb.audio_output_clicked.connect(self._show_audio_output_menu)
         pb.mini_player_clicked.connect(self._open_mini_player)
         pb.cover_loaded.connect(self._bg_theme.apply)
-        pb._quality_badge.clicked_details.connect(self._show_audio_diagnostics)
+        pb.quality_details_requested.connect(self._show_audio_diagnostics)
 
     def _setup_tray(self):
         from ui.controllers.tray_controller import TrayController
         self._tray_ctrl = TrayController(self)
         self._tray_ctrl.setup()
-        self._tray = self._tray_ctrl._icon
+        self._tray = self._tray_ctrl.icon
 
     def _notify_track(self, title: str, artist: str):
         if hasattr(self, '_tray_ctrl'):
@@ -2676,7 +2680,6 @@ class MainWindow(QMainWindow):
             return
         album_name = tracks[0].album or "Álbum"
         self._playlist_ctrl.create_playlist_from_tracks(tracks, album_name)
-        self._toast_svc.show(f"Playlist creada: {album_name}", "success")
 
     def _on_coverflow_metadata_album(self, idx: int):
         tracks = self._coverflow_album_tracks(idx)

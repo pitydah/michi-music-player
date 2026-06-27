@@ -4,7 +4,7 @@ import os
 from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QFileDialog
 
-from library.library_db import DB_PATH
+from core.paths import database_path
 from ui.loading_overlay import LoadingOverlay
 from ui.toast_notification import ToastNotification
 
@@ -14,7 +14,7 @@ class FileActions:
         self._win = window
         self._svc = services
         self._db = window._db
-        self._db_path = DB_PATH
+        self._db_path = database_path()
         self._active_threads: list = []
 
     def _reload_library(self, reason: str = ""):

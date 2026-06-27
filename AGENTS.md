@@ -39,33 +39,36 @@ michi-music-player/
 ├── sync/           → Android REST API + UDP multicast discovery
 ├── lyrics/         → lrclib_client.py
 ├── metadata/       → album_info_repository.py (LRU 200 + SQLite fallback)
-├── tests/          → **206 tests** in 25 files (pytest)
+├── tests/          → **283 tests** in 52 files (pytest + pytest-qt)
 ├── docs/           → architecture.md, roadmap.md
 ├── icons/          → 38+ icons (SVG + PNG, sidebar_clean/, sidebar/, nowplaying_clean/, radio/)
 └── AGENTS.md       → This file
 ```
 
-**Total:** 242 Python files · 206 tests · 14 controllers · 9 audio profiles · 3 recognition providers
+**Total:** 414 Python files · 283 tests · 14 controllers · 9 audio profiles · 3 recognition providers
 
-## 3. Architectural Patterns — MUST FOLLOW
+## 3. Architectural Patterns — MUST FOLLOW (migration in progress)
 
 ### Dependency Injection
-- All dependencies obtained from `AppContext` (`core/app_context.py`)
-- NEVER access `window` directly from a controller
-- Controllers receive `ctx: AppContext` in `__init__`, not raw widget references
-- Pattern: `self._ctx = ctx; self._ctx.playback.toggle()`
+- Preferred: `AppContext` (`core/app_context.py`) and `AppServices` (`core/app_services.py`)
+- Current state: controllers store `self._ctx` directly; `self._win` retained for Qt parent/widget needs
+- Pattern: `self._ctx.playback.toggle()`
+- Migration: controllers that receive `ctx` should stop accessing `self._win._ctx`
 
 ### PlayerService as Single Facade
 - UI NEVER touches `GStreamerEngine` directly
 - All audio operations go through `PlayerService` (`audio/player_service.py`)
-- 7+ public wrappers: play, pause, stop, seek, next, prev, set_volume, set_eq_graphic, set_eq_parametric, set_eq_bypass, set_eq_preamp, set_transmit_device, set_output_device_id, set_spectrum_enabled
-- 0 accesses to private engine attributes from outside `player_service.py`
+- Public wrappers: play, pause, stop, seek, next, prev, set_volume, get_eq_state, 
+  set_eq_graphic, set_eq_parametric, set_eq_bypass, set_eq_preamp, 
+  set_transmit_device, set_output_device_id, set_spectrum_enabled
+- Private engine attributes accessed only from `player_service.py`
 
 ### Controllers (ui/controllers/)
 - One controller per functional domain (14 total)
-- Receive only `AppContext`, not widget references
+- Progressive migration toward `AppContext` + `AppServices` DI
 - Emit Qt `Signal` for communication — never call UI methods directly
 - NO business logic in controllers — delegate to services
+- `window.py` is still the main orchestrator; avoid massive refactors without tests
 
 ### Qt Signals
 - Naming: `track_changed`, `playback_started`, `library_scanned`, `navigation_requested`

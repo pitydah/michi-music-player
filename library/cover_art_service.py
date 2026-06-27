@@ -7,7 +7,13 @@ import hashlib
 from library.album_art import find_cover_in_dir
 from audio.audio_chain import get_quality_label
 
-CACHE_DIR = os.path.expanduser("~/.cache/michi/covers")
+
+def _covers_cache_dir() -> str:
+    from core.paths import covers_cache_dir
+    return covers_cache_dir()
+
+
+CACHE_DIR = os.path.expanduser("~/.cache/michi/covers")  # legacy compat
 
 
 class CoverArtService:

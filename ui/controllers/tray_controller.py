@@ -14,6 +14,11 @@ class TrayController:
     def setup(self):
         self._icon = QSystemTrayIcon(get_tray_icon(), self._win)
         self._icon.setToolTip("Michi Music Player")
+
+    @property
+    def icon(self):
+        """Public access to the system tray icon for window-level wiring."""
+        return self._icon
         tray_menu = QMenu()
         tray_menu.addAction("Mostrar", self._win.show)
         tray_menu.addAction("Reproducir/Pausa", self._ctx.playback.toggle)

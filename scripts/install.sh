@@ -434,10 +434,10 @@ else
     PY_MAJOR=$(echo "$PY_VERSION" | cut -d. -f1)
     PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
 
-    if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 10 ]; }; then
-        error "Python >=3.10 requerido. Versión actual: $PY_VERSION"
-        if command -v python3.10 &>/dev/null; then
-            warn "python3.10 encontrado — usá 'python3.10 -m venv ...' o actualizá tu Python por defecto"
+    if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 11 ]; }; then
+        error "Python >=3.11 requerido. Versión actual: $PY_VERSION"
+        if command -v python3.11 &>/dev/null; then
+            warn "python3.11 encontrado — usá 'python3.11 -m venv ...' o actualizá tu Python por defecto"
         fi
         exit 1
     fi
@@ -670,7 +670,7 @@ echo "    Menú app:  Buscá 'Michi Music Player' en tu menú de aplicaciones"
 echo
 if ! $NO_VENV; then
     echo "  Para desarrollo:"
-    echo "    pytest tests/ -q     # ejecutar tests (206)"
+    echo "    pytest tests/ -q     # ejecutar tests (suite completa)"
     echo "    ruff check .         # verificar lint (0 esperado)"
 fi
 if $DRY_RUN; then

@@ -237,6 +237,7 @@ class NowPlayingBar(QWidget):
     track_details_requested = Signal()
     expanded_requested = Signal()
     transmit_clicked = Signal()
+    quality_details_requested = Signal()
     audio_output_clicked = Signal()
     mini_player_clicked = Signal()
     cover_loaded = Signal(object)  # emits QPixmap of album art
@@ -525,6 +526,7 @@ class NowPlayingBar(QWidget):
 
         from ui.source_status_badge import SourceStatusBadge
         self._quality_badge = SourceStatusBadge()
+        self._quality_badge.clicked_details.connect(self.quality_details_requested.emit)
         self._quality_badge.setMinimumWidth(88)
         self._quality_badge.setMaximumWidth(176)
 

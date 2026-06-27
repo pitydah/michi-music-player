@@ -69,12 +69,24 @@ def audio_analysis_dir() -> str:
     return os.path.join(app_data_dir(), "audio_analysis")
 
 
+def audio_features_db_path() -> str:
+    return os.path.join(audio_analysis_dir(), "audio_features.db")
+
+
 def recommendation_dir() -> str:
     return os.path.join(app_data_dir(), "recommendation")
 
 
 def ai_assistant_dir() -> str:
     return os.path.join(app_data_dir(), "ai_assistant")
+
+
+def artist_metadata_cache_dir() -> str:
+    return os.path.join(app_cache_dir(), "artist_metadata")
+
+
+def album_metadata_cache_db_path() -> str:
+    return os.path.join(artist_metadata_cache_dir(), "index.sqlite")
 
 
 def metadata_review_db_path() -> str:

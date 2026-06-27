@@ -24,10 +24,10 @@ class ExpandedController(QObject):
 
         if self._ctx.expanded is None:
             self._ctx.expanded = ExpandedNowPlaying()
-            if self._svc and hasattr(self._svc, 'workers'):
-                self._ctx.expanded._lyrics._workers = self._svc.workers
+            if self._svc and hasattr(self._svc, 'workers') and self._svc.workers:
+                self._ctx.expanded.set_worker_manager(self._svc.workers)
             elif hasattr(self._win, '_workers'):
-                self._ctx.expanded._lyrics._workers = self._win._workers
+                self._ctx.expanded.set_worker_manager(self._win._workers)
             self._ctx.expanded.go_back.connect(self.back)
             self._ctx.expanded.play_clicked.connect(self._ctx.playback.toggle)
             self._ctx.expanded.prev_clicked.connect(self.prev)

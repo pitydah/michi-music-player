@@ -337,6 +337,10 @@ class ExpandedNowPlaying(QWidget):
             self._queue_list.addItem(qi)
         self._setting_queue = False
 
+    def set_worker_manager(self, workers):
+        """Set the worker manager for async lyrics fetching."""
+        self._lyrics._workers = workers
+
 
 def _fmt(t: float) -> str:
     t = int(t)
