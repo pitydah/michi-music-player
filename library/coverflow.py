@@ -223,7 +223,7 @@ class CenterGlow(QGraphicsEllipseItem):
     """Soft halo behind the center cover — guides visual focus."""
     def __init__(self):
         super().__init__()
-        self.setBrush(QColor(255, 255, 255, 18))  # placeholder brush
+        self.setBrush(QColor(143, 183, 255, 18))  # accent blue placeholder
         self.setPen(Qt.NoPen)
         self.setZValue(500)
         self.setVisible(False)
@@ -238,8 +238,8 @@ class CenterGlow(QGraphicsEllipseItem):
         h = max(sbr.height(), 10) * 0.6
         r = max(w, h) * 0.6
         g = QRadialGradient(w / 2, h / 2, r)
-        g.setColorAt(0.0, QColor(255, 255, 255, 18))
-        g.setColorAt(1.0, QColor(255, 255, 255, 0))
+        g.setColorAt(0.0, QColor(143, 183, 255, 18))
+        g.setColorAt(1.0, QColor(143, 183, 255, 0))
         self.setBrush(g)
         self.setRect(0, 0, w, h)
         self.setPos(cx - w / 2, cy - h / 2 - 10)
@@ -345,12 +345,6 @@ class CoverFlowWidget(QGraphicsView):
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setCursor(Qt.OpenHandCursor)
-
-        self._geometry = {
-            "max_rot": 60.0, "center_scale": 1.04, "side_scale": 0.82,
-            "far_scale": 0.66, "near_gap_factor": 0.72, "side_gap_factor": 0.32,
-            "far_gap_factor": 0.18, "center_y_offset": -38,
-        }
 
         self._items: list[CoverFlowItem] = []
         self._cover_items: list[CoverPixmapItem] = []
@@ -713,9 +707,10 @@ class CoverFlowWidget(QGraphicsView):
         vh = self.viewport().height()
         self._empty_msg.setVisible(False)
 
-        # Only process items within visible window (±15 from current)
-        ci = max(0, int(self._current) - 15)
-        ce = min(len(self._cover_items), int(self._current) + 16)
+        # Only process items within visible window
+        window = self._visible_range()
+        ci = max(0, int(self._current) - window)
+        ce = min(len(self._cover_items), int(self._current) + window + 1)
 
         for i in range(ci, ce):
             ci_item = self._cover_items[i]
@@ -1159,6 +1154,8 @@ class CoverFlowWidget(QGraphicsView):
             self.double_clicked.emit(idx)
 
     def wheelEvent(self, event):
+        self._snap_anim.stop()
+        self._snapping = False
         pixel = event.pixelDelta()
         if pixel.x() or pixel.y():
             d = pixel.x() if abs(pixel.x()) > abs(pixel.y()) else pixel.y()
@@ -1179,4 +1176,6 @@ class CoverFlowWidget(QGraphicsView):
         self._phys_timer.stop()
         self._wheel_snap_timer.stop()
         self._snap_anim.stop()
+        if hasattr(self, '_text_anim') and self._text_anim:
+            self._text_anim.stop()
         super().closeEvent(event)

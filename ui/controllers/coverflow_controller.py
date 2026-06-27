@@ -49,6 +49,7 @@ class CoverFlowController:
         cache_key = hashlib.sha1("|".join(sig_parts).encode()).hexdigest()
 
         if self._win._coverflow is not None and cache_key == self._win._coverflow_cache_key:
+            self._snapped_index = self._win._coverflow.current_index()
             self._win._albums_stack.setCurrentIndex(2)
             self._win._fade_content("library_hub")
             self._win._count.setText(f"{self._win._coverflow.count()} álbumes")

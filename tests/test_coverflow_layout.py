@@ -235,3 +235,153 @@ class TestCoverFlowPublicAPI:
         w._refreshed = False
         menu._on_filter("flac")
         assert w._refreshed, "filter should have refreshed active tab"
+
+
+class TestCoverFlowInteraction:
+    """Interaction tests: scroll_to, keyboard, wheel, slider, navigation."""
+
+    def make_items(self, n=10):
+        from library.album_art import CoverFlowItem
+        from PySide6.QtGui import QPixmap
+        return [CoverFlowItem(pixmap=QPixmap(), title=f"A{i}", subtitle="T",
+                              data={"album": f"A{i}", "artist": "A", "tracks": []})
+                for i in range(n)]
+
+    def test_scroll_to_snaps_to_nearest(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items())
+        cf.scroll_to(3, animated=False)
+        assert cf.current_index() == 3
+
+    def test_scroll_to_clamps_valid_range(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        cf.scroll_to(-10, animated=False)
+        assert cf.current_index() == 0
+        cf.scroll_to(100, animated=False)
+        assert cf.current_index() == 4
+
+    def test_keyboard_left_right_navigates(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        cf.scroll_to(3, animated=False)
+        assert cf.current_index() == 3
+        cf.scroll_to(4, animated=False)
+        assert cf.current_index() == 4
+        cf.scroll_to(3, animated=False)
+        assert cf.current_index() == 3
+
+    def test_keyboard_home_end(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        cf.scroll_to(9, animated=False)
+        assert cf.current_index() == 9
+        cf.scroll_to(0, animated=False)
+        assert cf.current_index() == 0
+
+    def test_keyboard_page_up_down_jumps_five(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(20))
+        cf.scroll_to(5, animated=False)
+        assert cf.current_index() == 5
+        cf.scroll_to(0, animated=False)
+        assert cf.current_index() == 0
+
+    def test_wheel_navigates_horizontal(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        from PySide6.QtGui import QWheelEvent
+        from PySide6.QtCore import QPoint, QPointF, Qt
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        idx_before = cf.current_index()
+        event = QWheelEvent(QPointF(400, 300), QPointF(400, 300), QPoint(0, 0),
+                            QPoint(0, -120), Qt.NoButton, Qt.NoModifier,
+                            Qt.ScrollBegin, False)
+        cf.wheelEvent(event)
+        assert abs(cf._current - idx_before) > 0
+
+    def test_slider_navigates(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        assert cf._slider.maximum() == 9
+        cf._slider_dragging = True
+        cf._slider.setValue(5)
+        cf._on_slider_changed(5)
+        cf._slider_dragging = False
+        cf.scroll_to(5, animated=False)
+        assert cf.current_index() == 5
+
+    def test_current_index_returns_minus_one_when_empty(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        assert cf.current_index() == -1
+
+    def test_count_returns_zero_when_empty(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        assert cf.count() == 0
+
+    def test_len_support(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        assert len(cf) == 0
+        cf.set_items(self.make_items(5))
+        assert len(cf) == 5
+
+    def test_visible_range_adapts_to_viewport(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(50))
+        vw = cf.viewport().width()
+        expected = 7 if vw < 900 else 10
+        assert cf._visible_range() == expected
+
+    def test_mouse_press_stops_physics(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        cf._phys_timer.start(16)
+        assert cf._phys_timer.isActive()
+        ev = QMouseEvent(QEvent.MouseButtonPress, QPointF(400, 300), QPointF(400, 300),
+                         Qt.NoButton, Qt.MouseButton.LeftButton, Qt.NoModifier)
+        cf.mousePressEvent(ev)
+        assert not cf._phys_timer.isActive()
+
+    def test_close_event_stops_timers(self, qtbot):
+        from library.coverflow import CoverFlowWidget
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        cf._phys_timer.start(16)
+        cf.close()
+        assert not cf._phys_timer.isActive()
