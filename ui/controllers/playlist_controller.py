@@ -7,10 +7,11 @@ from PySide6.QtWidgets import QFileDialog, QInputDialog
 class PlaylistController:
     def __init__(self, window, services=None):
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
 
     def _toast(self, text: str, level: str = "info"):
-        self._win._ctx.toast.show(text, level)
+        self._ctx.toast.show(text, level)
 
     # ── M3U Import ──
 
@@ -38,10 +39,10 @@ class PlaylistController:
             if not filepaths:
                 self._toast("No se encontraron archivos validos en el M3U", "error")
                 return
-            pid = self._win._ctx.db.create_playlist(name)
+            pid = self._ctx.db.create_playlist(name)
             for fp in filepaths:
-                self._win._ctx.db.add_to_playlist(pid, fp)
-            self._win._ctx.rebuild_sidebar()
+                self._ctx.db.add_to_playlist(pid, fp)
+            self._ctx.rebuild_sidebar()
             self._toast(f"Importados {len(filepaths)} temas como '{name}'", "success")
         except (OSError, UnicodeDecodeError) as e:
             self._toast(f"Error al importar M3U: {e}", "error")
@@ -49,7 +50,7 @@ class PlaylistController:
     # ── M3U Export ──
 
     def export_playlists(self):
-        playlists = self._win._ctx.db.get_playlists()
+        playlists = self._ctx.db.get_playlists()
         if not playlists:
             self._toast("No hay playlists para exportar", "info")
             return
@@ -67,7 +68,7 @@ class PlaylistController:
         if not path:
             return
         try:
-            items = self._win._ctx.db.get_playlist_items(pl["id"])
+            items = self._ctx.db.get_playlist_items(pl["id"])
             with open(path, "w", encoding="utf-8") as f:
                 f.write("#EXTM3U\n")
                 f.write(f"#PLAYLIST:{name}\n")
@@ -94,16 +95,16 @@ class PlaylistController:
             self._toast("No se encontraron archivos de audio en la carpeta", "info")
             return
         name = os.path.basename(folder.rstrip("/"))
-        pid = self._win._ctx.db.create_playlist(name)
+        pid = self._ctx.db.create_playlist(name)
         for fp in filepaths:
-            self._win._ctx.db.add_to_playlist(pid, fp)
-        self._win._ctx.rebuild_sidebar()
+            self._ctx.db.add_to_playlist(pid, fp)
+        self._ctx.rebuild_sidebar()
         self._toast(f"Creada '{name}' con {len(filepaths)} temas", "success")
 
     # ── Playlist from queue ──
 
     def hub_create_from_queue(self):
-        playback = self._svc.playback if self._svc and hasattr(self._svc, 'playback') else self._win._ctx.playback
+        playback = self._svc.playback if self._svc and hasattr(self._svc, 'playback') else self._ctx.playback
         queue = playback.get_queue() if hasattr(playback, 'get_queue') else []
         if not queue:
             self._toast("La cola de reproducción está vacía", "info")
@@ -113,12 +114,12 @@ class PlaylistController:
         if not ok or not name.strip():
             return
         name = name.strip()
-        pid = self._win._ctx.db.create_playlist(name)
+        pid = self._ctx.db.create_playlist(name)
         for q in queue:
             fp = q.get("filepath", q) if isinstance(q, dict) else q
             if os.path.isfile(fp):
-                self._win._ctx.db.add_to_playlist(pid, fp)
-        self._win._ctx.rebuild_sidebar()
+                self._ctx.db.add_to_playlist(pid, fp)
+        self._ctx.rebuild_sidebar()
         self._toast(f"Creada '{name}' con {len(queue)} temas", "success")
 
     # ── Create from album/artist/genre/search ──
@@ -154,10 +155,10 @@ class PlaylistController:
         tracks = album_tracks.get(label, [])
         fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
         if fps:
-            pid = self._win._ctx.db.create_playlist(label[:64])
+            pid = self._ctx.db.create_playlist(label[:64])
             for fp in fps:
-                self._win._ctx.db.add_to_playlist(pid, fp)
-            self._win._ctx.rebuild_sidebar()
+                self._ctx.db.add_to_playlist(pid, fp)
+            self._ctx.rebuild_sidebar()
             self._toast(f"Playlist creada: {label[:48]} ({len(fps)} temas)", "success")
 
     def create_from_artist(self):
@@ -180,10 +181,10 @@ class PlaylistController:
         if group:
             fps = [t.filepath for t in group.all_tracks if os.path.isfile(t.filepath)]
             if fps:
-                pid = self._win._ctx.db.create_playlist(name)
+                pid = self._ctx.db.create_playlist(name)
                 for fp in fps:
-                    self._win._ctx.db.add_to_playlist(pid, fp)
-                self._win._ctx.rebuild_sidebar()
+                    self._ctx.db.add_to_playlist(pid, fp)
+                self._ctx.rebuild_sidebar()
                 self._toast(f"Playlist creada: {name} ({len(fps)} temas)", "success")
 
     def create_from_genre(self):
@@ -203,14 +204,14 @@ class PlaylistController:
         tracks = [i for i in all_items if i.genre == genre]
         fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
         if fps:
-            pid = self._win._ctx.db.create_playlist(genre)
+            pid = self._ctx.db.create_playlist(genre)
             for fp in fps:
-                self._win._ctx.db.add_to_playlist(pid, fp)
-            self._win._ctx.rebuild_sidebar()
+                self._ctx.db.add_to_playlist(pid, fp)
+            self._ctx.rebuild_sidebar()
             self._toast(f"Playlist creada: {genre} ({len(fps)} temas)", "success")
 
     def create_from_search(self):
-        model = self._win._ctx.model
+        model = self._ctx.model
         if not model or model.rowCount() == 0:
             self._toast("No hay resultados de busqueda activos", "info")
             return
@@ -226,22 +227,22 @@ class PlaylistController:
             if fp and os.path.isfile(fp):
                 fps.append(fp)
         if fps:
-            pid = self._win._ctx.db.create_playlist(name)
+            pid = self._ctx.db.create_playlist(name)
             for fp in fps:
-                self._win._ctx.db.add_to_playlist(pid, fp)
-            self._win._ctx.rebuild_sidebar()
+                self._ctx.db.add_to_playlist(pid, fp)
+            self._ctx.rebuild_sidebar()
             self._toast(f"Playlist creada: {name} ({len(fps)} temas)", "success")
 
     # ── Hub navigation ──
 
     def open_smart_playlist(self, key: str):
-        self._win._ctx.navigate_sidebar(
+        self._ctx.navigate_sidebar(
             f"mix_{key}" if not key.startswith("mix_") else key)
 
     def hub_playlist_play(self, pid: int):
-        items = self._win._ctx.db.get_playlist_items(pid)
+        items = self._ctx.db.get_playlist_items(pid)
         fps = [i.filepath for i in items]
-        playback = self._svc.playback if self._svc and hasattr(self._svc, 'playback') else self._win._ctx.playback
+        playback = self._svc.playback if self._svc and hasattr(self._svc, 'playback') else self._ctx.playback
         if hasattr(playback, 'play_queue'):
             playback.play_queue(fps)
         else:
@@ -249,43 +250,43 @@ class PlaylistController:
         self._toast("Reproduciendo playlist", "success")
 
     def hub_playlist_queue(self, pid: int):
-        items = self._win._ctx.db.get_playlist_items(pid)
+        items = self._ctx.db.get_playlist_items(pid)
         fps = [i.filepath for i in items]
-        self._win._ctx.playback.enqueue(fps, play_now=False)
+        self._ctx.playback.enqueue(fps, play_now=False)
         self._toast("Playlist anadida a la cola", "success")
 
     # ── CRUD helpers ──
 
     def get_all_playlists(self) -> list[dict]:
         """Return all playlists from the database."""
-        return self._win._ctx.db.get_playlists()
+        return self._ctx.db.get_playlists()
 
     def get_playlist_items(self, pid: int) -> list:
         """Return all tracks in a playlist."""
-        return self._win._ctx.db.get_playlist_items(pid)
+        return self._ctx.db.get_playlist_items(pid)
 
     def get_playlist_by_id(self, pid: int) -> dict | None:
         """Return a single playlist dict by id, or None."""
         return next(
-            (p for p in self._win._ctx.db.get_playlists() if p["id"] == pid),
+            (p for p in self._ctx.db.get_playlists() if p["id"] == pid),
             None,
         )
 
     def create_playlist(self, name: str) -> int:
         """Create a new playlist and refresh the sidebar. Returns playlist id."""
-        pid = self._win._ctx.db.create_playlist(name.strip())
-        self._win._ctx.rebuild_sidebar()
+        pid = self._ctx.db.create_playlist(name.strip())
+        self._ctx.rebuild_sidebar()
         return pid
 
     def delete_playlist(self, pid: int):
         """Delete a playlist and refresh the sidebar + library."""
-        self._win._ctx.db.delete_playlist(pid)
-        self._win._ctx.rebuild_sidebar()
-        self._win._ctx.load_library()
+        self._ctx.db.delete_playlist(pid)
+        self._ctx.rebuild_sidebar()
+        self._ctx.load_library()
 
     def add_track_to_playlist(self, pid: int, fp: str):
         """Add a single filepath to an existing playlist."""
-        self._win._ctx.db.add_to_playlist(pid, fp)
+        self._ctx.db.add_to_playlist(pid, fp)
 
     def create_playlist_from_tracks(self, tracks: list, name: str) -> int:
         """Create a playlist from a list of MediaItem-like objects or filepaths.
@@ -294,12 +295,12 @@ class PlaylistController:
         """
         if not tracks or not name:
             return 0
-        pid = self._win._ctx.db.create_playlist(name.strip())
+        pid = self._ctx.db.create_playlist(name.strip())
         for t in tracks:
             fp = t.filepath if hasattr(t, 'filepath') else str(t)
             if os.path.isfile(fp):
-                self._win._ctx.db.add_to_playlist(pid, fp)
-        self._win._ctx.rebuild_sidebar()
+                self._ctx.db.add_to_playlist(pid, fp)
+        self._ctx.rebuild_sidebar()
         self._toast(f"Playlist creada: {name[:48]} ({len(tracks)} temas)", "success")
         return pid
 
@@ -307,4 +308,48 @@ class PlaylistController:
         self._toast(f"Metadatos guardados en {len(filepaths)} archivos", "success")
 
     def refresh_library(self):
-        self._win._ctx.load_library()
+        self._ctx.load_library()
+
+    # ── DB read accessors (non-playlist queries) ──
+
+    def get_favorites(self) -> list[str]:
+        """Return list of favorite filepaths from the database."""
+        return self._ctx.db.get_favorites()
+
+    def get_play_history(self, limit: int = 50) -> list[dict]:
+        """Return recent play history entries from the database."""
+        return self._ctx.db.get_play_history(limit=limit)
+
+    def get_all_tracks(self) -> list:
+        """Return all MediaItem track objects from the library."""
+        return self._ctx.db.get_all()
+
+    def save_queue(self, engine):
+        """Persist current playback queue to the database for session restore."""
+        try:
+            if hasattr(engine, '_queue') and engine._queue:
+                self._ctx.db.save_queue(engine._queue, engine._queue_index)
+        except Exception:
+            pass
+
+    def add_files(self, filepaths: list[str]):
+        """Add files to the library database. Each filepath is indexed."""
+        for fp in filepaths:
+            self._ctx.db.add_file(fp)
+
+    def update_playlist(self, pid: int, **kwargs):
+        """Update playlist metadata (name, description, cover_path, cover_type)."""
+        self._ctx.db.update_playlist(pid, **kwargs)
+
+    def get_detected_tracks(self, limit: int = 100) -> list:
+        """Return recently detected/identified tracks."""
+        return self._ctx.db.get_detected_tracks(limit)
+
+    def clear_detected_tracks(self):
+        """Remove all detected track records."""
+        self._ctx.db.clear_detected_tracks()
+
+    def delete_detected_track(self, idx: int):
+        """Delete a single detected track by its row index."""
+        if hasattr(self._ctx.db, 'delete_detected_track'):
+            self._ctx.db.delete_detected_track(idx)

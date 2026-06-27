@@ -42,3 +42,7 @@ class AppServices:
     clear_coverflow_cache: callable = None
     enrich_artist: callable = None        # (key: str, name: str) -> None
     get_content_widget: callable = None   # () -> QWidget — for overlay parents
+    ha_client: object = None              # HomeAssistantClient (optional)
+    ha_connected: callable = None         # () -> bool
+    local_media_ctrl: object = None       # LocalMediaServerController
+    local_ip: callable = None             # () -> str

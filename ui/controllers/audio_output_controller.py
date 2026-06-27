@@ -13,6 +13,7 @@ class AudioOutputController(QObject):
     def __init__(self, window, services=None):
         super().__init__()
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
 
     def show_menu(self):
@@ -23,10 +24,10 @@ class AudioOutputController(QObject):
 
         action_system = menu.addAction("Predeterminada del sistema")
         action_system.setCheckable(True)
-        current_id = self._win._ctx.playback.get_output_device_id()
+        current_id = self._ctx.playback.get_output_device_id()
         action_system.setChecked(current_id == "auto")
         action_system.triggered.connect(
-            lambda: self._win._ctx.playback.set_output_device_id(None))
+            lambda: self._ctx.playback.set_output_device_id(None))
 
         menu.addSeparator()
 
@@ -38,18 +39,18 @@ class AudioOutputController(QObject):
                 action.setChecked(current_id == device_id)
                 action.triggered.connect(
                     lambda checked=False, did=device_id:
-                    self._win._ctx.playback.set_output_device_id(did))
+                    self._ctx.playback.set_output_device_id(did))
         else:
             empty = menu.addAction("No se detectaron dispositivos")
             empty.setEnabled(False)
 
         menu.addSeparator()
         menu.addAction("PipeWire (sistema)",
-                       lambda: self._win._ctx.playback.set_output_device_id(None))
+                       lambda: self._ctx.playback.set_output_device_id(None))
         menu.addAction("Actualizar dispositivos", self.show_menu)
         menu.addAction("Preferencias de audio…", self.preferences_requested.emit)
 
-        btn = self._win._ctx.player_bar.audio_output_button()
+        btn = self._ctx.player_bar.audio_output_button()
         menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
     @staticmethod

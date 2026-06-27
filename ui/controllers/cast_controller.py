@@ -17,12 +17,12 @@ class CastController(QObject):
     def __init__(self, window, services=None):
         super().__init__()
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
 
     def show_cast_menu(self):
         """Show the unified transmit/cast menu: local output + net devices + zones + HA."""
-        ctx = getattr(self._win, '_ctx', None)
-        if not ctx or not hasattr(ctx, 'transmit_mgr'):
+        if not self._ctx or not hasattr(self._ctx, 'transmit_mgr'):
             return
 
         from ui.premium_menus import premium_menu_qss
@@ -32,12 +32,12 @@ class CastController(QObject):
         # Local output
         local = menu.addAction("Salida local")
         local.setCheckable(True)
-        active = ctx.transmit_mgr.get_active()
+        active = self._ctx.transmit_mgr.get_active()
         local.setChecked(active is None)
         local.triggered.connect(lambda: self.transmit_device_selected.emit(None))
 
         # TransmitManager network devices
-        devices = ctx.transmit_mgr.get_devices()
+        devices = self._ctx.transmit_mgr.get_devices()
         if devices:
             menu.addSeparator()
             for dev in devices:
@@ -89,7 +89,7 @@ class CastController(QObject):
                        self.manage_transmit_requested.emit)
 
         btn = None
-        if ctx and hasattr(ctx, 'player_bar'):
-            btn = ctx.player_bar.transmit_button()
+        if self._ctx and hasattr(self._ctx, 'player_bar'):
+            btn = self._ctx.player_bar.transmit_button()
         if btn:
             menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))

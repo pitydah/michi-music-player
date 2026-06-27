@@ -6,6 +6,7 @@ import logging
 class MPRISController:
     def __init__(self, window, services=None):
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
         self._adapter = None
 
@@ -14,7 +15,7 @@ class MPRISController:
         try:
             from adapters.mpris import MPRISAdapter
             self._adapter = MPRISAdapter(self._win)
-            self._adapter.player.set_engine(self._win._ctx.player)
+            self._adapter.player.set_engine(self._ctx.player)
         except Exception:
             logging.getLogger("michi").debug("MPRIS integration not available (no dbus)")
 

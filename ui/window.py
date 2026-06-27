@@ -388,6 +388,26 @@ class MainWindow(QMainWindow):
         """Sidebar, header, content stack, nowplaying, views."""
         self._setup_actions()
         self._setup_ui()
+        self._validate_critical_widgets()
+
+    def _validate_critical_widgets(self):
+        """Assert that all non-optional UI widgets exist after setup.
+
+        Converts silent hasattr guards into immediate failures at startup.
+        """
+        assert self._content, "content stack not created"
+        assert self._search, "search bar not created"
+        assert self._view_switcher, "view switcher not created"
+
+    def _validate_critical_services(self):
+        """Assert that all core services exist after controllers init.
+
+        Converts silent hasattr guards into immediate failures at startup.
+        """
+        assert self._workers, "worker manager not initialized"
+        assert self._model, "table model not initialized"
+        assert self._ctx is not None, "AppContext not initialized"
+        assert self._ctx.player_bar is not None, "player_bar not in AppContext"
 
     def _init_controllers(self):
         """Required controllers — navigation, playback, playlist, library."""
@@ -451,6 +471,8 @@ class MainWindow(QMainWindow):
             lambda: self._show_preferences("audio"))
         self._expanded_ctrl.preferences_requested.connect(self._show_preferences)
         self._expanded_ctrl.metadata_requested.connect(self._open_metadata_for_files)
+
+        self._validate_critical_services()
 
     def _init_optional_services(self):
         """Music identifier, HomeAudioView, Snapcast, API, mDNS, enrichment, MPRIS."""
@@ -1744,7 +1766,7 @@ class MainWindow(QMainWindow):
                 self._toast_svc.warning("El mix no contiene archivos disponibles")
 
     def _show_favs(self, key):
-        favs = self._db.get_favorites()
+        favs = self._playlist_ctrl.get_favorites()
         items = [self._items_index.get(fp) for fp in favs if self._items_index.get(fp)]
         refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
                          artist=i.artist, album=i.album, duration=i.duration,
@@ -1768,7 +1790,7 @@ class MainWindow(QMainWindow):
         self._search.show()
 
     def _show_recent(self, key):
-        history = self._db.get_play_history()
+        history = self._playlist_ctrl.get_play_history()
         items = [self._items_index.get(h.get("track_id", ""))
                  for h in history[:50] if self._items_index.get(h.get("track_id", ""))]
         refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
@@ -1794,7 +1816,7 @@ class MainWindow(QMainWindow):
 
     def _show_identifier(self, key):
         self._identifier_view.set_detected_tracks(
-            self._db.get_detected_tracks(100))
+            self._playlist_ctrl.get_detected_tracks(100))
         self._fade_content("identifier")
 
     def _show_home_audio(self, key=None):
@@ -2093,17 +2115,17 @@ class MainWindow(QMainWindow):
         if path:
             from ui.services.playlist_cover_service import copy_custom_cover
             cover_path = copy_custom_cover(pid, path)
-            self._db.update_playlist(pid, cover_path=cover_path, cover_type="custom")
+            self._playlist_ctrl.update_playlist(pid, cover_path=cover_path, cover_type="custom")
             self._toast_svc.show("Portada actualizada", "success")
 
     def _remove_playlist_cover(self, pid: int):
         from ui.services.playlist_cover_service import remove_custom_cover
         remove_custom_cover(pid)
-        self._db.update_playlist(pid, cover_path="", cover_type="mosaic")
+        self._playlist_ctrl.update_playlist(pid, cover_path="", cover_type="mosaic")
         self._toast_svc.show("Portada eliminada — se usará mosaico automático", "info")
 
     def _save_playlist_edit(self, pid: int, name: str, desc: str, dlg):
-        self._db.update_playlist(pid, name=name, description=desc)
+        self._playlist_ctrl.update_playlist(pid, name=name, description=desc)
         self._rebuild_sidebar()
         self._toast_svc.show("Playlist actualizada", "success")
         dlg.accept()
@@ -2783,7 +2805,7 @@ class MainWindow(QMainWindow):
         self._reload_library_after_change(reason="metadata_saved")
 
     def _reload_library_after_change(self, reason: str = ""):
-        self._all_items = self._db.get_all()
+        self._all_items = self._playlist_ctrl.get_all_tracks()
         self._items_index = {i.filepath: i for i in self._all_items}
         self._search_ctrl.set_active("local")
         self._rebuild_sidebar()
@@ -2793,7 +2815,7 @@ class MainWindow(QMainWindow):
     def _refresh_all_tabs(self, force: bool = False):
         """Refresh data for all library tabs without changing the active tab."""
         if not self._all_items and self._db:
-            self._all_items = self._db.get_all()
+            self._all_items = self._playlist_ctrl.get_all_tracks()
             self._items_index = {i.filepath: i for i in self._all_items}
         if not self._all_items:
             return
@@ -2840,7 +2862,7 @@ class MainWindow(QMainWindow):
 
     def _album_items(self) -> list:
         if not self._all_items and self._db:
-            self._all_items = self._db.get_all()
+            self._all_items = self._playlist_ctrl.get_all_tracks()
             self._items_index = {i.filepath: i for i in self._all_items}
         return [i for i in self._all_items if getattr(i, "kind", "audio") == "audio"]
 
@@ -3492,12 +3514,12 @@ class MainWindow(QMainWindow):
             self._identifier_ctrl.stop()
 
     def _clear_detected_tracks(self):
-        self._db.clear_detected_tracks()
+        self._playlist_ctrl.clear_detected_tracks()
         self._identifier_view.set_detected_tracks([])
 
     def _on_track_detected(self, track):
         self._identifier_view.set_detected_tracks(
-            self._db.get_detected_tracks(100))
+            self._playlist_ctrl.get_detected_tracks(100))
 
     def _on_detection_failed(self, message: str):
         self._identifier_view.set_status_message(message)
@@ -3534,10 +3556,9 @@ class MainWindow(QMainWindow):
 
     def _on_identifier_delete(self, track: dict):
         idx = track.get("id", 0)
-        if hasattr(self._db, 'delete_detected_track'):
-            self._db.delete_detected_track(idx)
-            self._identifier_view.set_detected_tracks(
-                self._db.get_detected_tracks(100))
+        self._playlist_ctrl.delete_detected_track(idx)
+        self._identifier_view.set_detected_tracks(
+            self._playlist_ctrl.get_detected_tracks(100))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -3578,8 +3599,8 @@ class MainWindow(QMainWindow):
         # Save queue state before shutdown
         try:
             engine = self._playback.engine
-            if engine._queue and self._db:
-                self._db.save_queue(engine._queue, engine._queue_index)
+            if hasattr(engine, '_queue') and engine._queue:
+                self._playlist_ctrl.save_queue(engine)
         except Exception:
             pass
         self._shutdown.shutdown()
@@ -3613,8 +3634,7 @@ class MainWindow(QMainWindow):
             for d in dirs:
                 self._scan_path(d)
         if files:
-            for fp in files:
-                self._db.add_file(fp)
+            self._playlist_ctrl.add_files(files)
             self._reload_library_after_change(reason="drop_files")
             if len(files) == 1:
                 self._play_file(files[0])

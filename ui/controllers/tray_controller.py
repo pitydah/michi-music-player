@@ -7,6 +7,7 @@ from ui.icon_loader import get_tray_icon
 class TrayController:
     def __init__(self, window, services=None):
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
         self._icon: QSystemTrayIcon | None = None
 
@@ -15,9 +16,9 @@ class TrayController:
         self._icon.setToolTip("Michi Music Player")
         tray_menu = QMenu()
         tray_menu.addAction("Mostrar", self._win.show)
-        tray_menu.addAction("Reproducir/Pausa", self._win._ctx.playback.toggle)
-        tray_menu.addAction("Siguiente", self._win._ctx.playback.play_next)
-        tray_menu.addAction("Anterior", self._win._ctx.playback.play_prev)
+        tray_menu.addAction("Reproducir/Pausa", self._ctx.playback.toggle)
+        tray_menu.addAction("Siguiente", self._ctx.playback.play_next)
+        tray_menu.addAction("Anterior", self._ctx.playback.play_prev)
         tray_menu.addSeparator()
         tray_menu.addAction("Salir", self._win.close)
         self._icon.setContextMenu(tray_menu)

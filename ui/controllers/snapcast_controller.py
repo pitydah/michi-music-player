@@ -16,6 +16,7 @@ class SnapcastController(QObject):
     def __init__(self, window, parent=None, services=None):
         super().__init__(parent)
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
 
     def activate_zone(self, group: dict):

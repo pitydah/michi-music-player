@@ -8,14 +8,15 @@ from PySide6.QtWidgets import QMessageBox
 class AlbumController:
     def __init__(self, window, refresh_grid=None, services=None):
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
         self._refresh_grid = refresh_grid or (lambda: None)
 
     def _toast(self, text: str, level: str = "info"):
-        self._win._ctx.toast.show(text, level)
+        self._ctx.toast.show(text, level)
 
     def create_playlist(self, fps: list):
-        self._win._ctx.playback.enqueue(fps, play_now=False)
+        self._ctx.playback.enqueue(fps, play_now=False)
         self._toast("Álbum añadido a la cola", "success")
 
     def search_cover(self, group):

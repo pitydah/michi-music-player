@@ -14,6 +14,7 @@ class TransmitController:
 
     def __init__(self, window, services=None):
         self._win = window
+        self._ctx = window._ctx
         self._svc = services
 
     def activate_device(self, device):
@@ -22,28 +23,28 @@ class TransmitController:
             # Validate DAC route supports transmit
             try:
                 from audio.output_profiles import get_profile
-                profile_key = self._win._ctx.playback._engine._audio_profile if hasattr(self._win._ctx.playback, '_engine') else "standard"
+                profile_key = self._ctx.playback._engine._audio_profile if hasattr(self._ctx.playback, '_engine') else "standard"
                 profile = get_profile(profile_key)
                 if not profile.allows_transmit:
-                    self._win._ctx.toast.show(
+                    self._ctx.toast.show(
                         f"El perfil '{profile.name}' no permite transmisión", "warning")
             except Exception:
                 pass
-            self._win._ctx.transmit_mgr.set_active(device)
-            self._win._ctx.playback.set_transmit_device(device)
-            self._win._ctx.player_bar.set_transmit_active(True, device.name)
+            self._ctx.transmit_mgr.set_active(device)
+            self._ctx.playback.set_transmit_device(device)
+            self._ctx.player_bar.set_transmit_active(True, device.name)
         else:
-            self._win._ctx.transmit_mgr.set_active(None)
-            self._win._ctx.playback.set_transmit_device(None)
-            self._win._ctx.player_bar.set_transmit_active(False)
+            self._ctx.transmit_mgr.set_active(None)
+            self._ctx.playback.set_transmit_device(None)
+            self._ctx.player_bar.set_transmit_active(False)
 
     def on_active_changed(self):
         """Called when TransmitManager.active_changed fires."""
-        device = self._win._ctx.transmit_mgr.get_active()
+        device = self._ctx.transmit_mgr.get_active()
         if device:
-            self._win._ctx.player_bar.set_transmit_active(True, device.name)
+            self._ctx.player_bar.set_transmit_active(True, device.name)
         else:
-            self._win._ctx.player_bar.set_transmit_active(False)
+            self._ctx.player_bar.set_transmit_active(False)
 
     def add_device(self):
         """Open dialog to add a new network transmit device."""
@@ -80,7 +81,7 @@ class TransmitController:
                 port_val = int(port.text()) if port.text().strip() else 0
             except ValueError:
                 port_val = 0
-            self._win._ctx.transmit_mgr.add_device(
+            self._ctx.transmit_mgr.add_device(
                 name.text().strip(), stype.currentData(),
                 addr.text().strip(), port_val)
 
@@ -88,7 +89,7 @@ class TransmitController:
         """Open dialog to manage existing network transmit devices."""
         from ui.theme import apply_dialog_shadow
 
-        devices = self._win._ctx.transmit_mgr.get_devices()
+        devices = self._ctx.transmit_mgr.get_devices()
         if not devices:
             QMessageBox.information(self._win, "Dispositivos",
                                     "No hay dispositivos configurados.")
@@ -114,7 +115,7 @@ class TransmitController:
             sel = lst.currentItem()
             if sel:
                 dname = sel.text().split("  ·  ")[0]
-                self._win._ctx.transmit_mgr.remove_device(dname)
+                self._ctx.transmit_mgr.remove_device(dname)
                 dlg.accept()
                 self.manage_devices()
 
@@ -122,7 +123,7 @@ class TransmitController:
             sel = lst.currentItem()
             if sel:
                 dname = sel.text().split("  ·  ")[0]
-                dev = next((d for d in self._win._ctx.transmit_mgr.get_devices()
+                dev = next((d for d in self._ctx.transmit_mgr.get_devices()
                             if d.name == dname), None)
                 if dev:
                     self.activate_device(dev)

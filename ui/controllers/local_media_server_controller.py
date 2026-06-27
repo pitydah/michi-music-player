@@ -16,6 +16,7 @@ class LocalMediaServerController(QObject):
     def __init__(self, window, parent=None):
         super().__init__(parent)
         self._win = window
+        self._ctx = window._ctx
         self._port = 8125
         self._server = None
 
