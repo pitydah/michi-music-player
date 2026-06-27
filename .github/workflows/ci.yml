@@ -35,7 +35,7 @@ jobs:
         run: ruff check .
 
       - name: Compile check
-        run: python -m compileall -q .
+        run: python -m compileall -q -x '.venv/|\.tmpl\.' .
 
   # ── Job 2: runtime — validates gi/Gst + runs pytest with system Python ──
   runtime:
@@ -92,7 +92,7 @@ jobs:
       - name: Compile check
         run: |
           source .venv/bin/activate
-          python -m compileall -q .
+          python -m compileall -q -x '.venv/|\.tmpl\.' .
 
       - name: Verify icons and data
         run: |

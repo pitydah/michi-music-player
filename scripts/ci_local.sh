@@ -125,7 +125,7 @@ PYEOF
 echo "[6/7] Running lint..."
 python3 -m ruff check . --output-format concise || { echo "  LINT FAILED"; exit 1; }
 echo "  OK"
-python3 -m compileall -q . || { echo "  COMPILE FAILED"; exit 1; }
+python3 -m compileall -q -x '.venv/|\.tmpl\.' . || { echo "  COMPILE FAILED"; exit 1; }
 echo "  COMPILE OK"
 
 # [7/7] Pytest

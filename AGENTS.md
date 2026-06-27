@@ -206,7 +206,7 @@ widget.setStyleSheet("""QTableView { background: ... }""")  # inline QSS
 ### Quick Commands
 ```bash
 ruff check . --output-format concise    # lint
-python -m compileall -q .               # compile check
+python -m compileall -q -x '.venv/|\.tmpl\.' .               # compile check
 python -m pytest tests/ -q              # tests (pytest suite)
 find . -type d -name "__pycache__" -exec rm -rf {} +   # clear stale cache
 python main.py                          # run app
@@ -414,6 +414,6 @@ python3 main.py
 ### Run before every commit
 ```bash
 ruff check . --output-format concise     # must be 0
-python -m compileall -q .                # must be clean
+python -m compileall -q -x '.venv/|\.tmpl\.' .                # must be clean
 python -m pytest tests/ -q               # must pass
 ```

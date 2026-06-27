@@ -672,6 +672,7 @@ if ! $NO_VENV; then
     echo "  Para desarrollo:"
     echo "    pytest tests/ -q     # ejecutar tests (suite completa)"
     echo "    ruff check .         # verificar lint (0 esperado)"
+    echo "    python -m compileall -q -x '.venv/|\\.tmpl\\.' .  # verificar compilación"
 fi
 if $DRY_RUN; then
     echo
