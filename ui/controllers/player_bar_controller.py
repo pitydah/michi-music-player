@@ -68,6 +68,5 @@ class PlayerBarController:
         self._player_bar.volume_changed.emit(0)
 
     def set_route_tooltip(self, diagnostics):
-        """Set audio route diagnostic info on the quality badge tooltip."""
-        if hasattr(self._player_bar, '_quality_badge'):
-            self._player_bar._quality_badge.set_route_tooltip(diagnostics)
+        """Set audio route diagnostic info via the player bar facade."""
+        self._player_bar.set_route_tooltip(diagnostics)

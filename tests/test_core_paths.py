@@ -5,7 +5,12 @@ import os
 class TestCorePaths:
     def test_database_path_default(self, monkeypatch):
         """database_path() returns XDG data dir + library.db."""
+        monkeypatch.delenv("MICHI_TEST_DATA_DIR", raising=False)
         monkeypatch.setenv("XDG_DATA_HOME", "/tmp/test_xdg_data")
+        # Re-import to pick up cleared env
+        import importlib
+        import core.paths
+        importlib.reload(core.paths)
         from core.paths import database_path
         path = database_path()
         assert path == "/tmp/test_xdg_data/michi-music-player/library.db"
@@ -35,7 +40,6 @@ class TestCorePaths:
     def test_database_path_used_by_librarydb(self):
         """LibraryDB default path follows core.paths convention."""
         from core.paths import app_data_dir, database_path
-        # Verify both resolve to same location pattern
         assert database_path().endswith("library.db")
         assert database_path() == os.path.join(app_data_dir(), "library.db")
 

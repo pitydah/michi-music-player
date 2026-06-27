@@ -912,6 +912,10 @@ class NowPlayingBar(QWidget):
         """Returns the audio output QPushButton for menu positioning."""
         return self._audio_output_btn
 
+    def set_route_tooltip(self, diagnostics):
+        """Set audio route diagnostic info on the quality badge tooltip."""
+        self._quality_badge.set_route_tooltip(diagnostics)
+
     def transmit_button_position(self):
         if hasattr(self, '_transmit_btn'):
             return self._transmit_btn.mapToGlobal(
