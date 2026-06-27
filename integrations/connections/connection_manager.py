@@ -7,10 +7,11 @@ import logging
 import os
 
 from integrations.connections.connection_profile import ConnectionProfile
+from core.paths import connection_profiles_path
 
 logger = logging.getLogger("michi.connections.manager")
 
-_STORE_PATH = os.path.expanduser("~/.local/share/michi-music-player/connection_profiles.json")
+_STORE_PATH = connection_profiles_path()
 
 
 class ConnectionManager:

@@ -94,7 +94,7 @@ def knowledge_cache_dir() -> str:
 
 
 def metadata_review_db_path() -> str:
-    return os.path.join(app_data_dir(), "metadata_review.db")
+    return os.path.join(app_data_dir(), "metadata_reviews.sqlite")
 
 
 def sync_manifest_dir() -> str:
@@ -106,7 +106,7 @@ def paired_devices_path() -> str:
 
 
 def subsonic_servers_path() -> str:
-    return os.path.join(app_config_dir(), "subsonic_servers.json")
+    return os.path.join(app_data_dir(), "subsonic_servers.json")
 
 
 def radio_stations_path() -> str:
@@ -114,9 +114,25 @@ def radio_stations_path() -> str:
 
 
 def auto_eq_cache_dir() -> str:
-    return os.path.join(app_cache_dir(), "autoeq")
+    return os.path.join(app_data_dir(), "autoeq")
 
 
 def legacy_data_dir() -> str:
     """Fallback directory for migrating old data."""
     return LEGACY_DIR
+
+
+def connection_profiles_path() -> str:
+    return os.path.join(app_data_dir(), "connection_profiles.json")
+
+
+def sync_alias_path() -> str:
+    return os.path.join(app_data_dir(), "sync_alias")
+
+
+def playlist_covers_dir() -> str:
+    return os.path.join(app_data_dir(), "playlist-covers")
+
+
+def transmit_devices_path() -> str:
+    return os.path.join(app_data_dir(), "transmit_devices.json")

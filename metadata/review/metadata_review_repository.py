@@ -15,11 +15,17 @@ from metadata.review.schemas import (
 
 logger = logging.getLogger("michi.metadata.review_repository")
 
-_DB_PATH = os.path.expanduser("~/.local/share/michi-music-player/metadata_reviews.sqlite")
+_DB_PATH = os.path.expanduser("~/.local/share/michi-music-player/metadata_reviews.sqlite")  # legacy compat
+
+def _default_db_path() -> str:
+    from core.paths import metadata_review_db_path
+    return metadata_review_db_path()
 
 
 class MetadataReviewRepository:
-    def __init__(self, db_path: str = _DB_PATH):
+    def __init__(self, db_path: str | None = None):
+        if db_path is None:
+            db_path = _default_db_path()
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")

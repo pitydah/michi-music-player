@@ -7,10 +7,11 @@ import os
 import time
 
 from core.json_store import atomic_write_json, read_json_safe
+from core.paths import sync_manifest_dir
 
 logger = logging.getLogger("michi.sync.manifest_store")
 
-_BASE_DIR = os.path.expanduser("~/.local/share/michi-music-player/sync_manifests")
+_BASE_DIR = sync_manifest_dir()
 
 
 class SyncManifestStore:

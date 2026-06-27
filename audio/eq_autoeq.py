@@ -4,7 +4,9 @@ import json
 import os
 import urllib.request
 
-CACHE_DIR = os.path.expanduser("~/.local/share/michi-music-player/autoeq")
+from core.paths import auto_eq_cache_dir
+
+CACHE_DIR = auto_eq_cache_dir()
 
 
 def search_headphone(query: str) -> list[str]:

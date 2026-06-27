@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import os
 import time
 from dataclasses import dataclass
 
 from core.json_store import atomic_write_json, read_json_safe, field
+from core.paths import paired_devices_path
 
 logger = logging.getLogger("michi.sync.registry")
 
-_REGISTRY_PATH = os.path.expanduser("~/.local/share/michi-music-player/paired_devices.json")
+_REGISTRY_PATH = paired_devices_path()
 
 
 @dataclass

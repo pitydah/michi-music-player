@@ -3,7 +3,9 @@
 import os
 import json
 
-SETTINGS_DIR = os.path.expanduser("~/.local/share/michi-music-player")
+from core.paths import app_data_dir
+
+SETTINGS_DIR = app_data_dir()
 PRESETS_PATH = os.path.join(SETTINGS_DIR, "eq_presets.json")
 
 # ── 31-band ISO frequencies ──

@@ -259,7 +259,8 @@ class ConnectionsHubPage(QWidget):
         try:
             import json
             import os
-            path = os.path.expanduser("~/.local/share/michi-music-player/subsonic_servers.json")
+            from core.paths import subsonic_servers_path
+            path = subsonic_servers_path()
             if os.path.exists(path):
                 with open(path) as f:
                     return json.load(f)

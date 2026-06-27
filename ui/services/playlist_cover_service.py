@@ -3,7 +3,9 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QPainter, QColor, QFont, QPen, QLinearGradient
 
-COVER_DIR = os.path.expanduser("~/.local/share/michi-music-player/playlist-covers/")
+from core.paths import playlist_covers_dir
+
+COVER_DIR = playlist_covers_dir()
 
 
 def _ensure_dir():

@@ -20,13 +20,13 @@ def _is_debug() -> bool:
 
 def setup_logging():
     global LOG_FILE
-    from core.paths import logs_dir
+    from core.paths import logs_dir, log_file
     log_dir = logs_dir()
     try:
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, "michi.log")
     except OSError:
-        log_path = os.path.join(os.path.expanduser("~/.local/share/michi-music-player"), "michi.log")
+        log_path = log_file()
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
     LOG_FILE = log_path

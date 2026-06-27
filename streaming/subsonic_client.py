@@ -14,6 +14,8 @@ import random
 import os
 import time
 import logging
+
+from core.paths import app_data_dir, subsonic_servers_path
 from dataclasses import dataclass
 
 logger = logging.getLogger("michi.subsonic")
@@ -241,8 +243,8 @@ class SubsonicClient:
 
 # ── Server persistence ──
 
-CONFIG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
-SERVERS_PATH = os.path.join(CONFIG_DIR, "subsonic_servers.json")
+CONFIG_DIR = app_data_dir()
+SERVERS_PATH = subsonic_servers_path()
 
 
 def load_servers() -> list[ServerConfig]:

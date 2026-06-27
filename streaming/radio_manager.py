@@ -10,7 +10,9 @@ try:
 except ImportError:
     Gst = None
 
-CONFIG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
+from core.paths import app_data_dir
+
+CONFIG_DIR = app_data_dir()
 RADIO_FILE = os.path.join(CONFIG_DIR, "radio_stations.json")
 
 

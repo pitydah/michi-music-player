@@ -6,8 +6,10 @@ from dataclasses import dataclass, asdict
 
 from PySide6.QtCore import QObject, Signal
 
-CONFIG_DIR = os.path.expanduser("~/.local/share/michi-music-player")
-DEVICES_PATH = os.path.join(CONFIG_DIR, "transmit_devices.json")
+from core.paths import app_data_dir, transmit_devices_path
+
+CONFIG_DIR = app_data_dir()
+DEVICES_PATH = transmit_devices_path()
 
 
 @dataclass
