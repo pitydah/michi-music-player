@@ -8,6 +8,9 @@ class AlbumInfoRepository:
         self._lru: OrderedDict[str, AlbumSummary] = OrderedDict()
         self._max_size = max_size
 
+    def has(self, album_key: str) -> bool:
+        return album_key in self._lru
+
     def get_summary(self, album_key: str,
                     fallback_data: list | None = None) -> AlbumSummary | None:
         # 1. LRU cache hit

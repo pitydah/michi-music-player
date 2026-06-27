@@ -5,8 +5,8 @@ Usage:
     python diagnose_coverflow.py          # Standard test
     MICHI_COVERFLOW_DEBUG=1 python diagnose_coverflow.py  # Verbose
 
-Creates a window with a mock CoverFlow (50 colored squares), runs a 3-second
-scrolling test, and dumps /tmp/coverflow_diagnostic.txt.
+Creates a window with a mock CoverFlow (30 colored squares), runs a 3-second
+scrolling test, and prints a diagnostic report.
 """
 import os
 import sys
@@ -18,10 +18,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QColor, QPainter, QPen, QFont
 from PySide6.QtWidgets import QApplication
 
-# ── Create mock items ──
 
 def _make_mock_pixmap(color: QColor, size: int = 200, index: int = 0) -> QPixmap:
-    """Create a colored square with index label for mock covers."""
     pix = QPixmap(size, size)
     pix.fill(Qt.transparent)
     painter = QPainter(pix)
@@ -42,7 +40,6 @@ def run_diagnostic():
     from library.coverflow import CoverFlowWidget
     from library.album_art import CoverFlowItem
 
-    # Create mock items
     colors = [QColor(h, 180, 120) for h in range(0, 360, 12)]
     items = []
     for i, color in enumerate(colors[:30]):
@@ -50,7 +47,7 @@ def run_diagnostic():
         item = CoverFlowItem(
             pixmap=pix,
             title=f"Album {i + 1}",
-            subtitle=f"Artist {i + 1} · 2024 · 12 ♪",
+            subtitle=f"Artist {i + 1} · 2024 · 12 \u266a",
             data={"album": f"Album {i + 1}", "artist": f"Artist {i + 1}", "tracks": []},
         )
         items.append(item)
@@ -60,60 +57,47 @@ def run_diagnostic():
     cf.show()
     cf.set_items(items)
 
-    print(f"OpenGL: {'sí' if cf._use_opengl else 'no'}")
-    print(f"Viewport: {type(cf.viewport()).__name__}")
-    print(f"Mode: {cf._render_mode}")
-    print(f"Items: {len(cf._cover_items)}")
-    print(f"Cover size: {cf._cover_w}x{cf._cover_h}")
+    diag = cf.dump_diagnostic()
+    print(f"OpenGL: {'si' if diag['opengl'] else 'no'}")
+    print(f"Viewport: {diag['viewport_type']}")
+    print(f"Mode: {diag['render_mode']}")
+    print(f"Items: {diag['items_total']}")
+    print(f"Cover size: {diag['cover_size']}")
 
-    # Animate scrolling for 3 seconds to measure
     step = 0.15
     scroll_steps = 20
     delay_ms = 80
 
-    got_fps = False
-
     def do_step(n: int = 0):
-        nonlocal got_fps
         if n >= scroll_steps:
-            # Wait for final frames
             QTimer.singleShot(500, finish)
             return
-        cf._current = step * n
-        cf._update_layout()
+        cf.scroll_to(int(step * n), animated=False)
         cf.viewport().update()
         QTimer.singleShot(delay_ms, lambda: do_step(n + 1))
 
     def finish():
-        nonlocal got_fps
-        # Dump diagnostic
-        cf._dump_diagnostic()
+        diag = cf.dump_diagnostic()
+        print("\n=== CoverFlow Diagnostic Report ===")
+        print(f"Total items:     {diag['items_total']}")
+        print(f"Visible items:   {diag['items_visible']}")
+        print(f"Current index:   {diag['current_index']}")
+        print(f"Current pos:     {diag['current_pos']}")
+        print(f"Velocity:        {diag['velocity']}")
+        print(f"OpenGL:          {diag['opengl']}")
+        print(f"Viewport type:   {diag['viewport_type']}")
+        print(f"Render mode:     {diag['render_mode']}")
+        print(f"Cover size:      {diag['cover_size']}")
+        print(f"Layout time:     {diag['layout_time_ms']} ms")
+        print(f"Pending covers:  {diag['pending_covers']}")
+        print(f"Snapping:        {diag['snapping']}")
 
-        # Read and display report
         path = "/tmp/coverflow_diagnostic.txt"
-        if os.path.exists(path):
-            with open(path) as f:
-                report = json.load(f)
-            print("\n=== CoverFlow Diagnostic Report ===")
-            print(f"FPS current: {report['fps_current']}")
-            print(f"FPS min: {report['fps_min']}")
-            print(f"Paint avg: {report['paint_avg_ms']} ms")
-            print(f"Items visible/total: {report['items_visible']}/{report['items_total']}")
-            print(f"OpenGL: {report['opengl']}")
-            print(f"Viewport: {report['viewport']}")
-            print(f"Mode: {report['mode']}")
-            print(f"Cover size: {report['cover_size']}")
-            print("\nLayout params:")
-            for k, v in report['params'].items():
-                print(f"  {k}: {v}")
-            print("\nItem coordinates (visible items):")
-            for key, val in report['coordinates'].items():
-                print(f"  {key}: dist={val['dist']} x={val['x']} y={val['y']} "
-                      f"rot={val['rot']}° scale={val['scale']} z={val['z']}")
-            print(f"\nFull report: {path}")
+        with open(path, "w") as f:
+            json.dump(diag, f, indent=2)
+        print(f"\nFull report: {path}")
         app.quit()
 
-    # Start scroll
     QTimer.singleShot(200, lambda: do_step(0))
     app.exec()
 

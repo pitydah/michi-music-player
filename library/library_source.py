@@ -59,7 +59,9 @@ def build_default_sources(db=None) -> list[LibrarySource]:
                     icon="sidebar_navidrome" if stype == "navidrome" else "sidebar_jellyfin",
                 ))
     except Exception:
-        pass
+        import logging
+        logging.getLogger("michi.sources").warning(
+            "build_default_sources: failed to load subsonic servers", exc_info=True)
 
     return sources
 

@@ -1,11 +1,15 @@
-"""MixHubPage — smart mixes, recommendations, and mixed-source playlists."""
+"""MixHubPage — dynamic smart mix hub with inline previews, play/view actions, and scopes."""
 
 from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QFrame, QScrollArea, QPushButton,
+    QFrame, QScrollArea, QPushButton, QGridLayout,
+    QComboBox,
 )
 
 from ui.central.central_styles import (
@@ -14,12 +18,24 @@ from ui.central.central_styles import (
     page_title_qss, page_subtitle_qss,
 )
 
+if TYPE_CHECKING:
+    from ui.controllers.smart_mix_preview import SmartMixPreview
+
+logger = logging.getLogger("michi.mix_hub")
+
 
 class MixHubPage(QWidget):
-    def __init__(self, parent: QWidget | None = None):
+    """Dynamic mix hub — shows smart mix cards with counts, inline play, and quick scopes."""
+
+    def __init__(self, preview: SmartMixPreview | None = None,
+                 parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("mixHubPage")
+        self._preview = preview
         self._build_ui()
+        self._apply_qss()
+
+    # ── Build UI ──
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -33,109 +49,226 @@ class MixHubPage(QWidget):
 
         content = QWidget()
         content.setObjectName("mixHubContent")
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(40, 32, 40, 32)
-        content_layout.setSpacing(20)
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(40, 32, 40, 40)
+        cl.setSpacing(20)
 
+        # ── Title ──
         title = QLabel("Mix")
         title.setObjectName("mixHubTitle")
-        content_layout.addWidget(title)
+        cl.addWidget(title)
 
         subtitle = QLabel(
-            "Smart mixes, recomendaciones inteligentes y playlists que combinan "
-            "música local y remota."
-        )
+            "Smart mixes, escucha inmediata y combinaciones de fuentes locales y remotas.")
         subtitle.setObjectName("mixHubSubtitle")
         subtitle.setWordWrap(True)
-        content_layout.addWidget(subtitle)
+        cl.addWidget(subtitle)
 
-        cards_layout = QHBoxLayout()
-        cards_layout.setSpacing(16)
+        # ── Dynamic mix cards (2-column grid) ──
+        self._mix_cards_grid = QGridLayout()
+        self._mix_cards_grid.setSpacing(16)
+        cl.addLayout(self._mix_cards_grid)
 
-        discover_card = self._build_card(
-            "discover", "Descubrir",
-            "Smart mixes diarios, no escuchadas, más populares y redescubrimiento.",
-            "Explorar",
-            "discover",
-        )
-        cards_layout.addWidget(discover_card, 1)
+        # ── Quick scopes ──
+        cl.addWidget(self._build_quick_scopes())
 
-        recommend_card = self._build_card(
-            "recommend", "Recomendaciones IA",
-            "Michi Assistant te recomienda música basada en tus gustos, géneros y estado de ánimo.",
-            "Abrir asistente",
-            "assistant",
-        )
-        cards_layout.addWidget(recommend_card, 1)
+        # ── Mix builder (placeholder) ──
+        cl.addWidget(self._build_mix_builder())
 
-        content_layout.addLayout(cards_layout)
-
-        scopes = self._get_scopes()
-        mixed = [s for s in scopes if s.mode == "mixed_sources"]
-        if mixed:
-            scope_card = self._build_card(
-                "mixed", "Scopes de mezcla",
-                "Combinaciones de fuentes disponibles para descubrimiento y mixes inteligentes.",
-                "Explorar scopes",
-                "discover",
-            )
-            content_layout.addWidget(scope_card)
-
-        playlist_card = self._build_card(
-            "playlists", "Playlists y listas inteligentes",
-            "Organiza, mezcla e importa tus listas de reproducción. "
-            "Combina fuentes locales y remotas.",
-            "Gestionar playlists",
-            "playlist_hub",
-        )
-        content_layout.addWidget(playlist_card)
-
-        content_layout.addStretch()
+        cl.addStretch()
 
         scroll.setWidget(content)
         layout.addWidget(scroll)
 
-        self._apply_qss()
+    # ── Dynamic mix cards ──
 
-    def _build_card(self, key: str, title: str, description: str,
-                    btn_text: str, navigate_to: str) -> QFrame:
+    def refresh(self):
+        """Rebuild all mix cards from current preview data."""
+        self._rebuild_mix_cards()
+
+    def _rebuild_mix_cards(self):
+        # Clear existing cards
+        while self._mix_cards_grid.count():
+            item = self._mix_cards_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if self._preview is None:
+            return
+
+        previews = self._preview.get_all_previews()
+        for i, pv in enumerate(previews):
+            card = self._build_mix_card(pv)
+            self._mix_cards_grid.addWidget(card, i // 2, i % 2)
+
+    def _build_mix_card(self, pv) -> QFrame:
         card = QFrame()
-        card.setObjectName(f"mixCard_{key}")
+        card.setObjectName(f"mixCard_{pv.key}")
+        card.setStyleSheet(glass_card_qss(f"mixCard_{pv.key}"))
+        card.setMinimumHeight(160)
 
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(20, 20, 20, 20)
-        card_layout.setSpacing(10)
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(20, 18, 20, 18)
+        cl.setSpacing(6)
 
-        card_title = QLabel(title)
-        card_title.setObjectName("mixCardTitle")
+        # Title
+        card_title = QLabel(pv.label)
         card_title.setStyleSheet(card_title_qss())
-        card_layout.addWidget(card_title)
+        cl.addWidget(card_title)
 
-        card_desc = QLabel(description)
-        card_desc.setObjectName("mixCardDesc")
+        # Description
+        card_desc = QLabel(pv.description)
         card_desc.setWordWrap(True)
         card_desc.setStyleSheet(card_desc_qss())
-        card_layout.addWidget(card_desc)
+        cl.addWidget(card_desc)
 
-        card_layout.addStretch()
+        # Count or empty reason
+        if pv.count > 0:
+            count_lbl = QLabel(f"{pv.count} canciones")
+            count_lbl.setStyleSheet(
+                "QLabel { color: rgba(143,183,255,0.78); font-size: 13px; font-weight: 600;"
+                "  background: transparent; border: none; }")
+            cl.addWidget(count_lbl)
+        else:
+            empty_lbl = QLabel(pv.empty_reason)
+            empty_lbl.setWordWrap(True)
+            empty_lbl.setStyleSheet(
+                "QLabel { color: rgba(255,255,255,0.38); font-size: 11px;"
+                "  background: transparent; border: none; }")
+            cl.addWidget(empty_lbl)
 
-        btn = QPushButton(btn_text)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(lambda checked=None, t=navigate_to: self._navigate(t))
-        card_layout.addWidget(btn)
+        cl.addStretch()
 
+        # Buttons row
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+
+        if pv.count > 0:
+            play_btn = QPushButton("Reproducir")
+            play_btn.setCursor(Qt.PointingHandCursor)
+            play_btn.setStyleSheet(glass_button_qss("accent"))
+            play_btn.clicked.connect(
+                lambda checked=False, files=pv.files, _w=self.window():
+                self._play_files(files, _w))
+            btn_row.addWidget(play_btn)
+
+            view_btn = QPushButton("Ver")
+            view_btn.setCursor(Qt.PointingHandCursor)
+            view_btn.setStyleSheet(glass_button_qss("ghost"))
+            view_btn.clicked.connect(
+                lambda checked=False, key=pv.key: self._navigate(key))
+            btn_row.addWidget(view_btn)
+
+        cl.addLayout(btn_row)
         return card
+
+    def _play_files(self, files: list[str], win):
+        """Enqueue files and start playback."""
+        if not files or not win:
+            return
+        if hasattr(win, '_play_filepaths'):
+            win._play_filepaths(files, play_now=True)
+        elif hasattr(win, '_playback') and hasattr(win._playback, 'play_queue'):
+            win._playback.play_queue(files, 0)
 
     def _navigate(self, target: str):
         w = self.window()
         if w and hasattr(w, '_on_sidebar_navigate'):
             w._on_sidebar_navigate(target)
 
-    @staticmethod
-    def _get_scopes() -> list:
-        from library.library_source import build_default_sources, build_default_scopes
-        sources = build_default_sources()
-        return build_default_scopes(sources)
+    # ── Quick scopes ──
+
+    def _build_quick_scopes(self) -> QFrame:
+        card = QFrame()
+        card.setObjectName("mixScopesCard")
+        card.setStyleSheet(glass_card_qss("mixScopesCard"))
+
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(20, 16, 20, 16)
+        cl.setSpacing(8)
+
+        title = QLabel("Scopes rápidos")
+        title.setStyleSheet(card_title_qss())
+        cl.addWidget(title)
+
+        desc = QLabel("Accesos directos a tus secciones de música.")
+        desc.setStyleSheet(card_desc_qss())
+        cl.addWidget(desc)
+
+        chips_layout = QHBoxLayout()
+        chips_layout.setSpacing(8)
+
+        scopes = [
+            ("Toda la biblioteca", "library"),
+            ("Favoritos", "favs"),
+            ("No escuchadas", "mix_unplayed"),
+            ("Más escuchadas", "mix_popular"),
+            ("Recientes", "recent"),
+        ]
+        for label, key in scopes:
+            chip = QPushButton(label)
+            chip.setCursor(Qt.PointingHandCursor)
+            chip.setStyleSheet(glass_button_qss("ghost"))
+            chip.clicked.connect(
+                lambda checked=False, k=key: self._navigate(k))
+            chips_layout.addWidget(chip)
+
+        chips_layout.addStretch()
+        cl.addLayout(chips_layout)
+        return card
+
+    # ── Mix builder placeholder ──
+
+    def _build_mix_builder(self) -> QFrame:
+        card = QFrame()
+        card.setObjectName("mixBuilderCard")
+        card.setStyleSheet(glass_card_qss("mixBuilderCard"))
+
+        cl = QVBoxLayout(card)
+        cl.setContentsMargins(20, 16, 20, 16)
+        cl.setSpacing(8)
+
+        title = QLabel("Constructor de mix")
+        title.setStyleSheet(card_title_qss())
+        cl.addWidget(title)
+
+        desc = QLabel(
+            "Personalizá tu propia mezcla eligiendo fuente, criterio y duración."
+            " Disponible próximamente.")
+        desc.setWordWrap(True)
+        desc.setStyleSheet(card_desc_qss())
+        cl.addWidget(desc)
+
+        row = QHBoxLayout()
+        row.setSpacing(12)
+
+        source_cb = QComboBox()
+        source_cb.addItem("Música local")
+        source_cb.setEnabled(False)
+        source_cb.setStyleSheet(
+            "QComboBox { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);"
+            "  border-radius: 8px; padding: 6px 12px; color: rgba(255,255,255,0.48); }")
+        row.addWidget(source_cb)
+
+        criteria_cb = QComboBox()
+        criteria_cb.addItems(["Aleatorio", "Por género", "Por artista"])
+        criteria_cb.setEnabled(False)
+        criteria_cb.setStyleSheet(
+            "QComboBox { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);"
+            "  border-radius: 8px; padding: 6px 12px; color: rgba(255,255,255,0.48); }")
+        row.addWidget(criteria_cb)
+
+        gen_btn = QPushButton("Generar mix")
+        gen_btn.setEnabled(False)
+        gen_btn.setCursor(Qt.PointingHandCursor)
+        gen_btn.setStyleSheet(glass_button_qss("ghost"))
+        row.addWidget(gen_btn)
+
+        row.addStretch()
+        cl.addLayout(row)
+        return card
+
+    # ── QSS ──
 
     def _apply_qss(self):
         self.setStyleSheet(
@@ -146,15 +279,3 @@ class MixHubPage(QWidget):
             QLabel#mixHubTitle { color: rgba(255,255,255,0.92); font-size: 22px; font-weight: 700; }
             QLabel#mixHubSubtitle { color: rgba(255,255,255,0.56); font-size: 13px; }
         """)
-        for key, act in [("discover", "secondary"), ("recommend", "accent"), ("playlists", "secondary")]:
-            card = self.findChild(QFrame, f"mixCard_{key}")
-            if card:
-                card.setStyleSheet(glass_card_qss(f"mixCard_{key}"))
-            for lbl in (card.findChildren(QLabel) if card else []):
-                name = lbl.objectName()
-                if "Title" in name:
-                    lbl.setStyleSheet(card_title_qss())
-                elif "Desc" in name:
-                    lbl.setStyleSheet(card_desc_qss())
-            for btn in (card.findChildren(QPushButton) if card else []):
-                btn.setStyleSheet(glass_button_qss(act))

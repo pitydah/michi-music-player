@@ -94,17 +94,5 @@ class HomeAudioController(QObject):
         self.cast_started.emit(entity_id, device_name)
 
     def bind_view(self, view):
-        """Connect all view signals to controller or window handlers."""
-        win = self._win
-        view.connect_requested.connect(win._on_home_audio_connect)
-        view.refresh_requested.connect(win._on_home_audio_refresh)
-        view.enable_multiroom_requested.connect(win._on_home_audio_multiroom)
-        view.open_settings_requested.connect(win._on_home_audio_settings)
-        view.open_receiver_wizard_requested.connect(win._on_home_audio_receiver_wizard)
-        view.device_cast_current_requested.connect(win._on_home_audio_cast)
-        view.device_play_requested.connect(win._on_home_audio_device_play)
-        view.device_pause_requested.connect(win._on_home_audio_device_pause)
-        view.device_stop_requested.connect(win._on_home_audio_device_stop)
-        view.device_volume_changed.connect(win._on_home_audio_device_volume)
-        view.group_selected_requested.connect(win._on_home_audio_group_selected)
-        view.create_group_requested.connect(win._on_home_audio_create_group)
+        """Connect all view signals to controller or window handlers — deprecated, use HomeAudioHandlers."""
+        pass  # HomeAudioHandlers.wire_signals() handles all signal wiring now

@@ -59,14 +59,12 @@ def get_popular(limit: int = 30) -> list[str]:
 def get_daily_mix(limit: int = 30) -> list[str]:
     """Tracks played in the last 7 days.
 
-    Uses media_items.last_played (preferred) or falls back to
-    play_history.played_at grouped by track_id.
+    Uses media_items joined with play_history for recency.
     """
     try:
         conn = _connect()
         deleted = _deleted_filter(conn)
         if _has_table(conn, "play_history"):
-            # Use media_items joined with play_history for recency
             rows = conn.execute(
                 f"SELECT m.filepath, MAX(h.played_at) as latest "
                 f"FROM media_items m "
@@ -78,16 +76,18 @@ def get_daily_mix(limit: int = 30) -> list[str]:
             conn.close()
             if rows:
                 return [r[0] for r in rows]
+        else:
+            conn.close()
         # Fallback: use media_items.last_played
-        conn2 = _connect()
-        deleted2 = _deleted_filter(conn2)
-        rows = conn2.execute(
+        conn = _connect()
+        deleted = _deleted_filter(conn)
+        rows = conn.execute(
             f"SELECT filepath FROM media_items "
             f"WHERE last_played IS NOT NULL "
-            f"AND last_played > strftime('%s','now') - 604800 {deleted2} "
+            f"AND last_played > strftime('%s','now') - 604800 {deleted} "
             f"ORDER BY play_count DESC, last_played DESC LIMIT ?",
             (limit,)).fetchall()
-        conn2.close()
+        conn.close()
         return [r[0] for r in rows]
     except Exception as e:
         logger.warning("get_daily_mix failed: %s", e)

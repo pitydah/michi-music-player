@@ -54,7 +54,6 @@ class TrackRefTableModel(QStandardItemModel):
              "Año", "Género", "Duración", "Ruta"])
 
     def populate(self, items: list[TrackRef]):
-        self.setSortingEnabled(False)
         self.removeRows(0, self.rowCount())
         for item in items:
             tr = QStandardItem()
@@ -104,7 +103,6 @@ class TrackRefTableModel(QStandardItemModel):
             uri = QStandardItem(item.uri)
             uri.setEditable(False)
             self.appendRow([tr, t, a, al, y, g, d, uri])
-        self.setSortingEnabled(True)
 
     def get_trackref(self, row: int) -> TrackRef | None:
         idx = self.index(row, self.COL_TITLE)

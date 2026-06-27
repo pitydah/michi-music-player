@@ -773,6 +773,10 @@ class GStreamerEngine(QObject):
             })
         return items
 
+    def get_queue_index(self) -> int:
+        """Return the current queue index, or -1 if empty."""
+        return self._queue_index
+
     def reorder_queue(self, filepaths: list[str]):
         """Reorder the queue preserving the current track."""
         current_fp = self._queue[self._queue_index] if self._queue_index >= 0 else None

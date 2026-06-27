@@ -156,6 +156,10 @@ class SegmentedViewSwitcher(QWidget):
         super().showEvent(event)
         self._position_pill(animate=False)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_for_width(self.width())
+
     def set_view(self, mode: str, emit: bool = True):
         if mode not in self._buttons:
             return

@@ -35,6 +35,15 @@ def _clamp(x, a, b):
     return max(a, min(b, float(x)))
 
 
+def _make_item_key(item) -> str:
+    if item is None or item.data is None:
+        return ""
+    d = item.data if isinstance(item.data, dict) else {}
+    album = d.get("album", "") or item.title or ""
+    artist = d.get("artist", "") or ""
+    return f"{album}|{artist}"
+
+
 def _format_dur(seconds: float) -> str:
     if seconds is None or seconds <= 0:
         return ""
@@ -93,16 +102,16 @@ def _make_placeholder(w: int, h: int) -> QPixmap:
     pix.fill(Qt.transparent)
     p = QPainter(pix)
     p.setRenderHint(QPainter.Antialiasing)
-    # glass rounded rect
-    p.setPen(QPen(QColor(255, 255, 255, 18), 1.2))
+    # glass rounded rect — more visible alpha
+    p.setPen(QPen(QColor(255, 255, 255, 40), 1.5))
     path = QPainterPath()
     path.addRoundedRect(3, 3, w - 6, h - 6, 14, 14)
-    p.fillPath(path, QColor(255, 255, 255, 8))
+    p.fillPath(path, QColor(255, 255, 255, 30))
     p.drawPath(path)
     # inner disc icon
     cx, cy = w / 2, h / 2
     r = min(w, h) // 6
-    p.setPen(QPen(QColor(255, 255, 255, 20), 1.0))
+    p.setPen(QPen(QColor(255, 255, 255, 50), 1.5))
     p.drawEllipse(QPointF(cx, cy), r, r)
     p.drawEllipse(QPointF(cx, cy), r * 0.3, r * 0.3)
     p.end()
@@ -137,9 +146,14 @@ class CoverPixmapItem(QGraphicsPixmapItem):
         self._apply_rounded_clip()
 
     def _apply_rounded_clip(self):
-        path = QPainterPath()
-        path.addRoundedRect(0, 0, self._w, self._h, 14, 14)
-        self.setClipPath(path)
+        self._rounded_path = QPainterPath()
+        self._rounded_path.addRoundedRect(0, 0, self._w, self._h, 14, 14)
+
+    def paint(self, painter, option, widget=None):
+        painter.save()
+        painter.setClipPath(self._rounded_path)
+        super().paint(painter, option, widget)
+        painter.restore()
 
     @property
     def needs_cover(self) -> bool:
@@ -157,10 +171,13 @@ class CoverPixmapItem(QGraphicsPixmapItem):
         self._cover_loaded = True
         self._cover_requested = False
 
-        self._fade_alpha = 0.0
+        # Pre-swap pixmap at very low opacity, then fade up
+        self.setPixmap(self._real_pixmap)
+        self._fade_alpha = 0.30
+        self.setOpacity(self._fade_alpha)
         anim = QVariantAnimation()
-        anim.setDuration(300)
-        anim.setStartValue(0.0)
+        anim.setDuration(250)
+        anim.setStartValue(0.30)
         anim.setEndValue(1.0)
         anim.valueChanged.connect(self._on_fade_step)
         anim.finished.connect(self._on_fade_done)
@@ -188,15 +205,15 @@ class DropShadow(QGraphicsEllipseItem):
         self.setZValue(150)
         self.hide()
 
-    def update_for_state(self, cover_x: float, cover_y: float,
-                         cover_scale: float, cover_height: int):
+    def update_for_state(self, cover_item, cover_scale: float):
+        sbr = cover_item.sceneBoundingRect()
         if cover_scale < 0.5:
             self.hide()
             return
         w = self._cover_w * cover_scale * 0.85
         h = 16 * cover_scale
-        x = cover_x - w / 2
-        y = cover_y + cover_height * cover_scale / 2
+        x = sbr.center().x() - w / 2
+        y = sbr.bottom() + 2
         self.setRect(0, 0, w, h)
         self.setPos(x, y)
         self.show()
@@ -206,23 +223,26 @@ class CenterGlow(QGraphicsEllipseItem):
     """Soft halo behind the center cover — guides visual focus."""
     def __init__(self):
         super().__init__()
-        g = QRadialGradient(300, 100, 300)
-        g.setColorAt(0.0, QColor(255, 255, 255, 18))
-        g.setColorAt(1.0, QColor(255, 255, 255, 0))
-        self.setBrush(g)
+        self.setBrush(QColor(255, 255, 255, 18))  # placeholder brush
         self.setPen(Qt.NoPen)
         self.setZValue(500)
         self.setVisible(False)
 
-    def update_for_center(self, center_x: float, center_y: float,
-                          cover_w: int, cover_h: int, scale: float):
-        if scale < 0.9:
+    def update_for_center(self, cover_item):
+        sbr = cover_item.sceneBoundingRect()
+        if not sbr.isValid():
             self.setVisible(False)
             return
-        w = cover_w * scale * 1.8
-        h = cover_h * scale * 0.6
+        cx, cy = sbr.center().x(), sbr.center().y()
+        w = max(sbr.width(), 10) * 1.8
+        h = max(sbr.height(), 10) * 0.6
+        r = max(w, h) * 0.6
+        g = QRadialGradient(w / 2, h / 2, r)
+        g.setColorAt(0.0, QColor(255, 255, 255, 18))
+        g.setColorAt(1.0, QColor(255, 255, 255, 0))
+        self.setBrush(g)
         self.setRect(0, 0, w, h)
-        self.setPos(center_x - w / 2, center_y - h / 2 - cover_h * scale * 0.1)
+        self.setPos(cx - w / 2, cy - h / 2 - 10)
         self.setVisible(True)
 
 
@@ -246,9 +266,23 @@ class ReflectiveFloor(QGraphicsRectItem):
     def paint(self, painter: QPainter, option, widget):
         grad = QLinearGradient(0, 0, 0, self.rect().height())
         grad.setColorAt(0.0, QColor(0, 0, 0, 0))
-        grad.setColorAt(0.15, QColor(0, 0, 0, 40))
+        grad.setColorAt(0.10, QColor(0, 0, 0, 30))
         grad.setColorAt(1.0, QColor(0, 0, 0, 200))
         painter.fillRect(self.rect(), grad)
+
+
+class CoverReflection(QGraphicsPixmapItem):
+    """Flipped semi-transparent reflection of a cover."""
+
+    def __init__(self, pixmap):
+        super().__init__()
+        if pixmap and not pixmap.isNull():
+            self.setPixmap(pixmap.transformed(
+                QTransform().scale(1.0, -1.0)))
+            self.setOpacity(0.10)
+        else:
+            self.setOpacity(0.0)
+        self.setZValue(75)
 
 
 class CoverFlowWidget(QGraphicsView):
@@ -321,6 +355,7 @@ class CoverFlowWidget(QGraphicsView):
         self._items: list[CoverFlowItem] = []
         self._cover_items: list[CoverPixmapItem] = []
         self._shadows: list[DropShadow] = []
+        self._reflections: list[CoverReflection] = []
         self._floor: ReflectiveFloor | None = None
         self._glow: CenterGlow | None = None
         self._current = 0.0
@@ -447,6 +482,10 @@ class CoverFlowWidget(QGraphicsView):
     # ── Overlay items ──
 
     def _create_overlay_items(self):
+        # Skip if already created (reuse across rebuilds)
+        if hasattr(self, '_title_text') and self._title_text is not None:
+            return
+
         self._title_text = QGraphicsTextItem()
         self._title_text.setDefaultTextColor(QColor("#ffffff"))
         self._title_text.setFont(QFont("sans-serif", 16, 750))
@@ -497,16 +536,19 @@ class CoverFlowWidget(QGraphicsView):
         for sd in list(self._shadows):
             self._scene.removeItem(sd)
         self._shadows.clear()
-        for attr in ('_title_text', '_artist_text', '_meta_text',
-                     '_position_text', '_empty_msg'):
-            item = getattr(self, attr, None)
-            if item and item.scene() is self._scene:
-                self._scene.removeItem(item)
+        for ref in list(self._reflections):
+            self._scene.removeItem(ref)
+        self._reflections.clear()
+        # Keep overlay text items — they are reused across rebuilds
 
     def set_items(self, items: list[CoverFlowItem]):
         self._items = items
         self._clear_scene_preserve_slider()
         self._cover_items.clear()
+        if hasattr(self, '_cover_cache'):
+            self._cover_cache.clear()
+        else:
+            self._cover_cache = {}
         self._current = 0.0
         self._velocity = 0.0
         self._last_text_idx = -1
@@ -521,6 +563,9 @@ class CoverFlowWidget(QGraphicsView):
             shadow = DropShadow(self._cover_w)
             self._scene.addItem(shadow)
             self._shadows.append(shadow)
+            ref = CoverReflection(item.pixmap)
+            self._scene.addItem(ref)
+            self._reflections.append(ref)
 
         self._slider.setRange(0, max(0, len(items) - 1))
         self._slider.setVisible(len(items) > 1)
@@ -550,7 +595,86 @@ class CoverFlowWidget(QGraphicsView):
             return -1
         return max(0, min(len(self._items) - 1, int(round(self._current))))
 
+    def visible_indices(self) -> list[int]:
+        """Return sorted list of currently-visible item indices."""
+        return sorted(ci._index for ci in self._cover_items if ci.isVisible())
+
+    def render_info(self) -> dict:
+        """Return rendering parameters without recalculating layout."""
+        return {
+            "cover_size": self._cover_w,
+            "total_items": len(self._items),
+            "visible_count": sum(1 for ci in self._cover_items if ci.isVisible()),
+            "current_index": self.current_index(),
+            "current_pos": round(self._current, 4),
+            "opengl": getattr(self, '_use_opengl', False),
+            "viewport": type(self.viewport()).__name__,
+            "mode": getattr(self, '_render_mode', 'software'),
+        }
+
+    def dump_diagnostic(self, path: str = "/tmp/coverflow_diagnostic.txt") -> dict:
+        """Gather diagnostic data, write to JSON file, return dict."""
+        from time import perf_counter, time as now
+        from json import dump
+        t0 = perf_counter()
+        self._update_layout()
+        t1 = perf_counter()
+        diag = {
+            "timestamp": now(),
+            "items_total": len(self._items),
+            "items_visible": sum(1 for ci in self._cover_items if ci.isVisible()),
+            "visible_indices": self.visible_indices(),
+            "current_index": self.current_index(),
+            "current_pos": round(self._current, 4),
+            "velocity": round(self._velocity, 6),
+            "opengl": getattr(self, '_use_opengl', False),
+            "viewport_type": type(self.viewport()).__name__,
+            "render_mode": getattr(self, '_render_mode', 'software'),
+            "cover_size": self._cover_w,
+            "layout_time_ms": round((t1 - t0) * 1000, 2),
+            "snapping": self._snapping,
+            "dragging": getattr(self, '_dragging', False),
+            "slider_visible": getattr(self, '_slider', None) is not None and self._slider.isVisible(),
+            "pending_covers": len(getattr(self, '_pending', set())),
+        }
+        try:
+            with open(path, "w") as f:
+                dump(diag, f, indent=2)
+        except OSError:
+            pass
+        return diag
+
     def count(self) -> int:
+        return len(self._items)
+
+    def item_key_at(self, idx: int) -> str:
+        item = self.item_at(idx)
+        if item is None:
+            return ""
+        return _make_item_key(item)
+
+    def current_key(self) -> str:
+        return self.item_key_at(self.current_index())
+
+    def index_for_key(self, key: str) -> int:
+        for i, item in enumerate(self._items):
+            if _make_item_key(item) == key:
+                return i
+        return -1
+
+    def set_current_index(self, index: int, animated: bool = True):
+        self.scroll_to(index, animated=animated)
+
+    def set_cover(self, idx: int, pixmap):
+        if 0 <= idx < len(self._cover_items):
+            self._cover_items[idx].set_real_cover(pixmap)
+            self.resetCachedContent()
+            self._update_layout()
+            key = self.item_key_at(idx)
+            if key:
+                self._cover_cache[key] = pixmap
+
+    def __len__(self) -> int:
         return len(self._items)
 
     def scroll_to(self, index: int, animated: bool = True):
@@ -589,42 +713,69 @@ class CoverFlowWidget(QGraphicsView):
         vh = self.viewport().height()
         self._empty_msg.setVisible(False)
 
-        for ci in self._cover_items:
-            offset = ci._index - self._current
+        # Only process items within visible window (±15 from current)
+        ci = max(0, int(self._current) - 15)
+        ce = min(len(self._cover_items), int(self._current) + 16)
+
+        for i in range(ci, ce):
+            ci_item = self._cover_items[i]
+            offset = ci_item._index - self._current
             state = coverflow_layout(offset, vw, vh, self._cover_w, self._cover_h)
             if not state["visible"]:
-                ci.setVisible(False)
+                ci_item.setVisible(False)
                 continue
-            ci.setVisible(True)
+            ci_item.setVisible(True)
             if self._render_mode == "safe_2d":
                 state["rot"] = 0.0
-            apply_layout_state(ci, state, self._cover_w, self._cover_h)
+            apply_layout_state(ci_item, state, self._cover_w, self._cover_h)
 
-            if ci.needs_cover:
-                ci.mark_cover_requested()
-                item = self._items[ci._index]
-                self.request_cover.emit(ci._index, item)
+            if ci_item.needs_cover:
+                ci_item.mark_cover_requested()
+                item = self._items[ci_item._index]
+                self.request_cover.emit(ci_item._index, item)
+
+        # Hide items outside visible window
+        for i in range(0, ci):
+            self._cover_items[i].setVisible(False)
+        for i in range(ce, len(self._cover_items)):
+            self._cover_items[i].setVisible(False)
 
         # Update shadows and center glow
-        for i, ci in enumerate(self._cover_items):
-            if i < len(self._shadows) and ci.isVisible():
-                offset = ci._index - self._current
+        for i in range(ci, ce):
+            item = self._cover_items[i]
+            if i < len(self._shadows) and item.isVisible():
+                offset = item._index - self._current
                 state = coverflow_layout(offset, vw, vh, self._cover_w, self._cover_h)
                 self._shadows[i].update_for_state(
-                    state["x"], state["y"], state["scale"], self._cover_h)
+                    item, state["scale"])
             elif i < len(self._shadows):
                 self._shadows[i].hide()
+
+        # Update reflections — below each visible cover
+        floor_top = vh * 0.58
+        for i in range(ci, ce):
+            if i < len(self._reflections):
+                ref = self._reflections[i]
+                ci_item = self._cover_items[i]
+                if ci_item.isVisible() and ci_item.pixmap and not ci_item.pixmap().isNull():
+                    # Position reflection below cover, slightly lower
+                    cg = ci_item.sceneBoundingRect()
+                    ref.setPos(cg.x(), floor_top + 4)
+                    ref.setVisible(True)
+                    ref.setZValue(50 - i)  # behind floor but above nothing
+                else:
+                    ref.setVisible(False)
 
         idx = self.current_index()
         if 0 <= idx < len(self._cover_items):
             ci = self._cover_items[idx]
-            state = coverflow_layout(idx - self._current, vw, vh, self._cover_w, self._cover_h)
-            self._glow.update_for_center(
-                state["x"], state["y"], self._cover_w, self._cover_h, state["scale"])
+            self._glow.update_for_center(ci)
 
         if self._last_emitted_idx != idx:
             self.selection_changed.emit(idx)
             self._last_emitted_idx = idx
+            # Force re-render of background backdrop on center change
+            self.resetCachedContent()
 
         # Sync slider
         if not self._slider_dragging:
@@ -737,10 +888,11 @@ class CoverFlowWidget(QGraphicsView):
     def _on_cover_loaded(self, idx: int, pixmap: QPixmap):
         if 0 <= idx < len(self._cover_items) and not pixmap.isNull():
             self._cover_items[idx].set_real_cover(pixmap)
-            # Cache for future rebuilds
             if not hasattr(self, '_cover_cache'):
                 self._cover_cache = {}
-            self._cover_cache[idx] = pixmap
+            key = self.item_key_at(idx)
+            if key:
+                self._cover_cache[key] = pixmap
 
     # ── Physics ──
 
@@ -812,6 +964,7 @@ class CoverFlowWidget(QGraphicsView):
 
     def drawBackground(self, painter, rect):
         painter.save()
+        vr = self.viewport().rect()  # full viewport, not the dirty rect
         # Cover backdrop — blurred center cover image
         ci = self.current_index()
         if 0 <= ci < len(self._cover_items):
@@ -820,25 +973,25 @@ class CoverFlowWidget(QGraphicsView):
             if px and not px.isNull():
                 w = px.width()
                 h = px.height()
-                scale = max(rect.width() / w, rect.height() / h) * 1.6
-                x = (rect.width() - w * scale) / 2
-                y = (rect.height() - h * scale) / 2 - rect.height() * 0.05
+                scale = max(vr.width() / w, vr.height() / h) * 1.6
+                x = (vr.width() - w * scale) / 2
+                y = (vr.height() - h * scale) / 2 - vr.height() * 0.05
                 painter.setOpacity(0.18)
                 painter.drawPixmap(x, y, w * scale, h * scale, px)
 
-        # Darken layer
+        # Darken layer — always full viewport
         painter.setOpacity(1.0)
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        grad = QRadialGradient(rect.center(), max(rect.width(), rect.height()) * 0.65)
+        grad = QRadialGradient(vr.center(), max(vr.width(), vr.height()) * 0.65)
         grad.setColorAt(0.0, QColor(32, 36, 48, 210))
-        grad.setColorAt(0.45, QColor(16, 18, 28, 240))
-        grad.setColorAt(1.0, QColor(7, 9, 14, 255))
-        painter.fillRect(rect, grad)
-        # Subtle violet glow in center
-        glow = QRadialGradient(rect.center(), rect.width() * 0.4)
-        glow.setColorAt(0.0, QColor(110, 90, 200, 14))
+        grad.setColorAt(0.45, QColor(16, 18, 28, 220))
+        grad.setColorAt(1.0, QColor(7, 9, 14, 210))
+        painter.fillRect(vr, grad)
+        # Subtle accent glow in center
+        glow = QRadialGradient(vr.center(), vr.width() * 0.4)
+        glow.setColorAt(0.0, QColor(143, 183, 255, 12))
         glow.setColorAt(1.0, QColor(0, 0, 0, 0))
-        painter.fillRect(rect, glow)
+        painter.fillRect(vr, glow)
         painter.restore()
 
     # ── Resize ──
@@ -868,12 +1021,17 @@ class CoverFlowWidget(QGraphicsView):
         self._clear_scene_preserve_slider()
         self._create_overlay_items()
         for i, item in enumerate(self._items):
-            ci = CoverPixmapItem(item.pixmap, i, self._cover_w, self._cover_h)
+            key = _make_item_key(item)
+            pix = item.pixmap or getattr(self, '_cover_cache', {}).get(key)
+            ci = CoverPixmapItem(pix, i, self._cover_w, self._cover_h)
             self._scene.addItem(ci)
             self._cover_items.append(ci)
             shadow = DropShadow(self._cover_w)
             self._scene.addItem(shadow)
             self._shadows.append(shadow)
+            ref = CoverReflection(pix)
+            self._scene.addItem(ref)
+            self._reflections.append(ref)
         self._current = max(0, min(len(self._items) - 1, saved))
         self._update_layout()
         self._position_slider()
@@ -881,7 +1039,17 @@ class CoverFlowWidget(QGraphicsView):
     # ── Context menu ──
 
     def contextMenuEvent(self, event):
-        idx = self.current_index()
+        # Detect which cover is under the cursor
+        pos = event.pos()
+        hit_item = self.itemAt(pos)
+        if isinstance(hit_item, CoverPixmapItem):
+            idx = hit_item._index
+            # If right-clicking a side cover, snap to it first
+            if idx != self.current_index():
+                self.scroll_to(idx, animated=True)
+                self._current = float(idx)
+        else:
+            idx = self.current_index()
         if not self._items or idx < 0 or idx >= len(self._items):
             return
         from PySide6.QtWidgets import QMenu
@@ -998,13 +1166,17 @@ class CoverFlowWidget(QGraphicsView):
         else:
             angle = event.angleDelta()
             if abs(angle.x()) > abs(angle.y() * 0.6):
-                # Horizontal navigation
                 self._current -= angle.x() / 120.0 * 0.42
             elif abs(angle.y()) > 0:
-                # Zoom disabled — use MICHI_CF_GAP env var instead
-                pass
+                self._current -= angle.y() / 120.0 * 0.42
 
         self._clamp_current_soft()
         self._update_layout()
         self._velocity = 0.0
         self._wheel_snap_timer.start(180)
+
+    def closeEvent(self, event):
+        self._phys_timer.stop()
+        self._wheel_snap_timer.stop()
+        self._snap_anim.stop()
+        super().closeEvent(event)

@@ -10,6 +10,8 @@ from PySide6.QtCore import Qt, QRectF, QPointF
 from library.library_db import MediaItem
 from library.artwork_cache import get_cached, cache_cover
 
+_MAX_COVER_BYTES = 10 * 1024 * 1024  # 10 MB limit for embedded/external covers
+
 
 @lru_cache(maxsize=512)
 def _find_cover_cached(directory: str) -> str:
@@ -46,34 +48,38 @@ def find_cover_in_dir(directory: str) -> str | None:
 
 def make_default_cover(title: str = "", size: int = 280) -> QPixmap:
     pix = QPixmap(size, size)
-    pix.fill(QColor("#e5e5ea"))
+    pix.fill(QColor("#090B11"))  # Michi dark background
     painter = QPainter(pix)
     painter.setRenderHint(QPainter.Antialiasing)
 
-    # Circle (note head)
-    cx, cy = size / 2 - 20, size / 2 + 10
+    # Subtle border
+    pen_border = QPen(QColor(255, 255, 255, 30), 1)
+    painter.setPen(pen_border)
+    painter.setBrush(Qt.NoBrush)
+    painter.drawRoundedRect(1, 1, size - 2, size - 2, 14, 14)
+
+    # Note icon centered
+    cx, cy = size / 2 - 10, size / 2 + 5
     r = min(size / 8, 20)
     painter.setPen(Qt.NoPen)
-    painter.setBrush(QColor("#8FB7FF"))
+    painter.setBrush(QColor(143, 183, 255, 80))
     painter.drawEllipse(QPointF(cx, cy), r, r)
 
-    # Stem
-    pen = QPen(QColor("#8FB7FF"), max(2, int(size / 60)))
+    pen = QPen(QColor(143, 183, 255, 120), max(2, int(size / 60)))
     pen.setCapStyle(Qt.RoundCap)
     painter.setPen(pen)
     painter.drawLine(QPointF(cx + r, cy), QPointF(cx + r, cy - r * 2.5))
 
-    # Flag
     path = QPainterPath()
     path.moveTo(cx + r, cy - r * 2.5)
     path.cubicTo(cx + r + r * 1.2, cy - r * 2.2, cx + r + r * 1.5, cy - r * 1.5,
                  cx + r + r * 0.5, cy - r * 0.8)
-    painter.setBrush(QColor("#8FB7FF"))
+    painter.setBrush(QColor(143, 183, 255, 120))
     painter.setPen(Qt.NoPen)
     painter.drawPath(path)
 
     if title:
-        painter.setPen(QColor("#8e8e93"))
+        painter.setPen(QColor(255, 255, 255, 90))
         painter.setFont(QFont("sans-serif", max(8, int(size / 24))))
         painter.drawText(QRectF(12, size - 30, size - 24, 26),
                         Qt.AlignCenter | Qt.TextWordWrap, title[:40])
@@ -114,7 +120,6 @@ def load_cover_pixmap(filepath: str, size: int = 280,
                       albumartist: str = "") -> QPixmap:
     """Try to find and load cover art for a media file. Returns QPixmap."""
     directory = os.path.dirname(filepath)
-    _MAX_COVER_BYTES = 10 * 1024 * 1024  # 10 MB limit for embedded covers
 
     if size <= 96:
         size_name = "thumb"
@@ -124,7 +129,8 @@ def load_cover_pixmap(filepath: str, size: int = 280,
         size_name = "large"
 
     # 1. Try embedded cover from DB cache (keyed by album tag)
-    album_name = _get_album_tag(filepath)
+    # Use passed album if available — avoid unnecessary mutagen call
+    album_name = album or _get_album_tag(filepath)
     if album_name:
         embedded = _get_embedded_cover(album_name, artist=artist, albumartist=albumartist)
         if embedded:
@@ -138,6 +144,14 @@ def load_cover_pixmap(filepath: str, size: int = 280,
             return cached
         pix = QPixmap(cover_path)
         if not pix.isNull():
+            # Check file size to avoid huge covers
+            try:
+                if os.path.getsize(cover_path) > _MAX_COVER_BYTES:
+                    logger = __import__('logging').getLogger('michi.artwork')
+                    logger.debug("Skipping oversized cover: %s (%d bytes)", cover_path, os.path.getsize(cover_path))
+                    return make_default_cover(os.path.basename(directory), size)
+            except OSError:
+                pass
             scaled = pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             cache_cover(cover_path, pix, size_name)
             return scaled
@@ -200,6 +214,8 @@ def _extract_embedded_cover_from_file(filepath: str, size: int = 280) -> QPixmap
                 data = bytes(covr[0])
 
         if data:
+            if len(data) > _MAX_COVER_BYTES:
+                return None  # skip oversized embedded covers
             pix = QPixmap()
             if pix.loadFromData(data):
                 return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)

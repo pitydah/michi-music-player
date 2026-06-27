@@ -3,34 +3,18 @@
 import os
 import random
 import logging
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QPixmap, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
+from PySide6.QtGui import QIcon, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QSplitter, QLabel,
-    QFrame, QHBoxLayout, QLineEdit, QToolButton, QStackedWidget, QTableView, QHeaderView,
-    QAbstractItemView, QFileDialog, QInputDialog, QMessageBox, QMenu,
-    QDialog, QFormLayout, QPushButton, QDialogButtonBox,
+    QMainWindow, QWidget, QFileDialog, QMessageBox,
 )
 
-from ui.sidebar_widget import SidebarWidget
-from ui.view_switcher import SegmentedViewSwitcher
-from ui.view_controller import ViewController
-from ui.sidebar_controller import SidebarController
 
-from ui.central.central_styles import (
-    search_qss as _cs_search_qss,
-    count_badge_qss, tool_button_qss, menu_qss as _cs_menu_qss,
-    table_qss, scrollbar_qss, section_icon_box_qss,
-    section_title_qss, section_subtitle_qss, header_qss,
-    table_header_qss, dialog_qss,
-)
 
-from ui.icons import get_icon, get_pixmap, get_qicon, app_icon
-from ui.nowplaying_bar import NowPlayingBar
-from audio.player import PlayerEngine, PlaybackState
+from ui.icons import app_icon
+from audio.player import PlayerEngine
 from library.library_db import (
     LibraryDB, DB_PATH, MediaItem,
-    AUDIO_EXTS, ALL_EXTS, scan_device_music,
+    AUDIO_EXTS, ALL_EXTS,
 )
 from ui.folder_browser import FolderBrowserWidget
 from ui.search_controller import SearchController
@@ -42,16 +26,8 @@ from library.trackref_model import TrackRefTableModel
 from streaming.transmit_manager import TransmitManager
 
 from streaming.subsonic_client import (
-    SubsonicClient, load_servers, save_servers,
-    SubsonicError, AuthError, ServerNotFoundError,
+    load_servers,
 )
-from streaming.server_dialog import ServerDialog
-from streaming.remote_browser import RemoteBrowser
-from library.coverflow import CoverFlowWidget
-from library.album_grid import AlbumGridWidget
-from library.song_grid import SongGridWidget
-from library.album_art import load_covers_for_albums
-from streaming.radio_widget import RadioWidget
 from streaming.radio_manager import RadioManager
 from ui.music_identifier_view import MusicIdentifierView
 from ui.discover_dashboard import DiscoverDashboard
@@ -72,192 +48,21 @@ except ImportError:
     DetectionService = None
 
 
-SECTION_CONFIG = {
-    "library":    {"title": "Biblioteca", "subtitle": "Música local, archivos disponibles y estadísticas de tu colección",
-                   "icon": "sidebar_library", "views": ["list", "grid"],
-                   "search": True, "default": "list"},
-    "albums":     {"title": "Álbumes", "subtitle": "Carátulas y navegación visual",
-                   "icon": "sidebar_albums", "views": ["list", "grid", "coverflow"],
-                   "search": True, "default": "grid"},
-    "artists":    {"title": "Artistas", "subtitle": "Explora tu biblioteca por artista y álbumes",
-                   "icon": "sidebar_artist", "views": ["grid", "list"],
-                   "search": True, "default": "grid"},
-    "genres":     {"title": "Géneros", "subtitle": "Atlas de estilos de tu biblioteca",
-                    "icon": "sidebar_popular", "views": ["grid", "list"],
-                    "search": True, "default": "grid"},
-    "folders":    {"title": "Carpetas", "subtitle": "Explorador musical local",
-                   "icon": "sidebar_folders", "views": ["tree"],
-                   "search": True, "default": "tree"},
-    "radio":      {"title": "Emisoras", "subtitle": "Radios por URL y mosaicos",
-                   "icon": "sidebar_radio", "views": ["grid", "list"],
-                   "search": True, "default": "grid"},
-    "identifier": {"title": "Identificador", "subtitle": "Detección musical",
-                   "icon": "sidebar_identifier", "views": [],
-                   "search": False, "default": None},
-    "playlists":  {"title": "Playlist", "subtitle": "Colecciones personalizadas",
-                   "icon": "sidebar_playlists", "views": ["list", "grid"],
-                   "search": True, "default": "list"},
-    "favs":       {"title": "Favoritos", "subtitle": "Canciones marcadas como favoritas",
-                   "icon": "sidebar_popular", "views": ["list", "grid"],
-                   "search": True, "default": "list"},
-    "recent":     {"title": "Recientes", "subtitle": "Reproducidas recientemente",
-                   "icon": "sidebar_recent", "views": ["list", "grid"],
-                   "search": True, "default": "list"},
-    "discover":   {"title": "Descubrir", "subtitle": "Explora y redescubre tu música",
-                   "icon": "sidebar_mix", "views": [],
-                   "search": False, "default": None},
-    "mix_daily":  {"title": "Mix diario", "subtitle": "Selección automática para hoy",
-                   "icon": "sidebar_mix", "views": [],
-                   "search": False, "default": None},
-    "mix_unplayed": {"title": "No escuchadas", "subtitle": "Canciones por descubrir",
-                     "icon": "sidebar_unplayed", "views": ["list", "grid"],
-                     "search": True, "default": "list"},
-    "mix_popular": {"title": "Más escuchadas", "subtitle": "Mayor número de reproducciones",
-                    "icon": "sidebar_popular", "views": [],
-                    "search": False, "default": None},
-    "add_server": {"title": "Añadir servidor", "subtitle": "Conecta Navidrome o Jellyfin",
-                   "icon": "sidebar_add", "views": [],
-                   "search": False, "default": None},
-    "playlist_hub": {"title": "Playlist", "subtitle": "Organiza, mezcla e importa tus listas",
-                     "icon": "sidebar_playlists", "views": ["grid"],
-                     "search": False, "default": "grid"},
-    "metadata_editor": {"title": "Editor de metadatos",
-                         "subtitle": "Limpia, completa y normaliza la información de tus archivos",
-                         "icon": "metadata_editor", "views": [],
-                         "search": False, "default": None},
-    "home_audio": {"title": "Home Audio",
-                    "subtitle": "Audio multiroom, parlantes y Home Assistant",
-                    "icon": "home_audio", "views": [],
-                    "search": False, "default": None},
-    "new_playlist": {"title": "Nueva playlist", "subtitle": "Crear una playlist vacía",
-                     "icon": "sidebar_add", "views": [],
-                     "search": False, "default": None},
-    "assistant":  {"title": "Asistente",
-                    "subtitle": "IA local para explorar tu biblioteca",
-                    "icon": "sidebar_mix", "views": [],
-                    "search": False, "default": None},
-    "metadata_review": {"title": "Revisión de metadata",
-                         "subtitle": "Compara y aprueba cambios sugeridos",
-                         "icon": "metadata_editor", "views": [],
-                         "search": False, "default": None},
-    "audio_lab":      {"title": "Audio Lab",
-                        "subtitle": "Importa, corrige y enriquece tu colección",
-                        "icon": "sidebar_mix", "views": [],
-                        "search": False, "default": None},
-    "michi_disc_lab": {"title": "Michi Disc Lab",
-                       "subtitle": "Importación Hi-Fi y ripeo seguro de CDs",
-                       "icon": "sidebar_mix", "views": [],
-                       "search": False, "default": None},
-    "home":           {"title": "Inicio",
-                        "subtitle": "Tu música en un solo lugar",
-                        "icon": "sidebar_library", "views": [],
-                        "search": False, "default": None},
-    "library_hub":    {"title": "Biblioteca",
-                        "subtitle": "Música local, servidores y archivos offline",
-                        "icon": "sidebar_library", "views": [],
-                        "search": False, "default": None},
-    "mix_hub":        {"title": "Mix",
-                        "subtitle": "Smart mixes, recomendaciones y playlists mixtas",
-                        "icon": "sidebar_mix", "views": [],
-                        "search": False, "default": None},
-    "playback_hub":   {"title": "Reproducción",
-                        "subtitle": "Cola, historial, favoritos y radio",
-                        "icon": "warm_play", "views": [],
-                        "search": False, "default": None},
-    "connections_hub":{"title": "Conexiones",
-                        "subtitle": "Servidores, Home Audio y dispositivos",
-                        "icon": "sidebar_servers", "views": [],
-                        "search": False, "default": None},
-    "settings_hub":   {"title": "Configuración",
-                        "subtitle": "Preferencias de la aplicación",
-                        "icon": "warm_settings", "views": [],
-                        "search": False, "default": None},
-    "devices":        {"title": "Dispositivos",
-                        "subtitle": "Unidades y discos externos",
-                        "icon": "sidebar_devices", "views": [],
-                        "search": False, "default": None},
-    "devices_page":   {"title": "Michi Sync Suite",
-                        "subtitle": "Sincroniza musica con tus dispositivos",
-                        "icon": "sidebar_devices", "views": [],
-                        "search": False, "default": None},
-}
+# Re-export from navigation controller for backward compat
+from ui.controllers.navigation_controller import resolve_section_config
 
-
-def _resolve_section_config(key: str, extra: dict = None) -> dict:
-    """Resolve section config for static or dynamic keys (pl:, srv:, dev:)."""
-    if key in SECTION_CONFIG:
-        return SECTION_CONFIG[key]
-
-    if key.startswith("pl:") and extra:
-        name = extra.get("name", "Playlist")
-        return {"title": name, "subtitle": "Playlist local",
-                "icon": "sidebar_playlist_item", "views": ["list", "grid"],
-                "search": True, "default": "list"}
-    if key.startswith("srv:") and extra:
-        name = extra.get("name", "Servidor")
-        sv_type = extra.get("type", "")
-        icon = "sidebar_navidrome" if sv_type == "navidrome" else "sidebar_jellyfin"
-        return {"title": name, "subtitle": "Servidor remoto",
-                "icon": icon, "views": [],
-                "search": True, "default": None}
-    if key.startswith("dev:") and extra:
-        name = extra.get("name", os.path.basename(extra.get("mount", "")))
-        return {"title": name, "subtitle": "Dispositivo externo",
-                "icon": "sidebar_devices", "views": ["list"],
-                "search": True, "default": "list"}
-
-    return {"title": key.capitalize(), "subtitle": "",
-            "icon": "sidebar_library", "views": ["list", "grid"],
-            "search": True, "default": "list"}
-
-# Navigation routes — maps sidebar keys to handler methods
-NAV_ROUTES = {
-    "library": "_show_library_hub_page", "albums": "_show_albums",
-    "artists": "_show_artists", "genres": "_show_genres",
-    "radio": "_show_radio", "home_audio": "_show_home_audio",
-    "identifier": "_show_identifier", "discover": "_show_discover",
-    "folders": "_show_folders", "playlist_hub": "_show_playlist_hub",
-    "metadata_editor": "_show_metadata_editor",
-    "favs": "_show_favs", "recent": "_show_recent",
-    "new_playlist": "_show_new_playlist", "add_server": "_show_add_server",
-    "assistant": "_show_assistant",
-    "metadata_review": "_show_metadata_review",
-    "audio_lab": "_show_audio_lab",
-    "michi_disc_lab": "_show_michi_disc_lab",
-    "home": "_show_home_page",
-    "library_hub": "_show_library_hub_page",
-    "mix_hub": "_show_mix_hub_page",
-    "playback_hub": "_show_playback_hub_page",
-    "connections_hub": "_show_connections_hub_page",
-    "settings_hub": "_show_settings_hub_page",
-    "devices_page": "_show_devices_page",
-}
+# Backward-compat alias
+_resolve_section_config = resolve_section_config
 
 
 class MainWindow(QMainWindow):
-    @classmethod
-    def _validate_nav_routes(cls):
-        """Assert that every NAV_ROUTES key maps to an existing method.
-
-        Converts silent route dispatch failures into immediate ImportError at startup.
-        """
-        missing = []
-        for key, method_name in NAV_ROUTES.items():
-            if not hasattr(cls, method_name):
-                missing.append(f"  {key!r} → {method_name!r} (not found)")
-        if missing:
-            msg = "NAV_ROUTES references non-existent methods:\n" + "\n".join(missing)
-            raise ImportError(msg)
-
     def __init__(self):
         from time import perf_counter
         _t0 = perf_counter()
         _log = logging.getLogger("michi.startup")
 
         super().__init__()
-        self._validate_nav_routes()  # must be first — fails fast on config errors
         self._safe_mode = os.environ.get("MICHI_SAFE_MODE") == "1"
-        self._view_cache: dict[str, QWidget] = {}
         from core.shutdown_manager import ShutdownManager
         self._shutdown = ShutdownManager()
         from core.feature_manager import FeatureManager
@@ -303,9 +108,6 @@ class MainWindow(QMainWindow):
         self._album_sort_key = "title"
         self._album_filter_mode = "all"
         self._coverflow_cache_key: tuple | None = None
-        self._nav_history: list[str] = []
-        self._nav_history_index: int = -1
-        self._nav_restoring: bool = False
 
         # Optional attributes — initialized as None, filled by their init phase
         self._playlist_ctrl = None
@@ -346,7 +148,6 @@ class MainWindow(QMainWindow):
         self._album_repo = None
         self._audio_lab_page = None
         self._michi_disc_lab_page = None
-        self._home_page = None
         self._library_hub_page = None
         self._mix_hub_page = None
         self._playback_hub_page = None
@@ -379,39 +180,51 @@ class MainWindow(QMainWindow):
         from core.worker_manager import WorkerManager
         self._workers = WorkerManager(self)
         self._db._worker_mgr = self._workers
+        from ui.view_registry import ViewRegistry
+        self._view_registry = ViewRegistry(safe_mode=self._safe_mode)
+        self._register_views()
         self._shutdown.register("playback", lambda: self._playback.stop())
         self._shutdown.register("workers", lambda: self._workers.shutdown(2000)
                                if hasattr(self, '_workers') and self._workers else None)
         self._shutdown.register("db", lambda: self._db.close())
+        from ui.controllers.home_audio_handlers import HomeAudioHandlers
+        self._ha_handlers = HomeAudioHandlers(self)
+        from ui.builder.album_sort_menu import AlbumSortMenu
+        self._album_sort_menu = AlbumSortMenu(self)
+        from ui.controllers.smart_mix_preview import SmartMixPreview
+        self._smart_preview = SmartMixPreview(self._db)
 
     def _init_ui(self):
         """Sidebar, header, content stack, nowplaying, views."""
         self._setup_actions()
         self._setup_ui()
-        self._validate_critical_widgets()
 
-    @staticmethod
-    def _require(condition: bool, message: str):
-        """Fail-fast validation — raises RuntimeError, not affected by python -O."""
-        if not condition:
-            raise RuntimeError(f"Michi startup validation failed: {message}")
+    def _register_views(self):
+        """Register optional views as lazy factories in the ViewRegistry."""
+        vr = self._view_registry
 
-    def _validate_critical_widgets(self):
-        """Verify all non-optional UI widgets exist after setup.
-        Converts silent hasattr guards into immediate failures at startup.
-        """
-        self._require(self._content is not None, "content stack not created")
-        self._require(self._search is not None, "search bar not created")
-        self._require(self._view_switcher is not None, "view switcher not created")
-
-    def _validate_critical_services(self):
-        """Verify all core services exist after controllers init.
-        Converts silent hasattr guards into immediate failures at startup.
-        """
-        self._require(self._workers is not None, "worker manager not initialized")
-        self._require(self._model is not None, "table model not initialized")
-        self._require(self._ctx is not None, "AppContext not initialized")
-        self._require(self._ctx.player_bar is not None, "player_bar not in AppContext")
+        vr.register("home_audio", lambda: HomeAudioView(), experimental=True,
+                    title="Home Audio", description="Desactivado en modo seguro.")
+        vr.register("identifier", lambda: MusicIdentifierView(), experimental=True,
+                    title="Identificador", description="Desactivado en modo seguro.")
+        vr.register("discover", lambda: DiscoverDashboard(), experimental=False,
+                    title="Descubrir", description="Panel no disponible.")
+        vr.register("playlist_hub", lambda: PlaylistHubWidget(), experimental=False,
+                    title="Playlists", description="No disponible.")
+        vr.register("playlist_detail", lambda: PlaylistDetailView(), experimental=False,
+                    title="Detalle", description="No disponible.")
+        vr.register("metadata_editor", lambda: MetadataEditorWidget(), experimental=False,
+                    title="Editor", description="No disponible.")
+        vr.register("artist_grid", lambda: ArtistGridWidget(), experimental=False,
+                    title="Artistas", description="No disponible.")
+        vr.register("artist_detail", lambda: ArtistDetailView(), experimental=False,
+                    title="Detalle", description="No disponible.")
+        vr.register("genre_grid", lambda: GenreGridWidget(), experimental=False,
+                    title="Géneros", description="No disponible.")
+        vr.register("genre_detail", lambda: GenreDetailView(), experimental=False,
+                    title="Detalle", description="No disponible.")
+        vr.register("folder_browser", lambda: FolderBrowserWidget(), experimental=False,
+                    title="Carpetas", description="No disponible.")
 
     def _init_controllers(self):
         """Required controllers — navigation, playback, playlist, library."""
@@ -426,7 +239,6 @@ class MainWindow(QMainWindow):
         svc = AppServices(
             db=self._db, playback=self._playback, player=self._player,
             model=self._model, toast=self._toast_svc,
-            workers=self._workers,
             player_bar=getattr(self, '_player_bar_ctrl', None),
             features=self._features,
             artist_repo=self._artist_repo, genre_repo=self._genre_repo,
@@ -434,18 +246,12 @@ class MainWindow(QMainWindow):
             configure_header=self._configure_header_for_section,
             rebuild_sidebar=self._rebuild_sidebar,
             load_library=self._load_library, play_file=self._play_file,
-            reload_library=self._reload_library_after_change,
-            clear_coverflow_cache=lambda: setattr(self, '_coverflow_cache_key', None),
-            enrich_artist=lambda k, n: (hasattr(self, '_artist_enrich')
-                                        and hasattr(self._artist_enrich, 'enrich_artist_by_key')
-                                        and self._artist_enrich.enrich_artist_by_key(k, n)),
-            get_content_widget=lambda: self._content if hasattr(self, '_content') else self,
         )
         self._services = svc
 
         # Controllers — pass AppServices for progressive migration
         from core.file_actions import FileActions
-        self._file_actions = FileActions(self, services=svc)
+        self._file_actions = FileActions(self)
         from ui.controllers.album_controller import AlbumController
         self._album_ctrl = AlbumController(self, refresh_grid=self._show_album_grid, services=svc)
         from ui.controllers.transmit_controller import TransmitController
@@ -466,17 +272,27 @@ class MainWindow(QMainWindow):
         self._expanded_ctrl = ExpandedController(self, services=svc)
         from ui.controllers.artist_controller import ArtistController
         self._artist_ctrl = ArtistController(self, services=svc)
+        from ui.controllers.home_controller import HomeController
+        self._home_ctrl = HomeController(self)
+        from ui.controllers.navigation_controller import NavigationController
+        self._nav_ctrl = NavigationController(self)
+        from ui.controllers.library_controller import LibraryController
+        self._lib_ctrl = LibraryController(self)
+        from ui.controllers.coverflow_controller import CoverFlowController
+        self._cf_ctrl = CoverFlowController(self)
+        from ui.controllers.smart_mix_controller import SmartMixController
+        self._smart_ctrl = SmartMixController(self)
+        from ui.controllers.server_browser_controller import ServerBrowserController
+        self._srv_ctrl = ServerBrowserController(self)
+        from ui.controllers.identifier_handlers import IdentifierHandlers
+        self._id_handlers = IdentifierHandlers(self)
+        from ui.controllers.sidebar_menu_controller import SidebarMenuController
+        self._sidebar_menu_ctrl = SidebarMenuController(self)
+        from ui.routers.search_router import SearchRouter
+        self._search_router = SearchRouter(self)
+        from ui.routers.view_mode_router import ViewModeRouter
+        self._view_router = ViewModeRouter(self)
 
-        # ── Wire controller signals ──
-        self._cast_ctrl.transmit_device_selected.connect(self._activate_transmit_device)
-        self._cast_ctrl.add_transmit_requested.connect(self._add_transmit_device)
-        self._cast_ctrl.manage_transmit_requested.connect(self._manage_transmit_devices)
-        self._audio_output_ctrl.preferences_requested.connect(
-            lambda: self._show_preferences("audio"))
-        self._expanded_ctrl.preferences_requested.connect(self._show_preferences)
-        self._expanded_ctrl.metadata_requested.connect(self._open_metadata_for_files)
-
-        self._validate_critical_services()
 
     def _init_optional_services(self):
         """Music identifier, HomeAudioView, Snapcast, API, mDNS, enrichment, MPRIS."""
@@ -594,7 +410,11 @@ class MainWindow(QMainWindow):
     # ── Safe init helper ──
 
     def _safe_init(self, name: str, factory):
-        """Initialize an optional feature. Returns service or None on failure."""
+        """Initialize an optional feature. Returns service or None if disabled/failed."""
+        if not self._features.is_enabled(name):
+            _log = logging.getLogger("michi.setup")
+            _log.debug("%s skipped — feature disabled", name)
+            return None
         try:
             svc = factory()
             self._features.mark_available(name)
@@ -606,27 +426,31 @@ class MainWindow(QMainWindow):
             return None
 
     def _get_view(self, key: str, factory) -> QWidget:
-        """Lazy-load a view widget. Created once, cached forever."""
-        if key not in self._view_cache:
-            self._view_cache[key] = factory()
-        return self._view_cache[key]
+        """Lazy-load a view widget via the ViewRegistry (safe-mode gated)."""
+        if not self._view_registry.has(key):
+            self._view_registry.register(key, factory)
+        view = self._view_registry.get(key)
+        if view is None:
+            from ui.safe_view_factory import safe_create_view
+            view = safe_create_view(key, factory, title=key)
+        return view
 
     # ── Optional service factories ──
 
     def _make_snapserver(self):
         from integrations.snapcast.snapserver_manager import SnapServerManager
         svc = SnapServerManager(self)
-        svc.started.connect(self._on_snapserver_started)
-        svc.stopped.connect(self._on_snapserver_stopped)
-        svc.error_occurred.connect(self._on_snapserver_error)
+        svc.started.connect(self._ha_handlers.on_snapserver_started)
+        svc.stopped.connect(self._ha_handlers.on_snapserver_stopped)
+        svc.error_occurred.connect(self._ha_handlers.on_snapserver_error)
         self._shutdown.register("snapserver", lambda: svc.stop())
         return svc
 
     def _make_audio_capture(self):
         from integrations.snapcast.audio_capture import AudioCaptureManager
         svc = AudioCaptureManager(self)
-        svc.sink_ready.connect(self._on_audio_sink_ready)
-        svc.error_occurred.connect(self._on_snapserver_error)
+        svc.sink_ready.connect(self._ha_handlers.on_audio_sink_ready)
+        svc.error_occurred.connect(self._ha_handlers.on_snapserver_error)
         self._shutdown.register("audio_capture", lambda: svc.remove_sink()
                                 if hasattr(svc, 'remove_sink') else None)
         return svc
@@ -634,13 +458,13 @@ class MainWindow(QMainWindow):
     def _make_snap_discovery(self):
         from integrations.snapcast.discovery import SnapClientDiscovery
         svc = SnapClientDiscovery(self)
-        svc.clients_found.connect(self._on_snap_clients_found)
+        svc.clients_found.connect(self._ha_handlers.on_snap_clients_found)
         return svc
 
     def _make_group_manager(self):
         from integrations.snapcast.group_manager import GroupManager
         svc = GroupManager(self)
-        svc.groups_changed.connect(self._on_groups_changed)
+        svc.groups_changed.connect(self._ha_handlers.on_groups_changed)
         return svc
 
     def _make_michi_api(self):
@@ -701,51 +525,17 @@ class MainWindow(QMainWindow):
         return svc
 
     def _wire_home_audio_signals(self):
-        v = self._home_audio_view
-        if v is None:
-            return
-        v.connect_requested.connect(self._on_home_audio_connect)
-        v.refresh_requested.connect(self._on_home_audio_refresh)
-        v.enable_multiroom_requested.connect(self._on_home_audio_multiroom)
-        v.open_settings_requested.connect(self._on_home_audio_settings)
-        v.open_receiver_wizard_requested.connect(self._on_home_audio_receiver_wizard)
-        v.device_cast_current_requested.connect(self._on_home_audio_cast)
-        v.device_play_requested.connect(self._on_home_audio_device_play)
-        v.device_pause_requested.connect(self._on_home_audio_device_pause)
-        v.device_stop_requested.connect(self._on_home_audio_device_stop)
-        v.device_volume_changed.connect(self._on_home_audio_device_volume)
-        v.group_selected_requested.connect(self._on_home_audio_group_selected)
-        v.create_group_requested.connect(self._on_home_audio_create_group)
+        self._ha_handlers.wire_signals()
 
     def _wire_identifier_signals(self):
-        v = self._identifier_view
-        v.toggle_requested.connect(self._toggle_identifier)
-        v.clear_requested.connect(self._clear_detected_tracks)
-        v.track_selected.connect(self._on_detected_track_selected)
-        v.identify_once_requested.connect(
-            lambda: self._identifier_ctrl.identify_once()
-            if self._identifier_ctrl else None)
-        v.settings_requested.connect(self._on_identifier_settings)
-        v.play_track_requested.connect(self._on_identifier_play)
-        v.search_track_requested.connect(self._on_identifier_search)
-        v.delete_track_requested.connect(self._on_identifier_delete)
-        if self._detection:
-            self._detection.track_detected.connect(self._on_track_detected)
-            self._detection.detection_failed.connect(self._on_detection_failed)
-        if self._identifier_ctrl:
-            self._identifier_ctrl.state_changed.connect(
-                self._identifier_view.set_identifier_state)
-            self._identifier_ctrl.source_changed.connect(
-                self._identifier_view.set_source_status)
-            self._identifier_ctrl.provider_changed.connect(
-                self._identifier_view.set_provider_status)
-
+        self._id_handlers.wire_signals()
     def _setup_actions(self):
         from PySide6.QtGui import QAction
 
         self._open_file_action = QAction("Abrir archivo...", self)
         self._open_file_action.setShortcut("Ctrl+O")
-        self._open_file_action.triggered.connect(self._open_file)
+        self._open_file_action.triggered.connect(
+            lambda: self._file_actions.open_files(ALL_EXTS))
         self.addAction(self._open_file_action)
 
         self._add_folder_action = QAction("Añadir carpeta...", self)
@@ -773,16 +563,17 @@ class MainWindow(QMainWindow):
 
         back_action = QAction(self)
         back_action.setShortcut("Alt+Left")
-        back_action.triggered.connect(self._navigate_back)
+        back_action.triggered.connect(lambda: self._nav_ctrl.navigate_back())
         self.addAction(back_action)
 
         forward_action = QAction(self)
         forward_action.setShortcut("Alt+Right")
-        forward_action.triggered.connect(self._navigate_forward)
+        forward_action.triggered.connect(lambda: self._nav_ctrl.navigate_forward())
         self.addAction(forward_action)
 
         self._add_transmit_device_action = QAction("Añadir dispositivo...", self)
-        self._add_transmit_device_action.triggered.connect(self._add_transmit_device)
+        self._add_transmit_device_action.triggered.connect(
+            lambda: self._transmit_ctrl.add_device())
         self.addAction(self._add_transmit_device_action)
 
         self._manage_transmit_devices_action = QAction("Administrar dispositivos...", self)
@@ -875,26 +666,6 @@ class MainWindow(QMainWindow):
         text += "</table>"
         QMessageBox.information(self, "Atajos de teclado", text)
 
-    def _build_breadcrumb_subtitle(self, subtitle: str, section_key: str) -> str:
-        if not self._nav_history or self._nav_history_index <= 0:
-            return subtitle
-        prev_key = self._nav_history[self._nav_history_index - 1]
-        hub_names = {
-            "home": "Inicio", "library_hub": "Biblioteca", "mix_hub": "Mix",
-            "playback_hub": "Reproducción", "connections_hub": "Conexiones",
-            "radio": "Radio", "audio_lab": "Audio Lab",
-            "settings_hub": "Configuración", "home_audio": "Home Audio",
-            "library": "Biblioteca", "albums": "Biblioteca",
-            "artists": "Biblioteca", "genres": "Biblioteca",
-            "folders": "Biblioteca",
-        }
-        hub = hub_names.get(prev_key, "")
-        if hub and section_key not in ("home", "library_hub", "mix_hub",
-                                         "playback_hub", "connections_hub",
-                                         "settings_hub", "audio_lab"):
-            return f"{hub} / {subtitle}" if subtitle else hub
-        return subtitle
-
     def _show_about(self):
         QMessageBox.about(self, "Acerca de",
             "<h2>Michi Music Player</h2><p>Sincronización Android, ecualizador paramétrico, "
@@ -902,504 +673,15 @@ class MainWindow(QMainWindow):
             "<p>Python 3 · PySide6 · GStreamer</p>")
 
     def _setup_ui(self):
-        # ── Sidebar ──
-        self._sidebar = SidebarWidget()
-        self._sidebar.setMinimumWidth(270)
-        self._sidebar.setMaximumWidth(380)
-        self._sidebar_controller = SidebarController(self._sidebar, self._db)
-        self._sidebar_controller.navigation_requested.connect(
-            self._on_sidebar_navigate)
-        self._sidebar.setContextMenuPolicy(Qt.CustomContextMenu)
-        self._sidebar.customContextMenuRequested.connect(self._on_sidebar_menu)
-
-        # ── Header ──
-        header = QFrame()
-        header.setObjectName("headerBar")
-        header.setStyleSheet(header_qss())
-        hl = QHBoxLayout(header)
-        hl.setContentsMargins(14, 10, 14, 10)
-        hl.setSpacing(12)
-
-        # Section icon capsule
-        self._section_icon_box = QFrame()
-        self._section_icon_box.setObjectName("sectionIconBox")
-        self._section_icon_box.setFixedSize(42, 42)
-        self._section_icon_box.setStyleSheet(section_icon_box_qss())
-        icon_box_inner = QVBoxLayout(self._section_icon_box)
-        icon_box_inner.setContentsMargins(0, 0, 0, 0)
-        icon_box_inner.setAlignment(Qt.AlignCenter)
-
-        self._section_icon = QLabel()
-        self._section_icon.setFixedSize(26, 26)
-        self._section_icon.setAlignment(Qt.AlignCenter)
-        self._section_icon.setStyleSheet("background: transparent; border: none;")
-        icon_box_inner.addWidget(self._section_icon)
-
-        title_box = QVBoxLayout()
-        title_box.setSpacing(1)
-        self._section_title = QLabel("Todas las canciones")
-        self._section_title.setObjectName("sectionTitle")
-        self._section_title.setStyleSheet(section_title_qss())
-        self._section_subtitle = QLabel("Toda tu música local")
-        self._section_subtitle.setObjectName("sectionSubtitle")
-        self._section_subtitle.setStyleSheet(section_subtitle_qss())
-        title_box.addWidget(self._section_title)
-        title_box.addWidget(self._section_subtitle)
-
-        title_wrap = QHBoxLayout()
-        title_wrap.setContentsMargins(0, 0, 0, 0)
-        title_wrap.setSpacing(6)
-
-        self._back_btn = QToolButton()
-        self._back_btn.setText("←")
-        self._back_btn.setToolTip("Atrás (Alt+Izquierda)")
-        self._back_btn.setCursor(Qt.PointingHandCursor)
-        self._back_btn.setStyleSheet(tool_button_qss("icon"))
-        self._back_btn.setFixedSize(36, 36)
-        self._back_btn.setEnabled(False)
-        self._back_btn.clicked.connect(self._navigate_back)
-        title_wrap.addWidget(self._back_btn)
-
-        self._forward_btn = QToolButton()
-        self._forward_btn.setText("→")
-        self._forward_btn.setToolTip("Adelante (Alt+Derecha)")
-        self._forward_btn.setCursor(Qt.PointingHandCursor)
-        self._forward_btn.setStyleSheet(tool_button_qss("icon"))
-        self._forward_btn.setFixedSize(36, 36)
-        self._forward_btn.setEnabled(False)
-        self._forward_btn.clicked.connect(self._navigate_forward)
-        title_wrap.addWidget(self._forward_btn)
-
-        title_wrap.addWidget(self._section_icon_box)
-        title_wrap.addLayout(title_box)
-        hl.addLayout(title_wrap)
-        hl.addSpacing(16)
-
-        self._search = QLineEdit()
-        self._search.setPlaceholderText("Buscar canciones...")
-        self._search.setClearButtonEnabled(True)
-        self._search.setFixedWidth(240)
-        self._search.textChanged.connect(self._on_search)
-        self._search.setStyleSheet(_cs_search_qss())
-        self._count = QLabel("0 elementos")
-        self._count.setObjectName("countBadge")
-        self._count.setStyleSheet(count_badge_qss())
-
-        # View selector (segmented capsule)
-        self._view_switcher = SegmentedViewSwitcher(get_icon)
-        self._view_switcher.view_changed.connect(self._on_view_mode_changed)
-        self._view_mode = "list"
-
-        self._settings_btn = QToolButton()
-        self._settings_btn.setObjectName("settingsButton")
-        self._settings_btn.setIcon(get_qicon("warm_settings", size=24))
-        self._settings_btn.setIconSize(QSize(24, 24))
-        self._settings_btn.setFixedSize(44, 44)
-        self._settings_btn.setToolTip("Configuración y acciones")
-        self._settings_btn.setPopupMode(QToolButton.InstantPopup)
-        self._settings_btn.setStyleSheet(tool_button_qss("icon"))
-
-        settings_menu = QMenu(self)
-        settings_menu.setStyleSheet(_cs_menu_qss())
-        settings_menu.addAction(self._open_file_action)
-        settings_menu.addAction(self._add_folder_action)
-        settings_menu.addSeparator()
-        settings_menu.addAction(self._import_playlist_action)
-        settings_menu.addAction(self._export_playlist_action)
-        settings_menu.addSeparator()
-        transmit_sub = settings_menu.addMenu("Transmitir")
-        transmit_sub.addAction(self._add_transmit_device_action)
-        transmit_sub.addAction(self._manage_transmit_devices_action)
-        settings_menu.addSeparator()
-        settings_menu.addAction(self._sync_action)
-        settings_menu.addSeparator()
-        settings_menu.addAction(self._preferences_action)
-        settings_menu.addAction(self._shortcuts_action)
-        settings_menu.addAction(self._about_action)
-        settings_menu.addSeparator()
-        settings_menu.addAction(self._quit_action)
-        self._settings_btn.setMenu(settings_menu)
-
-        # Album sort/filter row (shown only for albums section)
-        self._album_sort_btn = QToolButton()
-        self._album_sort_btn.setText("Ordenar")
-        self._album_sort_btn.setToolTip("Ordenar álbumes")
-        self._album_sort_btn.setPopupMode(QToolButton.InstantPopup)
-        self._album_sort_btn.setFixedHeight(32)
-        self._album_sort_btn.setStyleSheet(tool_button_qss())
-        self._setup_album_sort_menu()
-        self._album_sort_btn.hide()
-
-        self._album_filter_btn = QToolButton()
-        self._album_filter_btn.setText("Filtrar")
-        self._album_filter_btn.setToolTip("Filtrar álbumes")
-        self._album_filter_btn.setPopupMode(QToolButton.InstantPopup)
-        self._album_filter_btn.setFixedHeight(32)
-        self._album_filter_btn.setStyleSheet(tool_button_qss())
-        self._setup_album_filter_menu()
-        self._album_filter_btn.hide()
-
-        # Context actions container
-        self._context_actions_box = QHBoxLayout()
-        self._context_actions_box.setSpacing(6)
-        self._context_actions_box.addWidget(self._album_sort_btn)
-        self._context_actions_box.addWidget(self._album_filter_btn)
-
-        hl.addStretch()
-        hl.addWidget(self._view_switcher)
-        hl.addLayout(self._context_actions_box)
-        hl.addWidget(self._search)
-        hl.addWidget(self._count)
-        hl.addWidget(self._settings_btn)
-
-        # ── Table ──
-        self._table = QTableView()
-        self._table.setShowGrid(False)
-        self._table.setAlternatingRowColors(True)
-        self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._table.setFrameShape(QFrame.NoFrame)
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self._table.horizontalHeader().setSectionsClickable(True)
-        self._table.horizontalHeader().setSortIndicatorShown(True)
-        self._table.horizontalHeader().setHighlightSections(False)
-        self._table.verticalHeader().setVisible(False)
-        self._table.verticalHeader().setDefaultSectionSize(30)
-        self._table.setSortingEnabled(True)
-        self._table.setStyleSheet(table_qss() + scrollbar_qss())
-        self._table.horizontalHeader().setStyleSheet(table_header_qss())
-        self._table.doubleClicked.connect(self._on_table_dbl)
-        self._table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self._table.customContextMenuRequested.connect(self._on_table_menu)
-
-        placeholder = QLabel()
-        placeholder.setAlignment(Qt.AlignCenter)
-        placeholder.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.82); font-size: 16px; font-weight: 500;"
-            "  background: transparent; border: none; padding: 48px 48px 12px 48px; }")
-        placeholder.setText(
-            "🎵  Añade música a tu biblioteca\n\n"
-            "Abre una carpeta o arrastra archivos para comenzar")
-
-        placeholder_albums = QLabel()
-        placeholder_albums.setAlignment(Qt.AlignCenter)
-        placeholder_albums.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.82); font-size: 15px;"
-            "  background: transparent; border: none; padding: 48px; }")
-        placeholder_albums.setText(
-            "📀  Sin álbumes en la biblioteca\n\n"
-            "Añade carpetas de música para ver carátulas aquí")
-
-        placeholder_expanded = QLabel("")
-        placeholder_expanded.setAlignment(Qt.AlignCenter)
-
-        # ── Expanded view (created on demand) ──
-        self._expanded = None
-        self._coverflow = None
-        self._remote_browser = None
-        self._remote_placeholder = QLabel("Conecta a un servidor remoto primero")
-        self._remote_placeholder.setAlignment(Qt.AlignCenter)
-        self._remote_placeholder.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.62); font-size: 15px; font-weight: 500;"
-            "  background: transparent; border: none; }")
-        self._radio_widget = RadioWidget(self._radio_manager)
-        self._radio_widget.station_selected.connect(self._play_radio)
-        self._radio_widget.count_changed.connect(self._on_radio_count)
-
-        self._album_grid = AlbumGridWidget()
-        self._album_grid.set_worker_manager(self._workers)
-        self._album_grid.album_double_clicked.connect(
-            lambda fps: self._play_filepaths(fps, play_now=True))
-        self._album_grid.queue_requested.connect(
-            lambda fps: self._play_filepaths(fps, play_now=False))
-        self._album_grid.playlist_requested.connect(
-            self._on_album_create_playlist)
-        self._album_grid.cover_search_requested.connect(
-            self._on_album_search_cover)
-        self._album_grid.open_folder_requested.connect(
-            self._on_album_open_folder)
-        self._album_grid.details_requested.connect(
-            self._on_album_show_details)
-        self._album_grid.add_folder_requested.connect(self._add_folder)
-
-        self._song_grid = SongGridWidget()
-        self._song_grid.song_double_clicked.connect(
-            lambda fp: self._play_file(fp))
-
-        # Generic song grid for external views (playlists, favs, recent)
-        self._generic_song_grid = SongGridWidget()
-        self._generic_song_grid.song_double_clicked.connect(
-            lambda fp: self._play_file(fp))
-
-        # Build songs stacked widget: list (table) + grid (cards) inside Canciones tab
-        self._songs_stack = QStackedWidget()
-        self._songs_stack.setObjectName("songsStack")
-        self._songs_stack.setStyleSheet("background: transparent; border: none;")
-        self._songs_stack.addWidget(self._table)
-        self._songs_stack.addWidget(self._song_grid)
-        self._songs_stack.setCurrentIndex(0)
-
-        # Build albums stacked widget: grid (carátulas) + list (table) inside Álbumes tab
-        self._album_list_table = QTableView()
-        self._album_list_table.setShowGrid(False)
-        self._album_list_table.setAlternatingRowColors(True)
-        self._album_list_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._album_list_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._album_list_table.setFrameShape(QFrame.NoFrame)
-        self._album_list_table.horizontalHeader().setStretchLastSection(True)
-        self._album_list_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self._album_list_table.verticalHeader().setVisible(False)
-        self._album_list_table.verticalHeader().setDefaultSectionSize(30)
-        self._album_list_table.setSortingEnabled(True)
-        self._album_list_table.setStyleSheet(table_qss() + scrollbar_qss())
-
-        self._albums_stack = QStackedWidget()
-        self._albums_stack.setObjectName("albumsStack")
-        self._albums_stack.setStyleSheet("background: transparent; border: none;")
-        self._albums_stack.addWidget(self._album_grid)
-        self._albums_stack.addWidget(self._album_list_table)
-        self._albums_stack.setCurrentIndex(0)
-
-        # Generic tracks table for playlists/favs/recent (separate from Canciones table)
-        self._generic_tracks_table = QTableView()
-        self._generic_tracks_table.setShowGrid(False)
-        self._generic_tracks_table.setAlternatingRowColors(True)
-        self._generic_tracks_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._generic_tracks_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._generic_tracks_table.setFrameShape(QFrame.NoFrame)
-        self._generic_tracks_table.horizontalHeader().setStretchLastSection(True)
-        self._generic_tracks_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self._generic_tracks_table.verticalHeader().setVisible(False)
-        self._generic_tracks_table.verticalHeader().setDefaultSectionSize(30)
-        self._generic_tracks_table.setSortingEnabled(True)
-        self._generic_tracks_table.setStyleSheet(table_qss() + scrollbar_qss())
-
-        self._discover = DiscoverDashboard()
-        self._discover.navigate_requested.connect(
-            self._on_sidebar_navigate)
-
-        self._playlist_hub = PlaylistHubWidget()
-        self._playlist_hub.create_playlist_requested.connect(self._create_playlist)
-        self._playlist_hub.import_m3u_requested.connect(self._import_m3u)
-        self._playlist_hub.export_playlists_requested.connect(self._export_playlists)
-        self._playlist_hub.smart_playlist_requested.connect(self._open_smart_playlist)
-        self._playlist_hub.playlist_open_requested.connect(
-            lambda pid: self._on_sidebar_navigate(f"pl:{pid}"))
-        self._playlist_hub.playlist_play_requested.connect(
-            self._on_hub_playlist_play)
-        self._playlist_hub.playlist_queue_requested.connect(
-            self._on_hub_playlist_queue)
-        self._playlist_hub.create_from_folder_requested.connect(
-            self._on_hub_create_from_folder)
-        self._playlist_hub.create_from_queue_requested.connect(
-            self._on_hub_create_from_queue)
-        self._playlist_hub.export_text_requested.connect(
-            lambda: self._toast_svc.show("Funcionalidad en desarrollo — disponible próximamente", "info"))
-        self._playlist_hub.find_duplicates_requested.connect(
-            lambda: self._toast_svc.show("Detección de duplicados pendiente de implementación", "info"))
-        self._playlist_hub.scan_metadata_requested.connect(
-            lambda: self._toast_svc.show("Revisión de metadatos pendiente de implementación", "info"))
-        self._playlist_hub.scan_missing_covers_requested.connect(
-            lambda: self._toast_svc.show("Búsqueda de carátulas faltantes pendiente de implementación", "info"))
-        self._playlist_hub.clean_empty_playlists_requested.connect(
-            lambda: self._toast_svc.show("Limpieza de playlists vacías pendiente de implementación", "info"))
-        self._playlist_hub.find_lost_files_requested.connect(
-            lambda: self._toast_svc.show("Búsqueda de canciones perdidas pendiente de implementación", "info"))
-
-        self._playlist_detail = PlaylistDetailView()
-        self._playlist_detail.play_requested.connect(self._on_hub_playlist_play)
-        self._playlist_detail.queue_requested.connect(self._on_hub_playlist_queue)
-        self._playlist_detail.edit_requested.connect(self._edit_playlist_dialog)
-        self._playlist_detail.track_double_clicked.connect(
-            lambda fp: self._play_filepaths([fp], play_now=True))
-        self._playlist_detail.track_activated.connect(
-            self._on_playlist_track_activated)
-
-        self._playlist_hub.playlist_edit_requested.connect(self._edit_playlist_dialog)
-        self._playlist_hub.create_from_album_requested.connect(
-            self._playlist_ctrl.create_from_album)
-        self._playlist_hub.create_from_artist_requested.connect(
-            self._playlist_ctrl.create_from_artist)
-        self._playlist_hub.create_from_genre_requested.connect(
-            self._playlist_ctrl.create_from_genre)
-        self._playlist_hub.create_from_search_requested.connect(
-            self._playlist_ctrl.create_from_search)
-
-        self._metadata_editor = MetadataEditorWidget()
-        self._metadata_editor.files_saved.connect(self._on_metadata_saved)
-        self._metadata_editor.request_library_refresh.connect(self._refresh_library)
-
-        self._artist_grid = ArtistGridWidget()
-        self._artist_detail = ArtistDetailView()
-        self._artist_grid.artist_selected.connect(self._open_artist_detail)
-        self._artist_grid.artist_play_requested.connect(self._play_artist)
-        self._artist_grid.artist_queue_requested.connect(self._queue_artist)
-        self._artist_grid.artist_playlist_requested.connect(self._create_playlist_from_artist)
-        self._artist_grid.artist_metadata_requested.connect(self._edit_artist_metadata)
-        self._artist_grid.artist_enrich_requested.connect(self._refresh_artist_info)
-        self._artist_detail.back_requested.connect(self._show_artists_overview)
-        self._artist_detail.play_all_requested.connect(self._play_artist)
-        self._artist_detail.shuffle_all_requested.connect(self._shuffle_artist)
-        self._artist_detail.queue_all_requested.connect(self._queue_artist)
-        self._artist_detail.play_album_requested.connect(
-            lambda fps: self._play_filepaths(fps, play_now=True))
-        self._artist_detail.queue_album_requested.connect(
-            lambda fps: self._play_filepaths(fps, play_now=False))
-        self._artist_detail.playlist_artist_requested.connect(self._create_playlist_from_artist)
-        self._artist_detail.metadata_artist_requested.connect(self._edit_artist_metadata)
-        self._artist_detail.metadata_files_requested.connect(self._open_metadata_for_files)
-        self._artist_detail.artist_enrich_requested.connect(self._refresh_artist_info)
-        self._artist_detail.track_play_requested.connect(
-            lambda fp: self._play_filepaths([fp], play_now=True))
-        self._artist_detail.track_queue_requested.connect(
-            lambda fp: self._play_filepaths([fp], play_now=False))
-        self._artist_detail.track_metadata_requested.connect(
-            lambda fp: self._open_metadata_for_files([fp]))
-
-        # Build artists stacked widget: grid + detail inside Artistas tab
-        self._artists_stack = QStackedWidget()
-        self._artists_stack.setObjectName("artistsStack")
-        self._artists_stack.setStyleSheet("background: transparent; border: none;")
-        self._artists_stack.addWidget(self._artist_grid)
-        self._artists_stack.addWidget(self._artist_detail)
-        self._artists_stack.setCurrentIndex(0)
-
-        # Genre grid + detail
-        self._genre_grid = GenreGridWidget()
-        self._genre_detail = GenreDetailView()
-        self._genre_grid.genre_selected.connect(self._open_genre_detail)
-        self._genre_grid.genre_play_requested.connect(self._play_genre)
-        self._genre_grid.genre_shuffle_requested.connect(self._shuffle_genre)
-        self._genre_grid.genre_queue_requested.connect(self._queue_genre)
-        self._genre_grid.genre_playlist_requested.connect(self._create_playlist_from_genre)
-        self._genre_grid.genre_metadata_requested.connect(self._edit_genre_metadata)
-        self._genre_grid.genre_normalize_requested.connect(self._normalize_genre)
-        self._genre_detail.back_requested.connect(self._genre_ctrl.back_to_overview)
-        self._genre_detail.play_requested.connect(self._play_genre)
-        self._genre_detail.shuffle_requested.connect(self._shuffle_genre)
-        self._genre_detail.queue_requested.connect(self._queue_genre)
-        self._genre_detail.playlist_requested.connect(self._create_playlist_from_genre)
-        self._genre_detail.metadata_requested.connect(self._edit_genre_metadata)
-        self._genre_detail.normalize_requested.connect(self._normalize_genre)
-        self._genre_detail.track_play_requested.connect(
-            lambda fp: self._play_filepaths([fp], play_now=True))
-        self._genre_detail.track_queue_requested.connect(
-            lambda fp: self._play_filepaths([fp], play_now=False))
-
-        # Build genres stacked widget: grid + detail inside Géneros tab
-        self._genres_stack = QStackedWidget()
-        self._genres_stack.setObjectName("genresStack")
-        self._genres_stack.setStyleSheet("background: transparent; border: none;")
-        self._genres_stack.addWidget(self._genre_grid)
-        self._genres_stack.addWidget(self._genre_detail)
-        self._genres_stack.setCurrentIndex(0)
-
-        self._folder_browser = FolderBrowserWidget()
-        self._folder_browser.folder_selected.connect(
-            lambda fps: self._play_filepaths(fps, play_now=True))
-        self._folder_browser.queue_requested.connect(
-            lambda fps: self._play_filepaths(fps, play_now=False))
-        self._folder_browser.scan_requested.connect(self._scan_path)
-        self._folder_browser.create_playlist_requested.connect(
-            self._on_folder_create_playlist)
-
-        self._content = QStackedWidget()
-        self._content.setMinimumHeight(200)
-
-        self._views = ViewController(self._content, self)
-        self._views.register("empty", placeholder)
-        self._views.register("remote", self._remote_placeholder)
-        self._views.register("expanded", placeholder_expanded)
-        self._views.register("radio", self._radio_widget)
-        self._views.register("discover", self._discover)
-        self._views.register("playlist_hub", self._playlist_hub)
-        self._views.register("playlist_detail", self._playlist_detail)
-        self._views.register("metadata_editor", self._metadata_editor)
-        self._views.register("home_audio", self._home_audio_view)
-        self._views.register("identifier", self._identifier_view)
-        self._views.show("empty")
-
-        from ui.view_navigator import ViewNavigator
-        self._nav = ViewNavigator(self._content, self._views, self._views)
-        self._nav._widgets = [
-            self._content, self._album_grid,
-            self._folder_browser, self._radio_widget,
-            self._playlist_hub, self._metadata_editor,
-            self._discover, self._identifier_view,
-            self._home_audio_view,
-        ]
-        from core.background_theme_service import BackgroundThemeService
-        self._bg_theme = BackgroundThemeService(self._content)
-        from core.playback_controller import PlaybackController
-        self._playback_ctrl = PlaybackController(self)
-
-        # ── Content wrapper ──
-        cw = QWidget()
-        cw.setObjectName("contentSurface")
-        cw.setStyleSheet(
-            "QWidget#contentSurface {"
-            "  background: #090B11;"
-            "  border-left: 1px solid rgba(255,255,255,0.045);"
-            "}")
-        self._content.setStyleSheet(
-            "QStackedWidget {"
-            "  background: #090B11;"
-            "  border: none;"
-            "}")
-        cl = QVBoxLayout(cw)
-        cl.setContentsMargins(0, 0, 0, 0)
-        cl.setSpacing(0)
-        cl.addWidget(header)
-        cl.addWidget(self._content)
-
-        # ── Splitter ──
-        sp = QSplitter(Qt.Horizontal)
-        sp.addWidget(self._sidebar)
-        sp.addWidget(cw)
-        sp.setCollapsible(0, False)
-        sp.setCollapsible(1, False)
-        sp.setStretchFactor(0, 0)
-        sp.setStretchFactor(1, 1)
-        sp.setSizes([320, 900])
-        sp.setStyleSheet(
-            "QSplitter::handle { background: rgba(255,255,255,0.08); width: 2px; }")
-
-        # ── NowPlaying bar ──
-        self._player_bar = NowPlayingBar()
-        from ui.controllers.player_bar_controller import PlayerBarController
-        self._player_bar_ctrl = PlayerBarController(self._player_bar)
-
-        bar_wrapper = QWidget()
-        bar_wrapper.setObjectName("bottomBarArea")
-        bar_wrapper.setAttribute(Qt.WA_TranslucentBackground)
-        bar_wrapper.setStyleSheet(
-            "QWidget#bottomBarArea {"
-            "  background: rgba(5,7,10,0.92);"
-            "  border-top: 1px solid rgba(255,255,255,0.06);"
-            "}")
-        wl = QHBoxLayout(bar_wrapper)
-        wl.setContentsMargins(24, 10, 24, 12)
-        wl.addWidget(self._player_bar)
-
-        cent = QWidget()
-        cent.setObjectName("mainRoot")
-        cent.setStyleSheet(
-            "QWidget#mainRoot {"
-            "  background: #090B11;"
-            "}")
-        layout = QVBoxLayout(cent)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(0)
-        layout.addWidget(sp, stretch=1)
-        layout.addWidget(bar_wrapper, stretch=0)
-        self.setCentralWidget(cent)
+        from ui.builder.ui_builder import UIBuilder
+        UIBuilder(self).build()
 
     def _connect_signals(self):
         pb = self._player_bar
         self._player.position_changed.connect(pb.set_position)
         self._player.duration_changed.connect(pb.set_duration)
-        self._player.state_changed.connect(self._on_state)
+        self._player.state_changed.connect(
+            lambda state: self._playback_ctrl.on_state(state))
         self._player.error_occurred.connect(lambda m: self._toast_svc.show(f"Error: {m}", "error"))
         pb.play_clicked.connect(self._playback.toggle)
         pb.prev_clicked.connect(self._playback.play_prev)
@@ -1411,55 +693,61 @@ class MainWindow(QMainWindow):
         pb.eq_clicked.connect(self._open_eq)
         pb.cover_preview_requested.connect(self._show_cover_preview)
         pb.track_details_requested.connect(self._show_nowplaying_details)
-        pb.expanded_requested.connect(self._show_expanded)
+        pb.expanded_requested.connect(
+            lambda: self._expanded_ctrl.show_expanded())
         pb.transmit_clicked.connect(self._show_transmit_menu)
         pb.audio_output_clicked.connect(self._show_audio_output_menu)
         pb.mini_player_clicked.connect(self._open_mini_player)
         pb.cover_loaded.connect(self._bg_theme.apply)
-        pb.quality_details_requested.connect(self._show_audio_diagnostics)
+        pb._quality_badge.clicked_details.connect(self._show_audio_diagnostics)
 
     def _setup_tray(self):
         from ui.controllers.tray_controller import TrayController
         self._tray_ctrl = TrayController(self)
-        self._tray_ctrl.setup()
-        self._tray = self._tray_ctrl.icon
 
     def _notify_track(self, title: str, artist: str):
-        if hasattr(self, '_tray_ctrl'):
+        if hasattr(self, '_tray_ctrl') and self._tray_ctrl:
             self._tray_ctrl.notify(title, artist)
-
+        self._tray_ctrl.setup()
+        self._tray = self._tray_ctrl._icon
     def _import_playlist(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Importar playlist", os.path.expanduser("~"),
             "Playlists (*.m3u *.m3u8 *.pls);;Todos (*)")
         if not path:
             return
-        from ui.playlist_io import import_playlist
-        files = import_playlist(path)
-        if not files:
+        from ui.playlist_io import parse_playlist_entries
+        entries = parse_playlist_entries(path)
+        if not entries:
             QMessageBox.information(
-                self, "Importar", "No se encontraron archivos válidos.")
+                self, "Importar", "No se encontraron entradas en la playlist.")
             return
 
-        added = 0
+        valid_files = []
         missing = 0
-        for fp in files:
-            if os.path.isfile(fp):
-                self._db.add_file(fp)
-                added += 1
+        remote = 0
+        for e in entries:
+            if e.is_remote:
+                remote += 1
+                continue
+            if e.exists:
+                self._db.add_file(e.resolved_path)
+                valid_files.append(e.resolved_path)
             else:
                 missing += 1
 
         self._load_library()
-        if added:
-            self._playback.enqueue(files[:added], play_now=False)
+        if valid_files:
+            self._playback.enqueue(valid_files, play_now=False)
         self._player_bar_ctrl.set_track(
-                f"Importados {added} temas", "Playlist")
+                f"Importados {len(valid_files)} temas", "Playlist")
 
-        summary = f"<p><b>{added}</b> archivos añadidos a la biblioteca.</p>"
+        summary = f"<p><b>{len(valid_files)}</b> archivos añadidos a la biblioteca.</p>"
         if missing:
             summary += f"<p><b>{missing}</b> archivos no encontrados en disco.</p>"
-        summary += f"<p>Total entradas en playlist: <b>{len(files)}</b></p>"
+        if remote:
+            summary += f"<p><b>{remote}</b> entradas remotas ignoradas.</p>"
+        summary += f"<p>Total entradas en playlist: <b>{len(entries)}</b></p>"
         QMessageBox.information(self, "Importar playlist", summary)
 
     def _export_playlist(self):
@@ -1486,29 +774,21 @@ class MainWindow(QMainWindow):
     # ── Library ──
 
     def _load_library(self):
-        self._reload_library_after_change(reason="load")
-        if self._workers:
-            def _on_backfill_done(count: int):
-                if count > 0:
-                    self._reload_library_after_change(reason="backfill")
-            self._workers.run_task("backfill_meta",
-                self._db.backfill_missing_metadata,
-                on_done=_on_backfill_done)
-            self._workers.run_task("backfill_art",
-                self._db.backfill_missing_album_art)
+        self._lib_ctrl.load()
 
     def _apply_filters(self):
-        self._search_ctrl.search(self._search_text)
+        self._lib_ctrl.apply_filters()
 
     # ── Sidebar ──
 
     def _rebuild_sidebar(self):
         sync_peers = []
-        sync_mgr = self._ensure_sync_manager()
-        if sync_mgr and sync_mgr.is_active:
-            import contextlib
-            with contextlib.suppress(Exception):
-                sync_peers = sync_mgr.get_all_peers()
+        mgr = getattr(self, '_sync_mgr', None)
+        if mgr and getattr(mgr, 'is_active', False):
+            try:
+                sync_peers = mgr.get_all_peers()
+            except Exception:
+                logging.getLogger("michi").debug("Failed to get sync peers for sidebar")
         self._sidebar_controller.rebuild(load_servers(), sync_peers)
 
         # Sidebar shadow
@@ -1519,86 +799,10 @@ class MainWindow(QMainWindow):
         shadow.setYOffset(0)
         shadow.setColor(QColor(0, 0, 0, 40))
         self._sidebar.setGraphicsEffect(shadow)
-
-    def _on_sidebar_navigate(self, key: str):
-        self._restore_central_opacity()
-        self._current_playlist = None
-
-        # Configure header based on section
-        section_key = key.split(":")[0] if ":" in key else key
-        if section_key == "srv":
-            section_key = "servers"
-        elif section_key == "dev":
-            section_key = "devices"
-        elif key.startswith("pl:") or key.startswith("playlist:"):
-            section_key = "playlists"
-        self._configure_header_for_section(section_key)
-        if not self._nav_restoring:
-            self._push_nav(key)
-
-        # Dynamic pattern routes
-        if key and key.startswith("playlist:new"):
-            self._create_playlist()
-            return
-        if key and key.startswith("playlist:"):
-            self._show_playlist_detail(key)
-            return
-        if key and key.startswith("pl:"):
-            self._show_playlist_detail(key)
-            return
-        if key and key.startswith("srv:"):
-            self._show_server(key)
-            return
-        if key and key.startswith("dev:sync:"):
-            self._show_devices_page(key)
-            return
-        if key and key.startswith("dev:"):
-            self._show_device(key)
-            return
-        if key and key.startswith("mix_"):
-            self._show_smart_mix(key)
-            return
-
-        # Static route dispatch
-        method = NAV_ROUTES.get(key)
-        if method and hasattr(self, method):
-            getattr(self, method)(key)
-
     def _push_nav(self, key: str):
-        if self._nav_history and self._nav_history[self._nav_history_index] == key:
-            return
-        if self._nav_history_index < len(self._nav_history) - 1:
-            self._nav_history = self._nav_history[:self._nav_history_index + 1]
-        self._nav_history.append(key)
-        self._nav_history_index = len(self._nav_history) - 1
-        self._update_nav_buttons()
-
-    def _navigate_back(self):
-        if self._nav_history_index > 0:
-            self._nav_history_index -= 1
-            self._nav_restoring = True
-            try:
-                key = self._nav_history[self._nav_history_index]
-                self._on_sidebar_navigate(key)
-            finally:
-                self._nav_restoring = False
-            self._update_nav_buttons()
-
-    def _navigate_forward(self):
-        if self._nav_history_index < len(self._nav_history) - 1:
-            self._nav_history_index += 1
-            self._nav_restoring = True
-            try:
-                key = self._nav_history[self._nav_history_index]
-                self._on_sidebar_navigate(key)
-            finally:
-                self._nav_restoring = False
-            self._update_nav_buttons()
-
+        self._nav_ctrl.push(key)
     def _update_nav_buttons(self):
-        self._back_btn.setEnabled(self._nav_history_index > 0)
-        self._forward_btn.setEnabled(
-            self._nav_history_index < len(self._nav_history) - 1)
+        self._nav_ctrl._update_buttons()
 
     # ── Static route handlers ──
 
@@ -1611,7 +815,7 @@ class MainWindow(QMainWindow):
         self._view_switcher.set_view("list", emit=False)
 
     def _show_playlist_hub(self, key):
-        pls = self._playlist_ctrl.get_all_playlists()
+        pls = self._db.get_playlists()
         self._playlist_hub.set_playlists(pls)
         self._fade_content("playlist_hub")
 
@@ -1621,8 +825,8 @@ class MainWindow(QMainWindow):
     def _show_playlist_detail(self, key):
         pid = int(key.split(":", 1)[1])
         self._current_playlist = pid
-        items = self._playlist_ctrl.get_playlist_items(pid)
-        pl = self._playlist_ctrl.get_playlist_by_id(pid) or {"name": "Playlist"}
+        items = self._db.get_playlist_items(pid)
+        pl = next((p for p in self._db.get_playlists() if p["id"] == pid), {"name": "Playlist"})
         self._playlist_detail.set_playlist(pl, items)
         total_dur = int(sum(getattr(i, 'duration', 0) or 0 for i in items))
         h = total_dur // 3600
@@ -1641,15 +845,13 @@ class MainWindow(QMainWindow):
         pid = getattr(self, '_current_playlist', 0)
         if not pid:
             return
-        items = self._playlist_ctrl.get_playlist_items(pid)
+        items = self._db.get_playlist_items(pid)
         paths = [i.filepath for i in items if getattr(i, 'filepath', '')]
         if not paths:
             return
         start_idx = max(0, min(row, len(paths) - 1))
-        from core.app_context import get_context
-        ctx = get_context()
-        if hasattr(ctx.playback, 'play_queue'):
-            ctx.playback.play_queue(paths, start_idx)
+        if hasattr(self._playback, 'play_queue'):
+            self._playback.play_queue(paths, start_idx)
         else:
             self._play_filepaths(paths[start_idx:], play_now=True)
 
@@ -1683,11 +885,7 @@ class MainWindow(QMainWindow):
         self._search.show()
 
     def _show_radio(self, key):
-        self._search_ctrl.set_active("radio")
-        self._current_section_key = "radio"
-        self._radio_widget.reload()
-        self._fade_content("radio")
-
+        self._srv_ctrl.show_radio(key)
     def _show_add_server(self, key):
         self._add_server()
 
@@ -1699,128 +897,57 @@ class MainWindow(QMainWindow):
         mount = key.split(":", 1)[1]
         import shutil
         usage = shutil.disk_usage(mount) if os.path.exists(mount) else None
-        files = scan_device_music(mount)
-        refs = [TrackRef(uri=fp, title=os.path.basename(fp), duration=0.0) for fp in files]
-        self._model.populate(refs)
         device_name = os.path.basename(mount)
-        if usage:
-            total_gb = usage.total / (1024**3)
-            free_gb = usage.free / (1024**3)
-            used_pct = (1 - usage.free / usage.total) * 100
-            self._section_title.setText(device_name)
-            self._section_subtitle.setText(
-                f"{free_gb:.1f} GB libre de {total_gb:.1f} GB · "
-                f"{used_pct:.0f}% usado · {len(files)} canciones")
-        else:
-            self._section_title.setText(device_name)
-            self._section_subtitle.setText(f"{len(files)} canciones")
-        self._count.setText(f"{len(files)} archivos")
+
+        self._section_title.setText(device_name)
+        self._section_subtitle.setText("Escaneando dispositivo...")
+        self._count.setText("...")
+        self._search.hide()
         self._fade_content("library_hub")
+
+        self._model.populate([])
         self._table.setModel(self._model)
-        self._table.setColumnHidden(7, True)  # hide URI column
-        self._search.show()
+
+        def _on_device_scanned(files: list[str]):
+            if not hasattr(self, '_model') or self._current_section_key != "devices":
+                return
+            refs = [TrackRef(uri=fp, title=os.path.basename(fp), duration=0.0) for fp in files]
+            self._model.populate(refs)
+            self._current_refs = refs
+            if usage:
+                total_gb = usage.total / (1024**3)
+                free_gb = usage.free / (1024**3)
+                used_pct = (1 - usage.free / usage.total) * 100
+                self._section_subtitle.setText(
+                    f"{free_gb:.1f} GB libre de {total_gb:.1f} GB · "
+                    f"{used_pct:.0f}% usado · {len(files)} canciones")
+            else:
+                self._section_subtitle.setText(f"{len(files)} canciones")
+            self._count.setText(f"{len(files)} archivos")
+            self._table.setColumnHidden(7, True)
+            self._search.show()
+
+        if self._workers:
+            from library.devices import scan_device_music
+            self._workers.run_task("device_scan", lambda: scan_device_music(mount),
+                                   on_done=_on_device_scanned)
+        else:
+            from library.devices import scan_device_music
+            _on_device_scanned(scan_device_music(mount))
 
     def _show_discover(self, key):
         self._views.show("discover")
 
     def _show_smart_mix(self, key):
-        from library.smart_mixes import (get_daily_mix, get_unplayed,
-                                        get_popular, get_favorites_recent)
-        self._section_title.setText({
-            "mix_daily": "Mix diario", "mix_unplayed": "No escuchadas",
-            "mix_popular": "Más escuchadas",
-            "mix_favorites": "Favoritos recientes",
-        }.get(key, "Mix"))
-        mixes = {"mix_daily": get_daily_mix, "mix_unplayed": get_unplayed,
-                "mix_popular": get_popular, "mix_favorites": get_favorites_recent}
-        fn = mixes.get(key)
-        if fn:
-            files = fn()
-            files = [f for f in files
-                     if isinstance(f, str) and (f.startswith("http") or os.path.isfile(f))]
-            if key in ("mix_unplayed", "mix_favorites"):
-                items = [self._items_index.get(f) for f in files]
-                items = [i for i in items if i]
-                refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                                 artist=i.artist, album=i.album, duration=i.duration,
-                                 year=i.year, genre=i.genre) for i in items]
-                self._model.populate(refs)
-                self._current_refs = refs
-                self._count.setText(f"{len(refs)} canciones")
-                self._playlist_refs = refs
-                if refs:
-                    self._fade_content("library_hub")
-                    self._table.setModel(self._model)
-                    self._table.setColumnWidth(0, 72)
-                    self._table.setColumnWidth(1, 260)
-                    self._table.setColumnWidth(2, 170)
-                    self._table.setColumnWidth(3, 170)
-                    self._table.setColumnWidth(4, 70)
-                    self._table.setColumnWidth(5, 130)
-                    self._table.setColumnWidth(6, 80)
-                    self._table.setColumnWidth(7, 260)
-                else:
-                    self._views.show("empty")
-            elif files:
-                self._play_filepaths(files, play_now=True)
-                self._show_expanded()
-            else:
-                self._toast_svc.warning("El mix no contiene archivos disponibles")
-
+        self._smart_ctrl.show_smart_mix(key)
     def _show_favs(self, key):
-        favs = self._playlist_ctrl.get_favorites()
-        items = [self._items_index.get(fp) for fp in favs if self._items_index.get(fp)]
-        refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                         artist=i.artist, album=i.album, duration=i.duration,
-                         year=i.year, genre=i.genre) for i in items]
-        self._model.populate(refs)
-        self._current_refs = refs
-        self._count.setText(f"{len(refs)} canciones")
-        if refs:
-            self._fade_content("library_hub")
-            self._table.setModel(self._model)
-            self._table.setColumnHidden(7, True)  # hide URI column
-            self._table.setColumnWidth(0, 72)
-            self._table.setColumnWidth(1, 260)
-            self._table.setColumnWidth(2, 170)
-            self._table.setColumnWidth(3, 170)
-            self._table.setColumnWidth(4, 55)
-            self._table.setColumnWidth(5, 110)
-            self._table.setColumnWidth(6, 75)
-        else:
-            self._views.show("empty")
-        self._search.show()
-
+        self._smart_ctrl.show_favs(key)
     def _show_recent(self, key):
-        history = self._playlist_ctrl.get_play_history()
-        items = [self._items_index.get(h.get("track_id", ""))
-                 for h in history[:50] if self._items_index.get(h.get("track_id", ""))]
-        refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                         artist=i.artist, album=i.album, duration=i.duration,
-                         year=i.year, genre=i.genre) for i in items]
-        self._model.populate(refs)
-        self._current_refs = refs
-        self._count.setText(f"{len(refs)} canciones")
-        if refs:
-            self._fade_content("library_hub")
-            self._table.setModel(self._model)
-            self._table.setColumnHidden(7, True)  # hide URI column
-            self._table.setColumnWidth(0, 72)
-            self._table.setColumnWidth(1, 260)
-            self._table.setColumnWidth(2, 170)
-            self._table.setColumnWidth(3, 170)
-            self._table.setColumnWidth(4, 55)
-            self._table.setColumnWidth(5, 110)
-            self._table.setColumnWidth(6, 75)
-        else:
-            self._views.show("empty")
-        self._search.show()
-
+        self._smart_ctrl.show_recent(key)
+    def _resolve_track_ids(self, track_ids):
+        return self._smart_ctrl.resolve_track_ids(track_ids)
     def _show_identifier(self, key):
-        self._identifier_view.set_detected_tracks(
-            self._playlist_ctrl.get_detected_tracks(100))
-        self._fade_content("identifier")
-
+        self._id_handlers.show(key)
     def _show_home_audio(self, key=None):
         self._home_audio_view.refresh_if_needed()
         self._fade_content("home_audio")
@@ -1916,19 +1043,7 @@ class MainWindow(QMainWindow):
         self._fade_content("michi_disc_lab")
 
     def _show_home_page(self, key=None):
-        if self._home_page is None:
-            from ui.hubs.home_page import HomePage
-            self._home_page = HomePage(
-                db=self._db, playback=self._playback, window=self)
-            self._home_page.navigation_requested.connect(
-                self._on_sidebar_navigate)
-        if not self._views.widget("home"):
-            self._views.register("home", self._home_page)
-        self._home_page.refresh(
-            items=self._all_items,
-            servers=load_servers(),
-            devices=getattr(self, '_sync_peers', []))
-        self._fade_content("home")
+        self._home_ctrl.show()
 
     def _show_library_hub_page(self, key=None):
         if self._library_hub_page is None:
@@ -1980,9 +1095,10 @@ class MainWindow(QMainWindow):
     def _show_mix_hub_page(self, key=None):
         if self._mix_hub_page is None:
             from ui.hubs.mix_hub_page import MixHubPage
-            self._mix_hub_page = MixHubPage()
+            self._mix_hub_page = MixHubPage(preview=self._smart_preview)
         if not self._views.widget("mix_hub"):
             self._views.register("mix_hub", self._mix_hub_page)
+        self._mix_hub_page.refresh()
         self._fade_content("mix_hub")
 
     def _show_playback_hub_page(self, key=None):
@@ -2045,473 +1161,35 @@ class MainWindow(QMainWindow):
         media_id = body.get("media_id", "")
         if media_id and self._playback:
             self._playback.play(media_id)
-
-    def _on_sidebar_menu(self, pos):
-        widget = self._sidebar.childAt(pos)
-        from ui.sidebar.sidebar_item import SidebarItem
-        item = None
-        while widget:
-            if isinstance(widget, SidebarItem):
-                item = widget
-                break
-            widget = widget.parentWidget()
-        if not item:
-            return
-        key = item.key
-        menu = QMenu(self)
-
-        if key and key.startswith("pl:"):
-            pid = int(key.split(":", 1)[1])
-            menu.addAction("Eliminar playlist", lambda: self._delete_playlist(pid))
-
-        elif key and key.startswith("srv:"):
-            name = key.split(":", 1)[1]
-            menu.addAction("Eliminar servidor", lambda: self._remove_server(name))
-
-        if not menu.isEmpty():
-            menu.exec(self._sidebar._container.mapToGlobal(pos))
-
-    def _create_playlist(self):
-        name, ok = QInputDialog.getText(self, "Nueva playlist", "Nombre:")
-        if ok and name.strip():
-            self._playlist_ctrl.create_playlist(name.strip())
-
     def _delete_playlist(self, pid):
-        self._playlist_ctrl.delete_playlist(pid)
-
-    def _edit_playlist_dialog(self, pid: int):
-        pl = self._playlist_ctrl.get_playlist_by_id(pid)
-        if not pl:
-            return
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle(f"Editar playlist — {pl['name']}")
-        dlg.setMinimumWidth(400)
-        layout = QFormLayout(dlg)
-
-        name_edit = QLineEdit(pl.get("name", ""))
-        layout.addRow("Nombre:", name_edit)
-
-        desc_edit = QLineEdit(pl.get("description", ""))
-        layout.addRow("Descripción:", desc_edit)
-
-        cover_btn = QPushButton("Cambiar portada")
-        cover_btn.clicked.connect(lambda: self._change_playlist_cover(pid))
-        layout.addRow("Portada:", cover_btn)
-
-        remove_btn = QPushButton("Quitar portada")
-        remove_btn.clicked.connect(lambda: self._remove_playlist_cover(pid))
-        layout.addRow("", remove_btn)
-
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(lambda: self._save_playlist_edit(pid, name_edit.text(), desc_edit.text(), dlg))
-        btns.rejected.connect(dlg.reject)
-        layout.addRow(btns)
-
-        dlg.exec()
-
-    def _change_playlist_cover(self, pid: int):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Seleccionar portada", "",
-            "Imágenes (*.jpg *.jpeg *.png);;Todos (*)")
-        if path:
-            from ui.services.playlist_cover_service import copy_custom_cover
-            cover_path = copy_custom_cover(pid, path)
-            self._playlist_ctrl.update_playlist(pid, cover_path=cover_path, cover_type="custom")
-            self._toast_svc.show("Portada actualizada", "success")
-
-    def _remove_playlist_cover(self, pid: int):
-        from ui.services.playlist_cover_service import remove_custom_cover
-        remove_custom_cover(pid)
-        self._playlist_ctrl.update_playlist(pid, cover_path="", cover_type="mosaic")
-        self._toast_svc.show("Portada eliminada — se usará mosaico automático", "info")
-
-    def _save_playlist_edit(self, pid: int, name: str, desc: str, dlg):
-        self._playlist_ctrl.update_playlist(pid, name=name, description=desc)
-        self._rebuild_sidebar()
-        self._toast_svc.show("Playlist actualizada", "success")
-        dlg.accept()
-
-    # ── Navidrome / Jellyfin ──
-
+        self._sidebar_menu_ctrl.delete_playlist(pid)
+    def _change_playlist_cover(self, pid):
+        self._sidebar_menu_ctrl._change_playlist_cover(pid)
+    def _remove_playlist_cover(self, pid):
+        self._sidebar_menu_ctrl._remove_playlist_cover(pid)
+    def _save_playlist_edit(self, pid, name, desc, dlg):
+        self._sidebar_menu_ctrl._save_playlist_edit(pid, name, desc, dlg)
     def _add_server(self):
-        dlg = ServerDialog(self)
-        if dlg.exec() and dlg.server:
-            servers = load_servers()
-            servers.append(dlg.server)
-            save_servers(servers)
-            self._rebuild_sidebar()
-
+        self._srv_ctrl.add_server()
     def _open_server(self, name: str):
-        servers = load_servers()
-        srv_data = next((s for s in servers if s.name == name), None)
-        if not srv_data:
-            QMessageBox.warning(self, "Error", f"Servidor '{name}' no encontrado.")
-            return
-
-        try:
-            client = SubsonicClient(srv_data)
-            self._remote_browser = RemoteBrowser(client, name)
-            self._remote_browser._workers = self._workers
-            self._remote_browser.track_selected.connect(self._play_stream)
-            self._views.replace("remote", self._remote_browser)
-            self._views.show("remote")
-
-            self._remote_browser.load_artists()
-            self._section_title.setText(name)
-            from sources.subsonic_source import SubsonicSource
-            srv_key = f"srv:{name}"
-            self._search_ctrl.register(srv_key, SubsonicSource(client))
-            self._search_ctrl.set_active(srv_key)
-            self._search.show()
-        except AuthError as e:
-            QMessageBox.warning(self, "Error de autenticación",
-                f"No se pudo autenticar con '{name}':\n{e}")
-        except ServerNotFoundError as e:
-            QMessageBox.warning(self, "Servidor no encontrado",
-                f"No se puede conectar a '{name}':\n{e}")
-        except SubsonicError as e:
-            QMessageBox.warning(self, "Error de conexión",
-                f"No se pudo conectar a '{name}':\n{e}")
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"No se pudo conectar:\n{e}")
-
-    def _remove_server(self, name: str):
-        if QMessageBox.question(self, "Eliminar",
-            f"¿Eliminar servidor '{name}'?") == QMessageBox.Yes:
-            servers = [s for s in load_servers() if s.name != name]
-            save_servers(servers)
-            self._rebuild_sidebar()
-            self._load_library()
-
-    def _play_stream(self, url: str, title: str, artist: str, album: str = ""):
-        self._play_trackref(TrackRef(
-            uri=url, title=title, artist=artist, album=album,
-            source_type="remote_stream", source_label="Servidor remoto"))
-
-    def _play_radio(self, url: str, name: str):
-        self._play_trackref(TrackRef(
-            uri=url, title=name, artist="Radio",
-            source_type="radio", source_label=name))
-
-    def _on_radio_count(self, visible: int, total: int):
-        if self._current_section_key == "radio":
-            if visible != total:
-                self._count.setText(f"{visible} de {total} emisoras")
-            else:
-                self._count.setText(f"{total} emisoras")
-
-    # ── Search ──
-
-    def _on_search(self, text: str):
-        self._search_text = text.strip()
-        if self._current_section_key == "albums":
-            self._refresh_active_library_tab(force=True)
-            return
-        if self._current_section_key == "genres":
-            self._refresh_active_library_tab(force=True)
-            return
-        if self._current_section_key == "folders":
-            self._folder_browser.set_filter(self._search_text)
-            return
-        if self._current_section_key in ("favs", "recent", "mix_unplayed"):
-            return
-        if self._current_section_key == "artists" and not self._artist_repo.current_key:
-            query = self._search_text.lower()
-            if not query:
-                filtered = self._artist_repo.groups
-            else:
-                filtered = [
-                    g for g in self._artist_repo.groups
-                    if query in g.display_name.lower()
-                    or any(query in a.title.lower() for a in g.albums)
-                    or any(query in (t.title or "").lower() for t in g.all_tracks)
-                    or any(query in g.lower() for g in g.genres)
-                ]
-            self._artist_grid.set_artists(filtered)
-            self._count.setText(f"{len(filtered)} artistas")
-            return
-        if self._current_section_key == "radio":
-            self._radio_widget.set_filter(self._search_text)
-            return
-        self._apply_filters()
-
-    def _on_search_results(self, results: list):
-        if self._current_section_key not in ("library",):
-            return
-        self._model.populate(results)
-        n = len(results)
-        self._count.setText(f"{n} elementos" if n else "0 elementos")
-        if n:
-            self._show_library_hub_page()
-            if self._library_hub_page:
-                self._library_hub_page.set_current_section("library")
-            self._songs_stack.setCurrentIndex(0)
-            self._table.setModel(self._model)
-            self._table.setColumnWidth(0, 72)
-            self._table.setColumnWidth(1, 260)
-            self._table.setColumnWidth(2, 170)
-            self._table.setColumnWidth(3, 170)
-            self._table.setColumnWidth(4, 70)
-            self._table.setColumnWidth(5, 130)
-            self._table.setColumnWidth(6, 80)
-            self._table.setColumnWidth(7, 260)
-        else:
-            self._views.show("empty")
-
-    # ── View Mode Router ──
-
-    def _on_view_mode_changed(self, mode: str):
-        self._restore_central_opacity()
-        available = self._current_available_views()
-        if mode not in available:
-            return
-        if mode == "coverflow" and self._current_section_key != "albums":
-            return
-        self._view_mode = mode
-        self._show_current_section_view(mode)
-        self._restore_central_opacity()
-
+        self._srv_ctrl.open_server(name)
+    def _on_search_results(self, results):
+        self._search_router.on_results(results)
     def _current_available_views(self) -> list[str]:
         config = _resolve_section_config(self._current_section_key, {})
         return config.get("views", [])
 
     def _show_current_section_view(self, mode: str):
-        section = self._current_section_key
-
-        if section == "library":
-            if mode == "list":
-                self._songs_stack.setCurrentIndex(0)
-                self._apply_filters()
-                self._fade_content("library_hub")
-            elif mode == "grid":
-                self._songs_stack.setCurrentIndex(1)
-                self._show_song_grid()
-                self._fade_content("library_hub")
-
-        elif section == "albums":
-            if mode == "list":
-                self._albums_stack.setCurrentIndex(1)
-                self._show_album_list()
-                self._fade_content("library_hub")
-            elif mode == "grid":
-                self._albums_stack.setCurrentIndex(0)
-                self._show_album_grid()
-                self._fade_content("library_hub")
-            elif mode == "coverflow":
-                self._show_coverflow()
-
-        elif section == "artists":
-            self._show_artists_view(mode)
-
-        elif section == "playlists":
-            if not self._playlist_refs:
-                self._views.show("empty")
-                return
-            if mode == "list":
-                self._model.populate(self._playlist_refs)
-                self._generic_tracks_table.setModel(self._model)
-                self._generic_tracks_table.setColumnHidden(7, True)
-                self._fade_content("library_hub")
-            elif mode == "grid":
-                self._generic_song_grid.set_items(self._playlist_refs, card_size=170)
-                self._fade_content("library_hub")
-
-        elif section == "folders":
-            self._fade_content("library_hub")
-
-        elif section == "genres":
-            self._show_library_hub_page()
-            if self._library_hub_page:
-                self._library_hub_page.set_current_section("genres")
-
-        elif section == "radio":
-            self._fade_content("radio")
-
-        elif section == "playlist_hub":
-            self._playlist_hub.set_playlists(self._playlist_ctrl.get_all_playlists())
-            self._fade_content("playlist_hub")
-
-        elif section in ("favs", "recent", "mix_unplayed"):
-            refs = getattr(self, "_current_refs", [])
-            if not refs:
-                self._views.show("empty")
-                return
-            if mode == "list":
-                self._model.populate(refs)
-                self._generic_tracks_table.setModel(self._model)
-                self._generic_tracks_table.setColumnHidden(7, True)
-                self._fade_content("library_hub")
-            elif mode == "grid":
-                self._generic_song_grid.set_items(refs, card_size=170)
-                self._fade_content("library_hub")
-
-    def _show_album_list(self):
-        from library.album_art import group_by_album
-        items = self._filtered_album_items()
-        groups = group_by_album(items)
-        refs = []
-        for album, artist, tracks in groups:
-            dur = sum(getattr(t, 'duration', 0) or 0 for t in tracks)
-            year = tracks[0].year if tracks else ""
-            refs.append(TrackRef(
-                uri=album, title=album,
-                artist=artist, album=album,
-                duration=float(dur),
-                genre=f"{len(tracks)} canciones",
-                year=year,
-                cover_path="",
-            ))
-        self._model.populate(refs)
-        self._album_list_table.setModel(self._model)
-        self._album_list_table.setColumnHidden(7, True)
-        self._album_list_table.setColumnWidth(0, 72)
-        self._album_list_table.setColumnWidth(1, 240)
-        self._album_list_table.setColumnWidth(2, 170)
-        self._album_list_table.setColumnWidth(3, 170)
-        self._album_list_table.setColumnWidth(4, 55)
-        self._album_list_table.setColumnWidth(5, 110)
-        self._album_list_table.setColumnWidth(6, 75)
-        self._count.setText(f"{len(groups)} álbumes")
+        self._view_router._show_current_section_view(mode)
 
     def _configure_header_for_section(self, section_key: str):
-        self._current_section_key = section_key
-        config = _resolve_section_config(section_key)
-        title = config.get("title", "Todas las canciones")
-        subtitle = config.get("subtitle", "")
-        icon_name = config.get("icon", "sidebar_library")
-        views = config.get("views", ["list", "grid"])
-        search = config.get("search", True)
-        default = config.get("default", "list")
-
-        self._section_title.setText(title)
-        subtitle = self._build_breadcrumb_subtitle(subtitle, section_key)
-        self._section_subtitle.setText(subtitle)
-
-        # Set section icon
-        pix = get_pixmap(icon_name, size=26)
-        if not pix.isNull():
-            self._section_icon.setPixmap(pix)
-        else:
-            self._section_icon.clear()
-
-        # Search placeholder contextual
-        searchers = {
-            "library": "Buscar canciones...", "albums": "Buscar álbumes...",
-            "artists": "Buscar artistas...", "playlists": "Buscar en playlist...",
-            "folders": "Buscar carpeta...", "radio": "Buscar emisoras...",
-            "playlist_hub": "Buscar playlists...", "favs": "Buscar favoritos...",
-            "recent": "Buscar recientes...", "mix_unplayed": "Buscar canciones...",
-            "discover": "", "identifier": "", "metadata_editor": "",
-            "home_audio": "",
-            "assistant": "",
-            "metadata_review": "",
-            "audio_lab": "",
-            "michi_disc_lab": "",
-            "home": "",
-            "library_hub": "",
-            "mix_hub": "",
-            "playback_hub": "",
-            "connections_hub": "",
-            "settings_hub": "",
-            "devices_page": "",
-            "devices": "",
-        }
-        self._search.setPlaceholderText(searchers.get(section_key, "Buscar..."))
-        self._search.setVisible(search)
-
-        self._view_switcher.set_available_modes(views, default, context=section_key)
-        self._view_switcher.update_for_width(self.width())
-
-        if self._view_mode not in views and default:
-            self._view_mode = default
-            self._view_switcher.set_view(default, emit=False)
-
-        if not search:
-            self._search.hide()
-
-        # Show/hide album controls
-        show_album_ctrl = (section_key == "albums")
-        self._album_sort_btn.setVisible(show_album_ctrl)
-        self._album_filter_btn.setVisible(show_album_ctrl)
+        self._nav_ctrl.configure_header(section_key)
 
     def _setup_album_sort_menu(self):
-        menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background: rgba(22,24,31,0.97);
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 10px;
-                padding: 6px 4px;
-                color: rgba(255,255,255,0.88); font-size: 12.5px;
-            }
-            QMenu::item {
-                padding: 7px 32px 7px 16px;
-                border-radius: 6px;
-            }
-            QMenu::item:selected {
-                background: rgba(255,255,255,0.09);
-            }
-        """)
-
-        sort_opts = [
-            ("Título", "title"),
-            ("Artista", "artist"),
-            ("Año", "year"),
-            ("Duración", "duration"),
-            ("Canciones", "tracks"),
-        ]
-        for label, key in sort_opts:
-            action = menu.addAction(label)
-            action.setData(key)
-            action.triggered.connect(
-                lambda checked=False, k=key: self._on_album_sort(k))
-        self._album_sort_btn.setMenu(menu)
+        self._album_sort_menu.build_sort()
 
     def _setup_album_filter_menu(self):
-        menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background: rgba(22,24,31,0.97);
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 10px;
-                padding: 6px 4px;
-                color: rgba(255,255,255,0.88); font-size: 12.5px;
-            }
-            QMenu::item {
-                padding: 7px 32px 7px 16px;
-                border-radius: 6px;
-            }
-            QMenu::item:selected {
-                background: rgba(255,255,255,0.09);
-            }
-        """)
-
-        filter_opts = [
-            ("Todos", "all"),
-            ("Sin carátula", "no_cover"),
-            ("Incompletos", "incomplete"),
-            ("FLAC", "flac"),
-            ("MP3", "mp3"),
-        ]
-        for label, key in filter_opts:
-            action = menu.addAction(label)
-            action.setData(key)
-            action.triggered.connect(
-                lambda checked=False, k=key: self._on_album_filter(k))
-        self._album_filter_btn.setMenu(menu)
-
-    def _on_album_sort(self, key: str):
-        self._album_sort_key = key
-        self._coverflow_cache_key = None
-        if self._current_section_key == "albums":
-            self._refresh_active_library_tab(force=True)
-
-    def _on_album_filter(self, key: str):
-        self._album_filter_mode = key
-        self._coverflow_cache_key = None
-        if self._current_section_key == "albums":
-            self._refresh_active_library_tab(force=True)
+        self._album_sort_menu.build_filter()
 
     def _fade_content(self, target: str):
         self._nav.show(target)
@@ -2520,13 +1198,39 @@ class MainWindow(QMainWindow):
         self._nav.restore_opacity()
 
     def _show_list_view(self):
-        self._view_switcher.set_view("list", emit=False)
-        self._on_view_mode_changed("list")
-
+        self._view_router.show_list_view()
     def _show_grid_view(self):
-        self._view_switcher.set_view("grid", emit=False)
-        self._on_view_mode_changed("grid")
+        self._view_router.show_grid_view()
 
+    def _on_album_open_folder(self, folder):
+        self._album_ctrl.open_folder(folder)
+
+    def _on_view_mode_changed(self, mode):
+        self._view_router.on_mode_changed(mode)
+
+    def _show_expanded(self):
+        self._expanded_ctrl.show_expanded()
+
+    def _add_transmit_device(self):
+        self._transmit_ctrl.add_device()
+
+    def _open_file(self):
+        self._file_actions.open_files(ALL_EXTS)
+
+    def _import_m3u(self):
+        self._playlist_ctrl.import_m3u()
+
+    def _create_playlist(self):
+        self._sidebar_menu_ctrl.create_playlist()
+
+    def _on_radio_count(self, visible, total):
+        self._srv_ctrl.on_radio_count(visible, total)
+
+    def _play_radio(self, url, name):
+        self._srv_ctrl.play_radio(url, name)
+
+    def _on_sidebar_navigate(self, key):
+        self._nav_ctrl.dispatch(key)
     def _show_album_grid(self):
         items = self._filtered_album_items()
         self._album_grid.set_items(items, 200,
@@ -2550,347 +1254,40 @@ class MainWindow(QMainWindow):
         self._song_grid.set_items(items, card_size=170)
         self._count.setText(f"{len(items)} canciones")
 
-    def _show_coverflow_view(self):
-        self._view_switcher.set_view("coverflow", emit=False)
-        self._on_view_mode_changed("coverflow")
-
+    def _show_album_list(self):
+        self._view_router._show_album_list()
     def _show_coverflow(self):
-        items = self._filtered_album_items()
-
-        # Cache key — skip rebuild if nothing changed
-        cache_key = (len(items), self._album_sort_key, self._album_filter_mode, self._search_text)
-        if self._coverflow is not None and cache_key == self._coverflow_cache_key:
-            self._albums_stack.setCurrentIndex(2)
-            self._fade_content("library_hub")
-            self._count.setText(f"{self._coverflow.count()} álbumes")
-            self._coverflow.setFocus()
-            return
-        self._coverflow_cache_key = cache_key
-
-        covers = load_covers_for_albums(items, 260, lazy=True)
-
-        if not covers:
-            self._views.show("empty")
-            self._count.setText("0 álbumes")
-            return
-
-        if self._coverflow is None:
-            self._coverflow = CoverFlowWidget()
-            self._coverflow.double_clicked.connect(self._on_coverflow_dbl)
-            self._coverflow.cover_snapped.connect(self._on_coverflow_snap)
-            self._coverflow.request_cover.connect(self._on_coverflow_cover_request)
-            self._coverflow.play_album_requested.connect(self._on_coverflow_play_album)
-            self._coverflow.queue_album_requested.connect(self._on_coverflow_queue_album)
-            self._coverflow.playlist_album_requested.connect(self._on_coverflow_playlist_album)
-            self._coverflow.metadata_album_requested.connect(self._on_coverflow_metadata_album)
-            self._coverflow.details_album_requested.connect(self._on_coverflow_details_album)
-            self._coverflow.cover_search_requested.connect(self._on_coverflow_search_cover)
-            self._coverflow.open_folder_requested.connect(self._on_coverflow_open_folder)
-
-            # AlbumInfoBanner below CoverFlow
-            from ui.album_info_banner import AlbumInfoBanner
-            self._album_banner = AlbumInfoBanner()
-            self._album_banner.play_requested.connect(self._on_banner_play)
-            self._album_banner.queue_requested.connect(self._on_banner_queue)
-            self._album_banner.details_requested.connect(self._on_banner_details)
-
-            coverflow_page = QWidget()
-            coverflow_page.setStyleSheet("background: #090B11;")
-            cv_layout = QVBoxLayout(coverflow_page)
-            cv_layout.setContentsMargins(0, 0, 0, 0)
-            cv_layout.setSpacing(8)
-            cv_layout.addWidget(self._coverflow, stretch=1)
-            cv_layout.addWidget(self._album_banner, stretch=0)
-            self._albums_stack.addWidget(coverflow_page)
-
-        self._coverflow.set_items(covers)
-        self._albums_stack.setCurrentIndex(2)
-        self._fade_content("library_hub")
-        self._count.setText(f"{len(covers)} álbumes")
-        self._coverflow.setFocus()
-
-    def _on_coverflow_dbl(self, index: int):
-        if not self._coverflow or index >= self._coverflow.count():
-            return
-        item = self._coverflow.item_at(index)
-        if not item:
-            return
-        data = item.data or {}
-        tracks = data.get("tracks", [])
-        if tracks:
-            filepaths = [t.filepath for t in tracks]
-            self._play_filepaths(filepaths, play_now=True)
-            self._show_expanded()
-
-    def _on_coverflow_snap(self, index: int):
-        if not self._coverflow or index >= self._coverflow.count():
-            return
-
-        # Update album info banner using repository
-        if hasattr(self, '_album_banner'):
-            item = self._coverflow.item_at(index)
-            if not item:
-                return
-            tracks = item.data.get("tracks", []) if item.data else []
-            key = _album_key(item, tracks)
-            summary = self._album_repo.get_summary(key, fallback_data=tracks)
-            if summary:
-                self._album_banner.set_album_summary(summary)
-
-            # Trigger MusicBrainz album enrichment for external metadata
-            self._enrich_album_background(key, item, tracks)
-
-            # Trigger artist enrichment for CoverFlow-navigated artist
-            if hasattr(self, '_artist_enrich') and item and item.subtitle:
-                from library.artist_grouping import normalize_artist_name
-                artist_key = normalize_artist_name(item.subtitle)
-                self._artist_enrich.enrich_artist_by_key(artist_key, item.subtitle)
-
-            # Precarga vecinos ±2
-            for off in (-2, -1, 1, 2):
-                ni = index + off
-                if 0 <= ni < self._coverflow.count():
-                    n_item = self._coverflow.item_at(ni)
-                    n_tracks = n_item.data.get("tracks", []) if n_item.data else []
-                    n_key = _album_key(n_item, n_tracks)
-                    if n_key not in self._album_repo._lru:
-                        self._album_repo.get_summary(n_key, fallback_data=n_tracks)
-
-    def _coverflow_album_tracks(self, idx: int) -> list:
-        item = self._coverflow.item_at(idx) if self._coverflow else None
-        if not item:
-            return []
-        return item.data.get("tracks", [])
-
-    def _on_coverflow_play_album(self, idx: int):
-        tracks = self._coverflow_album_tracks(idx)
-        fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
-        if fps:
-            self._play_filepaths(fps, play_now=True)
-
-    def _on_coverflow_queue_album(self, idx: int):
-        tracks = self._coverflow_album_tracks(idx)
-        fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
-        if fps:
-            self._playback.enqueue(fps, play_now=False)
-
-    def _on_coverflow_playlist_album(self, idx: int):
-        tracks = self._coverflow_album_tracks(idx)
-        if not tracks:
-            return
-        album_name = tracks[0].album or "Álbum"
-        self._playlist_ctrl.create_playlist_from_tracks(tracks, album_name)
-
-    def _on_coverflow_metadata_album(self, idx: int):
-        tracks = self._coverflow_album_tracks(idx)
-        fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
-        if fps:
-            self._open_metadata_for_files(fps)
-
-    def _enrich_album_background(self, key: str, item, tracks):
-        """Trigger MusicBrainz album enrichment for CoverFlow-navigated albums."""
-        if not key or not tracks:
-            return
-        try:
-            from integrations.artist_metadata.album_enrichment_service import AlbumEnrichmentService
-            from library.album_key import make_artist_key
-            if not hasattr(self, '_album_enrich'):
-                self._album_enrich = AlbumEnrichmentService()
-                self._album_enrich.album_enriched.connect(self._on_album_enriched)
-            album_name = getattr(tracks[0], 'album', '') if tracks else ''
-            artist_name = item.subtitle if item and item.subtitle else (
-                getattr(tracks[0], 'albumartist', '') or getattr(tracks[0], 'artist', ''))
-            if album_name and artist_name:
-                artist_key = make_artist_key(artist_name)
-                self._album_enrich.enrich_album(key, album_name, artist_key, artist_name)
-        except Exception:
-            pass
-
-    def _on_album_enriched(self, album_key: str, data: dict):
-        """Handle MusicBrainz album enrichment result — update banner if visible."""
-        if not data:
-            return
-        self._album_repo.update_enrichment(album_key, data)
-        if hasattr(self, '_album_banner') and self._album_banner:
-            summary = self._album_repo.get_cached(album_key)
-            if summary:
-                self._album_banner.set_album_summary(summary)
-
-    def _on_coverflow_details_album(self, idx: int):
-        item = self._coverflow.item_at(idx) if self._coverflow else None
-        if not item:
-            return
-        tracks = item.data.get("tracks", [])
-        count = len(tracks)
-        dur = sum(getattr(t, 'duration', 0) or 0 for t in tracks)
-        dur_str = f"{int(dur // 60)}:{int(dur % 60):02d}" if dur > 0 else "—"
-        exts = set((getattr(t, 'ext', '') or '').upper().lstrip(".") for t in tracks if getattr(t, 'ext', ''))
-        fmt_str = ", ".join(sorted(exts)) or "—"
-        msg = (f"Álbum: {item.title}\nArtista: {item.subtitle or '—'}\n"
-               f"Canciones: {count}\nDuración: {dur_str}\nFormatos: {fmt_str}")
-        QMessageBox.information(self, "Detalles del álbum", msg)
-
-    def _on_coverflow_search_cover(self, idx: int):
-        tracks = self._coverflow_album_tracks(idx)
-        if tracks:
-            d = os.path.dirname(tracks[0].filepath) if tracks else ""
-            self._toast_svc.show(f"Buscar carátula en: {d}", "info")
-
-    def _on_coverflow_open_folder(self, idx: int):
-        tracks = self._coverflow_album_tracks(idx)
-        if tracks:
-            d = os.path.dirname(tracks[0].filepath)
-            import subprocess
-            subprocess.Popen(["xdg-open", d])
-
-    def _on_banner_play(self, album_key: str = ""):
-        idx = int(album_key) if album_key.isdigit() else self._coverflow.current_index()
-        self._on_coverflow_play_album(idx)
-
-    def _on_banner_queue(self, album_key: str = ""):
-        idx = int(album_key) if album_key.isdigit() else self._coverflow.current_index()
-        self._on_coverflow_queue_album(idx)
-
-    def _on_banner_details(self, album_key: str = ""):
-        idx = int(album_key) if album_key.isdigit() else self._coverflow.current_index()
-        self._on_coverflow_details_album(idx)
-
-    def _on_coverflow_cover_request(self, idx: int, item):
-        """Lazy-load cover art for a CoverFlow item."""
-        from library.album_art import load_cover_pixmap
-        tracks = item.data.get("tracks", []) if item.data else []
-        if tracks:
-            pix = load_cover_pixmap(tracks[0].filepath, self._coverflow.cover_size())
-            if pix and not pix.isNull():
-                self._coverflow.set_cover_pixmap(idx, pix)
-
-    # Extracted to ui/controllers/album_controller.py — album grid + detail actions
-
-    def _on_album_create_playlist(self, fps: list):
-        self._album_ctrl.create_playlist(fps)
-
-    def _on_album_search_cover(self, group):
-        self._album_ctrl.search_cover(group)
-
-    def _on_album_open_folder(self, folder: str):
-        self._album_ctrl.open_folder(folder)
-
-    def _on_album_show_details(self, group):
-        self._album_ctrl.show_details(group)
-
-    # Extracted to ui/controllers/playlist_controller.py — Hub + import/export
-
-    def _import_m3u(self):
-        self._playlist_ctrl.import_m3u()
-
-    def _export_playlists(self):
-        self._playlist_ctrl.export_playlists()
-
-    def _open_smart_playlist(self, key: str):
-        self._playlist_ctrl.open_smart_playlist(key)
-
-    def _on_hub_playlist_play(self, pid: int):
-        self._playlist_ctrl.hub_playlist_play(pid)
-
-    def _on_hub_playlist_queue(self, pid: int):
-        self._playlist_ctrl.hub_playlist_queue(pid)
-
-    def _on_hub_create_from_folder(self):
-        self._playlist_ctrl.hub_create_from_folder()
-
-    def _on_hub_create_from_queue(self):
-        self._playlist_ctrl.hub_create_from_queue()
-
+        self._cf_ctrl.show()
     def _on_metadata_saved(self, filepaths: list):
         self._playlist_ctrl.metadata_saved(filepaths)
         self._reload_library_after_change(reason="metadata_saved")
 
     def _reload_library_after_change(self, reason: str = ""):
-        self._all_items = self._playlist_ctrl.get_all_tracks()
-        self._items_index = {i.filepath: i for i in self._all_items}
-        self._search_ctrl.set_active("local")
-        self._rebuild_sidebar()
-        self._refresh_all_tabs(force=True)
-        self._refresh_active_library_tab(force=True)
+        self._lib_ctrl.reload_after_change(reason)
 
     def _refresh_all_tabs(self, force: bool = False):
-        """Refresh data for all library tabs without changing the active tab."""
-        if not self._all_items and self._db:
-            self._all_items = self._playlist_ctrl.get_all_tracks()
-            self._items_index = {i.filepath: i for i in self._all_items}
-        if not self._all_items:
-            return
-        self._refresh_songs_data()
-        self._refresh_albums_data()
-        self._refresh_artists_data()
-        self._refresh_genres_data()
+        self._lib_ctrl.refresh_all_tabs(force)
 
     def _refresh_songs_data(self):
-        """Pure data — update song grid, no search, no navigation."""
-        self._song_grid.set_items(self._all_items, card_size=170)
+        self._lib_ctrl.refresh_songs()
 
     def _refresh_albums_data(self):
-        self._album_grid.set_items(self._album_items(), 200,
-            sort_key=getattr(self, '_album_sort_key', 'title'),
-            filter_mode=getattr(self, '_album_filter_mode', 'all'))
-        self._coverflow_cache_key = None
+        self._lib_ctrl.refresh_albums()
 
     def _refresh_artists_data(self):
-        if self._artist_repo:
-            self._artist_repo.build(self._all_items)
-            self._artist_grid.set_artists(self._artist_repo.groups)
+        self._lib_ctrl.refresh_artists()
 
     def _refresh_genres_data(self):
-        """Pure data refresh — no navigation."""
-        self._genre_repo.build(self._all_items)
-        self._genre_grid.set_genres(self._genre_repo.groups, self._genre_repo.families)
+        self._lib_ctrl.refresh_genres()
 
     def _filtered_album_items(self) -> list:
-        items = self._album_items()
-        q = (self._search_text or "").lower().strip()
-        if not q:
-            return items
-        return [
-            i for i in items
-            if q in (getattr(i, "album", "") or "Sin álbum").lower()
-            or q in (getattr(i, "artist", "") or "Artista desconocido").lower()
-            or q in (getattr(i, "albumartist", "") or "").lower()
-            or q in (getattr(i, "genre", "") or "").lower()
-            or q in (getattr(i, "title", "") or "").lower()
-            or q in str(getattr(i, "year", "") or "").lower()
-        ]
+        return self._lib_ctrl.filtered_album_items()
 
     def _album_items(self) -> list:
-        if not self._all_items and self._db:
-            self._all_items = self._playlist_ctrl.get_all_tracks()
-            self._items_index = {i.filepath: i for i in self._all_items}
-        return [i for i in self._all_items if getattr(i, "kind", "audio") == "audio"]
+        return self._lib_ctrl._album_items()
 
     def _refresh_active_library_tab(self, force: bool = False):
-        section = self._current_section_key
-        if section == "library":
-            if self._view_mode == "grid":
-                self._songs_stack.setCurrentIndex(1)
-                self._show_song_grid()
-            else:
-                self._songs_stack.setCurrentIndex(0)
-                self._apply_filters()
-        elif section == "albums":
-            if self._view_mode == "list":
-                self._albums_stack.setCurrentIndex(1)
-                self._show_album_list()
-            elif self._view_mode == "coverflow":
-                self._show_coverflow()
-            else:
-                self._albums_stack.setCurrentIndex(0)
-                self._show_album_grid()
-        elif section == "artists":
-            self._refresh_artists_data()
-            self._artists_stack.setCurrentIndex(0)
-        elif section == "genres":
-            self._refresh_genres_data()
-            self._genres_stack.setCurrentIndex(0)
-
+        self._lib_ctrl.refresh_active_tab(force)
     def _add_folder(self):
         from PySide6.QtWidgets import QFileDialog
         path = QFileDialog.getExistingDirectory(
@@ -2898,68 +1295,11 @@ class MainWindow(QMainWindow):
         if path:
             self._scan_path(path)
 
-    def _refresh_library(self):
-        self._playlist_ctrl.refresh_library()
-
 
     # Extracted to ui/controllers/artist_controller.py — grid + detail logic
 
     def _show_artists_view(self, mode: str):
         self._artist_ctrl.show_artists_view(mode)
-
-    def _open_artist_detail(self, artist_key: str):
-        self._artist_ctrl.open_artist_detail(artist_key)
-        # Trigger enrichment for this artist
-        if hasattr(self, '_artist_enrich'):
-            repo = self._ctx.artist_repo
-            group = repo.get_group(artist_key)
-            if group:
-                self._artist_enrich.enrich_artist(group)
-
-    def _show_artists_overview(self):
-        self._artist_ctrl.show_artists_overview()
-
-    def _artist_filepaths(self, artist_key: str) -> list[str]:
-        return self._artist_ctrl.artist_filepaths(artist_key)
-
-    def _play_artist(self, artist_key: str):
-        self._artist_ctrl.play_artist(artist_key)
-
-    def _shuffle_artist(self, artist_key: str):
-        self._artist_ctrl.play_artist(artist_key, shuffle=True)
-
-    def _queue_artist(self, artist_key: str):
-        self._artist_ctrl.queue_artist(artist_key)
-
-    def _create_playlist_from_artist(self, artist_key: str):
-        self._artist_ctrl.create_playlist_from_artist(artist_key)
-
-    def _edit_artist_metadata(self, artist_key: str):
-        self._artist_ctrl.edit_artist_metadata(artist_key)
-
-    # ── Genre handlers ──
-
-    def _open_genre_detail(self, genre_key: str):
-        self._genre_ctrl.open_genre_detail(genre_key)
-
-    def _play_genre(self, genre_key: str):
-        self._genre_ctrl.play_genre(genre_key)
-
-    def _shuffle_genre(self, genre_key: str):
-        self._genre_ctrl.play_genre(genre_key, shuffle=True)
-
-    def _queue_genre(self, genre_key: str):
-        self._genre_ctrl.queue_genre(genre_key)
-
-    def _create_playlist_from_genre(self, genre_key: str):
-        self._genre_ctrl.create_playlist_from_genre(genre_key)
-
-    def _edit_genre_metadata(self, genre_key: str):
-        self._genre_ctrl.edit_genre_metadata(genre_key)
-
-    def _normalize_genre(self, genre_key: str):
-        self._genre_ctrl.normalize_genre(genre_key)
-
     def _refresh_artist_info(self, artist_key: str):
         repo = self._ctx.artist_repo
         group = repo.get_group(artist_key)
@@ -2972,7 +1312,8 @@ class MainWindow(QMainWindow):
         self._artist_enrich.refresh_artist(artist_key)
         self._artist_enrich.enrich_artist(group, force=True)
 
-        self._artist_grid.set_artists(repo.groups)
+        if hasattr(self._artist_grid, 'set_artists'):
+            self._artist_grid.set_artists(repo.groups)
 
         self._toast_svc.show(
             f"Actualizando info de {group.display_name}...", "info")
@@ -2983,7 +1324,7 @@ class MainWindow(QMainWindow):
             repo.apply_external_info(artist_key, info)
 
         # Refresh detail if open for this artist
-        if (hasattr(self._artist_detail, '_artist')
+        if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
                 and self._artist_detail._artist
                 and self._artist_detail._artist.key == artist_key):
             group = repo.get_group(artist_key)
@@ -2993,14 +1334,16 @@ class MainWindow(QMainWindow):
                 self._artist_detail.set_external_info(info)
 
         # Refresh grid
-        self._artist_grid.set_artists(repo.groups)
+        if hasattr(self._artist_grid, 'set_artists'):
+            self._artist_grid.set_artists(repo.groups)
 
     def _on_artist_image_loaded(self, artist_key: str, local_path: str):
         repo = self._ctx.artist_repo
         # Refresh grid to show new thumb
-        self._artist_grid.set_artists(repo.groups)
+        if hasattr(self._artist_grid, 'set_artists'):
+            self._artist_grid.set_artists(repo.groups)
         # Refresh detail if open for this artist
-        if (hasattr(self._artist_detail, '_artist')
+        if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
                 and self._artist_detail._artist
                 and self._artist_detail._artist.key == artist_key):
             group = repo.get_group(artist_key)
@@ -3012,7 +1355,8 @@ class MainWindow(QMainWindow):
         if hasattr(repo, 'mark_enrichment_error'):
             repo.mark_enrichment_error(artist_key, error)
         # Refresh grid to show error badge
-        self._artist_grid.set_artists(repo.groups)
+        if hasattr(self._artist_grid, 'set_artists'):
+            self._artist_grid.set_artists(repo.groups)
         self._toast_svc.show(
             f"Enriquecimiento: {error}", "error")
 
@@ -3022,92 +1366,19 @@ class MainWindow(QMainWindow):
     # Extracted to ui/controllers/expanded_controller.py — now playing expanded
 
     def _show_cover_preview(self):
-        """Show cover art in a premium popup — does NOT replace central content."""
-        from PySide6.QtWidgets import QDialog
-        current = self._playback.current
-        cover_path = ""
-        if current:
-            from library.cover_art_service import CoverArtService
-            cover_path = CoverArtService.find_cover(current)
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Carátula")
-        dlg.setFixedSize(460, 460)
-        dlg.setStyleSheet(dialog_qss())
-        from PySide6.QtWidgets import QVBoxLayout, QLabel
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        lbl = QLabel()
-        lbl.setAlignment(Qt.AlignCenter)
-        if cover_path:
-            pix = QPixmap(cover_path)
-            if not pix.isNull():
-                lbl.setPixmap(pix.scaled(400, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        lbl.setStyleSheet("background: transparent; border: none;")
-        layout.addWidget(lbl)
-        dlg.exec()
+        from ui.builder.inline_dialogs import show_cover_preview
+        pixmap = getattr(getattr(self, '_player_bar', None), '_cover', None)
+        pm = pixmap.pixmap() if pixmap and hasattr(pixmap, 'pixmap') else None
+        show_cover_preview(self, pm)
 
     def _show_nowplaying_details(self):
-        """Show track details in a premium popover menu — does NOT replace central content."""
-        from PySide6.QtWidgets import QMenu
-        from ui.premium_menus import premium_menu_qss
-        menu = QMenu(self)
-        menu.setStyleSheet(premium_menu_qss())
-        current = self._playback.current
-        name = os.path.basename(current) if current else "Sin reproducción"
-        ref = self._current_ref
-        artist = ref.artist if ref else ""
-        album = ref.album if ref else ""
-
-        menu.addAction(f"Título: {name}").setEnabled(False)
-        if artist:
-            menu.addAction(f"Artista: {artist}").setEnabled(False)
-        if album:
-            menu.addAction(f"Álbum: {album}").setEnabled(False)
-        menu.addSeparator()
-        if current and not current.startswith("http"):
-            menu.addAction("Abrir carpeta", lambda: self._on_album_open_folder(os.path.dirname(current)))
-            menu.addAction("Editar metadatos", lambda: self._open_metadata_for_files([current]))
-
-        btn = self._player_bar._cover
-        menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
-
-    def _show_expanded(self):
-        self._expanded_ctrl.show_expanded()
-
-    def _on_expanded_back(self):
-        self._expanded_ctrl.back()
-
-    def _on_expanded_prev(self):
-        self._expanded_ctrl.prev()
-
-    def _on_expanded_next(self):
-        self._expanded_ctrl.next()
-
-    def _on_queue_track(self, filepath: str):
-        self._expanded_ctrl.queue_track(filepath)
-
-    # Extracted to core/file_actions.py — open/scan/drop logic
-
-    def _open_file(self):
-        self._file_actions.open_files(ALL_EXTS)
-
-    def _on_folder_create_playlist(self, name: str, filepaths: list):
-        self._file_actions.folder_create_playlist(name, filepaths)
-
+        from PySide6.QtGui import QCursor
+        from ui.builder.inline_dialogs import show_nowplaying_details
+        show_nowplaying_details(self, QCursor.pos(), self._current_ref)
     def _scan_path(self, path: str):
         self._file_actions.scan_path(path)
 
     # Extracted to core/playback_controller.py — play/pause/queue logic
-
-    def _on_table_menu(self, pos):
-        self._playback_ctrl.on_table_menu(pos)
-
-    def _edit_tags(self, filepath: str):
-        self._playback_ctrl.edit_tags(filepath)
-
-    def _on_table_dbl(self, idx):
-        self._playback_ctrl.on_table_dbl(idx)
-
     def _play_filepaths(self, filepaths: list[str], play_now: bool = True):
         """Centralized playback entry point — ensures all tracks go through _play_trackref."""
         if not filepaths:
@@ -3122,7 +1393,7 @@ class MainWindow(QMainWindow):
 
     def _play_trackref(self, track: TrackRef):
         # Notify identifier controller of source change
-        if hasattr(self, '_identifier_ctrl'):
+        if hasattr(self, '_identifier_ctrl') and self._identifier_ctrl:
             self._identifier_ctrl.set_current_track(
                 source_type=track.source_type,
                 source_label=track.source_label,
@@ -3133,13 +1404,6 @@ class MainWindow(QMainWindow):
 
     def _play_file(self, filepath: str, add_to_queue: bool = False):
         self._playback_ctrl.play_file(filepath, add_to_queue)
-
-    def _on_state(self, state: PlaybackState):
-        self._playback_ctrl.on_state(state)
-
-    def _on_stop(self):
-        self._playback_ctrl.on_stop()
-
     def _open_eq(self):
         self._playback_ctrl.open_eq()
 
@@ -3165,54 +1429,11 @@ class MainWindow(QMainWindow):
         self._audio_output_ctrl.show_menu()
 
     def _show_audio_diagnostics(self):
-        """Show audio route diagnostics dialog."""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Diagnostico de ruta de audio")
-        dlg.setMinimumWidth(420)
-        dlg.setStyleSheet(
-            "QDialog { background: rgba(15,17,22,0.96);"
-            " border: 1px solid rgba(255,255,255,0.07);"
-            " border-radius: 16px; }"
-            "QLabel { background: transparent; }")
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(6)
-
-        try:
-            diag = self._playback.get_audio_diagnostics()
-            lines = diag.to_tooltip().split("\n") if diag else ["Sin diagnóstico"]
-        except Exception:
-            lines = ["Diagnostico no disponible"]
-
-        title = QLabel("Ruta de audio activa")
-        title.setStyleSheet(
-            "font-size: 16px; font-weight: 740; color: rgba(255,255,255,0.92);")
-        layout.addWidget(title)
-        layout.addSpacing(8)
-
-        for line in lines:
-            lbl = QLabel(line)
-            lbl.setStyleSheet(
-                "font-size: 12px; color: rgba(255,255,255,0.62);"
-                "font-family: monospace;")
-            layout.addWidget(lbl)
-
-        layout.addSpacing(12)
-        close_btn = QLabel("Clic para cerrar")
-        close_btn.setStyleSheet(
-            "font-size: 11px; color: rgba(255,255,255,0.32);")
-        close_btn.setAlignment(Qt.AlignCenter)
-        layout.addWidget(close_btn)
-        dlg.mousePressEvent = lambda e: dlg.accept()
-        dlg.exec()
+        from ui.builder.inline_dialogs import show_audio_diagnostics
+        show_audio_diagnostics(self, self._playback)
 
     def _open_mini_player(self):
         self._mini_player_ctrl.open()
-
-    def _add_transmit_device(self):
-        self._transmit_ctrl.add_device()
-
     def _manage_transmit_devices(self):
         self._transmit_ctrl.manage_devices()
 
@@ -3230,330 +1451,6 @@ class MainWindow(QMainWindow):
             return ip
         except Exception:
             return ""
-
-    def _on_home_audio_connect(self):
-        from core.settings_manager import get_bool, get_str
-        from PySide6.QtWidgets import (
-            QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QCheckBox)
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Conectar Home Assistant")
-        dlg.setMinimumWidth(440)
-        layout = QFormLayout(dlg)
-        layout.setSpacing(10)
-
-        saved_url = get_str("home_audio/ha_base_url") or ""
-        saved_token = get_str("home_audio/ha_token") or ""
-
-        url_edit = QLineEdit(saved_url)
-        url_edit.setPlaceholderText("http://homeassistant.local:8123")
-        token_edit = QLineEdit(saved_token)
-        token_edit.setEchoMode(QLineEdit.Password)
-        token_edit.setPlaceholderText("Token de acceso de larga duracion")
-        verify_cb = QCheckBox("Verificar SSL")
-        verify_cb.setChecked(get_bool("home_audio/ha_verify_ssl"))
-        verify_cb.setStyleSheet("color: rgba(255,255,255,0.72);")
-
-        layout.addRow("URL:", url_edit)
-        layout.addRow("Token:", token_edit)
-        layout.addRow("", verify_cb)
-
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(lambda: self._try_ha_connection(
-            url_edit.text().strip(), token_edit.text().strip(), dlg, verify_cb.isChecked()))
-        btns.rejected.connect(dlg.reject)
-        layout.addRow(btns)
-        dlg.exec()
-
-    def _try_ha_connection(self, url: str, token: str, dialog, verify_ssl: bool = True):
-        from core.settings_manager import set_ as sset, get_bool
-        sset("home_audio/ha_base_url", url)
-        sset("home_audio/ha_token", token)
-        sset("home_audio/ha_verify_ssl", verify_ssl)
-        dialog.accept()
-
-        if not hasattr(self, '_ha_client'):
-            from integrations.home_assistant.client import HomeAssistantClient
-            self._ha_client = HomeAssistantClient(self)
-            self._ha_client.connection_tested.connect(
-                self._on_ha_connection_result)
-            self._ha_client.entities_loaded.connect(
-                self._on_ha_entities_loaded)
-            self._ha_client.error_occurred.connect(self._on_ha_error)
-
-        self._toast_svc.show("Probando conexion con Home Assistant...", "info")
-        self._ha_client.configure(
-            url, token, get_bool("home_audio/ha_verify_ssl"))
-        self._ha_client.test_connection()
-
-    def _on_ha_connection_result(self, ok: bool, msg: str):
-        if ok:
-            self._ha_connected = True
-            self._home_audio_view.set_data(
-                ha_connected=True, multiroom_active=False,
-                snapserver_running=False, devices=[], groups=[])
-            self._ha_client.get_media_players()
-            self._toast_svc.show(f"Home Assistant: {msg}", "success")
-        else:
-            self._ha_connected = False
-            self._toast_svc.show(f"Error: {msg}", "error")
-
-    def _on_ha_entities_loaded(self, entities: list):
-        from integrations.home_assistant.client import entity_to_device
-        devices = [entity_to_device(e) for e in entities]
-        self._home_audio_view.set_data(
-            ha_connected=True, multiroom_active=False,
-            snapserver_running=False, devices=devices, groups=[])
-        n = len([d for d in devices if d.get("available")])
-        self._toast_svc.show(
-            f"Home Assistant: {n} media_player disponibles", "info")
-
-    def _on_ha_error(self, msg: str):
-        self._toast_svc.show(f"Home Assistant: {msg}", "error")
-
-    def _on_home_audio_refresh(self):
-        if hasattr(self, '_snap_discovery'):
-            self._snap_discovery.refresh()
-        if hasattr(self, '_ha_client') and getattr(self, '_ha_connected', False):
-            self._ha_client.get_media_players()
-        else:
-            self._refresh_home_audio_state()
-
-    def _on_home_audio_multiroom(self, enable: bool):
-        from core.settings_manager import get_int
-        if enable:
-            # Start Michi API
-            if not self._michi_api.is_running:
-                self._michi_api.start()
-            # Start local media server
-            if not self._local_media.is_running:
-                self._local_media.configure(get_int("home_audio/local_media_server_port"))
-                self._local_media.start()
-            # Start mDNS
-            if not self._mdns.is_running and self._mdns.is_available:
-                self._mdns.configure(port=self._michi_api.port)
-                self._mdns.start()
-
-            if not self._snapserver.is_binary_available():
-                self._toast_svc.show(
-                    "snapserver no encontrado. Instala snapcast para usar multiroom.",
-                    "error")
-                self._home_audio_view.set_data(
-                    ha_connected=getattr(self, '_ha_connected', False),
-                    multiroom_active=False,
-                    snapserver_running=False,
-                    devices=self._home_audio_view._devices,
-                    groups=self._group_mgr.groups())
-                return
-            self._snapserver.configure(
-                tcp=get_int("home_audio/snapserver_tcp_port"),
-                ctrl=get_int("home_audio/snapserver_control_port"),
-                http=get_int("home_audio/snapserver_http_port"))
-            self._audio_capture.create_sink()
-        else:
-            self._snapserver.stop()
-            self._audio_capture.remove_sink()
-            self._mdns.stop()
-            self._michi_api.stop()
-            self._local_media.stop()
-
-    def _on_home_audio_settings(self):
-        self._show_preferences("home_audio")
-
-    def _on_home_audio_receiver_wizard(self):
-        from integrations.snapcast.receivers import ReceiverWizard
-        dlg = ReceiverWizard(self)
-        dlg.exec()
-
-    def _on_home_audio_cast(self, device: dict):
-        if hasattr(self, '_ha_ctrl'):
-            self._ha_ctrl.cast_current(device)
-        else:
-            self._toast_svc.show("Controlador Home Audio no disponible", "error")
-
-    def _on_home_audio_device_play(self, device: dict):
-        if not hasattr(self, '_ha_client'):
-            self._toast_svc.show("No conectado a Home Assistant", "error")
-            return
-        self._ha_client.media_play(device.get("entity_id", ""))
-
-    def _on_home_audio_device_pause(self, device: dict):
-        if not hasattr(self, '_ha_client'):
-            self._toast_svc.show("No conectado a Home Assistant", "error")
-            return
-        self._ha_client.media_pause(device.get("entity_id", ""))
-
-    def _on_home_audio_device_stop(self, device: dict):
-        if not hasattr(self, '_ha_client'):
-            self._toast_svc.show("No conectado a Home Assistant", "error")
-            return
-        self._ha_client.media_stop(device.get("entity_id", ""))
-
-    def _on_home_audio_device_volume(self, device: dict, volume: int):
-        if not hasattr(self, '_ha_client'):
-            self._toast_svc.show("No conectado a Home Assistant", "error")
-            return
-        self._ha_client.set_volume(device.get("entity_id", ""), volume / 100.0)
-
-    def _on_home_audio_group_selected(self, group: dict):
-        gid = group.get("id", "")
-        if hasattr(self, '_group_mgr'):
-            self._group_mgr.activate_group(gid)
-            name = group.get("name", gid)
-            self._ctx.player_bar.set_transmit_active(True, name)
-            self._toast_svc.show(f"Zona activada: {name}", "success")
-            self._refresh_home_audio_state()
-
-    def _on_home_audio_create_group(self):
-        from PySide6.QtWidgets import QInputDialog
-        name, ok = QInputDialog.getText(
-            self, "Crear grupo", "Nombre del grupo o zona:")
-        if ok and name.strip() and hasattr(self, '_group_mgr'):
-            self._group_mgr.add_group(name.strip())
-            self._toast_svc.show(f"Grupo creado: {name.strip()}", "success")
-            self._refresh_home_audio_state()
-
-    # ── Snapcast handlers ──
-
-    def _on_snapserver_started(self):
-        self._toast_svc.show("Snapserver iniciado", "success")
-        self._snap_discovery.refresh()
-        self._refresh_home_audio_state()
-
-    def _on_snapserver_stopped(self):
-        self._toast_svc.show("Snapserver detenido", "info")
-        self._refresh_home_audio_state()
-
-    def _on_snapserver_error(self, msg: str):
-        self._toast_svc.show(f"Snapcast: {msg}", "error")
-
-    def _on_audio_sink_ready(self, monitor: str):
-        self._snapserver.configure(
-            tcp=self._snapserver.tcp_port,
-            ctrl=self._snapserver.control_port,
-            http=self._snapserver.http_port)
-        self._snapserver.start()
-
-    def _on_snap_clients_found(self, clients: list):
-        self._refresh_home_audio_state()
-
-    def _on_groups_changed(self, groups: list):
-        self._refresh_home_audio_state()
-
-    def _refresh_home_audio_state(self):
-        snap_clients = self._snap_discovery.clients() if hasattr(
-            self, '_snap_discovery') else []
-        snap_devices = [
-            {"id": c["id"], "name": c.get("name", c.get("host", "")),
-             "entity_id": c.get("id", ""), "state": "idle",
-             "area": "", "device_type": "snapclient",
-             "backend": c.get("backend", "snapcast"),
-             "available": c.get("available", True)}
-            for c in snap_clients]
-
-        ha_devices = self._home_audio_view._devices if hasattr(
-            self, '_home_audio_view') else []
-        all_devices = ha_devices + snap_devices
-
-        groups = self._group_mgr.groups() if hasattr(
-            self, '_group_mgr') else []
-
-        api_running = self._michi_api.is_running if hasattr(
-            self, '_michi_api') else False
-        mdns_running = self._mdns.is_running if hasattr(
-            self, '_mdns') else False
-        snap_running = self._snapserver.is_running if hasattr(
-            self, '_snapserver') else False
-        local_media_running = self._local_media.is_running if hasattr(
-            self, '_local_media') else False
-
-        tx_active = False
-        tx_name = ""
-        if hasattr(self, '_ctx') and hasattr(self._ctx, 'transmit_mgr'):
-            tx_dev = self._ctx.transmit_mgr.get_active()
-            if tx_dev:
-                tx_active = True
-                tx_name = tx_dev.name
-
-        self._home_audio_view.set_data(
-            ha_connected=getattr(self, '_ha_connected', False),
-            multiroom_active=snap_running,
-            snapserver_running=snap_running,
-            devices=all_devices,
-            groups=groups,
-            transmit_active=tx_active,
-            transmit_device_name=tx_name,
-            snap_ctrl_port=self._snapserver.control_port if hasattr(self, '_snapserver') else 1705,
-            api_running=api_running,
-            mdns_running=mdns_running,
-            local_media_running=local_media_running)
-
-        self._home_audio_view.set_diagnostics({
-            "Home Assistant": "Conectado" if getattr(self, '_ha_connected', False) else "No conectado",
-            "API Michi": "Activa" if api_running else "No activa",
-            "mDNS": "Activo" if mdns_running else (
-                "No disponible" if not (hasattr(self, '_mdns') and self._mdns.is_available) else "No activo"),
-            "Snapserver": "Activo" if snap_running else "Detenido",
-            "Servidor local": "Activo" if local_media_running else "No activo",
-            "Ultimo error": (getattr(self._snapserver, 'last_error', "") or "—")[:40] if hasattr(self, '_snapserver') else "—",
-            "IP local": getattr(self, '_local_ip', "—"),
-            "Firewall": "Acepta tráfico local" if (api_running or local_media_running or mdns_running) else "—",
-        })
-
-    # ── Identifier ──
-
-    def _toggle_identifier(self, enabled: bool):
-        self._identifier_ctrl.enabled = enabled
-        self._identifier_view.set_identifier_enabled(enabled)
-        if not enabled:
-            self._identifier_ctrl.stop()
-
-    def _clear_detected_tracks(self):
-        self._playlist_ctrl.clear_detected_tracks()
-        self._identifier_view.set_detected_tracks([])
-
-    def _on_track_detected(self, track):
-        self._identifier_view.set_detected_tracks(
-            self._playlist_ctrl.get_detected_tracks(100))
-
-    def _on_detection_failed(self, message: str):
-        self._identifier_view.set_status_message(message)
-
-    def _on_detected_track_selected(self, track: dict):
-        filepath = track.get("filepath")
-        if filepath and os.path.exists(filepath):
-            self._play_file(filepath)
-        else:
-            title = track.get("title", "")
-            artist = track.get("artist", "")
-            if title or artist:
-                self._search.setText(f"{title} {artist}")
-                self._search_ctrl.set_active("local")
-                self._search_ctrl.search(f"{title} {artist}")
-
-    def _on_identifier_settings(self):
-        self._show_preferences("identifier")
-
-    def _on_identifier_play(self, track: dict):
-        fp = track.get("matched_filepath") or track.get("filepath", "")
-        if fp and os.path.isfile(fp):
-            self._play_file(fp)
-        else:
-            self._toast_svc.show("Archivo no encontrado en biblioteca", "info")
-
-    def _on_identifier_search(self, track: dict):
-        title = track.get("title", "")
-        artist = track.get("artist", "")
-        if title or artist:
-            self._search.setText(f"{title} {artist}")
-            self._search_ctrl.set_active("local")
-            self._search_ctrl.search(f"{title} {artist}")
-
-    def _on_identifier_delete(self, track: dict):
-        idx = track.get("id", 0)
-        self._playlist_ctrl.delete_detected_track(idx)
-        self._identifier_view.set_detected_tracks(
-            self._playlist_ctrl.get_detected_tracks(100))
-
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -3592,11 +1489,11 @@ class MainWindow(QMainWindow):
                 return
         # Save queue state before shutdown
         try:
-            engine = self._playback.engine
-            if hasattr(engine, '_queue') and engine._queue:
-                self._playlist_ctrl.save_queue(engine)
+            paths, idx = self._playback.get_queue_state()
+            if paths and self._db:
+                self._db.save_queue(paths, idx)
         except Exception:
-            pass
+            logging.getLogger("michi").warning("Failed to save queue on close", exc_info=True)
         self._shutdown.shutdown()
         event.accept()
 
@@ -3628,7 +1525,8 @@ class MainWindow(QMainWindow):
             for d in dirs:
                 self._scan_path(d)
         if files:
-            self._playlist_ctrl.add_files(files)
+            for fp in files:
+                self._db.add_file(fp)
             self._reload_library_after_change(reason="drop_files")
             if len(files) == 1:
                 self._play_file(files[0])

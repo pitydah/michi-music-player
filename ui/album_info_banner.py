@@ -81,7 +81,7 @@ class AlbumInfoBanner(QWidget):
         self._source_badge = QLabel("")
         self._source_badge.setStyleSheet(
             "font-size: 10px; font-weight: 600; color: rgba(140,190,255,0.88);"
-            "background: rgba(70,145,255,0.14); border-radius: 6px;"
+            "background: rgba(143,183,255,0.14); border-radius: 6px;"
             "padding: 3px 8px;")
         self._source_badge.hide()
         badges.addWidget(self._source_badge)

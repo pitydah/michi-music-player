@@ -149,8 +149,8 @@ class PlaybackController:
         try:
             diag = self._win._ctx.player.get_audio_diagnostics() if hasattr(
                 self._win._ctx.player, 'get_audio_diagnostics') else None
-            if diag and self._win._ctx.player_bar:
-                self._win._ctx.player_bar.set_route_tooltip(diag)
+            if diag and hasattr(self._win._player_bar, '_quality_badge'):
+                self._win._player_bar._quality_badge.set_route_tooltip(diag)
         except Exception:
             pass
 
@@ -174,8 +174,10 @@ class PlaybackController:
             idx_item = self._win._ctx.items_index.get(track.uri)
             if idx_item:
                 dur = int(idx_item.duration)
-        if self._win._ctx.mpris:
-            self._win._ctx.mpris.update_metadata(
+        if hasattr(self._win, '_mpris_ctrl') and self._win._mpris_ctrl is not None:
+            mpris = getattr(self._win._ctx, 'mpris', None)
+            if mpris:
+                mpris.update_metadata(
                 title=name, artist=artist or "",
                 album=album, duration=dur)
 
@@ -202,16 +204,19 @@ class PlaybackController:
     def open_eq(self):
         from ui.eq_panel import EqDialog
         dlg = EqDialog(self._win)
-        # Load current EQ state from engine via PlayerService facade
+        # Load current EQ state from engine
         engine = self._win._ctx.player
-        eq_state = engine.get_eq_state() if hasattr(engine, 'get_eq_state') else None
-        if eq_state and hasattr(dlg, '_basic'):
-            dlg._basic._bypass_cb.setChecked(eq_state["mode"] == "bypass")
-            dlg._basic._preamp_slider.setValue(int(eq_state["preamp_db"] * 10))
-            if eq_state["mode"] == "graphic" and eq_state["bands_31"]:
-                for i, v in enumerate(eq_state["bands_31"][:31]):
-                    if hasattr(dlg._basic, '_sliders') and i < len(dlg._basic._sliders):
-                        dlg._basic._sliders[i].setValue(int(v * 10))
+        if hasattr(engine, '_engine'):
+            eng = engine._engine
+            if hasattr(eng, '_eq'):
+                eq = eng._eq
+                if hasattr(dlg, '_basic'):
+                    dlg._basic._bypass_cb.setChecked(eq.mode == "bypass")
+                    dlg._basic._preamp_slider.setValue(int(eq.preamp_db * 10))
+                    if eq.mode == "graphic" and hasattr(eq, 'bands_31') and eq.bands_31:
+                        for i, v in enumerate(eq.bands_31[:31]):
+                            if hasattr(dlg._basic, '_sliders') and i < len(dlg._basic._sliders):
+                                dlg._basic._sliders[i].setValue(int(v * 10))
         dlg.eq_bands_graphic_changed.connect(
             lambda bands: self._win._ctx.player.set_eq_graphic(bands))
         dlg.eq_bands_parametric_changed.connect(

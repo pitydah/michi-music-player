@@ -1,25 +1,29 @@
-# Bytecode
-__pycache__/
-*.pyc
-*.pyo
 
+# Bytecode
+# Configuración local
 # Database
+# IDE
+# OS
+build/
 *.db
 *.db-journal
 *.db-wal
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Configuración local
-*.log
+dist/
 dist/\nbuild/\n*.egg-info/\nPKG-INFO
+.DS_Store
+*.egg-info
 *.egg-info/
 .flatpak/
+.idea/
+install.sh
+*.log
+michi-music-player.egg-info/
+*.pyc
+__pycache__/
+*.pyo
+*.swo
+*.swp
+Thumbs.db
+*.tmpl.
+.venv/
+.vscode/

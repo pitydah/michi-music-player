@@ -912,6 +912,25 @@ class LibraryDB:
         self._conn.commit()
         return True
 
+    def get_by_id(self, item_id: int) -> MediaItem | None:
+        """Fetch a single MediaItem by primary key id."""
+        row = self._conn.execute(
+            "SELECT id, filepath, filename, directory, ext, kind, "
+            "size, mtime, duration, channels, sample_rate, bitrate, "
+            "title, artist, album, year, genre, track_number, composer, "
+            "albumartist, disc_number, disc_total, track_total, "
+            "mb_track_id, mb_album_id, mb_albumartist_id, "
+            "bit_depth, bpm, isrc, label, conductor, compilation, "
+            "media_type, encoder, copyright, originaldate, remixer, "
+            "lyrics, track_uid, replaygain_track_gain, replaygain_track_peak, "
+            "replaygain_album_gain, replaygain_album_peak, "
+            "deleted_at, created_at, updated_at "
+            "FROM media_items WHERE id = ? AND deleted_at IS NULL", (item_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return MediaItem.from_row(row)
+
     def get_favorites(self, device: str = "desktop") -> list[str]:
         rows = self._conn.execute(
             "SELECT track_id FROM favorites ORDER BY added_at DESC").fetchall()

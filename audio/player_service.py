@@ -140,6 +140,13 @@ class PlayerService(QObject):
     def get_queue(self) -> list[dict]:
         return self._engine.get_queue()
 
+    def get_queue_state(self) -> tuple[list[str], int]:
+        """Return (filepaths, current_index) for save/restore."""
+        queue = self._engine.get_queue()
+        paths = [q.get("filepath", "") for q in queue if q.get("filepath")]
+        idx = self._engine.get_queue_index()
+        return paths, idx
+
     def reorder_queue(self, filepaths: list[str]):
         self._engine.reorder_queue(filepaths)
 

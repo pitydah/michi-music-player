@@ -64,11 +64,14 @@ class _TaskWorker(QRunnable):
         self._kwargs = kwargs
 
     def run(self):
+        import contextlib
         try:
             result = self._fn(*self._args, **self._kwargs)
-            self._signals.done.emit(result)
+            with contextlib.suppress(RuntimeError):
+                self._signals.done.emit(result)
         except Exception as e:
-            self._signals.error.emit(str(e))
+            with contextlib.suppress(RuntimeError):
+                self._signals.error.emit(str(e))
 
 
 class WorkerManager(QObject):
