@@ -26,11 +26,11 @@ def check():
     print("=== Python ===")
     v = sys.version_info
     print(f"  Python {v.major}.{v.minor}.{v.micro}")
-    if (v.major, v.minor) < (3, 10):
-        fail("Python >=3.10 requerido", critical=True)
+    if (v.major, v.minor) < (3, 11):
+        fail("Python >=3.11 requerido", critical=True)
         errors += 1
     else:
-        ok("Python >=3.10")
+        ok("Python >=3.11")
 
     print("\n=== Core Python packages ===")
     for mod, name in [("PySide6", "PySide6"), ("mutagen", "mutagen"),

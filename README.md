@@ -176,7 +176,6 @@ michi-music-player/
 ├── NOTICE                            # Miro Player origin credit
 ├── pyproject.toml                    # Package config
 ├── requirements.txt                  # Pip dependencies
-├── install_arch.sh / install_ubuntu.sh
 ├── data/michi-music-player.desktop
 │
 ├── audio/                            # Motor de audio (24 archivos)
@@ -296,7 +295,7 @@ michi-music-player/
 │   │   └── tray_controller.py        # System tray
 │   └── ...
 │
-├── tests/                            # Tests (340+)
+├── tests/                            # pytest suite
 │   ├── test_replaygain.py (14) / test_search_engine.py (7)
 │   ├── test_search_index.py (5) / test_indexer.py (10)
 │   ├── test_dac_manager.py (6) / test_pipeline_factory.py (6)
@@ -406,7 +405,7 @@ michi-music-player/
 
 | Métrica | Valor |
 |---------|-------|
-| Tests | **340+** |
+| Tests | **pytest suite** |
 | Archivos `.py` | **171** |
 | Ruff | **0** |
 | Bugs (F-class) | **0** |
@@ -418,22 +417,6 @@ michi-music-player/
 | Vistas con glassmorphism | **14+** |
 | Iconos registrados | **38+** |
 | Commits recientes | **9** (consolidación completa) |
-
-## Instalación desde fuente
-
-```bash
-git clone https://github.com/pitydah/michi-music-player
-cd michi-music-player
-pip install .
-michi-music-player
-```
-
-### Flatpak
-
-```bash
-flatpak-builder --user --install build-dir data/com.michi.MusicPlayer.yml
-flatpak run com.michi.MusicPlayer
-```
 
 ## Licencia
 

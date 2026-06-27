@@ -12,8 +12,6 @@ class MockAppContext:
         self.playback = mock_win._playback
         self.model = mock_win._model
         self.search_ctrl = mock_win._search_ctrl
-        self.search = mock_win._search_ctrl
-        self.window = mock_win
         self.toast = mock_win._toast_svc
         self.player_bar = mock_win._player_bar_ctrl
         self.bg_theme = mock_win._bg_theme
@@ -41,6 +39,19 @@ class MockAppContext:
         self.eq_dlg = mock_win._eq_dlg
         self.mini_player = MagicMock()
         self.all_items_list = getattr(mock_win, '_all_items', [])
+        self.workers = mock_win._workers
+        self.search_widget = mock_win._search
+        self.snapserver = mock_win._snapserver
+        self.audio_capture = mock_win._audio_capture
+        self.group_mgr = mock_win._group_mgr
+        self.ha_connected = mock_win._ha_connected
+        self.ha_client = mock_win._ha_client
+        self.home_audio_view = mock_win._home_audio_view
+        self.local_media_ctrl = mock_win._local_media_ctrl
+        self.local_ip = mock_win._local_ip
+        self.local_media = mock_win._local_media
+        self.snapcast_ctrl = mock_win._snapcast_ctrl
+        self.ha_ctrl = mock_win._ha_ctrl
         # Delegation methods
         self.navigate_sidebar = MagicMock()
         self.load_library = MagicMock()

@@ -28,7 +28,7 @@ michi-music-player/
 │                     coverflow.py, media_item.py, album_key.py
 ├── recognition/    → Identificación: detection_service.py, providers/shazam|audd|acoustid
 ├── integrations/   → home_assistant/, snapcast/, michi_api/, artist_metadata/
-├── ui/             → window.py (MainWindow, 2644 lines), controllers/ (14 controladores),
+├── ui/             → window.py (MainWindow), controllers/ (14 controladores),
 │                     style_tokens.py, qss.py, icon_registry.py, icon_loader.py,
 │                     central/ (central_styles.py, central_tokens.py),
 │                     sidebar/ (7 módulos: tokens, styles, item, section, panel, brand, search)
@@ -207,7 +207,7 @@ widget.setStyleSheet("""QTableView { background: ... }""")  # inline QSS
 ```bash
 ruff check . --output-format concise    # lint
 python -m compileall -q .               # compile check
-python -m pytest tests/ -q              # tests (206 expected)
+python -m pytest tests/ -q              # tests (pytest suite)
 find . -type d -name "__pycache__" -exec rm -rf {} +   # clear stale cache
 python main.py                          # run app
 ```
@@ -415,5 +415,5 @@ python3 main.py
 ```bash
 ruff check . --output-format concise     # must be 0
 python -m compileall -q .                # must be clean
-python -m pytest tests/ -q               # must be 206 passed
+python -m pytest tests/ -q               # must pass
 ```

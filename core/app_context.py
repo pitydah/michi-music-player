@@ -206,17 +206,17 @@ class AppContext:
 
     @property
     def workers(self):
-        return self._win._workers
+        return getattr(self._win, '_workers', None)
 
     @property
     def search_widget(self):
         """The search QLineEdit widget for keyboard focus."""
-        return self._win._search
+        return getattr(self._win, '_search', None)
 
     @property
     def all_items_list(self):
         """All library tracks (list of MediaItem), from window's cached _all_items."""
-        return self._win._all_items
+        return getattr(self._win, '_all_items', [])
 
     @property
     def eq_dlg(self):

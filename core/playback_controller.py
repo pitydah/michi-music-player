@@ -174,7 +174,7 @@ class PlaybackController:
             idx_item = self._win._ctx.items_index.get(track.uri)
             if idx_item:
                 dur = int(idx_item.duration)
-        if hasattr(self._win, '_mpris_ctrl'):
+        if self._win._ctx.mpris:
             self._win._ctx.mpris.update_metadata(
                 title=name, artist=artist or "",
                 album=album, duration=dur)
