@@ -3,10 +3,10 @@ import hashlib
 import os
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import QMessageBox, QVBoxLayout, QWidget
 
-from library.album_art import load_cover_pixmap, load_covers_for_albums
+from library.album_art import load_cover_image, load_covers_for_albums
 from library.coverflow import CoverFlowWidget
 
 
@@ -132,13 +132,13 @@ class CoverFlowController:
             title=item.title or "",
             artist=artist,
             year=year,
-            genres=[],
+            genre="",
             duration=duration,
-            num_tracks=len(tracks),
+            track_count=len(tracks),
             description="",
             source="local",
             cover_path="",
-            tracks=[getattr(t, 'filepath', '') or '' for t in tracks],
+            track_list=[getattr(t, 'filepath', '') or '' for t in tracks],
         )
 
     # ── CoverFlow signal handlers ──
@@ -313,28 +313,29 @@ class CoverFlowController:
         if self._win._workers:
             self._win._workers.run_task(
                 f"cf_cover_{idx}",
-                lambda fp=filepath, sz=size: load_cover_pixmap(fp, sz),
-                on_done=lambda pix: self._on_cover_loaded(
-                    idx, pix, key, cache_key))
+                lambda fp=filepath, sz=size: load_cover_image(fp, sz),
+                on_done=lambda img: self._on_cover_loaded(
+                    idx, img, key, cache_key))
         else:
-            pix = load_cover_pixmap(filepath, size)
-            if pix and not pix.isNull():
-                self._win._coverflow.set_cover(idx, pix)
+            img = load_cover_image(filepath, size)
+            if img and not img.isNull():
+                self._win._coverflow.set_cover(idx, QPixmap.fromImage(img))
 
-    def _on_cover_loaded(self, idx: int, pix, key: str, cache_key: str):
+    def _on_cover_loaded(self, idx: int, img, key: str, cache_key: str):
         if hasattr(self, '_pending_cover_keys'):
             self._pending_cover_keys.discard(key)
         if self._win._coverflow_cache_key != cache_key:
             return
+        if not img or img.isNull():
+            return
+        pix = QPixmap.fromImage(img)
         current_key = self._win._coverflow.item_key_at(idx)
         if current_key != key:
-            # Album moved to a different index (e.g., after sort/filter rebuild)
             new_idx = self._win._coverflow.index_for_key(key)
             if new_idx >= 0:
                 self._win._coverflow.set_cover(new_idx, pix)
             return
-        if pix and not pix.isNull():
-            self._win._coverflow.set_cover(idx, pix)
+        self._win._coverflow.set_cover(idx, pix)
 
     # ── Album enrichment ──
 

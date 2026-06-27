@@ -7,10 +7,31 @@ from PySide6.QtWidgets import (
 )
 
 from ui.services.playlist_cover_service import get_playlist_cover
-from ui.central.central_styles import (
-    glass_button_qss, glass_card_qss, transparent_scrollbar_qss,
-    table_qss, table_header_qss, card_desc_qss,
-)
+
+_BG = "#090B11"
+_PANEL = "rgba(255,255,255,0.035)"
+_HOVER = "rgba(255,255,255,0.075)"
+_SELECTED = "rgba(255,255,255,0.115)"
+_BORDER = "rgba(255,255,255,0.08)"
+_TEXT = "#FFFFFF"
+_TEXT2 = "rgba(255,255,255,0.78)"
+_TEXT3 = "rgba(255,255,255,0.62)"
+
+_BTN_CSS = f"""
+    QPushButton {{
+        background: rgba(255,255,255,0.065);
+        color: {_TEXT};
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 12px;
+        padding: 8px 16px;
+        font-size: 12.5px;
+        font-weight: 600;
+    }}
+    QPushButton:hover {{
+        background: rgba(255,255,255,0.095);
+        border: 1px solid rgba(255,255,255,0.15);
+    }}
+"""
 
 
 class PlaylistDetailView(QWidget):
