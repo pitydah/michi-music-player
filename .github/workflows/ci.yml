@@ -28,12 +28,17 @@ jobs:
             python3-gi gir1.2-gstreamer-1.0 \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
             gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
-            gstreamer1.0-libav gstreamer1.0-tools
+            gstreamer1.0-libav gstreamer1.0-tools \
+            python3-dbus python3-cairo \
+            python3-numpy python3-mutagen
 
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
-          pip install -e .[dev]
+          # Core deps (PySide6, mutagen, numpy) + dev tools
+          # PyGObject, pycairo, dbus-python come from system packages above
+          pip install PySide6 mutagen numpy
+          pip install pytest pytest-qt ruff
 
       - name: Lint (ruff)
         run: ruff check .
@@ -55,4 +60,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONUNBUFFERED: 1
+          MICHI_TEST_DATA_DIR: ${{ runner.temp }}/michi-test-data
+          MICHI_TEST_CACHE_DIR: ${{ runner.temp }}/michi-test-cache
+          MICHI_TEST_CONFIG_DIR: ${{ runner.temp }}/michi-test-config
         run: pytest -q
