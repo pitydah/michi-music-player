@@ -54,7 +54,7 @@ ruff check . --output-format concise || { echo "❌ Ruff encontró problemas"; e
 echo "  ✅ Ruff: 0 violaciones"
 
 echo "  Compile check..."
-python3 -m compileall -q . || { echo "❌ Errores de compilación"; exit 1; }
+python3 -m compileall -q -x '.venv/|\.tmpl\.' . || { echo "❌ Errores de compilación"; exit 1; }
 echo "  ✅ Compilación limpia"
 
 echo "  Tests..."

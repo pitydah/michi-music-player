@@ -205,3 +205,35 @@ class TestVersioningHonesty:
                     if re.search(pattern, stripped):
                         raise AssertionError(
                             f"Static metric in {doc}:{i}: {stripped}")
+
+
+# ── 5. Test isolation — no sys.modules contamination ──
+
+
+class TestGIIsolation:
+    """Player engine tests must not permanently contaminate sys.modules with fake gi."""
+
+    def test_player_engine_no_direct_gi_assignment(self):
+        """test_player_engine.py must not assign to sys.modules['gi'] directly."""
+        path = os.path.join(_root(), "tests", "test_player_engine.py")
+        content = _read(path)
+        forbidden = [
+            'sys.modules["gi"] =',
+            'sys.modules["gi.repository"] =',
+            'sys.modules["gi.repository.Gst"] =',
+            'sys.modules["gi.repository.GLib"] =',
+            'sys.modules["gi.repository.GstPbutils"] =',
+        ]
+        for pattern in forbidden:
+            assert pattern not in content, (
+                f"Direct sys.modules assignment forbidden: {pattern}")
+        assert 'patch.dict("sys.modules"' in content, (
+            "Must use patch.dict for sys.modules isolation")
+
+    def test_create_release_compileall_excludes_venv_and_tmpl(self):
+        """create_release.sh must exclude .venv/ and .tmpl in compileall."""
+        path = os.path.join(_root(), "scripts", "create_release.sh")
+        content = _read(path)
+        assert "compileall -q -x" in content
+        assert ".venv/" in content
+        assert ".tmpl" in content

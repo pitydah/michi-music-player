@@ -344,8 +344,16 @@ class NavigationController(QObject):
 
     # ── Route dispatch ──
     def dispatch(self, key: str):
-        """Dispatch a sidebar navigation key to the appropriate handler."""
+        """Dispatch a sidebar navigation key to the appropriate handler.
+
+        Saves the current search text (from the section being left) before
+        clearing it, so back/forward navigation can restore it.
+        """
         w = self._win
+        previous_search = getattr(w, '_search_text', "")
+        if not previous_search and hasattr(w, '_search') and w._search:
+            previous_search = w._search.text() or ""
+
         w._restore_central_opacity()
         w._current_playlist = None
         w._search_text = ""
@@ -362,7 +370,7 @@ class NavigationController(QObject):
         self.configure_header(section_key)
 
         if not self._history.is_restoring:
-            self._history.push(key, w._search_text)
+            self._history.push(key, previous_search)
             self._update_buttons()
 
         # Dynamic prefix routes

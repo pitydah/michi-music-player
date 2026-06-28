@@ -171,7 +171,9 @@ class CoverPixmapItem(QGraphicsPixmapItem):
         self._cover_loaded = True
         self._cover_requested = False
 
-        # Pre-swap pixmap at very low opacity, then fade up
+        if hasattr(self, '_fade_anim') and self._fade_anim:
+            self._fade_anim.stop()
+
         self.setPixmap(self._real_pixmap)
         self._fade_alpha = 0.30
         self.setOpacity(self._fade_alpha)
@@ -849,23 +851,23 @@ class CoverFlowWidget(QGraphicsView):
         self._position_texts_only()
 
     def _animate_text_change(self, new_title: str, new_artist: str):
-        anim = QVariantAnimation()
-        anim.setDuration(120)
-        anim.setStartValue(1.0)
-        anim.setEndValue(0.0)
-
-        def _on_fade_out():
-            self._title_text.setPlainText(new_title)
-            self._artist_text.setPlainText(new_artist)
-            self._title_effect.setOpacity(1.0)
-            self._artist_effect.setOpacity(1.0)
-            self._position_texts_only()
-
-        anim.finished.connect(_on_fade_out)
-        anim.valueChanged.connect(
-            lambda v: (self._title_effect.setOpacity(v),
-                       self._artist_effect.setOpacity(v)))
+        if hasattr(self, '_text_anim') and self._text_anim:
+            self._text_anim.stop()
+        self._title_text.setPlainText(new_title)
+        self._artist_text.setPlainText(new_artist)
+        self._position_texts_only()
+        self._title_effect.setOpacity(0.0)
+        self._artist_effect.setOpacity(0.0)
+        anim = QPropertyAnimation(self._title_effect, b"opacity")
+        anim.setDuration(100)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        artist_anim = QPropertyAnimation(self._artist_effect, b"opacity")
+        artist_anim.setDuration(100)
+        artist_anim.setStartValue(0.0)
+        artist_anim.setEndValue(1.0)
         anim.start()
+        artist_anim.start()
         self._text_anim = anim
 
     def _position_texts_only(self):

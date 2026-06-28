@@ -106,7 +106,7 @@ MOCK_GST = _MockGst()
 
 def _patch_player_module():
     """Patch audio.player module-level Gst/GLib with mocks."""
-    import sys
+
     glib_mock = MagicMock()
     glib_mock.filename_to_uri.side_effect = lambda p, _: "file://" + p
 
@@ -118,14 +118,17 @@ def _patch_player_module():
     gi_repo_mock.GstPbutils = MagicMock()
     gi_mock.repository = gi_repo_mock
 
-    # Ensure sys.modules has our mocks so importlib.reload picks them up
-    sys.modules["gi"] = gi_mock
-    sys.modules["gi.repository"] = gi_repo_mock
-    sys.modules["gi.repository.Gst"] = MOCK_GST
-    sys.modules["gi.repository.GLib"] = glib_mock
-    sys.modules["gi.repository.GstPbutils"] = MagicMock()
+    fake_modules = {
+        "gi": gi_mock,
+        "gi.repository": gi_repo_mock,
+        "gi.repository.Gst": MOCK_GST,
+        "gi.repository.GLib": glib_mock,
+        "gi.repository.GstPbutils": gi_repo_mock.GstPbutils,
+    }
+    sys_modules_patch = patch.dict("sys.modules", fake_modules, clear=False)
 
     patches = [
+        sys_modules_patch,
         patch("audio.player.Gst", MOCK_GST),
         patch("audio.player.GLib", glib_mock),
         patch("audio.player.gi", gi_mock),
