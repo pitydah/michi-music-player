@@ -455,7 +455,8 @@ class TestSmokeUiRoutesHardening:
         assert "finally:" in content
         assert "w.close()" in content
         assert "w.deleteLater()" in content
-        assert "app.processEvents()" in content
+        assert "app.quit()" in content
+        assert "_os._exit(0)" in content
 
     def test_smoke_ui_route_sidebar_is_mandatory(self):
         content = _read(os.path.join(_root(), "scripts", "smoke_ui_routes.py"))
