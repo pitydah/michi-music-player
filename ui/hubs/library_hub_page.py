@@ -8,7 +8,9 @@ from PySide6.QtWidgets import (
     QFrame, QTabWidget, QPushButton,
 )
 
-from ui.central.central_styles import glass_card_qss, glass_button_qss, tab_bar_qss
+from ui.central.central_styles import (
+    glass_card_qss, glass_button_qss, tab_bar_qss, card_title_qss, card_desc_qss,
+)
 
 _TAB_TO_SECTION = {0: "library", 1: "albums", 2: "artists", 3: "genres", 4: "folders"}
 
@@ -183,18 +185,12 @@ class LibraryHubPage(QWidget):
         c_layout.setSpacing(8)
 
         c_title = QLabel(label)
-        c_title.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 600; "
-            "background: transparent; border: none; }"
-        )
+        c_title.setStyleSheet(card_title_qss())
         c_layout.addWidget(c_title)
 
         c_desc = QLabel(desc)
         c_desc.setWordWrap(True)
-        c_desc.setStyleSheet(
-            "QLabel { color: rgba(255,255,255,0.56); font-size: 12px; "
-            "background: transparent; border: none; }"
-        )
+        c_desc.setStyleSheet(card_desc_qss())
         c_layout.addWidget(c_desc)
 
         btn = QPushButton(f"Abrir {label}")

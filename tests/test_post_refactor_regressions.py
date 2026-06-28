@@ -237,3 +237,63 @@ class TestGIIsolation:
         assert "compileall -q -x" in content
         assert ".venv/" in content
         assert ".tmpl" in content
+
+
+# ── 6. Hub pages — no duplicate title QLabels ──
+
+
+class TestHubPageTitles:
+    """Hub pages must not create page-title QLabels that match SECTION_CONFIG.
+
+    The header is set by NavigationController.configure_header(), so hub pages
+    should not duplicate it as a page-internal title. The heading should be
+    the page's content heading (e.g. a card section title), not a duplicate
+    of the navigation route name.
+    """
+
+    SECTION_CONFIG_TITLES = {
+        "home_page": "Inicio",
+        "library_hub_page": "Biblioteca",
+        "mix_hub_page": "Mix",
+        "playback_hub_page": "Reproducción",
+        "connections_hub_page": "Conexiones",
+        "settings_hub_page": "Configuración",
+    }
+
+    HUB_FILES = {
+        "home_page": "ui/hubs/home_page.py",
+        "library_hub_page": "ui/hubs/library_hub_page.py",
+        "mix_hub_page": "ui/hubs/mix_hub_page.py",
+        "playback_hub_page": "ui/hubs/playback_hub_page.py",
+        "connections_hub_page": "ui/hubs/connections_hub_page.py",
+        "settings_hub_page": "ui/hubs/settings_hub_page.py",
+    }
+
+    def test_hub_pages_no_duplicate_section_title(self):
+        """Verify no hub page has a QLabel(text) matching its SECTION_CONFIG title."""
+        root = os.path.join(os.path.dirname(__file__), "..")
+        for hub_key, hub_path in self.HUB_FILES.items():
+            full = os.path.join(root, hub_path)
+            if not os.path.exists(full):
+                continue
+            content = _read(full)
+            expected_title = self.SECTION_CONFIG_TITLES[hub_key]
+            # Check for QLabel(f"<title>") or QLabel("<title>") patterns
+            import re
+            label_pattern = re.compile(
+                r'QLabel\(\s*["\']' + re.escape(expected_title) + r'["\']\)')
+            matches = label_pattern.findall(content)
+            assert len(matches) == 0, (
+                f"{hub_path}: QLabel with SECTION_CONFIG title '{expected_title}' "
+                f"found {len(matches)} time(s). Hub should not duplicate the nav-bar title."
+            )
+
+    def test_hub_pages_use_card_title_qss_for_card_titles(self):
+        """Verify hub pages use card_title_qss() for card section headings."""
+        root = os.path.join(os.path.dirname(__file__), "..")
+        path = os.path.join(root, "ui", "hubs", "settings_hub_page.py")
+        content = _read(path)
+        assert "card_title_qss()" in content or "cardTitle" in content, (
+            "settings_hub must use card_title_qss() for card titles")
+        assert "card_desc_qss()" in content or "cardDesc" in content, (
+            "settings_hub must use card_desc_qss() for card descriptions")

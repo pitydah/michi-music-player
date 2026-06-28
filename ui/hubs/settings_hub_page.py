@@ -66,9 +66,11 @@ class SettingsHubPage(QWidget):
         c_layout.setSpacing(8)
 
         c_title = QLabel(title)
+        c_title.setObjectName("settingsCardTitle")
         c_layout.addWidget(c_title)
 
         c_desc = QLabel(description)
+        c_desc.setObjectName("settingsCardDesc")
         c_desc.setWordWrap(True)
         c_layout.addWidget(c_desc)
 
