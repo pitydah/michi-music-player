@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QChildEvent, QEvent, QRectF, Qt
 from PySide6.QtGui import (
-    QColor, QLinearGradient, QPainter, QPainterPath,
+    QColor, QImage, QLinearGradient, QPainter, QPainterPath,
     QPen, QPixmap,
 )
 from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QWidget
@@ -81,7 +81,6 @@ class NoiseOverlay(QWidget):
         return super().eventFilter(obj, event)
 
     def _generate_noise(self, w: int, h: int):
-        from PySide6.QtGui import QImage
         import random as _r
         _r.seed(42)
         img = QImage(w, h, QImage.Format_Grayscale8)
