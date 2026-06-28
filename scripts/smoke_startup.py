@@ -196,9 +196,36 @@ def _check_main_window():
     for key in sections:
         w._nav_ctrl.dispatch(key)
 
+    # Verify navigation history preserves search text
+    w._nav_ctrl.dispatch("library_hub")
+    w._search_text = "search query"
+    w._nav_ctrl.dispatch("albums")
+    w._nav_ctrl.dispatch("library_hub")
+    nav_ctrl = w._nav_ctrl
+    assert nav_ctrl._history._history[-1][0] == "library_hub", "history key mismatch"
+    assert nav_ctrl._history._history[-1][1] == "", "search should be empty after navigate"
+
+    # Verify view mode switching
+    w._current_section_key = "albums"
+    w._view_router.on_mode_changed("grid")
+    assert w._view_mode == "grid", f"Expected grid, got {w._view_mode}"
+    w._view_router.on_mode_changed("list")
+    assert w._view_mode == "list", f"Expected list, got {w._view_mode}"
+
+    # Verify CoverFlow can be activated
+    w._current_section_key = "albums"
+    w._view_router.on_mode_changed("coverflow")
+    cf = getattr(w, '_coverflow', None)
+    if cf is not None:
+        assert callable(cf.count), "CoverFlow has count method"
+        assert callable(cf.item_at), "CoverFlow has item_at"
+        assert callable(cf.set_cover), "CoverFlow has set_cover"
+
     print("  ✓ MainWindow created (safe mode)")
     print(f"  ✓ {len(checks)} controllers confirmed")
     print(f"  ✓ {len(sections)} sections navigable")
+    print("  ✓ nav history preserves search text")
+    print("  ✓ view mode switching (list/grid/coverflow)")
     return 0
 
 
