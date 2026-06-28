@@ -19,6 +19,9 @@ class DetectionHistoryRepository(QObject):
         super().__init__(parent)
         self._db = db
 
+    def _conn(self):
+        return self._db.conn if hasattr(self._db, 'conn') else getattr(self._db, '_conn', None)
+
     def get_all(self, limit: int = 200,
                 source_type: str = "") -> list[dict]:
         """Get detection history, optionally filtered by source_type.
@@ -26,18 +29,21 @@ class DetectionHistoryRepository(QObject):
         If source_type is empty, returns all; otherwise filters by source column.
         """
         try:
+            c = self._conn()
+            if not c:
+                return []
             if source_type:
-                rows = self._db._conn.execute(
+                rows = c.execute(
                     "SELECT * FROM detected_tracks WHERE source = ? "
                     "ORDER BY detected_at DESC LIMIT ?",
                     (source_type, limit)).fetchall()
             else:
-                rows = self._db._conn.execute(
+                rows = c.execute(
                     "SELECT * FROM detected_tracks "
                     "ORDER BY detected_at DESC LIMIT ?",
                     (limit,)).fetchall()
             cols = [desc[0] for desc in
-                    self._db._conn.execute("PRAGMA table_info(detected_tracks)").fetchall()]
+                    c.execute("PRAGMA table_info(detected_tracks)").fetchall()]
             return [dict(zip(cols, r, strict=False)) for r in rows]
         except Exception as e:
             logger.warning(f"Failed to get detection history: {e}")
@@ -92,12 +98,15 @@ class DetectionHistoryRepository(QObject):
     def count(self, source_type: str = "") -> int:
         """Count detections, optionally by source type."""
         try:
+            c = self._conn()
+            if not c:
+                return 0
             if source_type:
-                row = self._db._conn.execute(
+                row = c.execute(
                     "SELECT COUNT(*) FROM detected_tracks WHERE source = ?",
                     (source_type,)).fetchone()
             else:
-                row = self._db._conn.execute(
+                row = c.execute(
                     "SELECT COUNT(*) FROM detected_tracks").fetchone()
             return row[0] if row else 0
         except Exception:
@@ -106,7 +115,10 @@ class DetectionHistoryRepository(QObject):
     def get_sources(self) -> list[str]:
         """Get distinct source types from detection history."""
         try:
-            rows = self._db._conn.execute(
+            c = self._conn()
+            if not c:
+                return []
+            rows = c.execute(
                 "SELECT DISTINCT source FROM detected_tracks ORDER BY source"
             ).fetchall()
             return [r[0] for r in rows]

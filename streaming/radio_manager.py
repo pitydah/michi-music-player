@@ -35,6 +35,7 @@ class RadioManager:
     def __init__(self):
         self._stations: list[RadioStation] = []
         self._next_id = 1
+        self._record_pipeline = None
         self._load()
 
     def _load(self):
@@ -200,17 +201,26 @@ class RadioManager:
         conv.link(enc)
         enc.link(sink)
 
+        if hasattr(self, '_record_pipeline') and self._record_pipeline:
+            old = self._record_pipeline
+            self._record_pipeline = None
+            old.set_state(Gst.State.NULL)
+            old.get_state(Gst.CLOCK_TIME_NONE)
+
         self._record_pipeline = pipeline
         ret = pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:
-            import logging
-            logging.getLogger("michi.radio").warning("Failed to start recording pipeline")
             self._record_pipeline = None
             return False
         return True
 
     def stop_recording(self):
         if hasattr(self, '_record_pipeline') and self._record_pipeline:
-            self._record_pipeline.set_state(Gst.State.NULL)
-            self._record_pipeline.get_state(Gst.CLOCK_TIME_NONE)
+            old = self._record_pipeline
             self._record_pipeline = None
+            old.set_state(Gst.State.NULL)
+            result = old.get_state(Gst.CLOCK_TIME_NONE)
+            if result[0] == Gst.StateChangeReturn.FAILURE:
+                import logging
+                logging.getLogger("michi.radio").warning(
+                    "Recording pipeline NULL transition failed")

@@ -2,10 +2,13 @@
 import logging
 import asyncio
 import contextlib
+from concurrent.futures import ThreadPoolExecutor
 
 from recognition.base_recognizer import BaseRecognizer
 
 logger = logging.getLogger("michi.recognition.shazam")
+
+_SHARED_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="shazam")
 
 
 class ShazamProvider(BaseRecognizer):
@@ -13,6 +16,7 @@ class ShazamProvider(BaseRecognizer):
 
     Requirements: pip install shazamio
     Does NOT require an API key — uses free Shazam endpoint.
+    Runs async ShazamIO calls in a background thread to avoid blocking Qt.
     """
 
     name = "shazamio"
@@ -21,6 +25,7 @@ class ShazamProvider(BaseRecognizer):
     def __init__(self):
         super().__init__()
         self._available = False
+        self._shazam = None
         try:
             import importlib.util
             if importlib.util.find_spec("shazamio") is not None:
@@ -32,36 +37,38 @@ class ShazamProvider(BaseRecognizer):
         return self._available
 
     def identify(self, sample_bytes=None, source="", filepath=""):
-        """Identify audio via ShazamIO.
-
-        If filepath is provided, reads MP3/WAV file directly.
-        If sample_bytes is provided, uses raw byte data.
-        """
+        """Identify audio via ShazamIO, runs in background thread."""
         if not self._available:
             return None
 
+        future = _SHARED_EXECUTOR.submit(
+            self._identify_sync, sample_bytes, filepath)
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
+            return future.result(timeout=30)
+        except Exception as e:
+            logger.debug("ShazamIO identify failed: %s", e)
+            return None
+
+    def _identify_sync(self, sample_bytes, filepath):
+        """Run async shazamio in a fresh event loop on this thread."""
+        try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-
-        try:
-            result = loop.run_until_complete(self._identify_async(sample_bytes, filepath))
-            return result
-        except Exception as e:
-            logger.debug(f"ShazamIO identify failed: {e}")
-            return None
+            return loop.run_until_complete(
+                self._identify_async(sample_bytes, filepath))
+        finally:
+            loop.close()
 
     async def _identify_async(self, sample_bytes, filepath):
         from shazamio import Shazam
 
-        shazam = Shazam()
+        if self._shazam is None:
+            self._shazam = Shazam()
 
         if filepath:
-            out = await shazam.recognize(filepath)
+            out = await self._shazam.recognize(filepath)
         elif sample_bytes:
-            out = await shazam.recognize(data=sample_bytes)
+            out = await self._shazam.recognize(data=sample_bytes)
         else:
             return None
 

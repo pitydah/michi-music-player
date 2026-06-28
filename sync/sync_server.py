@@ -137,7 +137,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             for item in items:
                 cover_hash = ""
                 if item.album:
-                    cover_hash = hashlib.md5(item.album.encode()).hexdigest()
+                    cover_hash = hashlib.sha256(item.album.encode()).hexdigest()[:32]
                 tuid = getattr(item, "track_uid", "") if hasattr(item, "track_uid") else ""
                 td = TrackDto(
                     id=make_track_id(item.filepath, tuid),
@@ -227,7 +227,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             cover_hash = path.split("/")[-1]
             if srv is None or srv._db is None:
                 return self._send_error("No library", 503)
-            row = srv._db._conn.execute(
+            row = srv._db.conn.execute(
                 "SELECT mime, data FROM album_art_cache WHERE album_hash=?",
                 (cover_hash,)).fetchone()
             if row:
@@ -306,7 +306,8 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 device_model=req.device_model,
             )
             if srv:
-                srv._sessions[token.token] = token
+                with srv._sessions_lock:
+                    srv._sessions[token.token] = token
                 library_size = srv._db.get_stats()["total"] if srv._db else 0
             else:
                 library_size = 0
@@ -325,10 +326,13 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 req = SyncStateRequest.from_json(body)
             except Exception:
                 return self._send_error("Invalid request")
-            if not srv or req.session_token not in srv._sessions:
+            if not srv:
                 return self._send_error("Invalid token", 401)
+            with srv._sessions_lock:
+                if req.session_token not in srv._sessions:
+                    return self._send_error("Invalid token", 401)
+                device = srv._sessions[req.session_token].device_alias
             synced = 0
-            device = srv._sessions[req.session_token].device_alias
             for entry in req.tracks:
                 tid = entry.get("track_id", "")
                 play_count = entry.get("play_count", 0)
@@ -365,7 +369,9 @@ class SyncServer(QObject):
         self._running = False
         self._thread: threading.Thread | None = None
         self._sessions: dict[str, SessionToken] = {}
+        self._sessions_lock = threading.Lock()
         self._track_index: dict[str, str] = {}
+        self._track_index_lock = threading.Lock()
         self._manifest_provider: callable | None = None
         self._delta_provider: callable | None = None
 
@@ -382,17 +388,22 @@ class SyncServer(QObject):
         if not self._db:
             return
         items = self._db.get_all()
-        self._track_index = {}
+        new_index = {}
         for item in items:
             fp = item.filepath
             tuid = getattr(item, "track_uid", "") if hasattr(item, "track_uid") else ""
             tid = make_track_id(fp, tuid)
-            self._track_index[tid] = fp
+            new_index[tid] = fp
+        with self._track_index_lock:
+            self._track_index = new_index
 
     def _resolve_track(self, track_id: str) -> str | None:
-        if track_id not in self._track_index:
-            self._build_index()
-        return self._track_index.get(track_id)
+        with self._track_index_lock:
+            if track_id not in self._track_index:
+                self._track_index_lock.release()
+                self._build_index()
+                self._track_index_lock.acquire()
+            return self._track_index.get(track_id)
 
     def start(self):
         if self._running:
