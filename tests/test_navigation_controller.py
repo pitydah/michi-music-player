@@ -5,7 +5,7 @@ import pytest
 
 from ui.controllers.navigation_controller import (
     NavigationController, NavigationHistory, resolve_section_config,
-    SECTION_CONFIG, NAV_ROUTES,
+    SECTION_CONFIG, NAV_ROUTES, INITIAL_ROUTE,
 )
 
 
@@ -313,4 +313,7 @@ class TestNavigationController:
 
     def test_home_nav_route(self):
         assert NAV_ROUTES["home"] == "_show_home_page"
+
+    def test_initial_route_is_home(self):
+        assert INITIAL_ROUTE == "home"
 

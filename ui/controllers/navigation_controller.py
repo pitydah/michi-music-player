@@ -380,6 +380,14 @@ class NavigationController(QObject):
             section_key = "playlists"
         self.configure_header(section_key)
 
+        # Sincronizar _current_section_key con el sidebar para sub-rutas
+        if key.startswith("pl:") or key.startswith("playlist:"):
+            w._current_section_key = "playlist_hub"
+        elif key.startswith("srv:"):
+            w._current_section_key = "connections_hub"
+        elif key.startswith("dev:"):
+            w._current_section_key = "devices_page"
+
         if not self._history.is_restoring:
             self._history.push(key, previous_search)
             self._update_buttons()

@@ -841,12 +841,21 @@ class MainWindow(QMainWindow):
 
         # Restaurar sidebar activo tras rebuild (sub-secciones mapean al hub padre)
         current = getattr(self, '_current_section_key', None) or "home"
+        prefix = current.split(":")[0] if ":" in current else current
         if current in ("albums", "artists", "genres", "folders", "favs", "recent"):
             current = "library_hub"
         elif current.startswith("mix_") and current != "mix_hub":
             current = "mix_hub"
+        elif current.startswith("pl:"):
+            current = "playlist_hub"
+        elif current.startswith("srv:"):
+            current = "connections_hub"
+        elif current.startswith("dev:") or current in ("devices_page", "devices"):
+            current = "devices_page"
+        elif current == "home":
+            current = "home"
         else:
-            current = current.split(":")[0] if ":" in current else current
+            current = prefix or "home"
         self._sidebar_controller.set_active(current)
 
         # Sidebar shadow — solo si no tiene uno ya
