@@ -1153,10 +1153,10 @@ class PremiumSlider(QSlider):
                 fill = QColor("#8FB7FF")
                 bd = QColor("#F5F5F7")
             elif self._hovered:
-                fill = QColor("#FF4A2D")
+                fill = QColor("#A0C4FF")
                 bd = QColor("#F5F5F7")
             else:
-                fill = QColor("#F92141")
+                fill = QColor("#8FB7FF")
                 bd = QColor("#F5F5F7")
 
             painter.setPen(QPen(bd, 1.6))

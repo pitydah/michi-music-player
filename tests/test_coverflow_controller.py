@@ -392,3 +392,29 @@ class TestCoverFlowControllerEnrichment:
     def test_on_album_enriched_skip_without_repo(self, ctrl):
         del ctrl._win._album_repo
         ctrl.on_album_enriched("key", {"title": "Updated"})
+
+    def test_on_open_folder_calls_desktop_services(self, ctrl):
+        item, tracks = _make_item()
+        ctrl._win._coverflow.item_at = MagicMock(return_value=item)
+        with patch("ui.controllers.coverflow_controller.QDesktopServices.openUrl") as mock_open:
+            ctrl.on_open_folder(0)
+            mock_open.assert_called_once()
+
+    def test_on_playlist_album_without_tracks_does_nothing(self, ctrl):
+        ctrl._win._coverflow.item_at = MagicMock(return_value=None)
+        ctrl.on_playlist_album(0)
+        ctrl._win._db.create_playlist.assert_not_called()
+
+    def test_selection_changed_from_coverflow(self):
+        from library.coverflow import CoverFlowWidget
+        from library.album_art import CoverFlowItem
+        cf = CoverFlowWidget()
+        results = []
+        cf.selection_changed.connect(lambda i: results.append(i))
+        items = [CoverFlowItem(pixmap=MagicMock(), title=f"A{i}", subtitle="T",
+                               data={"album": f"A{i}", "artist": "A", "tracks": []})
+                 for i in range(3)]
+        cf.set_items(items)
+        # scroll triggers selection_changed
+        cf.scroll_to(1, animated=False)
+        assert len(results) > 0

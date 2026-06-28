@@ -15,7 +15,10 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 | Database | SQLite 3 (WAL mode) + FTS5 full-text search |
 | Metadata | mutagen (ID3, Vorbis, MP4, MusicBrainz, ReplayGain, BPM) |
 | Recognition | shazamio, AudD HTTP API, AcoustID fpcalc + Chromaprint |
+| Audio analysis | librosa, soundfile, numpy (feature extraction, acoustic profiling) |
+| Smart mixes | recommendation engine based on acoustic features + play counts |
 | Build system | pip install . / Flatpak |
+| Tests | **909** (pytest + pytest-qt) |
 
 ## 2. Directory Structure
 

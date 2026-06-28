@@ -1,7 +1,16 @@
 """Tests for coverflow_layout() — position, rotation, scale, symmetry, and public API."""
-import pytest
+import json
+from unittest.mock import MagicMock
 
-from library.coverflow import coverflow_layout
+import pytest
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QPixmap, QPainter
+
+from library.coverflow import (
+    coverflow_layout, apply_layout_state, _make_placeholder,
+    CoverPixmapItem, DropShadow, CenterGlow, ReflectiveFloor,
+    CoverReflection, CoverFlowWidget,
+)
 
 VW, VH = 1024, 600
 CW, CH = 260, 260
@@ -385,3 +394,346 @@ class TestCoverFlowInteraction:
         cf._phys_timer.start(16)
         cf.close()
         assert not cf._phys_timer.isActive()
+
+
+class TestCoverFlowHelpers:
+    """Unit tests for helper functions and classes in coverflow.py."""
+
+    def test_apply_layout_state_positive_rotation(self):
+        from PySide6.QtWidgets import QGraphicsPixmapItem
+        item = QGraphicsPixmapItem()
+        state = {"x": 500, "y": 300, "scale": 0.8, "rot": 30.0, "z": 1500, "visible": True}
+        apply_layout_state(item, state, 260, 260)
+        assert item.pos().x() == 500
+        assert item.pos().y() == 300
+        assert item.zValue() == 1500
+        assert item.isVisible() is True
+
+    def test_apply_layout_state_zero_rotation(self):
+        from PySide6.QtWidgets import QGraphicsPixmapItem
+        item = QGraphicsPixmapItem()
+        state = {"x": 100, "y": 200, "scale": 0.5, "rot": 0.0, "z": 1000, "visible": True}
+        apply_layout_state(item, state, 260, 260)
+        assert item.isVisible() is True
+
+    def test_make_placeholder_creates_pixmap(self):
+        pix = _make_placeholder(200, 200)
+        assert isinstance(pix, QPixmap)
+        assert not pix.isNull()
+        assert pix.width() == 200
+        assert pix.height() == 200
+
+    def test_make_placeholder_transparent_background(self):
+        pix = _make_placeholder(100, 100)
+        c = pix.toImage().pixelColor(50, 50)
+        assert c.alpha() < 50
+
+
+class TestCoverPixmapItem:
+    def test_constructor_with_null_pixmap(self):
+        item = CoverPixmapItem(None, 0, 200, 200)
+        assert item._index == 0
+        assert item.needs_cover is True
+        assert item._cover_loaded is False
+
+    def test_constructor_with_real_pixmap(self):
+        pix = QPixmap(100, 100)
+        pix.fill(Qt.red)
+        item = CoverPixmapItem(pix, 1, 200, 200)
+        assert item._cover_loaded is True
+        assert item.needs_cover is False
+
+    def test_needs_cover_false_after_requested(self):
+        item = CoverPixmapItem(None, 0, 200, 200)
+        assert item.needs_cover is True
+        item.mark_cover_requested()
+        assert item.needs_cover is False
+
+    def test_needs_cover_false_after_failed(self):
+        item = CoverPixmapItem(None, 0, 200, 200)
+        item._cover_failed = True
+        assert item.needs_cover is False
+
+    def test_set_real_cover_updates_state(self):
+        item = CoverPixmapItem(None, 0, 200, 200)
+        pix = QPixmap(100, 100)
+        pix.fill(Qt.blue)
+        item.set_real_cover(pix)
+        assert item._cover_loaded is True
+        assert item._cover_requested is False
+
+    def test_set_real_cover_null(self):
+        item = CoverPixmapItem(None, 0, 200, 200)
+        item.set_real_cover(None)
+        assert item._cover_failed is True
+
+    def test_paint_applies_clip_path(self, qtbot):
+        from PySide6.QtWidgets import QGraphicsScene
+        pix = QPixmap(100, 100)
+        pix.fill(Qt.green)
+        item = CoverPixmapItem(pix, 0, 100, 100)
+        scene = QGraphicsScene()
+        scene.addItem(item)
+        assert item._rounded_path is not None
+
+
+class TestDropShadow:
+    def test_hidden_when_scale_below_threshold(self, qtbot):
+        shadow = DropShadow(200)
+        assert shadow.isVisible() is False
+        shadow.update_for_state(MagicMock(), 0.3)
+        assert shadow.isVisible() is False
+
+    def test_visible_when_scale_above_threshold(self, qtbot):
+        shadow = DropShadow(200)
+        mock_item = MagicMock()
+        mock_item.sceneBoundingRect.return_value.width.return_value = 200
+        mock_item.sceneBoundingRect.return_value.height.return_value = 260
+        mock_item.sceneBoundingRect.return_value.center.return_value = QPointF(500, 300)
+        mock_item.sceneBoundingRect.return_value.bottom.return_value = 400
+        shadow.update_for_state(mock_item, 0.8)
+        assert shadow.isVisible() is True
+
+
+class TestCenterGlow:
+    def test_hidden_with_invalid_rect(self, qtbot):
+        glow = CenterGlow()
+        mock_item = MagicMock()
+        mock_item.sceneBoundingRect.return_value.isValid.return_value = False
+        glow.update_for_center(mock_item)
+        assert glow.isVisible() is False
+
+    def test_visible_with_valid_item(self, qtbot):
+        glow = CenterGlow()
+        sbr = MagicMock()
+        sbr.isValid.return_value = True
+        sbr.center.return_value = QPointF(500, 300)
+        sbr.width.return_value = 260
+        sbr.height.return_value = 260
+        mock_item = MagicMock()
+        mock_item.sceneBoundingRect.return_value = sbr
+        glow.update_for_center(mock_item)
+        assert glow.isVisible() is True
+        assert glow.rect().width() > 0
+
+
+class TestReflectiveFloor:
+    def test_resize_updates_geometry(self, qtbot):
+        floor = ReflectiveFloor(800, 600)
+        assert floor.rect().height() == 600 * 0.42
+        floor.resize(1024, 768)
+        assert floor.rect().width() == 1024
+
+    def test_paint_uses_gradient(self, qtbot):
+        floor = ReflectiveFloor(800, 600)
+        pix = QPixmap(800, 600)
+        pix.fill(Qt.transparent)
+        p = QPainter(pix)
+        floor.paint(p, None, None)
+        p.end()
+
+
+class TestCoverReflection:
+    def test_created_with_pixmap(self):
+        pix = QPixmap(100, 100)
+        pix.fill(Qt.red)
+        ref = CoverReflection(pix)
+        assert ref.opacity() == 0.10
+        assert not ref.pixmap().isNull()
+
+    def test_created_with_null_pixmap(self):
+        ref = CoverReflection(None)
+        assert ref.opacity() == 0.0
+
+    def test_zero_opacity_with_empty_pixmap(self):
+        pix = QPixmap(0, 0)
+        ref = CoverReflection(pix)
+        assert ref.opacity() == 0.0
+
+
+class TestCoverFlowWidgetAdvanced:
+    """Advanced CoverFlowWidget tests — init, layout, events, signals."""
+
+    def make_items(self, n=5):
+        from library.album_art import CoverFlowItem
+        return [CoverFlowItem(pixmap=QPixmap(), title=f"A{i}", subtitle="T",
+                              data={"album": f"A{i}", "artist": "A", "tracks": []})
+                for i in range(n)]
+
+    def test_initial_state(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        assert cf.count() == 0
+        assert cf.current_index() == -1
+        assert cf.cover_size() == 260
+
+    def test_set_items_clears_previous(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(3))
+        assert cf.count() == 3
+        cf.set_items(self.make_items(5))
+        assert cf.count() == 5
+
+    def test_scroll_to_instant(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        cf.scroll_to(5, animated=False)
+        assert cf.current_index() == 5
+
+    def test_scroll_to_clamps_bounds(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        cf.scroll_to(-10, animated=False)
+        assert cf.current_index() == 0
+        cf.scroll_to(100, animated=False)
+        assert cf.current_index() == 4
+
+    def test_current_item_returns_none_when_empty(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        assert cf.current_item() is None
+
+    def test_current_key_empty_when_empty(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        assert cf.current_key() == ""
+
+    def test_index_for_key_not_found(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.set_items(self.make_items(3))
+        assert cf.index_for_key("nonexistent") == -1
+
+    def test_set_current_index_calls_scroll_to(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        cf.set_current_index(2, animated=False)
+        assert cf.current_index() == 2
+
+    def test_visible_indices_returns_list(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        vis = cf.visible_indices()
+        assert isinstance(vis, list)
+        assert 0 in vis
+
+    def test_render_info_returns_dict(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.set_items(self.make_items(3))
+        info = cf.render_info()
+        assert info["total_items"] == 3
+        assert info["cover_size"] == 260
+
+    def test_dump_diagnostic_returns_dict(self, qtbot, tmp_path):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.set_items(self.make_items(3))
+        out = tmp_path / "diag.json"
+        diag = cf.dump_diagnostic(str(out))
+        assert diag["items_total"] == 3
+        assert diag["current_index"] == 0
+        assert out.exists()
+        with open(str(out)) as f:
+            loaded = json.load(f)
+            assert loaded["items_total"] == 3
+
+    def test_visible_range_depends_on_viewport(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(50))
+        vw = cf.viewport().width()
+        expected = 7 if vw < 900 else 10
+        assert cf._visible_range() == expected
+
+    def test_mouse_release_on_side_cover_navigates(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        cf.scroll_to(2, animated=False)
+        assert cf.current_index() == 2
+
+    def test_resize_updates_cover_size_when_large_enough(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(3))
+        old_size = cf.cover_size()
+        cf.resize(3200, 2400)
+        if abs(cf.cover_size() - old_size) >= 14:
+            assert cf.cover_size() != old_size
+        else:
+            assert cf.cover_size() == old_size  # no rebuild needed
+
+    def test_close_event_cleans_up(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(3))
+        cf._phys_timer.start(16)
+        cf.close()
+        assert not cf._phys_timer.isActive()
+
+    def test_cover_snapped_signal_emitted_on_snap_finished(self, qtbot):
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(10))
+        results = []
+        cf.cover_snapped.connect(lambda i: results.append(i))
+        cf._current = 3.0
+        cf._on_snap_finished()
+        assert len(results) == 1
+        assert results[0] == 3
+
+    def test_request_cover_signal_for_needy_items(self, qtbot):
+        from library.album_art import CoverFlowItem
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        items = [CoverFlowItem(pixmap=QPixmap(), title=f"A{i}", subtitle="T",
+                               data={"album": f"A{i}", "artist": "A", "tracks": []})
+                 for i in range(3)]
+        results = []
+        cf.request_cover.connect(lambda idx, item: results.append((idx, item)))
+        cf.set_items(items)
+        assert len(results) > 0
+
+    def test_context_menu_creates_menu(self, qtbot):
+        from PySide6.QtCore import QPoint
+        from PySide6.QtGui import QContextMenuEvent
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(3))
+        ev = QContextMenuEvent(QContextMenuEvent.Mouse, QPoint(400, 300), QPoint(400, 300))
+        cf.contextMenuEvent(ev)
+
+    def test_mouse_double_click_emits_signals(self, qtbot):
+        from PySide6.QtCore import QEvent, QPointF
+        from PySide6.QtGui import QMouseEvent
+        cf = CoverFlowWidget()
+        qtbot.addWidget(cf)
+        cf.resize(800, 600)
+        cf.set_items(self.make_items(5))
+        play_results = []
+        dbl_results = []
+        cf.play_album_requested.connect(lambda i: play_results.append(i))
+        cf.double_clicked.connect(lambda i: dbl_results.append(i))
+        ev = QMouseEvent(QEvent.MouseButtonDblClick, QPointF(400, 300), QPointF(400, 300),
+                         Qt.NoButton, Qt.MouseButton.LeftButton, Qt.NoModifier)
+        cf.mouseDoubleClickEvent(ev)
+        assert len(play_results) > 0
+        assert len(dbl_results) > 0

@@ -40,7 +40,6 @@ class FolderBrowserWidget(QWidget):
         self._favorites: list[str] = []
         self._history: list[str] = []
         self._load_persistent()
-        self.set_watcher_active(False)
 
         self.setStyleSheet(
             "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
@@ -762,6 +761,8 @@ class FolderBrowserWidget(QWidget):
         self._db_connected = db is not None
 
     def set_watcher_active(self, active: bool):
+        if not hasattr(self, '_scan_btn') or not self._scan_btn:
+            return
         if active:
             self._scan_btn.setText("● Escanear")
             self._scan_btn.setToolTip(
