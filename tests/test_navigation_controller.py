@@ -258,6 +258,5 @@ class TestNavigationController:
         ctrl.dispatch("artists")
         ctrl.navigate_back()
         assert ctrl._history.current_key == "albums", "back should return to albums"
-        assert win._search_text == "rock" or win._search.setText.called, (
-            "search text should be restored on navigate back")
+        win._search.setText.assert_any_call("rock")
 

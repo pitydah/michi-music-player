@@ -22,3 +22,5 @@ class TestMainWindowSmoke:
             assert hasattr(w, "_playlist_ctrl"), "Missing _playlist_ctrl"
         finally:
             w.close()
+            w.deleteLater()
+            qapp.processEvents()
