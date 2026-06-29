@@ -571,3 +571,39 @@ class TestHomeControllerUsesImportService:
         content = _read(os.path.join(_root(), "ui", "controllers", "home_controller.py"))
         assert "svc.scan_folder" in content or "_get_import_service" in content, (
             "HomeController must use LibraryImportService.scan_folder")
+
+
+class TestArtistEnrichmentWiring:
+    """_wire_enrichment_signals must connect signals when both services exist."""
+
+    def test_wire_enrichment_signals_connects_when_both_exist(self):
+        content = _read(os.path.join(_root(), "ui", "window.py"))
+        assert "def _wire_enrichment_signals" in content
+        assert "self._artist_enrich.artist_enriched.connect" in content
+        assert "self._artist_enrich.artist_image_loaded.connect" in content
+        assert "self._artist_enrich.enrichment_failed.connect" in content
+        assert "self._artist_ctrl.on_artist_enriched" in content
+        assert "self._artist_ctrl.on_artist_image_loaded" in content
+        assert "self._artist_ctrl.on_enrichment_failed" in content
+
+    def test_wire_enrichment_signals_called_after_controllers(self):
+        content = _read(os.path.join(_root(), "ui", "window.py"))
+        init_section = content.split("def __init__", 1)[1].split("def _init_state", 1)[0]
+        assert "_wire_enrichment_signals()" in init_section
+        # Must appear after _init_controllers
+        ctrl_pos = init_section.find("_init_controllers()")
+        wire_pos = init_section.find("_wire_enrichment_signals()")
+        assert wire_pos > ctrl_pos, (
+            "_wire_enrichment_signals must be called after _init_controllers")
+
+    def test_wire_enrichment_guards_missing_deps(self):
+        content = _read(os.path.join(_root(), "ui", "window.py"))
+        method = content.split("def _wire_enrichment_signals", 1)[1].split("\n    def ", 1)[0]
+        assert "if not getattr(self, '_artist_enrich', None) or not getattr(self, '_artist_ctrl', None):" in method
+        assert "return" in method
+
+    def test_artist_enrich_registered_in_optional_services(self):
+        content = _read(os.path.join(_root(), "ui", "window.py"))
+        assert 'self._features.register("enrichment"' in content
+        assert "self._artist_enrich = self._safe_init" in content
+        assert "_make_artist_enrichment()" in content
