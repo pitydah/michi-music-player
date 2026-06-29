@@ -66,7 +66,7 @@ class TestPlaybackContextBridge:
         ctrl = PlaybackController(win)
         ctrl.connect_context_events(playback=pb, context_svc=ctx)
 
-        handler = pb.queue_changed.connect.call_args[0][0]
+        handler = pb.queue_changed.connect.call_args_list[0][0][0]
         handler([{"filepath": "/a.flac"}, {"filepath": "/b.flac"}])
         ctx.record_queue_updated.assert_called_once_with(count=2, source="playback")
 

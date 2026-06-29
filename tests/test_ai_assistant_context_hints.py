@@ -21,6 +21,10 @@ class TestAssistantContextHints:
                 "track", "album", "artist", "genre", "playlist",
                 "mix", "search",
             },
+            "can_play_selection": scope in {
+                "track", "album", "artist", "genre", "playlist",
+                "mix", "folder", "search",
+            },
         }
         caps.update(overrides)
         return {"selection_scope": scope, "assistant_capabilities": caps}

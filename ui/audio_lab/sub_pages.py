@@ -200,7 +200,7 @@ class AudioLabIdentifierPage(QWidget):
             ("sidebar_mix", "Letras",
              "Edita letras sincronizadas o simples para tus\n"
              "canciones.",
-             "proximamente", ""),
+             "disponible", "audio_lab_lyrics"),
         ]
         for idx, (icon, title_t, desc, status, nav) in enumerate(cards):
             card = _build_sub_card(self, icon, title_t, desc, status, nav)
