@@ -267,10 +267,10 @@ class AudioLabBackupPage(QWidget):
              "Captura desde tu ADC/platina, separa pistas\n"
              "y exporta a FLAC de alta resolución.",
              "disponible", "audio_lab_vinyl_lab"),
-            ("sidebar_mix", "Convertir Formatos",
-             "Convierte entre formatos preservando\n"
-             "metadatos y carátulas.",
-             "proximamente", ""),
+             ("sidebar_mix", "Convertir Formatos",
+              "Convierte entre formatos preservando\n"
+              "metadatos y carátulas.",
+              "disponible", "audio_lab_conversion"),
             ("sidebar_folders", "Organizar Archivos",
              "Renombra y reorganiza tu biblioteca por\n"
              "plantillas personalizadas.",

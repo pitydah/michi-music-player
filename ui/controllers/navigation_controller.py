@@ -111,6 +111,10 @@ SECTION_CONFIG: dict[str, dict] = {
                             "subtitle": "Digitaliza vinilos desde tu ADC, separa pistas y exporta a FLAC",
                             "icon": "home_audio", "views": [],
                             "search": False, "default": None},
+    "audio_lab_conversion": {"title": "Convertir Formatos",
+                             "subtitle": "Convierte archivos de audio entre formatos preservando metadatos",
+                             "icon": "sidebar_mix", "views": [],
+                             "search": False, "default": None},
     "audio_lab_intelligence": {"title": "Inteligencia Local",
                                "subtitle": "Extrae BPM, key y energía, genera radio local y recomendaciones",
                                "icon": "sidebar_mix", "views": [],
@@ -191,7 +195,8 @@ def resolve_sidebar_active_key(key: str) -> str:
     if key in ("metadata_editor", "metadata_review", "michi_disc_lab", "identifier",
                "audio_lab_diagnostics", "audio_lab_identifier",
                "audio_lab_backup", "audio_lab_output",
-               "audio_lab_intelligence", "audio_lab_vinyl_lab"):
+               "audio_lab_intelligence", "audio_lab_conversion",
+               "audio_lab_vinyl_lab"):
         return "audio_lab"
     # Settings (ya no está en sidebar, pero la ruta sigue siendo válida)
     if key in ("settings_hub", "settings"):
@@ -222,6 +227,7 @@ NAV_ROUTES: dict[str, str] = {
     "audio_lab_backup": "_show_audio_lab_backup",
     "audio_lab_output": "_show_audio_lab_output",
     "audio_lab_intelligence": "_show_audio_lab_intelligence",
+    "audio_lab_conversion": "_show_audio_lab_conversion",
     "audio_lab_vinyl_lab": "_show_audio_lab_vinyl_lab",
     "michi_disc_lab": "_show_michi_disc_lab",
     "home": "_show_home_page",
@@ -544,6 +550,7 @@ class NavigationController(QObject):
             "audio_lab_backup": "Audio Lab",
             "audio_lab_output": "Audio Lab",
             "audio_lab_intelligence": "Audio Lab",
+            "audio_lab_conversion": "Audio Lab",
             "audio_lab_vinyl_lab": "Audio Lab",
             "settings_hub": "Configuración", "home_audio": "Home Audio",
             "library": "Biblioteca", "albums": "Biblioteca",
@@ -559,6 +566,7 @@ class NavigationController(QObject):
                                          "audio_lab_backup",
                                          "audio_lab_output",
                                          "audio_lab_intelligence",
+                                         "audio_lab_conversion",
                                          "audio_lab_vinyl_lab"):
             return f"{hub} / {subtitle}" if subtitle else hub
         return subtitle

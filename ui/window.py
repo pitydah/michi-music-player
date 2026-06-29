@@ -980,6 +980,9 @@ class MainWindow(QMainWindow):
     def _show_audio_lab_intelligence(self, key=None):
         self._hub_route_ctrl.show_audio_lab_intelligence(key)
 
+    def _show_audio_lab_conversion(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_conversion(key)
+
     def _show_audio_lab_vinyl_lab(self, key=None):
         self._hub_route_ctrl.show_audio_lab_vinyl_lab(key)
 
