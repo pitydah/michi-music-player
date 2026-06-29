@@ -338,7 +338,7 @@ class MichiDiscLabPage(QWidget):
             self._track_table.setItem(i, 0, QTableWidgetItem(str(track.get("number", i + 1))))
             self._track_table.setItem(i, 1, QTableWidgetItem(f"Pista {track.get('number', i + 1)}"))
             self._track_table.setItem(i, 2, QTableWidgetItem("Desconocido"))
-            dur = track.get("duration", 0)
+            dur = track.get("duration") or 0
             m = int(dur // 60)
             s = int(dur % 60)
             self._track_table.setItem(i, 3, QTableWidgetItem(f"{m}:{s:02d}"))
