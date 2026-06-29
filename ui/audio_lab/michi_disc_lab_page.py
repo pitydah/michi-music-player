@@ -362,10 +362,10 @@ class MichiDiscLabPage(QWidget):
             self._drive_status.setText("Selecciona una carpeta de destino primero.")
             return
 
-        profile_idx = self._profile_combo.currentIndex()
-        profile_name = (self._profile_data[profile_idx]
-                        if 0 <= profile_idx < len(self._profile_data)
-                        else "wav")
+        profile_name = self._profile_combo.currentData()
+        if not profile_name:
+            self._drive_status.setText("Selecciona un perfil disponible.")
+            return
         mode_value = self._mode_combo.currentData() or "fast"
 
         job = self._rip_manager.create_job(

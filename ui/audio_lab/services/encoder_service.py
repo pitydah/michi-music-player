@@ -27,7 +27,9 @@ class EncoderService(QObject):
             "ffmpeg": shutil.which("ffmpeg") is not None,
         }
 
-    def _on_encoder_error(self, error: QProcess.ProcessError, input_path: str):
+    def _on_encoder_error(self, error: QProcess.ProcessError, input_path: str, proc=None):
+        if proc:
+            self._cleanup_process(proc)
         label = {
             QProcess.FailedToStart: "Programa no encontrado. ¿Está instalado?",
             QProcess.Crashed: "El proceso se detuvo inesperadamente.",
@@ -48,7 +50,7 @@ class EncoderService(QObject):
             self._on_flac_done(ec, es, ip, op)
         )
         proc.errorOccurred.connect(
-            lambda err, ip=input_path: self._on_encoder_error(err, ip)
+            lambda err, ip=input_path, p=proc: self._on_encoder_error(err, ip, p)
         )
         proc.start("flac", [
             "--best" if compression >= 8 else f"-{compression}",
@@ -67,7 +69,7 @@ class EncoderService(QObject):
             self._on_encode_done(ec, es, ip, op)
         )
         proc.errorOccurred.connect(
-            lambda err, ip=input_path: self._on_encoder_error(err, ip)
+            lambda err, ip=input_path, p=proc: self._on_encoder_error(err, ip, p)
         )
         proc.start("lame", [
             "-b", str(bitrate), "--quiet", input_path, output_path,
@@ -85,7 +87,7 @@ class EncoderService(QObject):
             self._on_encode_done(ec, es, ip, op)
         )
         proc.errorOccurred.connect(
-            lambda err, ip=input_path: self._on_encoder_error(err, ip)
+            lambda err, ip=input_path, p=proc: self._on_encoder_error(err, ip, p)
         )
         proc.start("opusenc", [
             "--bitrate", str(bitrate), "--quiet", input_path, output_path,
@@ -103,7 +105,7 @@ class EncoderService(QObject):
             self._on_encode_done(ec, es, ip, op)
         )
         proc.errorOccurred.connect(
-            lambda err, ip=input_path: self._on_encoder_error(err, ip)
+            lambda err, ip=input_path, p=proc: self._on_encoder_error(err, ip, p)
         )
         proc.start("ffmpeg", [
             "-y", "-i", input_path, "-acodec", "alac", output_path,
