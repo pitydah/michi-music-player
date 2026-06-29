@@ -166,7 +166,7 @@ MICHI_SAFE_MODE=1 \
 MICHI_TEST_DATA_DIR="$TMPDIR/michi-test-data" \
 MICHI_TEST_CACHE_DIR="$TMPDIR/michi-test-cache" \
 MICHI_TEST_CONFIG_DIR="$TMPDIR/michi-test-config" \
-python3 -m pytest -q || { echo "  TEST FAILED"; exit 1; }
+python3 -m pytest -q --timeout=120 || { echo "  TEST FAILED"; exit 1; }
 echo "  OK"
 
 echo

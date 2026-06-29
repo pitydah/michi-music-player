@@ -129,6 +129,7 @@ jobs:
           "
 
       - name: Tests (pytest)
+        timeout-minutes: 5
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONUNBUFFERED: 1
@@ -138,13 +139,14 @@ jobs:
           MICHI_TEST_CONFIG_DIR: ${{ runner.temp }}/michi-test-config
         run: |
           source .venv/bin/activate
-          pytest -q
+          python3 -m pytest -q --timeout=120
 
       - name: Performance tests (optional)
         continue-on-error: true
+        timeout-minutes: 3
         env:
           QT_QPA_PLATFORM: offscreen
           MICHI_SAFE_MODE: 1
         run: |
           source .venv/bin/activate
-          pytest -q -m perf
+          python3 -m pytest -q -m perf --timeout=120
