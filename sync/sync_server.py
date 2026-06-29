@@ -19,6 +19,7 @@ import logging
 import os
 import json
 import threading
+import time
 import secrets
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -60,6 +61,22 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         return self.rfile.read(length).decode("utf-8") if length else ""
 
+    # ── Rate limiting (simple IP-based) ──
+
+    _failed_attempts: dict[str, list[float]] = {}  # IP → [timestamps]
+
+    def _check_rate_limit(self, ip: str) -> bool:
+        now = time.time()
+        attempts = self._failed_attempts.get(ip, [])
+        # Prune entries older than 5 minutes
+        attempts = [t for t in attempts if now - t < 300.0]
+        self._failed_attempts[ip] = attempts
+        return len(attempts) < 5
+
+    def _record_failed_attempt(self, ip: str):
+        now = time.time()
+        self._failed_attempts.setdefault(ip, []).append(now)
+
     # ── Auth middleware ──
 
     def _check_token(self) -> str | None:
@@ -80,8 +97,10 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         return session
 
     def _require_permission(self, permission: str) -> bool:
-        """Validate that the device token has a specific permission.
-        Returns True if authorized, sends error and returns False otherwise.
+        """Validate token against persistent DeviceRegistry.
+        Priority:
+          1. X-Michi-Device-Id header → validate against registry directly
+          2. Fallback: in-memory session (legacy compat)
         """
         auth = self.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
@@ -93,20 +112,28 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             self._send_error("Server not ready", 503)
             return False
 
-        # Resolve device_id from in-memory session
-        session = srv._sessions.get(token)
-        if session is None or session.is_expired():
-            self._send_error("Unauthorized", 401)
-            return False
-        device_id = session.client_device_id
-        if not device_id:
-            self._send_error("Invalid token: no device id", 401)
-            return False
+        # Primary: resolve device_id from X-Michi-Device-Id
+        device_id = self.headers.get("X-Michi-Device-Id", "")
 
-        # Re-validate token against persisted registry
-        if not srv._device_registry.validate_token(device_id, token):
-            self._send_error("Token revoked or invalid", 403)
-            return False
+        if device_id:
+            # Validate against persisted registry (works across restarts)
+            if not srv._device_registry.validate_token(device_id, token):
+                self._send_error("Token revoked or invalid", 403)
+                return False
+        else:
+            # Fallback: in-memory session (legacy clients)
+            session = srv._sessions.get(token)
+            if session is None or session.is_expired():
+                self._send_error("Unauthorized", 401)
+                return False
+            device_id = session.client_device_id
+            if not device_id:
+                self._send_error("Invalid token: no device id", 401)
+                return False
+            # Also re-validate against registry if we can
+            if not srv._device_registry.validate_token(device_id, token):
+                self._send_error("Token revoked or invalid", 403)
+                return False
 
         if not srv._device_registry.has_permission(device_id, permission):
             self._send_error("Forbidden: insufficient permissions", 403)
@@ -131,10 +158,14 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"status": "ok", "version": "1.0"})
 
         elif path == "/api/discovery/info":
+            has_account = bool(srv and srv._local_account and srv._local_account.exists())
             self._send_json({
                 "server": "MichiMusicPlayer",
+                "server_alias": srv._alias if srv else "Michi Music Player",
                 "version": "1.0",
-                "requires_pairing": bool(srv and srv._local_account and srv._local_account.exists()),
+                "requires_pairing": has_account,
+                "auth_methods": ["password"] if has_account else [],
+                "server_device_id": make_device_id(),
             })
 
         # ── Protected: sync.read_manifest ──
@@ -346,18 +377,23 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 req = PairStartRequest.from_json(body)
             except Exception:
                 return self._send_error("Invalid request", 400)
-            client_id = req.client_device_id or f"{req.alias}_{req.device_model or req.device}"
-            server_id = make_device_id()
             has_account = bool(srv and srv._local_account and srv._local_account.exists())
+            server_alias = srv._alias if srv else "Michi Music Player"
             resp = PairStartResponse(
-                paired=False,
-                server_device_id=server_id,
-                requires_auth=has_account,
+                pairing_id=str(secrets.token_hex(8)),
+                auth_methods=["password"] if has_account else [],
+                server_alias=server_alias,
+                auth_required=has_account,
+                server_device_id=make_device_id(),
             )
             self._send_json(json.loads(resp.to_json()))
 
         # ── Public: pair/confirm ──
         elif path == "/api/pair/confirm":
+            client_ip = self.client_address[0]
+            if not self._check_rate_limit(client_ip):
+                return self._send_error("Too many attempts, try later", 429)
+
             try:
                 req = PairConfirmRequest.from_json(body)
             except Exception:
@@ -365,41 +401,48 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             if srv is None:
                 return self._send_error("Server not ready", 503)
 
-            # Auth verification
-            if srv._local_account and srv._local_account.exists():
-                if not req.username or not req.password:
-                    resp = PairConfirmResponse(
-                        success=False, error="Username and password required")
-                    self._send_json(json.loads(resp.to_json()))
-                    return
-                if not srv._local_account.verify(req.password):
-                    logger.warning("Pairing failed: invalid credentials for '%s'", req.username)
-                    resp = PairConfirmResponse(
-                        success=False, error="Invalid credentials")
-                    self._send_json(json.loads(resp.to_json()))
-                    return
-                if req.username != srv._local_account.get_username():
-                    resp = PairConfirmResponse(
-                        success=False, error="Invalid username")
-                    self._send_json(json.loads(resp.to_json()))
-                    return
-
             client_id = req.client_device_id
             if not client_id:
-                resp = PairConfirmResponse(
-                    success=False, error="Missing client_device_id")
-                self._send_json(json.loads(resp.to_json()))
+                self._send_json(json.loads(PairConfirmResponse(
+                    success=False, error="Missing client_device_id").to_json()))
                 return
+
+            # Auth verification
+            acct_exists = bool(srv._local_account and srv._local_account.exists())
+            if acct_exists and (
+                not req.username or not req.password or
+                req.username != srv._local_account.get_username() or
+                not srv._local_account.verify(req.password)
+            ):
+                self._record_failed_attempt(client_ip)
+                logger.warning("Pairing failed: invalid credentials from %s (user=%s)",
+                               client_ip, req.username)
+                self._send_json(json.loads(PairConfirmResponse(
+                    success=False, error="Invalid credentials").to_json()))
+                return
+
+            # Register device if new
+            registry = srv._device_registry
+            if registry and not registry.get(client_id):
+                    registry.register(
+                        device_id=client_id,
+                        name=req.alias or client_id,
+                        host=client_ip,
+                        port=req.port or 0,
+                        device_type="android",
+                        device_model=req.device_model,
+                        client_version=req.client_version,
+                    )
 
             # Generate persistent token
             token_str = secrets.token_hex(32)
             server_id = make_device_id()
 
             # Persist in registry
-            if srv._device_registry:
-                srv._device_registry.set_token(client_id, token_str)
+            if registry:
+                registry.set_token(client_id, token_str)
 
-            # In-memory session
+            # In-memory session (for legacy fallback)
             session = SessionToken(
                 token=token_str,
                 device_alias=client_id,
@@ -408,18 +451,29 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             with srv._sessions_lock:
                 srv._sessions[token_str] = session
 
+            default_perms = [
+                "sync.read_manifest", "sync.download_tracks",
+                "sync.download_covers", "sync.download_playlists",
+                "sync.upload_state",
+            ]
             resp = PairConfirmResponse(
                 success=True,
-                session_token=token_str,
+                device_id=client_id,
+                device_token=token_str,
+                permissions=default_perms,
                 server_device_id=server_id,
+                server_alias=srv._alias if srv else "Michi Music Player",
             )
             srv.client_connected.emit(client_id)
             self._send_json(json.loads(resp.to_json()))
 
-        # ── Legacy register: respond with error when account exists ──
+        # ── Legacy register: blocked when local account exists ──
         elif path == "/api/register":
             if srv and srv._local_account and srv._local_account.exists():
-                return self._send_error("Use /api/pair/start and /api/pair/confirm", 403)
+                return self._send_json({
+                    "error": "pairing_required",
+                    "message": "Use /api/pair/start and /api/pair/confirm",
+                }, 403)
             # Fallback for backward compatibility (no local account)
             try:
                 req = RegisterRequest.from_json(body)
@@ -488,8 +542,10 @@ class SyncServer(QObject):
     server_stopped = Signal()
     sync_error = Signal(str)
 
-    def __init__(self, db: LibraryDB, port: int = 53318, parent=None):
+    def __init__(self, db: LibraryDB, port: int = 53318, parent=None,
+                 alias: str = "Michi Music Player"):
         super().__init__(parent)
+        self._alias = alias
         self._db = db
         self._port = port
         self._httpd: HTTPServer | None = None

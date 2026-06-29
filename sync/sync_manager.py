@@ -26,7 +26,8 @@ class SyncManager(QObject):
     def __init__(self, db: LibraryDB, parent=None):
         super().__init__(parent)
         self._db = db
-        self._server = SyncServer(db, parent=self)
+        self._server = SyncServer(db, parent=self,
+            alias=self._load_alias())
         self._discovery = DiscoveryServer(
             alias=self._load_alias(), parent=self)
         self._active = False
@@ -57,6 +58,7 @@ class SyncManager(QObject):
         if self._active:
             return
         self._active = True
+        self._discovery._auth_required = self._local_account.exists()
         self._server.start()
         self._discovery.start()
 

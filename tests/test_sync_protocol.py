@@ -194,6 +194,72 @@ class TestMakeTrackId:
         assert t1 != t2
 
 
+class TestPairStartResponse:
+    def test_contract(self):
+        from sync.sync_protocol import PairStartResponse
+        resp = PairStartResponse(
+            pairing_id="abc123",
+            auth_methods=["password"],
+            server_alias="Michi Music Player",
+            auth_required=True,
+            server_device_id="srv001",
+        )
+        j = json.loads(resp.to_json())
+        assert j["pairing_id"] == "abc123"
+        assert j["auth_methods"] == ["password"]
+        assert j["server_alias"] == "Michi Music Player"
+        assert j["auth_required"] is True
+        assert j["server_device_id"] == "srv001"
+        assert j["version"] == "1.0"
+
+
+class TestPairConfirmRequest:
+    def test_from_json_with_alias(self):
+        from sync.sync_protocol import PairConfirmRequest
+        j = '{"client_device_id": "android_123", "alias": "My Phone", "device_model": "Pixel", "port": 53318, "username": "user", "password": "pass"}'
+        req = PairConfirmRequest.from_json(j)
+        assert req.client_device_id == "android_123"
+        assert req.alias == "My Phone"
+        assert req.device_model == "Pixel"
+        assert req.port == 53318
+
+    def test_from_json_minimal(self):
+        from sync.sync_protocol import PairConfirmRequest
+        j = '{"client_device_id": "android_123", "username": "u", "password": "p"}'
+        req = PairConfirmRequest.from_json(j)
+        assert req.client_device_id == "android_123"
+        assert req.alias == ""
+        assert req.device_model == ""
+
+
+class TestPairConfirmResponse:
+    def test_contract(self):
+        from sync.sync_protocol import PairConfirmResponse
+        resp = PairConfirmResponse(
+            success=True,
+            device_id="android_123",
+            device_token="tok_abc",
+            permissions=["sync.read_manifest", "sync.download_tracks"],
+            server_device_id="srv001",
+            server_alias="Michi Music Player",
+        )
+        j = json.loads(resp.to_json())
+        assert j["success"] is True
+        assert j["device_id"] == "android_123"
+        assert j["device_token"] == "tok_abc"
+        assert j["permissions"] == ["sync.read_manifest", "sync.download_tracks"]
+        assert j["server_device_id"] == "srv001"
+        assert j["server_alias"] == "Michi Music Player"
+        assert j["session_token"] == ""
+
+    def test_error_response(self):
+        from sync.sync_protocol import PairConfirmResponse
+        resp = PairConfirmResponse(success=False, error="Invalid credentials")
+        j = json.loads(resp.to_json())
+        assert j["success"] is False
+        assert j["error"] == "Invalid credentials"
+
+
 class TestMakeDeviceId:
     def test_returns_string(self):
         from sync.sync_protocol import make_device_id

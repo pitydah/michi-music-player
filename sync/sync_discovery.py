@@ -25,9 +25,11 @@ class DiscoveryServer(QObject):
     discovery_stopped = Signal()
     error_occurred = Signal(str)
 
-    def __init__(self, alias: str = "MichiMusicPlayer", parent=None):
+    def __init__(self, alias: str = "MichiMusicPlayer", parent=None,
+                 auth_required: bool = False):
         super().__init__(parent)
         self._alias = alias
+        self._auth_required = auth_required
         self._running = False
         self._thread: threading.Thread | None = None
         self._sock: socket.socket | None = None
@@ -104,9 +106,12 @@ class DiscoveryServer(QObject):
             self._sock = None
 
     def _announce(self):
+        from sync.sync_protocol import make_device_id
         msg = AnnounceMessage(
             type="announce", alias=self._alias,
             device="desktop", port=MULTICAST_PORT,
+            device_id=make_device_id(),
+            auth_required=self._auth_required,
         )
         self._send(msg)
 

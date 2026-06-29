@@ -164,9 +164,11 @@ class PairStartRequest:
 
 @dataclass
 class PairStartResponse:
-    paired: bool
-    server_device_id: str
-    requires_auth: bool = True
+    pairing_id: str = ""
+    auth_methods: list[str] = field(default_factory=lambda: ["password"])
+    server_alias: str = "Michi Music Player"
+    auth_required: bool = True
+    server_device_id: str = ""
     version: str = "1.0"
 
     def to_json(self) -> str:
@@ -179,6 +181,10 @@ class PairConfirmRequest:
     username: str = ""
     password: str = ""
     pairing_code: str = ""
+    alias: str = ""
+    device_model: str = ""
+    port: int = 0
+    client_version: str = ""
 
     @classmethod
     def from_json(cls, s: str) -> "PairConfirmRequest":
@@ -190,8 +196,13 @@ class PairConfirmRequest:
 @dataclass
 class PairConfirmResponse:
     success: bool
+    device_id: str = ""
+    device_token: str = ""
+    refresh_token: str = ""
+    permissions: list[str] = field(default_factory=list)
     session_token: str = ""
     server_device_id: str = ""
+    server_alias: str = "Michi Music Player"
     error: str = ""
 
     def to_json(self) -> str:
@@ -236,6 +247,7 @@ class AnnounceMessage:
     version: str = "1.0"
     device_model: str = ""
     device_id: str = ""
+    auth_required: bool = False
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
