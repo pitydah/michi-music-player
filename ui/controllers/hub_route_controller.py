@@ -91,6 +91,46 @@ class HubRouteController:
             return DevicesPage(db=w._db, sync_manager=sync_mgr)
         self._lazy("devices_page", _build)
 
+    def show_audio_lab_diagnostics(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.sub_pages import AudioLabDiagnosticsPage
+            page = AudioLabDiagnosticsPage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_diagnostics", _build)
+
+    def show_audio_lab_identifier(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.sub_pages import AudioLabIdentifierPage
+            page = AudioLabIdentifierPage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_identifier", _build)
+
+    def show_audio_lab_backup(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.sub_pages import AudioLabBackupPage
+            page = AudioLabBackupPage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_backup", _build)
+
+    def show_audio_lab_output(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.sub_pages import AudioLabOutputPage
+            page = AudioLabOutputPage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_output", _build)
+
+    def show_audio_lab_intelligence(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.sub_pages import AudioLabIntelligencePage
+            page = AudioLabIntelligencePage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_intelligence", _build)
+
     def show_metadata_review(self, key: str = ""):
         def _build():
             from ui.metadata_review_panel import MetadataReviewPanel

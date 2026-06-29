@@ -151,6 +151,11 @@ class MainWindow(QMainWindow):
         self._metadata_review_panel = None
         self._metadata_review_ctrl = None
         self._audio_lab_page = None
+        self._audio_lab_diagnostics_page = None
+        self._audio_lab_identifier_page = None
+        self._audio_lab_backup_page = None
+        self._audio_lab_output_page = None
+        self._audio_lab_intelligence_page = None
         self._michi_disc_lab_page = None
         self._library_hub_page = None
         self._mix_hub_page = None
@@ -959,6 +964,21 @@ class MainWindow(QMainWindow):
 
     def _show_audio_lab(self, key=None):
         self._hub_route_ctrl.show_audio_lab(key)
+
+    def _show_audio_lab_diagnostics(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_diagnostics(key)
+
+    def _show_audio_lab_identifier(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_identifier(key)
+
+    def _show_audio_lab_backup(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_backup(key)
+
+    def _show_audio_lab_output(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_output(key)
+
+    def _show_audio_lab_intelligence(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_intelligence(key)
 
     def _show_michi_disc_lab(self, key=None):
         self._hub_route_ctrl.show_michi_disc_lab(key)

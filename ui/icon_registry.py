@@ -137,6 +137,26 @@ ICON_REGISTRY: dict[str, IconSpec] = {
         key="audio_lab", path="icons/sidebar_clean/sidebar_mix_24.png",
         family="sidebar", symbolic=True,
         description="Audio Lab"),
+    "audio_lab_diagnostics": IconSpec(
+        key="audio_lab_diagnostics", path="icons/sidebar_clean/sidebar_identifier_24.png",
+        family="sidebar", symbolic=True,
+        description="Audio Lab — Diagnóstico"),
+    "audio_lab_identifier": IconSpec(
+        key="audio_lab_identifier", path="icons/sidebar/metadata.svg",
+        family="sidebar", symbolic=True, render_mode="native_color",
+        description="Audio Lab — Identificador de Audios"),
+    "audio_lab_backup": IconSpec(
+        key="audio_lab_backup", path="icons/sidebar_devices.svg",
+        family="sidebar", symbolic=True, render_mode="symbolic_tint",
+        description="Audio Lab — Respaldar"),
+    "audio_lab_output": IconSpec(
+        key="audio_lab_output", path="icons/sidebar/home-audio.svg",
+        family="sidebar", symbolic=True, render_mode="native_color",
+        description="Audio Lab — Perfiles de Salida"),
+    "audio_lab_intelligence": IconSpec(
+        key="audio_lab_intelligence", path="icons/sidebar_clean/sidebar_mix_24.png",
+        family="sidebar", symbolic=True,
+        description="Audio Lab — Inteligencia Local"),
 
     # ── NowPlaying actions ──
     "warm_play": IconSpec(

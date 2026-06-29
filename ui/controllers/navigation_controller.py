@@ -88,9 +88,29 @@ SECTION_CONFIG: dict[str, dict] = {
                          "icon": "metadata_editor", "views": [],
                          "search": False, "default": None},
     "audio_lab":      {"title": "Audio Lab",
-                        "subtitle": "Importa, corrige y enriquece tu colección",
-                        "icon": "sidebar_mix", "views": [],
-                        "search": False, "default": None},
+                         "subtitle": "Preserva, analiza y optimiza tu música",
+                         "icon": "sidebar_mix", "views": [],
+                         "search": False, "default": None},
+    "audio_lab_diagnostics": {"title": "Diagnóstico",
+                              "subtitle": "Analiza calidad, detecta formatos falsos y verifica tu biblioteca",
+                              "icon": "sidebar_identifier", "views": [],
+                              "search": False, "default": None},
+    "audio_lab_identifier": {"title": "Identificador de Audios",
+                             "subtitle": "Edita metadatos, identifica con MusicBrainz, gestiona carátulas y letras",
+                             "icon": "metadata_editor", "views": [],
+                             "search": False, "default": None},
+    "audio_lab_backup": {"title": "Respaldar",
+                         "subtitle": "Ripea CDs, digitaliza vinilos, convierte formatos y organiza archivos",
+                         "icon": "sidebar_devices", "views": [],
+                         "search": False, "default": None},
+    "audio_lab_output": {"title": "Perfiles de Salida",
+                         "subtitle": "Configura salida bit-perfect, upsampling, corrección de sala y perfiles DAC",
+                         "icon": "home_audio", "views": [],
+                         "search": False, "default": None},
+    "audio_lab_intelligence": {"title": "Inteligencia Local",
+                               "subtitle": "Extrae BPM, key y energía, genera radio local y recomendaciones",
+                               "icon": "sidebar_mix", "views": [],
+                               "search": False, "default": None},
     "michi_disc_lab": {"title": "Michi Disc Lab",
                        "subtitle": "Importación Hi-Fi y ripeo seguro de CDs",
                        "icon": "sidebar_mix", "views": [],
@@ -164,7 +184,10 @@ def resolve_sidebar_active_key(key: str) -> str:
     if key.startswith("dev:") or key in ("devices",):
         return "devices_page"
     # Hijos de audio_lab
-    if key in ("metadata_editor", "metadata_review", "michi_disc_lab", "identifier"):
+    if key in ("metadata_editor", "metadata_review", "michi_disc_lab", "identifier",
+               "audio_lab_diagnostics", "audio_lab_identifier",
+               "audio_lab_backup", "audio_lab_output",
+               "audio_lab_intelligence"):
         return "audio_lab"
     # Settings (ya no está en sidebar, pero la ruta sigue siendo válida)
     if key in ("settings_hub", "settings"):
@@ -190,6 +213,11 @@ NAV_ROUTES: dict[str, str] = {
     "assistant": "_show_assistant",
     "metadata_review": "_show_metadata_review",
     "audio_lab": "_show_audio_lab",
+    "audio_lab_diagnostics": "_show_audio_lab_diagnostics",
+    "audio_lab_identifier": "_show_audio_lab_identifier",
+    "audio_lab_backup": "_show_audio_lab_backup",
+    "audio_lab_output": "_show_audio_lab_output",
+    "audio_lab_intelligence": "_show_audio_lab_intelligence",
     "michi_disc_lab": "_show_michi_disc_lab",
     "home": "_show_home_page",
     "library_hub": "_show_library_hub_page",
@@ -506,6 +534,11 @@ class NavigationController(QObject):
             "home": "Inicio", "library_hub": "Biblioteca", "mix_hub": "Mix",
             "playback_hub": "Reproducción", "connections_hub": "Conexiones",
             "radio": "Radio", "audio_lab": "Audio Lab",
+            "audio_lab_diagnostics": "Audio Lab",
+            "audio_lab_identifier": "Audio Lab",
+            "audio_lab_backup": "Audio Lab",
+            "audio_lab_output": "Audio Lab",
+            "audio_lab_intelligence": "Audio Lab",
             "settings_hub": "Configuración", "home_audio": "Home Audio",
             "library": "Biblioteca", "albums": "Biblioteca",
             "artists": "Biblioteca", "genres": "Biblioteca",
@@ -514,6 +547,11 @@ class NavigationController(QObject):
         hub = hub_names.get(prev_key, "")
         if hub and section_key not in ("home", "library_hub", "mix_hub",
                                          "playback_hub", "connections_hub",
-                                         "settings_hub", "audio_lab"):
+                                         "settings_hub", "audio_lab",
+                                         "audio_lab_diagnostics",
+                                         "audio_lab_identifier",
+                                         "audio_lab_backup",
+                                         "audio_lab_output",
+                                         "audio_lab_intelligence"):
             return f"{hub} / {subtitle}" if subtitle else hub
         return subtitle
