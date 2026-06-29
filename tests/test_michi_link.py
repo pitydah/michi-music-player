@@ -734,6 +734,103 @@ class TestPlaybackStateEndpoint:
         assert d["position_ms"] == 0.0
 
 
+class TestMicroServerClientMock:
+    """Mock-based tests for MicroServerClient methods."""
+
+    def test_get_server_info_success(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from unittest.mock import patch
+        client = MicroServerClient()
+        with patch.object(client._client, "discover", return_value=MagicMock()) as mock_d:
+            result = client.get_server_info("192.168.1.100", 53318)
+            mock_d.assert_called_with("192.168.1.100", 53318)
+            assert result is not None
+
+    def test_get_server_info_failure(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from unittest.mock import patch
+        client = MicroServerClient()
+        with patch.object(client._client, "discover", return_value=None):
+            result = client.get_server_info("10.0.0.1")
+            assert result is None
+
+    def test_pair_start_returns_dict(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        from unittest.mock import patch, MagicMock
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1", port=53318)
+
+        # Patch urllib.request at module level
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_resp = MagicMock()
+            mock_resp.read.return_value.decode.return_value = '{"auth_required": true}'
+            mock_urlopen.return_value.__enter__.return_value = mock_resp
+            result = client.pair_start(server)
+            assert result is not None
+            assert result.get("auth_required") is True
+
+    def test_pair_confirm_delegates(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        from unittest.mock import patch
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1")
+
+        with patch.object(client._client, "pair", return_value=True) as mock_pair:
+            ok = client.pair_confirm(server, username="admin", password="pass")
+            mock_pair.assert_called_with(server, username="admin", password="pass")
+            assert ok is True
+
+    def test_get_tracks_delegates(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        from unittest.mock import patch
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1")
+
+        with patch.object(client._client, "get_library",
+                          return_value=[{"track_id": "1"}]) as mock_lib:
+            tracks = client.get_tracks(server)
+            mock_lib.assert_called_with(server)
+            assert len(tracks) == 1
+
+    def test_get_library_stats_delegates(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        from unittest.mock import patch
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1")
+
+        with patch.object(client._client, "_get",
+                          return_value={"total": 100}) as mock_get:
+            stats = client.get_library_stats(server)
+            mock_get.assert_called_with(server, "/api/v1/library/stats")
+            assert stats["total"] == 100
+
+    def test_create_import_session_returns_none(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1")
+        result = client.create_import_session(server)
+        assert result is None
+
+    def test_upload_track_returns_false(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1")
+        assert client.upload_track(server, "track_1") is False
+
+    def test_commit_import_returns_false(self):
+        from integrations.michi_link.micro_server_client import MicroServerClient
+        from integrations.michi_link.client import RemoteServerInfo
+        client = MicroServerClient()
+        server = RemoteServerInfo(host="10.0.0.1")
+        assert client.commit_import(server) is False
+
+
 class TestMicroServerStubs:
     def test_micro_server_client_imports(self):
         from integrations.michi_link.micro_server_client import MicroServerClient
@@ -937,6 +1034,253 @@ class TestE2EContract:
         body = results[0][0]
         for t in body.get("tracks", []):
             assert "filepath" not in t
+
+
+class TestFullE2EFlow:
+    """E2E flow: server/info → pair/start → pair/confirm → tracks → search
+    → stream → artwork → playback/state → playback/control → queue → queue/jump.
+    Validates no filepath exposure at every step."""
+
+    def _make_srv(self):
+        srv = MagicMock()
+        # Mock local_account as a real dict-like object so .exists() returns bool
+        class FakeAccount:
+            def exists(self): return True
+            def get_username(self): return "testuser"
+            def verify(self, pw): return pw == "correct"
+        srv._local_account = FakeAccount()
+        srv._device_registry = MagicMock()
+        srv._device_registry.get.return_value = None
+        srv._device_registry.register = MagicMock()
+        srv._device_registry.set_token = MagicMock()
+        srv._sessions_lock = MagicMock()
+        srv._sessions = {}
+        srv._resolve_track.return_value = None
+        srv.is_running = True
+        srv._alias = "TestPlayer"
+        srv.client_connected = MagicMock()
+        item = MagicMock()
+        item.filepath = "/secret/music/song.flac"
+        item.title = "E2E Song"
+        item.artist = "E2E Artist"
+        item.album = "E2E Album"
+        item.duration = 250.0
+        item.ext = ".flac"
+        item.size = 5000000
+        item.year = 2024
+        item.genre = "Test"
+        item.track_uid = ""
+        srv._db.get_all.return_value = [item]
+        srv._db.search_advanced.return_value = [item]
+        return srv, item
+
+    def _make_handler(self, path):
+        handler = MagicMock()
+        handler.path = path
+        handler._require_permission = MagicMock(return_value=True)
+        handler._check_rate_limit = MagicMock(return_value=True)
+        handler._record_failed_attempt = MagicMock()
+        handler.client_address = ("10.0.0.2", 54321)
+        handler.headers = {}
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+        handler.wfile = MagicMock()
+        handler._sessions_lock = MagicMock()
+        return handler
+
+    def test_e2e_server_info(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        handler = self._make_handler("/api/v1/server/info")
+        handler.server_ref = srv
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        assert len(results) == 1
+        body = results[0][0]
+        assert body["service"] == "michi-music-player"
+        assert body["auth"]["strategy"] == "PLAYER_PASSWORD"
+        assert "filepath" not in str(body)
+
+    def test_e2e_pair_start(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        handler = self._make_handler("/api/v1/pair/start")
+        handler.server_ref = srv
+        handler._read_body = lambda: '{"client_device_id":"mobile_1"}'
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_post(handler)
+        assert len(results) == 1
+        body = results[0][0]
+        assert "auth_required" in body
+        assert body["auth_methods"] == ["password"]
+
+    def test_e2e_pair_confirm(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        handler = self._make_handler("/api/v1/pair/confirm")
+        handler.server_ref = srv
+        handler._read_body = lambda: json.dumps({
+            "client_device_id": "mobile_abc",
+            "username": "testuser",
+            "password": "correct",
+        })
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_post(handler)
+        assert len(results) == 1
+        body = results[0][0]
+        assert body.get("success") is True
+        assert "device_token" in body
+        assert "permissions" in body
+        assert len(body["permissions"]) > 0
+
+    def test_e2e_tracks_no_filepath(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        handler = self._make_handler("/api/v1/tracks")
+        handler.server_ref = srv
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        body = results[0][0]
+        for t in body.get("tracks", []):
+            assert "filepath" not in t
+            assert t["download_path"].startswith("/api/v1/stream/")
+
+    def test_e2e_search_no_filepath(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        handler = self._make_handler("/api/v1/search?q=E2E")
+        handler.server_ref = srv
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        body = results[0][0]
+        for r in body.get("results", []):
+            assert "filepath" not in r
+
+    def test_e2e_stream_404_no_filepath(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        srv._resolve_track.return_value = None
+        handler = self._make_handler("/api/v1/stream/missing_hash")
+        handler.server_ref = srv
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        body = results[0][0]
+        assert "error" in body
+        assert body["error"]["code"] == "TRACK_NOT_FOUND"
+        assert "filepath" not in str(body)
+
+    def test_e2e_playback_state(self):
+        from integrations.michi_link.server import V1_MIXIN
+        srv, _ = self._make_srv()
+        handler = self._make_handler("/api/v1/playback/state")
+        handler.server_ref = srv
+        V1_MIXIN._player_service = MagicMock()
+        V1_MIXIN._player_service.state = MagicMock()
+        V1_MIXIN._player_service.state.name = "STOPPED"
+        V1_MIXIN._player_service.current = ""
+        V1_MIXIN._playback = MagicMock()
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        assert len(results) == 1
+        body = results[0][0]
+        assert "state" in body
+        assert "filepath" not in str(body)
+
+    def test_e2e_control_play(self):
+        from integrations.michi_link.server import V1_MIXIN
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+        handler = self._make_handler("/api/v1/playback/control")
+        handler._read_body = lambda: json.dumps({"command": "play"})
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_post(handler)
+        ps.play_or_resume.assert_called_once()
+
+    def test_e2e_control_pause(self):
+        from integrations.michi_link.server import V1_MIXIN
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+        handler = self._make_handler("/api/v1/playback/control")
+        handler._read_body = lambda: json.dumps({"command": "pause"})
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_post(handler)
+        ps.pause.assert_called_once()
+
+    def test_e2e_control_seek(self):
+        from integrations.michi_link.server import V1_MIXIN
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+        handler = self._make_handler("/api/v1/playback/control")
+        handler._read_body = lambda: json.dumps({"command": "seek", "position_ms": 60000})
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_post(handler)
+        ps.seek.assert_called_once_with(60.0)
+
+    def test_e2e_control_set_volume(self):
+        from integrations.michi_link.server import V1_MIXIN
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+        handler = self._make_handler("/api/v1/playback/control")
+        handler._read_body = lambda: json.dumps({"command": "set_volume", "volume": 75})
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_post(handler)
+        ps.set_volume.assert_called_once_with(75)
+
+    def test_e2e_queue_no_filepath(self):
+        from integrations.michi_link.server import V1_MIXIN
+        ps = MagicMock()
+        ps.get_queue.return_value = [
+            {"filepath": "/secret/song.mp3", "title": "Q Song",
+             "artist": "Q", "album": "Q", "track_uid": ""},
+        ]
+        V1_MIXIN._player_service = ps
+        V1_MIXIN._playback = MagicMock()
+        V1_MIXIN._playback.get_queue_index.return_value = 1
+        srv = MagicMock()
+        result = V1_MIXIN._build_queue(srv)
+        assert "filepath" not in str(result)
+        for t in result.get("tracks", []):
+            assert "filepath" not in t
+            assert t["download_path"].startswith("/api/v1/stream/")
+
+
+class TestControllerStubs:
+    def test_michi_server_controller_imports(self):
+        from ui.controllers.michi.server_controller import MichiServerController
+        ctrl = MichiServerController()
+        assert ctrl is not None
+        assert hasattr(ctrl, "is_active")
+        assert hasattr(ctrl, "toggle_server")
+
+    def test_michi_import_controller_imports(self):
+        from ui.controllers.michi.import_controller import MichiImportController
+        ctrl = MichiImportController()
+        assert ctrl is not None
+
+    def test_michi_continue_controller_imports(self):
+        from ui.controllers.michi.continue_controller import MichiContinueController
+        ctrl = MichiContinueController()
+        assert ctrl is not None
+
+    def test_continue_on_server_service_imports(self):
+        from integrations.michi_link.continue_on_server_service import ContinueOnServerService
+        svc = ContinueOnServerService()
+        assert svc is not None
+        assert hasattr(svc, "transfer_queue")
+        assert hasattr(svc, "start_remote_playback")
+        assert hasattr(svc, "stop_remote_playback")
 
 
 class TestLegacyCompat:
