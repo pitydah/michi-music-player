@@ -52,14 +52,20 @@ def _check_main_window():
 
         sections = [
             'home', 'library_hub', 'mix_hub', 'playlist_hub', 'playback_hub',
-            'connections_hub', 'radio', 'audio_lab', 'home_audio', 'identifier',
-            'assistant', 'discover', 'settings_hub', 'devices_page',
-            'michi_disc_lab', 'metadata_editor', 'albums', 'artists', 'genres',
-            'folders', 'favs', 'recent',
+            'connections_hub', 'audio_lab', 'assistant', 'settings_hub', 'devices_page',
+            'albums', 'artists', 'genres', 'folders', 'favs', 'recent',
+            'radio', 'home_audio', 'identifier',
+            'michi_disc_lab', 'metadata_editor', 'metadata_review',
         ]
         for key in sections:
             w._nav_ctrl.dispatch(key)
         print(f"  ✓ {len(sections)} sections navigable")
+
+        # Verify active sidebar keys for hidden-route hubs
+        from ui.controllers.navigation_controller import resolve_sidebar_active_key
+        assert resolve_sidebar_active_key("radio") == "playback_hub"
+        assert resolve_sidebar_active_key("home_audio") == "connections_hub"
+        assert resolve_sidebar_active_key("identifier") == "audio_lab"
 
         # Verify search history preservation
         w._nav_ctrl.dispatch("library_hub")
@@ -89,6 +95,7 @@ def _check_main_window():
         w._nav_ctrl.dispatch("pl:123")
         assert w._current_route_key == "pl:123"
         assert w._current_sidebar_key == "playlist_hub"
+        assert w._current_section_key == "playlists"
 
         # srv: and dev: dispatch handlers may hang in offscreen (no real server),
         # so we verify the state mapping via resolve_sidebar_active_key and

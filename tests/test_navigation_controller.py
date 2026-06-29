@@ -156,6 +156,8 @@ class TestNavigationController:
         w._album_sort_btn = MagicMock()
         w._album_filter_btn = MagicMock()
         w._current_section_key = ""
+        w._current_route_key = ""
+        w._current_sidebar_key = ""
         w._view_mode = ""
         w._restore_central_opacity = MagicMock()
         w._on_sidebar_navigate = MagicMock()
@@ -206,7 +208,7 @@ class TestNavigationController:
     def test_dispatch_calls_configure_header(self, ctrl, win):
         with patch.object(ctrl, 'configure_header') as mock_cfg:
             ctrl.dispatch("library")
-            mock_cfg.assert_called_with("library")
+            mock_cfg.assert_called_with("library", route_key="library")
 
     def test_dispatch_clears_search(self, ctrl, win):
         ctrl.dispatch("library")
@@ -274,7 +276,7 @@ class TestNavigationController:
     def test_dispatch_home_calls_configure_header(self, ctrl, win):
         with patch.object(ctrl, 'configure_header') as mock_cfg:
             ctrl.dispatch("home")
-            mock_cfg.assert_called_with("home")
+            mock_cfg.assert_called_with("home", route_key="home")
 
     def test_configure_header_home_sets_icon(self, ctrl, win):
         ctrl.configure_header("home")
@@ -348,6 +350,34 @@ class TestNavigationController:
         ctrl.dispatch("albums")
         win._sidebar_controller.set_active.assert_called_with("library_hub")
 
+    def test_dispatch_sets_route_key(self, ctrl, win):
+        ctrl.dispatch("albums")
+        assert win._current_route_key == "albums"
+
+    def test_dispatch_sets_sidebar_key(self, ctrl, win):
+        ctrl.dispatch("albums")
+        assert win._current_sidebar_key == "library_hub"
+
+    def test_dispatch_sets_section_key(self, ctrl, win):
+        ctrl.dispatch("albums")
+        assert win._current_section_key == "albums"
+
+    def test_dispatch_radio_sets_playback_hub_sidebar(self, ctrl, win):
+        ctrl.dispatch("radio")
+        win._sidebar_controller.set_active.assert_called_with("playback_hub")
+
+    def test_dispatch_home_audio_sets_connections_hub_sidebar(self, ctrl, win):
+        ctrl.dispatch("home_audio")
+        win._sidebar_controller.set_active.assert_called_with("connections_hub")
+
+    def test_dispatch_identifier_sets_audio_lab_sidebar(self, ctrl, win):
+        ctrl.dispatch("identifier")
+        win._sidebar_controller.set_active.assert_called_with("audio_lab")
+
+    def test_dispatch_settings_hub_sets_settings_hub_sidebar(self, ctrl, win):
+        ctrl.dispatch("settings_hub")
+        win._sidebar_controller.set_active.assert_called_with("settings_hub")
+
 
 class TestResolveSidebarActiveKey:
     def test_home(self):
@@ -389,5 +419,5 @@ class TestResolveSidebarActiveKey:
 
     def test_independent_hubs(self):
         assert resolve_sidebar_active_key("assistant") == "assistant"
-        assert resolve_sidebar_active_key("identifier") == "identifier"
+        assert resolve_sidebar_active_key("identifier") == "audio_lab"
 

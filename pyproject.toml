@@ -113,6 +113,7 @@ target-version = ["py311"]
 testpaths = ["tests"]
 qt_api = "pyside6"
 timeout = 120
+addopts = "-m 'not perf'"
 markers = [
-    "perf: performance tests, not run by default",
+    "perf: performance tests, run manually with -m perf",
 ]

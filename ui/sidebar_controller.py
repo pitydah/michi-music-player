@@ -35,6 +35,13 @@ class SidebarController(QObject):
             self._pending_key = None
 
     def rebuild(self, servers: list, sync_peers: list | None = None):
+        """Rebuild sidebar sections.
+
+        Note: `servers` parameter is reserved for future use.
+        Servers are rendered inside ConnectionsHubPage, not as sidebar items.
+        Sync peers (discovered Android devices) are shown under Dispositivos.
+        """
+        _ = servers  # kept for API compatibility; servers shown inside ConnectionsHubPage
         self._sidebar._clear()
 
         # ── Hubs principales ──
@@ -86,8 +93,9 @@ class SidebarController(QObject):
             self._sidebar.add_item("dev", f"dev:{d['mount']}", d['name'],
                                     "sidebar_devices")
 
-        # ── Configuración (siempre visible al final) ──
-        self._sidebar.add_item("hub", "settings_hub", "Configuración", "warm_settings")
+        # ── Sistema (sección separada al final) ──
+        self._sidebar.add_section("system", "Sistema", "warm_settings")
+        self._sidebar.add_item("system", "settings_hub", "Configuración", "warm_settings")
 
         if self._last_active:
             self._sidebar.set_active(self._last_active)

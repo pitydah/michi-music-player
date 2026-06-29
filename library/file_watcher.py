@@ -50,7 +50,7 @@ class FileWatcher(QObject):
         self._pending_modified: set[str] = set()
 
         self._watcher.directoryChanged.connect(self._on_dir_changed)
-        self._watcher.fileChanged.connect(self._on_dir_changed)
+        self._watcher.fileChanged.connect(self._on_file_changed)
         self._running = False
         self._watched_count = 0
         self._degraded = False
@@ -122,6 +122,19 @@ class FileWatcher(QObject):
         if not os.path.isdir(dirpath):
             logger.warning("FileWatcher: changed directory unavailable, skipping: %s", dirpath)
             return
+        # Watch new subdirectories created inside this directory
+        try:
+            for entry in os.listdir(dirpath):
+                full = os.path.join(dirpath, entry)
+                if os.path.isdir(full) and full not in self._watcher.directories():
+                    self._watch_recursive(full)
+        except PermissionError:
+            pass
+
+    def _on_file_changed(self, filepath: str):
+        """Handle individual file changes. Currently delegates to dir handler."""
+        dirpath = os.path.dirname(filepath) if os.path.isfile(filepath) else filepath
+        self._on_dir_changed(dirpath)
         try:
             current = {
                 os.path.join(dirpath, f)

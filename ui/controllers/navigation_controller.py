@@ -136,29 +136,46 @@ INITIAL_ROUTE: str = "home"
 def resolve_sidebar_active_key(key: str) -> str:
     """Mapea una clave de navegación a la clave del sidebar que debe quedar activa.
 
+    Solo debe devolver claves que existan como ítems visibles en el sidebar.
     Subsecciones (playlists, servidores, dispositivos, etc.) se agrupan
     bajo el hub/section padre del sidebar.
     """
-    if key in ("albums", "artists", "genres", "folders", "favs", "recent"):
+    # Hubs visibles
+    if key in ("home", "library_hub", "mix_hub", "playlist_hub",
+                "playback_hub", "connections_hub", "audio_lab",
+                "assistant", "devices_page", "settings_hub"):
+        return key
+    # Hijos de library_hub
+    if key in ("library", "albums", "artists", "genres", "folders", "favs", "recent"):
         return "library_hub"
+    # Hijos de mix_hub
     if key.startswith("mix_") and key != "mix_hub":
         return "mix_hub"
+    # Hijos de playlist_hub
     if key.startswith("pl:") or key.startswith("playlist:"):
         return "playlist_hub"
-    if key.startswith("srv:"):
+    # Hijos de connections_hub
+    if key.startswith("srv:") or key in ("add_server", "home_audio"):
         return "connections_hub"
-    if key.startswith("dev:"):
+    # Hijos de playback_hub
+    if key == "radio":
+        return "playback_hub"
+    # Hijos de devices_page
+    if key.startswith("dev:") or key in ("devices",):
         return "devices_page"
-    if key in ("devices_page", "devices"):
-        return "devices_page"
-    if key in ("settings_hub", "settings"):
-        return "settings_hub"
-    if key in ("assistant", "audio_lab", "identifier"):
-        return key
-    if key in ("metadata_editor", "metadata_review", "michi_disc_lab"):
+    # Hijos de audio_lab
+    if key in ("metadata_editor", "metadata_review", "michi_disc_lab", "identifier"):
         return "audio_lab"
+    # Settings
+    if key == "settings":
+        return "settings_hub"
+    # Fallback: extraer prefijo antes de ":"
     prefix = key.split(":")[0] if ":" in key else key
-    return prefix or "home"
+    return prefix if prefix in (
+        "home", "library_hub", "mix_hub", "playlist_hub",
+        "playback_hub", "connections_hub", "audio_lab",
+        "assistant", "devices_page", "settings_hub",
+    ) else "home"
 
 # Navigation routes — maps sidebar keys to window handler methods
 NAV_ROUTES: dict[str, str] = {
@@ -410,13 +427,12 @@ class NavigationController(QObject):
             section_key = "playlists"
         self.configure_header(section_key, route_key=key)
 
-        # State explícito: ruta real, sidebar activo, alias legacy
-        sidebar_key = resolve_sidebar_active_key(key)
+        # State explícito: ruta real, sidebar activo, sección funcional
         w._current_route_key = key
-        w._current_sidebar_key = sidebar_key
-        w._current_section_key = sidebar_key  # legacy alias
+        w._current_sidebar_key = resolve_sidebar_active_key(key)
+        w._current_section_key = section_key
         if hasattr(w, '_sidebar_controller'):
-            w._sidebar_controller.set_active(sidebar_key)
+            w._sidebar_controller.set_active(w._current_sidebar_key)
 
         if not self._history.is_restoring:
             self._history.push(key, previous_search)
