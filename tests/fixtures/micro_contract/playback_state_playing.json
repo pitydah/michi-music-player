@@ -1,0 +1,10 @@
+{
+  "state": "playing",
+  "current_track": null,
+  "position_ms": 0.0,
+  "duration_ms": 0.0,
+  "volume": 70,
+  "shuffle": false,
+  "repeat": "none",
+  "queue_id": ""
+}

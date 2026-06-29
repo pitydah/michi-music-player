@@ -1,0 +1,25 @@
+{
+  "preflight_id": "preflight-abc-123",
+  "total": 2,
+  "already_present": 1,
+  "needs_upload": 1,
+  "conflicts": 0,
+  "results": [
+    {
+      "index": 0,
+      "status": "already_present",
+      "michi_track_id": "t1",
+      "server_track_id": "rt1",
+      "match_type": "exact_hash",
+      "confidence": 1.0
+    },
+    {
+      "index": 1,
+      "status": "needs_upload",
+      "michi_track_id": "t2",
+      "server_track_id": "",
+      "match_type": "not_found",
+      "confidence": 0.0
+    }
+  ]
+}

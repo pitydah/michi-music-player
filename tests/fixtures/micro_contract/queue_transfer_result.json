@@ -1,0 +1,7 @@
+{
+  "queue_id": "micro_queue_uuid",
+  "accepted": true,
+  "items_count": 3,
+  "current_index": 1,
+  "position_ms": 45000
+}

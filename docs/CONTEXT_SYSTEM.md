@@ -78,20 +78,38 @@ Ver `core/playback_controller.py:attach_track_table()` y `connect_table_selectio
 | `folder` | ✓ | ✓ | ✓ | ✗ | ✗ |
 | `search` | ✓ | ✓ | ✓ | ✗ | ✓ |
 
-## Proxy / Source model selection
-Cuando la selección de tabla proviene de un `QSortFilterProxyModel` o similar con `mapToSource()`,
-`_on_table_selection()` resuelve la fila real mediante:
-1. `current.model()` → si tiene `get_trackref()`, usa `current.row()`.
-2. `model.sourceModel()` + `model.mapToSource(current)` → fila del source model.
-3. Registry `_track_table_models` → modelo registrado por `attach_track_table()`.
+## Table selection: proxy model support
+`_resolve_track_model_and_row(current)` usa este orden:
+
+1. `current.model()` — si tiene `get_trackref()`, usa `current.row()`.
+2. Proxy: `model.mapToSource(current)` + `sourceModel()` — valida `source_idx.isValid()` antes de usar `source_idx.row()`.
+3. Registry: modelo registrado por `attach_track_table()`.
 4. Fallback global `self._win._ctx.model`.
 
-Ver `core/playback_controller.py:_resolve_track_model_and_row()`.
+## Safe get_trackref
+`_on_table_selection()` protege la llamada a `get_trackref(row)` contra `IndexError`, `KeyError`, `TypeError`, `AttributeError`.
+Filas fuera de rango o modelos cambiados no crashean la UI.
 
 ## detach_track_table
-`PlaybackController.detach_track_table(table)` elimina una tabla del registry interno
-`_track_table_models` y limpia `_active_context_table`. Útil cuando una tabla de tracks
-deja de representar datos de `TrackRef`.
+`PlaybackController.detach_track_table(table)` elimina una tabla del registry `_track_table_models` y limpia `_active_context_table`.
+Disponible para transiciones donde una tabla deja de representar `TrackRef`. Actualmente no hay vistas que lo requieran.
+
+## Assistant capabilities
+El contrato por scope está definido en `context_service._assistant_capabilities_for_scope()` y probado para los 9 scopes:
+
+| Scope | can_search_library | can_create_playlist | can_queue | can_edit_metadata | can_analyze |
+|-------|:---:|:---:|:---:|:---:|:---:|
+| `None` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `track` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `album` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `artist` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `genre` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `playlist` | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `mix` | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `folder` | ✓ | ✓ | ✓ | ✗ | ✗ |
+| `search` | ✓ | ✓ | ✓ | ✗ | ✓ |
+
+## Event semantics
 
 ## Event semantics
 | Evento | Significado |

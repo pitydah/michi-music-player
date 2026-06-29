@@ -309,7 +309,14 @@ class PlaybackController:
                 if source_model is not None and hasattr(source_model, "get_trackref"):
                     source_idx = model.mapToSource(current) if hasattr(model, "mapToSource") else None
                     if source_idx is not None:
-                        return source_model, source_idx.row()
+                        is_valid = True
+                        if hasattr(source_idx, "isValid"):
+                            try:
+                                is_valid = bool(source_idx.isValid())
+                            except Exception:
+                                is_valid = False
+                        if is_valid and hasattr(source_idx, "row"):
+                            return source_model, source_idx.row()
             except Exception:
                 pass
 
@@ -381,7 +388,12 @@ class PlaybackController:
         if model is None or row < 0:
             return
 
-        track = model.get_trackref(row)
+        try:
+            track = model.get_trackref(row)
+        except (IndexError, KeyError, TypeError, AttributeError):
+            return
+        except Exception:
+            return
         if not track:
             return
         ctx = (

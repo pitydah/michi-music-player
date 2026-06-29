@@ -1,0 +1,14 @@
+{
+  "results": [
+    {
+      "local_track_id": "t1",
+      "exists": true,
+      "remote_track_id": "rt1"
+    },
+    {
+      "local_track_id": "t2",
+      "exists": false,
+      "remote_track_id": ""
+    }
+  ]
+}

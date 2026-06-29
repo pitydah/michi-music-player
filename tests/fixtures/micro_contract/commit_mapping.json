@@ -1,0 +1,20 @@
+{
+  "session_id": "s1",
+  "tracks_imported": 2,
+  "tracks_skipped": 1,
+  "total_tracks": 3,
+  "mapping": [
+    {
+      "michi_track_id": "t1",
+      "server_track_id": "rt1",
+      "status": "uploaded",
+      "match": "exact_hash"
+    },
+    {
+      "michi_track_id": "t2",
+      "server_track_id": "rt2",
+      "status": "uploaded",
+      "match": "quick_hash"
+    }
+  ]
+}

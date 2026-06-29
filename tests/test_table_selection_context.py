@@ -52,6 +52,32 @@ class DummyProxyModel:
         return DummySourceIndex()
 
 
+class DummyInvalidSourceIndex:
+    def isValid(self):
+        return False
+
+    def row(self):
+        return 999
+
+
+class DummyInvalidProxyModel:
+    def sourceModel(self):
+        return DummySourceModel()
+
+    def mapToSource(self, index):
+        return DummyInvalidSourceIndex()
+
+
+class DummyExplodingModel:
+    def get_trackref(self, row):
+        raise IndexError("row out of range")
+
+
+class DummyNoneModel:
+    def get_trackref(self, row):
+        return None
+
+
 class DummyIndex:
     def __init__(self, row=0, model=None):
         self._row = row
@@ -286,3 +312,74 @@ class TestTableSelectionContext:
 
         kwargs = ctx_svc.update_selection.call_args[1]
         assert kwargs["track"].title == "Source Row 5"
+
+    def test_on_selection_invalid_proxy_falls_back(self):
+        """Invalid source index should fall through to registry/global model."""
+        ctx_svc = MagicMock()
+        win = MagicMock()
+        win._services = None
+        win._ctx.context_svc = ctx_svc
+        win._ctx.model = None
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        table = MagicMock()
+        sel = MagicMock()
+        table.selectionModel.return_value = sel
+        ctrl.attach_track_table(table, DummyModel(DummyTrackB()))
+        ctrl._active_context_table = table
+
+        idx = DummyIndex(model=DummyInvalidProxyModel())
+        ctrl._on_table_selection(idx, None)
+
+        kwargs = ctx_svc.update_selection.call_args[1]
+        assert kwargs["track"].title == "Source Row 5"
+
+    def test_on_selection_exploding_model_does_not_crash(self):
+        """get_trackref that raises should be caught."""
+        ctx_svc = MagicMock()
+        win = MagicMock()
+        win._services = None
+        win._ctx.context_svc = ctx_svc
+        win._ctx.model = DummyExplodingModel()
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        idx = DummyIndex(model=DummyExplodingModel())
+        ctrl._on_table_selection(idx, None)
+
+        ctx_svc.update_selection.assert_not_called()
+
+    def test_on_selection_none_track_does_not_update(self):
+        """get_trackref that returns None should not update context."""
+        ctx_svc = MagicMock()
+        win = MagicMock()
+        win._services = None
+        win._ctx.context_svc = ctx_svc
+        win._ctx.model = DummyNoneModel()
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        idx = DummyIndex(model=DummyNoneModel())
+        ctrl._on_table_selection(idx, None)
+
+        ctx_svc.update_selection.assert_not_called()
+
+    def test_on_selection_invalid_proxy_no_fallback_no_update(self):
+        """Invalid proxy + no registry + no global model = no context update."""
+        ctx_svc = MagicMock()
+        win = MagicMock()
+        win._services = None
+        win._ctx.context_svc = ctx_svc
+        win._ctx.model = None
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        idx = DummyIndex(model=DummyInvalidProxyModel())
+        ctrl._on_table_selection(idx, None)
+
+        ctx_svc.update_selection.assert_not_called()
