@@ -70,7 +70,9 @@ class PlaylistController:
                 self._ctx.db.add_to_playlist(pid, fp)
             self._ctx.rebuild_sidebar()
             self._toast(f"Importados {len(filepaths)} temas como '{name}'", "success")
-            self._record_playlist_created(pid, name, len(filepaths))
+            ctx = self._context()
+            if ctx:
+                ctx.record_playlist_imported(pid, name, len(filepaths))
         except (OSError, UnicodeDecodeError) as e:
             self._toast(f"Error al importar M3U: {e}", "error")
 
@@ -104,9 +106,7 @@ class PlaylistController:
             self._toast(f"Exportada '{name}' con {len(items)} temas", "success")
             ctx = self._context()
             if ctx:
-                from core.context.context_events import AppEvent
-                ctx.record_event(AppEvent.PLAYLIST_EXPORTED,
-                    {"playlist_id": pl["id"], "name": name, "count": len(items)})
+                ctx.record_playlist_exported(pl["id"], name, len(items))
         except OSError as e:
             self._toast(f"Error al exportar: {e}", "error")
 

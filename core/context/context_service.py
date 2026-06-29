@@ -336,6 +336,10 @@ class ContextService:
                 "track", "album", "artist", "genre", "playlist",
                 "mix", "search",
             },
+            "can_play_selection": scope in {
+                "track", "album", "artist", "genre", "playlist",
+                "mix", "folder", "search",
+            },
         }
 
     def get_assistant_snapshot(self) -> dict:

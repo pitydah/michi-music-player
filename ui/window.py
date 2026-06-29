@@ -974,6 +974,9 @@ class MainWindow(QMainWindow):
     def _show_audio_lab_intelligence(self, key=None):
         self._hub_route_ctrl.show_audio_lab_intelligence(key)
 
+    def _show_audio_lab_musicbrainz(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_musicbrainz(key)
+
     def _show_audio_lab_organize(self, key=None):
         self._hub_route_ctrl.show_audio_lab_organize(key)
 

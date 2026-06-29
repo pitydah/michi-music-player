@@ -301,6 +301,16 @@ class PlaybackController:
             if state == "paused" else None
         )
 
+        playback.queue_changed.connect(
+            lambda q: ctx.record_queue_updated(count=len(q), source="playback")
+        )
+
+        # Detect clear queue (empty queue emitted)
+        playback.queue_changed.connect(
+            lambda q: ctx.record_queue_cleared(reason="playback_end")
+            if len(q) == 0 else None
+        )
+
     # ── Table selection context ═══
 
     def _resolve_track_model_and_row(self, current):

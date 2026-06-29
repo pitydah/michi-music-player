@@ -192,7 +192,7 @@ class AudioLabIdentifierPage(QWidget):
             ("sidebar_identifier", "MusicBrainz",
              "Identifica discos, canciones y artistas usando\n"
              "la base de datos MusicBrainz.",
-             "proximamente", ""),
+             "disponible", "audio_lab_musicbrainz"),
             ("sidebar_albums", "Carátulas",
              "Busca, reemplaza e incrusta carátulas en tus\n"
              "archivos de música.",
