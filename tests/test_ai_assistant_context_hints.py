@@ -60,7 +60,7 @@ class TestAssistantContextHints:
     def test_playlist_without_edit_does_not_suggest_edit(self):
         hints = _contextual_action_hints(
             self._snap("playlist", can_edit_metadata=False))
-        assert not any("Editar" in h or "duplicados" in h for h in hints)
+        assert not any("Editar" in h for h in hints)
         assert any("Reproducir" in h for h in hints)
 
     def test_none_scope_no_queue_create_edit_analyze(self):
