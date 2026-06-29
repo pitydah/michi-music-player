@@ -37,6 +37,15 @@ _CATEGORY_STYLES = {
 }
 
 
+def _normalize_bitrate(value) -> str:
+    s = str(value or "").lower().replace("kbps", "").replace("k", "").strip()
+    if not s:
+        return ""
+    if s.isdigit():
+        return f"{s} kbps"
+    return s
+
+
 class SourceStatusBadge(QPushButton):
     clicked_details = Signal()
 
@@ -56,6 +65,7 @@ class SourceStatusBadge(QPushButton):
         self._empty = True
         self._apply_style()
         self.setVisible(False)
+        self.setEnabled(False)
 
     def _apply_style(self):
         s = _CATEGORY_STYLES.get(self._quality_cat, _CATEGORY_STYLES["unknown"])
@@ -102,12 +112,12 @@ class SourceStatusBadge(QPushButton):
             self.style().polish(self)
 
     def set_text(self, text: str):
-        if not text:
-            self.setText("")
-            self.setToolTip("")
+        clean = (text or "").strip()
+        if not clean:
+            self.set_empty(True)
             return
-        display = "\u25cf " + text.strip()
-        self.setText(display)
+        self.set_empty(False)
+        self.setText("\u25cf " + clean)
 
     def set_empty(self, empty: bool = True):
         self._empty = empty
@@ -124,7 +134,10 @@ class SourceStatusBadge(QPushButton):
         self._build_pages()
 
     def set_route_tooltip(self, diag):
-        lines = [str(self.text()).strip()]
+        lines = []
+        base = str(self.text()).strip()
+        if base:
+            lines.append(base)
         if diag:
             if hasattr(diag, 'to_tooltip'):
                 lines.append(diag.to_tooltip())
@@ -165,16 +178,14 @@ class SourceStatusBadge(QPushButton):
             if quality:
                 pages.append(f"{label} · {quality}")
             elif bitrate:
-                br = bitrate.replace("kbps", "").replace("k", "").strip()
-                pages.append(f"{label} · {br} kbps")
+                br = _normalize_bitrate(bitrate)
+                pages.append(f"{label} · {br}")
             elif codec:
                 pages.append(f"{label} · {codec.upper()}")
             else:
                 pages.append(label)
             if sample_rate or bit_depth:
-                detail = []
-                if codec:
-                    detail.append(codec.upper())
+                detail = [codec.upper()] if codec else []
                 if bit_depth:
                     detail.append(f"{bit_depth}-bit")
                 if sample_rate:
@@ -185,16 +196,14 @@ class SourceStatusBadge(QPushButton):
             if quality:
                 pages.append(f"LOCAL · {quality}")
             elif codec and bitrate:
-                br = bitrate.replace("kbps", "").replace("k", "").strip()
+                br = _normalize_bitrate(bitrate).replace(" kbps", "").strip()
                 pages.append(f"LOCAL · {codec.upper()} {br}")
             elif codec:
                 pages.append(f"LOCAL · {codec.upper()}")
             else:
                 pages.append("LOCAL")
             if sample_rate or bit_depth:
-                detail = []
-                if codec:
-                    detail.append(codec.upper())
+                detail = [codec.upper()] if codec else []
                 if bit_depth:
                     detail.append(f"{bit_depth}-bit")
                 if sample_rate:
@@ -203,9 +212,6 @@ class SourceStatusBadge(QPushButton):
                     pages.append(" · ".join(detail))
         elif source_type == "remote_stream":
             pages.append("STREAMING")
-
-        if transmitting and transmit_device and source_type not in ("radio",):
-            pages.append(f"TRANSMITIENDO · {transmit_device[:18]}")
 
         if audio_output:
             pages.append(f"SALIDA · {audio_output[:22]}")
@@ -256,7 +262,8 @@ class SourceStatusBadge(QPushButton):
             parts.append(f"Transmisión: {transmit_device}")
         if filepath:
             parts.append(f"Ruta: {filepath[:60]}")
-        self.setToolTip("\n".join(parts))
+        if parts:
+            self.setToolTip("\n".join(parts))
 
     def _show_next_page(self):
         if self._hovering or not self._pages:
@@ -276,6 +283,6 @@ class SourceStatusBadge(QPushButton):
         super().leaveEvent(event)
 
     def mousePressEvent(self, event):
-        if not self._empty and self._pages:
+        if not self._empty and self._pages and self.isVisible() and self.isEnabled():
             self.clicked_details.emit()
         super().mousePressEvent(event)

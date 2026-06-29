@@ -21,12 +21,26 @@ from ui.central.central_tokens import (
 )
 
 # ── Technical tokens for left-side filtering ──
-# Only exact matches or space-prefixed to avoid filtering artist names like "Radiohead", "Rabbit"
+# Use semantic matching (startswith "LOCAL ·", "RADIO ·", etc.) plus exact word
+# boundaries to avoid filtering artist names like "Radiohead", "Local Natives".
 import re
-_TECHNICAL_PATTERN = re.compile(
-    r'\b(?:LOCAL|FLAC|MP3|AAC|OGG|OPUS|RADIO|STREAMING|'
-    r'NAVIDROME|JELLYFIN|TRANSMITIENDO|KBPS|KHZ|BIT|DSD)\b'
+
+_TECHNICAL_PREFIXES = (
+    "LOCAL ·", "RADIO ·", "NAVIDROME ·", "JELLYFIN ·",
+    "TRANSMITIENDO ·", "STREAMING",
 )
+_TECHNICAL_EXACT = re.compile(
+    r'^(?:FLAC|MP3|AAC|OGG|OPUS|DSD|KBPS|KHZ|BIT)$'
+)
+
+
+def _looks_like_technical_badge(text: str) -> bool:
+    upper = (text or "").strip().upper()
+    if not upper:
+        return False
+    if any(upper.startswith(p) for p in _TECHNICAL_PREFIXES):
+        return True
+    return any(_TECHNICAL_EXACT.match(word.strip("·,.;:!?")) for word in upper.split())
 
 
 
@@ -655,7 +669,7 @@ class NowPlayingBar(QWidget):
             parts = self._raw_artist.split(" · ")
             self._raw_artist = parts[0]
             extra = parts[1].strip() if len(parts) > 1 else ""
-            if extra and not _TECHNICAL_PATTERN.search(extra.upper()):
+            if extra and not _looks_like_technical_badge(extra.upper()):
                 self._raw_meta = extra
 
         self._title_lbl.setText(self._raw_title)
@@ -878,6 +892,9 @@ class NowPlayingBar(QWidget):
             self._apply_elide()
 
     def _refresh_source_badge(self):
+        if not self._source_type:
+            self._quality_badge.set_empty(True)
+            return
         self._quality_badge.set_context(
             source_type=self._source_type,
             quality=self._source_quality,
