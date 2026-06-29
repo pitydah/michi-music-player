@@ -6,10 +6,30 @@ Each snapshot is a small dict (no track lists, no absolute paths).
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 
 logger = logging.getLogger("michi.context_snapshot")
+
+
+def sanitize_snapshot(value):
+    """Return a JSON-safe snapshot without absolute paths or huge payloads."""
+    PATH_KEYS = {"filepath", "filepaths", "path", "paths", "uri"}
+    if isinstance(value, dict):
+        clean = {}
+        for k, v in value.items():
+            if k in PATH_KEYS:
+                continue
+            clean[k] = sanitize_snapshot(v)
+        return clean
+    if isinstance(value, list):
+        return [sanitize_snapshot(v) for v in value[:10]]
+    if isinstance(value, str):
+        if value.startswith("/") or ":\\" in value:
+            return os.path.basename(value)
+        return value[:300]
+    return value
 
 
 def build_library_health_snapshot(db) -> dict:
@@ -167,7 +187,7 @@ def _suggested_actions(health: dict, playback: dict) -> list[dict]:
             "target": "library",
             "kind": "reproducción",
         })
-    return actions
+    return actions[:5]
 
 
 def build_assistant_snapshot(db, playback=None,
@@ -177,15 +197,24 @@ def build_assistant_snapshot(db, playback=None,
     health = build_library_health_snapshot(db)
     pb = build_playback_snapshot(playback)
     result = {
-        "current_section": current_section,
-        "current_library_tab": current_tab,
-        "now_playing": pb.get("now_playing"),
-        "queue_length": pb.get("queue_length", 0),
+        "route": {"current_section": current_section, "current_tab": current_tab},
+        "playback": {
+            "now_playing": pb.get("now_playing"),
+            "queue_length": pb.get("queue_length", 0),
+            "current_source": pb.get("current_source", "local"),
+            "recently_played_count": pb.get("recently_played_count", 0),
+            "favorites_count": pb.get("favorites_count", 0),
+        },
         "library_health": health,
-        "recent_events": (recent_events or [])[:10],
+        "recent_events": sanitize_snapshot(recent_events or [])[:10],
         "suggested_actions": _suggested_actions(health, pb),
     }
-    return result
+    # Compatibility keys
+    result["current_section"] = current_section
+    result["current_library_tab"] = current_tab
+    result["now_playing"] = pb.get("now_playing")
+    result["queue_length"] = pb.get("queue_length", 0)
+    return sanitize_snapshot(result)
 
 
 def build_home_snapshot(db, playback=None, sync=None) -> dict:
@@ -211,9 +240,27 @@ def build_home_snapshot(db, playback=None, sync=None) -> dict:
 
 def build_mix_snapshot(db) -> dict:
     health = build_library_health_snapshot(db)
-    return {
+    result = {
         "total_tracks": health.get("track_count", 0),
         "total_artists": health.get("artist_count", 0),
         "total_albums": health.get("album_count", 0),
         "missing_metadata": health.get("missing_metadata_count", 0),
+        "available_mixes": [
+            "mix_daily", "mix_unplayed", "mix_popular",
+            "mix_favorites", "favs", "recent",
+        ],
+        "mix_health": {
+            "has_library": health.get("track_count", 0) > 0,
+            "has_enough_history": False,
+            "has_favorites": False,
+            "has_audio_features": health.get("tracks_without_audio_features", 0) < health.get("track_count", 0),
+        },
     }
+    try:
+        if db and hasattr(db, "get_favorites"):
+            result["mix_health"]["has_favorites"] = len(db.get_favorites()) > 0
+        if db and hasattr(db, "get_play_history"):
+            result["mix_health"]["has_enough_history"] = len(db.get_play_history(limit=10)) >= 5
+    except Exception:
+        logger.debug("Mix snapshot health unavailable")
+    return result

@@ -1146,6 +1146,41 @@ class MainWindow(QMainWindow):
         else:
             self._playback.enqueue(filepaths, play_now=False)
 
+    def _on_folder_selected(self, fps: list[str]):
+        ctx = self._context_svc
+        if ctx:
+            from core.context.context_events import AppEvent
+            ctx.update_selection(
+                scope="folder", folder_name="Carpeta seleccionada",
+                album="", artist="", genre="",
+                playlist_id=None, playlist_name="",
+                mix_key="", search_query="",
+            )
+            ctx.record_event(AppEvent.FOLDER_SELECTED, {"count": len(fps)})
+        self._play_filepaths(fps, play_now=True)
+
+    def _on_folder_queued(self, fps: list[str]):
+        ctx = self._context_svc
+        if ctx:
+            from core.context.context_events import AppEvent
+            ctx.record_event(AppEvent.FOLDER_QUEUED, {"count": len(fps)})
+        self._play_filepaths(fps, play_now=False)
+
+    def _on_folder_scan_requested(self, path: str):
+        ctx = self._context_svc
+        if ctx:
+            from core.context.context_events import AppEvent
+            ctx.update_selection(
+                scope="folder",
+                folder_name=os.path.basename(path.rstrip("/")),
+                album="", artist="", genre="",
+                playlist_id=None, playlist_name="",
+                mix_key="", search_query="",
+            )
+            ctx.record_event(AppEvent.FOLDER_SCANNED,
+                {"folder_name": os.path.basename(path.rstrip("/"))})
+        self._scan_path(path)
+
     def _play_trackref(self, track: TrackRef):
         # Notify identifier controller of source change
         if hasattr(self, '_identifier_ctrl') and self._identifier_ctrl:

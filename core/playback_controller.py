@@ -185,8 +185,39 @@ class PlaybackController:
         self._win._ctx.notify_track(name, artist)
         self._win._ctx.set_window_title(f"Michi Music Player — {name}")
 
+        # Context service
+        ctx_svc = getattr(self._win._ctx, "context_svc", None)
+        if ctx_svc:
+            ctx_svc.update_selection(
+                scope="track",
+                track=track,
+                album=album,
+                artist=artist,
+                genre=getattr(track, "genre", ""),
+                playlist_id=None,
+                playlist_name="",
+                folder_name="",
+                mix_key="",
+                search_query="",
+            )
+            ctx_svc.record_now_playing_updated(name, artist, album)
+
+    def _trackref_from_filepath(self, filepath: str) -> TrackRef:
+        item = self._win._ctx.items_index.get(filepath)
+        if item:
+            return TrackRef(
+                uri=item.filepath,
+                title=item.title or os.path.basename(item.filepath),
+                artist=item.artist,
+                album=item.album,
+                duration=item.duration,
+                year=item.year,
+                genre=item.genre,
+            )
+        return TrackRef(uri=filepath, title=os.path.basename(filepath))
+
     def play_file(self, filepath: str, add_to_queue: bool = False):
-        track = TrackRef(uri=filepath, title=os.path.basename(filepath))
+        track = self._trackref_from_filepath(filepath)
         self.play_trackref(track)
 
     def on_state(self, state: PlaybackState):

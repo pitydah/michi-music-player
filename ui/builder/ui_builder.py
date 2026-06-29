@@ -487,11 +487,9 @@ class UIBuilder:
         w._genres_stack.setCurrentIndex(0)
 
         w._folder_browser = FolderBrowserWidget(db=w._db)
-        w._folder_browser.folder_selected.connect(
-            lambda fps, _w=w: _w._play_filepaths(fps, play_now=True))
-        w._folder_browser.queue_requested.connect(
-            lambda fps, _w=w: _w._play_filepaths(fps, play_now=False))
-        w._folder_browser.scan_requested.connect(w._scan_path)
+        w._folder_browser.folder_selected.connect(w._on_folder_selected)
+        w._folder_browser.queue_requested.connect(w._on_folder_queued)
+        w._folder_browser.scan_requested.connect(w._on_folder_scan_requested)
         w._folder_browser.create_playlist_requested.connect(
             lambda name, fps, _w=w: _w._file_actions.folder_create_playlist(name, fps))
 

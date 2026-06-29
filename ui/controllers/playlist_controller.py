@@ -7,8 +7,33 @@ from PySide6.QtWidgets import QFileDialog, QInputDialog
 class PlaylistController:
     def __init__(self, window, services=None):
         self._win = window
-        self._ctx = getattr(window, '_ctx', None)
+        self._ctx = window._ctx
         self._svc = services
+
+    def _context(self):
+        return (
+            getattr(self._svc, "context_svc", None)
+            or getattr(self._ctx, "context_svc", None)
+        )
+
+    def _select_playlist(self, pid: int, name: str = ""):
+        ctx = self._context()
+        if ctx:
+            ctx.update_selection(
+                scope="playlist",
+                playlist_id=pid,
+                playlist_name=name,
+                album="", artist="", genre="",
+                folder_name="", mix_key="", search_query="",
+            )
+
+    def _record_playlist_created(self, pid: int, name: str, count: int):
+        self._select_playlist(pid, name)
+        ctx = self._context()
+        if ctx:
+            from core.context.context_events import AppEvent
+            ctx.record_event(AppEvent.PLAYLIST_CREATED,
+                {"playlist_id": pid, "name": name, "count": count})
 
     def _toast(self, text: str, level: str = "info"):
         if self._ctx and hasattr(self._ctx, 'toast'):
@@ -45,6 +70,7 @@ class PlaylistController:
                 self._ctx.db.add_to_playlist(pid, fp)
             self._ctx.rebuild_sidebar()
             self._toast(f"Importados {len(filepaths)} temas como '{name}'", "success")
+            self._record_playlist_created(pid, name, len(filepaths))
         except (OSError, UnicodeDecodeError) as e:
             self._toast(f"Error al importar M3U: {e}", "error")
 
@@ -76,6 +102,11 @@ class PlaylistController:
                 for item in items:
                     f.write(f"{item.filepath}\n")
             self._toast(f"Exportada '{name}' con {len(items)} temas", "success")
+            ctx = self._context()
+            if ctx:
+                from core.context.context_events import AppEvent
+                ctx.record_event(AppEvent.PLAYLIST_EXPORTED,
+                    {"playlist_id": pl["id"], "name": name, "count": len(items)})
         except OSError as e:
             self._toast(f"Error al exportar: {e}", "error")
 
@@ -159,6 +190,7 @@ class PlaylistController:
             self._ctx.db.add_to_playlist(pid, fp)
         self._ctx.rebuild_sidebar()
         self._toast(f"Creada '{name}' con {len(filepaths)} temas", "success")
+        self._record_playlist_created(pid, name, len(filepaths))
 
     # ── Playlist from queue ──
 
@@ -180,6 +212,7 @@ class PlaylistController:
                 self._ctx.db.add_to_playlist(pid, fp)
         self._ctx.rebuild_sidebar()
         self._toast(f"Creada '{name}' con {len(queue)} temas", "success")
+        self._record_playlist_created(pid, name, len(queue))
 
     # ── Create from album/artist/genre/search ──
 
@@ -219,6 +252,7 @@ class PlaylistController:
                 self._ctx.db.add_to_playlist(pid, fp)
             self._ctx.rebuild_sidebar()
             self._toast(f"Playlist creada: {label[:48]} ({len(fps)} temas)", "success")
+            self._record_playlist_created(pid, label[:64], len(fps))
 
     def create_from_artist(self):
         all_items = self._all_library_tracks()
@@ -245,6 +279,7 @@ class PlaylistController:
                     self._ctx.db.add_to_playlist(pid, fp)
                 self._ctx.rebuild_sidebar()
                 self._toast(f"Playlist creada: {name} ({len(fps)} temas)", "success")
+                self._record_playlist_created(pid, name, len(fps))
 
     def create_from_genre(self):
         all_items = self._all_library_tracks()
@@ -268,6 +303,7 @@ class PlaylistController:
                 self._ctx.db.add_to_playlist(pid, fp)
             self._ctx.rebuild_sidebar()
             self._toast(f"Playlist creada: {genre} ({len(fps)} temas)", "success")
+            self._record_playlist_created(pid, genre, len(fps))
 
     def create_from_search(self):
         model = self._ctx.model
@@ -291,8 +327,7 @@ class PlaylistController:
                 self._ctx.db.add_to_playlist(pid, fp)
             self._ctx.rebuild_sidebar()
             self._toast(f"Playlist creada: {name} ({len(fps)} temas)", "success")
-
-    # ── Hub navigation ──
+            self._record_playlist_created(pid, name, len(fps))
 
     def open_smart_playlist(self, key: str):
         self._ctx.navigate_sidebar(
@@ -307,12 +342,25 @@ class PlaylistController:
         else:
             playback.enqueue(fps, play_now=True)
         self._toast("Reproduciendo playlist", "success")
+        pl = self.get_playlist_by_id(pid)
+        name = pl.get("name", "") if pl else ""
+        self._select_playlist(pid, name)
+        ctx = self._context()
+        if ctx:
+            from core.context.context_events import AppEvent
+            ctx.record_event(AppEvent.PLAYLIST_PLAYED,
+                {"playlist_id": pid, "name": name, "count": len(fps)})
 
     def hub_playlist_queue(self, pid: int):
         items = self._ctx.db.get_playlist_items(pid)
         fps = [i.filepath for i in items]
         self._ctx.playback.enqueue(fps, play_now=False)
         self._toast("Playlist anadida a la cola", "success")
+        ctx = self._context()
+        if ctx:
+            from core.context.context_events import AppEvent
+            ctx.record_event(AppEvent.PLAYLIST_QUEUED,
+                {"playlist_id": pid, "count": len(fps)})
 
     # ── CRUD helpers ──
 

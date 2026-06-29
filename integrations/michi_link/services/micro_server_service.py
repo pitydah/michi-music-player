@@ -1,33 +1,18 @@
 """MicroServerService — manages Player ↔ Micro Server interactions.
 
-Full lifecycle: discover, pair, read library, read stats.
-Returns ServiceResult for every operation — never raises to caller.
+Full lifecycle: discover, pair, test_connection, read library, stats, search.
+Returns Result objects — never raises to caller.
 """
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import dataclass
-from typing import Any
+import urllib.request
 
 from integrations.michi_link.client import MichiLinkClient, RemoteServerInfo
+from integrations.michi_link.services.result import Result
 
 logger = logging.getLogger("michi.service.micro_server")
-
-
-@dataclass
-class ServiceResult:
-    success: bool = False
-    data: Any = None
-    error_code: str = ""
-    error_message: str = ""
-
-    @classmethod
-    def ok(cls, data: Any = None) -> ServiceResult:
-        return cls(success=True, data=data)
-
-    @classmethod
-    def fail(cls, code: str = "UNKNOWN", message: str = "") -> ServiceResult:
-        return cls(success=False, error_code=code, error_message=message)
 
 
 class MicroServerService:
@@ -37,63 +22,122 @@ class MicroServerService:
         self._client = client or MichiLinkClient()
         self._servers: dict[str, RemoteServerInfo] = {}
 
-    def discover(self, host: str, port: int = 53318) -> ServiceResult:
+    def discover(self, host: str, port: int = 53318) -> Result:
         info = self._client.discover(host, port)
         if info is None:
-            return ServiceResult.fail("DISCOVERY_FAILED",
-                                      f"Cannot reach server at {host}:{port}")
+            return Result.fail("DISCOVERY_FAILED",
+                               f"Cannot reach server at {host}:{port}")
         key = f"{host}:{port}"
         self._servers[key] = info
-        return ServiceResult.ok(info)
+        return Result.success(info, f"Server '{info.alias}' at {host}:{port}")
+
+    def discover_servers(self, hosts: list[tuple[str, int]]) -> Result:
+        found = []
+        for host, port in hosts:
+            r = self.discover(host, port)
+            if r.ok:
+                found.append(r.data)
+        return Result.success(found, f"Found {len(found)} servers")
+
+    def get_server_info(self, server: RemoteServerInfo) -> Result:
+        return Result.success({
+            "alias": server.alias,
+            "server_device_id": server.server_device_id,
+            "requires_pairing": server.requires_pairing,
+            "roles": server.roles,
+            "features": server.features,
+        })
+
+    def test_connection(self, server: RemoteServerInfo) -> Result:
+        try:
+            req = urllib.request.Request(
+                f"http://{server.host}:{server.port}/api/v1/ping",
+                method="GET",
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                if r.status == 200:
+                    return Result.success({"latency_ms": 0}, "Connection OK")
+        except Exception as e:
+            return Result.fail("CONNECTION_FAILED", str(e))
+        return Result.fail("CONNECTION_FAILED", "Unexpected response")
+
+    def get_capabilities(self, server: RemoteServerInfo) -> Result:
+        return Result.success({
+            "host": server.host,
+            "port": server.port,
+            "alias": server.alias,
+            "has_token": bool(server.device_token),
+            "roles": server.roles,
+            "features": server.features,
+        })
 
     def pair(self, server: RemoteServerInfo, username: str = "",
-             password: str = "") -> ServiceResult:
+             password: str = "") -> Result:
         ok = self._client.pair(server, username=username, password=password)
         if not ok:
-            return ServiceResult.fail("PAIR_FAILED",
-                                      "Pairing rejected by server")
-        return ServiceResult.ok({"device_id": server.device_id,
-                                 "device_token": server.device_token[:8] + "..."})
+            return Result.fail("PAIR_FAILED", "Pairing rejected by server")
+        return Result.success({
+            "device_id": server.device_id,
+            "device_token_prefix": server.device_token[:8] + "...",
+        }, "Paired successfully")
 
-    def get_tracks(self, server: RemoteServerInfo) -> ServiceResult:
+    def pair_start(self, server: RemoteServerInfo) -> Result:
+        import secrets
+        body = json.dumps({
+            "client_device_id": f"player_{secrets.token_hex(4)}",
+            "alias": "Michi Music Player",
+            "device_model": "desktop",
+            "client_version": "1.0",
+        }).encode()
+        try:
+            req = urllib.request.Request(
+                f"http://{server.host}:{server.port}/api/v1/pair/start",
+                data=body, method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read().decode())
+            return Result.success(data, "pair/start succeeded")
+        except Exception as e:
+            return Result.fail("PAIR_START_FAILED", str(e))
+
+    def pair_confirm(self, server: RemoteServerInfo, username: str = "",
+                     password: str = "") -> Result:
+        return self.pair(server, username=username, password=password)
+
+    def get_tracks(self, server: RemoteServerInfo) -> Result:
         tracks = self._client.get_library(server)
         if tracks is None:
-            return ServiceResult.fail("LIBRARY_FAILED",
-                                      "Cannot fetch library from server")
-        return ServiceResult.ok(tracks)
+            return Result.fail("LIBRARY_FAILED", "Cannot fetch library")
+        return Result.success(tracks, f"{len(tracks)} tracks")
 
-    def get_library_stats(self, server: RemoteServerInfo) -> ServiceResult:
+    def get_library_stats(self, server: RemoteServerInfo) -> Result:
         stats = self._client._get(server, "/api/v1/library/stats")
         if stats is None:
-            return ServiceResult.fail("STATS_FAILED",
-                                      "Cannot fetch library stats")
-        return ServiceResult.ok(stats)
+            return Result.fail("STATS_FAILED", "Cannot fetch library stats")
+        return Result.success(stats)
 
-    def search(self, server: RemoteServerInfo, query: str) -> ServiceResult:
+    def search(self, server: RemoteServerInfo, query: str) -> Result:
         results = self._client.search(server, query)
         if results is None:
-            return ServiceResult.fail("SEARCH_FAILED",
-                                      "Search request failed")
-        return ServiceResult.ok(results)
+            return Result.fail("SEARCH_FAILED", "Search request failed")
+        return Result.success(results, f"{len(results)} results")
 
-    def get_playback_state(self, server: RemoteServerInfo) -> ServiceResult:
+    def get_playback_state(self, server: RemoteServerInfo) -> Result:
         state = self._client.get_playback_state(server)
         if state is None:
-            return ServiceResult.fail("STATE_FAILED",
-                                      "Cannot fetch playback state")
-        return ServiceResult.ok(state)
+            return Result.fail("STATE_FAILED", "Cannot fetch playback state")
+        return Result.success(state)
 
-    def get_queue(self, server: RemoteServerInfo) -> ServiceResult:
+    def get_queue(self, server: RemoteServerInfo) -> Result:
         queue = self._client.get_queue(server)
         if queue is None:
-            return ServiceResult.fail("QUEUE_FAILED",
-                                      "Cannot fetch queue")
-        return ServiceResult.ok(queue)
+            return Result.fail("QUEUE_FAILED", "Cannot fetch queue")
+        return Result.success(queue)
 
     def control(self, server: RemoteServerInfo, command: str,
-                **kwargs) -> ServiceResult:
+                **kwargs) -> Result:
         ok = self._client.control(server, command, **kwargs)
         if not ok:
-            return ServiceResult.fail("CONTROL_FAILED",
-                                      f"Command '{command}' failed")
-        return ServiceResult.ok({"command": command})
+            return Result.fail("CONTROL_FAILED", f"Command '{command}' failed")
+        return Result.success({"command": command}, f"Command '{command}' executed")
