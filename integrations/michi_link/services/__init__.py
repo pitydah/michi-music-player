@@ -14,6 +14,9 @@ from integrations.michi_link.services.continue_on_server_service import (
 )
 from integrations.michi_link.services.remote_library_service import RemoteLibraryService
 from integrations.michi_link.services.diagnostics_service import DiagnosticsService
+from integrations.michi_link.services.track_identity_service import (
+    TrackIdentityService, TrackIdentity,
+)
 
 __all__ = [
     "Result",
@@ -23,4 +26,6 @@ __all__ = [
     "ContinueOnServerService",
     "RemoteLibraryService",
     "DiagnosticsService",
+    "TrackIdentityService",
+    "TrackIdentity",
 ]

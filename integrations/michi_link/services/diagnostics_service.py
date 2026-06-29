@@ -105,6 +105,56 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
+    def check_track_identity(self, filepath: str = "") -> dict:
+        if not filepath:
+            return {"status": "skipped", "reason": "no filepath specified"}
+        from integrations.michi_link.services.track_identity_service import (
+            TrackIdentityService,
+        )
+        svc = TrackIdentityService()
+        result = svc.compute(filepath)
+        if result.ok:
+            ident = result.data
+            return {
+                "status": "ok",
+                "sha256_prefix": ident.sha256_prefix,
+                "file_size": ident.file_size,
+            }
+        return {"status": "error", "message": result.message}
+
+    def check_import_preflight(self, host: str = "", port: int = 53318) -> dict:
+        if not host:
+            return {"status": "skipped"}
+        from integrations.michi_link.services.import_to_server_service import (
+            ImportToServerService,
+        )
+        svc = ImportToServerService()
+        # Check if preflight endpoint exists by calling it with empty list
+        from integrations.michi_link.client import RemoteServerInfo
+        fake = RemoteServerInfo(host=host, port=port)
+        result = svc.preflight(fake, [])
+        return {
+            "status": "ok" if result.ok else "unavailable",
+            "preflight_supported": result.ok,
+        }
+
+    def check_import_mapping(self, host: str = "", port: int = 53318) -> dict:
+        if not host:
+            return {"status": "skipped"}
+        from integrations.michi_link.client import RemoteServerInfo
+        from integrations.michi_link.services.import_to_server_service import (
+            ImportToServerService,
+        )
+        svc = ImportToServerService()
+        fake = RemoteServerInfo(host=host, port=port)
+        result = svc.preflight(fake, [])
+        if result.ok and isinstance(result.data, dict):
+            return {
+                "status": "ok",
+                "mapping_supported": True,
+            }
+        return {"status": "unavailable", "mapping_supported": False}
+
     def check_remote_micro(self, host: str = "", port: int = 53318) -> dict:
         if not host:
             return {"status": "skipped", "reason": "no host specified"}
@@ -159,6 +209,9 @@ class DiagnosticsService:
             "queue": self.check_queue(player_service),
             "micro_server_client": self.check_remote_micro(micro_host),
             "micro_import": self.check_micro_import(micro_host),
+            "track_identity": self.check_track_identity(),
+            "import_preflight": self.check_import_preflight(micro_host),
+            "import_mapping": self.check_import_mapping(micro_host),
             "continue_readiness": self.check_continue_readiness(player_service),
             "errors": [],
         }

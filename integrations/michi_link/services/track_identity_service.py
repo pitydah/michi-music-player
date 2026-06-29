@@ -17,7 +17,7 @@ from integrations.michi_link.services.result import Result
 
 logger = logging.getLogger("michi.service.track_identity")
 
-IDENTITY_HASH_PREFIX_LEN = 16  # bytes → 32 hex chars
+IDENTITY_HASH_PREFIX_LEN = 32  # hex chars = 16 bytes
 
 
 @dataclass
@@ -52,10 +52,10 @@ class TrackIdentity:
         """Check if two identities refer to the same track."""
         if self.sha256_prefix and other.sha256_prefix:
             return self.sha256_prefix == other.sha256_prefix
-        if self.file_size and other.file_size and self.file_size == other.file_size:
-            if self.duration_ms and other.duration_ms:
-                if abs(self.duration_ms - other.duration_ms) < 2000:
-                    return self._normalized_match(other)
+        if (self.file_size and other.file_size and self.file_size == other.file_size
+                and self.duration_ms and other.duration_ms
+                and abs(self.duration_ms - other.duration_ms) < 2000):
+            return self._normalized_match(other)
         return False
 
     def _normalized_match(self, other: TrackIdentity) -> bool:
