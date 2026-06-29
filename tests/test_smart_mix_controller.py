@@ -34,12 +34,14 @@ def ctrl(win):
 
 class TestSmartMixController:
     def test_show_smart_mix_daily(self, ctrl, win):
+        """Show should display list, not auto-play."""
         with patch("library.smart_mixes.get_daily_mix") as mock_mix:
             mock_mix.return_value = ["/path/to/song.flac"]
             with patch("os.path.isfile", return_value=True):
                 ctrl.show_smart_mix("mix_daily")
         win._section_title.setText.assert_called()
-        win._play_filepaths.assert_called_with(["/path/to/song.flac"], play_now=True)
+        win._play_filepaths.assert_not_called()
+        win._model.populate.assert_called()
 
     def test_show_smart_mix_unplayed(self, ctrl, win):
         items = []
@@ -68,11 +70,12 @@ class TestSmartMixController:
         win._views.show.assert_called_with("empty")
 
     def test_show_smart_mix_no_files(self, ctrl, win):
+        """Show with no real files should show empty state."""
         with patch("library.smart_mixes.get_daily_mix") as mock_mix:
             mock_mix.return_value = ["/nonexistent/file.flac"]
             with patch("os.path.isfile", return_value=False):
                 ctrl.show_smart_mix("mix_daily")
-        win._toast_svc.warning.assert_called_once()
+        win._views.show.assert_called_with("empty")
 
     def test_show_favs_populates_table(self, ctrl, win):
         fav = MagicMock()
@@ -138,11 +141,13 @@ class TestSmartMixController:
         assert result == []
 
     def test_show_smart_mix_popular(self, ctrl, win):
+        """Show should display list, not auto-play."""
         with patch("library.smart_mixes.get_popular") as mock_mix:
             mock_mix.return_value = ["/popular/song.flac"]
             with patch("os.path.isfile", return_value=True):
                 ctrl.show_smart_mix("mix_popular")
-        win._play_filepaths.assert_called_once()
+        win._play_filepaths.assert_not_called()
+        win._model.populate.assert_called()
 
     def test_show_smart_mix_unknown_key_sets_title(self, ctrl, win):
         ctrl.show_smart_mix("mix_unknown")

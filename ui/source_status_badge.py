@@ -104,6 +104,7 @@ class SourceStatusBadge(QPushButton):
     def set_text(self, text: str):
         if not text:
             self.setText("")
+            self.setToolTip("")
             return
         display = "\u25cf " + text.strip()
         self.setText(display)

@@ -797,6 +797,7 @@ class NowPlayingBar(QWidget):
         self._seeking = False
         self._shuffle = False
         self._repeat = "none"
+        self.set_state("stopped")
         self._update_info_card_state()
 
         if hasattr(self, '_info_card'):

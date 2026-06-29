@@ -9,6 +9,8 @@ class SmartMixController:
         self._win = window
 
     def show_smart_mix(self, key):
+        """Show mix results — display list, never auto-play.
+        Auto-play is handled by MixHubPage's 'Reproducir' button."""
         from library.smart_mixes import (get_daily_mix, get_unplayed,
                                         get_popular, get_favorites_recent)
         self._win._section_title.setText({
@@ -19,38 +21,35 @@ class SmartMixController:
         mixes = {"mix_daily": get_daily_mix, "mix_unplayed": get_unplayed,
                 "mix_popular": get_popular, "mix_favorites": get_favorites_recent}
         fn = mixes.get(key)
-        if fn:
-            files = fn()
-            files = [f for f in files
-                     if isinstance(f, str) and (f.startswith("http") or os.path.isfile(f))]
-            if key in ("mix_unplayed", "mix_favorites"):
-                items = [self._win._items_index.get(f) for f in files]
-                items = [i for i in items if i]
-                refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
-                                 artist=i.artist, album=i.album, duration=i.duration,
-                                 year=i.year, genre=i.genre) for i in items]
-                self._win._model.populate(refs)
-                self._win._current_refs = refs
-                self._win._count.setText(f"{len(refs)} canciones")
-                self._win._playlist_refs = refs
-                if refs:
-                    self._win._fade_content("library_hub")
-                    self._win._table.setModel(self._win._model)
-                    self._win._table.setColumnWidth(0, 72)
-                    self._win._table.setColumnWidth(1, 260)
-                    self._win._table.setColumnWidth(2, 170)
-                    self._win._table.setColumnWidth(3, 170)
-                    self._win._table.setColumnWidth(4, 70)
-                    self._win._table.setColumnWidth(5, 130)
-                    self._win._table.setColumnWidth(6, 80)
-                    self._win._table.setColumnWidth(7, 260)
-                else:
-                    self._win._views.show("empty")
-            elif files:
-                self._win._play_filepaths(files, play_now=True)
-                self._win._show_expanded()
-            else:
-                self._win._toast_svc.warning("El mix no contiene archivos disponibles")
+        if not fn:
+            self._win._views.show("empty")
+            return
+        files = fn()
+        files = [f for f in files
+                 if isinstance(f, str) and (f.startswith("http") or os.path.isfile(f))]
+        refs = []
+        if files:
+            items = [self._win._items_index.get(f) for f in files]
+            items = [i for i in items if i]
+            refs = [TrackRef(uri=i.filepath, title=i.title or os.path.basename(i.filepath),
+                             artist=i.artist, album=i.album, duration=i.duration,
+                             year=i.year, genre=i.genre) for i in items]
+        self._win._model.populate(refs)
+        self._win._current_refs = refs
+        self._win._count.setText(f"{len(refs)} canciones")
+        if refs:
+            self._win._fade_content("library_hub")
+            self._win._table.setModel(self._win._model)
+            self._win._table.setColumnWidth(0, 72)
+            self._win._table.setColumnWidth(1, 260)
+            self._win._table.setColumnWidth(2, 170)
+            self._win._table.setColumnWidth(3, 170)
+            self._win._table.setColumnWidth(4, 70)
+            self._win._table.setColumnWidth(5, 130)
+            self._win._table.setColumnWidth(6, 80)
+            self._win._table.setColumnWidth(7, 260)
+        else:
+            self._win._views.show("empty")
 
     def show_favs(self, key):
         favs = self._win._db.get_favorites()
