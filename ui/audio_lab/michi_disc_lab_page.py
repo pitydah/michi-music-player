@@ -158,9 +158,13 @@ class MichiDiscLabPage(QWidget):
         p_layout.addWidget(profile_label)
 
         self._profile_combo = QComboBox()
+        self._profile_data: list[str] = []
         for p in RIP_PROFILES:
-            label = p.name if p.available else f"{p.name} (próximamente)"
-            self._profile_combo.addItem(label)
+            if p.available:
+                idx = self._profile_combo.addItem(p.name)
+                self._profile_data.append(p.format)
+            else:
+                self._profile_combo.addItem(f"{p.name} (próximamente)")
         self._profile_combo.setCurrentIndex(0)
 
         mode_label = QLabel("Modo:")
@@ -346,7 +350,10 @@ class MichiDiscLabPage(QWidget):
             self._drive_status.setText("Selecciona una carpeta de destino primero.")
             return
 
-        profile_name = self._profile_combo.currentText()
+        profile_idx = self._profile_combo.currentIndex()
+        profile_name = (self._profile_data[profile_idx]
+                        if 0 <= profile_idx < len(self._profile_data)
+                        else "wav")
         mode_value = self._mode_combo.currentData() or "fast"
 
         job = self._rip_manager.create_job(
