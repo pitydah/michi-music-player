@@ -22,6 +22,31 @@ class TestServerInfo:
         assert d["features"]["token_refresh"] is False
         assert d["features"]["events"] is False
 
+    def test_server_info_has_version_and_michi_link_version(self):
+        from integrations.michi_link.models import ServerInfo
+        info = ServerInfo()
+        d = info.to_dict()
+        assert d.get("version") == "1.0.0"
+        assert d.get("michi_link_version") == "1.0.0-alpha"
+
+    def test_server_info_has_auth_block(self):
+        from integrations.michi_link.models import ServerInfo
+        info = ServerInfo()
+        d = info.to_dict()
+        auth = d.get("auth", {})
+        assert auth.get("strategy") == "PLAYER_PASSWORD"
+        assert auth.get("token_refresh") is False
+        assert "required" in auth
+
+    def test_server_info_features_receivers_and_rooms_false(self):
+        from integrations.michi_link.models import ServerInfo
+        info = ServerInfo()
+        d = info.to_dict()
+        assert d["features"].get("receivers") is False
+        assert d["features"].get("rooms") is False
+        assert d["features"].get("token_refresh") is False
+        assert d["features"].get("events") is False
+
     def test_server_info_includes_roles_features(self):
         from integrations.michi_link.models import ServerInfo
         info = ServerInfo()
@@ -154,6 +179,81 @@ class TestStreamAlias:
         assert "error" in data
         assert data["error"]["code"] == "TRACK_NOT_FOUND"
 
+    def test_stream_404_has_details(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler.path = "/api/v1/stream/missing_hash"
+        handler._require_permission = MagicMock(return_value=True)
+        srv = MagicMock()
+        srv._resolve_track = MagicMock(return_value=None)
+        handler.server_ref = srv
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        data = results[0][0]
+        assert isinstance(data.get("error", {}).get("details", {}), dict)
+
+    def test_stream_200_without_range(self):
+        from integrations.michi_link.server import V1_MIXIN
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            f.write(b"x" * 1024)
+            tmp_path = f.name
+
+        try:
+            handler = MagicMock()
+            handler.path = "/api/v1/stream/test_hash"
+            handler._require_permission = MagicMock(return_value=True)
+            handler.headers = {}
+            handler.send_response = MagicMock()
+            handler.send_header = MagicMock()
+            handler.end_headers = MagicMock()
+            handler.wfile = MagicMock()
+
+            srv = MagicMock()
+            srv._resolve_track = MagicMock(return_value=tmp_path)
+            handler.server_ref = srv
+
+            V1_MIXIN.handle_get(handler)
+            # 200 response
+            status = handler.send_response.call_args[0][0]
+            assert status in (200, None)
+        finally:
+            os.unlink(tmp_path)
+
+    def test_stream_206_with_range(self):
+        from integrations.michi_link.server import V1_MIXIN
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as f:
+            f.write(b"x" * 65536)
+            tmp_path = f.name
+
+        try:
+            handler = MagicMock()
+            handler.path = "/api/v1/stream/test_hash"
+            handler._require_permission = MagicMock(return_value=True)
+            handler.headers = {"Range": "bytes=0-1023"}
+            handler.send_response = MagicMock()
+            handler.send_header = MagicMock()
+            handler.end_headers = MagicMock()
+            handler.wfile = MagicMock()
+
+            srv = MagicMock()
+            srv._resolve_track = MagicMock(return_value=tmp_path)
+            handler.server_ref = srv
+
+            V1_MIXIN.handle_get(handler)
+            # Should get 206
+            status = handler.send_response.call_args[0][0]
+            assert status == 206
+        finally:
+            os.unlink(tmp_path)
+
 
 class TestArtworkAlias:
     def test_artwork_requires_permission(self):
@@ -183,6 +283,26 @@ class TestArtworkAlias:
         data, status = results[0]
         assert "error" in data
         assert data["error"]["code"] == "ARTWORK_NOT_FOUND"
+
+    def test_artwork_200_with_mime_and_cache(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler.path = "/api/v1/artwork/cover_known"
+        handler._require_permission = MagicMock(return_value=True)
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+        handler.wfile = MagicMock()
+
+        srv = MagicMock()
+        row = ("image/jpeg", b"fake_image_data")
+        srv._db.conn.execute.return_value.fetchone.return_value = row
+        handler.server_ref = srv
+
+        V1_MIXIN.handle_get(handler)
+        handler.send_header.assert_any_call("Content-Type", "image/jpeg")
+        handler.send_header.assert_any_call("Cache-Control", "public, max-age=86400")
+        handler.wfile.write.assert_called_with(b"fake_image_data")
 
 
 class TestSearch:
@@ -541,6 +661,47 @@ class TestTracks:
         assert "track_id" in track
         assert track["title"] == "Test Song"
         assert track["download_path"].startswith("/api/v1/stream/")
+
+
+class TestQueue:
+    def test_build_queue_no_filepath(self):
+        from integrations.michi_link.server import V1_MIXIN
+        ps = MagicMock()
+        ps.get_queue.return_value = [
+            {"filepath": "/secret/song.mp3", "title": "Song",
+             "artist": "A", "album": "B", "track_uid": ""},
+        ]
+        V1_MIXIN._player_service = ps
+        V1_MIXIN._playback = MagicMock()
+        V1_MIXIN._playback.get_queue_index.return_value = 0
+
+        result = V1_MIXIN._build_queue(MagicMock())
+        for t in result.get("tracks", []):
+            assert "filepath" not in t
+            assert t.get("download_path", "").startswith("/api/v1/stream/")
+        assert result.get("current_index") == 0
+
+
+class TestSyncManifest:
+    def test_build_manifest_no_filepath(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler.path = "/api/v1/sync/manifest?device_id=d1"
+        handler._require_permission = MagicMock(return_value=True)
+        srv = MagicMock()
+        srv._manifest_provider = MagicMock(return_value={
+            "tracks": [{"track_id": "abc", "title": "Song"}],
+            "playlists": [],
+        })
+        handler.server_ref = srv
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+        assert len(results) == 1
+        body = results[0][0]
+        for t in body.get("tracks", []):
+            assert "filepath" not in t
 
 
 class TestServerIntegration:

@@ -11,16 +11,23 @@ class ServerInfo:
     service: str = "michi-music-player"
     name: str = "Michi Music Player"
     api_version: str = "v1"
+    version: str = "1.0.0"
+    michi_link_version: str = "1.0.0-alpha"
     roles: list[str] = field(default_factory=lambda: [
         "desktop_player", "library_master", "sync_host",
         "remote_control_target", "cast_controller",
     ])
+    auth: dict = field(default_factory=lambda: {
+        "required": True,
+        "strategy": "PLAYER_PASSWORD",
+        "token_refresh": False,
+    })
     features: dict[str, bool] = field(default_factory=lambda: {
         "library": True, "search": True, "streaming": True,
         "sync_manifest": True, "remote_control": True,
         "queue": True, "artwork": True, "playlists": True,
-        "audio_chains": True, "receivers": True,
         "token_refresh": False, "events": False,
+        "receivers": False, "rooms": False,
     })
 
     def to_dict(self) -> dict:

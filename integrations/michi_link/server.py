@@ -100,6 +100,7 @@ class V1_MIXIN:
             info = ServerInfo(name=srv._alias if srv else "Michi Music Player")
             d = info.to_dict()
             d["requires_pairing"] = has_account
+            d["auth"]["required"] = has_account
             if path == "/api/v1/status":
                 d["server_device_id"] = make_device_id()
                 d["sync_active"] = srv.is_running if srv else False
@@ -496,11 +497,12 @@ class V1_MIXIN:
                         break
 
         if pb:
-            eng = getattr(pb, "_engine", None)
-            if eng:
-                volume = int(getattr(eng, "_volume", 0.7) * 100)
-                shuffle = getattr(eng, "_shuffle", False)
-                repeat = getattr(eng, "_repeat", "none")
+            # Use public API where possible
+            volume = getattr(pb, 'volume', None)
+            if volume is not None:
+                volume = int(volume * 100) if isinstance(volume, float) else int(volume)
+            shuffle = getattr(pb, 'shuffle', False) if hasattr(pb, 'shuffle') else shuffle
+            repeat = getattr(pb, 'repeat', 'none') if hasattr(pb, 'repeat') else repeat
 
         return PlaybackStateDto(
             state=state, current_track=current_track,
@@ -629,8 +631,9 @@ class V1_MIXIN:
 
     @classmethod
     def _handle_queue_jump(cls, handler, body):
+        ps = cls._player_service
         pb = cls._playback
-        if not pb:
+        if not ps and not pb:
             return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
                                   "Playback service not available", 503)
         try:
@@ -641,7 +644,12 @@ class V1_MIXIN:
         if index < 0:
             return _send_v1_error(handler, "INVALID_INDEX", "Invalid index", 400)
         try:
-            pb.play_queue(pb.get_queue_state()[0], start_index=index)
+            if ps and hasattr(ps, "play_queue"):
+                queue, _ = ps.get_queue_state()
+                ps.play_queue(queue, start_index=index)
+            elif pb and hasattr(pb, "play_queue"):
+                queue, _ = pb.get_queue_state()
+                pb.play_queue(queue, start_index=index)
         except Exception as e:
             logger.warning("Queue jump failed: %s", e)
             return _send_v1_error(handler, "JUMP_FAILED", "Jump failed", 500)
@@ -657,9 +665,9 @@ class V1_MIXIN:
             data = json.loads(body)
         except Exception:
             return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
-        uris = data.get("uris", [])
+        uris = data.get("uris", data.get("track_ids", []))
         if not uris:
-            return _send_v1_error(handler, "NO_URIS", "No uris provided", 400)
+            return _send_v1_error(handler, "NO_URIS", "No uris or track_ids provided", 400)
         filepaths = []
         for uri in uris:
             fp = srv._resolve_track(uri) if srv else None
