@@ -559,7 +559,8 @@ class UIBuilder:
         # ── NowPlaying bar ──
         w._player_bar = NowPlayingBar()
         from ui.controllers.player_bar_controller import PlayerBarController
-        w._player_bar_ctrl = PlayerBarController(w._player_bar)
+        ctx_svc = getattr(w, '_context_svc', None)
+        w._player_bar_ctrl = PlayerBarController(w._player_bar, context_service=ctx_svc)
 
         bar_wrapper = QWidget()
         bar_wrapper.setObjectName("bottomBarArea")

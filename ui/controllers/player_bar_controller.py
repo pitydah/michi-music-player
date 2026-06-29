@@ -1,10 +1,13 @@
 """Player bar controller — wraps NowPlayingBar interactions for external controllers."""
 import os
 
+from core.context.context_events import AppEvent
+
 
 class PlayerBarController:
-    def __init__(self, player_bar):
+    def __init__(self, player_bar, context_service=None):
         self._player_bar = player_bar
+        self._context_svc = context_service
 
     def set_track(self, name: str, artist: str = "", cover: str = ""):
         self._player_bar.set_track(name, artist, cover)
@@ -23,6 +26,9 @@ class PlayerBarController:
                          tooltip: str = ""):
         """Set quality badge with category-colored styling."""
         self._player_bar.set_quality_info(label, category, tooltip)
+        if self._context_svc and label:
+            self._context_svc.record_event(AppEvent.TRACK_PLAYED,
+                {"quality": label, "quality_category": category})
 
     def set_state(self, state: str):
         self._player_bar.set_state(state)
@@ -41,6 +47,9 @@ class PlayerBarController:
             self._player_bar.set_state("stopped")
             self._player_bar.set_position(0)
             self._player_bar.set_duration(0)
+        if self._context_svc:
+            self._context_svc.record_event(AppEvent.APP_CLOSED,
+                {"reason": "playback_stopped"})
 
     def set_transmit_active(self, active: bool, device_name: str = ""):
         self._player_bar.set_transmit_active(active, device_name)
