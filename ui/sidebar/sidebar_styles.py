@@ -65,8 +65,8 @@ def section_header_qss(dark: bool = True, hover: bool = False) -> str:
         normal_c = "rgba(28,28,30,0.52)"
         hover_c = "rgba(28,28,30,0.64)"
     else:
-        normal_c = "rgba(255,255,255,0.48)"
-        hover_c = "rgba(255,255,255,0.65)"
+        normal_c = "rgba(255,255,255,0.78)"
+        hover_c = "rgba(255,255,255,0.92)"
     c = hover_c if hover else normal_c
     return (
         f"font-size:10px;font-weight:600;color:{c};letter-spacing:0.8px;"
@@ -79,8 +79,8 @@ def section_chevron_qss(dark: bool = True, hover: bool = False) -> str:
         normal_c = "rgba(28,28,30,0.52)"
         hover_c = "rgba(28,28,30,0.72)"
     else:
-        normal_c = "rgba(255,255,255,0.72)"
-        hover_c = "rgba(255,255,255,0.90)"
+        normal_c = "rgba(255,255,255,0.78)"
+        hover_c = "rgba(255,255,255,0.92)"
     c = hover_c if hover else normal_c
     return (
         f"font-size:10px;color:{c};background:transparent;"
