@@ -46,3 +46,4 @@ class AppServices:
     ha_connected: callable = None         # () -> bool
     local_media_ctrl: object = None       # LocalMediaServerController
     local_ip: callable = None             # () -> str
+    context_svc: object = None            # ContextService

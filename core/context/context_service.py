@@ -79,8 +79,9 @@ class ContextService:
     def get_navigation_state(self) -> dict:
         return repo.get_state("navigation", {"section": "", "tab": ""})
 
-    def update_selection(self, track=None, album: str = "", artist: str = "") -> None:
-        payload = {"album": album, "artist": artist}
+    def update_selection(self, track=None, album: str = "", artist: str = "",
+                          genre: str = "") -> None:
+        payload = {"album": album, "artist": artist, "genre": genre}
         if track is not None:
             payload["track"] = getattr(track, "title", None) or getattr(track, "name", None)
             payload["track_artist"] = getattr(track, "artist", None)
@@ -122,6 +123,7 @@ class ContextService:
                 "selected_track": sel.get("track"),
                 "selected_album": sel.get("album"),
                 "selected_artist": sel.get("artist"),
+                "selected_genre": sel.get("genre"),
             })
             return snap
         return self._rebuild_if_dirty("assistant_snapshot", _build)

@@ -118,7 +118,8 @@ class AIAssistantService:
                  require_confirmation: bool = True,
                  action_log_enabled: bool = True,
                  max_action_tracks: int = 100,
-                 max_playlist_tracks: int = 50):
+                 max_playlist_tracks: int = 50,
+                 context_service: Any = None):
         self._db = db
         self._model = model
         self._max_results = max_results
@@ -128,6 +129,7 @@ class AIAssistantService:
         self._max_action_tracks = max_action_tracks
         self._max_playlist_tracks = max_playlist_tracks
         self._playback = playback
+        self._context_svc = context_service
         self._ollama = OllamaClient(base_url=base_url, timeout=ollama_timeout,
                                      offline_strict=offline_strict)
         self._conversation = ConversationStore(save_history=save_history)

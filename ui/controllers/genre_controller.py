@@ -64,7 +64,7 @@ class GenreController:
 
         ctx = getattr(self._win, '_context_svc', None)
         if ctx:
-            ctx.update_selection(album=g.name, artist="")
+            ctx.update_selection(genre=g.name)
 
     def back_to_overview(self):
         self._genre_repo.current_key = None

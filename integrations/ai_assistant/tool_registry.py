@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 from typing import Any, Callable
 
@@ -73,7 +74,20 @@ class ToolRegistry:
 
     def _call_tool(self, name: str, db: Any, **kwargs) -> ToolResult:
         fn = self._tools[name]
-        result = fn(db=db, **kwargs)
+        try:
+            sig = inspect.signature(fn)
+        except (ValueError, TypeError):
+            sig = None
+
+        if sig is not None:
+            call_kwargs = {"db": db}
+            for key, value in kwargs.items():
+                if key in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+                    call_kwargs[key] = value
+            result = fn(**call_kwargs)
+        else:
+            result = fn(db=db, **kwargs)
+
         if isinstance(result, ToolResult):
             return result
         return ToolResult(name=name, success=True, data=result)

@@ -33,8 +33,12 @@ class AiAssistantController(QObject):
         self._worker_mgr = worker_manager
         self._playback = playback
         self._safe_mode = safe_mode
+        self._context_svc = None
         self._service = None
         self._pending = False
+
+    def set_context_service(self, svc):
+        self._context_svc = svc
 
     def is_enabled(self) -> bool:
         if self._safe_mode or os.environ.get("MICHI_SAFE_MODE") == "1":
@@ -52,7 +56,7 @@ class AiAssistantController(QObject):
             return self._service
 
         from integrations.ai_assistant.service import AIAssistantService
-        ctx_svc = getattr(self._win, "_context_svc", None)
+        ctx_svc = self._context_svc
 
         self._service = AIAssistantService(
             db=self._db,

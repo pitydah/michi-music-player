@@ -238,6 +238,13 @@ class MainWindow(QMainWindow):
         from ui.controllers.artist_repository import ArtistRepository
         self._artist_repo = ArtistRepository()
 
+        # ContextService before AppServices so controllers can use it
+        from core.context.context_service import ContextService
+        self._context_svc = ContextService(
+            db=self._db,
+            playback=self._playback,
+        )
+
         # AppServices before controllers that use them
         from core.app_services import AppServices
         svc = AppServices(
@@ -246,6 +253,7 @@ class MainWindow(QMainWindow):
             player_bar=getattr(self, '_player_bar_ctrl', None),
             features=self._features,
             artist_repo=self._artist_repo, genre_repo=self._genre_repo,
+            context_svc=self._context_svc,
             fade_to=self._fade_content, navigate=self._on_sidebar_navigate,
             configure_header=self._configure_header_for_section,
             rebuild_sidebar=self._rebuild_sidebar,
@@ -258,12 +266,6 @@ class MainWindow(QMainWindow):
             self._db,
             scan_path=self._scan_path,
             reload_library=self._reload_library_after_change,
-        )
-
-        from core.context.context_service import ContextService
-        self._context_svc = ContextService(
-            db=self._db,
-            playback=self._playback,
         )
 
         # Controllers — pass AppServices for progressive migration
@@ -930,8 +932,9 @@ class MainWindow(QMainWindow):
                 safe_mode=self._safe_mode,
                 parent=self,
             )
+            self._assistant_ctrl.set_context_service(self._context_svc)
         self._assistant_ctrl.show_assistant(self, self._views, panel=getattr(self, '_assistant_panel', None))
-        ctx = getattr(self, '_context_svc', None)
+        ctx = self._context_svc
         if ctx:
             from core.context.context_events import AppEvent
             ctx.record_event(AppEvent.ASSISTANT_OPENED)

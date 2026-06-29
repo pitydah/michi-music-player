@@ -85,3 +85,17 @@ class TestContextService:
         svc = ContextService(db=None, playback=None, sync=None)
         snap = svc.get_assistant_snapshot()
         assert snap["library_health"]["track_count"] == 0
+
+    def test_selection_with_all_params(self):
+        svc = ContextService()
+        svc.update_selection(album="Album1", artist="Artist1", genre="Rock")
+        snap = svc.get_assistant_snapshot()
+        assert snap.get("selected_album") == "Album1"
+        assert snap.get("selected_artist") == "Artist1"
+        assert snap.get("selected_genre") == "Rock"
+
+    def test_selection_roundtrip(self):
+        svc = ContextService()
+        svc.update_selection(genre="Jazz")
+        sel = svc.get_selection_state()
+        assert sel.get("genre") == "Jazz"

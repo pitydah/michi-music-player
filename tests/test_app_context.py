@@ -106,3 +106,25 @@ class TestAppContext:
         assert ctx.player_bar is w._player_bar_ctrl
         assert ctx.views is w._views
         assert ctx.transmit_mgr is w._transmit_mgr
+
+    def test_context_svc_property(self):
+        w = MagicMock()
+        w._context_svc = "mock_context"
+        w._db = w._player = w._playback = w._model = w._search_ctrl = MagicMock()
+        w._toast_svc = w._player_bar_ctrl = w._bg_theme = w._mpris_ctrl = MagicMock()
+        w._nav = w._tray_ctrl = w._views = w._section_title = MagicMock()
+        w._section_subtitle = w._view_switcher = w._artist_grid = MagicMock()
+        w._artist_detail = w._metadata_editor = w._artist_repo = MagicMock()
+        w._items_index = {}
+        w._current_ref = None
+        w._current_section_key = "library"
+        w._view_mode = "grid"
+        w._expanded = w._table = w._count = w._content = w._transmit_mgr = None
+        w._eq_dlg = None
+        w._fade_content = w._restore_central_opacity = MagicMock()
+        w._configure_header_for_section = w._on_sidebar_navigate = MagicMock()
+        w._rebuild_sidebar = w._load_library = w._notify_track = MagicMock()
+        w.setWindowTitle = w._play_file = w._show_album_grid = MagicMock()
+
+        ctx = AppContext(w)
+        assert ctx.context_svc == "mock_context"

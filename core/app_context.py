@@ -278,3 +278,7 @@ class AppContext:
 
     def play_filepaths(self, filepaths: list[str], play_now: bool = True):
         self._win._play_filepaths(filepaths, play_now=play_now)
+
+    @property
+    def context_svc(self):
+        return getattr(self._win, "_context_svc", None)
