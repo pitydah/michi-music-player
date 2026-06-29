@@ -5,7 +5,7 @@ import random
 import logging
 from PySide6.QtGui import QIcon, QColor, QDragEnterEvent, QDropEvent, QPainter, QLinearGradient, QImage
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QFileDialog, QMessageBox,
+    QMainWindow, QWidget, QMessageBox,
 )
 
 
@@ -598,15 +598,19 @@ class MainWindow(QMainWindow):
 
         self._add_folder_action = QAction("Añadir carpeta...", self)
         self._add_folder_action.setShortcut("Ctrl+D")
-        self._add_folder_action.triggered.connect(self._add_folder)
+        self._add_folder_action.triggered.connect(
+            lambda: self._library_import.add_folder(self))
         self.addAction(self._add_folder_action)
 
         self._import_playlist_action = QAction("Importar playlist...", self)
-        self._import_playlist_action.triggered.connect(self._import_playlist)
+        self._import_playlist_action.triggered.connect(
+            lambda: self._playlist_ctrl.import_playlist(
+                self, self._db, self._playback, self._player_bar_ctrl, self._load_library))
         self.addAction(self._import_playlist_action)
 
         self._export_playlist_action = QAction("Exportar playlist...", self)
-        self._export_playlist_action.triggered.connect(self._export_playlist)
+        self._export_playlist_action.triggered.connect(
+            lambda: self._playlist_ctrl.export_queue(self, self._playback))
         self.addAction(self._export_playlist_action)
 
         self._sync_action = QAction("Activar sincronización Android", self)
@@ -635,7 +639,8 @@ class MainWindow(QMainWindow):
         self.addAction(self._add_transmit_device_action)
 
         self._manage_transmit_devices_action = QAction("Administrar dispositivos...", self)
-        self._manage_transmit_devices_action.triggered.connect(self._manage_transmit_devices)
+        self._manage_transmit_devices_action.triggered.connect(
+            lambda: self._transmit_ctrl.manage_devices())
         self.addAction(self._manage_transmit_devices_action)
 
         self._shortcuts_action = QAction("Atajos de teclado", self)
@@ -647,7 +652,10 @@ class MainWindow(QMainWindow):
         self.addAction(self._about_action)
 
         self._duplicates_action = QAction("Buscar duplicados...", self)
-        self._duplicates_action.triggered.connect(self._show_duplicates)
+        self._duplicates_action.triggered.connect(
+            lambda: (lambda d: d.exec())(
+                __import__("ui.dialogs.duplicate_dialog",
+                           fromlist=["DuplicateDialog"]).DuplicateDialog(self._db, self)))
         self.addAction(self._duplicates_action)
 
         self._quit_action = QAction("Salir", self)
@@ -656,6 +664,11 @@ class MainWindow(QMainWindow):
         self.addAction(self._quit_action)
 
         self.menuBar().hide()
+
+    def _lazy_hub(self, name: str, factory):
+        """Lazy-init a hub page. Calls factory() if not yet registered."""
+        if not self._views.widget(name):
+            self._views.register(name, factory())
 
     def _ensure_sync_manager(self):
         """Lazy-create SyncManager with all signal wiring."""
@@ -754,14 +767,14 @@ class MainWindow(QMainWindow):
         pb.repeat_clicked.connect(self._playback.toggle_repeat)
         pb.seek_requested.connect(self._playback.seek)
         pb.volume_changed.connect(self._playback.set_volume)
-        pb.eq_clicked.connect(self._open_eq)
+        pb.eq_clicked.connect(self._playback_ctrl.open_eq)
         pb.cover_preview_requested.connect(self._show_cover_preview)
         pb.track_details_requested.connect(self._show_nowplaying_details)
         pb.expanded_requested.connect(
             lambda: self._expanded_ctrl.show_expanded())
         pb.transmit_clicked.connect(self._show_transmit_menu)
         pb.audio_output_clicked.connect(self._show_audio_output_menu)
-        pb.mini_player_clicked.connect(self._open_mini_player)
+        pb.mini_player_clicked.connect(self._mini_player_ctrl.open)
         pb.cover_loaded.connect(self._bg_theme.apply)
         pb.quality_details_requested.connect(self._show_audio_diagnostics)
 
@@ -774,62 +787,6 @@ class MainWindow(QMainWindow):
     def _notify_track(self, title: str, artist: str):
         if hasattr(self, '_tray_ctrl') and self._tray_ctrl:
             self._tray_ctrl.notify(title, artist)
-
-    def _import_playlist(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Importar playlist", os.path.expanduser("~"),
-            "Playlists (*.m3u *.m3u8 *.pls);;Todos (*)")
-        if not path:
-            return
-        from ui.playlist_io import parse_playlist_entries
-        entries = parse_playlist_entries(path)
-        if not entries:
-            QMessageBox.information(
-                self, "Importar", "No se encontraron entradas en la playlist.")
-            return
-
-        valid_files = []
-        missing = 0
-        remote = 0
-        for e in entries:
-            if e.is_remote:
-                remote += 1
-                continue
-            if e.exists:
-                self._db.add_file(e.resolved_path)
-                valid_files.append(e.resolved_path)
-            else:
-                missing += 1
-
-        self._load_library()
-        if valid_files:
-            self._playback.enqueue(valid_files, play_now=False)
-        self._player_bar_ctrl.set_track(
-                f"Importados {len(valid_files)} temas", "Playlist")
-
-        summary = f"<p><b>{len(valid_files)}</b> archivos añadidos a la biblioteca.</p>"
-        if missing:
-            summary += f"<p><b>{missing}</b> archivos no encontrados en disco.</p>"
-        if remote:
-            summary += f"<p><b>{remote}</b> entradas remotas ignoradas.</p>"
-        summary += f"<p>Total entradas en playlist: <b>{len(entries)}</b></p>"
-        QMessageBox.information(self, "Importar playlist", summary)
-
-    def _export_playlist(self):
-        queue = self._playback.get_queue()
-        if not queue:
-            QMessageBox.information(
-                self, "Exportar", "La cola de reproducción está vacía.")
-            return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Exportar playlist", "playlist.m3u",
-            "M3U (*.m3u);;Todos (*)")
-        if not path:
-            return
-        from ui.playlist_io import export_m3u
-        export_m3u(path, [q["filepath"] for q in queue])
-        QMessageBox.information(
-            self, "Exportar", f"Playlist exportada a {path}")
 
     def _setup_shortcuts(self):
         from ui.controllers.shortcut_controller import ShortcutController
@@ -876,9 +833,7 @@ class MainWindow(QMainWindow):
     # ── Static route handlers ──
 
     def _show_playlist_hub(self, key):
-        pls = self._db.get_playlists()
-        self._playlist_hub.set_playlists(pls)
-        self._fade_content("playlist_hub")
+        self._playlist_ctrl.show_playlist_hub(key)
 
     def _show_metadata_editor(self, key):
         self._fade_content("metadata_editor")
@@ -954,11 +909,11 @@ class MainWindow(QMainWindow):
     def _show_radio(self, key):
         self._srv_ctrl.show_radio(key)
     def _show_add_server(self, key):
-        self._add_server()
+        self._srv_ctrl.add_server()
 
     def _show_server(self, key):
         name = key.split(":", 1)[1]
-        self._open_server(name)
+        self._srv_ctrl.open_server(name)
 
     def _show_device(self, key):
         mount = key.split(":", 1)[1]
@@ -1022,41 +977,15 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(50, self._home_audio_view.refresh_if_needed)
 
     def _show_assistant(self, key=None):
-        if self._assistant_panel is None:
-            from ui.ai_assistant_panel import AiAssistantPanel
-            from ui.controllers.ai_assistant_controller import AiAssistantController
-            self._assistant_panel = AiAssistantPanel()
+        from ui.controllers.ai_assistant_controller import AiAssistantController
+        if self._assistant_ctrl is None:
             self._assistant_ctrl = AiAssistantController(
                 db=self._db, worker_manager=self._workers,
                 playback=self._playback,
                 safe_mode=self._safe_mode,
                 parent=self,
             )
-            self._assistant_panel.send_requested.connect(
-                self._assistant_ctrl.send_message,
-            )
-            self._assistant_ctrl.state_changed.connect(
-                self._on_assistant_state,
-            )
-            self._assistant_ctrl.response_received.connect(
-                self._on_assistant_response,
-            )
-            self._assistant_ctrl.navigate_to.connect(
-                self._on_sidebar_navigate,
-            )
-            self._assistant_panel.action_confirmed.connect(
-                self._assistant_ctrl.confirm_action,
-            )
-            self._assistant_panel.action_cancelled.connect(
-                self._assistant_ctrl.cancel_action,
-            )
-            available = self._assistant_ctrl.check_health() if self._assistant_ctrl.is_enabled() else False
-            self._assistant_panel.set_ollama_status(
-                available, self._assistant_ctrl.model() if self._assistant_ctrl.is_enabled() else "",
-            )
-        if not self._views.widget("assistant"):
-            self._views.register("assistant", self._assistant_panel)
-        self._fade_content("assistant")
+        self._assistant_ctrl.show_assistant(self, self._views, panel=getattr(self, '_assistant_panel', None))
 
     def _on_assistant_state(self, state: str):
         self._assistant_panel.set_thinking(state == "thinking")
@@ -1090,8 +1019,7 @@ class MainWindow(QMainWindow):
                     f"{r.get('skipped',0)} omitidos", "info",
                 ) if self._toast_svc else None,
             )
-        if not self._views.widget("metadata_review"):
-            self._views.register("metadata_review", self._metadata_review_panel)
+        self._lazy_hub("metadata_review", lambda: self._metadata_review_panel)
         self._fade_content("metadata_review")
 
     def _show_audio_lab(self, key=None):
@@ -1099,16 +1027,14 @@ class MainWindow(QMainWindow):
             from ui.audio_lab.audio_lab_page import AudioLabPage
             self._audio_lab_page = AudioLabPage()
             self._audio_lab_page.navigate_requested.connect(self._on_sidebar_navigate)
-        if not self._views.widget("audio_lab"):
-            self._views.register("audio_lab", self._audio_lab_page)
+        self._lazy_hub("audio_lab", lambda: self._audio_lab_page)
         self._fade_content("audio_lab")
 
     def _show_michi_disc_lab(self, key=None):
         if self._michi_disc_lab_page is None:
             from ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
             self._michi_disc_lab_page = MichiDiscLabPage()
-        if not self._views.widget("michi_disc_lab"):
-            self._views.register("michi_disc_lab", self._michi_disc_lab_page)
+        self._lazy_hub("michi_disc_lab", lambda: self._michi_disc_lab_page)
         self._fade_content("michi_disc_lab")
 
     def _show_home_page(self, key=None):
@@ -1126,8 +1052,7 @@ class MainWindow(QMainWindow):
                 folders_widget=self._folder_browser)
             self._library_hub_page.tab_changed.connect(
                 self._on_library_tab_changed)
-        if not self._views.widget("library_hub"):
-            self._views.register("library_hub", self._library_hub_page)
+        self._lazy_hub("library_hub", lambda: self._library_hub_page)
         self._fade_content("library_hub")
 
     def _on_library_tab_changed(self, section_key: str, force: bool = False):
@@ -1149,7 +1074,7 @@ class MainWindow(QMainWindow):
             self._artist_repo.build(self._all_items)
             self._artist_grid.set_artists(self._artist_repo.groups)
         elif section_key == "genres":
-            self._refresh_genres_data()
+            self._lib_ctrl.refresh_genres()
         elif section_key == "library":
             self._apply_filters()
 
@@ -1157,8 +1082,7 @@ class MainWindow(QMainWindow):
         if self._mix_hub_page is None:
             from ui.hubs.mix_hub_page import MixHubPage
             self._mix_hub_page = MixHubPage(preview=self._smart_preview)
-        if not self._views.widget("mix_hub"):
-            self._views.register("mix_hub", self._mix_hub_page)
+        self._lazy_hub("mix_hub", lambda: self._mix_hub_page)
         self._mix_hub_page.refresh()
         self._fade_content("mix_hub")
 
@@ -1166,37 +1090,35 @@ class MainWindow(QMainWindow):
         if self._playback_hub_page is None:
             from ui.hubs.playback_hub_page import PlaybackHubPage
             self._playback_hub_page = PlaybackHubPage(db=self._db, playback=self._playback)
-        if not self._views.widget("playback_hub"):
-            self._views.register("playback_hub", self._playback_hub_page)
+        self._lazy_hub("playback_hub", lambda: self._playback_hub_page)
         self._fade_content("playback_hub")
 
     def _show_connections_hub_page(self, key=None):
         if self._connections_hub_page is None:
             from ui.hubs.connections_hub_page import ConnectionsHubPage
             self._connections_hub_page = ConnectionsHubPage()
-        if not self._views.widget("connections_hub"):
-            self._views.register("connections_hub", self._connections_hub_page)
+        self._lazy_hub("connections_hub", lambda: self._connections_hub_page)
         self._fade_content("connections_hub")
 
     def _show_settings_hub_page(self, key=None):
         if self._settings_hub_page is None:
             from ui.hubs.settings_hub_page import SettingsHubPage
             self._settings_hub_page = SettingsHubPage()
-        if not self._views.widget("settings_hub"):
-            self._views.register("settings_hub", self._settings_hub_page)
+        self._lazy_hub("settings_hub", lambda: self._settings_hub_page)
         self._fade_content("settings_hub")
 
     def _show_devices_page(self, key=None):
-        if self._devices_page is None:
-            from ui.devices_page import DevicesPage
-            sync_mgr = self._ensure_sync_manager()
-            self._devices_page = DevicesPage(db=self._db, sync_manager=sync_mgr)
-        if not self._views.widget("devices_page"):
-            self._views.register("devices_page", self._devices_page)
+        self._lazy_hub("devices_page", self._init_devices_page)
         self._fade_content("devices_page")
 
+    def _init_devices_page(self):
+        from ui.devices_page import DevicesPage
+        sync_mgr = self._ensure_sync_manager()
+        self._devices_page = DevicesPage(db=self._db, sync_manager=sync_mgr)
+        return self._devices_page
+
     def _show_new_playlist(self, key):
-        self._create_playlist()
+        self._sidebar_menu_ctrl.create_playlist()
 
     # ── Michi API Bridge handlers ──
 
@@ -1222,18 +1144,6 @@ class MainWindow(QMainWindow):
         media_id = body.get("media_id", "")
         if media_id and self._playback:
             self._playback.play(media_id)
-    def _delete_playlist(self, pid):
-        self._sidebar_menu_ctrl.delete_playlist(pid)
-    def _change_playlist_cover(self, pid):
-        self._sidebar_menu_ctrl._change_playlist_cover(pid)
-    def _remove_playlist_cover(self, pid):
-        self._sidebar_menu_ctrl._remove_playlist_cover(pid)
-    def _save_playlist_edit(self, pid, name, desc, dlg):
-        self._sidebar_menu_ctrl._save_playlist_edit(pid, name, desc, dlg)
-    def _add_server(self):
-        self._srv_ctrl.add_server()
-    def _open_server(self, name: str):
-        self._srv_ctrl.open_server(name)
     def _on_search_results(self, results):
         self._search_router.on_results(results)
     def _current_available_views(self) -> list[str]:
@@ -1266,18 +1176,6 @@ class MainWindow(QMainWindow):
 
     def _show_expanded(self):
         self._expanded_ctrl.show_expanded()
-
-    def _add_transmit_device(self):
-        self._transmit_ctrl.add_device()
-
-    def _open_file(self):
-        self._file_actions.open_files(ALL_EXTS)
-
-    def _import_m3u(self):
-        self._playlist_ctrl.import_m3u()
-
-    def _create_playlist(self):
-        self._sidebar_menu_ctrl.create_playlist()
 
     def _on_radio_count(self, visible, total):
         self._srv_ctrl.on_radio_count(visible, total)
@@ -1320,21 +1218,6 @@ class MainWindow(QMainWindow):
     def _reload_library_after_change(self, reason: str = ""):
         self._lib_ctrl.reload_after_change(reason)
 
-    def _refresh_all_tabs(self, force: bool = False):
-        self._lib_ctrl.refresh_all_tabs(force)
-
-    def _refresh_songs_data(self):
-        self._lib_ctrl.refresh_songs()
-
-    def _refresh_albums_data(self):
-        self._lib_ctrl.refresh_albums()
-
-    def _refresh_artists_data(self):
-        self._lib_ctrl.refresh_artists()
-
-    def _refresh_genres_data(self):
-        self._lib_ctrl.refresh_genres()
-
     def _filtered_album_items(self) -> list:
         return self._lib_ctrl.filtered_album_items()
 
@@ -1343,13 +1226,6 @@ class MainWindow(QMainWindow):
 
     def _refresh_active_library_tab(self, force: bool = False):
         self._lib_ctrl.refresh_active_tab(force)
-    def _add_folder(self):
-        from PySide6.QtWidgets import QFileDialog
-        path = QFileDialog.getExistingDirectory(
-            self, "Añadir carpeta", os.path.expanduser("~"))
-        if path:
-            self._scan_path(path)
-
 
     # Extracted to ui/controllers/artist_controller.py — grid + detail logic
 
@@ -1439,11 +1315,6 @@ class MainWindow(QMainWindow):
     def _scan_path(self, path: str):
         self._file_actions.scan_path(path)
 
-    def _show_duplicates(self):
-        from ui.dialogs.duplicate_dialog import DuplicateDialog
-        dlg = DuplicateDialog(self._db, self)
-        dlg.exec()
-
     # Extracted to core/playback_controller.py — play/pause/queue logic
     def _play_filepaths(self, filepaths: list[str], play_now: bool = True):
         """Centralized playback entry point — ensures all tracks go through _play_trackref."""
@@ -1470,9 +1341,6 @@ class MainWindow(QMainWindow):
 
     def _play_file(self, filepath: str, add_to_queue: bool = False):
         self._playback_ctrl.play_file(filepath, add_to_queue)
-    def _open_eq(self):
-        self._playback_ctrl.open_eq()
-
     # Streaming/Cast/AudioOutput — now split into focused controllers
     # CastController → unified transmit menu (local + net + snapcast + HA)
     # AudioOutputController → local output device selection
@@ -1485,9 +1353,6 @@ class MainWindow(QMainWindow):
     def _show_transmit_menu(self):
         self._cast_ctrl.show_cast_menu()
 
-    def _activate_transmit_device(self, device):
-        self._transmit_ctrl.activate_device(device)
-
     def _on_transmit_active_changed(self):
         self._transmit_ctrl.on_active_changed()
 
@@ -1497,11 +1362,6 @@ class MainWindow(QMainWindow):
     def _show_audio_diagnostics(self):
         from ui.builder.inline_dialogs import show_audio_diagnostics
         show_audio_diagnostics(self, self._playback)
-
-    def _open_mini_player(self):
-        self._mini_player_ctrl.open()
-    def _manage_transmit_devices(self):
-        self._transmit_ctrl.manage_devices()
 
     # ── Home Audio ──
 

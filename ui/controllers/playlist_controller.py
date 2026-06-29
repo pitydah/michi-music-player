@@ -79,6 +79,64 @@ class PlaylistController:
         except OSError as e:
             self._toast(f"Error al exportar: {e}", "error")
 
+    def import_playlist(self, parent, db, playback, player_bar_ctrl, load_library):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        path, _ = QFileDialog.getOpenFileName(
+            parent, "Importar playlist", os.path.expanduser("~"),
+            "Playlists (*.m3u *.m3u8 *.pls);;Todos (*)")
+        if not path:
+            return
+        from ui.playlist_io import parse_playlist_entries
+        entries = parse_playlist_entries(path)
+        if not entries:
+            QMessageBox.information(
+                parent, "Importar", "No se encontraron entradas en la playlist.")
+            return
+
+        valid_files = []
+        missing = 0
+        remote = 0
+        for e in entries:
+            if e.is_remote:
+                remote += 1
+                continue
+            if e.exists:
+                db.add_file(e.resolved_path)
+                valid_files.append(e.resolved_path)
+            else:
+                missing += 1
+
+        load_library()
+        if valid_files:
+            playback.enqueue(valid_files, play_now=False)
+        player_bar_ctrl.set_track(
+            f"Importados {len(valid_files)} temas", "Playlist")
+
+        summary = f"<p><b>{len(valid_files)}</b> archivos añadidos a la biblioteca.</p>"
+        if missing:
+            summary += f"<p><b>{missing}</b> archivos no encontrados en disco.</p>"
+        if remote:
+            summary += f"<p><b>{remote}</b> entradas remotas ignoradas.</p>"
+        summary += f"<p>Total entradas en playlist: <b>{len(entries)}</b></p>"
+        QMessageBox.information(parent, "Importar playlist", summary)
+
+    def export_queue(self, parent, playback):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        queue = playback.get_queue()
+        if not queue:
+            QMessageBox.information(
+                parent, "Exportar", "La cola de reproducción está vacía.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            parent, "Exportar playlist", "playlist.m3u",
+            "M3U (*.m3u);;Todos (*)")
+        if not path:
+            return
+        from ui.playlist_io import export_m3u
+        export_m3u(path, [q["filepath"] for q in queue])
+        QMessageBox.information(
+            parent, "Exportar", f"Playlist exportada a {path}")
+
     # ── Playlist from folder ──
 
     def hub_create_from_folder(self):
@@ -337,6 +395,13 @@ class PlaylistController:
         """Add files to the library database. Each filepath is indexed."""
         for fp in filepaths:
             self._ctx.db.add_file(fp)
+
+    def show_playlist_hub(self, key: str = ""):
+        """Load and display the playlist hub page."""
+        w = self._win
+        pls = w._db.get_playlists()
+        w._playlist_hub.set_playlists(pls)
+        w._fade_content("playlist_hub")
 
     def update_playlist(self, pid: int, **kwargs):
         """Update playlist metadata (name, description, cover_path, cover_type)."""

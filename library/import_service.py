@@ -29,6 +29,14 @@ class LibraryImportService:
             self._reload_library(reason=reason)
         return added
 
+    def add_folder(self, parent_widget=None) -> str | None:
+        from PySide6.QtWidgets import QFileDialog
+        path = QFileDialog.getExistingDirectory(
+            parent_widget or None, "Añadir carpeta", os.path.expanduser("~"))
+        if path:
+            self.scan_folder(path)
+        return path
+
     def scan_folder(self, path: str) -> None:
         if self._scan_path:
             self._scan_path(path)

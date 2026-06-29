@@ -80,6 +80,31 @@ class AiAssistantController(QObject):
         except Exception:
             return False
 
+    def show_assistant(self, window, views, panel=None):
+        """Lazy-init assistant panel and controller, wire signals, register in views, fade.
+
+        Args:
+            window: MainWindow instance.
+            views: ViewRegistry instance.
+            panel: Optional pre-existing panel; created if None.
+        """
+        if panel is None:
+            from ui.ai_assistant_panel import AiAssistantPanel
+            panel = AiAssistantPanel()
+            window._assistant_panel = panel
+            window._assistant_ctrl = self
+            panel.send_requested.connect(self.send_message)
+            self.state_changed.connect(window._on_assistant_state)
+            self.response_received.connect(window._on_assistant_response)
+            self.navigate_to.connect(window._on_sidebar_navigate)
+            panel.action_confirmed.connect(self.confirm_action)
+            panel.action_cancelled.connect(self.cancel_action)
+            available = self.check_health() if self.is_enabled() else False
+            panel.set_ollama_status(available, self.model() if self.is_enabled() else "")
+        if not views.widget("assistant"):
+            views.register("assistant", panel)
+        window._fade_content("assistant")
+
     def send_message(self, text: str):
         if self._pending:
             return

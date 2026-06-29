@@ -41,7 +41,7 @@ class SidebarMenuController:
 
         if key and key.startswith("pl:"):
             pid = int(key.split(":", 1)[1])
-            menu.addAction("Eliminar playlist", lambda: self._win._delete_playlist(pid))
+            menu.addAction("Eliminar playlist", lambda: self.delete_playlist(pid))
         elif key and key.startswith("srv:"):
             name = key.split(":", 1)[1]
             menu.addAction("Eliminar servidor", lambda: self._win._srv_ctrl.remove_server(name))
@@ -82,22 +82,22 @@ class SidebarMenuController:
         layout.addRow("Descripción:", desc_edit)
 
         cover_btn = QPushButton("Cambiar portada")
-        cover_btn.clicked.connect(lambda: self._change_playlist_cover(pid))
+        cover_btn.clicked.connect(lambda: self.change_playlist_cover(pid))
         layout.addRow("Portada:", cover_btn)
 
         remove_btn = QPushButton("Quitar portada")
-        remove_btn.clicked.connect(lambda: self._remove_playlist_cover(pid))
+        remove_btn.clicked.connect(lambda: self.remove_playlist_cover(pid))
         layout.addRow("", remove_btn)
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(
-            lambda: self._save_playlist_edit(pid, name_edit.text(), desc_edit.text(), dlg))
+            lambda: self.save_playlist_edit(pid, name_edit.text(), desc_edit.text(), dlg))
         btns.rejected.connect(dlg.reject)
         layout.addRow(btns)
 
         dlg.exec()
 
-    def _change_playlist_cover(self, pid: int):
+    def change_playlist_cover(self, pid: int):
         w = self._win
         path, _ = QFileDialog.getOpenFileName(
             w, "Seleccionar portada", "",
@@ -108,14 +108,14 @@ class SidebarMenuController:
             w._db.update_playlist(pid, cover_path=cover_path, cover_type="custom")
             w._toast_svc.show("Portada actualizada", "success")
 
-    def _remove_playlist_cover(self, pid: int):
+    def remove_playlist_cover(self, pid: int):
         w = self._win
         from ui.services.playlist_cover_service import remove_custom_cover
         remove_custom_cover(pid)
         w._db.update_playlist(pid, cover_path="", cover_type="mosaic")
         w._toast_svc.show("Portada eliminada — se usará mosaico automático", "info")
 
-    def _save_playlist_edit(self, pid: int, name: str, desc: str, dlg):
+    def save_playlist_edit(self, pid: int, name: str, desc: str, dlg):
         w = self._win
         w._db.update_playlist(pid, name=name, description=desc)
         w._rebuild_sidebar()

@@ -81,26 +81,26 @@ class TestSidebarMenuController:
                    return_value=("/path/cover.jpg", "Images (*.jpg)")), \
              patch("ui.services.playlist_cover_service.copy_custom_cover",
                    return_value="/cached/cover.jpg"):
-            ctrl._change_playlist_cover(1)
+            ctrl.change_playlist_cover(1)
         win._db.update_playlist.assert_called_with(1, cover_path="/cached/cover.jpg", cover_type="custom")
         win._toast_svc.show.assert_called()
 
     def test_change_playlist_cover_cancelled(self, ctrl, win):
         with patch("ui.controllers.sidebar_menu_controller.QFileDialog.getOpenFileName",
                    return_value=("", "")):
-            ctrl._change_playlist_cover(1)
+            ctrl.change_playlist_cover(1)
         win._db.update_playlist.assert_not_called()
 
     def test_remove_playlist_cover(self, ctrl, win):
         with patch("ui.services.playlist_cover_service.remove_custom_cover") as mock_remove:
-            ctrl._remove_playlist_cover(1)
+            ctrl.remove_playlist_cover(1)
         mock_remove.assert_called_with(1)
         win._db.update_playlist.assert_called_with(1, cover_path="", cover_type="mosaic")
         win._toast_svc.show.assert_called()
 
     def test_save_playlist_edit(self, ctrl, win):
         dlg = MagicMock()
-        ctrl._save_playlist_edit(1, "New Name", "New Desc", dlg)
+        ctrl.save_playlist_edit(1, "New Name", "New Desc", dlg)
         win._db.update_playlist.assert_called_with(1, name="New Name", description="New Desc")
         win._rebuild_sidebar.assert_called_once()
         win._toast_svc.show.assert_called()

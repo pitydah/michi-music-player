@@ -51,6 +51,18 @@ class ViewController(QObject):
         self._current = name
         self.view_changed.emit(name)
 
+    def lazy_register(self, name: str, factory):
+        """Register a view if not already registered, using a factory callable.
+
+        The factory is called only if the view has not been registered yet.
+        Returns the (possibly newly created) widget.
+        """
+        widget = self._views.get(name)
+        if widget is None:
+            widget = factory()
+            self.register(name, widget)
+        return widget
+
     def current(self) -> str:
         return self._current
 

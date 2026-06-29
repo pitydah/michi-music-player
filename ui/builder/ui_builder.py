@@ -285,7 +285,8 @@ class UIBuilder:
             lambda folder, _w=w: _w._album_ctrl.open_folder(folder))
         w._album_grid.details_requested.connect(
             lambda group, _w=w: _w._album_ctrl.show_details(group))
-        w._album_grid.add_folder_requested.connect(w._add_folder)
+        w._album_grid.add_folder_requested.connect(
+            lambda: w._library_import.add_folder(w))
         import contextlib
         with contextlib.suppress(TypeError, RuntimeError):
             w._album_grid.album_selected.disconnect()
