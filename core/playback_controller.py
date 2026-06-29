@@ -288,8 +288,6 @@ class PlaybackController:
         if not playback or not ctx:
             return
 
-        from core.context.context_events import AppEvent
-
         playback.track_changed.connect(
             lambda title, artist: (
                 ctx.record_now_playing_updated(title=title, artist=artist),

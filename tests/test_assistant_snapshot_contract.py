@@ -138,12 +138,14 @@ class TestAssistantSnapshotContract:
         assert len(actions) <= 5
 
     @staticmethod
-    def _assert_caps(caps, search=True, create=True, queue=True, edit=False, analyze=True):
+    def _assert_caps(caps, search=True, create=True, queue=True, edit=False,
+                     analyze=True, play=True):
         assert caps.get("can_search_library") is search
         assert caps.get("can_create_playlist_from_selection") is create
         assert caps.get("can_queue_selection") is queue
         assert caps.get("can_edit_metadata") is edit
         assert caps.get("can_analyze_selected_tracks") is analyze
+        assert caps.get("can_play_selection") is play
 
     def test_caps_scope_none(self, tmp_path):
         svc = self._svc(tmp_path)
@@ -151,6 +153,7 @@ class TestAssistantSnapshotContract:
         self._assert_caps(
             snap.get("assistant_capabilities", {}),
             search=True, create=False, queue=False, edit=False, analyze=False,
+            play=False,
         )
 
     def test_caps_scope_track(self, tmp_path):

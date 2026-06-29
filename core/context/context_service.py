@@ -405,6 +405,7 @@ def _contextual_action_hints(snapshot: dict) -> list[str]:
     can_queue = caps.get("can_queue_selection", False)
     can_edit = caps.get("can_edit_metadata", False)
     can_analyze = caps.get("can_analyze_selected_tracks", False)
+    can_play = caps.get("can_play_selection", False)
     hints = []
     if scope == "track":
         if can_edit:
@@ -432,7 +433,8 @@ def _contextual_action_hints(snapshot: dict) -> list[str]:
         if can_analyze:
             hints.append("Analizar distribución del género")
     elif scope == "playlist":
-        hints.append("Reproducir playlist")
+        if can_play:
+            hints.append("Reproducir playlist")
         if can_queue:
             hints.append("Encolar playlist")
         hints.append("Exportar playlist")

@@ -157,6 +157,10 @@ ICON_REGISTRY: dict[str, IconSpec] = {
         key="audio_lab_intelligence", path="icons/sidebar_clean/sidebar_mix_24.png",
         family="sidebar", symbolic=True,
         description="Audio Lab — Inteligencia Local"),
+    "audio_lab_artwork": IconSpec(
+        key="audio_lab_artwork", path="icons/sidebar_clean/sidebar_albums_24.png",
+        family="sidebar", symbolic=True,
+        description="Audio Lab — Carátulas"),
     "audio_lab_musicbrainz": IconSpec(
         key="audio_lab_musicbrainz", path="icons/sidebar_clean/sidebar_identifier_24.png",
         family="sidebar", symbolic=True,

@@ -196,7 +196,7 @@ class AudioLabIdentifierPage(QWidget):
             ("sidebar_albums", "Carátulas",
              "Busca, reemplaza e incrusta carátulas en tus\n"
              "archivos de música.",
-             "proximamente", ""),
+             "disponible", "audio_lab_artwork"),
             ("sidebar_mix", "Letras",
              "Edita letras sincronizadas o simples para tus\n"
              "canciones.",

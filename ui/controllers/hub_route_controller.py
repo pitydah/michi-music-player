@@ -188,6 +188,14 @@ class HubRouteController:
             return page
         self._lazy("audio_lab_output", _build)
 
+    def show_audio_lab_artwork(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.artwork_page import ArtworkPage
+            page = ArtworkPage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_artwork", _build)
+
     def show_audio_lab_musicbrainz(self, key: str = ""):
         def _build():
             from ui.audio_lab.musicbrainz_page import MusicBrainzPage

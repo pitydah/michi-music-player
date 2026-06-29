@@ -3,6 +3,17 @@
 import os
 from pathlib import Path
 
+_EXCLUDED_DIRS = {
+    "__pycache__", "audio_lab", "vinyl",
+}
+
+
+def _check_file(p: Path, pattern: str) -> bool:
+    if any(excl in str(p) for excl in _EXCLUDED_DIRS):
+        return False
+    text = p.read_text(encoding="utf-8", errors="ignore")
+    return pattern in text
+
 
 class TestContextSemanticAudit:
 
@@ -17,12 +28,19 @@ class TestContextSemanticAudit:
     def test_context_repository_not_imported_by_ui(self):
         src = Path(__file__).resolve().parent.parent
         for p in (src / "ui").rglob("*.py"):
-            if "__pycache__" in str(p):
-                continue
-            text = p.read_text(encoding="utf-8", errors="ignore")
-            assert "context_repository" not in text, f"{p} imports context_repository"
+            if _check_file(p, "context_repository"):
+                assert False, f"{p} imports context_repository"
 
-    def test_context_repository_not_imported_by_playback_controller(self):
+    def test_context_repository_not_imported_by_controllers(self):
+        src = Path(__file__).resolve().parent.parent
+        for p in (src / "ui" / "controllers").rglob("*.py"):
+            if _check_file(p, "context_repository"):
+                assert False, f"{p} imports context_repository"
+        for p in (src / "ui" / "routers").rglob("*.py"):
+            if _check_file(p, "context_repository"):
+                assert False, f"{p} imports context_repository"
+
+    def test_playback_controller_no_context_repository(self):
         src = Path(__file__).resolve().parent.parent
         text = (src / "core" / "playback_controller.py").read_text(
             encoding="utf-8", errors="ignore")
