@@ -64,10 +64,34 @@ Ver `core/playback_controller.py:attach_track_table()` y `connect_table_selectio
 ## Assistant snapshot safety
 - El snapshot final se sanitiza en `ContextService.get_assistant_snapshot()`.
 - No se permiten `filepath`, `uri`, `path` ni rutas absolutas (Linux o Windows).
-- `assistant_capabilities` refleja el tipo de selección:
-  - `track`: puede editar metadatos, analizar, encolar, crear playlist.
-  - `playlist/album/artist/genre/mix/folder/search`: puede encolar y crear playlist.
-  - `folder/search`: puede analizar tracks seleccionados.
+- `assistant_capabilities` refleja el tipo de selección (contrato explícito):
+
+| Scope | can_search_library | can_create_playlist | can_queue | can_edit_metadata | can_analyze |
+|-------|:---:|:---:|:---:|:---:|:---:|
+| `None` | ✓ | ✗ | ✗ | ✗ | ✗ |
+| `track` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `album` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `artist` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `genre` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `playlist` | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `mix` | ✓ | ✓ | ✓ | ✗ | ✓ |
+| `folder` | ✓ | ✓ | ✓ | ✗ | ✗ |
+| `search` | ✓ | ✓ | ✓ | ✗ | ✓ |
+
+## Proxy / Source model selection
+Cuando la selección de tabla proviene de un `QSortFilterProxyModel` o similar con `mapToSource()`,
+`_on_table_selection()` resuelve la fila real mediante:
+1. `current.model()` → si tiene `get_trackref()`, usa `current.row()`.
+2. `model.sourceModel()` + `model.mapToSource(current)` → fila del source model.
+3. Registry `_track_table_models` → modelo registrado por `attach_track_table()`.
+4. Fallback global `self._win._ctx.model`.
+
+Ver `core/playback_controller.py:_resolve_track_model_and_row()`.
+
+## detach_track_table
+`PlaybackController.detach_track_table(table)` elimina una tabla del registry interno
+`_track_table_models` y limpia `_active_context_table`. Útil cuando una tabla de tracks
+deja de representar datos de `TrackRef`.
 
 ## Event semantics
 | Evento | Significado |

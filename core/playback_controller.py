@@ -282,6 +282,49 @@ class PlaybackController:
 
     # ── Table selection context ═══
 
+    def _resolve_track_model_and_row(self, current):
+        """Return (model, row) for a table selection index.
+
+        Resolution order:
+        1. current.model() if it has get_trackref()
+        2. Proxy model: mapToSource() + sourceModel() with get_trackref()
+        3. Registered table model via _track_table_registry
+        4. Global window model fallback
+        """
+        if not current or not current.isValid():
+            return None, -1
+
+        model = None
+        try:
+            model = current.model()
+        except Exception:
+            model = None
+
+        if model is not None and hasattr(model, "get_trackref"):
+            return model, current.row()
+
+        if model is not None:
+            try:
+                source_model = model.sourceModel() if hasattr(model, "sourceModel") else None
+                if source_model is not None and hasattr(source_model, "get_trackref"):
+                    source_idx = model.mapToSource(current) if hasattr(model, "mapToSource") else None
+                    if source_idx is not None:
+                        return source_model, source_idx.row()
+            except Exception:
+                pass
+
+        table = getattr(self, "_active_context_table", None)
+        if table is not None:
+            model = self._ensure_table_model_registry().get(id(table))
+
+        if model is None or not hasattr(model, "get_trackref"):
+            model = getattr(self._win._ctx, "model", None)
+
+        if model is not None and hasattr(model, "get_trackref"):
+            return model, current.row()
+
+        return None, -1
+
     def _ensure_table_model_registry(self):
         if not hasattr(self, "_track_table_models"):
             self._track_table_models = {}
@@ -307,6 +350,15 @@ class PlaybackController:
         self.connect_table_selection(table=table)
         return table
 
+    def detach_track_table(self, table=None):
+        """Remove a table from the model registry and clear active table."""
+        table = table or getattr(self, "_active_context_table", None)
+        if table is None:
+            return
+        self._ensure_table_model_registry().pop(id(table), None)
+        if getattr(self, "_active_context_table", None) is table:
+            self._active_context_table = None
+
     def connect_table_selection(self, table=None):
         """Connect table selection changes to ContextService without playing.
 
@@ -325,35 +377,11 @@ class PlaybackController:
         sel.currentChanged.connect(self._on_table_selection)
 
     def _on_table_selection(self, current, previous):
-        if not current or not current.isValid():
+        model, row = self._resolve_track_model_and_row(current)
+        if model is None or row < 0:
             return
 
-        model = None
-        if current is not None and hasattr(current, "model"):
-            try:
-                model = current.model()
-            except Exception:
-                model = None
-
-        if model is None:
-            table = getattr(self, "_active_context_table", None)
-            if table is not None:
-                model = self._ensure_table_model_registry().get(id(table))
-
-        if model is None:
-            model = getattr(self._win._ctx, "model", None)
-
-        if model is None:
-            return
-
-        if not hasattr(model, "get_trackref"):
-            source_model = getattr(model, "sourceModel", lambda: None)()
-            if source_model is not None and hasattr(source_model, "get_trackref"):
-                model = source_model
-            else:
-                return
-
-        track = model.get_trackref(current.row())
+        track = model.get_trackref(row)
         if not track:
             return
         ctx = (

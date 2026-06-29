@@ -1,4 +1,4 @@
-"""Tests: table selection without playback — connect_table_selection, _on_table_selection."""
+"""Tests: table selection without playback — _on_table_selection, proxy, detach, registry."""
 
 from unittest.mock import MagicMock
 
@@ -14,7 +14,7 @@ class DummyTrackA:
 
 class DummyTrackB:
     uri = "/music/song_b.flac"
-    title = "Song B"
+    title = "Source Row 5"
     artist = "Artist B"
     album = "Album B"
     genre = "Jazz"
@@ -29,12 +29,27 @@ class DummyModel:
         return self._track
 
 
+class DummySourceModel:
+    def get_trackref(self, row):
+        if row == 5:
+            return DummyTrackB()
+        return DummyTrackA()
+
+
+class DummySourceIndex:
+    def row(self):
+        return 5
+
+
 class DummyProxyModel:
     def __init__(self, source=None):
-        self._source = source or DummyModel(DummyTrackB())
+        self._source = source or DummySourceModel()
 
     def sourceModel(self):
         return self._source
+
+    def mapToSource(self, index):
+        return DummySourceIndex()
 
 
 class DummyIndex:
@@ -130,6 +145,38 @@ class TestTableSelectionContext:
         ctrl.attach_track_table(table, model)
         assert ctrl._track_table_models[id(table)] is model
 
+    def test_detach_track_table_removes_registry_entry(self):
+        win = MagicMock()
+        win._services = None
+        table = MagicMock()
+        sel = MagicMock()
+        table.selectionModel.return_value = sel
+        model = MagicMock()
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        ctrl.attach_track_table(table, model)
+        assert id(table) in ctrl._track_table_models
+        ctrl.detach_track_table(table)
+        assert id(table) not in ctrl._track_table_models
+
+    def test_detach_track_table_clears_active_table(self):
+        win = MagicMock()
+        win._services = None
+        table = MagicMock()
+        sel = MagicMock()
+        table.selectionModel.return_value = sel
+        model = MagicMock()
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        ctrl.attach_track_table(table, model)
+        assert ctrl._active_context_table is table
+        ctrl.detach_track_table(table)
+        assert ctrl._active_context_table is None
+
     def test_connect_table_selection_disconnects_with_specific_slot(self):
         win = MagicMock()
         win._services = None
@@ -180,7 +227,7 @@ class TestTableSelectionContext:
         ctrl._on_table_selection(idx, None)
 
         kwargs = ctx_svc.update_selection.call_args[1]
-        assert kwargs["track"].title == "Song B"
+        assert kwargs["track"].title == "Source Row 5"
 
     def test_on_selection_fallback_to_registered_table_model(self):
         ctx_svc = MagicMock()
@@ -203,7 +250,7 @@ class TestTableSelectionContext:
         ctrl._on_table_selection(idx, None)
 
         kwargs = ctx_svc.update_selection.call_args[1]
-        assert kwargs["track"].title == "Song B"
+        assert kwargs["track"].title == "Source Row 5"
 
     def test_on_selection_uses_proxy_source_model(self):
         ctx_svc = MagicMock()
@@ -215,9 +262,27 @@ class TestTableSelectionContext:
         from core.playback_controller import PlaybackController
         ctrl = PlaybackController(win)
 
-        proxy = DummyProxyModel(DummyModel(DummyTrackB()))
+        proxy = DummyProxyModel()
         idx = DummyIndex(model=proxy)
         ctrl._on_table_selection(idx, None)
 
         kwargs = ctx_svc.update_selection.call_args[1]
-        assert kwargs["track"].title == "Song B"
+        assert kwargs["track"].title == "Source Row 5"
+
+    def test_on_selection_proxy_uses_map_to_source_row(self):
+        """If proxy row=0 maps to source row=5, context must use row 5."""
+        ctx_svc = MagicMock()
+        win = MagicMock()
+        win._services = None
+        win._ctx.context_svc = ctx_svc
+        win._ctx.model = DummyModel(DummyTrackA())
+
+        from core.playback_controller import PlaybackController
+        ctrl = PlaybackController(win)
+
+        proxy = DummyProxyModel()
+        idx = DummyIndex(row=0, model=proxy)
+        ctrl._on_table_selection(idx, None)
+
+        kwargs = ctx_svc.update_selection.call_args[1]
+        assert kwargs["track"].title == "Source Row 5"

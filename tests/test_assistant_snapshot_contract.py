@@ -224,3 +224,28 @@ class TestAssistantSnapshotContract:
             snap.get("assistant_capabilities", {}),
             search=True, create=True, queue=True, edit=False, analyze=True,
         )
+
+    def test_sanitize_nested_dict_removes_paths(self, tmp_path):
+        from core.context.context_snapshot import sanitize_snapshot
+        payload = {
+            "selection": {
+                "nested": {
+                    "filepath": "/home/user/Music/a.flac",
+                    "uri": "/tmp/private/b.flac",
+                    "safe": "ok",
+                }
+            }
+        }
+        result = sanitize_snapshot(payload)
+        raw = str(result)
+        assert "filepath" not in raw
+        assert "uri" not in raw
+        assert "/home/" not in raw
+        assert "/tmp/" not in raw
+        assert "ok" in raw
+
+    def test_sanitize_list_truncated(self, tmp_path):
+        from core.context.context_snapshot import sanitize_snapshot
+        items = [{"i": i} for i in range(20)]
+        result = sanitize_snapshot(items)
+        assert len(result) == 10
