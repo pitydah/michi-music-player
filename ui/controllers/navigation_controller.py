@@ -452,6 +452,11 @@ class NavigationController(QObject):
             section_key = "playlists"
         self.configure_header(section_key, route_key=key)
 
+        # Notify context service about navigation change
+        ctx = getattr(w, '_context_svc', None)
+        if ctx:
+            ctx.update_navigation(key, extra={"section_key": section_key})
+
         # State explícito: ruta real, sidebar activo, sección funcional
         w._current_route_key = key
         w._current_sidebar_key = resolve_sidebar_active_key(key)

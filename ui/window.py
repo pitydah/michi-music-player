@@ -260,6 +260,12 @@ class MainWindow(QMainWindow):
             reload_library=self._reload_library_after_change,
         )
 
+        from core.context.context_service import ContextService
+        self._context_svc = ContextService(
+            db=self._db,
+            playback=self._playback,
+        )
+
         # Controllers — pass AppServices for progressive migration
         from core.file_actions import FileActions
         self._file_actions = FileActions(self)
@@ -706,6 +712,16 @@ class MainWindow(QMainWindow):
         pb.mini_player_clicked.connect(self._mini_player_ctrl.open)
         pb.cover_loaded.connect(self._bg_theme.apply)
         pb.quality_details_requested.connect(self._show_audio_diagnostics)
+
+        # Wire context service
+        ctx = getattr(self, '_context_svc', None)
+        if ctx:
+            self._playback.track_changed.connect(
+                lambda title, artist: ctx.record_event("track_played",
+                    {"title": title, "artist": artist}))
+            self._playback.state_changed.connect(
+                lambda state: ctx.record_event("track_paused" if state == "paused"
+                    else "track_played" if state == "playing" else ""))
 
     def _setup_tray(self):
         from ui.controllers.tray_controller import TrayController

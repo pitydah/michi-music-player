@@ -85,6 +85,25 @@ from integrations.ai_assistant.tools.audio_analysis_tools import (
 )
 from integrations.ai_assistant.schemas import PendingAction, ToolResult
 
+
+def _inject_context_snapshot(messages: list) -> list:
+    """Inject app context snapshot if ContextService is available."""
+    try:
+        from core.context.context_service import ContextService
+        svc = ContextService()
+        snap = svc.get_assistant_snapshot()
+        if snap:
+            import json
+            context_text = (
+                "Contexto actual de la aplicacion:\n"
+                f"{json.dumps(snap, ensure_ascii=False, default=str)}"
+            )
+            messages.insert(0, {"role": "system", "content": context_text})
+    except Exception:
+        pass
+    return messages
+
+
 logger = logging.getLogger("michi.ai_assistant.service")
 
 
@@ -378,6 +397,7 @@ class AIAssistantService:
         msg_texts = [m.get("content", "") for m in messages]
         if SYSTEM_PROMPT not in "\n".join(msg_texts):
             messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
+        messages = _inject_context_snapshot(messages)
         messages.append({"role": "user", "content": user_context})
 
         return self._ollama.chat(self._model, messages)
