@@ -732,15 +732,9 @@ class MainWindow(QMainWindow):
         pb.quality_details_requested.connect(self._show_audio_diagnostics)
 
         # Wire context service
-        ctx = getattr(self, '_context_svc', None)
-        if ctx:
-            from core.context.context_events import AppEvent
-            self._playback.track_changed.connect(
-                lambda title, artist: ctx.record_event(AppEvent.TRACK_PLAYED,
-                    {"title": title, "artist": artist}))
-            self._playback.state_changed.connect(
-                lambda state: ctx.record_event(AppEvent.TRACK_PAUSED)
-                if state == "paused" else None)
+        if self._playback_ctrl:
+            self._playback_ctrl.connect_context_events(
+                self._playback, self._context_svc)
 
     def _setup_tray(self):
         from ui.controllers.tray_controller import TrayController
@@ -979,6 +973,9 @@ class MainWindow(QMainWindow):
 
     def _show_audio_lab_intelligence(self, key=None):
         self._hub_route_ctrl.show_audio_lab_intelligence(key)
+
+    def _show_audio_lab_organize(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_organize(key)
 
     def _show_audio_lab_conversion(self, key=None):
         self._hub_route_ctrl.show_audio_lab_conversion(key)

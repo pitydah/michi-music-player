@@ -188,6 +188,14 @@ class HubRouteController:
             return page
         self._lazy("audio_lab_output", _build)
 
+    def show_audio_lab_organize(self, key: str = ""):
+        def _build():
+            from ui.audio_lab.organize_page import OrganizePage
+            page = OrganizePage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
+            return page
+        self._lazy("audio_lab_organize", _build)
+
     def show_audio_lab_conversion(self, key: str = ""):
         def _build():
             from ui.audio_lab.conversion_page import ConversionPage

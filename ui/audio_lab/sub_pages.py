@@ -271,10 +271,10 @@ class AudioLabBackupPage(QWidget):
               "Convierte entre formatos preservando\n"
               "metadatos y carátulas.",
               "disponible", "audio_lab_conversion"),
-            ("sidebar_folders", "Organizar Archivos",
-             "Renombra y reorganiza tu biblioteca por\n"
-             "plantillas personalizadas.",
-             "proximamente", ""),
+             ("sidebar_folders", "Organizar Archivos",
+              "Renombra y reorganiza tu biblioteca por\n"
+              "plantillas personalizadas.",
+              "disponible", "audio_lab_organize"),
         ]
         for idx, (icon, title_t, desc, status, nav) in enumerate(cards):
             card = _build_sub_card(self, icon, title_t, desc, status, nav)

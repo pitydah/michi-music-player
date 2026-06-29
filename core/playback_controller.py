@@ -280,6 +280,27 @@ class PlaybackController:
         dlg.activateWindow()
         self._win._ctx.eq_dlg = dlg
 
+    # ── Context wireup ═══
+
+    def connect_context_events(self, playback=None, context_svc=None):
+        playback = playback or getattr(self._win, "_playback", None)
+        ctx = context_svc or getattr(self._win, "_context_svc", None)
+        if not playback or not ctx:
+            return
+
+        from core.context.context_events import AppEvent
+
+        playback.track_changed.connect(
+            lambda title, artist: (
+                ctx.record_now_playing_updated(title=title, artist=artist),
+                ctx.record_track_played_title_artist(title=title, artist=artist),
+            )
+        )
+        playback.state_changed.connect(
+            lambda state: ctx.record_track_paused()
+            if state == "paused" else None
+        )
+
     # ── Table selection context ═══
 
     def _resolve_track_model_and_row(self, current):

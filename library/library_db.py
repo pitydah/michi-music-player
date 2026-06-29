@@ -486,6 +486,35 @@ class LibraryDB:
     def remove_file(self, filepath: str):
         self._conn.execute("DELETE FROM media_items WHERE filepath=?", (filepath,))
         self._conn.commit()
+
+    def update_filepath(self, old_path: str, new_path: str) -> bool:
+        try:
+            self._conn.execute(
+                "UPDATE media_items SET filepath=?, filename=?, directory=?, "
+                "updated_at=? WHERE filepath=?",
+                (new_path, os.path.basename(new_path),
+                 os.path.dirname(new_path), time.time(), old_path)
+            )
+            self._conn.execute(
+                "UPDATE playlist_items SET filepath=? WHERE filepath=?",
+                (new_path, old_path)
+            )
+            self._conn.execute(
+                "UPDATE play_history SET filepath=? WHERE filepath=?",
+                (new_path, old_path)
+            )
+            self._conn.execute(
+                "UPDATE queue_state SET filepath=? WHERE filepath=?",
+                (new_path, old_path)
+            )
+            self._conn.commit()
+            return True
+        except Exception:
+            import logging
+            logging.getLogger("michi.library").exception(
+                "Failed to update filepath: %s -> %s", old_path, new_path)
+            return False
+
     def remove_missing(self) -> int:
         """Soft-delete: mark files that disappeared from disk as deleted.
 

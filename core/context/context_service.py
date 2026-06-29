@@ -90,6 +90,24 @@ class ContextService:
     def record_track_played(self, track=None) -> None:
         self.record_event(AppEvent.TRACK_PLAYED, self._track_payload(track))
 
+    def record_track_played_title_artist(self, title: str = "", artist: str = "") -> None:
+        self.record_event(AppEvent.TRACK_PLAYED, {"title": title, "artist": artist})
+
+    def record_track_paused(self) -> None:
+        self.record_event(AppEvent.TRACK_PAUSED)
+
+    def record_playlist_imported(self, playlist_id: int = 0, name: str = "",
+                                  count: int = 0) -> None:
+        self.record_event(AppEvent.PLAYLIST_IMPORTED, {
+            "playlist_id": playlist_id, "name": name, "count": count,
+        })
+
+    def record_playlist_exported(self, playlist_id: int = 0, name: str = "",
+                                  count: int = 0) -> None:
+        self.record_event(AppEvent.PLAYLIST_EXPORTED, {
+            "playlist_id": playlist_id, "name": name, "count": count,
+        })
+
     # ── Queue ──
 
     def record_queue_updated(self, count: int, source: str = "") -> None:
