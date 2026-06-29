@@ -290,7 +290,7 @@ class UIBuilder:
         with contextlib.suppress(TypeError, RuntimeError):
             w._album_grid.album_selected.disconnect()
         w._album_grid.album_selected.connect(
-            lambda group, _w=w: _w._show_album_detail(group))
+            lambda group, _w=w: _w._album_ctrl.show_album_detail_from_cover_item(group))
 
         w._song_grid = SongGridWidget()
         w._song_grid.song_double_clicked.connect(

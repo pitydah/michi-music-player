@@ -63,3 +63,44 @@ class AlbumController:
             f"Formato: {fmt_str}"
         )
         QMessageBox.information(self._win, "Detalles del álbum", msg)
+
+    def show_album_detail_from_cover_item(self, cover_item):
+        """Open album detail view in the albums stack.
+
+        Extracts tracks from cover_item.data, resolves via group_by_album
+        if needed, and shows banner + tracklist in AlbumDetailView.
+        """
+        import unicodedata
+        w = self._win
+        album = getattr(cover_item, 'title', '') or ''
+        artist = getattr(cover_item, 'subtitle', '') or ''
+        tracks = []
+        data = getattr(cover_item, 'data', None)
+        if isinstance(data, dict):
+            tracks = data.get("tracks", [])
+        if not tracks and hasattr(w, '_all_items'):
+            from library.album_art import group_by_album
+            def _norm(s):
+                s = (s or '').strip().lower()
+                return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
+            for a, ar, tr in group_by_album(w._filtered_album_items()):
+                if _norm(album) == _norm(a) or (album and _norm(album) in _norm(a)):
+                    tracks = tr
+                    album = a
+                    artist = ar
+                    break
+        if not tracks:
+            w._count.setText("Selecciona un álbum")
+            return
+        dur = sum(getattr(t, 'duration', 0) or 0 for t in tracks)
+        mins = int(dur // 60)
+        dur_str = f"{mins // 60} h {mins % 60} min" if mins >= 60 else f"{mins} min"
+        year = str(tracks[0].year) if tracks and getattr(tracks[0], 'year', 0) else ""
+        exts = set((getattr(t, 'ext', '') or '').upper().lstrip(".") for t in tracks if getattr(t, 'ext', ''))
+        fmt = " · ".join(sorted(exts)) if exts else ""
+        w._album_detail_view.set_album(
+            title=album, artist=artist, year=year,
+            cover_pixmap=getattr(cover_item, 'pixmap', None),
+            tracks=tracks, total_duration=dur_str, format_info=fmt)
+        w._albums_stack.setCurrentIndex(1)
+        w._count.setText(album)

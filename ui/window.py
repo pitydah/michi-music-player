@@ -80,6 +80,7 @@ class MainWindow(QMainWindow):
         _log.info("Phase controllers: %.0f ms", (perf_counter() - _t0) * 1000)
         self._setup_shortcuts()
         self._wire_home_audio_signals()
+        self._wire_identifier_signals()
         self._connect_signals()
         _log.info("Phase signals: %.0f ms", (perf_counter() - _t0) * 1000)
         self._load_initial_data()
@@ -303,6 +304,20 @@ class MainWindow(QMainWindow):
         from ui.routers.view_mode_router import ViewModeRouter
         self._view_router = ViewModeRouter(self)
 
+        # FileWatcher + LibraryWatcherController (needs _lib_ctrl, created above)
+        from library.file_watcher import FileWatcher
+        from ui.controllers.library_watcher_controller import LibraryWatcherController
+        self._file_watcher = FileWatcher(self._db, parent=self)
+        self._library_watcher_ctrl = LibraryWatcherController(
+            db=self._db,
+            file_actions=self._file_actions,
+            library_controller=self._lib_ctrl,
+            toast_service=self._toast_svc,
+        )
+        self._file_watcher.files_added.connect(self._library_watcher_ctrl.on_files_added)
+        self._file_watcher.files_removed.connect(self._library_watcher_ctrl.on_files_removed)
+        self._file_watcher.files_modified.connect(self._library_watcher_ctrl.on_files_modified)
+        self._shutdown.register("file_watcher", lambda: self._file_watcher.stop())
 
     def _init_optional_services(self):
         """Music identifier, HomeAudioView, Snapcast, API, mDNS, enrichment, MPRIS."""
@@ -400,14 +415,6 @@ class MainWindow(QMainWindow):
         self._transmit_mgr = TransmitManager(self)
         self._transmit_mgr.active_changed.connect(self._on_transmit_active_changed)
         self._shutdown.register("transmit", lambda: None)  # no explicit stop needed
-
-        # FileWatcher — real-time monitoring of library roots
-        from library.file_watcher import FileWatcher
-        self._file_watcher = FileWatcher(self._db, parent=self)
-        self._file_watcher.files_added.connect(self._on_watcher_files_added)
-        self._file_watcher.files_removed.connect(self._on_watcher_files_removed)
-        self._file_watcher.files_modified.connect(self._on_watcher_files_modified)
-        self._shutdown.register("file_watcher", lambda: self._file_watcher.stop())
         self._validate_nav_routes()
 
     def _validate_nav_routes(self):
@@ -578,7 +585,8 @@ class MainWindow(QMainWindow):
         self._ha_handlers.wire_signals()
 
     def _wire_identifier_signals(self):
-        self._id_handlers.wire_signals()
+        if getattr(self, '_id_handlers', None):
+            self._id_handlers.wire_signals()
     def _setup_actions(self):
         from PySide6.QtGui import QAction
 
@@ -1302,45 +1310,7 @@ class MainWindow(QMainWindow):
         self._song_grid.set_items(items, card_size=170)
         self._count.setText(f"{len(items)} canciones")
 
-    def _show_album_detail(self, cover_item):
-        try:
-            import traceback
-            album = getattr(cover_item, 'title', '') or ''
-            artist = getattr(cover_item, 'subtitle', '') or ''
-            tracks = []
-            data = getattr(cover_item, 'data', None)
-            if isinstance(data, dict):
-                tracks = data.get("tracks", [])
-            if not tracks and hasattr(self, '_all_items'):
-                from library.album_art import group_by_album
-                import unicodedata
-                def _norm(s):
-                    s = (s or '').strip().lower()
-                    return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
-                for a, ar, tr in group_by_album(self._filtered_album_items()):
-                    if _norm(album) == _norm(a) or (album and _norm(album) in _norm(a)):
-                        tracks = tr
-                        album = a
-                        artist = ar
-                        break
-            if not tracks:
-                self._count.setText("Selecciona un álbum")
-                return
-            dur = sum(getattr(t, 'duration', 0) or 0 for t in tracks)
-            mins = int(dur // 60)
-            dur_str = f"{mins // 60} h {mins % 60} min" if mins >= 60 else f"{mins} min"
-            year = str(tracks[0].year) if tracks and getattr(tracks[0], 'year', 0) else ""
-            exts = set((getattr(t, 'ext', '') or '').upper().lstrip(".") for t in tracks if getattr(t, 'ext', ''))
-            fmt = " · ".join(sorted(exts)) if exts else ""
-            self._album_detail_view.set_album(
-                title=album, artist=artist, year=year,
-                cover_pixmap=getattr(cover_item, 'pixmap', None),
-                tracks=tracks, total_duration=dur_str, format_info=fmt)
-            self._albums_stack.setCurrentIndex(1)
-            self._count.setText(album)
-        except Exception:
-            traceback.print_exc()
-            self._count.setText("Error al abrir detalles")
+
     def _show_coverflow(self):
         self._cf_ctrl.show()
     def _on_metadata_saved(self, filepaths: list):
@@ -1463,23 +1433,8 @@ class MainWindow(QMainWindow):
 
     # ── FileWatcher handlers ──
 
-    def _on_watcher_files_added(self, paths: list[str]):
-        self._file_actions._add_file_list(paths)
-        self._reload_library_after_change(reason="watcher_added")
-        self._toast_svc.show(f"{len(paths)} archivos nuevos detectados", "info")
-
-    def _on_watcher_files_removed(self, paths: list[str]):
-        now = __import__("time").time()
-        for fp in paths:
-            self._db.conn.execute(
-                "UPDATE media_items SET deleted_at=? WHERE filepath=?",
-                (now, fp))
-        self._db.conn.commit()
-        self._reload_library_after_change(reason="watcher_removed")
-
-    def _on_watcher_files_modified(self, paths: list[str]):
-        self._file_actions._add_file_list(paths)
-        self._reload_library_after_change(reason="watcher_modified")
+    # FileWatcher handlers moved to LibraryWatcherController.
+    # Signals are connected directly in _init_core().
 
     def _scan_path(self, path: str):
         self._file_actions.scan_path(path)

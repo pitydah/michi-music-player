@@ -1001,6 +1001,18 @@ class LibraryDB:
                  "genre": r[9] or "", "track_uid": r[11] or ""}
                 for r in rows]
 
+    def mark_files_deleted(self, paths: list[str], deleted_at: float | None = None) -> None:
+        """Soft-delete media files by marking them with a deleted_at timestamp."""
+        if not paths:
+            return
+        import time
+        ts = deleted_at if deleted_at is not None else time.time()
+        with self._conn:
+            self._conn.executemany(
+                "UPDATE media_items SET deleted_at=? WHERE filepath=?",
+                [(ts, fp) for fp in paths],
+            )
+
     def get_play_history(self, device: str = "desktop") -> list[dict]:
         rows = self._conn.execute(
             "SELECT track_id, played_at FROM play_history ORDER BY played_at DESC LIMIT 100"
