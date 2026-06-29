@@ -14,9 +14,20 @@ class TestServerInfo:
         assert d["api_version"] == "v1"
         assert "desktop_player" in d["roles"]
         assert "library_master" in d["roles"]
+        assert "remote_control_target" in d["roles"]
+        assert "cast_controller" in d["roles"]
         assert "library" in d["features"]
         assert d["features"]["remote_control"] is True
         assert d["features"]["queue"] is True
+        assert d["features"]["token_refresh"] is False
+        assert d["features"]["events"] is False
+
+    def test_server_info_includes_roles_features(self):
+        from integrations.michi_link.models import ServerInfo
+        info = ServerInfo()
+        d = info.to_dict()
+        assert len(d["roles"]) == 5
+        assert len(d["features"]) >= 10
 
 
 class TestPairStart:
@@ -114,18 +125,216 @@ class TestPlaybackState:
         assert d["current_index"] == 0
 
 
-class TestServerIntegration:
-    def test_server_info_mounts(self):
-        """Verify MichiLinkServer mounts without error."""
-        from sync.sync_server import SyncServer, SyncRequestHandler
-        from integrations.michi_link.server import MichiLinkServer
-        db = MagicMock()
-        SyncServer(db)
-        MichiLinkServer.mount(SyncRequestHandler)
-        assert hasattr(SyncRequestHandler, "_v1_mixin")
+class TestPlaybackControl:
+    def test_accepts_command(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
 
+        body = json.dumps({"command": "play"})
+        V1_MIXIN._handle_control(handler, body)
+        ps.play_or_resume.assert_called_once()
+
+    def test_accepts_action_as_fallback(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"action": "pause"})
+        V1_MIXIN._handle_control(handler, body)
+        ps.pause.assert_called_once()
+
+    def test_set_volume_validates_range(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "set_volume", "volume": 150})
+        V1_MIXIN._handle_control(handler, body)
+        ps.set_volume.assert_called_once_with(100)
+
+        body2 = json.dumps({"command": "set_volume", "volume": -10})
+        V1_MIXIN._handle_control(handler, body2)
+        ps.set_volume.assert_called_with(0)
+
+    def test_toggle_calls_toggle(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "toggle"})
+        V1_MIXIN._handle_control(handler, body)
+        ps.toggle.assert_called_once()
+
+    def test_seek_accepts_position_ms(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "seek", "position_ms": 30000})
+        V1_MIXIN._handle_control(handler, body)
+        ps.seek.assert_called_once_with(30.0)
+
+    def test_seek_accepts_seek_ms_as_fallback(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "seek", "seek_ms": 15000})
+        V1_MIXIN._handle_control(handler, body)
+        ps.seek.assert_called_once_with(15.0)
+
+    def test_seek_accepts_value_as_last_fallback(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "seek", "value": 5000})
+        V1_MIXIN._handle_control(handler, body)
+        ps.seek.assert_called_once_with(5.0)
+
+    def test_mute_sets_volume_zero(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "mute"})
+        V1_MIXIN._handle_control(handler, body)
+        ps.set_volume.assert_called_once_with(0)
+
+    def test_unmute_sets_volume_default(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        body = json.dumps({"command": "unmute"})
+        V1_MIXIN._handle_control(handler, body)
+        ps.set_volume.assert_called_once_with(70)
+
+    def test_unknown_command_returns_v1_error(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler._require_permission = MagicMock(return_value=True)
+        ps = MagicMock()
+        V1_MIXIN._player_service = ps
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+
+        body = json.dumps({"command": "fly"})
+        V1_MIXIN._handle_control(handler, body)
+        assert len(results) == 1
+        data, status = results[0]
+        assert "error" in data
+        assert data["error"]["code"] == "UNKNOWN_COMMAND"
+
+
+class TestSyncDelta:
+    def test_accepts_cursor(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler.path = "/api/v1/sync/manifest/delta?device_id=d1&cursor=12345.0"
+        handler._require_permission = MagicMock(return_value=True)
+        srv = MagicMock()
+        srv._delta_provider = MagicMock(return_value={"manifest_id": "m1"})
+        handler.server_ref = srv
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+
+        qs = {"device_id": ["d1"], "cursor": ["12345.0"]}
+        # Patch parse_qs
+        import urllib.parse
+        orig_parse = urllib.parse.parse_qs
+        urllib.parse.parse_qs = lambda x: qs
+
+        V1_MIXIN.handle_get(handler)
+
+        urllib.parse.parse_qs = orig_parse
+        srv._delta_provider.assert_called_once_with("d1", 12345.0)
+        assert len(results) == 1
+
+    def test_accepts_manifest_id_as_fallback(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler.path = "/api/v1/sync/manifest/delta?device_id=d1&manifest_id=m_abc"
+        handler._require_permission = MagicMock(return_value=True)
+        srv = MagicMock()
+        srv._delta_provider = MagicMock(return_value={"manifest_id": "m1"})
+        handler.server_ref = srv
+
+        import urllib.parse
+        orig_parse = urllib.parse.parse_qs
+        urllib.parse.parse_qs = lambda x: {"device_id": ["d1"], "manifest_id": ["m_abc"]}
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        V1_MIXIN.handle_get(handler)
+
+        urllib.parse.parse_qs = orig_parse
+        assert len(results) == 1
+
+
+class TestTokenRefresh:
+    def test_returns_v1_error_not_implemented(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+        handler.path = "/api/v1/token/refresh"
+        handler._read_body = lambda: ""
+
+        V1_MIXIN.handle_post(handler)
+        assert len(results) == 1
+        data, status = results[0]
+        assert "error" in data
+        assert data["error"]["code"] == "NOT_IMPLEMENTED"
+
+
+class TestEvents:
+    def test_returns_v1_error_not_implemented(self):
+        from integrations.michi_link.server import V1_MIXIN
+        handler = MagicMock()
+        handler.path = "/api/v1/events"
+        handler._require_permission = MagicMock(return_value=True)
+
+        results = []
+        handler._send_json = lambda data, status=200: results.append((data, status))
+
+        V1_MIXIN.handle_get(handler)
+        assert len(results) == 1
+        data, status = results[0]
+        assert "error" in data
+        assert data["error"]["code"] == "NOT_IMPLEMENTED"
+
+    def test_server_info_declares_events_false(self):
+        from integrations.michi_link.models import ServerInfo
+        info = ServerInfo()
+        assert info.features.get("events") is False
+        assert info.features.get("token_refresh") is False
+
+
+class TestTracks:
     def test_v1_tracks_no_filepath(self):
-        """Verify /api/v1/tracks does not expose filepath."""
         from integrations.michi_link.server import V1_MIXIN
 
         handler = MagicMock()
@@ -152,10 +361,7 @@ class TestServerIntegration:
         handler.server_ref = srv
 
         results = []
-
-        def fake_send(data, status=200):
-            results.append((data, status))
-        handler._send_json = fake_send
+        handler._send_json = lambda data, status=200: results.append((data, status))
 
         V1_MIXIN.handle_get(handler)
 
@@ -170,10 +376,17 @@ class TestServerIntegration:
         assert track["download_path"].startswith("/api/v1/stream/")
 
 
+class TestServerIntegration:
+    def test_server_info_mounts(self):
+        from sync.sync_server import SyncServer, SyncRequestHandler
+        from integrations.michi_link.server import MichiLinkServer
+        db = MagicMock()
+        SyncServer(db)
+        MichiLinkServer.mount(SyncRequestHandler)
+        assert hasattr(SyncRequestHandler, "_v1_mixin")
+
+
 class TestLegacyCompat:
     def test_legacy_pair_start_still_works(self):
-        """Legacy /api/pair/start should still be handled by the original handler."""
         from sync.sync_server import SyncRequestHandler
         assert hasattr(SyncRequestHandler, "do_GET")
-        # The handler will dispatch /api/pair/start through the original do_POST
-        # (not the v1 path), which is handled by SyncRequestHandler.do_POST

@@ -20,6 +20,7 @@ class ServerInfo:
         "sync_manifest": True, "remote_control": True,
         "queue": True, "artwork": True, "playlists": True,
         "audio_chains": True, "receivers": True,
+        "token_refresh": False, "events": False,
     })
 
     def to_dict(self) -> dict:

@@ -2,6 +2,7 @@
 
 Mounted as a mixin on the existing SyncRequestHandler.
 Routes are dispatched from /api/v1/ by MichiLinkRouter.
+Official contract: https://github.com/pitydah/michi-link
 """
 from __future__ import annotations
 
@@ -19,6 +20,14 @@ from integrations.michi_link.models import (
 from integrations.michi_link.permissions import V1_ENDPOINT_PERMISSIONS
 
 logger = logging.getLogger("michi.link.server")
+
+
+def _v1_error(code: str, message: str, details: dict | None = None) -> dict:
+    return {"error": {"code": code, "message": message, "details": details or {}}}
+
+
+def _send_v1_error(handler, code: str, message: str, status=400, details=None):
+    handler._send_json(_v1_error(code, message, details), status)
 
 
 class MichiLinkServer:
@@ -40,7 +49,6 @@ class MichiLinkServer:
         V1_MIXIN._playback = playback
         V1_MIXIN._player_service = player_service
         V1_MIXIN._window_ref = window
-        # Patch do_GET and do_POST on the handler
         _orig_get = handler_class.do_GET
         _orig_post = handler_class.do_POST
 
@@ -66,12 +74,6 @@ class V1_MIXIN:
     _player_service: object | None = None
     _window_ref: object | None = None
 
-    # ── Permission check (reuses existing _require_permission) ──
-
-    @classmethod
-    def _require(cls, handler, permission: str) -> bool:
-        return handler._require_permission(permission)
-
     @classmethod
     def _check_v1_permission(cls, handler, method: str, path: str) -> bool:
         route_key = f"{method}{path.rstrip('/')}"
@@ -91,12 +93,10 @@ class V1_MIXIN:
         path = handler.path.split("?")[0].rstrip("/")
         srv = handler.server_ref
 
-        # Public
-        if path == "/api/v1/server/info" or path == "/api/v1/status":
+        # ── Public ──
+        if path in ("/api/v1/server/info", "/api/v1/status"):
             has_account = bool(srv and srv._local_account and srv._local_account.exists())
-            info = ServerInfo(
-                name=srv._alias if srv else "Michi Music Player",
-            )
+            info = ServerInfo(name=srv._alias if srv else "Michi Music Player")
             d = info.to_dict()
             d["requires_pairing"] = has_account
             if path == "/api/v1/status":
@@ -105,12 +105,12 @@ class V1_MIXIN:
                 d["local_account"] = has_account
             handler._send_json(d)
 
-        # Library
+        # ── Library ──
         elif path == "/api/v1/library/stats":
             if not cls._check_v1_permission(handler, "GET", path):
                 return
             if srv is None or srv._db is None:
-                return handler._send_error("No library", 503)
+                return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
             stats = srv._db.get_stats()
             handler._send_json(stats)
 
@@ -118,7 +118,7 @@ class V1_MIXIN:
             if not cls._check_v1_permission(handler, "GET", path):
                 return
             if srv is None or srv._db is None:
-                return handler._send_error("No library", 503)
+                return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
             items = srv._db.get_all()
             tracks = []
             for item in items:
@@ -164,43 +164,55 @@ class V1_MIXIN:
                 })
             handler._send_json({"results": results, "query": query})
 
-        # Sync manifest (delegated to existing providers)
+        # ── Sync manifest ──
         elif path == "/api/v1/sync/manifest":
             if not cls._check_v1_permission(handler, "GET", path):
                 return
             if srv is None or srv._manifest_provider is None:
-                return handler._send_error("Manifest service not available", 503)
+                return _send_v1_error(handler, "MANIFEST_UNAVAILABLE",
+                                      "Manifest service not available", 503)
             qs = urllib.parse.parse_qs(
                 handler.path.split("?")[1] if "?" in handler.path else "")
             device_id = (qs.get("device_id") or [""])[0]
             if not device_id:
-                return handler._send_error("Missing device_id parameter", 400)
+                return _send_v1_error(handler, "MISSING_PARAM",
+                                      "Missing device_id parameter", 400)
             manifest = srv._manifest_provider(device_id)
             if manifest is None:
-                return handler._send_error("No manifest for this device", 404)
+                return _send_v1_error(handler, "NO_MANIFEST",
+                                      "No manifest for this device", 404)
             handler._send_json(manifest)
 
         elif path == "/api/v1/sync/manifest/delta":
             if not cls._check_v1_permission(handler, "GET", path):
                 return
             if srv is None or srv._delta_provider is None:
-                return handler._send_error("Delta manifest not available", 503)
+                return _send_v1_error(handler, "DELTA_UNAVAILABLE",
+                                      "Delta manifest not available", 503)
             qs = urllib.parse.parse_qs(
                 handler.path.split("?")[1] if "?" in handler.path else "")
             device_id = (qs.get("device_id") or [""])[0]
-            since_str = (qs.get("since") or ["0"])[0]
             if not device_id:
-                return handler._send_error("Missing device_id parameter", 400)
+                return _send_v1_error(handler, "MISSING_PARAM",
+                                      "Missing device_id parameter", 400)
+            # Priority: cursor > since > manifest_id > 0
+            cursor_str = (qs.get("cursor") or [""])[0]
+            since_str = (qs.get("since") or [""])[0]
+            manifest_id_str = (qs.get("manifest_id") or [""])[0]
             try:
-                since = float(since_str)
+                since = float(cursor_str or since_str or manifest_id_str or "0")
             except ValueError:
                 since = 0.0
             delta = srv._delta_provider(device_id, since)
             if delta is None:
-                return handler._send_error("No delta for this device", 404)
+                return _send_v1_error(handler, "NO_DELTA",
+                                      "No delta for this device", 404)
+            # Add cursor to response if provider supports it
+            if isinstance(delta, dict):
+                delta.setdefault("cursor", str(since))
             handler._send_json(delta)
 
-        # Playback
+        # ── Playback ──
         elif path == "/api/v1/playback/state":
             if not cls._check_v1_permission(handler, "GET", path):
                 return
@@ -211,12 +223,29 @@ class V1_MIXIN:
                 return
             handler._send_json(cls._build_queue(srv))
 
-        # Events (SSE stub — real implementation in future)
+        # ── Stream & Artwork (alias to legacy implementation) ──
+        elif path.startswith("/api/v1/stream/"):
+            if not cls._check_v1_permission(handler, "GET", "/api/v1/stream"):
+                return
+            handler.path = handler.path.replace("/api/v1/stream", "/api/stream", 1)
+            from sync.sync_server import SyncRequestHandler
+            SyncRequestHandler.do_GET(handler)
+
+        elif path.startswith("/api/v1/artwork/"):
+            if not cls._check_v1_permission(handler, "GET", "/api/v1/artwork"):
+                return
+            handler.path = handler.path.replace("/api/v1/artwork", "/api/cover", 1)
+            from sync.sync_server import SyncRequestHandler
+            SyncRequestHandler.do_GET(handler)
+
+        # ── Events (SSE not implemented) ──
         elif path == "/api/v1/events":
-            handler._send_json({"status": "not_implemented", "message": "SSE not yet implemented"})
+            _send_v1_error(handler, "NOT_IMPLEMENTED",
+                           "SSE events are not implemented by this server.",
+                           501)
 
         else:
-            handler._send_error("Not found", 404)
+            _send_v1_error(handler, "NOT_FOUND", "Not found", 404)
 
     # ── POST /api/v1/* ──
 
@@ -226,39 +255,31 @@ class V1_MIXIN:
         body = handler._read_body()
         srv = handler.server_ref
 
-        # Public pairing
         if path == "/api/v1/pair/start":
             cls._handle_pair_start(handler, srv)
         elif path == "/api/v1/pair/confirm":
             cls._handle_pair_confirm(handler, srv, body)
-
-        # Sync state (delegated)
         elif path == "/api/v1/sync/state":
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_sync_state(handler, srv, body)
-
-        # Playback control
         elif path == "/api/v1/playback/control":
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_control(handler, body)
-
         elif path == "/api/v1/queue/jump":
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_queue_jump(handler, body)
-
         elif path == "/api/v1/queue/items":
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_queue_items(handler, body, srv)
-
         elif path == "/api/v1/token/refresh":
-            handler._send_error("Token refresh not yet implemented", 501)
-
+            _send_v1_error(handler, "NOT_IMPLEMENTED",
+                           "Token refresh is not implemented by this server.", 501)
         else:
-            handler._send_error("Not found", 404)
+            _send_v1_error(handler, "NOT_FOUND", "Not found", 404)
 
     # ── Pair handlers ──
 
@@ -279,20 +300,19 @@ class V1_MIXIN:
     def _handle_pair_confirm(cls, handler, srv, body):
         client_ip = handler.client_address[0]
         if not handler._check_rate_limit(client_ip):
-            return handler._send_error("Too many attempts, try later", 429)
+            return _send_v1_error(handler, "RATE_LIMITED",
+                                  "Too many attempts, try later", 429)
         try:
             req = V1PairConfirmRequest.from_json(body)
         except Exception:
-            return handler._send_error("Invalid request", 400)
+            return _send_v1_error(handler, "INVALID_REQUEST", "Invalid request", 400)
         if srv is None:
-            return handler._send_error("Server not ready", 503)
-
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
         client_id = req.client_device_id
         if not client_id:
             handler._send_json(json.loads(V1PairConfirmResponse(
                 success=False, error="Missing client_device_id").to_json()))
             return
-
         acct_exists = bool(srv._local_account and srv._local_account.exists())
         if acct_exists and (
             not req.username or not req.password or
@@ -305,7 +325,6 @@ class V1_MIXIN:
             handler._send_json(json.loads(V1PairConfirmResponse(
                 success=False, error="Invalid credentials").to_json()))
             return
-
         registry = srv._device_registry
         if registry and not registry.get(client_id):
             registry.register(
@@ -317,21 +336,15 @@ class V1_MIXIN:
                 device_model=req.device_model,
                 client_version=req.client_version,
             )
-
         token_str = secrets.token_hex(32)
         server_id = make_device_id()
-
         if registry:
             registry.set_token(client_id, token_str)
-
         session = SessionToken(
-            token=token_str,
-            device_alias=client_id,
-            client_device_id=client_id,
+            token=token_str, device_alias=client_id, client_device_id=client_id,
         )
         with srv._sessions_lock:
             srv._sessions[token_str] = session
-
         default_perms = [
             "library.read", "stream.read", "artwork.read",
             "sync.read_manifest", "sync.upload_state",
@@ -339,11 +352,8 @@ class V1_MIXIN:
             "queue.read", "queue.write",
         ]
         resp = V1PairConfirmResponse(
-            success=True,
-            device_id=client_id,
-            device_token=token_str,
-            permissions=default_perms,
-            server_device_id=server_id,
+            success=True, device_id=client_id, device_token=token_str,
+            permissions=default_perms, server_device_id=server_id,
             server_alias=srv._alias if srv else "Michi Music Player",
         )
         if srv:
@@ -355,11 +365,11 @@ class V1_MIXIN:
     @classmethod
     def _handle_sync_state(cls, handler, srv, body):
         if srv is None:
-            return handler._send_error("Server not ready", 503)
+            return _send_v1_error(handler, "SERVER_NOT_READY", "Server not ready", 503)
         try:
             data = json.loads(body)
         except Exception:
-            return handler._send_error("Invalid JSON", 400)
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
         device_alias = handler._check_token() or "unknown"
         synced = 0
         for entry in data.get("tracks", []):
@@ -377,7 +387,7 @@ class V1_MIXIN:
                     synced += 1
         handler._send_json({"synced": synced})
 
-    # ── Playback control ──
+    # ── Playback state builder ──
 
     @classmethod
     def _build_playback_state(cls, srv) -> dict:
@@ -459,92 +469,122 @@ class V1_MIXIN:
                 current_index = -1
 
         return QueueDto(
-            tracks=tracks,
-            current_index=current_index,
+            tracks=tracks, current_index=current_index,
         ).to_dict()
+
+    # ── Playback control ──
 
     @classmethod
     def _handle_control(cls, handler, body):
         ps = cls._player_service
         pb = cls._playback
         if not ps and not pb:
-            return handler._send_error("Playback service not available", 503)
+            return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
+                                  "Playback service not available", 503)
         try:
             data = json.loads(body)
         except Exception:
-            return handler._send_error("Invalid JSON", 400)
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
 
-        action = data.get("action", "")
-        if action == "play":
+        # Official field is "command", fallback to "action" for legacy compat
+        action = data.get("command", data.get("action", ""))
+
+        if action in ("play", "resume"):
             if ps and hasattr(ps, "play_or_resume"):
                 ps.play_or_resume()
             elif pb and hasattr(pb, "play_or_resume"):
                 pb.play_or_resume()
+
         elif action == "pause":
-            if ps:
+            if ps and hasattr(ps, "pause"):
                 ps.pause()
+
         elif action == "toggle":
-            if ps:
-                ps.play_or_resume()
-        elif action == "next":
+            if ps and hasattr(ps, "toggle"):
+                ps.toggle()
+            elif pb and hasattr(pb, "toggle"):
+                pb.toggle()
+
+        elif action in ("next", "skip"):
             if ps and hasattr(ps, "play_next"):
                 ps.play_next()
-        elif action == "previous":
+
+        elif action in ("previous", "prev"):
             if ps and hasattr(ps, "play_prev"):
                 ps.play_prev()
+
         elif action == "stop":
-            if ps:
+            if ps and hasattr(ps, "stop"):
                 ps.stop()
+
         elif action == "seek":
-            seek_ms = float(data.get("seek_ms", data.get("value", 0)))
+            seek_ms = float(data.get("position_ms", data.get("seek_ms", data.get("value", 0))))
             if ps and hasattr(ps, "seek"):
                 ps.seek(seek_ms / 1000.0)
+
         elif action == "set_volume":
             vol = int(data.get("volume", data.get("value", 70)))
-            if ps:
+            vol = max(0, min(100, vol))
+            if ps and hasattr(ps, "set_volume"):
                 ps.set_volume(vol)
+
+        elif action == "mute":
+            if ps:
+                ps.set_volume(0)
+
+        elif action == "unmute":
+            if ps and hasattr(ps, "set_volume"):
+                ps.set_volume(70)
+
         elif action == "shuffle":
             if pb and hasattr(pb, "toggle_shuffle"):
                 pb.toggle_shuffle()
+
         elif action == "repeat":
             if pb and hasattr(pb, "toggle_repeat"):
                 pb.toggle_repeat()
+
         else:
-            return handler._send_error(f"Unknown action: {action}", 400)
-        handler._send_json({"status": "ok", "action": action})
+            return _send_v1_error(handler, "UNKNOWN_COMMAND",
+                                  f"Unknown command: {action}", 400)
+
+        handler._send_json({"status": "ok", "command": action})
+
+    # ── Queue ──
 
     @classmethod
     def _handle_queue_jump(cls, handler, body):
         pb = cls._playback
         if not pb:
-            return handler._send_error("Playback service not available", 503)
+            return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
+                                  "Playback service not available", 503)
         try:
             data = json.loads(body)
         except Exception:
-            return handler._send_error("Invalid JSON", 400)
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
         index = int(data.get("index", -1))
         if index < 0:
-            return handler._send_error("Invalid index", 400)
+            return _send_v1_error(handler, "INVALID_INDEX", "Invalid index", 400)
         try:
             pb.play_queue(pb.get_queue_state()[0], start_index=index)
         except Exception as e:
             logger.warning("Queue jump failed: %s", e)
-            return handler._send_error("Jump failed", 500)
+            return _send_v1_error(handler, "JUMP_FAILED", "Jump failed", 500)
         handler._send_json({"status": "ok", "index": index})
 
     @classmethod
     def _handle_queue_items(cls, handler, body, srv):
         ps = cls._player_service
         if not ps:
-            return handler._send_error("Playback service not available", 503)
+            return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE",
+                                  "Playback service not available", 503)
         try:
             data = json.loads(body)
         except Exception:
-            return handler._send_error("Invalid JSON", 400)
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
         uris = data.get("uris", [])
         if not uris:
-            return handler._send_error("No uris provided", 400)
-        # Resolve track_ids to filepaths
+            return _send_v1_error(handler, "NO_URIS", "No uris provided", 400)
         filepaths = []
         for uri in uris:
             fp = srv._resolve_track(uri) if srv else None
