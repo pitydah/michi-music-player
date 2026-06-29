@@ -97,3 +97,41 @@ class ArtistController:
             self._win._artist_grid.set_artists(repo.groups)
         self._ctx.toast.show(
             f"Actualizando info de {group.display_name}...", "info")
+
+    def on_artist_enriched(self, artist_key: str, info):
+        repo = self._ctx.artist_repo
+        if hasattr(repo, 'apply_external_info'):
+            repo.apply_external_info(artist_key, info)
+
+        w = self._win
+        if (hasattr(w, '_artist_detail') and hasattr(w._artist_detail, '_artist')
+                and w._artist_detail._artist
+                and w._artist_detail._artist.key == artist_key):
+            group = repo.get_group(artist_key)
+            if group:
+                w._artist_detail.set_artist(group)
+            else:
+                w._artist_detail.set_external_info(info)
+
+        if hasattr(w._artist_grid, 'set_artists'):
+            w._artist_grid.set_artists(repo.groups)
+
+    def on_artist_image_loaded(self, artist_key: str, local_path: str):
+        repo = self._ctx.artist_repo
+        w = self._win
+        if hasattr(w._artist_grid, 'set_artists'):
+            w._artist_grid.set_artists(repo.groups)
+        if (hasattr(w, '_artist_detail') and hasattr(w._artist_detail, '_artist')
+                and w._artist_detail._artist
+                and w._artist_detail._artist.key == artist_key):
+            group = repo.get_group(artist_key)
+            if group:
+                w._artist_detail.set_artist(group)
+
+    def on_artist_enrichment_failed(self, artist_key: str, error: str):
+        repo = self._ctx.artist_repo
+        if hasattr(repo, 'mark_enrichment_error'):
+            repo.mark_enrichment_error(artist_key, error)
+        if hasattr(self._win._artist_grid, 'set_artists'):
+            self._win._artist_grid.set_artists(repo.groups)
+        self._ctx.toast.show(f"Enriquecimiento: {error}", "error")

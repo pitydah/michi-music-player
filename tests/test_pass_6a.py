@@ -125,7 +125,7 @@ class TestFavoritesIdentity:
         mw._db.get_by_id = MagicMock(return_value=None)
         mw._smart_ctrl = SmartMixController(mw)
 
-        result = mw._resolve_track_ids(["/test/song.mp3"])
+        result = mw._smart_ctrl.resolve_track_ids(["/test/song.mp3"])
         assert len(result) == 1
         assert result[0].title == "Test Song"
 
@@ -146,7 +146,7 @@ class TestFavoritesIdentity:
         mw._db.get_by_id = MagicMock(return_value=item)
         mw._smart_ctrl = SmartMixController(mw)
 
-        result = mw._resolve_track_ids(["42"])
+        result = mw._smart_ctrl.resolve_track_ids(["42"])
         assert len(result) == 1
         assert result[0].title == "ID Song"
 

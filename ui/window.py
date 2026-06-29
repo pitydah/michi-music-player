@@ -393,9 +393,12 @@ class MainWindow(QMainWindow):
         self._artist_enrich = self._safe_init("enrichment",
             lambda: self._make_artist_enrichment())
         if self._artist_enrich:
-            self._artist_enrich.artist_enriched.connect(self._on_artist_enriched)
-            self._artist_enrich.artist_image_loaded.connect(self._on_artist_image_loaded)
-            self._artist_enrich.enrichment_failed.connect(self._on_artist_enrichment_failed)
+            self._artist_enrich.artist_enriched.connect(
+                self._artist_ctrl.on_artist_enriched)
+            self._artist_enrich.artist_image_loaded.connect(
+                self._artist_ctrl.on_artist_image_loaded)
+            self._artist_enrich.enrichment_failed.connect(
+                self._artist_ctrl.on_artist_enrichment_failed)
 
         # Album info repository
         from metadata.album_info_repository import AlbumInfoRepository
@@ -965,8 +968,6 @@ class MainWindow(QMainWindow):
         self._smart_ctrl.show_favs(key)
     def _show_recent(self, key):
         self._smart_ctrl.show_recent(key)
-    def _resolve_track_ids(self, track_ids):
-        return self._smart_ctrl.resolve_track_ids(track_ids)
     def _show_identifier(self, key):
         self._id_handlers.show(key)
     def _show_home_audio(self, key=None):
@@ -1224,47 +1225,7 @@ class MainWindow(QMainWindow):
         self._artist_ctrl.show_artists_view(mode)
     def _refresh_artist_info(self, artist_key: str):
         self._artist_ctrl.refresh_artist_info(artist_key)
-    def _on_artist_enriched(self, artist_key: str, info):
-        repo = self._ctx.artist_repo
-        if hasattr(repo, 'apply_external_info'):
-            repo.apply_external_info(artist_key, info)
-
-        # Refresh detail if open for this artist
-        if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
-                and self._artist_detail._artist
-                and self._artist_detail._artist.key == artist_key):
-            group = repo.get_group(artist_key)
-            if group:
-                self._artist_detail.set_artist(group)
-            else:
-                self._artist_detail.set_external_info(info)
-
-        # Refresh grid
-        if hasattr(self._artist_grid, 'set_artists'):
-            self._artist_grid.set_artists(repo.groups)
-
-    def _on_artist_image_loaded(self, artist_key: str, local_path: str):
-        repo = self._ctx.artist_repo
-        # Refresh grid to show new thumb
-        if hasattr(self._artist_grid, 'set_artists'):
-            self._artist_grid.set_artists(repo.groups)
-        # Refresh detail if open for this artist
-        if (hasattr(self, '_artist_detail') and hasattr(self._artist_detail, '_artist')
-                and self._artist_detail._artist
-                and self._artist_detail._artist.key == artist_key):
-            group = repo.get_group(artist_key)
-            if group:
-                self._artist_detail.set_artist(group)
-
-    def _on_artist_enrichment_failed(self, artist_key: str, error: str):
-        repo = self._ctx.artist_repo
-        if hasattr(repo, 'mark_enrichment_error'):
-            repo.mark_enrichment_error(artist_key, error)
-        # Refresh grid to show error badge
-        if hasattr(self._artist_grid, 'set_artists'):
-            self._artist_grid.set_artists(repo.groups)
-        self._toast_svc.show(
-            f"Enriquecimiento: {error}", "error")
+    # Extracted to ui/controllers/artist_controller.py — enrichment signal handlers
 
     # Extracted to ui/controllers/expanded_controller.py — now playing expanded
 
