@@ -59,6 +59,39 @@ _EVENT_DIRTY_MAP: dict[str, set[str]] = {
     AppEvent.SEARCH_STARTED: {"assistant_snapshot"},
     AppEvent.SEARCH_PERFORMED: {"assistant_snapshot"},
     AppEvent.SEARCH_CLEARED: {"assistant_snapshot"},
+
+    # Queue
+    AppEvent.QUEUE_UPDATED: {"home_snapshot", "assistant_snapshot", "playback_context"},
+    AppEvent.QUEUE_CLEARED: {"home_snapshot", "assistant_snapshot", "playback_context"},
+    AppEvent.TRACK_QUEUED: {"assistant_snapshot", "playback_context"},
+    AppEvent.PLAYBACK_MODE_CHANGED: {"assistant_snapshot", "playback_context"},
+
+    # Metadata extended
+    AppEvent.METADATA_REVIEW_OPENED: {"assistant_snapshot"},
+    AppEvent.COVER_UPDATED: {"home_snapshot", "assistant_snapshot"},
+    AppEvent.LYRICS_UPDATED: {"assistant_snapshot"},
+    AppEvent.TAGS_BATCH_UPDATED: {"home_snapshot", "assistant_snapshot", "library_health"},
+
+    # Audio analysis extended
+    AppEvent.AUDIO_ANALYSIS_STARTED: {"assistant_snapshot"},
+    AppEvent.AUDIO_ANALYSIS_FAILED: {"assistant_snapshot"},
+    AppEvent.AUDIO_FEATURES_UPDATED: {"home_snapshot", "assistant_snapshot", "library_health"},
+
+    # Disc Lab
+    AppEvent.DISC_DETECTED: {"assistant_snapshot"},
+    AppEvent.RIP_STARTED: {"assistant_snapshot"},
+    AppEvent.RIP_FINISHED: {"home_snapshot", "assistant_snapshot", "library_health"},
+    AppEvent.RIP_FAILED: {"assistant_snapshot"},
+
+    # Identifier / Radio
+    AppEvent.IDENTIFICATION_STARTED: {"assistant_snapshot"},
+    AppEvent.IDENTIFICATION_MATCHED: {"assistant_snapshot"},
+    AppEvent.IDENTIFICATION_FAILED: {"assistant_snapshot"},
+    AppEvent.RADIO_STATION_SELECTED: {"assistant_snapshot"},
+    AppEvent.RADIO_PLAYED: {"home_snapshot", "assistant_snapshot", "playback_context"},
+
+    # Operational errors
+    AppEvent.CONTEXT_ERROR_RECORDED: {"home_snapshot", "assistant_snapshot"},
 }
 
 _DIRTY_FLAG_KEYS: set[str] = set()

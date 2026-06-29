@@ -40,6 +40,12 @@ class AppEvent:
     QUALITY_UPDATED = "quality_updated"
     AUDIO_ROUTE_CHANGED = "audio_route_changed"
 
+    # Queue
+    QUEUE_UPDATED = "queue_updated"
+    QUEUE_CLEARED = "queue_cleared"
+    TRACK_QUEUED = "track_queued"
+    PLAYBACK_MODE_CHANGED = "playback_mode_changed"
+
     # Playlist
     PLAYLIST_OPENED = "playlist_opened"
     PLAYLIST_CREATED = "playlist_created"
@@ -64,3 +70,30 @@ class AppEvent:
     SEARCH_STARTED = "search_started"
     SEARCH_PERFORMED = "search_performed"
     SEARCH_CLEARED = "search_cleared"
+
+    # Metadata extended
+    METADATA_REVIEW_OPENED = "metadata_review_opened"
+    COVER_UPDATED = "cover_updated"
+    LYRICS_UPDATED = "lyrics_updated"
+    TAGS_BATCH_UPDATED = "tags_batch_updated"
+
+    # Audio analysis extended
+    AUDIO_ANALYSIS_STARTED = "audio_analysis_started"
+    AUDIO_ANALYSIS_FAILED = "audio_analysis_failed"
+    AUDIO_FEATURES_UPDATED = "audio_features_updated"
+
+    # Disc Lab / Ripping
+    DISC_DETECTED = "disc_detected"
+    RIP_STARTED = "rip_started"
+    RIP_FINISHED = "rip_finished"
+    RIP_FAILED = "rip_failed"
+
+    # Identifier / Radio
+    IDENTIFICATION_STARTED = "identification_started"
+    IDENTIFICATION_MATCHED = "identification_matched"
+    IDENTIFICATION_FAILED = "identification_failed"
+    RADIO_STATION_SELECTED = "radio_station_selected"
+    RADIO_PLAYED = "radio_played"
+
+    # Operational errors
+    CONTEXT_ERROR_RECORDED = "context_error_recorded"

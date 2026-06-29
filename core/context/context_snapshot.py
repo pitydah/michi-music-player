@@ -218,16 +218,70 @@ def build_assistant_snapshot(db, playback=None,
     return sanitize_snapshot(result)
 
 
-def build_home_snapshot(db, playback=None, sync=None) -> dict:
+def build_home_snapshot(db, playback=None, sync=None,
+                        current_section: str = "",
+                        selection_scope: str | None = None,
+                        selection_label: str = "") -> dict:
     health = build_library_health_snapshot(db)
     pb = build_playback_snapshot(playback)
     result = {
         "library_health": health,
-        "now_playing": pb.get("now_playing"),
-        "queue_length": pb.get("queue_length", 0),
-        "favorites_count": pb.get("favorites_count", 0),
+        "playback": pb,
+        "current_context": {
+            "section": current_section,
+            "selection_scope": selection_scope,
+            "selection_label": selection_label,
+        },
+        "next_actions": [],
+        "warnings": [],
         "sync_peers": 0,
     }
+    if pb.get("now_playing"):
+        result["current_context"]["now_playing"] = pb["now_playing"]
+    if pb.get("queue_length", 0) > 0:
+        result["current_context"]["queue_active"] = True
+    tc = health.get("track_count", 0)
+    if tc > 0:
+        if health.get("missing_metadata_count", 0) > 50:
+            result["warnings"].append({
+                "kind": "metadata",
+                "message": f'{health["missing_metadata_count"]} canciones con metadatos incompletos',
+            })
+        if health.get("missing_cover_count", 0) > 50:
+            result["warnings"].append({
+                "kind": "cover",
+                "message": f'{health["missing_cover_count"]} álbumes sin carátula',
+            })
+        if health.get("tracks_without_audio_features", 0) > 50:
+            result["warnings"].append({
+                "kind": "audio_features",
+                "message": f'{health["tracks_without_audio_features"]} canciones sin análisis acústico',
+            })
+        if health.get("index_error_count", 0) > 0:
+            result["warnings"].append({
+                "kind": "index_error",
+                "message": f'{health["index_error_count"]} errores de indexación',
+            })
+    elif tc == 0 and db is not None:
+        result["next_actions"].append({
+            "kind": "scan",
+            "message": "Agregar música para empezar",
+        })
+    if not pb.get("now_playing") and tc > 0:
+        result["next_actions"].append({
+            "kind": "playback",
+            "message": "Reproducir algo ahora",
+        })
+    if health.get("recently_played_count", 0) < 5 and tc > 0:
+        result["next_actions"].append({
+            "kind": "explore",
+            "message": "Descubrir nueva música",
+        })
+    if result["warnings"]:
+        result["next_actions"].append({
+            "kind": "warnings",
+            "message": f'{len(result["warnings"])} aspecto(s) por revisar',
+        })
     if sync is not None:
         try:
             if hasattr(sync, "peer_count"):
@@ -236,6 +290,7 @@ def build_home_snapshot(db, playback=None, sync=None) -> dict:
                 result["sync_peers"] = len(sync.get_all_peers())
         except Exception as e:
             logger.debug("Home snapshot sync error: %s", e)
+    result["next_actions"] = result["next_actions"][:4]
     return result
 
 

@@ -89,6 +89,96 @@ class ContextService:
     def record_track_played(self, track=None) -> None:
         self.record_event(AppEvent.TRACK_PLAYED, self._track_payload(track))
 
+    # ── Queue ──
+
+    def record_queue_updated(self, count: int, source: str = "") -> None:
+        self.record_event(AppEvent.QUEUE_UPDATED, {"count": count, "source": source})
+
+    def record_queue_cleared(self, reason: str = "") -> None:
+        self.record_event(AppEvent.QUEUE_CLEARED, {"reason": reason})
+
+    def record_track_queued(self, title: str = "", artist: str = "",
+                            source: str = "") -> None:
+        self.record_event(AppEvent.TRACK_QUEUED, {
+            "title": title, "artist": artist, "source": source,
+        })
+
+    def record_playback_mode_changed(self, shuffle: bool | None = None,
+                                     repeat: str | None = None) -> None:
+        payload = {}
+        if shuffle is not None:
+            payload["shuffle"] = shuffle
+        if repeat is not None:
+            payload["repeat"] = repeat
+        self.record_event(AppEvent.PLAYBACK_MODE_CHANGED, payload)
+
+    # ── Metadata ──
+
+    def record_metadata_review_opened(self, scope: str, count: int = 0) -> None:
+        self.record_event(AppEvent.METADATA_REVIEW_OPENED, {"scope": scope, "count": count})
+
+    def record_cover_updated(self, scope: str = "", count: int = 1) -> None:
+        self.record_event(AppEvent.COVER_UPDATED, {"scope": scope, "count": count})
+
+    def record_lyrics_updated(self, count: int = 1) -> None:
+        self.record_event(AppEvent.LYRICS_UPDATED, {"count": count})
+
+    def record_tags_batch_updated(self, count: int) -> None:
+        self.record_event(AppEvent.TAGS_BATCH_UPDATED, {"count": count})
+
+    # ── Audio analysis ──
+
+    def record_audio_analysis_started(self, count: int, scope: str = "") -> None:
+        self.record_event(AppEvent.AUDIO_ANALYSIS_STARTED, {"count": count, "scope": scope})
+
+    def record_audio_analysis_failed(self, count: int = 0, reason: str = "") -> None:
+        self.record_event(AppEvent.AUDIO_ANALYSIS_FAILED, {"count": count, "reason": reason[:200]})
+
+    def record_audio_features_updated(self, count: int) -> None:
+        self.record_event(AppEvent.AUDIO_FEATURES_UPDATED, {"count": count})
+
+    # ── Disc Lab ──
+
+    def record_disc_detected(self, source: str = "cd") -> None:
+        self.record_event(AppEvent.DISC_DETECTED, {"source": source})
+
+    def record_rip_started(self, source: str = "cd", format: str = "") -> None:
+        self.record_event(AppEvent.RIP_STARTED, {"source": source, "format": format})
+
+    def record_rip_finished(self, source: str = "cd", count: int = 0) -> None:
+        self.record_event(AppEvent.RIP_FINISHED, {"source": source, "count": count})
+
+    def record_rip_failed(self, source: str = "cd", error_type: str = "") -> None:
+        self.record_event(AppEvent.RIP_FAILED, {"source": source, "error_type": error_type[:100]})
+
+    # ── Identifier / Radio ──
+
+    def record_identification_started(self) -> None:
+        self.record_event(AppEvent.IDENTIFICATION_STARTED, {})
+
+    def record_identification_matched(self, title: str = "", artist: str = "",
+                                      confidence: float = 0.0) -> None:
+        self.record_event(AppEvent.IDENTIFICATION_MATCHED, {
+            "title": title, "artist": artist, "confidence": confidence,
+        })
+
+    def record_identification_failed(self) -> None:
+        self.record_event(AppEvent.IDENTIFICATION_FAILED, {})
+
+    def record_radio_station_selected(self, station_name: str = "") -> None:
+        self.record_event(AppEvent.RADIO_STATION_SELECTED, {"station_name": station_name})
+
+    def record_radio_played(self, station_name: str = "") -> None:
+        self.record_event(AppEvent.RADIO_PLAYED, {"station_name": station_name})
+
+    # ── Operational errors ──
+
+    def record_operational_error(self, area: str, code: str,
+                                 message: str = "") -> None:
+        self.record_event(AppEvent.CONTEXT_ERROR_RECORDED, {
+            "area": area, "code": code, "message": message[:300],
+        })
+
     # ── Navigation & state ──
 
     def update_navigation(self, section: str, tab: str = "",
@@ -198,8 +288,17 @@ class ContextService:
             "library_health", lambda: build_library_health_snapshot(self._db))
 
     def get_home_snapshot(self) -> dict:
-        return self._rebuild_if_dirty(
-            "home_snapshot", lambda: build_home_snapshot(self._db, self._playback, self._sync))
+        def _build():
+            sel = repo.get_state("selection", {})
+            scope = sel.get("selection_scope")
+            label = sel.get("album") or sel.get("artist") or sel.get("genre") or sel.get("playlist_name") or sel.get("folder_name") or sel.get("mix_key") or sel.get("search_query") or ""
+            return build_home_snapshot(
+                self._db, self._playback, self._sync,
+                current_section=self._current_section,
+                selection_scope=scope,
+                selection_label=label,
+            )
+        return self._rebuild_if_dirty("home_snapshot", _build)
 
     @staticmethod
     def _assistant_capabilities_for_scope(scope):
@@ -256,6 +355,7 @@ class ContextService:
             snap["selected_genre"] = selection["genre"]
 
             snap["assistant_capabilities"] = self._assistant_capabilities_for_scope(scope)
+            snap["contextual_action_hints"] = _contextual_action_hints(snap)
             return sanitize_snapshot(snap)
         return self._rebuild_if_dirty("assistant_snapshot", _build)
 
@@ -272,3 +372,45 @@ class ContextService:
 
     def recent_events(self, limit: int = 20) -> list[dict]:
         return repo.recent_events(limit=limit)
+
+
+def _contextual_action_hints(snapshot: dict) -> list[str]:
+    """Generate brief contextual hints from an assistant snapshot."""
+    scope = snapshot.get("selection_scope")
+    hints = []
+    if scope == "track":
+        hints.append("Editar metadatos de la pista seleccionada")
+        hints.append("Agregar pista a una playlist")
+        hints.append("Analizar audio de la pista")
+        hints.append("Buscar información similar")
+    elif scope == "album":
+        hints.append("Crear playlist con este álbum")
+        hints.append("Revisar carátula del álbum")
+        hints.append("Completar metadatos del álbum")
+    elif scope == "artist":
+        hints.append("Ver discografía completa")
+        hints.append("Crear playlist del artista")
+        hints.append("Revisar metadatos del artista")
+    elif scope == "genre":
+        hints.append("Crear playlist del género")
+        hints.append("Analizar distribución del género")
+    elif scope == "playlist":
+        hints.append("Reproducir playlist")
+        hints.append("Encolar playlist")
+        hints.append("Exportar playlist")
+        hints.append("Revisar duplicados en la playlist")
+    elif scope == "mix":
+        hints.append("Guardar mix como playlist")
+        hints.append("Encolar mix")
+        hints.append("Refrescar mix")
+    elif scope == "folder":
+        hints.append("Escanear la carpeta")
+        hints.append("Crear playlist desde la carpeta")
+        hints.append("Encolar contenido de la carpeta")
+    elif scope == "search":
+        hints.append("Crear playlist con los resultados")
+        hints.append("Refinar búsqueda")
+    elif scope is None:
+        hints.append("Escanear biblioteca musical")
+        hints.append("Abrir una sección de la biblioteca")
+    return hints[:4]
