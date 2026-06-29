@@ -104,4 +104,8 @@ class AlbumController:
             cover_pixmap=getattr(cover_item, 'pixmap', None),
             tracks=tracks, total_duration=dur_str, format_info=fmt)
         w._albums_stack.setCurrentIndex(1)
+
+        ctx = getattr(w, '_context_svc', None)
+        if ctx:
+            ctx.update_selection(album=album, artist=artist)
         w._count.setText(album)

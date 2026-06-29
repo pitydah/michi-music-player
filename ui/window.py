@@ -630,6 +630,13 @@ class MainWindow(QMainWindow):
             self._sync_mgr.sync_stopped.connect(
                 lambda: sync_action.setText(
                     "Activar sincronización Android"))
+        ctx_svc = getattr(self, '_context_svc', None)
+        if ctx_svc:
+            self._sync_mgr.sync_stopped.connect(
+                lambda: ctx_svc.record_sync_finished({"peers": 0}))
+            self._sync_mgr.sync_started.connect(
+                lambda p: ctx_svc.record_event("sync_started",
+                    {"port": p}))
         self._sync_mgr.error_occurred.connect(
             lambda m: (self._toast_svc.show(f"Sync error: {m}", "error")
                        if self._toast_svc else None))

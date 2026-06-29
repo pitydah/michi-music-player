@@ -62,6 +62,10 @@ class GenreController:
         self._ctx.set_genre_stack(1)
         self._ctx.fade_to("library_hub")
 
+        ctx = getattr(self._win, '_context_svc', None)
+        if ctx:
+            ctx.update_selection(album=g.name, artist="")
+
     def back_to_overview(self):
         self._genre_repo.current_key = None
         self.show_genres_overview()

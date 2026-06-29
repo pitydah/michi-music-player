@@ -36,6 +36,10 @@ class ArtistController:
         self._ctx.set_artist_stack(1)
         self._ctx.fade_to("library_hub")
 
+        ctx = getattr(self._win, '_context_svc', None)
+        if ctx:
+            ctx.update_selection(artist=group.display_name)
+
     def show_artists_overview(self):
         self._ctx.artist_repo.clear_current()
         self._ctx.configure_header("artists")
