@@ -815,6 +815,7 @@ class NowPlayingBar(QWidget):
         self._quality_badge.set_empty(True)
         self._refresh_source_badge()
         self._apply_elide()
+
     def _build_left_meta(self) -> str:
         """Build human-readable third line for the left card — no technical data."""
         if not self._has_track:
@@ -828,7 +829,7 @@ class NowPlayingBar(QWidget):
     def set_quality(self, text: str):
         self._source_quality = text
         if text:
-            self._quality_badge.set_text(f" {text} ")
+            self._quality_badge.set_text(text)
         else:
             self._quality_badge.set_text("")
         self._refresh_source_badge()
@@ -841,7 +842,7 @@ class NowPlayingBar(QWidget):
                           tooltip: str = ""):
         """Set quality badge with category-colored styling."""
         self._source_quality = label
-        self._quality_badge.set_text(f" {label} ")
+        self._quality_badge.set_text(label)
         self._quality_badge.set_quality_category(category)
         if tooltip:
             self._quality_badge.setToolTip(tooltip)
@@ -901,7 +902,7 @@ class NowPlayingBar(QWidget):
             if self._sample_rate:
                 detail += f" · {self._sample_rate}"
             if self._bitrate:
-                detail += f" · {self._bitrate}kbps"
+                detail += f" · {self._bitrate}".replace("kbps", "").strip() + " kbps"
             if detail:
                 lines.append(detail)
         src = ""

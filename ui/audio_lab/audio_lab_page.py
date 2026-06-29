@@ -33,20 +33,8 @@ class AudioLabPage(QWidget):
         content = QWidget()
         content.setObjectName("audioLabContent")
         content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(40, 32, 40, 32)
+        content_layout.setContentsMargins(40, 16, 40, 32)
         content_layout.setSpacing(24)
-
-        title = QLabel("Audio Lab")
-        title.setObjectName("audioLabTitle")
-        content_layout.addWidget(title)
-
-        subtitle = QLabel(
-            "Herramientas avanzadas para importar, corregir, "
-            "enriquecer y preservar tu colección musical."
-        )
-        subtitle.setObjectName("audioLabSubtitle")
-        subtitle.setWordWrap(True)
-        content_layout.addWidget(subtitle)
 
         cards_layout = QHBoxLayout()
         cards_layout.setSpacing(20)
@@ -112,15 +100,6 @@ class AudioLabPage(QWidget):
             }
             QWidget#audioLabContent {
                 background: transparent;
-            }
-            QLabel#audioLabTitle {
-                color: rgba(255,255,255,0.92);
-                font-size: 22px;
-                font-weight: 700;
-            }
-            QLabel#audioLabSubtitle {
-                color: rgba(255,255,255,0.58);
-                font-size: 13px;
             }
         """)
         for key in ("metadata_editor", "michi_disc_lab"):

@@ -165,7 +165,8 @@ class SourceStatusBadge(QPushButton):
             if quality:
                 pages.append(f"{label} · {quality}")
             elif bitrate:
-                pages.append(f"{label} · {bitrate}")
+                br = bitrate.replace("kbps", "").replace("k", "").strip()
+                pages.append(f"{label} · {br} kbps")
             elif codec:
                 pages.append(f"{label} · {codec.upper()}")
             else:
@@ -184,11 +185,22 @@ class SourceStatusBadge(QPushButton):
             if quality:
                 pages.append(f"LOCAL · {quality}")
             elif codec and bitrate:
-                pages.append(f"LOCAL · {codec.upper()} {bitrate}")
+                br = bitrate.replace("kbps", "").replace("k", "").strip()
+                pages.append(f"LOCAL · {codec.upper()} {br}")
             elif codec:
                 pages.append(f"LOCAL · {codec.upper()}")
             else:
                 pages.append("LOCAL")
+            if sample_rate or bit_depth:
+                detail = []
+                if codec:
+                    detail.append(codec.upper())
+                if bit_depth:
+                    detail.append(f"{bit_depth}-bit")
+                if sample_rate:
+                    detail.append(sample_rate)
+                if detail:
+                    pages.append(" · ".join(detail))
         elif source_type == "remote_stream":
             pages.append("STREAMING")
 
