@@ -37,8 +37,7 @@ class TestAudioLabNavigation:
         from ui.audio_lab.sub_pages import _build_sub_card
         from PySide6.QtWidgets import QWidget
         parent = QWidget()
-        signals = []
-        parent.navigate_requested = MagicMock()  # will not be called
+        parent.navigate_requested = MagicMock()
         card = _build_sub_card(parent, "home", "Test", "desc", "proximamente", "")
         assert card is not None
 

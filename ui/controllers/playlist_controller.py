@@ -369,6 +369,7 @@ class PlaylistController:
             from core.context.context_events import AppEvent
             ctx.record_event(AppEvent.PLAYLIST_PLAYED,
                 {"playlist_id": pid, "name": name, "count": len(fps)})
+            ctx.record_queue_updated(count=len(fps), source="playlist")
 
     def hub_playlist_queue(self, pid: int):
         items = self._ctx.db.get_playlist_items(pid)
@@ -387,6 +388,7 @@ class PlaylistController:
                 "name": name,
                 "count": len(fps),
             })
+            ctx.record_queue_updated(count=len(fps), source="playlist")
 
     # ── CRUD helpers ──
 
