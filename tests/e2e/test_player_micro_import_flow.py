@@ -98,6 +98,26 @@ class TestMicroServerService:
         assert result.data["alias"] == "MicroTest"
 
 
+def _make_continue_mock(ok: bool = True):
+    """Create side_effect function for ContinueOnServer mock."""
+    import json
+    from unittest.mock import MagicMock
+
+    def side(req, **kw):
+        m = MagicMock()
+        m.status = 200
+        url = req.get_full_url() if hasattr(req, "get_full_url") else str(req)
+        if "playback/state" in url:
+            m.read.return_value.decode.return_value = json.dumps(
+                {"state": "playing"} if ok else {"state": "stopped"})
+        elif "playback/control" in url:
+            m.read.return_value.decode.return_value = json.dumps({"ok": True})
+        else:
+            m.read.return_value.decode.return_value = json.dumps({"ok": True})
+        return MagicMock(__enter__=lambda x: m)
+    return side
+
+
 class TestImportToServerService:
     def test_create_session(self):
         from integrations.michi_link.services.import_to_server_service import (
@@ -109,6 +129,13 @@ class TestImportToServerService:
         assert result.data["total_tracks"] == 3
         assert result.data["session_id"] != ""
 
+    def _upload_mock(self, body=None):
+        """Create a mock response that returns JSON for upload."""
+        m = MagicMock()
+        m.read.return_value.decode.return_value = json.dumps(
+            body or {"remote_track_id": "rt1"})
+        return MagicMock(__enter__=lambda x: m)
+
     def test_upload_track(self):
         from integrations.michi_link.services.import_to_server_service import (
             ImportToServerService,
@@ -116,10 +143,7 @@ class TestImportToServerService:
         svc = ImportToServerService()
         r1 = svc.create_session(_make_server(), ["t1"])
         sid = r1.data["session_id"]
-        with patch("urllib.request.urlopen") as mock_urlopen:
-            mock_resp = MagicMock()
-            mock_resp.read.return_value = b"fake_audio_data"
-            mock_urlopen.return_value.__enter__.return_value = mock_resp
+        with patch("urllib.request.urlopen", return_value=self._upload_mock()):
             r2 = svc.upload_track(sid, "t1", local_data=b"fake_audio_data")
             assert r2.ok
             assert r2.data["bytes"] > 0
@@ -137,12 +161,8 @@ class TestImportToServerService:
             svc = ImportToServerService()
             r1 = svc.create_session(_make_server(), ["t1"])
             sid = r1.data["session_id"]
-            with patch("urllib.request.urlopen") as mock_urlopen:
-                mock_resp = MagicMock()
-                mock_resp.read.return_value = b"test_audio"
-                mock_urlopen.return_value.__enter__.return_value = mock_resp
-                r2 = svc.upload_track(sid, "t1", "/api/v1/stream/t1",
-                                      local_filepath=local)
+            with patch("urllib.request.urlopen", return_value=self._upload_mock()):
+                r2 = svc.upload_track(sid, "t1", local_filepath=local)
                 assert r2.ok
                 assert "local_hash" in r2.data
         finally:
@@ -197,6 +217,10 @@ class TestImportToServerService:
             mock_resp = MagicMock()
             mock_resp.read.return_value = b"d"
             mock_urlopen.return_value.__enter__.return_value = mock_resp
+            # upload reads response body, mock it
+            mock_resp2 = MagicMock()
+            mock_resp2.read.return_value.decode.return_value = json.dumps({"remote_track_id": "rt1"})
+            mock_urlopen.return_value.__enter__.return_value = mock_resp2
             svc.upload_track(sid, "t1", local_data=b"d")
         r2 = svc.commit(sid)
         assert r2.ok
@@ -244,10 +268,9 @@ class TestContinueOnServer:
         )
         svc = ContinueOnServerService()
         with patch("urllib.request.urlopen") as mock_urlopen:
-            mock_resp = MagicMock()
-            mock_resp.read.return_value.decode.return_value = json.dumps({"ok": True})
-            mock_urlopen.return_value.__enter__.return_value = mock_resp
-            result = svc.transfer_queue(_make_server(), ["t1", "t2"], position_ms=30000)
+            mock_urlopen.side_effect = _make_continue_mock()
+            result = svc.transfer_queue(_make_server(), ["t1", "t2"],
+                                        position_ms=30000, require_playing=False)
             assert result.ok
 
     def test_transfer_queue_with_provider(self):
@@ -270,9 +293,7 @@ class TestContinueOnServer:
         svc = ContinueOnServerService(queue_provider=queue_provider,
                                        pause_local=pause_local)
         with patch("urllib.request.urlopen") as mock_urlopen:
-            mock_resp = MagicMock()
-            mock_resp.read.return_value.decode.return_value = json.dumps({"ok": True})
-            mock_urlopen.return_value.__enter__.return_value = mock_resp
+            mock_urlopen.side_effect = _make_continue_mock()
             result = svc.transfer_queue(_make_server())
             assert result.ok
             assert provider_called

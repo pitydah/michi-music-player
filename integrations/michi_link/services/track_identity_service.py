@@ -3,13 +3,17 @@
 Used for import preflight (checking if Micro Server already has a track)
 and for Continue on Server (resolving local queue to remote track_ids).
 
-Identity = (sha256_prefix, file_size, duration_ms, normalized_metadata)
+Identity includes:
+  - quick_hash: SHA-256 of first 64 KB (fast dedup)
+  - content_hash: full file SHA-256 (strong verification)
+  - file_size, duration_ms, normalized metadata
 """
 from __future__ import annotations
 
 import hashlib
 import logging
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,13 +21,15 @@ from integrations.michi_link.services.result import Result
 
 logger = logging.getLogger("michi.service.track_identity")
 
-IDENTITY_HASH_PREFIX_LEN = 32  # hex chars = 16 bytes
+QUICK_HASH_LEN = 32  # hex chars
 
 
 @dataclass
 class TrackIdentity:
     local_track_id: str = ""
-    sha256_prefix: str = ""
+    quick_hash: str = ""
+    content_hash: str = ""
+    sha256_prefix: str = ""  # legacy alias for quick_hash
     file_size: int = 0
     duration_ms: float = 0.0
     title: str = ""
@@ -34,9 +40,17 @@ class TrackIdentity:
     normalized_album: str = ""
     filepath: str = ""
 
+    def __post_init__(self):
+        if not self.quick_hash and self.sha256_prefix:
+            self.quick_hash = self.sha256_prefix
+        if not self.sha256_prefix and self.quick_hash:
+            self.sha256_prefix = self.quick_hash
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "local_track_id": self.local_track_id,
+            "quick_hash": self.quick_hash,
+            "content_hash": self.content_hash,
             "sha256_prefix": self.sha256_prefix,
             "file_size": self.file_size,
             "duration_ms": self.duration_ms,
@@ -49,9 +63,13 @@ class TrackIdentity:
         }
 
     def match(self, other: TrackIdentity) -> bool:
-        """Check if two identities refer to the same track."""
-        if self.sha256_prefix and other.sha256_prefix:
-            return self.sha256_prefix == other.sha256_prefix
+        """Check if two identities refer to the same track.
+        Priority: content_hash > quick_hash > size+duration+normalized.
+        """
+        if self.content_hash and other.content_hash:
+            return self.content_hash == other.content_hash
+        if self.quick_hash and other.quick_hash:
+            return self.quick_hash == other.quick_hash
         if (self.file_size and other.file_size and self.file_size == other.file_size
                 and self.duration_ms and other.duration_ms
                 and abs(self.duration_ms - other.duration_ms) < 2000):
@@ -64,9 +82,32 @@ class TrackIdentity:
 
 
 def _normalize(s: str) -> str:
-    """Normalize a string for comparison: lower, strip, collapse whitespace."""
-    import re
-    return re.sub(r'\s+', ' ', s.strip().lower())
+    return re.sub(r'\s+', ' ', s.strip().lower()) if s else ""
+
+
+def _quick_hash_file(filepath: str) -> str:
+    h = hashlib.sha256()
+    try:
+        with open(filepath, "rb") as f:
+            for _ in range(64):
+                chunk = f.read(1024)
+                if not chunk:
+                    break
+                h.update(chunk)
+    except OSError:
+        return ""
+    return h.hexdigest()[:QUICK_HASH_LEN]
+
+
+def _full_hash_file(filepath: str) -> str:
+    h = hashlib.sha256()
+    try:
+        with open(filepath, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+    except OSError:
+        return ""
+    return h.hexdigest()
 
 
 class TrackIdentityService:
@@ -74,36 +115,13 @@ class TrackIdentityService:
 
     def compute(self, filepath: str, db_item: Any = None,
                 local_track_id: str = "") -> Result:
-        """Compute identity for a local track file.
-
-        Args:
-            filepath: Absolute path to the audio file.
-            db_item: Optional DB item with metadata (title, artist, album, duration).
-            local_track_id: Optional stable local ID.
-
-        Returns:
-            Result with TrackIdentity on success.
-        """
         if not filepath or not os.path.isfile(filepath):
             return Result.fail("FILE_NOT_FOUND", f"File not found: {filepath}")
 
         file_size = os.path.getsize(filepath)
+        quick = _quick_hash_file(filepath)
+        content = _full_hash_file(filepath)
 
-        # SHA-256 partial hash
-        sha_prefix = ""
-        try:
-            h = hashlib.sha256()
-            with open(filepath, "rb") as f:
-                for _ in range(64):  # first 64KB
-                    chunk = f.read(1024)
-                    if not chunk:
-                        break
-                    h.update(chunk)
-            sha_prefix = h.hexdigest()[:IDENTITY_HASH_PREFIX_LEN]
-        except OSError as e:
-            logger.warning("SHA-256 prefix failed for %s: %s", filepath, e)
-
-        # Metadata from DB item or filename
         title = ""
         artist = ""
         album = ""
@@ -118,11 +136,12 @@ class TrackIdentityService:
         if not title:
             title = os.path.splitext(os.path.basename(filepath))[0]
 
-        tid = local_track_id or sha_prefix or os.path.basename(filepath)
+        tid = local_track_id or content[:16] or quick or os.path.basename(filepath)
 
         identity = TrackIdentity(
             local_track_id=tid,
-            sha256_prefix=sha_prefix,
+            quick_hash=quick,
+            content_hash=content,
             file_size=file_size,
             duration_ms=duration_ms,
             title=title,
@@ -137,8 +156,6 @@ class TrackIdentityService:
 
     def compute_from_dict(self, track_dict: dict,
                           local_track_id: str = "") -> TrackIdentity:
-        """Compute identity from a dict (e.g., queue item)."""
-        import hashlib
         filepath = track_dict.get("filepath", "")
         title = track_dict.get("title", "")
         artist = track_dict.get("artist", "")
@@ -146,22 +163,16 @@ class TrackIdentityService:
         duration = float(track_dict.get("duration", 0) or 0)
         file_size = int(track_dict.get("size", 0) or 0)
 
-        sha_prefix = ""
-        if filepath and os.path.isfile(filepath):
-            h = hashlib.sha256()
-            with open(filepath, "rb") as f:
-                for _ in range(64):
-                    chunk = f.read(1024)
-                    if not chunk:
-                        break
-                    h.update(chunk)
-            sha_prefix = h.hexdigest()[:IDENTITY_HASH_PREFIX_LEN]
+        quick = _quick_hash_file(filepath) if filepath and os.path.isfile(filepath) else ""
+        content = _full_hash_file(filepath) if filepath and os.path.isfile(filepath) else ""
 
-        tid = local_track_id or sha_prefix or os.path.basename(filepath) if filepath else ""
+        tid = local_track_id or content[:16] or quick or (
+            os.path.basename(filepath) if filepath else "")
 
         return TrackIdentity(
             local_track_id=tid,
-            sha256_prefix=sha_prefix,
+            quick_hash=quick,
+            content_hash=content,
             file_size=file_size,
             duration_ms=duration * 1000.0,
             title=title,
@@ -174,9 +185,13 @@ class TrackIdentityService:
         )
 
     def identity_to_preflight(self, identity: TrackIdentity) -> dict:
-        """Convert identity to a preflight request payload."""
+        """Convert identity to a preflight request payload.
+        Never exposes filepath.
+        """
         return {
-            "sha256_prefix": identity.sha256_prefix,
+            "local_track_id": identity.local_track_id,
+            "quick_hash": identity.quick_hash,
+            "content_hash": identity.content_hash,
             "file_size": identity.file_size,
             "duration_ms": identity.duration_ms,
             "title": identity.normalized_title,

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import logging
 import time
+import urllib.error
+import urllib.request
 
 from integrations.michi_link.client import MichiLinkClient
 
@@ -117,26 +119,56 @@ class DiagnosticsService:
             ident = result.data
             return {
                 "status": "ok",
-                "sha256_prefix": ident.sha256_prefix,
+                "quick_hash": ident.quick_hash[:8] + "..." if ident.quick_hash else "",
+                "has_content_hash": bool(ident.content_hash),
                 "file_size": ident.file_size,
             }
         return {"status": "error", "message": result.message}
 
+    def _check_micro_endpoint(self, host: str, port: int,
+                              path: str, method: str = "GET") -> dict:
+        try:
+            req = urllib.request.Request(
+                f"http://{host}:{port}{path}", method=method,
+            )
+            with urllib.request.urlopen(req, timeout=5) as r:
+                if r.status == 200:
+                    return {"status": "ok"}
+                return {"status": f"http_{r.status}"}
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return {"status": "not_found"}
+            return {"status": f"http_{e.code}"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
     def check_import_preflight(self, host: str = "", port: int = 53318) -> dict:
         if not host:
             return {"status": "skipped"}
+        # Check endpoint existence directly
+        from integrations.michi_link.client import RemoteServerInfo
+        endpoint_check = self._check_micro_endpoint(
+            host, port, "/api/v1/import/preflight", "POST",
+        )
+        if endpoint_check.get("status") == "not_found":
+            return {"status": "ok", "preflight_supported": False,
+                    "endpoint": "not_found"}
+
+        # Try actual call
         from integrations.michi_link.services.import_to_server_service import (
             ImportToServerService,
         )
         svc = ImportToServerService()
-        # Check if preflight endpoint exists by calling it with empty list
-        from integrations.michi_link.client import RemoteServerInfo
         fake = RemoteServerInfo(host=host, port=port)
         result = svc.preflight(fake, [])
-        return {
-            "status": "ok" if result.ok else "unavailable",
-            "preflight_supported": result.ok,
-        }
+        if result.ok:
+            return {"status": "ok", "preflight_supported": True,
+                    "fallback_used": False}
+        if result.code == "PREFLIGHT_CONTRACT_MISMATCH":
+            return {"status": "warning", "preflight_supported": True,
+                    "contract_mismatch": True}
+        return {"status": "ok", "preflight_supported": False,
+                "fallback_used": True}
 
     def check_import_mapping(self, host: str = "", port: int = 53318) -> dict:
         if not host:
@@ -149,11 +181,11 @@ class DiagnosticsService:
         fake = RemoteServerInfo(host=host, port=port)
         result = svc.preflight(fake, [])
         if result.ok and isinstance(result.data, dict):
-            return {
-                "status": "ok",
-                "mapping_supported": True,
-            }
-        return {"status": "unavailable", "mapping_supported": False}
+            return {"status": "ok", "mapping_supported": True}
+        if result.code == "PREFLIGHT_CONTRACT_MISMATCH":
+            return {"status": "warning", "mapping_supported": False,
+                    "contract_mismatch": True}
+        return {"status": "ok", "mapping_supported": False}
 
     def check_remote_micro(self, host: str = "", port: int = 53318) -> dict:
         if not host:
@@ -197,6 +229,13 @@ class DiagnosticsService:
             data = {"error": str(e)}
         return {"status": status, **data}
 
+    def check_queue_transfer(self, host: str = "", port: int = 53318) -> dict:
+        if not host:
+            return {"status": "skipped"}
+        result = self._check_micro_endpoint(host, port, "/api/v1/queue/transfer", "POST")
+        result["path"] = "/api/v1/queue/transfer"
+        return result
+
     def generate_report(self, handler=None, registry=None,
                         micro_host: str = "",
                         player_service=None) -> dict:
@@ -212,6 +251,7 @@ class DiagnosticsService:
             "track_identity": self.check_track_identity(),
             "import_preflight": self.check_import_preflight(micro_host),
             "import_mapping": self.check_import_mapping(micro_host),
+            "queue_transfer": self.check_queue_transfer(micro_host),
             "continue_readiness": self.check_continue_readiness(player_service),
             "errors": [],
         }
