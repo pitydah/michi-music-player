@@ -114,7 +114,8 @@ class RipWorker(QObject):
 
         if exit_code != 0:
             self._error_count += 1
-            self.progress_changed.emit(job_id, self._current_track, (idx + 1) / self._total_tracks if self._total_tracks else 1, "error")
+            p = (idx + 1) / self._total_tracks if self._total_tracks else 1.0
+            self.progress_changed.emit(job_id, self._current_track, p, "error")
             if self._stop_on_error:
                 status = "completed_with_errors" if self._error_count > 0 else "completed"
                 self.finished.emit(job_id, {"status": status, "tracks_ripped": self._total_tracks - self._error_count, "errors": self._error_count})
