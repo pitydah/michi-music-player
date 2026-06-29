@@ -1,14 +1,60 @@
-"""AudioLabPage — main hub for audio lab tools."""
+"""AudioLabPage — main hub with 5 section cards, now-playing status header."""
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame, QScrollArea,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
+    QPushButton, QFrame, QScrollArea, QSizePolicy,
 )
 
+from ui.icons import get_pixmap
 from ui.central.central_styles import glass_card_qss, glass_button_qss
+
+_SECTIONS = [
+    {
+        "key": "audio_lab_diagnostics", "icon": "sidebar_identifier",
+        "title": "Diagnóstico",
+        "subtitle": "Analiza calidad real, detecta formatos falsos\n"
+                     "y verifica la integridad de tu biblioteca.",
+        "status": "proximamente", "nav": "audio_lab_diagnostics",
+    },
+    {
+        "key": "audio_lab_identifier", "icon": "metadata_editor",
+        "title": "Identificador de Audios",
+        "subtitle": "Edita metadatos, identifica con MusicBrainz,\n"
+                     "gestiona carátulas y letras.",
+        "status": "disponible", "nav": "audio_lab_identifier",
+    },
+    {
+        "key": "audio_lab_backup", "icon": "sidebar_devices",
+        "title": "Respaldar",
+        "subtitle": "Ripea CDs, digitaliza vinilos, convierte\n"
+                     "formatos y organiza tus archivos.",
+        "status": "disponible", "nav": "audio_lab_backup",
+    },
+    {
+        "key": "audio_lab_output", "icon": "home_audio",
+        "title": "Perfiles de Salida",
+        "subtitle": "Configura salida bit-perfect, upsampling,\n"
+                     "corrección de sala y perfiles DAC.",
+        "status": "proximamente", "nav": "audio_lab_output",
+    },
+    {
+        "key": "audio_lab_intelligence", "icon": "sidebar_mix",
+        "title": "Inteligencia Local",
+        "subtitle": "Extrae BPM, key y energía. Genera radio\n"
+                     "local y recomendaciones musicales.",
+        "status": "proximamente", "nav": "audio_lab_intelligence",
+    },
+]
+
+_STATUS_STYLES = {
+    "disponible": ("rgba(100,220,100,0.18)", "rgba(100,220,100,0.90)", "Disponible"),
+    "experimental": ("rgba(143,183,255,0.18)", "rgba(143,183,255,0.90)", "Experimental"),
+    "proximamente": ("rgba(255,255,255,0.06)", "rgba(255,255,255,0.50)", "Próximamente"),
+    "no_disponible": ("rgba(255,100,100,0.12)", "rgba(255,100,100,0.70)", "No disponible"),
+}
 
 
 class AudioLabPage(QWidget):
@@ -17,8 +63,8 @@ class AudioLabPage(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("audioLabPage")
+        self._status_label: QLabel | None = None
         self._build_ui()
-        self._apply_qss()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -32,113 +78,125 @@ class AudioLabPage(QWidget):
 
         content = QWidget()
         content.setObjectName("audioLabContent")
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(40, 32, 40, 32)
-        content_layout.setSpacing(24)
+        cl = QVBoxLayout(content)
+        cl.setContentsMargins(40, 32, 40, 32)
+        cl.setSpacing(20)
 
+        # ── Header ──
         title = QLabel("Audio Lab")
         title.setObjectName("audioLabTitle")
-        content_layout.addWidget(title)
+        cl.addWidget(title)
 
-        subtitle = QLabel(
-            "Herramientas avanzadas para importar, corregir, "
-            "enriquecer y preservar tu colección musical."
-        )
+        subtitle = QLabel("Preserva, analiza y optimiza tu música.")
         subtitle.setObjectName("audioLabSubtitle")
         subtitle.setWordWrap(True)
-        content_layout.addWidget(subtitle)
+        cl.addWidget(subtitle)
 
-        cards_layout = QHBoxLayout()
-        cards_layout.setSpacing(20)
-
-        metadata_card = self._build_card(
-            "metadata_editor", "Metadata Studio",
-            "Edita metadatos, carátulas, artistas, álbumes y organiza "
-            "tu biblioteca con asistencia inteligente.",
-            "Abrir Metadata Studio",
+        # ── Now-playing status bar ──
+        status_frame = QFrame()
+        status_frame.setObjectName("audioLabStatusFrame")
+        status_frame.setStyleSheet(
+            "QFrame#audioLabStatusFrame {"
+            "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1,"
+            "    stop:0 rgba(255,255,255,0.030), stop:1 rgba(255,255,255,0.015));"
+            "  border: 1px solid rgba(255,255,255,0.035);"
+            "  border-radius: 12px;"
+            "}"
         )
-        cards_layout.addWidget(metadata_card, 1)
-
-        disc_card = self._build_card(
-            "michi_disc_lab", "Michi Disc Lab",
-            "Importa CDs de música a FLAC, WAV, ALAC, MP3, Opus u otros "
-            "formatos, con extracción segura y metadatos automáticos.",
-            "Abrir Michi Disc Lab",
+        sl = QHBoxLayout(status_frame)
+        sl.setContentsMargins(16, 10, 16, 10)
+        self._status_label = QLabel("Sin reproducción activa.")
+        self._status_label.setObjectName("audioLabStatusText")
+        self._status_label.setStyleSheet(
+            "color: rgba(255,255,255,0.62); font-size: 12px; background: transparent;"
         )
-        cards_layout.addWidget(disc_card, 1)
+        self._status_label.setWordWrap(True)
+        sl.addWidget(self._status_label, 1)
+        cl.addWidget(status_frame)
 
-        content_layout.addLayout(cards_layout)
-        content_layout.addStretch()
+        # ── 5 section cards: grid 3+2 ──
+        grid = QGridLayout()
+        grid.setSpacing(16)
+
+        for i, sec in enumerate(_SECTIONS):
+            card = self._build_section_card(sec)
+            row = 0 if i < 3 else 1
+            col = i if i < 3 else i - 3
+            grid.addWidget(card, row, col)
+
+        # Stretch columns evenly
+        for col in range(3):
+            grid.setColumnStretch(col, 1)
+
+        cl.addLayout(grid)
+        cl.addStretch()
 
         scroll.setWidget(content)
         layout.addWidget(scroll)
 
-    def _build_card(self, key: str, title: str, description: str,
-                    btn_text: str) -> QFrame:
+    def _build_section_card(self, sec: dict) -> QFrame:
+        key = sec["key"]
         card = QFrame()
         card.setObjectName(f"audioLabCard_{key}")
+        card.setMinimumHeight(180)
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
 
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(20, 20, 20, 20)
-        card_layout.setSpacing(10)
+        cv = QVBoxLayout(card)
+        cv.setContentsMargins(20, 20, 20, 20)
+        cv.setSpacing(8)
 
-        card_title = QLabel(title)
-        card_title.setObjectName(f"audioLabCardTitle_{key}")
-        card_layout.addWidget(card_title)
+        # Icon
+        pix = get_pixmap(sec["icon"], size=40)
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap(pix)
+        icon_lbl.setFixedSize(44, 44)
+        icon_lbl.setAlignment(Qt.AlignCenter)
+        icon_lbl.setStyleSheet(
+            "background: rgba(143,183,255,0.06);"
+            "border: 1px solid rgba(143,183,255,0.06);"
+            "border-radius: 10px;"
+        )
+        cv.addWidget(icon_lbl)
 
-        card_desc = QLabel(description)
-        card_desc.setObjectName(f"audioLabCardDesc_{key}")
-        card_desc.setWordWrap(True)
-        card_layout.addWidget(card_desc)
+        # Title
+        t = QLabel(sec["title"])
+        t.setStyleSheet("color: rgba(255,255,255,0.88); font-size: 16px; font-weight: 600; background: transparent; border: none;")
+        cv.addWidget(t)
 
-        card_layout.addStretch()
+        # Description
+        d = QLabel(sec["subtitle"])
+        d.setStyleSheet("color: rgba(255,255,255,0.52); font-size: 11px; background: transparent; border: none;")
+        d.setWordWrap(True)
+        cv.addWidget(d)
 
-        btn = QPushButton(btn_text)
-        btn.setObjectName(f"audioLabCardBtn_{key}")
+        cv.addStretch()
+
+        # Status badge + button row
+        row = QHBoxLayout()
+        row.setSpacing(10)
+
+        bg, fg, label = _STATUS_STYLES.get(sec["status"], ("rgba(255,255,255,0.04)", "rgba(255,255,255,0.35)", ""))
+        badge = QLabel(label)
+        badge.setStyleSheet(
+            f"background: {bg}; color: {fg}; font-size: 10px; font-weight: 600;"
+            f"border-radius: 6px; padding: 2px 8px; background: transparent; border: none;"
+        )
+        row.addWidget(badge)
+
+        row.addStretch()
+
+        btn = QPushButton("Abrir")
         btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(lambda: self.navigate_requested.emit(key))
-        card_layout.addWidget(btn)
+        btn.setStyleSheet(glass_button_qss("primary"))
+        btn.setFixedWidth(80)
+        btn.clicked.connect(lambda checked=False, k=sec["nav"]: self.navigate_requested.emit(k))
+        row.addWidget(btn)
 
+        cv.addLayout(row)
+
+        card.setStyleSheet(glass_card_qss(f"audioLabCard_{key}", "elevated"))
         return card
 
-    def _apply_qss(self):
-        self.setStyleSheet("""
-            QWidget#audioLabPage {
-                background: #090B11;
-            }
-            QScrollArea#audioLabScroll {
-                background: transparent;
-                border: none;
-            }
-            QWidget#audioLabContent {
-                background: transparent;
-            }
-            QLabel#audioLabTitle {
-                color: rgba(255,255,255,0.92);
-                font-size: 22px;
-                font-weight: 700;
-            }
-            QLabel#audioLabSubtitle {
-                color: rgba(255,255,255,0.58);
-                font-size: 13px;
-            }
-        """)
-        for key in ("metadata_editor", "michi_disc_lab"):
-            card = self.findChild(QFrame, f"audioLabCard_{key}")
-            if card:
-                card.setStyleSheet(glass_card_qss(f"audioLabCard_{key}"))
-            title_lbl = self.findChild(QLabel, f"audioLabCardTitle_{key}")
-            if title_lbl:
-                title_lbl.setStyleSheet(
-                    "QLabel { color: rgba(255,255,255,0.88); font-size: 16px; "
-                    "font-weight: 600; background: transparent; border: none; }"
-                )
-            desc_lbl = self.findChild(QLabel, f"audioLabCardDesc_{key}")
-            if desc_lbl:
-                desc_lbl.setStyleSheet(
-                    "QLabel { color: rgba(255,255,255,0.58); font-size: 12px; "
-                    "background: transparent; border: none; }"
-                )
-            btn = self.findChild(QPushButton, f"audioLabCardBtn_{key}")
-            if btn:
-                btn.setStyleSheet(glass_button_qss("primary"))
+    def set_status_text(self, text: str):
+        if self._status_label:
+            self._status_label.setText(text)
