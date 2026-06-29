@@ -24,6 +24,8 @@ _EXAMPLE_CHIPS = [
     "Busca álbumes sin carátula",
     "Crea una playlist tranquila",
     "Revisa metadatos pendientes",
+    "Conectar Michi Micro Server",
+    "Abrir Home Audio",
 ]
 
 # Keyword → suggested actions (navigate via window._on_sidebar_navigate)
@@ -58,6 +60,19 @@ _SUGGESTION_RULES: list[tuple[list[str], list[dict]]] = [
     (["radio", "streaming", "emisora", "flow"], [
         {"title": "Abrir Radio", "desc": "Escucha emisoras y streaming en vivo.",
          "target": "radio", "kind": "recomendación"},
+    ]),
+    (["micro server", "michi server", "ecosistema", "michi micro"], [
+        {"title": "Abrir Conexiones — Michi Micro Server",
+         "desc": "Servidor musical doméstico del ecosistema Michi: centraliza biblioteca, playlists y streaming.",
+         "target": "connections_hub", "kind": "servidor"},
+    ]),
+    (["home audio", "asistente hogar", "casa", "parlante", "multiroom", "snapcast"], [
+        {"title": "Abrir Home Audio", "desc": "Controla Home Assistant, Snapcast y futuros receptores Michi.",
+         "target": "home_audio", "kind": "conexión"},
+    ]),
+    (["local", "biblioteca local", "archivos"], [
+        {"title": "Abrir Biblioteca", "desc": "Explora tu música local, álbumes, artistas y géneros.",
+         "target": "library_hub", "kind": "navegación"},
     ]),
 ]
 
