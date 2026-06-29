@@ -126,11 +126,12 @@ class FileActions:
         for fp in filepaths:
             self._db.add_file(fp)
 
-    def add_file_list(self, filepaths: list[str]) -> None:
+    def add_file_list(self, filepaths: list[str] | None) -> None:
         """Add existing media files to the library from a list of file paths."""
-        if not filepaths:
+        paths = [fp for fp in (filepaths or []) if fp]
+        if not paths:
             return
-        self._add_file_list(filepaths)
+        self._add_file_list(paths)
 
     def scan_path(self, path: str):
         from library.indexer import Indexer

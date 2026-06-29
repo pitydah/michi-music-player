@@ -30,3 +30,31 @@ def test_folder_create_playlist(qtbot):
         fa.folder_create_playlist("Test", ["/tmp/a.flac"])
     w._db.create_playlist.assert_called_with("Test")
     w._rebuild_sidebar.assert_called()
+
+
+def test_add_file_list_delegates_to_db():
+    w = MockFileActionsWindow()
+    fa = FileActions(w)
+
+    fa.add_file_list(["/path/a.flac", "/path/b.mp3"])
+
+    w._db.add_file.assert_any_call("/path/a.flac")
+    w._db.add_file.assert_any_call("/path/b.mp3")
+    assert w._db.add_file.call_count == 2
+
+
+def test_add_file_list_ignores_empty_values():
+    w = MockFileActionsWindow()
+    fa = FileActions(w)
+
+    fa.add_file_list([])
+    assert w._db.add_file.call_count == 0
+
+    fa.add_file_list(None)
+    assert w._db.add_file.call_count == 0
+
+    fa.add_file_list([""])
+    assert w._db.add_file.call_count == 0
+
+    fa.add_file_list(["/valid.flac", "", None])
+    w._db.add_file.assert_called_once_with("/valid.flac")
