@@ -98,6 +98,13 @@ class IntelligencePage(QWidget):
             svl.addLayout(row)
             self._status_lines[label] = val
 
+        self._notice_label = QLabel("")
+        self._notice_label.setStyleSheet(
+            "color: rgba(255,255,255,0.50); font-size: 11px; background: transparent;"
+        )
+        self._notice_label.setWordWrap(True)
+        svl.addWidget(self._notice_label)
+
         btn_row = QHBoxLayout()
         self._scan_btn = QPushButton("Analizar biblioteca")
         self._scan_btn.setCursor(Qt.PointingHandCursor)
@@ -212,6 +219,10 @@ class IntelligencePage(QWidget):
 
         return card
 
+    def _set_notice(self, text: str):
+        if hasattr(self, "_notice_label"):
+            self._notice_label.setText(text)
+
     def _check_backend(self):
         try:
             from audio_analysis.dependency_check import check_dependencies
@@ -221,15 +232,24 @@ class IntelligencePage(QWidget):
                 deps.get("backend", "disabled").capitalize()
                 if self._backend_available else "No disponible"
             )
+            if not self._backend_available:
+                missing = ", ".join(deps.get("missing", [])) or "dependencias"
+                self._set_notice(
+                    f"Análisis acústico no disponible. Falta: {missing}."
+                )
         except Exception as e:
             logger.warning("Backend check failed: %s", e)
             self._backend_available = False
             self._status_lines["Backend:"].setText("Error")
+            self._set_notice(f"No se pudo comprobar el backend: {e}")
 
         if not self._backend_available:
             self._scan_btn.setEnabled(False)
+            self._rebuild_btn.setEnabled(False)
             self._status_lines["Archivos analizados:"].setText("—")
             self._status_lines["Jobs pendientes:"].setText("—")
+        else:
+            self._refresh_status()
 
     def _get_service(self):
         if self._analysis is None and self._backend_available:
@@ -238,8 +258,12 @@ class IntelligencePage(QWidget):
                 self._analysis = AnalysisService(
                     db=self._db, worker_mgr=self._worker_mgr
                 )
+                self._analysis.analysis_batch_finished.connect(
+                    self._on_analysis_batch_finished
+                )
             except Exception as e:
                 logger.warning("AnalysisService init failed: %s", e)
+                self._set_notice(f"No se pudo iniciar AnalysisService: {e}")
         return self._analysis
 
     def _refresh_status(self):
@@ -259,12 +283,66 @@ class IntelligencePage(QWidget):
             self._status_lines["Jobs pendientes:"].setText(str(pending))
         except Exception as e:
             logger.warning("Status refresh error: %s", e)
+            self._set_notice(f"No se pudo leer el estado del análisis: {e}")
+
+    def _collect_track_ids(self) -> list[int]:
+        if not self._db or not hasattr(self._db, "get_all"):
+            return []
+        ids: list[int] = []
+        try:
+            for item in self._db.get_all():
+                tid = getattr(item, "id", None)
+                filepath = getattr(item, "filepath", "")
+                if isinstance(tid, int) and tid > 0 and filepath:
+                    ids.append(tid)
+        except Exception as e:
+            logger.warning("Could not collect track ids: %s", e)
+        return ids
 
     def _analyze_all(self):
         if not self._backend_available:
             self._status_lines["Backend:"].setText("No disponible")
             return
-        logger.info("Analysis requires backend — not implemented in this UI pass")
+
+        analysis = self._get_service()
+        if not analysis:
+            self._set_notice("AnalysisService no está disponible.")
+            return
+        if not analysis.enabled:
+            self._set_notice(
+                "Análisis acústico desactivado en configuración. "
+                "Actívalo antes de analizar la biblioteca."
+            )
+            return
+        if not self._worker_mgr:
+            self._set_notice(
+                "WorkerManager no disponible: no se pueden ejecutar jobs en segundo plano."
+            )
+            return
+
+        track_ids = self._collect_track_ids()
+        if not track_ids:
+            self._set_notice("No hay pistas locales válidas para analizar.")
+            return
+
+        self._scan_btn.setEnabled(False)
+        self._analysis_progress.setVisible(True)
+        self._analysis_progress.setRange(0, 0)
+        self._set_notice(f"Encolando análisis para {len(track_ids)} pistas...")
+        batch_id = analysis.analyze_tracks_async(track_ids)
+        self._set_notice(f"Análisis encolado: {batch_id}")
+        self._refresh_status()
+
+    def _on_analysis_batch_finished(self, _batch_id: str, summary: object):
+        self._analysis_progress.setVisible(False)
+        self._analysis_progress.setRange(0, 100)
+        self._analysis_progress.setValue(100)
+        self._scan_btn.setEnabled(True)
+        status = "completado"
+        if isinstance(summary, dict):
+            status = summary.get("status", status)
+        self._set_notice(f"Análisis {status}.")
+        self._refresh_status()
 
     def _rebuild_index(self):
         if not self._backend_available:
@@ -275,8 +353,10 @@ class IntelligencePage(QWidget):
             repo._conn.execute("DELETE FROM audio_similarity_cache")
             repo._conn.commit()
             logger.info("Similarity index rebuilt")
+            self._set_notice("Índice de similitud reconstruido.")
         except Exception as e:
             logger.warning("Rebuild failed: %s", e)
+            self._set_notice(f"No se pudo reconstruir el índice: {e}")
         self._refresh_status()
 
     def _show_bpm(self):
@@ -289,10 +369,13 @@ class IntelligencePage(QWidget):
         self.navigate_requested.emit("library_hub")
 
     def _show_similarity(self):
+        self._set_notice("Vista de similitud pendiente de conectar a Mix/Playlists.")
         logger.info("Similarity view — pending implementation")
 
     def _play_local_radio(self):
+        self._set_notice("Radio local pendiente de conectar al generador de cola.")
         logger.info("Local radio — pending implementation")
 
     def _create_smart_mix(self):
+        self._set_notice("Mix inteligente pendiente de conectar al motor de playlists.")
         logger.info("Smart mix — pending implementation")
