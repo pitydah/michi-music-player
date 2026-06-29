@@ -252,6 +252,13 @@ class MainWindow(QMainWindow):
         )
         self._services = svc
 
+        from library.import_service import LibraryImportService
+        self._library_import = LibraryImportService(
+            self._db,
+            scan_path=self._scan_path,
+            reload_library=self._reload_library_after_change,
+        )
+
         # Controllers — pass AppServices for progressive migration
         from core.file_actions import FileActions
         self._file_actions = FileActions(self)

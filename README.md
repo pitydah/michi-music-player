@@ -364,28 +364,28 @@ michi-music-player/
 
 | Funcionalidad | Estado |
 |--------------|--------|
-| Reproducción local (MP3, FLAC, OGG, Opus, WAV, DSD, AIFF, APE, WV) | ✅ Estable |
-| 9 perfiles de audio (Standard → Multiroom) | ✅ Estable |
-| PipelineFactory + AudioRoutePlan + DSP | ✅ Estable |
-| EQ gráfico + paramétrico básico | ✅ Estable |
-| ReplayGain (track/album + preamp) | ✅ Estable |
-| Biblioteca SQLite + metadatos (Mutagen + GStreamer) | ✅ Estable |
-| Indexer 2.0 incremental + batch writing | ✅ Estable |
-| Search 2.0 FTS5 + field filters | ✅ Estable |
-| CoverFlow visual dentro de Álbumes | ✅ Estable |
-| Artistas (grid + detalle interno) | ✅ Estable |
-| Géneros (grid + detalle interno) | ✅ Estable |
-| Playlist Hub (crear, M3U import/export) | ✅ Estable |
-| PlayerService wrappers públicos | ✅ Estable |
+| Reproducción local (MP3, FLAC, OGG, Opus, WAV, DSD, AIFF, APE, WV) | ✅ Implementado |
+| 9 perfiles de audio (Standard → Multiroom) | ✅ Implementado |
+| PipelineFactory + AudioRoutePlan + DSP | ✅ Implementado |
+| EQ gráfico + paramétrico básico | ✅ Implementado |
+| ReplayGain (track/album + preamp) | ✅ Implementado |
+| Biblioteca SQLite + metadatos (Mutagen + GStreamer) | ✅ Implementado |
+| Indexer 2.0 incremental + batch writing | 🔄 En validación |
+| Search 2.0 FTS5 + field filters | 🔄 En validación |
+| CoverFlow visual dentro de Álbumes | 🔄 En validación |
+| Artistas (grid + detalle interno) | 🔄 En validación |
+| Géneros (grid + detalle interno) | 🔄 En validación |
+| Playlist Hub (crear, M3U import/export) | 🔄 En validación |
+| PlayerService wrappers públicos | ✅ Implementado |
 | AppContext DI (migración en progreso) | 🔄 En estabilización |
-| MPRIS DBus (KDE Plasma) | ✅ Estable |
-| Subsonic / Navidrome / Jellyfin | ✅ Estable |
-| Radio por Internet (HTTP/ICY) | ✅ Estable |
-| DSD/DFF nativo (PCM + DoP experimental) | ✅ Estable |
-| Gapless playback | ✅ Estable |
-| Mini Player (ventana compacta) | ✅ Estable |
-| UI glassmorphism unificada | ✅ Estable |
-| Sistema de iconos (38+ iconos) | ✅ Estable |
+| MPRIS DBus (KDE Plasma) | ✅ Implementado |
+| Subsonic / Navidrome / Jellyfin | 🔄 En validación |
+| Radio por Internet (HTTP/ICY) | 🔄 En validación |
+| DSD/DFF nativo (PCM + DoP experimental) | ✅ Implementado |
+| Gapless playback | ✅ Implementado |
+| Mini Player (ventana compacta) | 🔄 En validación |
+| UI glassmorphism unificada | ✅ Implementado |
+| Sistema de iconos (38+ iconos) | ✅ Implementado |
 | Transmit (streaming a dispositivos) | 🔄 En estabilización |
 | Sincronización Android (REST API + UDP) | 🧪 Experimental |
 | Home Audio multiroom (HA + Snapcast) | 🧪 Experimental |
@@ -395,11 +395,17 @@ michi-music-player/
 | AutoEQ (presets online) | 🧪 Experimental |
 | Michi Disc Lab (CD rip/ISO) | 🧪 Experimental |
 | Library Doctor (diagnóstico) | 🧪 Experimental |
-| Fondo adaptativo (gradiente basado en carátula) | ✅ Completo |
-| Tag editor (Mutagen ID3/Vorbis/MP4) | ✅ Completo |
-| Persistencia de cola entre sesiones | ✅ Completo |
-| Flatpak packaging | ✅ Completo |
-| Receiver Wizard (Raspberry Pi / ESP32 / Docker Snapclient) | ✅ Completo |
+| Fondo adaptativo (gradiente basado en carátula) | ✅ Implementado |
+| Tag editor (Mutagen ID3/Vorbis/MP4) | ✅ Implementado |
+| Persistencia de cola entre sesiones | ✅ Implementado |
+| Flatpak packaging | 🧪 Experimental |
+| Receiver Wizard (Raspberry Pi / ESP32 / Docker Snapclient) | ✅ Implementado |
+
+> **Nota:** "Implementado" indica que la funcionalidad existe y pasa smoke tests locales.
+> "En validación" indica que requiere más pruebas (CI remoto, bibliotecas grandes, etc.).
+> "Experimental" indica que no ha sido validada en CI y puede tener cambios de API.
+> El proyecto está en **0.1.0-alpha**. No hay declaración de estabilidad remota hasta que
+> GitHub Actions CI pase en verde.
 
 ## Métricas
 

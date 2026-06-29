@@ -7,7 +7,7 @@ import time
 import pytest
 
 from library.library_db import LibraryDB
-from tests.perf.generate_library import generate
+from tests.perf.generate_library import generate, generate_db_records
 
 
 @pytest.mark.perf
@@ -48,3 +48,17 @@ class TestLibraryPerformance:
         elapsed = time.perf_counter() - start
         assert elapsed < 0.2, f"cleanup_missing took {elapsed:.2f}s (limit 0.2s)"
         assert removed == 0
+
+
+@pytest.mark.perf
+def test_get_all_db_synthetic_5k(tmp_path):
+    db = LibraryDB(str(tmp_path / "michi.db"))
+    try:
+        generate_db_records(db, count=5_000)
+        start = time.perf_counter()
+        tracks = db.get_all()
+        elapsed = time.perf_counter() - start
+        assert len(tracks) == 5_000
+        assert elapsed < 2.0, f"db-synthetic get_all took {elapsed:.2f}s (limit 2.0s)"
+    finally:
+        db.close()

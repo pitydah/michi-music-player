@@ -158,18 +158,6 @@ python3 -m compileall -q -x '.venv/|\.tmpl\.' . || { echo "  COMPILE FAILED"; ex
 echo "  COMPILE OK"
 
 # [10/10] Pytest
-echo "[9/10] Running pytest..."
-cd "$REPO_DIR"
-QT_QPA_PLATFORM=offscreen \
-PYTHONUNBUFFERED=1 \
-MICHI_SAFE_MODE=1 \
-MICHI_TEST_DATA_DIR="$TMPDIR/michi-test-data" \
-MICHI_TEST_CACHE_DIR="$TMPDIR/michi-test-cache" \
-MICHI_TEST_CONFIG_DIR="$TMPDIR/michi-test-config" \
-python3 -m pytest -q || { echo "  TEST FAILED"; exit 1; }
-echo "  OK"
-
-# [10/10] Pytest
 echo "[10/10] Running pytest..."
 cd "$REPO_DIR"
 QT_QPA_PLATFORM=offscreen \

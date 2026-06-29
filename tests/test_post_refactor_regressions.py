@@ -450,28 +450,60 @@ class TestSmokeStartupIsRuntimeBase:
 class TestSmokeUiRoutesHardening:
     """smoke_ui_routes.py must close MainWindow in finally and enforce route/sidebar."""
 
+    def test_smoke_ui_routes_does_not_force_exit_zero(self):
+        content = _read(os.path.join(_root(), "scripts", "smoke_ui_routes.py"))
+        assert "_os._exit" not in content
+        assert "os._exit" not in content
+
     def test_smoke_ui_routes_closes_mainwindow_in_finally(self):
         content = _read(os.path.join(_root(), "scripts", "smoke_ui_routes.py"))
         assert "finally:" in content
         assert "w.close()" in content
         assert "w.deleteLater()" in content
-        assert "app.quit()" in content
-        assert "_os._exit(0)" in content
+        assert "app.processEvents()" in content
 
     def test_smoke_ui_route_sidebar_is_mandatory(self):
         content = _read(os.path.join(_root(), "scripts", "smoke_ui_routes.py"))
         assert "route/sidebar attributes not yet" not in content
         assert "hasattr(w, '_current_route_key')" not in content
         assert "hasattr(w, '_current_sidebar_key')" not in content
-        assert 'assert w._current_route_key == "pl:123"' in content
-        assert 'assert w._current_sidebar_key == "playlist_hub"' in content
-        assert 'resolve_sidebar_active_key("srv:navidrome") == "connections_hub"' in content
-        assert 'resolve_sidebar_active_key("dev:usb") == "devices_page"' in content
 
-    def test_smoke_ui_asserts_route_and_sidebar(self):
-        content = _read(os.path.join(_root(), "scripts", "smoke_ui_routes.py"))
-        assert "_current_route_key" in content
-        assert "_current_sidebar_key" in content
+        required = [
+            'w._nav_ctrl.dispatch("albums")',
+            'assert w._current_route_key == "albums"',
+            'assert w._current_sidebar_key == "library_hub"',
+            'w._nav_ctrl.dispatch("pl:123")',
+            'assert w._current_route_key == "pl:123"',
+            'assert w._current_sidebar_key == "playlist_hub"',
+            'resolve_sidebar_active_key("srv:navidrome") == "connections_hub"',
+            'resolve_sidebar_active_key("dev:usb") == "devices_page"',
+            'w._current_route_key = "srv:navidrome"',
+            'w._current_sidebar_key = resolve_sidebar_active_key("srv:navidrome")',
+            'assert w._current_sidebar_key == "connections_hub"',
+            'w._current_route_key = "dev:usb"',
+            'w._current_sidebar_key = resolve_sidebar_active_key("dev:usb")',
+            'assert w._current_sidebar_key == "devices_page"',
+        ]
+        for pattern in required:
+            assert pattern in content, f"Missing mandatory route/sidebar check: {pattern}"
+
+
+class TestCiLocalDeduplication:
+    """ci_local.sh must run pytest once with correct numbering."""
+
+    def test_ci_local_runs_pytest_once(self):
+        content = _read(os.path.join(_root(), "scripts", "ci_local.sh"))
+        assert content.count("python3 -m pytest -q") == 1
+        assert content.count('echo "[10/10] Running pytest..."') == 1
+        assert 'echo "[9/10] Running pytest..."' not in content
+
+    def test_ci_local_lint_compile_pytest_order(self):
+        content = _read(os.path.join(_root(), "scripts", "ci_local.sh"))
+        assert 'echo "[8/10] Running lint..."' in content
+        assert "python3 -m ruff check ." in content
+        assert 'echo "[9/10] Running compileall..."' in content
+        assert "python3 -m compileall" in content
+        assert 'echo "[10/10] Running pytest..."' in content
 
 
 class TestRebuildSidebarUsesCurrentSidebarKey:
@@ -502,3 +534,40 @@ class TestBackfillGuard:
             "LibraryController.load() must check get_bool setting")
         assert "auto_backfill_enabled" in content, (
             "LibraryController.load() must check auto_backfill_enabled setting")
+
+
+class TestFileWatcherHardening:
+    """FileWatcher must have directory limit and root offline protection."""
+
+    def test_file_watcher_has_directory_limit(self):
+        content = _read(os.path.join(_root(), "library", "file_watcher.py"))
+        assert "_MAX_WATCHED_DIRS" in content
+        assert "_watched_count" in content
+        assert "_degraded" in content
+
+    def test_file_watcher_skips_offline_roots(self):
+        content = _read(os.path.join(_root(), "library", "file_watcher.py"))
+        assert "root offline" in content
+        assert "skipping watch" in content
+        assert "os.path.isdir(root)" in content
+
+    def test_file_watcher_does_not_emit_removed_for_unavailable_dir(self):
+        content = _read(os.path.join(_root(), "library", "file_watcher.py"))
+        assert "changed directory unavailable" in content
+        assert "os.path.isdir(dirpath)" in content
+
+
+class TestHomeControllerUsesImportService:
+    """HomeController must not directly call w._db.add_file or w._scan_path."""
+
+    def test_home_controller_uses_library_import_service(self):
+        content = _read(os.path.join(_root(), "ui", "controllers", "home_controller.py"))
+        assert "svc.add_files" in content or "_get_import_service" in content, (
+            "HomeController must use LibraryImportService.add_files")
+        # Fallback direct DB access is allowed if service unavailable
+        assert "w._db.add_file" in content, "fallback path must still exist"
+
+    def test_home_controller_does_not_call_w_scan_path_directly(self):
+        content = _read(os.path.join(_root(), "ui", "controllers", "home_controller.py"))
+        assert "svc.scan_folder" in content or "_get_import_service" in content, (
+            "HomeController must use LibraryImportService.scan_folder")

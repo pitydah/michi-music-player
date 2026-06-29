@@ -1,15 +1,16 @@
 # Performance Testing
 
-Current status: **preliminary synthetic suite**.
+## Perf suites
 
-The generator creates empty placeholder files and uses `LibraryDB.add_file()`.
-This is useful for smoke-level performance checks, but it also measures file creation,
-metadata fallback and indexing overhead. It is **not** yet a pure database benchmark.
+### file-based smoke
+Uses `generate()` which creates empty placeholder audio files + `LibraryDB.add_file()`.
+Measures import overhead + metadata fallback + DB indexing.
+Sample: 5,000 tracks.
 
-Future improvement:
-- replace file-based generation with `BatchWriter` or direct synthetic DB insert helper;
-- add 10k/50k datasets;
-- separate generation time from query timings.
+### db-synthetic benchmark
+Uses `generate_db_records()` which writes directly via `BatchWriter` + FTS rebuild.
+Measures pure DB query/index performance without filesystem overhead.
+Sample: 5,000 records.
 
 ## Running
 
@@ -18,24 +19,31 @@ Future improvement:
 pytest tests/perf/ -m perf -v
 
 # Specific test
-pytest tests/perf/test_library_perf.py -m perf -v -k test_get_all_tracks
+pytest tests/perf/test_library_perf.py -m perf -v -k test_get_all
 ```
 
-## Thresholds (5,000 tracks)
+## Thresholds (5,000 items)
 
-| Operation | Threshold |
-|---:|---:|
-| get_all | < 2.5s |
-| search_advanced | < 1.0s |
-| get_stats | < 1.0s |
-| cleanup_missing_under_root | < 0.2s |
+| Suite | Operation | Threshold |
+|---|---:|---:|
+| file-based | get_all | < 2.5s |
+| file-based | search_advanced | < 1.0s |
+| file-based | get_stats | < 1.0s |
+| file-based | cleanup_missing_under_root | < 0.2s |
+| db-synthetic | get_all | < 2.0s |
 
 ## Generating Synthetic Data
 
 ```python
+# file-based smoke
 from tests.perf.generate_library import generate
 from library.library_db import LibraryDB
 import tempfile
 db = LibraryDB(":memory:")
 generate(db, root=str(tempfile.mkdtemp()), count=5_000)
+
+# db-synthetic benchmark
+from tests.perf.generate_library import generate_db_records
+db = LibraryDB("/tmp/perf.db")
+generate_db_records(db, count=10_000)
 ```

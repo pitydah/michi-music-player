@@ -22,6 +22,7 @@ logger = logging.getLogger("michi.file_watcher")
 
 _DEBOUNCE_MS = 3000
 _MAX_BATCH = 100
+_MAX_WATCHED_DIRS = 2048
 
 
 class FileWatcher(QObject):
@@ -49,7 +50,10 @@ class FileWatcher(QObject):
         self._pending_modified: set[str] = set()
 
         self._watcher.directoryChanged.connect(self._on_dir_changed)
+        self._watcher.fileChanged.connect(self._on_dir_changed)
         self._running = False
+        self._watched_count = 0
+        self._degraded = False
 
     @property
     def is_running(self) -> bool:
@@ -76,6 +80,8 @@ class FileWatcher(QObject):
         self._flush()
 
     def refresh_roots(self):
+        self._watched_count = 0
+        self._degraded = False
         dirs = list(self._watcher.directories())
         import contextlib
         if dirs:
@@ -86,12 +92,23 @@ class FileWatcher(QObject):
     def _watch_roots(self):
         roots = self._db.get_library_roots()
         for root in roots:
-            if os.path.isdir(root):
-                self._watch_recursive(root)
+            if not os.path.isdir(root):
+                logger.warning("FileWatcher: root offline, skipping watch: %s", root)
+                continue
+            self._watch_recursive(root)
 
     def _watch_recursive(self, directory: str):
+        if self._watched_count >= _MAX_WATCHED_DIRS:
+            if not self._degraded:
+                logger.warning(
+                    "FileWatcher degraded: max watched dirs reached (%d). "
+                    "Use manual refresh for large libraries.", _MAX_WATCHED_DIRS)
+                self._degraded = True
+            return
         try:
-            self._watcher.addPath(directory)
+            ok = self._watcher.addPath(directory)
+            if ok:
+                self._watched_count += 1
             for entry in os.listdir(directory):
                 full = os.path.join(directory, entry)
                 if os.path.isdir(full) and not entry.startswith("."):
@@ -101,6 +118,9 @@ class FileWatcher(QObject):
 
     def _on_dir_changed(self, dirpath: str):
         if not self._running:
+            return
+        if not os.path.isdir(dirpath):
+            logger.warning("FileWatcher: changed directory unavailable, skipping: %s", dirpath)
             return
         try:
             current = {

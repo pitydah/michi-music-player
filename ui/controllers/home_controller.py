@@ -84,26 +84,42 @@ class HomeController(QObject):
 
     # ── Add Music handlers ──
 
+    def _get_import_service(self):
+        w = self._win
+        svc = getattr(w, "_services", None)
+        if svc and getattr(svc, "library_import", None):
+            return svc.library_import
+        svc = getattr(w, "_library_import", None)
+        if svc:
+            return svc
+        logger.warning("LibraryImportService not available, using fallback")
+        return None
+
     def _on_add_music(self, filepaths: list[str]):
         """Import selected files and refresh library."""
-        # TODO: migrate HomeController mutations to AppServices once
-        #       library import service is available via AppContext.
         w = self._win
-        from library.library_db import AUDIO_EXTS
-        added = 0
-        for fp in filepaths:
-            ext = os.path.splitext(fp)[1].lower()
-            if ext in AUDIO_EXTS and os.path.isfile(fp):
-                w._db.add_file(fp)
-                added += 1
-        if added:
-            w._reload_library_after_change(reason="home_add_music")
+        svc = self._get_import_service()
+        if svc:
+            added = svc.add_files(filepaths, reason="home_add_music")
+        else:
+            from library.metadata_extractor import ALL_EXTS
+            added = 0
+            for fp in filepaths:
+                ext = os.path.splitext(fp)[1].lower()
+                if ext in ALL_EXTS and os.path.isfile(fp):
+                    w._db.add_file(fp)
+                    added += 1
+            if added:
+                w._reload_library_after_change(reason="home_add_music_fallback")
         w._toast_svc.show(f"{added} canciones añadidas a la biblioteca", "success")
         self.refresh()
 
     def _on_add_folder(self, path: str):
         """Scan a folder for music files."""
-        # TODO: migrate to AppServices.scan_path once available via AppContext.
         w = self._win
-        w._scan_path(path)
+        svc = self._get_import_service()
+        if svc and getattr(svc, "scan_folder", None):
+            svc.scan_folder(path)
+        else:
+            w._scan_path(path)
         self.refresh()
