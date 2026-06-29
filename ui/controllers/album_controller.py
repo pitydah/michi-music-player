@@ -72,6 +72,7 @@ class AlbumController:
         """
         import unicodedata
         w = self._win
+        w._nav_ctrl.checkpoint()
         album = getattr(cover_item, 'title', '') or ''
         artist = getattr(cover_item, 'subtitle', '') or ''
         tracks = []

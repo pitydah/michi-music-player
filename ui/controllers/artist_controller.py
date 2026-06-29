@@ -16,6 +16,7 @@ class ArtistController:
         self._ctx.set_artist_stack(0)
 
     def open_artist_detail(self, artist_key: str):
+        self._win._nav_ctrl.checkpoint()
         repo = self._ctx.artist_repo
         group = repo.get_group(artist_key)
         if not group:

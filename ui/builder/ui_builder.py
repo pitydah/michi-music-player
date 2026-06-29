@@ -341,7 +341,7 @@ class UIBuilder:
         # Build albums: grid (carátulas) + detail view inside Álbumes tab
         from ui.album_detail_view import AlbumDetailView
         w._album_detail_view = AlbumDetailView()
-        w._album_detail_view.back_requested.connect(w._show_album_grid)
+        w._album_detail_view.back_requested.connect(lambda: w._nav_ctrl.navigate_back())
         w._album_detail_view.track_play_requested.connect(w._play_file)
 
         w._albums_stack = QStackedWidget()
@@ -428,7 +428,7 @@ class UIBuilder:
         w._artist_grid.artist_playlist_requested.connect(lambda key, _w=w: _w._artist_ctrl.create_playlist_from_artist(key))
         w._artist_grid.artist_metadata_requested.connect(lambda key, _w=w: _w._artist_ctrl.edit_artist_metadata(key))
         w._artist_grid.artist_enrich_requested.connect(w._refresh_artist_info)
-        w._artist_detail.back_requested.connect(lambda _w=w: _w._artist_ctrl.show_artists_overview())
+        w._artist_detail.back_requested.connect(lambda: w._nav_ctrl.navigate_back())
         w._artist_detail.play_all_requested.connect(lambda key, _w=w: _w._artist_ctrl.play_artist(key))
         w._artist_detail.shuffle_all_requested.connect(lambda key, _w=w: _w._artist_ctrl.play_artist(key, shuffle=True))
         w._artist_detail.queue_all_requested.connect(lambda key, _w=w: _w._artist_ctrl.queue_artist(key))
@@ -466,7 +466,7 @@ class UIBuilder:
         w._genre_grid.genre_playlist_requested.connect(lambda key, _w=w: _w._genre_ctrl.create_playlist_from_genre(key))
         w._genre_grid.genre_metadata_requested.connect(lambda key, _w=w: _w._genre_ctrl.edit_genre_metadata(key))
         w._genre_grid.genre_normalize_requested.connect(lambda key, _w=w: _w._genre_ctrl.normalize_genre(key))
-        w._genre_detail.back_requested.connect(w._genre_ctrl.back_to_overview)
+        w._genre_detail.back_requested.connect(lambda: w._nav_ctrl.navigate_back())
         w._genre_detail.play_requested.connect(lambda key, _w=w: _w._genre_ctrl.play_genre(key))
         w._genre_detail.shuffle_requested.connect(lambda key, _w=w: _w._genre_ctrl.play_genre(key, shuffle=True))
         w._genre_detail.queue_requested.connect(lambda key, _w=w: _w._genre_ctrl.queue_genre(key))

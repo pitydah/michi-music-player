@@ -47,6 +47,7 @@ class GenreController:
         self._ctx.set_genre_stack(0)
 
     def open_genre_detail(self, genre_key: str):
+        self._win._nav_ctrl.checkpoint()
         repo = self._genre_repo
         g = repo.get_group(genre_key)
         if not g:

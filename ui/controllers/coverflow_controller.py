@@ -156,6 +156,8 @@ class CoverFlowController:
         if not tracks:
             return
 
+        self._win._nav_ctrl.checkpoint()
+
         from library.trackref_model import TrackRef
         refs = [TrackRef(uri=t.filepath,
                          title=t.title or os.path.basename(t.filepath),

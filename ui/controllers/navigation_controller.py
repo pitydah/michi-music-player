@@ -268,9 +268,13 @@ class NavigationHistory:
         entry = self._history[self._index] if 0 <= self._index < len(self._history) else None
         return entry[0] if entry else None
 
-    def push(self, key: str, search_text: str = ""):
-        """Add a navigation entry, truncating forward history if not at tip."""
-        if self._history and self._history[self._index][0] == key:
+    def push(self, key: str, search_text: str = "", force: bool = False):
+        """Add a navigation entry, truncating forward history if not at tip.
+
+        When force=True, always creates a new entry even if the key matches
+        the current one (used for detail view checkpoints).
+        """
+        if not force and self._history and self._history[self._index][0] == key:
             return
         if self._index < len(self._history) - 1:
             self._history = self._history[:self._index + 1]
@@ -324,6 +328,24 @@ class NavigationController(QObject):
             w = self._win
             search_text = getattr(w, '_search_text', "")
         self._history.push(key, search_text)
+
+    def force_push(self, key: str, search_text: str = ""):
+        """Push a history entry even if the key matches current route.
+
+        Used before opening detail views so back/forward can restore the parent view.
+        """
+        self._history.push(key, search_text, force=True)
+        self._update_buttons()
+
+    def checkpoint(self):
+        """Bookmark current route before showing a detail/sub-view.
+
+        This creates a history restore point so navigate_back returns to the parent view.
+        """
+        w = self._win
+        key = getattr(w, '_current_route_key', None) or "home"
+        search = getattr(w, '_search_text', "")
+        self.force_push(key, search)
 
     def navigate_back(self):
         entry = self._history.back()
