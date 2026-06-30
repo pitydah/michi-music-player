@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from core.context.context_events import AppEvent
-
 if TYPE_CHECKING:
     from ui.window import MainWindow
 
@@ -26,13 +24,10 @@ class SearchRouter:
     def _section_key(w) -> str:
         return getattr(w, '_current_route_key', None) or w._current_section_key
 
-    def _record_search_performed(self, section: str, result_count: int):
+    def _record_search_performed(self, section: str, result_count: int, query: str = ""):
         ctx = self._context()
         if ctx:
-            ctx.record_event(AppEvent.SEARCH_PERFORMED, {
-                "section": section,
-                "result_count": result_count,
-            })
+            ctx.record_search_performed(section=section, result_count=result_count, query=query)
 
     def on_search(self, text: str):
         w = self._win
@@ -60,12 +55,12 @@ class SearchRouter:
                     scope="search",
                     search_query="",
                 )
-                ctx.record_event(AppEvent.SEARCH_CLEARED, {"section": sec})
+                ctx.record_search_cleared(section=sec)
 
         if sec in ("albums", "genres"):
             w._lib_ctrl.refresh_active_tab(force=True)
             if ctx and query:
-                ctx.record_event(AppEvent.SEARCH_STARTED, {"section": sec})
+                ctx.record_search_started(section=sec, query=query)
             return
         if sec == "folders":
             w._folder_browser.set_filter(w._search_text)
@@ -75,11 +70,11 @@ class SearchRouter:
                     try:
                         count = int(visible_count())
                     except Exception:
-                        ctx.record_event(AppEvent.SEARCH_STARTED, {"section": sec})
+                        ctx.record_search_started(section=sec, query=query)
                     else:
-                        self._record_search_performed(sec, count)
+                        self._record_search_performed(sec, count, query=query)
                 else:
-                    ctx.record_event(AppEvent.SEARCH_STARTED, {"section": sec})
+                    ctx.record_search_started(section=sec, query=query)
             return
         if sec in ("favs", "recent", "mix_unplayed"):
             return
@@ -97,7 +92,7 @@ class SearchRouter:
                 ]
             w._artist_grid.set_artists(filtered)
             w._count.setText(f"{len(filtered)} artistas")
-            self._record_search_performed(sec, len(filtered))
+            self._record_search_performed(sec, len(filtered), query=query)
             return
         if sec == "radio":
             w._radio_widget.set_filter(w._search_text)
@@ -134,7 +129,4 @@ class SearchRouter:
 
         ctx = self._context()
         if ctx:
-            ctx.record_event(AppEvent.SEARCH_PERFORMED, {
-                "section": w._current_section_key,
-                "result_count": n,
-            })
+            ctx.record_search_performed(section=w._current_section_key, result_count=n)

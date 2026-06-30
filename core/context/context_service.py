@@ -109,6 +109,70 @@ class ContextService:
             "playlist_id": playlist_id, "name": name, "count": count,
         })
 
+    # ── Search ──
+
+    def record_search_started(self, section: str = "", query: str = "") -> None:
+        self.record_event(AppEvent.SEARCH_STARTED, {
+            "section": section, "query": (query or "")[:80],
+        })
+
+    def record_search_performed(self, section: str = "", result_count: int = 0,
+                                query: str = "") -> None:
+        self.record_event(AppEvent.SEARCH_PERFORMED, {
+            "section": section, "result_count": int(result_count or 0),
+            "query": (query or "")[:80],
+        })
+
+    def record_search_cleared(self, section: str = "") -> None:
+        self.record_event(AppEvent.SEARCH_CLEARED, {"section": section})
+
+    # ── Smart mixes ──
+
+    def record_mix_opened(self, key: str = "", count: int = 0) -> None:
+        self.record_event(AppEvent.MIX_OPENED, {"key": key, "count": int(count or 0)})
+
+    def record_mix_played(self, key: str = "", count: int = 0) -> None:
+        self.record_event(AppEvent.MIX_PLAYED, {"key": key, "count": int(count or 0)})
+
+    def record_mix_queued(self, key: str = "", count: int = 0) -> None:
+        self.record_event(AppEvent.MIX_QUEUED, {"key": key, "count": int(count or 0)})
+
+    # ── Playlist lifecycle ──
+
+    def record_playlist_opened(self, playlist_id: int = 0, name: str = "",
+                               count: int = 0) -> None:
+        self.record_event(AppEvent.PLAYLIST_OPENED, {
+            "playlist_id": playlist_id, "name": name, "count": int(count or 0),
+        })
+
+    def record_playlist_played(self, playlist_id: int = 0, name: str = "",
+                               count: int = 0) -> None:
+        self.record_event(AppEvent.PLAYLIST_PLAYED, {
+            "playlist_id": playlist_id, "name": name, "count": int(count or 0),
+        })
+
+    def record_playlist_queued(self, playlist_id: int = 0, name: str = "",
+                               count: int = 0) -> None:
+        self.record_event(AppEvent.PLAYLIST_QUEUED, {
+            "playlist_id": playlist_id, "name": name, "count": int(count or 0),
+        })
+
+    # ── Folder browser ──
+
+    def record_folder_selected(self, folder_name: str = "", count: int = 0) -> None:
+        import os
+        safe_name = os.path.basename(str(folder_name or ""))
+        self.record_event(AppEvent.FOLDER_SELECTED, {
+            "folder_name": safe_name, "count": int(count or 0),
+        })
+
+    def record_folder_queued(self, folder_name: str = "", count: int = 0) -> None:
+        import os
+        safe_name = os.path.basename(str(folder_name or ""))
+        self.record_event(AppEvent.FOLDER_QUEUED, {
+            "folder_name": safe_name, "count": int(count or 0),
+        })
+
     # ── Queue ──
 
     def record_queue_updated(self, count: int, source: str = "",

@@ -260,8 +260,8 @@ class AudioLabBackupPage(QWidget):
 
         cards = [
             ("sidebar_devices", "Ripear CD",
-             "Extrae pistas de CD de audio a FLAC, WAV,\n"
-             "MP3 y más con cdparanoia.",
+             "Extrae CDs a WAV sin compresión. Perfiles\n"
+             "FLAC/MP3/Opus requieren herramientas externas.",
              "disponible", "michi_disc_lab"),
             ("home_audio", "Digitalizar Vinilo",
              "Captura desde tu ADC/platina, separa pistas\n"
