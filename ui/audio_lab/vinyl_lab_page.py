@@ -239,6 +239,13 @@ class VinylLabPage(QWidget):
         self._record_btn.clicked.connect(self._toggle_recording)
         wl.addWidget(self._record_btn)
 
+        self._pause_btn = QPushButton("Pausa")
+        self._pause_btn.setCursor(Qt.PointingHandCursor)
+        self._pause_btn.setStyleSheet(glass_button_qss("ghost"))
+        self._pause_btn.clicked.connect(self._toggle_pause)
+        self._pause_btn.setVisible(False)
+        wl.addWidget(self._pause_btn)
+
         self._rec_time = QLabel("00:00")
         self._rec_time.setStyleSheet(
             "color: rgba(255,255,255,0.82); font-size: 18px; "
@@ -328,6 +335,18 @@ class VinylLabPage(QWidget):
 
     # ── Actions ──
 
+    def _toggle_pause(self):
+        if not self._capture:
+            return
+        if self._capture.is_paused:
+            self._capture.resume_recording()
+            self._pause_btn.setText("Pausa")
+            self._record_btn.setText(f"Detener Cara {self._current_side}")
+        else:
+            self._capture.pause_recording()
+            self._pause_btn.setText("Reanudar")
+            self._record_btn.setText(f"En pausa — Cara {self._current_side}")
+
     def _toggle_monitor(self):
         if not self._capture:
             from vinyl.capture_service import VinylCaptureService
@@ -400,6 +419,9 @@ class VinylLabPage(QWidget):
                     f"Detener Cara {self._current_side}"
                 )
                 self._record_btn.setStyleSheet(glass_button_qss("danger"))
+                self._pause_btn.setVisible(True)
+                self._pause_btn.setText("Pausa")
+                self._pause_btn.setStyleSheet(glass_button_qss("ghost"))
                 self._rec_progress.setVisible(True)
                 self._rec_timer = QTimer()
                 self._rec_timer.timeout.connect(self._update_rec_time)
@@ -409,9 +431,16 @@ class VinylLabPage(QWidget):
                     self._monitor_timer.timeout.connect(self._update_monitor)
                     self._monitor_timer.start(200)
                     self._monitor_active = True
+        elif self._capture.is_paused:
+            self._capture.resume_recording()
+            self._record_btn.setText(
+                f"Detener Cara {self._current_side}"
+            )
+            self._pause_btn.setText("Pausa")
         else:
             self._capture.stop_recording()
             self._is_recording = False
+            self._pause_btn.setVisible(False)
             self._record_btn.setText(
                 f"Grabar Cara {'B' if self._current_side == 'A' else 'A'}"
             )

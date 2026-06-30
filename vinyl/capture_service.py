@@ -24,12 +24,15 @@ class VinylCaptureService(QObject):
     recording_progress = Signal(float)  # seconds recorded
     recording_finished = Signal(str)  # filepath
     recording_error = Signal(str)
+    recording_paused = Signal()
+    recording_resumed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._pipeline: Gst.Element | None = None
         self._filepath: str = ""
         self._is_recording = False
+        self._is_paused = False
         self._sample_rate = 96000
         self._bit_depth = 24
         self._channels = 2
@@ -37,6 +40,10 @@ class VinylCaptureService(QObject):
     @property
     def is_recording(self) -> bool:
         return self._is_recording
+
+    @property
+    def is_paused(self) -> bool:
+        return self._is_paused
 
     def set_format(self, sample_rate: int = 96000,
                    bit_depth: int = 24, channels: int = 2):
@@ -135,6 +142,32 @@ class VinylCaptureService(QObject):
         except OSError:
             pass
         return 0.0
+
+    def pause_recording(self) -> bool:
+        """Pause the recording. Returns True if successful."""
+        if not self._is_recording or self._is_paused or not self._pipeline:
+            return False
+        try:
+            self._pipeline.set_state(Gst.State.PAUSED)
+            self._is_paused = True
+            self.recording_paused.emit()
+            return True
+        except Exception as e:
+            logger.warning("Error pausing capture: %s", e)
+            return False
+
+    def resume_recording(self) -> bool:
+        """Resume a paused recording. Returns True if successful."""
+        if not self._is_recording or not self._is_paused or not self._pipeline:
+            return False
+        try:
+            self._pipeline.set_state(Gst.State.PLAYING)
+            self._is_paused = False
+            self.recording_resumed.emit()
+            return True
+        except Exception as e:
+            logger.warning("Error resuming capture: %s", e)
+            return False
 
     def cleanup(self):
         if self._pipeline:
