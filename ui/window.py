@@ -318,6 +318,8 @@ class MainWindow(QMainWindow):
         self._view_router = ViewModeRouter(self)
         from ui.controllers.devices_controller import DevicesController
         self._devices_ctrl = DevicesController(self)
+        from ui.controllers.audio_lab_controller import AudioLabController
+        self._audio_lab_ctrl = AudioLabController(self)
 
         from ui.controllers.hub_route_controller import HubRouteController
         self._hub_route_ctrl = HubRouteController(self)

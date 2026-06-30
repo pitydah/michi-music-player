@@ -281,8 +281,13 @@ def analyse_file(filepath: str, use_cache: bool = True) -> dict[str, Any]:
     return result
 
 
-def analyse_directory(directory: str) -> list[dict[str, Any]]:
+def analyse_directory(directory: str,
+                      include_spectral: bool = False) -> list[dict[str, Any]]:
     """Analyse all audio files in a directory recursively.
+
+    Args:
+        directory: Path to directory.
+        include_spectral: If True, also run spectral analysis on WAV files.
 
     Returns list of per-file analysis dicts.
     """
@@ -295,7 +300,22 @@ def analyse_directory(directory: str) -> list[dict[str, Any]]:
             ext = os.path.splitext(f)[1].lower()
             if ext in AUDIO_EXTS:
                 fp = os.path.join(root, f)
-                results.append(analyse_file(fp))
+                result = analyse_file(fp)
+                if include_spectral and ext == ".wav":
+                    try:
+                        sr = result.get("format_info", {}).get("sample_rate", 0)
+                        bd = result.get("format_info", {}).get("bit_depth", 0)
+                        if sr > 0 and bd > 0:
+                            from core.audio_analysis.spectral_authenticator import (
+                                analyse_spectral as _analyse_spec,
+                                can_analyse,
+                            )
+                            if can_analyse(fp):
+                                spec = _analyse_spec(fp, sr, bd)
+                                result["spectral"] = spec
+                    except Exception:
+                        pass
+                results.append(result)
     return results
 
 

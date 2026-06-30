@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QFileDialog, QScrollArea,
     QTableWidget, QTableWidgetItem, QProgressBar, QMessageBox,
+    QCheckBox,
 )
 
 from ui.central.central_styles import (
@@ -81,6 +82,14 @@ class DiagnosticsPage(QWidget):
             "font-weight: 600; background: transparent;"
         )
         avl.addWidget(al)
+
+        self._spectral_check = QCheckBox("Análisis espectral (WAV)")
+        self._spectral_check.setStyleSheet(
+            "color: rgba(255,255,255,0.70); font-size: 11px; "
+            "background: transparent;"
+        )
+        self._spectral_check.setChecked(False)
+        avl.addWidget(self._spectral_check)
 
         btn_row = QHBoxLayout()
         self._analyse_file_btn = QPushButton("Analizar archivo...")
@@ -339,6 +348,7 @@ class DiagnosticsPage(QWidget):
         self._progress_label.setVisible(True)
         self._progress_label.setText(f"Analizando 0/{len(audio_files)}...")
 
+        include_spectral = self._spectral_check.isChecked()
         self._total_files = len(audio_files)
         self._files_copy = list(audio_files)
 
@@ -347,6 +357,14 @@ class DiagnosticsPage(QWidget):
                 if self._cancelled:
                     break
                 result = analyse_file(fp)
+                if include_spectral and fp.lower().endswith(".wav"):
+                    try:
+                        from ui.audio_lab.diagnostics_service import analyse_spectral
+                        spec = analyse_spectral(fp)
+                        if spec:
+                            result["spectral"] = spec
+                    except Exception:
+                        pass
                 self._results.append(result)
                 from PySide6.QtCore import QMetaObject, Qt as QtEnum
                 QMetaObject.invokeMethod(
@@ -425,9 +443,11 @@ class DiagnosticsPage(QWidget):
             self._results_table.setItem(i, 4, QTableWidgetItem(
                 r.get("duration_str", "?")
             ))
-            self._results_table.setItem(i, 5, QTableWidgetItem(
-                q.get("label", q.get("category", "?"))
-            ))
+            quality_text = q.get("label", q.get("category", "?"))
+            spec = r.get("spectral", {})
+            if spec and spec.get("label"):
+                quality_text += f" | {spec['label']}"
+            self._results_table.setItem(i, 5, QTableWidgetItem(quality_text))
             self._results_table.setItem(i, 6, QTableWidgetItem(
                 f"{r.get('size_mb', 0)} MB" if r.get('size_mb') else "?"
             ))
