@@ -124,7 +124,7 @@ _DSD_EXTS = {"dsf", "dff", "dsd"}
 
 def _classify(item: MediaItem) -> str:
     """Return quality category: hires, lossless, lossy, dsd, unknown."""
-    ext = (item.ext or "").lower()
+    ext = (item.ext or "").lower().lstrip(".")
     if ext in _DSD_EXTS:
         return "dsd"
     if ext in _LOSSLESS_EXTS:
