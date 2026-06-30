@@ -51,8 +51,10 @@ class DSPPage(QWidget):
         cl.addWidget(title)
 
         sub = QLabel(
-            "Controla la ruta de audio: perfil de salida, "
-            "upsampling, corrección de sala y estado del DAC."
+            "EXPERIMENTAL — Controla la ruta de audio: perfil de salida, "
+            "upsampling, corrección de sala y estado del DAC.\n"
+            "Upsampling y Room Correction son solo UI preliminar — "
+            "no están conectados al pipeline de audio."
         )
         sub.setStyleSheet(
             "color: rgba(255,255,255,0.56); font-size: 13px; "
@@ -183,13 +185,15 @@ class DSPPage(QWidget):
 
         row = QHBoxLayout()
         self._upsample_enable = QCheckBox("Activar upsampling")
+        self._upsample_enable.setEnabled(False)
         self._upsample_enable.setStyleSheet(
-            "color: rgba(255,255,255,0.78); font-size: 12px; "
+            "color: rgba(255,255,255,0.42); font-size: 12px; "
             "background: transparent;"
         )
         row.addWidget(self._upsample_enable)
 
         self._upsample_rate = QComboBox()
+        self._upsample_rate.setEnabled(False)
         self._upsample_rate.setStyleSheet(glass_combo_qss())
         for label, sr in [("2x (88.2/96 kHz)", 2), ("4x (176.4/192 kHz)", 4)]:
             self._upsample_rate.addItem(label, sr)
@@ -198,9 +202,9 @@ class DSPPage(QWidget):
         wl.addLayout(row)
 
         hint = QLabel(
-            "El upsampling convierte la frecuencia de muestreo a un múltiplo "
-            "superior. Desactivado por defecto — el modo bit-perfect "
-            "no utiliza resampling."
+            "⚠ UI preliminar — el upsampling no está conectado "
+            "al pipeline de GStreamer. Esta sección es solo "
+            "interfaz de configuración futura."
         )
         hint.setStyleSheet(
             "color: rgba(255,255,255,0.42); font-size: 11px; "
@@ -218,13 +222,15 @@ class DSPPage(QWidget):
 
         row = QHBoxLayout()
         self._room_enable = QCheckBox("Activar corrección de sala")
+        self._room_enable.setEnabled(False)
         self._room_enable.setStyleSheet(
-            "color: rgba(255,255,255,0.78); font-size: 12px; "
+            "color: rgba(255,255,255,0.42); font-size: 12px; "
             "background: transparent;"
         )
         row.addWidget(self._room_enable)
 
         self._room_file_btn = QPushButton("Cargar impulso WAV...")
+        self._room_file_btn.setEnabled(False)
         self._room_file_btn.setCursor(Qt.PointingHandCursor)
         self._room_file_btn.setStyleSheet(glass_button_qss("secondary"))
         self._room_file_btn.clicked.connect(self._load_impulse)
@@ -240,8 +246,9 @@ class DSPPage(QWidget):
         wl.addLayout(row)
 
         hint = QLabel(
-            "Requiere un archivo WAV con la respuesta al impulso de tu sala. "
-            "Desactivado por defecto."
+            "⚠ UI preliminar — la convolución FIR no está implementada. "
+            "Seleccionar un WAV no activa la corrección de sala. "
+            "Pendiente de motor FIR."
         )
         hint.setStyleSheet(
             "color: rgba(255,255,255,0.42); font-size: 11px; "
