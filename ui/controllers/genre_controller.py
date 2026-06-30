@@ -103,7 +103,11 @@ class GenreController:
     def queue_genre(self, genre_key: str):
         fps = self._genre_repo.filepaths_for_genre(genre_key)
         if fps:
-            self._ctx_or_svc("playback").enqueue(fps, play_now=False)
+            pc = getattr(self._win, "_playback_ctrl", None)
+            if pc:
+                pc.enqueue_with_context(fps, play_now=False, source="genre")
+            else:
+                self._ctx_or_svc("playback").enqueue(fps, play_now=False)
 
     def create_playlist_from_genre(self, genre_key: str):
         g = self._genre_repo.get_group(genre_key)

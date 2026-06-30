@@ -716,8 +716,12 @@ class MainWindow(QMainWindow):
         pb.play_clicked.connect(self._playback.toggle)
         pb.prev_clicked.connect(self._playback.play_prev)
         pb.next_clicked.connect(self._playback.play_next)
-        pb.shuffle_clicked.connect(self._playback.toggle_shuffle)
-        pb.repeat_clicked.connect(self._playback.toggle_repeat)
+        pb.shuffle_clicked.connect(
+            self._playback_ctrl.toggle_shuffle_with_context
+            if self._playback_ctrl else self._playback.toggle_shuffle)
+        pb.repeat_clicked.connect(
+            self._playback_ctrl.toggle_repeat_with_context
+            if self._playback_ctrl else self._playback.toggle_repeat)
         pb.seek_requested.connect(self._playback.seek)
         pb.volume_changed.connect(self._playback.set_volume)
         pb.eq_clicked.connect(self._playback_ctrl.open_eq)

@@ -200,7 +200,7 @@ def main():
         print("=== Michi Music Player — Smoke Startup ===")
         print()
 
-        print("[1/7] Environment")
+        print("[1/8] Environment")
         _diagnostics()
         print()
 

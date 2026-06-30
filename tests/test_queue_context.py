@@ -66,3 +66,9 @@ class TestQueueContext:
         ev = next(e for e in events if e["event_type"] == AppEvent.PLAYBACK_MODE_CHANGED)
         assert ev["payload"].get("shuffle") is True
         assert ev["payload"].get("repeat") == "all"
+
+    def test_app_closed_event(self, tmp_path):
+        svc = self._svc(tmp_path)
+        svc.record_event(AppEvent.APP_CLOSED)
+        events = svc.recent_events(limit=5)
+        assert any(e["event_type"] == AppEvent.APP_CLOSED for e in events)

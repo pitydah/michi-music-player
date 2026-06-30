@@ -244,7 +244,7 @@ class CoverFlowController:
         tracks = self.album_tracks(idx)
         fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
         if fps:
-            self._win._playback.enqueue(fps, play_now=False)
+            self._win._playback_ctrl.enqueue_with_context(fps, play_now=False, source="coverflow")
 
     def on_playlist_album(self, idx: int):
         tracks = self.album_tracks(idx)

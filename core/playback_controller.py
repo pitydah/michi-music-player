@@ -346,6 +346,15 @@ class PlaybackController:
         if ctx:
             ctx.record_playback_mode_changed(repeat=new_mode)
 
+    def enqueue_with_context(self, filepaths: list[str], play_now: bool = True,
+                               source: str = "library"):
+        ctx = self._context()
+        if ctx and filepaths:
+            ctx.record_track_queued(source=source)
+        self._win._playback.enqueue(filepaths, play_now)
+        if ctx and filepaths:
+            ctx.record_queue_updated(count=len(filepaths), source=source)
+
     # ── Table selection context ═══
 
     def _resolve_track_model_and_row(self, current):

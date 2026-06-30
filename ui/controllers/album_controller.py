@@ -24,7 +24,11 @@ class AlbumController:
         self._ctx.toast.show(text, level)
 
     def create_playlist(self, fps: list):
-        self._ctx.playback.enqueue(fps, play_now=False)
+        pc = getattr(self._win, "_playback_ctrl", None)
+        if pc:
+            pc.enqueue_with_context(fps, play_now=False, source="album")
+        else:
+            self._ctx.playback.enqueue(fps, play_now=False)
         self._toast("Álbum añadido a la cola", "success")
 
     def search_cover(self, group):

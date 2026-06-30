@@ -77,7 +77,11 @@ class ArtistController:
     def queue_artist(self, artist_key: str):
         fps = self.artist_filepaths(artist_key)
         if fps:
-            self._ctx.playback.enqueue(fps, play_now=False)
+            pc = getattr(self._win, "_playback_ctrl", None)
+            if pc:
+                pc.enqueue_with_context(fps, play_now=False, source="artist")
+            else:
+                self._ctx.playback.enqueue(fps, play_now=False)
 
     def _get_db(self):
         """Return database handle, preferring injected service."""
