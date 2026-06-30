@@ -97,7 +97,7 @@ def _count_tracks_without_audio_features(conn) -> int:
         return 0
 
 
-def build_playback_snapshot(playback=None) -> dict:
+def build_playback_snapshot(playback=None, recent_events: list | None = None) -> dict:
     result = {
         "now_playing": None,
         "queue_length": 0,
@@ -110,6 +110,19 @@ def build_playback_snapshot(playback=None) -> dict:
         "current_source": "local",
     }
     if playback is None:
+        # Fallback: use recent events to infer queue status
+        if recent_events:
+            for ev in recent_events[:20]:
+                if ev.get("event_type") == "queue_updated":
+                    p = ev.get("payload", {})
+                    c = p.get("count", 0)
+                    result["queue"] = {"active": bool(c), "count": c}
+                    result["queue_length"] = c
+                    break
+                if ev.get("event_type") == "queue_cleared":
+                    result["queue"] = {"active": False, "count": 0}
+                    result["queue_length"] = 0
+                    break
         return result
     try:
         if hasattr(playback, "current_track") and playback.current_track:
@@ -163,14 +176,14 @@ def _suggested_actions(health: dict, playback: dict) -> list[dict]:
         actions.append({
             "title": "Analizar audio faltante",
             "desc": f"{af} canciones sin análisis acústico.",
-            "target": "audio_lab",
+            "target": "analysis",
             "kind": "diagnóstico",
         })
     if ie > 0:
         actions.append({
             "title": "Revisar errores de indexación",
             "desc": f"{ie} archivos con errores al escanear.",
-            "target": "audio_lab",
+            "target": "index_errors",
             "kind": "diagnóstico",
         })
     if tc > 0 and rp < 5:

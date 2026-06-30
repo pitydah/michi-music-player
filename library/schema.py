@@ -200,6 +200,8 @@ MEDIA_ITEMS_MIGRATIONS = [
     ("mb_releasegroup_id", "TEXT DEFAULT ''"),
     ("acoustid_id", "TEXT DEFAULT ''"),
     ("acoustid_fingerprint", "TEXT DEFAULT ''"),
+    ("key", "TEXT DEFAULT ''"),
+    ("quality", "TEXT DEFAULT ''"),
 ]
 
 PLAYLISTS_MIGRATIONS = [

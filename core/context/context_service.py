@@ -478,8 +478,10 @@ class ContextService:
             "mix_preview", lambda: build_mix_snapshot(self._db))
 
     def get_playback_context(self) -> dict:
+        def _build():
+            return build_playback_snapshot(self._playback, recent_events=repo.recent_events(limit=20))
         return self._rebuild_if_dirty(
-            "playback_context", lambda: build_playback_snapshot(self._playback), ttl=60)
+            "playback_context", _build, ttl=60)
 
     def invalidate(self, key: str) -> None:
         repo.mark_dirty(key)

@@ -60,7 +60,16 @@ class SearchRouter:
         if sec in ("albums", "genres"):
             w._lib_ctrl.refresh_active_tab(force=True)
             if ctx and query:
-                ctx.record_search_started(section=sec, query=query)
+                count = None
+                try:
+                    if hasattr(w, '_model') and w._model:
+                        count = w._model.rowCount()
+                except Exception:
+                    pass
+                if count is not None:
+                    ctx.record_search_performed(section=sec, result_count=count, query=query)
+                else:
+                    ctx.record_search_started(section=sec, query=query)
             return
         if sec == "folders":
             w._folder_browser.set_filter(w._search_text)
