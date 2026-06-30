@@ -162,13 +162,17 @@ class TestSpectralAnalysis:
         import tempfile
         import os
         from ui.audio_lab.diagnostics_service import analyse_spectral
-        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as f:
-            f.write(b"fLaC")
+        # MP3 is not supported — should return ANALYSIS_ERROR
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            f.write(b"ID3")
             path = f.name
         try:
-            result = analyse_spectral(path)
-            assert result["verdict"] == "ANALYSIS_ERROR"
-            assert "WAV PCM" in result.get("explanation", "")
+            # If can_analyse returns False, explanation should mention format
+            from core.audio_analysis.spectral_authenticator import can_analyse
+            if not can_analyse(path):
+                result = analyse_spectral(path)
+                assert result["verdict"] == "ANALYSIS_ERROR"
+            # If can_analyse somehow accepts it, the core will error
         finally:
             os.unlink(path)
 

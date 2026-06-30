@@ -1,8 +1,7 @@
 """SongsDetailPanel — optional side panel showing song details."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFrame, QPushButton,
+    QVBoxLayout, QLabel, QFrame, QPushButton,
 )
 
 from ui.central.central_styles import glass_card_qss, glass_button_qss

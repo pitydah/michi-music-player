@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QHeaderView, QTableView,
-    QSplitter,
+    QWidget, QVBoxLayout, QSplitter, QTableView,
 )
 
 from library.mediaitem_table_model import MediaItemTableModel

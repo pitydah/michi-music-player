@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PySide6.QtGui import QColor
 
 from library.media_item import MediaItem
 
@@ -222,7 +221,6 @@ class MediaItemTableModel(QAbstractTableModel):
             lines.append(f"Artista: {item.artist}")
         if item.album:
             lines.append(f"Álbum: {item.album}")
-        fmt = (item.ext or "").lstrip(".").upper()
         tech = []
         if item.sample_rate:
             tech.append(f"{item.sample_rate // 1000}kHz")

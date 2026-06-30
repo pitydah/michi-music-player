@@ -292,13 +292,39 @@ def _verdict_from_metrics(metrics: dict[str, float],
             "No se pudo determinar la coherencia espectral.", 0.1)
 
 
+def _decode_flac_to_wav(filepath: str) -> str | None:
+    """Decode a FLAC file to a temporary WAV file using ffmpeg.
+
+    Returns the path to the temp WAV, or None on failure.
+    """
+    import subprocess
+    import tempfile
+    try:
+        fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="flac_spec_")
+        os.close(fd)
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", filepath, "-c:a", "pcm_s16le",
+             "-ar", "44100", "-ac", "1", tmp_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0 and os.path.isfile(tmp_path):
+            return tmp_path
+        os.unlink(tmp_path)
+        return None
+    except Exception as e:
+        logger.debug("FLAC decode failed for %s: %s", filepath, e)
+        return None
+
+
 def analyse_spectral(filepath: str,
                      declared_sample_rate: int = 44100,
                      declared_bit_depth: int = 16) -> dict[str, Any]:
     """Analyse a PCM audio file for spectral authenticity.
 
+    Supports WAV PCM directly and FLAC via temporary decode.
+
     Args:
-        filepath: Path to a WAV file (other formats not supported yet).
+        filepath: Path to audio file.
         declared_sample_rate: The sample rate declared in metadata.
         declared_bit_depth: The bit depth declared in metadata.
 
@@ -314,11 +340,31 @@ def analyse_spectral(filepath: str,
     }
 
     try:
-        samples = _read_pcm_chunk(filepath, declared_sample_rate)
+        tmp_wav = None
+        ext = os.path.splitext(filepath)[1].lower()
+
+        if ext == ".flac":
+            tmp_wav = _decode_flac_to_wav(filepath)
+            if tmp_wav is None:
+                result["error"] = (
+                    "No se pudo decodificar FLAC a WAM. "
+                    "Asegúrate de tener ffmpeg instalado."
+                )
+                return result
+            analyse_path = tmp_wav
+        else:
+            analyse_path = filepath
+
+        samples = _read_pcm_chunk(analyse_path, declared_sample_rate)
+        if tmp_wav:
+            import contextlib
+            with contextlib.suppress(Exception):
+                os.unlink(tmp_wav)
+
         if samples is None or len(samples) < FFT_SIZE:
             result["error"] = (
                 "No se pudieron leer suficientes muestras de audio. "
-                "Solo se admiten archivos WAV PCM."
+                "Solo se admiten archivos WAV PCM y FLAC."
             )
             return result
 
@@ -349,17 +395,22 @@ def analyse_spectral(filepath: str,
 def can_analyse(filepath: str) -> bool:
     """Check if spectral analysis is possible for this file.
 
-    Returns True if the file has a .wav extension and, when the file exists,
-    has a valid WAV header (RIFF + WAVE signature). Non-existent files
-    return True based on extension alone (analyse_spectral will error later).
+    Supports WAV PCM (direct) and FLAC (decoded to temporary WAV via ffmpeg).
+    Non-existent files return True based on extension (analyse_spectral will error later).
     """
-    if not filepath.lower().endswith(".wav"):
-        return False
-    if not os.path.isfile(filepath):
-        return True  # Let analyse_spectral handle the missing file error
-    try:
-        with open(filepath, "rb") as f:
-            header = f.read(12)
-        return header[:4] == b"RIFF" and header[8:12] == b"WAVE"
-    except OSError:
-        return False
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext == ".wav":
+        if not os.path.isfile(filepath):
+            return True
+        try:
+            with open(filepath, "rb") as f:
+                header = f.read(12)
+            return header[:4] == b"RIFF" and header[8:12] == b"WAVE"
+        except OSError:
+            return False
+    if ext == ".flac":
+        if not os.path.isfile(filepath):
+            return False
+        import shutil
+        return shutil.which("ffmpeg") is not None
+    return False

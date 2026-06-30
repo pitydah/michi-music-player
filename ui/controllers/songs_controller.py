@@ -110,10 +110,10 @@ class SongsController(QObject):
         """Open file manager at the item's location."""
         fp = getattr(item, 'filepath', '')
         if fp:
-            import subprocess, os
+            import os
+            import subprocess
+            import contextlib
             folder = os.path.dirname(fp)
             if os.path.isdir(folder):
-                try:
+                with contextlib.suppress(Exception):
                     subprocess.Popen(["xdg-open", folder])
-                except Exception:
-                    pass

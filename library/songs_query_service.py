@@ -6,8 +6,6 @@ No UI dependency.
 
 from __future__ import annotations
 
-from typing import Any
-
 from library.media_item import MediaItem
 
 
@@ -110,7 +108,6 @@ def _is_missing_metadata(item: MediaItem) -> bool:
 
 def _is_missing_cover(item: MediaItem) -> bool:
     """Check if a MediaItem likely lacks cover art."""
-    import os
     from library.cover_art_service import CoverArtService
     if not item.filepath:
         return True

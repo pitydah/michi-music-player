@@ -354,6 +354,20 @@ def analyse_directory(directory: str,
     return results
 
 
+def _read_flac_metadata(filepath: str) -> tuple[int, int]:
+    """Read sample rate and bit depth from a FLAC file using mutagen."""
+    try:
+        import mutagen
+        f = mutagen.File(filepath)
+        if f is not None:
+            sr = getattr(f.info, "sample_rate", 0) or 0
+            bd = getattr(f.info, "bits_per_sample", 0) or 16
+            return int(sr), int(bd)
+    except Exception:
+        pass
+    return 44100, 16
+
+
 def _read_wav_metadata(filepath: str) -> dict[str, Any]:
     """Read real sample rate and bit depth from a WAV file."""
     import wave
@@ -373,10 +387,11 @@ def _read_wav_metadata(filepath: str) -> dict[str, Any]:
 
 
 def analyse_spectral(filepath: str) -> dict[str, Any]:
-    """Run spectral authenticity analysis on a WAV file.
+    """Run spectral authenticity analysis on a WAV or FLAC file.
 
     Delegates to core/audio_analysis/spectral_authenticator.analyse_spectral.
-    Only supports WAV files. Returns verdict or error.
+    Supports WAV PCM directly and FLAC via temporary decode with ffmpeg.
+    Returns verdict or error.
 
     Before calling the core analyser, obtains real sample rate and bit depth
     from the file header so 96 kHz / 24-bit files are handled correctly.
@@ -393,13 +408,17 @@ def analyse_spectral(filepath: str) -> dict[str, Any]:
 
         if not can_analyse(filepath):
             return {"verdict": "ANALYSIS_ERROR", "label": "No soportado",
-                    "explanation": "El análisis espectral requiere un archivo WAV PCM.",
+                    "explanation": "El análisis espectral requiere un archivo WAV PCM o FLAC.",
                     "error": "Formato no soportado"}
 
         # Obtain real metadata before analysis
-        meta = _read_wav_metadata(filepath)
-        real_sr = meta["sample_rate"]
-        real_bd = meta["bit_depth"]
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext == ".flac":
+            real_sr, real_bd = _read_flac_metadata(filepath)
+        else:
+            meta = _read_wav_metadata(filepath)
+            real_sr = meta["sample_rate"]
+            real_bd = meta["bit_depth"]
         if real_sr <= 0:
             return {"verdict": "ANALYSIS_ERROR", "label": "Error",
                     "explanation": "No se pudo leer la frecuencia de muestreo del archivo.",
