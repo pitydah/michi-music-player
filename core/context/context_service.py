@@ -407,6 +407,7 @@ class ContextService:
                 current_section=self._current_section,
                 selection_scope=scope,
                 selection_label=label,
+                recent_events=repo.recent_events(limit=20),
             )
         return self._rebuild_if_dirty("home_snapshot", _build)
 

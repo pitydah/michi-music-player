@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFrame, QFileDialog, QScrollArea,
@@ -26,10 +26,13 @@ logger = logging.getLogger("michi.diagnostics.ui")
 class DiagnosticsPage(QWidget):
     navigate_requested = Signal(str)
 
-    def __init__(self):
+    def __init__(self, worker_mgr=None):
         super().__init__()
         self.setObjectName("diagnosticsPage")
+        self._worker_mgr = worker_mgr
         self._results: list[dict] = []
+        self._cancelled = False
+        self._analyse_folder_worker = None
         self._build_ui()
 
     def _build_ui(self):
@@ -97,6 +100,14 @@ class DiagnosticsPage(QWidget):
         self._clear_btn.setStyleSheet(glass_button_qss("ghost"))
         self._clear_btn.clicked.connect(self._clear_results)
         btn_row.addWidget(self._clear_btn)
+
+        self._cancel_btn = QPushButton("Cancelar")
+        self._cancel_btn.setCursor(Qt.PointingHandCursor)
+        self._cancel_btn.setStyleSheet(glass_button_qss("danger"))
+        self._cancel_btn.clicked.connect(self._cancel_analysis)
+        self._cancel_btn.setVisible(False)
+        btn_row.addWidget(self._cancel_btn)
+
         btn_row.addStretch()
         avl.addLayout(btn_row)
 
@@ -106,6 +117,14 @@ class DiagnosticsPage(QWidget):
         self._progress.setVisible(False)
         self._progress.setStyleSheet(glass_progress_qss())
         avl.addWidget(self._progress)
+
+        self._progress_label = QLabel("")
+        self._progress_label.setStyleSheet(
+            "color: rgba(255,255,255,0.56); font-size: 11px; "
+            "background: transparent;"
+        )
+        self._progress_label.setVisible(False)
+        avl.addWidget(self._progress_label)
 
         cl.addWidget(action_card)
 
@@ -309,21 +328,76 @@ class DiagnosticsPage(QWidget):
             )
             return
 
+        self._cancelled = False
+        self._results = []
+        self._analyse_file_btn.setEnabled(False)
+        self._analyse_folder_btn.setEnabled(False)
+        self._cancel_btn.setVisible(True)
         self._progress.setVisible(True)
         self._progress.setRange(0, len(audio_files))
         self._progress.setValue(0)
+        self._progress_label.setVisible(True)
+        self._progress_label.setText(f"Analizando 0/{len(audio_files)}...")
 
-        self._results = []
-        for i, fp in enumerate(audio_files):
-            self._results.append(analyse_file(fp))
-            self._progress.setValue(i + 1)
-            from PySide6.QtCore import QCoreApplication
-            QCoreApplication.processEvents()
+        self._total_files = len(audio_files)
+        self._files_copy = list(audio_files)
 
-        self._populate_table()
-        self._generate_report_btn.setEnabled(True)
+        def _worker():
+            for fp in self._files_copy:
+                if self._cancelled:
+                    break
+                result = analyse_file(fp)
+                self._results.append(result)
+                from PySide6.QtCore import QMetaObject, Qt as QtEnum
+                QMetaObject.invokeMethod(
+                    self, "_on_one_file_done",
+                    QtEnum.QueuedConnection,
+                )
+            if not self._cancelled:
+                QMetaObject.invokeMethod(
+                    self, "_on_folder_analysis_done",
+                    QtEnum.QueuedConnection,
+                )
+
+        if self._worker_mgr and hasattr(self._worker_mgr, 'run_task'):
+            self._analyse_folder_worker = f"diag_folder_{id(self._files_copy)}"
+            self._worker_mgr.run_task(
+                self._analyse_folder_worker, _worker,
+                on_done=lambda: None,
+            )
+        else:
+            self._analyse_folder_worker = "diag_folder_sync"
+            import threading
+            t = threading.Thread(target=_worker, daemon=True)
+            t.start()
+
+    @Slot()
+    def _on_one_file_done(self):
+        current = len(self._results) + 1
+        self._progress.setValue(min(current, self._total_files))
+        self._progress_label.setText(
+            f"Analizando {min(current, self._total_files)}/{self._total_files}..."
+        )
+
+    @Slot()
+    def _on_folder_analysis_done(self):
+        self._analyse_finished()
+
+    def _analyse_finished(self):
+        self._analyse_file_btn.setEnabled(True)
+        self._analyse_folder_btn.setEnabled(True)
+        self._cancel_btn.setVisible(False)
         self._progress.setVisible(False)
-        self._show_report()
+        self._progress_label.setVisible(False)
+        if self._results:
+            self._populate_table()
+            self._generate_report_btn.setEnabled(True)
+            self._show_report()
+
+    def _cancel_analysis(self):
+        self._cancelled = True
+        self._analyse_finished()
+        self._progress_label.setText("Análisis cancelado.")
 
     def _clear_results(self):
         self._results.clear()

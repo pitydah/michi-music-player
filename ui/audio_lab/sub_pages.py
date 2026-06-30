@@ -292,9 +292,10 @@ class AudioLabBackupPage(QWidget):
 class AudioLabDiagnosticsPage(QWidget):
     navigate_requested = Signal(str)
 
-    def __init__(self):
+    def __init__(self, worker_mgr=None):
         super().__init__()
         self.setObjectName("audioLabDiagnosticsPage")
+        self._worker_mgr = worker_mgr
         self._inner = None
         self._build_ui()
 
@@ -303,7 +304,7 @@ class AudioLabDiagnosticsPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         try:
             from ui.audio_lab.diagnostics_page import DiagnosticsPage
-            self._inner = DiagnosticsPage()
+            self._inner = DiagnosticsPage(worker_mgr=self._worker_mgr)
             self._inner.navigate_requested.connect(self.navigate_requested.emit)
             layout.addWidget(self._inner)
         except Exception as e:

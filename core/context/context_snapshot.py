@@ -148,6 +148,13 @@ def build_playback_snapshot(playback=None, recent_events: list | None = None) ->
 
 
 def _suggested_actions(health: dict, playback: dict) -> list[dict]:
+    _VALID_TARGETS = frozenset({
+        "metadata_editor", "audio_lab", "library", "favs",
+    })
+
+    def _safe_target(t: str) -> str:
+        return t if t in _VALID_TARGETS else "library"
+
     actions = []
     mm = health.get("missing_metadata_count", 0)
     mc = health.get("missing_cover_count", 0)
@@ -176,14 +183,14 @@ def _suggested_actions(health: dict, playback: dict) -> list[dict]:
         actions.append({
             "title": "Analizar audio faltante",
             "desc": f"{af} canciones sin análisis acústico.",
-            "target": "analysis",
+            "target": _safe_target("analysis"),
             "kind": "diagnóstico",
         })
     if ie > 0:
         actions.append({
             "title": "Revisar errores de indexación",
             "desc": f"{ie} archivos con errores al escanear.",
-            "target": "index_errors",
+            "target": _safe_target("index_errors"),
             "kind": "diagnóstico",
         })
     if tc > 0 and rp < 5:
@@ -215,7 +222,7 @@ def build_assistant_snapshot(db, playback=None,
                               current_tab: str = "",
                               recent_events: list | None = None) -> dict:
     health = build_library_health_snapshot(db)
-    pb = build_playback_snapshot(playback)
+    pb = build_playback_snapshot(playback, recent_events=recent_events)
     result = {
         "route": {"current_section": current_section, "current_tab": current_tab},
         "playback": {
@@ -240,9 +247,10 @@ def build_assistant_snapshot(db, playback=None,
 def build_home_snapshot(db, playback=None, sync=None,
                         current_section: str = "",
                         selection_scope: str | None = None,
-                        selection_label: str = "") -> dict:
+                        selection_label: str = "",
+                        recent_events: list | None = None) -> dict:
     health = build_library_health_snapshot(db)
-    pb = build_playback_snapshot(playback)
+    pb = build_playback_snapshot(playback, recent_events=recent_events)
     result = {
         "library_health": health,
         "playback": pb,

@@ -24,6 +24,16 @@ class SearchRouter:
     def _section_key(w) -> str:
         return getattr(w, '_current_route_key', None) or w._current_section_key
 
+    @staticmethod
+    def _visible_model_count(w) -> int | None:
+        try:
+            model = getattr(w, "_model", None)
+            if model and hasattr(model, "rowCount"):
+                return int(model.rowCount())
+        except Exception:
+            return None
+        return None
+
     def _record_search_performed(self, section: str, result_count: int, query: str = ""):
         ctx = self._context()
         if ctx:
@@ -60,12 +70,7 @@ class SearchRouter:
         if sec in ("albums", "genres"):
             w._lib_ctrl.refresh_active_tab(force=True)
             if ctx and query:
-                count = None
-                try:
-                    if hasattr(w, '_model') and w._model:
-                        count = w._model.rowCount()
-                except Exception:
-                    pass
+                count = self._visible_model_count(w)
                 if count is not None:
                     ctx.record_search_performed(section=sec, result_count=count, query=query)
                 else:
@@ -86,6 +91,12 @@ class SearchRouter:
                     ctx.record_search_started(section=sec, query=query)
             return
         if sec in ("favs", "recent", "mix_unplayed"):
+            if ctx and query:
+                count = self._visible_model_count(w)
+                if count is not None:
+                    ctx.record_search_performed(section=sec, result_count=count, query=query)
+                else:
+                    ctx.record_search_started(section=sec, query=query)
             return
         if sec == "artists" and not w._artist_repo.current_key:
             query = w._search_text.lower()

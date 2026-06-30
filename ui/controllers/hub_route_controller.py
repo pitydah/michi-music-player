@@ -158,8 +158,11 @@ class HubRouteController:
 
     def show_audio_lab_diagnostics(self, key: str = ""):
         def _build():
+            w = self._win
             from ui.audio_lab.sub_pages import AudioLabDiagnosticsPage
-            page = AudioLabDiagnosticsPage()
+            page = AudioLabDiagnosticsPage(
+                worker_mgr=getattr(w, '_workers', None)
+            )
             page.navigate_requested.connect(self._win._on_sidebar_navigate)
             return page
         self._lazy("audio_lab_diagnostics", _build)
