@@ -154,11 +154,6 @@ class MediaItemTableModel(QAbstractTableModel):
         if role == ItemDataRole.DisplayRole:
             return self._display(item, col)
 
-        if role == ItemDataRole.DecorationRole:
-            if col == _COL_FAV:
-                return "★" if item_id in self._fav_set else None
-            return None
-
         if role == ItemDataRole.UserRole:
             return item
 
@@ -170,6 +165,8 @@ class MediaItemTableModel(QAbstractTableModel):
         return None
 
     def _display(self, item: MediaItem, col: int) -> str:
+        if col == _COL_FAV:
+            return "★" if getattr(item, 'id', 0) in self._fav_set else ""
         if col == _COL_TITLE:
             return item.title or item.filename or ""
         if col == _COL_ARTIST:

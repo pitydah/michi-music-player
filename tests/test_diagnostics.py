@@ -180,11 +180,13 @@ class TestSpectralAnalysis:
         import tempfile
         import os
         from core.audio_lab.diagnostics_service import analyse_spectral
+        # FLAC without ffmpeg or corrupt FLAC should error
         with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as f:
             f.write(b"fLaC\x00\x00\x00\x22\x10\x00\x10\x00")
             path = f.name
         try:
             result = analyse_spectral(path)
+            # Can be ANALYSIS_ERROR if ffmpeg not available or decode fails
             assert result["verdict"] == "ANALYSIS_ERROR"
         finally:
             os.unlink(path)

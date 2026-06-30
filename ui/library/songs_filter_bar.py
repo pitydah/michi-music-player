@@ -44,6 +44,7 @@ class SongsFilterBar(QWidget):
         self._fav_check = QLineEdit()
         self._fav_check.setPlaceholderText("Solo favoritos")
         self._fav_check.setClearButtonEnabled(True)
+        self._fav_check.textChanged.connect(self._emit)
         layout.addWidget(self._fav_check)
 
         layout.addStretch()
@@ -68,4 +69,6 @@ class SongsFilterBar(QWidget):
             payload["formats"] = {f}
         if q:
             payload["qualities"] = {q}
+        if self._fav_check.text().strip():
+            payload["only_favorites"] = True
         self.filters_changed.emit(payload)

@@ -102,8 +102,23 @@ class TestSpectralAuthenticator:
 
     def test_can_analyse_wav(self):
         assert can_analyse("song.wav")
-        assert not can_analyse("song.flac")
         assert not can_analyse("song.mp3")
+
+    def test_can_analyse_flac_requires_file(self):
+        # FLAC requires the file to exist (unlike WAV which accepts nonexistent)
+        import tempfile
+        import shutil
+        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as f:
+            f.write(b"fLaC\x00\x00\x00\x22\x10\x00\x10\x00")
+            path = f.name
+        try:
+            import os
+            if shutil.which("ffmpeg"):
+                assert can_analyse(path) is True
+            else:
+                assert can_analyse(path) is False
+        finally:
+            os.unlink(path)
 
     def test_analyse_spectral_nonexistent_file(self):
         result = analyse_spectral("/nonexistent/file.wav")
@@ -116,7 +131,6 @@ class TestSpectralAuthenticator:
 
     def test_can_analyse_validates_wav_header(self):
         assert can_analyse("song.wav")
-        assert not can_analyse("song.flac")
         assert not can_analyse("song.mp3")
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             f.write(b"RIFF\x00\x00\x00\x00WAVE")

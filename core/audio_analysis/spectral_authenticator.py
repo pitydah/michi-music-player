@@ -292,15 +292,44 @@ def _verdict_from_metrics(metrics: dict[str, float],
             "No se pudo determinar la coherencia espectral.", 0.1)
 
 
+def _decode_flac_to_wav_preserve(filepath: str, sample_rate: int,
+                                  bit_depth: int) -> str | None:
+    """Decode a FLAC file to a temporary WAV preserving sample rate and bit depth.
+
+    Uses ffmpeg to decode. For 24-bit files uses pcm_s24le, for 16-bit pcm_s16le.
+    Converts to mono for spectral analysis.
+    """
+    import subprocess
+    import tempfile
+    codec = "pcm_s24le" if bit_depth >= 24 else "pcm_s16le"
+    try:
+        fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="flac_spec_")
+        os.close(fd)
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-i", filepath,
+             "-c:a", codec, "-ar", str(sample_rate), "-ac", "1",
+             tmp_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0 and os.path.isfile(tmp_path):
+            return tmp_path
+        os.unlink(tmp_path)
+        return None
+    except Exception as e:
+        logger.debug("FLAC decode failed for %s: %s", filepath, e)
+        return None
+
+
 def analyse_spectral(filepath: str,
                      declared_sample_rate: int = 44100,
                      declared_bit_depth: int = 16) -> dict[str, Any]:
     """Analyse a PCM audio file for spectral authenticity.
 
-    Only supports WAV PCM. FLAC support is planned but not yet available.
+    Supports WAV PCM directly and FLAC via temporary decode preserving
+    the original sample rate and bit depth.
 
     Args:
-        filepath: Path to WAV file.
+        filepath: Path to WAV or FLAC file.
         declared_sample_rate: The sample rate declared in metadata.
         declared_bit_depth: The bit depth declared in metadata.
 
@@ -315,12 +344,29 @@ def analyse_spectral(filepath: str,
         "error": "",
     }
 
-    if not filepath.lower().endswith(".wav"):
-        result["error"] = "El análisis espectral solo soporta WAV PCM por ahora."
-        return result
+    ext = os.path.splitext(filepath)[1].lower()
+    tmp_wav = None
+    analyse_path = filepath
+
+    if ext == ".flac":
+        tmp_wav = _decode_flac_to_wav_preserve(
+            filepath, declared_sample_rate, declared_bit_depth,
+        )
+        if tmp_wav is None:
+            result["error"] = (
+                "No se pudo decodificar FLAC a WAV. "
+                "Asegúrate de tener ffmpeg instalado."
+            )
+            return result
+        analyse_path = tmp_wav
 
     try:
-        samples = _read_pcm_chunk(filepath, declared_sample_rate)
+        samples = _read_pcm_chunk(analyse_path, declared_sample_rate)
+        if tmp_wav:
+            import contextlib
+            with contextlib.suppress(Exception):
+                os.unlink(tmp_wav)
+
         if samples is None or len(samples) < FFT_SIZE:
             result["error"] = (
                 "No se pudieron leer suficientes muestras de audio. "
@@ -355,16 +401,21 @@ def analyse_spectral(filepath: str,
 def can_analyse(filepath: str) -> bool:
     """Check if spectral analysis is possible for this file.
 
-    Only supports WAV PCM. FLAC support is planned but not yet available.
+    Supports WAV PCM directly and FLAC via temporary decode with ffmpeg.
     """
     ext = os.path.splitext(filepath)[1].lower()
-    if ext != ".wav":
-        return False
-    if not os.path.isfile(filepath):
-        return True
-    try:
-        with open(filepath, "rb") as f:
-            header = f.read(12)
-        return header[:4] == b"RIFF" and header[8:12] == b"WAVE"
-    except OSError:
-        return False
+    if ext == ".wav":
+        if not os.path.isfile(filepath):
+            return True
+        try:
+            with open(filepath, "rb") as f:
+                header = f.read(12)
+            return header[:4] == b"RIFF" and header[8:12] == b"WAVE"
+        except OSError:
+            return False
+    if ext == ".flac":
+        if not os.path.isfile(filepath):
+            return False
+        import shutil
+        return shutil.which("ffmpeg") is not None
+    return False

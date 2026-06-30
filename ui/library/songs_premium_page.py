@@ -84,6 +84,8 @@ class SongsPremiumPage(QWidget):
         self._bulk_bar.action_queue.connect(self._on_bulk_queue)
         self._bulk_bar.action_edit_metadata.connect(self._on_bulk_edit)
         self._bulk_bar.action_toggle_fav.connect(self._on_bulk_fav)
+        self._bulk_bar.action_add_to_playlist.connect(self._on_bulk_add_to_playlist)
+        self._bulk_bar.action_analyze.connect(self._on_bulk_analyze)
         self._bulk_bar.action_locate.connect(self._on_bulk_locate)
         outer.addWidget(self._bulk_bar)
 
@@ -119,6 +121,33 @@ class SongsPremiumPage(QWidget):
         items = self.selected_items()
         if items and self._ctrl:
             self._ctrl.locate_file(items[0])
+
+    def _on_bulk_add_to_playlist(self, _=None):
+        items = self.selected_items()
+        if not items or not self._ctrl:
+            return
+        fps = [i.filepath for i in items if hasattr(i, 'filepath') and i.filepath]
+        if fps:
+            from ui.controllers.playlist_controller import PlaylistController
+            ctrl = PlaylistController(self._ctrl._win)
+            ctrl.create_playlist_from_tracks(fps, "Nueva playlist")
+
+    def _on_bulk_analyze(self, _=None):
+        items = self.selected_items()
+        if not items or not self._ctrl:
+            return
+        fps = [i.filepath for i in items if hasattr(i, 'filepath') and i.filepath]
+        if fps:
+            wm = getattr(self._ctrl._win, '_workers', None)
+            if wm:
+                for fp in fps:
+                    def _run(filepath):
+                        try:
+                            from ui.audio_lab.diagnostics_service import analyse_file
+                            analyse_file(filepath)
+                        except Exception:
+                            pass
+                    wm.run_task("analyze_song", lambda f=fp: _run(f))
 
     def _on_filters_changed(self, filters: dict):
         if not self._ctrl:
