@@ -158,6 +158,65 @@ class DiagnosticsCache:
         self._conn.execute("DELETE FROM audio_lab_quality_cache")
         self._conn.commit()
 
+    def get_many(self, paths: list[str]) -> dict[str, dict[str, Any] | None]:
+        """Return cached results for multiple paths in a single query.
+
+        Returns dict mapping filepath -> cached result dict or None.
+        Validates mtime + size for each path.
+        """
+        result: dict[str, dict[str, Any] | None] = {}
+        if not paths:
+            return result
+
+        stat_cache: dict[str, tuple[float, int] | None] = {}
+        for p in paths:
+            try:
+                st = os.stat(p)
+                stat_cache[p] = (st.st_mtime, st.st_size)
+            except OSError:
+                stat_cache[p] = None
+
+        rows = self._conn.execute(
+            "SELECT * FROM audio_lab_quality_cache WHERE path IN ({})"
+            .format(",".join("?" for _ in paths)),
+            paths,
+        ).fetchall()
+
+        row_map = {r["path"]: r for r in rows}
+        for p in paths:
+            sc = stat_cache.get(p)
+            if sc is None:
+                result[p] = None
+                continue
+            row = row_map.get(p)
+            if row is None:
+                result[p] = None
+                continue
+            if row["mtime"] != sc[0] or row["size"] != sc[1]:
+                result[p] = None
+                continue
+            result[p] = {
+                "filepath": row["path"],
+                "exists": True,
+                "error": row["error"] or "",
+                "from_cache": True,
+                "format_info": {
+                    "container": row["container"] or "",
+                    "codec": row["codec"] or "",
+                    "sample_rate": row["sample_rate"] or 0,
+                    "bit_depth": row["bit_depth"] or 0,
+                    "channels": row["channels"] or 0,
+                    "duration": row["duration"] or 0.0,
+                    "bitrate": row["bitrate"] or 0,
+                    "warnings": _safe_load_json(row["warnings_json"]),
+                },
+                "quality": {
+                    "category": row["quality_category"] or "",
+                    "label": row["quality_label"] or "",
+                },
+            }
+        return result
+
     def stats(self) -> dict[str, Any]:
         row = self._conn.execute(
             "SELECT COUNT(*) as total, "
@@ -444,6 +503,69 @@ def analyse_spectral(filepath: str) -> dict[str, Any]:
         logger.exception("Spectral analysis failed")
         return {"verdict": "ANALYSIS_ERROR", "label": "Error",
                 "explanation": str(e), "error": str(e)}
+
+
+def get_badges_for_files(paths: list[str]) -> dict[str, dict[str, str]]:
+    """Return badges for multiple files using a single cache query.
+
+    Returns dict mapping filepath -> badge dict with keys label, kind, tooltip.
+    Uses cache.get_many() for efficiency. Falls back to extension for uncached.
+    """
+    result: dict[str, dict[str, str]] = {}
+    if not paths:
+        return result
+
+    try:
+        cache = _get_cache()
+        if cache:
+            cached = cache.get_many(paths)
+            for p in paths:
+                c = cached.get(p)
+                if c and not c.get("error"):
+                    fi = c.get("format_info", {})
+                    q = c.get("quality", {})
+                    cont = fi.get("container", "").upper()
+                    sr = fi.get("sample_rate", 0)
+                    bd = fi.get("bit_depth", 0)
+                    label = cont if cont else os.path.splitext(p)[1].upper().lstrip(".")
+                    if sr and bd:
+                        label += f" {bd}/{sr // 1000}"
+                    elif sr:
+                        label += f" {sr // 1000} kHz"
+                    kind = q.get("category", "unknown")
+                    result[p] = {"label": label, "kind": kind,
+                                 "tooltip": _badge_tooltip(kind)}
+                else:
+                    result[p] = _fallback_badge_ext(p)
+            return result
+    except Exception:
+        pass
+
+    for p in paths:
+        result[p] = _fallback_badge_ext(p)
+    return result
+
+
+def _badge_tooltip(kind: str) -> str:
+    return {
+        "hires": "Respuesta espectral coherente con resolución Hi-Res",
+        "lossless": "Archivo lossless analizado por Audio Lab",
+        "lossy": "Archivo con pérdida",
+        "dsd": "DSD",
+    }.get(kind, "Archivo analizado por Audio Lab")
+
+
+def _fallback_badge_ext(path: str) -> dict[str, str]:
+    ext = os.path.splitext(path)[1].lower().lstrip(".")
+    label = ext.upper() if ext else "?"
+    kind = "unknown"
+    if ext in ("flac", "wav", "aiff", "alac"):
+        kind = "lossless"
+    elif ext in ("mp3", "aac", "ogg", "opus"):
+        kind = "lossy"
+    elif ext in ("dsf", "dff"):
+        kind = "dsd"
+    return {"label": label, "kind": kind, "tooltip": ""}
 
 
 def get_badge_for_file(filepath: str) -> dict[str, str]:

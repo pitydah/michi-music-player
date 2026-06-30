@@ -28,10 +28,15 @@ def get_audio_lab_badge_for_path(path: str) -> dict[str, str]:
 
 
 def get_audio_lab_badges_for_paths(paths: list[str]) -> dict[str, dict[str, str]]:
-    """Return badges for multiple paths in a single call.
+    """Return badges for multiple paths in a single batch call.
 
-    Uses batch processing where possible. Falls back to per-path for safety.
+    Uses core.audio_lab.diagnostics_service.get_badges_for_files for efficiency.
     """
+    try:
+        from core.audio_lab.diagnostics_service import get_badges_for_files
+        return get_badges_for_files(paths)
+    except Exception:
+        pass
     result: dict[str, dict[str, str]] = {}
     for p in paths:
         try:
@@ -130,6 +135,17 @@ def matches_spectral_filter(path: str, value: str) -> bool:
         return False
     except Exception:
         return False
+
+
+def get_quality_filter_values(paths: list[str]) -> dict[str, str]:
+    """Return quality filter values for multiple paths."""
+    badges = get_audio_lab_badges_for_paths(paths)
+    return {p: b.get("kind", "unknown") for p, b in badges.items()}
+
+
+def get_analysis_pending_map(paths: list[str]) -> dict[str, bool]:
+    """Return analysis pending status for multiple paths."""
+    return {p: is_analysis_pending(p) for p in paths}
 
 
 def _fallback_badge(path: str) -> dict[str, str]:
