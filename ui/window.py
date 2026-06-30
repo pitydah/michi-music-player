@@ -543,40 +543,10 @@ class MainWindow(QMainWindow):
         return svc
 
     def _make_michi_api(self):
-        from core.state_store import AppStateStore
-        from integrations.http_api.bridge import MichiApiBridge
-        from integrations.http_api.http_api import MichiHttpApi
-        store = AppStateStore(self)
-        bridge = MichiApiBridge(self)
-        # Wire bridge signals to window handlers
-        bridge.play_requested.connect(lambda: self._playback.play_or_resume())
-        bridge.pause_requested.connect(lambda: self._playback.pause())
-        bridge.stop_requested.connect(lambda: self._playback.stop())
-        bridge.next_requested.connect(lambda: self._playback.play_next())
-        bridge.previous_requested.connect(lambda: self._playback.play_prev())
-        bridge.volume_requested.connect(lambda v: self._playback.set_volume(v))
-        bridge.play_media_requested.connect(self._on_api_play_media)
-        bridge.select_destination_requested.connect(self._on_api_select_dest)
-        bridge.library_play_requested.connect(self._on_api_library_play)
-        self._state_store = store
-        self._api_bridge = bridge
-        svc = MichiHttpApi(self)
-        svc.configure()
-        svc.set_store_and_bridge(store, bridge)
-        # Update state store on player changes
-        self._playback.state_changed.connect(
-            lambda s: store.update_player(state=self.state_to_str(s)))
-        self._playback.volume_changed.connect(
-            lambda v: store.update_player(volume=v))
-        self._shutdown.register("michi_api", lambda: svc.stop())
-        return svc
+        return self._michi_link_ctrl.make_michi_api()
 
     def _make_mdns(self):
-        from integrations.http_api.mdns_advertiser import MDNSAdvertiser
-        svc = MDNSAdvertiser(self)
-        svc.configure()
-        self._shutdown.register("mdns", lambda: svc.stop())
-        return svc
+        return self._michi_link_ctrl.make_mdns()
 
     def _make_local_media(self):
         from integrations.home_assistant.local_media_server import LocalMediaServer
@@ -624,43 +594,7 @@ class MainWindow(QMainWindow):
     # _lazy_hub removed — migrated to HubRouteController
 
     def _ensure_sync_manager(self):
-        """Lazy-create SyncManager with all signal wiring."""
-        if hasattr(self, '_sync_mgr'):
-            return self._sync_mgr
-        from sync.sync_manager import SyncManager
-        from ui.services.device_registry import DeviceRegistry
-        sync_action = getattr(getattr(self, '_action_ctrl', None), '_sync_action', None)
-        self._sync_mgr = SyncManager(self._db, self)
-        self._sync_mgr.set_device_registry(DeviceRegistry())
-        self._sync_mgr.set_playback_services(
-            getattr(self, '_playback_ctrl', None),
-            getattr(self, '_playback', None),
-        )
-        if sync_action:
-            self._sync_mgr.sync_started.connect(
-                lambda p: sync_action.setText(
-                    f"✓ Sincronización activa (puerto {p})"))
-            self._sync_mgr.sync_stopped.connect(
-                lambda: sync_action.setText(
-                    "Activar sincronización Android"))
-        ctx_svc = getattr(self, '_context_svc', None)
-        if ctx_svc:
-            self._sync_mgr.sync_stopped.connect(
-                lambda: ctx_svc.record_sync_finished({"peers": 0}))
-            self._sync_mgr.sync_started.connect(
-                lambda p: ctx_svc.record_event("sync_started",
-                    {"port": p}))
-        self._sync_mgr.error_occurred.connect(
-            lambda m: (self._toast_svc.show(f"Sync error: {m}", "error")
-                       if self._toast_svc else None))
-        self._sync_mgr.client_connected.connect(
-            lambda d: (self._toast_svc.show(f"Dispositivo conectado: {d}", "info")
-                       if self._toast_svc else None))
-        self._sync_mgr.peer_found.connect(
-            lambda a, ip: self._rebuild_sidebar())
-        self._sync_mgr.peer_lost.connect(
-            lambda a: self._rebuild_sidebar())
-        return self._sync_mgr
+        return self._michi_link_ctrl.ensure_sync_manager()
 
     def _show_preferences(self, section: str = ""):
         from ui.preferences_window import PreferencesWindow, PAGE_DEFS

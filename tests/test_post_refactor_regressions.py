@@ -366,6 +366,11 @@ class TestMicroStability:
         assert "[1/8] Environment" in content
         assert "MICHI_SMOKE_INCLUDE_AUDIO_LAB" in content
 
+    def test_window_py_not_growing(self):
+        content = _read(os.path.join(_root(), "ui", "window.py"))
+        lines = content.count("\n") + 1
+        assert lines < 1300, f"window.py has {lines} lines (limit 1300)"
+
     def test_noise_overlay_uses_cached_tiled_texture(self):
         content = _read(os.path.join(_root(), "ui", "effects", "michi_glass.py"))
         assert "drawTiledPixmap" in content
