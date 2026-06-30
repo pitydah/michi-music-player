@@ -172,12 +172,20 @@ class MichiDiscLabPage(QWidget):
             "color: rgba(255,255,255,0.86); font-size: 12px; }"
         )
         self._profile_data: list[str] = []
-        for p in RIP_PROFILES:
+        first_available = 0
+        for i, p in enumerate(RIP_PROFILES):
             if p.available:
                 self._profile_combo.addItem(p.name, p.fmt)
+                if first_available == 0 and self._profile_combo.count() == 1:
+                    first_available = i
             else:
-                self._profile_combo.addItem(f"{p.name} (próximamente)")
-        self._profile_combo.setCurrentIndex(0)
+                label = f"{p.name} (próximamente)"
+                self._profile_combo.addItem(label)
+                model = self._profile_combo.model()
+                item = model.item(self._profile_combo.count() - 1)
+                if item:
+                    item.setEnabled(False)
+        self._profile_combo.setCurrentIndex(first_available)
         self._profile_combo.currentIndexChanged.connect(
             self._on_profile_changed
         )
@@ -365,8 +373,9 @@ class MichiDiscLabPage(QWidget):
             self._track_table.setItem(i, 4, QTableWidgetItem("Pendiente"))
 
     def _on_profile_changed(self, idx: int):
-        count_available = sum(1 for p in RIP_PROFILES if p.available)
-        if idx >= count_available:
+        model = self._profile_combo.model()
+        is_disabled = model and model.item(idx) and not model.item(idx).isEnabled()
+        if is_disabled or not self._profile_combo.currentData():
             self._import_btn.setEnabled(False)
             self._drive_status.setText(
                 "Perfil no disponible. Selecciona WAV sin compresión u otro perfil disponible."
@@ -381,9 +390,14 @@ class MichiDiscLabPage(QWidget):
             self._drive_status.setText("Selecciona una carpeta de destino primero.")
             return
 
+        model = self._profile_combo.model()
+        idx = self._profile_combo.currentIndex()
+        is_disabled = model and model.item(idx) and not model.item(idx).isEnabled()
         profile_name = self._profile_combo.currentData()
-        if not profile_name:
-            self._drive_status.setText("Selecciona un perfil disponible.")
+        if not profile_name or is_disabled:
+            self._drive_status.setText(
+                "Perfil no disponible. Selecciona un perfil habilitado."
+            )
             return
         mode_value = self._mode_combo.currentData() or "fast"
 
