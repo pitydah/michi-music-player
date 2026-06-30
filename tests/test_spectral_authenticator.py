@@ -67,6 +67,7 @@ class TestSpectralAuthenticator:
             "energy_above_16k": 0.01,
             "energy_above_18k": 0.001,
             "energy_above_20k": 1e-8,
+            "segments_analysed": 30,
         }
         verdict, label, _expl, conf = _verdict_from_metrics(metrics, 44100, 16)
         assert verdict == "LOSSLESS_COHERENT"
@@ -80,6 +81,7 @@ class TestSpectralAuthenticator:
             "energy_above_16k": 1e-10,
             "energy_above_18k": 1e-11,
             "energy_above_20k": 1e-12,
+            "segments_analysed": 30,
         }
         verdict, label, _expl, conf = _verdict_from_metrics(metrics, 44100, 16)
         assert verdict == "POSSIBLE_LOSSY_SOURCE"
