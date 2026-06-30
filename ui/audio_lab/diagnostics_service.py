@@ -372,6 +372,83 @@ def analyse_spectral(filepath: str) -> dict[str, Any]:
                 "explanation": str(e), "error": str(e)}
 
 
+def get_badge_for_file(filepath: str) -> dict[str, str]:
+    """Return a badge dict for a file based on cached diagnostic data.
+
+    Returns dict with:
+      - label: short human-readable string (e.g. "FLAC 24/96")
+      - kind: "hires" | "lossless" | "lossy" | "dsd" | "unknown" | "warning"
+      - tooltip: longer explanation
+
+    Uses the diagnostics cache if available. If no cache, returns a basic
+    badge derived from the file extension.
+    """
+    cache = _get_cache()
+    if cache:
+        cached = cache.get(filepath)
+        if cached:
+            fi = cached.get("format_info", {})
+            q = cached.get("quality", {})
+            cont = fi.get("container", "").upper()
+            sr = fi.get("sample_rate", 0)
+            bd = fi.get("bit_depth", 0)
+            label = cont if cont else os.path.splitext(filepath)[1].upper().lstrip(".")
+            if sr and bd:
+                label += f" {bd}/{sr // 1000}"
+            elif sr:
+                label += f" {sr // 1000} kHz"
+            kind = q.get("category", "unknown")
+            if kind == "hires":
+                tooltip = "Respuesta espectral coherente con resolución Hi-Res"
+            elif kind == "lossless":
+                tooltip = "Archivo lossless analizado por Audio Lab"
+            elif kind == "lossy":
+                tooltip = "Archivo con pérdida"
+            elif kind == "dsd":
+                tooltip = "DSD"
+            else:
+                tooltip = "Archivo analizado por Audio Lab"
+            return {"label": label, "kind": kind, "tooltip": tooltip}
+
+    # Fallback: basic badge from extension
+    ext = os.path.splitext(filepath)[1].lower().lstrip(".")
+    label = ext.upper() if ext else "?"
+    kind = "unknown"
+    if ext in ("flac", "wav", "aiff", "alac"):
+        kind = "lossless"
+    elif ext in ("mp3", "aac", "ogg", "opus"):
+        kind = "lossy"
+    elif ext in ("dsf", "dff"):
+        kind = "dsd"
+    return {"label": label, "kind": kind, "tooltip": ""}
+
+
+def get_spectral_badge(result: dict[str, Any]) -> dict[str, str]:
+    """Return a badge dict for a spectral analysis result.
+
+    Returns dict with:
+      - label: short label (e.g. "Upsampling sospechoso")
+      - kind: "warning" | "info" | "success"
+      - tooltip: explanation
+    """
+    verdict = result.get("verdict", "ANALYSIS_ERROR")
+    label = result.get("label", "Error")
+    explanation = result.get("explanation", "")
+
+    if verdict in ("HI_RES_COHERENT", "LOSSLESS_COHERENT"):
+        kind = "success"
+    elif verdict in ("SUSPICIOUS_UPSAMPLING", "POSSIBLE_LOSSY_SOURCE"):
+        kind = "warning"
+    else:
+        kind = "info"
+
+    conf = result.get("confidence", 0)
+    if conf:
+        explanation += f" (confianza: {conf:.0%})"
+
+    return {"label": label, "kind": kind, "tooltip": explanation}
+
+
 def generate_report(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Generate a comprehensive summary report from a list of per-file analyses.
 

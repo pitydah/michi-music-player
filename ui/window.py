@@ -1193,8 +1193,7 @@ class MainWindow(QMainWindow):
                 playlist_id=None, playlist_name="",
                 mix_key="", search_query="",
             )
-            ctx.record_event(AppEvent.FOLDER_SELECTED, {
-                "folder_name": folder_name, "count": len(fps)})
+            ctx.record_folder_selected(folder_name=folder_name, count=len(fps))
         self._play_filepaths(fps, play_now=True)
 
     def _on_folder_queued(self, fps: list[str]):
@@ -1207,21 +1206,18 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         if ctx:
-            from core.context.context_events import AppEvent
             ctx.update_selection(
                 scope="folder", folder_name=folder_name,
                 album="", artist="", genre="",
                 playlist_id=None, playlist_name="",
                 mix_key="", search_query="",
             )
-            ctx.record_event(AppEvent.FOLDER_QUEUED, {
-                "folder_name": folder_name, "count": len(fps)})
+            ctx.record_folder_queued(folder_name=folder_name, count=len(fps))
         self._play_filepaths(fps, play_now=False)
 
     def _on_folder_scan_requested(self, path: str):
         ctx = self._context_svc
         if ctx:
-            from core.context.context_events import AppEvent
             ctx.update_selection(
                 scope="folder",
                 folder_name=os.path.basename(path.rstrip("/")),
@@ -1229,8 +1225,7 @@ class MainWindow(QMainWindow):
                 playlist_id=None, playlist_name="",
                 mix_key="", search_query="",
             )
-            ctx.record_event(AppEvent.FOLDER_SCANNED,
-                {"folder_name": os.path.basename(path.rstrip("/"))})
+            ctx.record_folder_scanned(folder_name=path)
         self._scan_path(path)
 
     def _play_trackref(self, track: TrackRef):
@@ -1340,8 +1335,7 @@ class MainWindow(QMainWindow):
         ctx = getattr(self, '_context_svc', None)
         if ctx:
             try:
-                from core.context.context_events import AppEvent
-                ctx.record_event(AppEvent.APP_CLOSED)
+                ctx.record_app_closed()
             except Exception:
                 pass
         self._shutdown.shutdown()
