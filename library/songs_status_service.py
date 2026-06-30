@@ -102,6 +102,18 @@ class SongsStatusService:
         if missing:
             badges.append(f"Sin {', '.join(missing)}")
 
+        # Audio Lab diagnostic enrichment
+        if item.filepath:
+            diag_badge = self._get_diag_badge(item.filepath)
+            if diag_badge:
+                d_label = diag_badge.get("label", "")
+                d_kind = diag_badge.get("kind", "")
+                if d_kind in ("hires", "lossless", "dsd") and d_label:
+                    quality_label = d_label
+                    quality_category = d_kind
+                if d_kind == "warning":
+                    badges.append(d_label)
+
         # Cover check
         if not self._has_cover(item):
             badges.append("Sin carátula")
@@ -123,6 +135,14 @@ class SongsStatusService:
             iid = getattr(item, 'id', 0)
             result[iid] = st
         return result
+
+    @staticmethod
+    def _get_diag_badge(filepath: str) -> dict | None:
+        try:
+            from ui.audio_lab.diagnostics_service import get_badge_for_file
+            return get_badge_for_file(filepath)
+        except Exception:
+            return None
 
     @staticmethod
     def _has_cover(item: MediaItem) -> bool:
