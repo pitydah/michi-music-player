@@ -289,15 +289,32 @@ class AudioLabBackupPage(QWidget):
         layout.addWidget(scroll)
 
 
-class AudioLabDiagnosticsPage(_PlaceholderPage):
+class AudioLabDiagnosticsPage(QWidget):
+    navigate_requested = Signal(str)
+
     def __init__(self):
-        super().__init__(
-            "Diagnóstico",
-            "Análisis de calidad, detección de formatos falsos y "
-            "verificación de integridad.\n"
-            "Herramientas disponibles próximamente.",
-            "sidebar_identifier",
-        )
+        super().__init__()
+        self.setObjectName("audioLabDiagnosticsPage")
+        self._inner = None
+        self._build_ui()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        try:
+            from ui.audio_lab.diagnostics_page import DiagnosticsPage
+            self._inner = DiagnosticsPage()
+            self._inner.navigate_requested.connect(self.navigate_requested.emit)
+            layout.addWidget(self._inner)
+        except Exception as e:
+            import logging
+            logging.getLogger("michi.audio_lab").warning(
+                "DiagnosticsPage not available: %s", e
+            )
+            lbl = QLabel("Diagnóstico no disponible.")
+            lbl.setStyleSheet("color: rgba(255,255,255,0.62); font-size: 14px;")
+            lbl.setAlignment(Qt.AlignCenter)
+            layout.addWidget(lbl)
 
 
 class AudioLabOutputPage(QWidget):

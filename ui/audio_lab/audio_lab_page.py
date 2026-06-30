@@ -17,7 +17,7 @@ _SECTIONS = [
         "title": "Diagnóstico",
         "subtitle": "Analiza calidad real, detecta formatos falsos\n"
                      "y verifica la integridad de tu biblioteca.",
-        "status": "proximamente", "nav": "audio_lab_diagnostics",
+        "status": "experimental", "nav": "audio_lab_diagnostics",
     },
     {
         "key": "audio_lab_identifier", "icon": "metadata_editor",
