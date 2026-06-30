@@ -366,9 +366,7 @@ class PlaylistController:
         self._select_playlist(pid, name)
         ctx = self._context()
         if ctx:
-            from core.context.context_events import AppEvent
-            ctx.record_event(AppEvent.PLAYLIST_PLAYED,
-                {"playlist_id": pid, "name": name, "count": len(fps)})
+            ctx.record_playlist_played(playlist_id=pid, name=name, count=len(fps))
             ctx.record_queue_updated(count=len(fps), source="playlist")
 
     def hub_playlist_queue(self, pid: int):
@@ -382,12 +380,7 @@ class PlaylistController:
         self._select_playlist(pid, name)
         ctx = self._context()
         if ctx:
-            from core.context.context_events import AppEvent
-            ctx.record_event(AppEvent.PLAYLIST_QUEUED, {
-                "playlist_id": pid,
-                "name": name,
-                "count": len(fps),
-            })
+            ctx.record_playlist_queued(playlist_id=pid, name=name, count=len(fps))
             ctx.record_queue_updated(count=len(fps), source="playlist")
 
     # ── CRUD helpers ──
@@ -421,9 +414,7 @@ class PlaylistController:
         self._ctx.load_library()
         ctx = self._context()
         if ctx:
-            from core.context.context_events import AppEvent
-            ctx.record_event(AppEvent.PLAYLIST_DELETED,
-                {"playlist_id": pid, "name": name})
+            ctx.record_event(AppEvent.PLAYLIST_DELETED, {"playlist_id": pid, "name": name})
 
     def add_track_to_playlist(self, pid: int, fp: str):
         self._ctx.db.add_to_playlist(pid, fp)

@@ -1,7 +1,6 @@
 """Smart mix controller — Daily, Unplayed, Popular, Favorites recent."""
 import os
 
-from core.context.context_events import AppEvent
 from sources.base_source import TrackRef
 
 
@@ -31,7 +30,7 @@ class SmartMixController:
             folder_name="",
             search_query="",
         )
-        ctx.record_event(AppEvent.MIX_OPENED, {"key": key, "count": count})
+        ctx.record_mix_opened(key=key, count=count)
 
     def show_smart_mix(self, key):
         from library.smart_mixes import (get_daily_mix, get_unplayed,
