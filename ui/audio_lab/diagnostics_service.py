@@ -523,6 +523,90 @@ def get_spectral_badge(result: dict[str, Any]) -> dict[str, str]:
     return {"label": label, "kind": kind, "tooltip": explanation}
 
 
+def analyse_directory_job(folder_path: str, job_manager=None,
+                          include_spectral: bool = False) -> str:
+    """Analyse a directory using JobManager for persistence.
+
+    Creates a job for each file in the directory and processes them
+    through the JobManager queue.
+
+    Args:
+        folder_path: Directory to analyse.
+        job_manager: A JobManager instance. If None, runs synchronously.
+        include_spectral: If True, run spectral analysis on WAV/FLAC files.
+
+    Returns:
+        The main job ID if job_manager was provided, or empty string.
+    """
+    if not os.path.isdir(folder_path):
+        return ""
+
+    audio_files = []
+    for root, _dirs, files in os.walk(folder_path):
+        for f in sorted(files):
+            ext = os.path.splitext(f)[1].lower()
+            if ext in AUDIO_EXTS:
+                audio_files.append(os.path.join(root, f))
+
+    if not audio_files:
+        return ""
+
+    if job_manager is None:
+        results = []
+        for fp in audio_files:
+            try:
+                result = analyse_file(fp)
+                if include_spectral and fp.lower().endswith((".wav", ".flac")):
+                    try:
+                        spec = analyse_spectral(fp)
+                        if spec:
+                            result["spectral"] = spec
+                    except Exception:
+                        pass
+                results.append(result)
+            except Exception:
+                pass
+        return results  # type: ignore
+
+    from core.jobs.job_types import Job, JobStatus, JobType
+
+    main_job = Job(
+        type=JobType.QUALITY_ANALYSIS,
+        label=f"Analizar carpeta: {os.path.basename(folder_path)}",
+        entity_type="directory",
+        entity_id=folder_path,
+        params={"include_spectral": include_spectral, "files": audio_files},
+        cancellable=True,
+    )
+    job_id = job_manager.create_job(main_job)
+
+    def _handler(job, progress_cb):
+        files = job.params.get("files", [])
+        total = len(files)
+        for i, fp in enumerate(files):
+            job_from_db = job_manager.get_job(job.id)
+            if job_from_db and job_from_db.status == JobStatus.CANCELLED:
+                return {"cancelled": True, "processed": i, "total": total}
+            try:
+                result = analyse_file(fp)
+                if include_spectral and fp.lower().endswith((".wav", ".flac")):
+                    try:
+                        spec = analyse_spectral(fp)
+                        if spec:
+                            result["spectral"] = spec
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            progress_cb((i + 1) / total)
+        return {"processed": total, "total": total}
+
+    job_manager.register_handler(JobType.QUALITY_ANALYSIS, _handler)
+    job_manager.start_job(job_id)
+
+    return job_id
+
+
 def generate_report(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Generate a comprehensive summary report from a list of per-file analyses.
 
