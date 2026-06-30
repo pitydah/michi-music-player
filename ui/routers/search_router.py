@@ -118,6 +118,22 @@ class SearchRouter:
             w._radio_widget.set_filter(w._search_text)
             return
         w._apply_filters()
+        self._apply_songs_search(w._search_text)
+
+    def _apply_songs_search(self, text: str):
+        """Apply search text to SongsController if premium view is active."""
+        w = self._win
+        songs_ctrl = getattr(w, '_songs_ctrl', None)
+        premium_page = getattr(w, '_songs_premium_page', None)
+        if not songs_ctrl or not premium_page:
+            return
+        songs_ctrl.apply_filter(text=text)
+        vs = songs_ctrl.view_state()
+        premium_page.load_data(
+            vs.items,
+            fav_set=set(vs.favorite_track_ids),
+            status_cache=dict(vs.status_cache),
+        )
 
     def on_results(self, results: list):
         w = self._win

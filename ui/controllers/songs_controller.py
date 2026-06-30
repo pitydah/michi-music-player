@@ -176,3 +176,23 @@ class SongsController(QObject):
                 except Exception:
                     pass
             wm.run_task("analyze_song", lambda f=fp: _run(f))
+
+    # ── Placeholder actions (not yet fully implemented) ──
+
+    def send_to_micro_server(self, items: list):
+        """Placeholder: send tracks to Michi Micro Server."""
+        toast = getattr(self._services, 'toast', None)
+        if toast and hasattr(toast, 'show'):
+            toast.show("Enviar a Micro Server: pendiente", "info")
+
+    def sync_to_mobile(self, items: list):
+        """Placeholder: sync tracks to Michi Mobile."""
+        toast = getattr(self._services, 'toast', None)
+        if toast and hasattr(toast, 'show'):
+            toast.show("Sincronizar a móvil: pendiente", "info")
+
+    def convert_items(self, items: list):
+        """Placeholder: convert tracks to another format."""
+        toast = getattr(self._services, 'toast', None)
+        if toast and hasattr(toast, 'show'):
+            toast.show("Conversión de formato: pendiente", "info")

@@ -112,11 +112,27 @@ class AlbumDetailView(QWidget):
                   total_duration="", format_info="",
                   quality_info=None, health_info=None,
                   track_count=0, disc_count=1):
+        # Resolve cover via AlbumCoverService if not provided
+        if cover_pixmap is None and tracks:
+            try:
+                from library.album_cover_service import AlbumCoverService
+                result = AlbumCoverService().resolve_cover(tracks)
+                cover_pixmap = result.pixmap
+            except Exception:
+                pass
+
         self._banner.set_album(title, artist, year, cover_pixmap,
                                total_duration, format_info)
         self._tech_panel.update_info(format_info, quality_info, health_info)
         self._tracks = tracks or []
         self._populate_tracks()
+
+    def _on_track_dbl(self, idx):
+        t = self._tracks[idx.row()] if idx.isValid() and hasattr(self, '_tracks') else None
+        if t:
+            fp = getattr(t, "filepath", "")
+            if fp:
+                self.track_play_requested.emit(fp)
 
     def _populate_tracks(self):
         self._table.setRowCount(len(self._tracks))

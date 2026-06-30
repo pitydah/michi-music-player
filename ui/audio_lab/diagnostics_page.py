@@ -311,6 +311,31 @@ class DiagnosticsPage(QWidget):
         self._generate_report_btn.setEnabled(False)
         report_vl.addWidget(self._generate_report_btn)
 
+        export_row = QHBoxLayout()
+        self._export_txt_btn = QPushButton("Exportar TXT")
+        self._export_txt_btn.setCursor(Qt.PointingHandCursor)
+        self._export_txt_btn.setStyleSheet(glass_button_qss("ghost"))
+        self._export_txt_btn.clicked.connect(lambda: self._export_report("txt"))
+        self._export_txt_btn.setEnabled(False)
+        export_row.addWidget(self._export_txt_btn)
+
+        self._export_csv_btn = QPushButton("Exportar CSV")
+        self._export_csv_btn.setCursor(Qt.PointingHandCursor)
+        self._export_csv_btn.setStyleSheet(glass_button_qss("ghost"))
+        self._export_csv_btn.clicked.connect(lambda: self._export_report("csv"))
+        self._export_csv_btn.setEnabled(False)
+        export_row.addWidget(self._export_csv_btn)
+
+        self._export_json_btn = QPushButton("Exportar JSON")
+        self._export_json_btn.setCursor(Qt.PointingHandCursor)
+        self._export_json_btn.setStyleSheet(glass_button_qss("ghost"))
+        self._export_json_btn.clicked.connect(lambda: self._export_report("json"))
+        self._export_json_btn.setEnabled(False)
+        export_row.addWidget(self._export_json_btn)
+
+        export_row.addStretch()
+        report_vl.addLayout(export_row)
+
         cl.addWidget(report_card)
 
         cl.addStretch()
