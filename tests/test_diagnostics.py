@@ -25,7 +25,7 @@ def _create_test_wav(filepath: str, sample_rate: int = 44100,
 class TestDiagnosticsService:
 
     def test_analyse_file_nonexistent(self):
-        from ui.audio_lab.diagnostics_service import analyse_file
+        from core.audio_lab.diagnostics_service import analyse_file
         result = analyse_file("/nonexistent/file.flac")
         assert result["error"] == "Archivo no encontrado"
         assert not result["exists"]
@@ -35,7 +35,7 @@ class TestDiagnosticsService:
             path = f.name
         try:
             _create_test_wav(path)
-            from ui.audio_lab.diagnostics_service import analyse_file
+            from core.audio_lab.diagnostics_service import analyse_file
             result = analyse_file(path)
             assert result["exists"]
             assert result["filename"] == os.path.basename(path)
@@ -46,13 +46,13 @@ class TestDiagnosticsService:
             os.unlink(path)
 
     def test_analyse_directory_empty(self):
-        from ui.audio_lab.diagnostics_service import analyse_directory
+        from core.audio_lab.diagnostics_service import analyse_directory
         with tempfile.TemporaryDirectory() as tmp:
             results = analyse_directory(tmp)
             assert results == []
 
     def test_analyse_directory_with_files(self):
-        from ui.audio_lab.diagnostics_service import analyse_directory
+        from core.audio_lab.diagnostics_service import analyse_directory
         with tempfile.TemporaryDirectory() as tmp:
             p1 = os.path.join(tmp, "a.wav")
             p2 = os.path.join(tmp, "b.flac")
@@ -62,13 +62,13 @@ class TestDiagnosticsService:
             assert len(results) == 2
 
     def test_generate_report_empty(self):
-        from ui.audio_lab.diagnostics_service import generate_report
+        from core.audio_lab.diagnostics_service import generate_report
         report = generate_report([])
         assert report["total_files"] == 0
         assert report["total_size_mb"] == 0.0
 
     def test_generate_report_with_data(self):
-        from ui.audio_lab.diagnostics_service import generate_report
+        from core.audio_lab.diagnostics_service import generate_report
         results = [
             {"filepath": "/a.wav", "filename": "a.wav", "exists": True,
              "error": "", "size_mb": 10.0, "duration_str": "1m 0s",
@@ -84,14 +84,14 @@ class TestDiagnosticsService:
         assert "lossless" in str(report["quality_counts"])
 
     def test_audio_exts_include_expected(self):
-        from ui.audio_lab.diagnostics_service import AUDIO_EXTS
+        from core.audio_lab.diagnostics_service import AUDIO_EXTS
         for ext in (".flac", ".wav", ".mp3", ".opus", ".dsf", ".dff"):
             assert ext in AUDIO_EXTS, f"Missing {ext}"
         assert ".txt" not in AUDIO_EXTS
         assert ".pdf" not in AUDIO_EXTS
 
     def test_generate_report_with_warnings_and_errors(self):
-        from ui.audio_lab.diagnostics_service import generate_report
+        from core.audio_lab.diagnostics_service import generate_report
         results = [
             {"filepath": "/a.wav", "filename": "a.wav", "exists": True,
              "error": "", "size_mb": 10.0, "duration_str": "1m 0s",
@@ -126,7 +126,7 @@ class TestDiagnosticsService:
             path = f.name
         try:
             _create_test_wav(path, sample_rate=44100)
-            from ui.audio_lab.diagnostics_service import analyse_file
+            from core.audio_lab.diagnostics_service import analyse_file
             result = analyse_file(path)
             q = result.get("quality", {})
             assert q.get("category") in ("lossless", "unknown")
@@ -154,14 +154,14 @@ class TestDiagnosticsNav:
 class TestSpectralAnalysis:
 
     def test_analyse_spectral_nonexistent_file(self):
-        from ui.audio_lab.diagnostics_service import analyse_spectral
+        from core.audio_lab.diagnostics_service import analyse_spectral
         result = analyse_spectral("/nonexistent/file.wav")
         assert result["verdict"] == "ANALYSIS_ERROR"
 
     def test_analyse_spectral_nonwav(self):
         import tempfile
         import os
-        from ui.audio_lab.diagnostics_service import analyse_spectral
+        from core.audio_lab.diagnostics_service import analyse_spectral
         # MP3 is not supported — should return ANALYSIS_ERROR
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             f.write(b"ID3")
@@ -202,7 +202,7 @@ class TestSpectralAnalysis:
                 wf.setframerate(sr)
                 wf.writeframes(raw_24.tobytes())
 
-            from ui.audio_lab.diagnostics_service import analyse_spectral
+            from core.audio_lab.diagnostics_service import analyse_spectral
             result = analyse_spectral(path)
             # A 1 kHz sine at 96 kHz has no ultrasonic content,
             # so SUSPICIOUS_UPSAMPLING is an expected honest verdict
@@ -238,7 +238,7 @@ class TestSpectralAnalysis:
                 wf.setframerate(sr)
                 wf.writeframes(stereo.tobytes())
 
-            from ui.audio_lab.diagnostics_service import analyse_spectral
+            from core.audio_lab.diagnostics_service import analyse_spectral
             result = analyse_spectral(path)
             assert "verdict" in result
         finally:
@@ -259,7 +259,7 @@ class TestSpectralAnalysis:
                 wf.setframerate(44100)
                 wf.writeframes(np.zeros(100, dtype=np.int16).tobytes())
 
-            from ui.audio_lab.diagnostics_service import analyse_spectral
+            from core.audio_lab.diagnostics_service import analyse_spectral
             result = analyse_spectral(path)
             assert result["verdict"] == "ANALYSIS_ERROR"
         finally:
@@ -284,7 +284,7 @@ class TestSpectralAnalysis:
                 wf.setframerate(sr)
                 wf.writeframes(tone.tobytes())
 
-            from ui.audio_lab.diagnostics_service import analyse_spectral
+            from core.audio_lab.diagnostics_service import analyse_spectral
             result = analyse_spectral(path)
             assert "confidence" in result
             assert 0 <= result["confidence"] <= 1.0
@@ -294,7 +294,7 @@ class TestSpectralAnalysis:
     def test_cache_hit_returns_stored_result(self):
         import tempfile
         import os
-        from ui.audio_lab.diagnostics_service import DiagnosticsCache
+        from core.audio_lab.diagnostics_service import DiagnosticsCache
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             path = f.name
@@ -303,7 +303,7 @@ class TestSpectralAnalysis:
             cache = DiagnosticsCache(":memory:")
             assert cache.stats()["cached_files"] == 0
 
-            from ui.audio_lab.diagnostics_service import analyse_file
+            from core.audio_lab.diagnostics_service import analyse_file
             result = analyse_file(path, use_cache=False)
             cache.put(path, result)
             assert cache.stats()["cached_files"] == 1
@@ -315,7 +315,7 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_cache_invalidate_removes_entry(self):
-        from ui.audio_lab.diagnostics_service import DiagnosticsCache
+        from core.audio_lab.diagnostics_service import DiagnosticsCache
         cache = DiagnosticsCache(":memory:")
         cache.put("/tmp/test.wav", {"filepath": "/tmp/test.wav"})
         assert cache.stats()["cached_files"] == 1
@@ -323,7 +323,7 @@ class TestSpectralAnalysis:
         assert cache.stats()["cached_files"] == 0
 
     def test_cache_clear_removes_all(self):
-        from ui.audio_lab.diagnostics_service import DiagnosticsCache
+        from core.audio_lab.diagnostics_service import DiagnosticsCache
         cache = DiagnosticsCache(":memory:")
         cache.put("/tmp/a.wav", {"filepath": "/tmp/a.wav"})
         cache.put("/tmp/b.wav", {"filepath": "/tmp/b.wav"})
@@ -332,7 +332,7 @@ class TestSpectralAnalysis:
         assert cache.stats()["cached_files"] == 0
 
     def test_cache_get_nonexistent_file(self):
-        from ui.audio_lab.diagnostics_service import DiagnosticsCache
+        from core.audio_lab.diagnostics_service import DiagnosticsCache
         cache = DiagnosticsCache(":memory:")
         result = cache.get("/nonexistent.wav")
         assert result is None
@@ -340,7 +340,7 @@ class TestSpectralAnalysis:
     def test_analyse_file_with_cache_returns_from_cache(self):
         import tempfile
         import os
-        from ui.audio_lab.diagnostics_service import analyse_file
+        from core.audio_lab.diagnostics_service import analyse_file
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             path = f.name
@@ -376,7 +376,7 @@ class TestSpectralAnalysis:
                 wf.setframerate(sr)
                 wf.writeframes(tone.tobytes())
 
-            from ui.audio_lab.diagnostics_service import analyse_spectral
+            from core.audio_lab.diagnostics_service import analyse_spectral
             result = analyse_spectral(path)
             assert "verdict" in result
             assert result["verdict"] in (

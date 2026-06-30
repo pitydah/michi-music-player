@@ -67,5 +67,5 @@ class SongsFilterBar(QWidget):
         if f:
             payload["formats"] = {f}
         if q:
-            payload["quality"] = q
+            payload["qualities"] = {q}
         self.filters_changed.emit(payload)

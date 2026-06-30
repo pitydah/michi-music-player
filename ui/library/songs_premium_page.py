@@ -76,17 +76,49 @@ class SongsPremiumPage(QWidget):
         self._detail_panel = SongsDetailPanel()
         splitter.addWidget(self._detail_panel)
 
-        # Wrap splitter in scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
-        scroll.setWidget(splitter)
-        outer.addWidget(scroll, 1)
+        outer.addWidget(splitter, 1)
 
         # Bulk action bar
         self._bulk_bar = SongsBulkActionBar(self)
+        self._bulk_bar.action_play.connect(self._on_bulk_play)
+        self._bulk_bar.action_queue.connect(self._on_bulk_queue)
+        self._bulk_bar.action_edit_metadata.connect(self._on_bulk_edit)
+        self._bulk_bar.action_toggle_fav.connect(self._on_bulk_fav)
+        self._bulk_bar.action_locate.connect(self._on_bulk_locate)
         outer.addWidget(self._bulk_bar)
+
+    def selected_items(self) -> list:
+        sel = self._table.selectionModel()
+        if not sel:
+            return []
+        rows = sorted(set(r.row() for r in sel.selectedRows()))
+        return [self._model.item_at(r) for r in rows if self._model.item_at(r) is not None]
+
+    def _on_bulk_play(self, _=None):
+        items = self.selected_items()
+        if items and self._ctrl:
+            self._ctrl.play_items(items)
+
+    def _on_bulk_queue(self, _=None):
+        items = self.selected_items()
+        if items and self._ctrl:
+            self._ctrl.queue_items(items)
+
+    def _on_bulk_edit(self, _=None):
+        items = self.selected_items()
+        if items and self._ctrl:
+            self._ctrl.edit_metadata(items)
+
+    def _on_bulk_fav(self, _=None):
+        items = self.selected_items()
+        if not items or not self._ctrl:
+            return
+        self._ctrl.toggle_favorite(items[0])
+
+    def _on_bulk_locate(self, _=None):
+        items = self.selected_items()
+        if items and self._ctrl:
+            self._ctrl.locate_file(items[0])
 
     def _on_filters_changed(self, filters: dict):
         if not self._ctrl:

@@ -52,6 +52,8 @@ class SongsQueryService:
 
         if formats:
             result = [i for i in result if (i.ext or "").lstrip(".").upper() in formats]
+        if qualities:
+            result = [i for i in result if _match_quality(i, qualities)]
         if genres:
             result = [i for i in result if (i.genre or "").lower() in {g.lower() for g in genres}]
         if year_min is not None:
@@ -63,7 +65,8 @@ class SongsQueryService:
         if sample_rate_min is not None:
             result = [i for i in result if (i.sample_rate or 0) >= sample_rate_min]
         if only_favorites and fav_set:
-            result = [i for i in result if getattr(i, 'id', 0) in fav_set]
+            result = [i for i in result if getattr(i, 'id', 0) in fav_set
+                      or getattr(i, 'filepath', '') in fav_set]
         if only_missing_metadata:
             result = [i for i in result if _is_missing_metadata(i)]
         if only_missing_cover:
@@ -112,3 +115,28 @@ def _is_missing_cover(item: MediaItem) -> bool:
     if not item.filepath:
         return True
     return CoverArtService.find_cover(item.filepath) is None
+
+
+_LOSSLESS_EXTS = {"flac", "alac", "wav", "aiff", "ape", "wv"}
+_LOSSY_EXTS = {"mp3", "aac", "ogg", "wma", "opus", "m4a"}
+_DSD_EXTS = {"dsf", "dff", "dsd"}
+
+
+def _classify(item: MediaItem) -> str:
+    """Return quality category: hires, lossless, lossy, dsd, unknown."""
+    ext = (item.ext or "").lower()
+    if ext in _DSD_EXTS:
+        return "dsd"
+    if ext in _LOSSLESS_EXTS:
+        sr = item.sample_rate or 0
+        bd = item.bit_depth or 0
+        if sr >= 96000 and bd >= 24:
+            return "hires"
+        return "lossless"
+    if ext in _LOSSY_EXTS:
+        return "lossy"
+    return "unknown"
+
+
+def _match_quality(item: MediaItem, qualities: set[str]) -> bool:
+    return _classify(item) in qualities

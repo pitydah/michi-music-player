@@ -88,16 +88,15 @@ class SongsController(QObject):
         fp = getattr(item, 'filepath', '')
         if not fp or not hasattr(w, '_db'):
             return
-        favs = w._db.get_favorites()
-        existing = [f for f in favs if getattr(f, 'filepath', '') == fp]
-        if existing:
-            w._db.remove_favorite(fp)
-        else:
-            w._db.add_favorite(fp)
+        db = w._db
+        try:
+            now_fav = db.toggle_favorite(fp)
+        except Exception:
+            return
         self._status_svc.refresh_favorites()
         ctx = getattr(w, '_context_svc', None)
         if ctx:
-            ctx.record_favorite_changed(track=item, favorite=not bool(existing))
+            ctx.record_favorite_changed(track=item, favorite=now_fav)
 
     def edit_metadata(self, items: list):
         """Open metadata editor for selected items."""

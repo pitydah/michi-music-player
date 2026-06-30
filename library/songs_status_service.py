@@ -24,14 +24,30 @@ class SongsStatusService:
         self._fav_ids = set(fav_ids)
 
     def refresh_favorites(self):
-        """Sync favorite set from DB."""
+        """Sync favorite set from DB.
+
+        get_favorites() returns a list of track_id strings.
+        We store their integer ids for fast lookup, and filepath
+        strings for comparison with MediaItems.
+        """
         if not self._db:
             return
         try:
             favs = self._db.get_favorites()
-            self._fav_ids = set(getattr(f, 'id', 0) for f in favs)
+            self._fav_ids = set()
+            for f in favs:
+                if isinstance(f, str):
+                    try:
+                        self._fav_ids.add(int(f))
+                    except (ValueError, TypeError):
+                        pass
+                elif hasattr(f, 'id'):
+                    self._fav_ids.add(int(f.id))
         except Exception:
             self._fav_ids = set()
+
+    def favorite_ids(self) -> set[int]:
+        return set(self._fav_ids)
 
     def compute_status(self, item: MediaItem) -> dict:
         """Return a dict with status info for a single item.
@@ -139,7 +155,7 @@ class SongsStatusService:
     @staticmethod
     def _get_diag_badge(filepath: str) -> dict | None:
         try:
-            from ui.audio_lab.diagnostics_service import get_badge_for_file
+            from core.audio_lab.diagnostics_service import get_badge_for_file
             return get_badge_for_file(filepath)
         except Exception:
             return None
