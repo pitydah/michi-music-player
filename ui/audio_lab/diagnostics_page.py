@@ -131,7 +131,7 @@ class DiagnosticsPage(QWidget):
         )
         avl.addWidget(al)
 
-        self._spectral_check = QCheckBox("Análisis espectral (WAV)")
+        self._spectral_check = QCheckBox("Análisis espectral (WAV/FLAC experimental)")
         self._spectral_check.setStyleSheet(
             "color: rgba(255,255,255,0.70); font-size: 11px; "
             "background: transparent;"
@@ -158,6 +158,13 @@ class DiagnosticsPage(QWidget):
         self._queue_btn.clicked.connect(self._analyse_with_job_manager)
         self._queue_btn.setVisible(self._job_manager is not None)
         btn_row.addWidget(self._queue_btn)
+
+        self._library_btn = QPushButton("Analizar biblioteca completa")
+        self._library_btn.setCursor(Qt.PointingHandCursor)
+        self._library_btn.setStyleSheet(glass_button_qss("primary"))
+        self._library_btn.clicked.connect(self._analyse_library)
+        self._library_btn.setVisible(self._job_manager is not None and self._db is not None)
+        btn_row.addWidget(self._library_btn)
 
         self._clear_btn = QPushButton("Limpiar")
         self._clear_btn.setCursor(Qt.PointingHandCursor)
@@ -380,22 +387,82 @@ class DiagnosticsPage(QWidget):
         )
         if not folder:
             return
+        self._start_job_analysis(folder)
 
+    def _analyse_library(self):
+        if not self._job_manager or not self._db:
+            return
+        from core.paths import database_path
+        db_path = database_path()
+        folder = os.path.dirname(db_path)
+        roots = self._db._conn.execute(
+            "SELECT path FROM library_roots WHERE enabled=1"
+        ).fetchall()
+        paths = [r[0] for r in roots if r[0]]
+        if not paths:
+            roots2 = self._db._conn.execute(
+                "SELECT path FROM scan_roots WHERE enabled=1"
+            ).fetchall()
+            paths = [r[0] for r in roots2 if r[0]]
+        if not paths:
+            self._report_label.setText(
+                "No hay raíces de biblioteca configuradas. "
+                "Añade carpetas en Ajustes > Biblioteca."
+            )
+            return
+        folder = paths[0]
+        self._start_job_analysis(folder)
+
+    def _start_job_analysis(self, folder: str):
         include_spectral = self._spectral_check.isChecked()
         from core.audio_lab.diagnostics_service import analyse_directory_job
+
+        # Wire JobManager signals
+        self._job_manager.job_progress.connect(self._on_job_progress)
+        self._job_manager.job_completed.connect(self._on_job_completed)
+        self._job_manager.job_failed.connect(self._on_job_failed)
+
         job_id = analyse_directory_job(
             folder, job_manager=self._job_manager,
             include_spectral=include_spectral,
         )
         if job_id:
             self._report_label.setText(
-                f"Job creado: {job_id}. Estado: pendiente. "
-                "Revisa la cola de trabajos para ver el progreso."
+                f"Job creado: {job_id[:8]}... Analizando biblioteca."
             )
+            self._library_btn.setEnabled(False)
         else:
             self._report_label.setText(
                 "No se pudo crear el job de análisis."
             )
+
+    def _on_job_progress(self, job_id: str, progress: float):
+        pct = int(progress * 100)
+        self._report_label.setText(
+            f"Job {job_id[:8]}...: {pct}%"
+        )
+
+    def _on_job_completed(self, job_id: str, result: dict):
+        self._library_btn.setEnabled(True)
+        processed = result.get("processed", 0)
+        errors = result.get("errors", [])
+        synced = 0
+        if self._db and hasattr(self._db, '_conn'):
+            from core.audio_lab.audio_lab_sync import sync_audio_lab_cache_to_media_items
+            try:
+                synced = sync_audio_lab_cache_to_media_items(self._db._conn)
+            except Exception:
+                pass
+        msg = f"Análisis completado: {processed} archivos procesados."
+        if synced:
+            msg += f" {synced} registros sincronizados."
+        if errors:
+            msg += f" {len(errors)} errores."
+        self._report_label.setText(msg)
+
+    def _on_job_failed(self, job_id: str, error: str):
+        self._library_btn.setEnabled(True)
+        self._report_label.setText(f"Job falló: {error}")
 
     def _analyse_folder(self):
         folder = QFileDialog.getExistingDirectory(

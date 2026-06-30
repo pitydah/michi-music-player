@@ -96,6 +96,17 @@ class SongsDetailPanel(QFrame):
             tech_parts.append(f"{item.bitrate // 1000}kbps")
         if item.bpm:
             tech_parts.append(f"{item.bpm} BPM")
+
+        # Audio Lab badge enrichment
+        if item.filepath:
+            try:
+                from library.audio_lab_badges import get_audio_lab_badge_for_path
+                badge = get_audio_lab_badge_for_path(item.filepath)
+                if badge and badge.get("label"):
+                    tech_parts.append(badge["label"])
+            except Exception:
+                pass
+
         self._tech_lbl.setText(" · ".join(tech_parts))
         self._path_lbl.setText(item.filepath or "")
         self.setVisible(True)

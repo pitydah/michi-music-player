@@ -362,17 +362,22 @@ def analyse_spectral(filepath: str,
 
     try:
         samples = _read_pcm_chunk(analyse_path, declared_sample_rate)
-        if tmp_wav:
-            import contextlib
-            with contextlib.suppress(Exception):
-                os.unlink(tmp_wav)
 
         if samples is None or len(samples) < FFT_SIZE:
+            if tmp_wav:
+                import contextlib
+                with contextlib.suppress(Exception):
+                    os.unlink(tmp_wav)
             result["error"] = (
                 "No se pudieron leer suficientes muestras de audio. "
                 "Solo se admiten archivos WAV PCM y FLAC."
             )
             return result
+
+        if tmp_wav:
+            import contextlib
+            with contextlib.suppress(Exception):
+                os.unlink(tmp_wav)
 
         metrics = _compute_spectral_analysis(samples, declared_sample_rate)
         if not metrics:
@@ -381,6 +386,11 @@ def analyse_spectral(filepath: str,
 
         metrics["declared_sample_rate"] = declared_sample_rate
         metrics["declared_bit_depth"] = declared_bit_depth
+        if ext == ".flac":
+            metrics["decoded_from_flac"] = True
+            metrics["decode_sample_rate"] = declared_sample_rate
+            metrics["decode_bit_depth"] = declared_bit_depth
+            metrics["decode_codec"] = "pcm_s24le" if declared_bit_depth >= 24 else "pcm_s16le"
         result["metrics"] = metrics
 
         verdict_key, label, explanation, confidence = _verdict_from_metrics(

@@ -69,9 +69,5 @@ class TestAlbumDetailView:
         qtbot.addWidget(view)
         results = []
         view.back_requested.connect(results.append)
-        # Find back button and click it
-        for child in view.findChildren(type("_", (), {})):
-            pass
-        # Use the signal directly
         view.back_requested.emit()
         assert len(results) == 1
