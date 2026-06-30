@@ -14,10 +14,7 @@ def _create_test_wav(filepath: str, sample_rate: int = 44100,
     t = np.linspace(0, 1.0, n_frames, endpoint=False)
     # Scale to full int16 range before casting
     tone = (0.5 * np.sin(2 * np.pi * 440 * t) * 32767).astype(np.int16)
-    if n_channels == 2:
-        data = np.column_stack((tone, tone))
-    else:
-        data = tone
+    data = np.column_stack((tone, tone)) if n_channels == 2 else tone
     with wave.open(filepath, "wb") as wf:
         wf.setnchannels(n_channels)
         wf.setsampwidth(sampwidth)
@@ -162,7 +159,8 @@ class TestSpectralAnalysis:
         assert result["verdict"] == "ANALYSIS_ERROR"
 
     def test_analyse_spectral_nonwav(self):
-        import tempfile, os
+        import tempfile
+        import os
         from ui.audio_lab.diagnostics_service import analyse_spectral
         with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as f:
             f.write(b"fLaC")
@@ -175,7 +173,9 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_analyse_spectral_24bit_96khz(self):
-        import tempfile, os, wave
+        import tempfile
+        import os
+        import wave
         import numpy as np
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -215,7 +215,9 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_analyse_spectral_stereo_no_crash(self):
-        import tempfile, os, wave
+        import tempfile
+        import os
+        import wave
         import numpy as np
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -239,7 +241,9 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_analyse_spectral_too_short(self):
-        import tempfile, os, wave
+        import tempfile
+        import os
+        import wave
         import numpy as np
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -258,7 +262,9 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_analyse_spectral_result_has_confidence(self):
-        import tempfile, os, wave
+        import tempfile
+        import os
+        import wave
         import numpy as np
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -282,7 +288,8 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_cache_hit_returns_stored_result(self):
-        import tempfile, os
+        import tempfile
+        import os
         from ui.audio_lab.diagnostics_service import DiagnosticsCache
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -327,8 +334,9 @@ class TestSpectralAnalysis:
         assert result is None
 
     def test_analyse_file_with_cache_returns_from_cache(self):
-        import tempfile, os
-        from ui.audio_lab.diagnostics_service import DiagnosticsCache, analyse_file
+        import tempfile
+        import os
+        from ui.audio_lab.diagnostics_service import analyse_file
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             path = f.name
@@ -346,7 +354,9 @@ class TestSpectralAnalysis:
             os.unlink(path)
 
     def test_analyse_spectral_wav_basic(self):
-        import tempfile, os, wave
+        import tempfile
+        import os
+        import wave
         import numpy as np
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:

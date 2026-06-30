@@ -1333,10 +1333,9 @@ class MainWindow(QMainWindow):
         # Record app_closed event
         ctx = getattr(self, '_context_svc', None)
         if ctx:
-            try:
-                ctx.record_app_closed()
-            except Exception:
-                pass
+                    import contextlib
+                    with contextlib.suppress(Exception):
+                        self._bg_theme.update()
         self._shutdown.shutdown()
         event.accept()
 
