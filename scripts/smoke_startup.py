@@ -219,9 +219,20 @@ def _check_audio_lab_page_instantiation():
         ("ConversionPage", "ui.audio_lab.conversion_page", "ConversionPage", {}),
         ("VinylLabPage", "ui.audio_lab.vinyl_lab_page", "VinylLabPage", {}),
         ("DSPPage", "ui.audio_lab.dsp_page", "DSPPage", {}),
+        ("DiagnosticsPage (real)", "ui.audio_lab.diagnostics_page", "DiagnosticsPage", {}),
+        ("diagnostics_service (import)", None, None, None),
+        ("spectral_authenticator (import)", None, None, None),
+    ]
+
+    # Import-only tests (no instantiation)
+    import_checks = [
+        ("can_analyse", "from core.audio_analysis.spectral_authenticator import can_analyse; assert can_analyse('x.wav') == True; assert can_analyse('x.flac') == False"),
+        ("analyse_file error", "from ui.audio_lab.diagnostics_service import analyse_file; r = analyse_file('/no/existe'); assert r.get('error') == 'Archivo no encontrado'"),
     ]
 
     for label, module_path, class_name, kwargs in pages:
+        if module_path is None:
+            continue
         try:
             mod = __import__(module_path, fromlist=[class_name])
             cls = getattr(mod, class_name)
@@ -231,6 +242,14 @@ def _check_audio_lab_page_instantiation():
             if db_val is not None:
                 msg += f" (db={db_val})"
             print(msg)
+        except Exception as e:
+            print(f"  ✗ {label}: {e}")
+            errors += 1
+
+    for label, code in import_checks:
+        try:
+            exec(code)
+            print(f"  ✓ {label}")
         except Exception as e:
             print(f"  ✗ {label}: {e}")
             errors += 1

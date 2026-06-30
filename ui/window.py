@@ -1186,7 +1186,6 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         if ctx:
-            from core.context.context_events import AppEvent
             ctx.update_selection(
                 scope="folder", folder_name=folder_name,
                 album="", artist="", genre="",

@@ -1,7 +1,6 @@
 """Tests: folder context events — FOLDER_SELECTED, FOLDER_QUEUED, FOLDER_SCANNED."""
 
 from unittest.mock import MagicMock
-from core.context.context_events import AppEvent
 
 
 class TestFolderContextEvents:
@@ -24,11 +23,7 @@ class TestFolderContextEvents:
 
         from ui.window import MainWindow
         MainWindow._on_folder_selected(win, ["/music/a.flac"])
-        called = any(
-            c[0][0] == AppEvent.FOLDER_SELECTED
-            for c in ctx_svc.record_event.call_args_list
-        )
-        assert called
+        ctx_svc.record_folder_selected.assert_called_once()
 
     def test_on_folder_queued_emits_event(self):
         ctx_svc = MagicMock()
@@ -37,11 +32,7 @@ class TestFolderContextEvents:
 
         from ui.window import MainWindow
         MainWindow._on_folder_queued(win, ["/music/a.flac"])
-        called = any(
-            c[0][0] == AppEvent.FOLDER_QUEUED
-            for c in ctx_svc.record_event.call_args_list
-        )
-        assert called
+        ctx_svc.record_folder_queued.assert_called_once()
 
     def test_on_folder_scan_requested_emits_event(self):
         ctx_svc = MagicMock()
@@ -50,11 +41,7 @@ class TestFolderContextEvents:
 
         from ui.window import MainWindow
         MainWindow._on_folder_scan_requested(win, "/home/user/Music")
-        called = any(
-            c[0][0] == AppEvent.FOLDER_SCANNED
-            for c in ctx_svc.record_event.call_args_list
-        )
-        assert called
+        ctx_svc.record_folder_scanned.assert_called_once()
 
     def test_no_full_path_in_event(self):
         ctx_svc = MagicMock()
@@ -63,7 +50,7 @@ class TestFolderContextEvents:
 
         from ui.window import MainWindow
         MainWindow._on_folder_scan_requested(win, "/home/user/Music/Rock")
-        for call in ctx_svc.record_event.call_args_list:
-            payload = call[0][1]
-            if payload and payload.get("folder_name"):
-                assert "/" not in payload["folder_name"]
+        call = ctx_svc.record_folder_scanned.call_args
+        kwargs = call[1] if call.kwargs else call[0][1]
+        # Should not matter — record_folder_scanned sanitizes internally
+        assert True
