@@ -116,17 +116,8 @@ class TestContextSemanticAudit:
         for p in (src / "ui" / "controllers").rglob("*.py"):
             if _check_file(p, "context_repository"):
                 violations.append(f"{p}: context_repository")
-            text = p.read_text(encoding="utf-8", errors="ignore")
-            # Allow only PLAYLIST_CREATED, PLAYLIST_DELETED, TRACK_ADDED_TO_PLAYLIST
-            if "ctx.record_event(" in text:
-                allowed = any(
-                    ev in text for ev in (
-                        "PLAYLIST_CREATED", "PLAYLIST_DELETED",
-                        "TRACK_ADDED_TO_PLAYLIST",
-                    )
-                )
-                if not allowed:
-                    violations.append(f"{p}: ctx.record_event(")
+            if _check_file(p, "ctx.record_event("):
+                violations.append(f"{p}: ctx.record_event(")
 
         for p in (src / "ui" / "routers").rglob("*.py"):
             if _check_file(p, "context_repository"):

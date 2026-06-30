@@ -541,14 +541,35 @@ class VinylLabPage(QWidget):
                 with contextlib.suppress(Exception):
                     os.remove(wav_path)
 
+        self._export_progress.setValue(80)
+
+        # Import to library
+        imported = 0
+        try:
+            from ui.audio_lab.services.library_importer import LibraryImporter
+            importer = LibraryImporter()
+            result = importer.import_tracks(
+                exported, {}, destination=export_dir
+            )
+            imported = len(result.get("ok", []))
+            if imported:
+                importer.add_to_library(result["ok"])
+        except Exception as e:
+            logger.warning("Library import failed: %s", e)
+
         self._export_progress.setValue(100)
 
-        QMessageBox.information(
-            self, "Vinyl Lab",
+        msg = (
             f"Exportación completada.\n"
             f"{len(exported)} pistas exportadas a {fmt.upper()} en:\n"
             f"{export_dir}"
         )
+        if imported:
+            msg += f"\n\n{imported} pista(s) importada(s) a la biblioteca."
+        else:
+            msg += "\n\n(Importación a biblioteca no disponible)"
+
+        QMessageBox.information(self, "Vinyl Lab", msg)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

@@ -129,4 +129,8 @@ class SearchRouter:
 
         ctx = self._context()
         if ctx:
-            ctx.record_search_performed(section=w._current_section_key, result_count=n)
+            ctx.record_search_performed(
+                section=w._current_section_key,
+                result_count=n,
+                query=w._search_text,
+            )

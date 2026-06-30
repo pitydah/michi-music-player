@@ -3,8 +3,6 @@ import os
 
 from PySide6.QtWidgets import QFileDialog, QInputDialog
 
-from core.context.context_events import AppEvent
-
 
 class PlaylistController:
     def __init__(self, window, services=None):
@@ -412,8 +410,7 @@ class PlaylistController:
         if ctx:
             pl = self.get_playlist_by_id(pid)
             name = pl.get("name", "") if pl else ""
-            ctx.record_event(AppEvent.TRACK_ADDED_TO_PLAYLIST,
-                {"playlist_id": pid, "name": name, "count": 1})
+            ctx.record_track_added_to_playlist(playlist_id=pid, name=name, count=1)
 
     def create_playlist_from_tracks(self, tracks: list, name: str) -> int:
         if not tracks or not name:
