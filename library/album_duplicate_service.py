@@ -79,8 +79,8 @@ class AlbumDuplicateService:
         elif abs(t1 - t2) <= 2:
             score += 0.05
 
-        if g1.quality and g2.quality:
-            if g1.quality.dominant_format != g2.quality.dominant_format:
+        if g1.quality and g2.quality and \
+           g1.quality.dominant_format != g2.quality.dominant_format:
                 score += 0.05
                 reasons.append(f"Formato distinto: {g1.quality.dominant_format} vs {g2.quality.dominant_format}")
 

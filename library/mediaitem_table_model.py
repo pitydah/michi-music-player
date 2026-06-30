@@ -98,11 +98,18 @@ class MediaItemTableModel(QAbstractTableModel):
 
     def populate(self, items: list[MediaItem], fav_ids: set[int] | None = None,
                  status_cache: dict[int, dict] | None = None):
+        import time
+        t0 = time.time()
         self.beginResetModel()
         self._items = list(items)
         self._fav_set = set(fav_ids or [])
         self._status_cache = dict(status_cache or {})
         self.endResetModel()
+        elapsed = time.time() - t0
+        if elapsed > 0.5:
+            import logging
+            logging.getLogger("michi.mediaitem_model").warning(
+                "populate %d items took %.2fs", len(items), elapsed)
 
     def item_at(self, row: int) -> MediaItem | None:
         if 0 <= row < len(self._items):

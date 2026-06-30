@@ -7,6 +7,7 @@ Gracefully degrades if analysis backend is unavailable.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -33,6 +34,8 @@ class IntelligencePage(QWidget):
         self._analysis = None
         self._repo = None
         self._backend_available = False
+        self._rec_svc: Any | None = None
+        self._smart_mix: Any | None = None
         self._build_ui()
         self._check_backend()
 
@@ -359,38 +362,182 @@ class IntelligencePage(QWidget):
             self._set_notice(f"No se pudo reconstruir el índice: {e}")
         self._refresh_status()
 
+    def _get_rec_svc(self):
+        if self._rec_svc is None and self._db is not None:
+            try:
+                from recommendation.recommendation_service import RecommendationService
+                self._rec_svc = RecommendationService(self._db)
+            except Exception as e:
+                logger.warning("RecommendationService not available: %s", e)
+        return self._rec_svc
+
+    def _get_smart_mix(self):
+        if self._smart_mix is None and self._db is not None:
+            try:
+                from recommendation.smart_mix_service import SmartMixService
+                self._smart_mix = SmartMixService(self._db)
+                self._smart_mix.seed_db(self._db)
+            except Exception as e:
+                logger.warning("SmartMixService not available: %s", e)
+        return self._smart_mix
+
     def _show_bpm(self):
-        self._set_notice(
-            "Columna BPM pendiente de agregar a la tabla de Biblioteca. "
-            "Próximamente."
-        )
+        try:
+            from library.library_db import LibraryDB, DB_PATH
+            db = self._db or LibraryDB(DB_PATH)
+            items = db.get_all()
+            if not items:
+                self._set_notice("No hay canciones en la biblioteca.")
+                return
+            bpms = sorted(set(
+                int(getattr(i, 'bpm', 0) or 0) for i in items
+                if getattr(i, 'bpm', 0)
+            ))
+            if not bpms:
+                self._set_notice(
+                    "No hay datos de BPM en la biblioteca. "
+                    "Usa 'Analizar biblioteca' para extraer BPM."
+                )
+                return
+            self._set_notice(
+                f"BPM detectados: {min(bpms)}–{max(bpms)}. "
+                f"{len(bpms)} valores únicos. "
+                "Usa el filtro bpm: en la búsqueda."
+            )
+        except Exception as e:
+            logger.warning("BPM view failed: %s", e)
+            self._set_notice("No se pudieron consultar los BPM.")
 
     def _show_key(self):
-        self._set_notice(
-            "Columna de tonalidad pendiente de agregar a la tabla de Biblioteca. "
-            "Próximamente."
-        )
+        try:
+            from library.library_db import LibraryDB, DB_PATH
+            db = self._db or LibraryDB(DB_PATH)
+            items = db.get_all()
+            keys = sorted(set(
+                getattr(i, 'key', '') or '' for i in items
+                if getattr(i, 'key', None)
+            ))
+            if not keys:
+                self._set_notice(
+                    "No hay datos de tonalidad. "
+                    "Usa 'Analizar biblioteca' para extraer key."
+                )
+                return
+            self._set_notice(
+                f"Tonalidades detectadas: {', '.join(keys)}. "
+                "Usa el filtro key: en la búsqueda."
+            )
+        except Exception as e:
+            logger.warning("Key view failed: %s", e)
+            self._set_notice("No se pudieron consultar las tonalidades.")
 
     def _show_energy(self):
-        self._set_notice(
-            "Filtro de energía pendiente de conectar a Biblioteca. "
-            "Próximamente."
-        )
+        try:
+            from library.library_db import LibraryDB, DB_PATH
+            db = self._db or LibraryDB(DB_PATH)
+            items = db.get_all()
+            energies = [
+                float(getattr(i, 'bpm', 0) or 0) for i in items
+                if getattr(i, 'bpm', 0)
+            ]
+            if not energies:
+                self._set_notice(
+                    "No hay datos de energía. "
+                    "Usa 'Analizar biblioteca' para extraer features."
+                )
+                return
+            avg = sum(energies) / len(energies)
+            self._set_notice(
+                f"Energía promedio: {avg:.1f} BPM. "
+                f"{len(energies)} canciones con datos."
+            )
+        except Exception as e:
+            logger.warning("Energy view failed: %s", e)
+            self._set_notice("No se pudieron consultar los datos de energía.")
 
     def _show_similarity(self):
-        self._set_notice(
-            "Vista de similitud pendiente de conectar a Mix/Playlists."
-        )
-        logger.info("Similarity view — pending implementation")
+        svc = self._get_rec_svc()
+        if not svc:
+            self._set_notice(
+                "Recomendaciones no disponibles sin base de datos."
+            )
+            return
+        try:
+            items = svc._db.get_all() if hasattr(svc, '_db') else []
+            if not items:
+                self._set_notice("Biblioteca vacía.")
+                return
+            import random
+            seed = random.choice(items)
+            similar = svc.recommend_by_sound(seed, limit=10)
+            if similar:
+                names = [
+                    f"{getattr(s, 'title', '?')} — {getattr(s, 'artist', '?')}"
+                    for s in similar[:5]
+                ]
+                self._set_notice(
+                    "Canciones similares (basado en seed aleatorio):\n" +
+                    "\n".join(f"  • {n}" for n in names)
+                )
+            else:
+                self._set_notice(
+                    "No se encontraron canciones similares. "
+                    "Ejecuta 'Analizar biblioteca' primero."
+                )
+        except Exception as e:
+            logger.warning("Similarity failed: %s", e)
+            self._set_notice(f"Error al buscar similitud: {e}")
 
     def _play_local_radio(self):
-        self._set_notice(
-            "Radio local pendiente de conectar al generador de cola."
-        )
-        logger.info("Local radio — pending implementation")
+        svc = self._get_rec_svc()
+        if not svc:
+            self._set_notice(
+                "Radio local no disponible sin base de datos."
+            )
+            return
+        try:
+            items = svc._db.get_all() if hasattr(svc, '_db') else []
+            if not items:
+                self._set_notice("Biblioteca vacía.")
+                return
+            import random
+            seed = random.choice(items)
+            svc.seed_radio(seed, limit=20)
+            self._set_notice(
+                f"Radio local generada desde: "
+                f"{getattr(seed, 'title', '?')} — {getattr(seed, 'artist', '?')}. "
+                f"Revisa la cola de reproducción."
+            )
+            logger.info("Local radio seeded from %s", getattr(seed, 'uri', ''))
+        except Exception as e:
+            logger.warning("Local radio failed: %s", e)
+            self._set_notice(f"Error al generar radio local: {e}")
 
     def _create_smart_mix(self):
-        self._set_notice(
-            "Mix inteligente pendiente de conectar al motor de playlists."
-        )
-        logger.info("Smart mix — pending implementation")
+        svc = self._get_smart_mix()
+        if not svc:
+            self._set_notice(
+                "Mix inteligente no disponible sin base de datos."
+            )
+            return
+        try:
+            mix = svc.create_mix("balanced_mix", limit=20)
+            if mix and isinstance(mix, list):
+                tracks = mix[:5]
+                names = [
+                    f"{getattr(t, 'title', '?')} — {getattr(t, 'artist', '?')}"
+                    for t in tracks
+                ]
+                self._set_notice(
+                    "Mix inteligente generado:\n" +
+                    "\n".join(f"  • {n}" for n in names)
+                )
+                self.navigate_requested.emit("mix_hub")
+            else:
+                self._set_notice(
+                    "No se pudo generar el mix. "
+                    "Asegúrate de tener suficientes canciones."
+                )
+        except Exception as e:
+            logger.warning("Smart mix failed: %s", e)
+            self._set_notice(f"Error al crear mix: {e}")

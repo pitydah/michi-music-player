@@ -11,16 +11,13 @@ import unicodedata
 from dataclasses import dataclass
 
 
-_REMIX_SUFFIXES = [
-    r"\(remaster(?:ed)?\)", r"\[remaster(?:ed)?\]",
-    r"\(deluxe\s+edition\)", r"\[deluxe\s+edition\]",
-    r"\(expanded\s+edition\)", r"\[expanded\s+edition\]",
-    r"\(anniversary\s+edition\)", r"\[anniversary\s+edition\]",
-    r"\(bonus\s+tracks?\)", r"\[bonus\s+tracks?\]",
-    r"\(special\s+edition\)", r"\[special\s+edition\]",
-]
 _REMIX_PATTERN = re.compile(
-    r"(?:\s*[-–—]?\s*" + "|".join(_REMIX_SUFFIXES) + r")+\s*$",
+    r"[-–—\s]*(?:"
+    r"\((?:remaster(?:ed)?|deluxe\s+edition|expanded\s+edition|"
+    r"anniversary\s+edition|bonus\s+tracks?|special\s+edition)\)|"
+    r"\[(?:remaster(?:ed)?|deluxe\s+edition|expanded\s+edition|"
+    r"anniversary\s+edition|bonus\s+tracks?|special\s+edition)\]"
+    r")*\s*$",
     re.IGNORECASE,
 )
 
@@ -84,20 +81,22 @@ def detect_album_artist(tracks: list) -> str:
             ark = normalize_artist_name(ar)
             artist_candidates[ark] = artist_candidates.get(ark, 0) + 1
 
-    # Prefer albumartist
     if aa_candidates:
-        best_aa = max(aa_candidates, key=aa_candidates.get)
-        if best_aa != "various artists" or len(aa_candidates) > 1:
-            return _find_original(tracks, "albumartist", best_aa,
+        best_aa_key = max(aa_candidates, key=aa_candidates.get)
+        best_aa_count = aa_candidates[best_aa_key]
+        total_aa = sum(aa_candidates.values())
+        if best_aa_key != "various artists" and best_aa_count > total_aa // 2:
+            return _find_original(tracks, "albumartist", best_aa_key,
                                   default="Various Artists")
 
     if artist_candidates:
-        best_ar = max(artist_candidates, key=artist_candidates.get)
-        if best_ar != "various artists" or len(set(artist_candidates.keys())) > 1:
-            return _find_original(tracks, "artist", best_ar,
-                                  default="Various Artists")
-        if len(set(artist_candidates.keys())) <= 1:
-            return _find_original(tracks, "artist", best_ar,
+        best_ar_key = max(artist_candidates, key=artist_candidates.get)
+        best_ar_count = artist_candidates[best_ar_key]
+        total_ar = sum(artist_candidates.values())
+        if len(artist_candidates) > 1 and best_ar_count <= total_ar // 2:
+            return "Various Artists"
+        if best_ar_key != "various artists" or len(artist_candidates) <= 1:
+            return _find_original(tracks, "artist", best_ar_key,
                                   default="Artista desconocido")
 
     return "Various Artists"
@@ -129,7 +128,8 @@ def is_compilation(tracks: list) -> bool:
     if not tracks:
         return False
     artists = {str(getattr(t, "artist", "") or "").strip() for t in tracks}
-    albumartists = {str(getattr(t, "albumartist", "") or "").strip() for t in tracks}
+    albumartists = {str(getattr(t, "albumartist", "") or "").strip()
+                    for t in tracks if str(getattr(t, "albumartist", "") or "").strip()}
     artist_set = {a for a in artists if a}
     if len(artist_set) > 1:
         return True
