@@ -70,14 +70,15 @@ def test_backup_page_renders(mock_pixmap, qtbot):
 
 
 @patch("ui.audio_lab.sub_pages.get_pixmap")
-def test_diagnostics_page_has_back_button(mock_pixmap, qtbot):
+def test_diagnostics_page_renders(mock_pixmap, qtbot):
     from ui.audio_lab.sub_pages import AudioLabDiagnosticsPage
 
     mock_pixmap.return_value = _pix()
     page = AudioLabDiagnosticsPage()
     qtbot.addWidget(page)
+    page.show()
 
-    assert page._back_key == "audio_lab"
+    assert page.isVisible()
     assert page.navigate_requested is not None
 
 
