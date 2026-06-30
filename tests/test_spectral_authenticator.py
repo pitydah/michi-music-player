@@ -30,15 +30,17 @@ class TestSpectralAuthenticator:
 
     def test_verdict_hires_coherent(self):
         metrics = {
-            "spectral_rolloff_95": 50000.0,
-            "spectral_rolloff_99": 60000.0,
+            "spectral_rolloff_95": 100000.0,
+            "spectral_rolloff_99": 120000.0,
             "energy_above_16k": 0.1,
             "energy_above_18k": 0.05,
             "energy_above_20k": 0.02,
+            "segments_analysed": 30,
         }
-        verdict, label, _ = _verdict_from_metrics(metrics, 192000, 24)
+        verdict, label, _expl, conf = _verdict_from_metrics(metrics, 192000, 24)
         assert verdict == "HI_RES_COHERENT"
         assert "coherente" in label
+        assert 0 < conf <= 1.0
 
     def test_verdict_suspicious_upsampling(self):
         metrics = {
@@ -48,9 +50,10 @@ class TestSpectralAuthenticator:
             "energy_above_18k": 1e-9,
             "energy_above_20k": 1e-10,
         }
-        verdict, label, _ = _verdict_from_metrics(metrics, 192000, 24)
+        verdict, label, _expl, conf = _verdict_from_metrics(metrics, 192000, 24)
         assert verdict == "SUSPICIOUS_UPSAMPLING"
         assert "sospechoso" in label
+        assert 0 < conf <= 1.0
 
     def test_verdict_lossless_coherent(self):
         metrics = {
@@ -60,9 +63,10 @@ class TestSpectralAuthenticator:
             "energy_above_18k": 0.001,
             "energy_above_20k": 1e-8,
         }
-        verdict, label, _ = _verdict_from_metrics(metrics, 44100, 16)
+        verdict, label, _expl, conf = _verdict_from_metrics(metrics, 44100, 16)
         assert verdict == "LOSSLESS_COHERENT"
         assert "coherente" in label
+        assert 0 < conf <= 1.0
 
     def test_verdict_possible_lossy(self):
         metrics = {
@@ -72,9 +76,10 @@ class TestSpectralAuthenticator:
             "energy_above_18k": 1e-11,
             "energy_above_20k": 1e-12,
         }
-        verdict, label, _ = _verdict_from_metrics(metrics, 44100, 16)
+        verdict, label, _expl, conf = _verdict_from_metrics(metrics, 44100, 16)
         assert verdict == "POSSIBLE_LOSSY_SOURCE"
         assert "pérdida" in label
+        assert 0 < conf <= 1.0
 
     def test_verdict_inconclusive_unknown_sr(self):
         metrics = {
@@ -84,8 +89,9 @@ class TestSpectralAuthenticator:
             "energy_above_18k": 0.0005,
             "energy_above_20k": 0.0001,
         }
-        verdict, _label, _expl = _verdict_from_metrics(metrics, 64000, 24)
+        verdict, _label, _expl, conf = _verdict_from_metrics(metrics, 64000, 24)
         assert verdict == "INCONCLUSIVE"
+        assert 0 < conf <= 1.0
 
     def test_can_analyse_wav(self):
         assert can_analyse("song.wav")

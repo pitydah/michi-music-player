@@ -82,11 +82,9 @@ def _read_pcm_chunk(filepath: str, sample_rate: int,
 
             # Average channels to mono
             if n_channels > 1:
-                try:
+                import contextlib
+                with contextlib.suppress(ValueError):
                     samples = samples.reshape(-1, n_channels).mean(axis=1)
-                except ValueError:
-                    # If not evenly divisible, take first channel
-                    pass
 
             return samples
     except Exception as e:
@@ -166,9 +164,8 @@ def _compute_spectral_analysis(samples: np.ndarray,
     # cutoff_detected: sharp drop in energy above effective ceiling
     nyquist = sample_rate / 2.0
     cutoff_detected = False
-    if nyquist > 0 and effective_ceiling > 0:
-        if effective_ceiling < nyquist * 0.6 and e_20k_val < 1e-6:
-            cutoff_detected = True
+    if nyquist > 0 and effective_ceiling > 0 and effective_ceiling < nyquist * 0.6 and e_20k_val < 1e-6:
+        cutoff_detected = True
 
     metrics = {
         "spectral_rolloff_95": rolloff_95_val,
@@ -186,25 +183,33 @@ def _compute_spectral_analysis(samples: np.ndarray,
 
 def _verdict_from_metrics(metrics: dict[str, float],
                           declared_sr: int,
-                          declared_bd: int) -> tuple[str, str, str]:
+                          declared_bd: int) -> tuple[str, str, str, float]:
     """Produce a verdict from spectral metrics.
 
-    Returns (verdict_key, label_es, explanation_es).
+    Returns (verdict_key, label_es, explanation_es, confidence).
+    confidence: 0.0 (low) to 1.0 (high).
     """
     rolloff_99 = metrics.get("spectral_rolloff_99", 0)
     e_16k = metrics.get("energy_above_16k", 0)
     e_20k = metrics.get("energy_above_20k", 0)
+    segs = metrics.get("segments_analysed", 0)
+
+    # Base confidence from segment count (more segments = more reliable)
+    base_conf = min(1.0, segs / 20.0) if segs else 0.1
 
     # Hi-Res coherence: declared >= 96kHz
     if declared_sr >= 96000:
         if rolloff_99 >= declared_sr * 0.45:
+            conf = min(1.0, base_conf + 0.3)
             return (
                 "HI_RES_COHERENT",
                 "Hi-Res coherente",
                 "El contenido espectral alcanza frecuencias propias de "
                 f"una grabación de {declared_sr // 1000} kHz.",
+                round(conf, 2),
             )
         if rolloff_99 < declared_sr * 0.22:
+            conf = min(1.0, base_conf + 0.25)
             return (
                 "SUSPICIOUS_UPSAMPLING",
                 "Upsampling sospechoso",
@@ -212,31 +217,41 @@ def _verdict_from_metrics(metrics: dict[str, float],
                 "debajo de lo esperado para {} kHz. "
                 "Posible upsampling desde una fuente de menor resolución."
                 .format(rolloff_99, declared_sr // 1000),
+                round(conf, 2),
             )
         if e_20k < 1e-6 and declared_sr >= 96000:
+            conf = min(1.0, base_conf + 0.20)
             return (
                 "SUSPICIOUS_UPSAMPLING",
                 "Upsampling sospechoso",
                 "No se detecta energía significativa por encima de 20 kHz, "
                 "lo que sugiere que el archivo fue upsampled "
                 "desde una fuente de 44.1 o 48 kHz.",
+                round(conf, 2),
             )
+        # Hi-Res but inconclusive
+        conf = round(base_conf * 0.6, 2)
         return (
-            "HI_RES_COHERENT",
-            "Hi-Res coherente",
-            "El análisis espectral es compatible con la resolución declarada.",
+            "INCONCLUSIVE",
+            "No concluyente",
+            "El archivo declara {} kHz pero los indicios espectrales "
+            "no son concluyentes.".format(declared_sr // 1000),
+            conf,
         )
 
     # Lossless (CD quality or lower)
     if declared_sr <= 48000:
         if e_16k > 0.005 and rolloff_99 > 18000:
+            conf = min(1.0, base_conf + 0.25)
             return (
                 "LOSSLESS_COHERENT",
                 "Lossless coherente",
                 "El contenido espectral es compatible con una fuente "
                 "sin pérdidas de {} kHz.".format(declared_sr // 1000),
+                round(conf, 2),
             )
         if rolloff_99 < declared_sr * 0.40:
+            conf = min(1.0, base_conf + 0.20)
             return (
                 "POSSIBLE_LOSSY_SOURCE",
                 "Posible fuente con pérdida",
@@ -244,22 +259,27 @@ def _verdict_from_metrics(metrics: dict[str, float],
                 "Podría tratarse de un archivo lossy (MP3/AAC) "
                 "convertido a lossless."
                 .format(rolloff_99, declared_sr // 1000),
+                round(conf, 2),
             )
         if e_16k < 0.001 and declared_sr >= 44100:
+            conf = min(1.0, base_conf + 0.15)
             return (
                 "POSSIBLE_LOSSY_SOURCE",
                 "Posible fuente con pérdida",
                 "Muy poca energía por encima de 16 kHz. "
                 "Sugiere origen lossy.",
+                round(conf, 2),
             )
+        conf = round(base_conf * 0.7, 2)
         return (
             "LOSSLESS_COHERENT",
             "Lossless coherente",
             "El análisis espectral no encuentra anomalías.",
+            conf,
         )
 
     return ("INCONCLUSIVE", "No concluyente",
-            "No se pudo determinar la coherencia espectral.")
+            "No se pudo determinar la coherencia espectral.", 0.1)
 
 
 def analyse_spectral(filepath: str,
@@ -301,12 +321,13 @@ def analyse_spectral(filepath: str,
         metrics["declared_bit_depth"] = declared_bit_depth
         result["metrics"] = metrics
 
-        verdict_key, label, explanation = _verdict_from_metrics(
+        verdict_key, label, explanation, confidence = _verdict_from_metrics(
             metrics, declared_sample_rate, declared_bit_depth,
         )
         result["verdict"] = verdict_key
         result["label"] = label
         result["explanation"] = explanation
+        result["confidence"] = confidence
 
     except Exception as e:
         logger.exception("Spectral analysis failed for %s", filepath)

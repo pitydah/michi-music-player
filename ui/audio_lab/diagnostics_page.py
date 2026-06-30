@@ -151,7 +151,7 @@ class DiagnosticsPage(QWidget):
         svl.setContentsMargins(20, 16, 20, 16)
         svl.setSpacing(10)
 
-        spec_title = QLabel("Análisis espectral (Fake Hi-Res)")
+        spec_title = QLabel("Coherencia espectral Hi-Res")
         spec_title.setStyleSheet(
             "color: rgba(255,255,255,0.88); font-size: 14px; "
             "font-weight: 600; background: transparent;"
@@ -159,9 +159,10 @@ class DiagnosticsPage(QWidget):
         svl.addWidget(spec_title)
 
         spec_sub = QLabel(
-            "EXPERIMENTAL — Analiza el contenido espectral de un archivo WAV "
-            "para detectar posible upsampling o fuentes lossy.\n"
-            "El resultado es probabilístico, no concluyente."
+            "EXPERIMENTAL — Evalúa si el contenido espectral es coherente "
+            "con la resolución declarada.\n"
+            "El resultado es probabilístico y no debe interpretarse "
+            "como prueba definitiva."
         )
         spec_sub.setStyleSheet(
             "color: rgba(255,255,255,0.48); font-size: 11px; "
@@ -264,6 +265,7 @@ class DiagnosticsPage(QWidget):
         lines = [
             f"Archivo: {fp.split('/')[-1]}",
             f"Veredicto: {result.get('label', '?')}",
+            f"Confianza: {result.get('confidence', 'N/A')}",
             f"Explicación: {result.get('explanation', '?')}",
         ]
         metrics = result.get("metrics", {})
@@ -273,6 +275,8 @@ class DiagnosticsPage(QWidget):
             for k, v in metrics.items():
                 if isinstance(v, float):
                     lines.append(f"  {k}: {v:.2f}")
+                elif isinstance(v, bool):
+                    lines.append(f"  {k}: {'Sí' if v else 'No'}")
                 else:
                     lines.append(f"  {k}: {v}")
 
