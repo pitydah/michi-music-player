@@ -70,8 +70,4 @@ class TestPlaylistContextEvents:
         ctrl = PlaylistController(window=MagicMock(_ctx=ctx))
 
         ctrl.hub_playlist_queue(1)
-        called = any(
-            c[0][0] == AppEvent.PLAYLIST_QUEUED
-            for c in ctx_svc.record_event.call_args_list
-        )
-        assert called
+        ctx_svc.record_playlist_queued.assert_called_once()
