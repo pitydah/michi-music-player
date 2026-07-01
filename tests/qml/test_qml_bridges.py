@@ -162,9 +162,31 @@ def test_sidebar_uses_michi_ai_label():
     assert "Asistente" not in sidebar, "Sidebar contains 'Asistente' label (use 'Michi AI')"
 
 
-def test_sidebar_has_no_settings():
+def test_sidebar_contains_reproduccion_label():
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    assert "Reproducción" in sidebar, "Sidebar missing 'Reproducción' label (with tilde)"
+    assert "Reproduccion" not in sidebar, "Sidebar contains 'Reproduccion' without tilde"
+
+
+def test_sidebar_has_no_ajustes():
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    assert "Ajustes" not in sidebar, "Sidebar still contains 'Ajustes' label"
+    assert "settings" not in sidebar, "Sidebar still contains 'settings' route"
+
+
+def test_page_stack_has_explicit_radio_playlists():
+    page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
+    assert 'case "radio":' in page_stack, "PageStack missing explicit case for radio"
+    assert 'case "playlists":' in page_stack, "PageStack missing explicit case for playlists"
+    assert 'case "settings":' not in page_stack, "PageStack still has settings case"
+    assert 'case "assistant":' in page_stack, "PageStack missing assistant case"
+    assert 'AssistantPage.qml' in page_stack, "PageStack missing AssistantPage reference"
+
+
+def test_sidebar_no_settings_ajustes():
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
     assert "settings" not in sidebar, "Sidebar still contains 'settings' route"
+    assert "Ajustes" not in sidebar, "Sidebar still contains 'Ajustes' label"
 
 
 def test_sidebar_has_no_emoji_glyphs():
