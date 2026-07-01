@@ -104,7 +104,11 @@ class TestAlbumControllerActions:
 
     def test_analyze_album_quality(self):
         from ui.controllers.album_controller import AlbumController
+        from PySide6.QtCore import QObject
         w = _MockWin()
+        # Give _win proper Qt parentage for QTimer
+        qparent = QObject()
+        w._win_parent = qparent
         ctrl = AlbumController(w)
         tracks = [_make_track()]
         ctrl.analyze_album_quality(tracks)
