@@ -1,7 +1,7 @@
 """Tests for spectral analysis helpers — WAV/FLAC support."""
 from __future__ import annotations
 
-
+import pytest
 
 from core.audio_lab.diagnostics_helpers import supports_spectral_analysis
 
@@ -48,9 +48,20 @@ class TestCanAnalyseFunction:
         assert can_analyse("test.wav") is True
 
     def test_can_analyse_flac(self):
+        import os
+        import tempfile
         from core.audio_analysis.spectral_authenticator import can_analyse
-
-        assert can_analyse("test.flac") is True
+        import shutil
+        if not shutil.which("ffmpeg"):
+            pytest.skip("ffmpeg not available")
+        # Create a minimal FLAC header so os.path.isfile passes
+        with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as f:
+            f.write(b"fLaC\x00\x00\x00\x22\x10\x00\x10\x00")
+            path = f.name
+        try:
+            assert can_analyse(path) is True
+        finally:
+            os.unlink(path)
 
     def test_can_analyse_mp3(self):
         from core.audio_analysis.spectral_authenticator import can_analyse

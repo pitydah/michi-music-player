@@ -174,12 +174,14 @@ class HomePage(QWidget):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(10)
         self._add_folder_btn = QPushButton("📁 Añadir carpeta")
+        self._add_folder_btn.setObjectName("homeAddFolderButton")
         self._add_folder_btn.setCursor(Qt.PointingHandCursor)
         self._add_folder_btn.setStyleSheet(glass_button_qss("secondary"))
         self._add_folder_btn.clicked.connect(self._on_add_folder_clicked)
         btn_row.addWidget(self._add_folder_btn)
 
         self._add_files_btn = QPushButton("🎵 Añadir archivos")
+        self._add_files_btn.setObjectName("homeAddFilesButton")
         self._add_files_btn.setCursor(Qt.PointingHandCursor)
         self._add_files_btn.setStyleSheet(glass_button_qss("primary"))
         self._add_files_btn.clicked.connect(self._on_add_files_clicked)
@@ -209,6 +211,7 @@ class HomePage(QWidget):
         self._cancel_preview_btn.clicked.connect(self._clear_selection)
         pbr.addWidget(self._cancel_preview_btn)
         self._confirm_btn = QPushButton("✓ Importar")
+        self._confirm_btn.setObjectName("homeConfirmImportButton")
         self._confirm_btn.setCursor(Qt.PointingHandCursor)
         self._confirm_btn.setStyleSheet(glass_button_qss("primary"))
         self._confirm_btn.clicked.connect(self._on_confirm)
@@ -269,8 +272,13 @@ class HomePage(QWidget):
         elif not lib.is_healthy:
             badges.addWidget(self._badge("Requiere atención", "warning"))
 
-        if s.audio.dac_active or s.audio.output_device:
+        if s.audio.dac_active:
             badges.addWidget(self._badge("DAC activo", "ok"))
+        elif s.audio.output_device and s.audio.output_device != "Predeterminado":
+            badges.addWidget(self._badge("Salida configurada", "info"))
+
+        if s.audio.warnings:
+            badges.addWidget(self._badge("Audio requiere atención", "warning"))
 
         if s.ecosystem.micro_server_state == "connected":
             badges.addWidget(self._badge("Micro conectado", "ok"))
@@ -346,6 +354,7 @@ class HomePage(QWidget):
         btn_row.setSpacing(8)
         if pb.can_continue:
             cont = QPushButton("▶ Continuar")
+            cont.setObjectName("homeContinueButton")
             cont.setCursor(Qt.PointingHandCursor)
             cont.setStyleSheet(glass_button_qss("primary"))
             cont.clicked.connect(lambda: self.navigation_requested.emit("playback_hub"))
@@ -353,6 +362,7 @@ class HomePage(QWidget):
 
         if pb.queue_active:
             queue_btn = QPushButton("Ver cola")
+            queue_btn.setObjectName("homeQueueButton")
             queue_btn.setCursor(Qt.PointingHandCursor)
             queue_btn.setStyleSheet(glass_button_qss("ghost"))
             queue_btn.clicked.connect(lambda: self.navigation_requested.emit("playback_hub"))
@@ -367,12 +377,14 @@ class HomePage(QWidget):
 
         if not pb.can_continue and not pb.queue_active:
             explore = QPushButton("Explorar biblioteca")
+            explore.setObjectName("homeExploreLibraryButton")
             explore.setCursor(Qt.PointingHandCursor)
             explore.setStyleSheet(glass_button_qss("ghost"))
             explore.clicked.connect(lambda: self.navigation_requested.emit("library_hub"))
             btn_row.addWidget(explore)
 
             mix = QPushButton("Crear mix")
+            mix.setObjectName("homeCreateMixButton")
             mix.setCursor(Qt.PointingHandCursor)
             mix.setStyleSheet(glass_chip_button_qss())
             mix.clicked.connect(lambda: self.navigation_requested.emit("mix_hub"))
@@ -450,12 +462,14 @@ class HomePage(QWidget):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
         scan = QPushButton("Escanear ahora")
+        scan.setObjectName("homeScanNowButton")
         scan.setCursor(Qt.PointingHandCursor)
         scan.setStyleSheet(glass_button_qss("ghost"))
         scan.clicked.connect(self.refresh_requested.emit)
         btn_row.addWidget(scan)
 
         view = QPushButton("Ver biblioteca")
+        view.setObjectName("homeViewLibraryButton")
         view.setCursor(Qt.PointingHandCursor)
         view.setStyleSheet(glass_button_qss("primary"))
         view.clicked.connect(lambda: self.navigation_requested.emit("library_hub"))
@@ -463,6 +477,7 @@ class HomePage(QWidget):
 
         if lib.index_error_count > 0 or lib.missing_file_count > 0:
             problems = QPushButton("Revisar problemas")
+            problems.setObjectName("homeReviewProblemsButton")
             problems.setCursor(Qt.PointingHandCursor)
             problems.setStyleSheet(glass_chip_button_qss())
             problems.clicked.connect(
@@ -522,6 +537,7 @@ class HomePage(QWidget):
         btn_row.setSpacing(8)
 
         config = QPushButton("Configurar salida")
+        config.setObjectName("homeAudioOutputButton")
         config.setCursor(Qt.PointingHandCursor)
         config.setStyleSheet(glass_button_qss("ghost"))
         config.clicked.connect(
@@ -530,6 +546,7 @@ class HomePage(QWidget):
         btn_row.addWidget(config)
 
         lab = QPushButton("Abrir Audio Lab")
+        lab.setObjectName("homeAudioLabButton")
         lab.setCursor(Qt.PointingHandCursor)
         lab.setStyleSheet(glass_button_qss("primary"))
         lab.clicked.connect(lambda: self.navigation_requested.emit("audio_lab"))
@@ -608,6 +625,7 @@ class HomePage(QWidget):
 
         if eco.micro_server_state == "disconnected":
             conn = QPushButton("Conectar servidor")
+            conn.setObjectName("homeConnectServerButton")
             conn.setCursor(Qt.PointingHandCursor)
             conn.setStyleSheet(glass_button_qss("primary"))
             conn.clicked.connect(
@@ -616,6 +634,7 @@ class HomePage(QWidget):
             btn_row.addWidget(conn)
 
         sync_btn = QPushButton("Sincronizar móvil")
+        sync_btn.setObjectName("homeSyncMobileButton")
         sync_btn.setCursor(Qt.PointingHandCursor)
         sync_btn.setStyleSheet(glass_button_qss("ghost"))
         sync_btn.clicked.connect(lambda: self.navigation_requested.emit("devices_page"))
@@ -623,6 +642,7 @@ class HomePage(QWidget):
 
         if eco.diagnostics_available:
             diag = QPushButton("Diagnóstico")
+            diag.setObjectName("homeConnectionDiagnosticsButton")
             diag.setCursor(Qt.PointingHandCursor)
             diag.setStyleSheet(glass_chip_button_qss())
             diag.clicked.connect(
@@ -652,7 +672,7 @@ class HomePage(QWidget):
             self._card_alerts.setVisible(True)
             return
 
-        for alert in alerts[:5]:
+        for alert in alerts:
             frame = QFrame()
             frame.setObjectName("alertItem")
             frame.setStyleSheet(home_alert_item_qss(alert.severity))
@@ -685,14 +705,6 @@ class HomePage(QWidget):
                 f_layout.addWidget(action)
 
             self._alerts_layout.addWidget(frame)
-
-        if len(alerts) > 5:
-            extra = QLabel(f"Hay {len(alerts) - 5} problemas adicionales.")
-            extra.setStyleSheet(
-                "QLabel { color: rgba(255,255,255,0.40); font-size: 11px; "
-                "background: transparent; border: none; padding-top: 4px; }"
-            )
-            self._alerts_layout.addWidget(extra)
 
         self._card_alerts.setVisible(True)
 
@@ -751,6 +763,7 @@ class HomePage(QWidget):
             self._asst_layout.addWidget(sug_frame)
 
         open_btn = QPushButton("Abrir Asistente")
+        open_btn.setObjectName("homeAssistantOpenButton")
         open_btn.setCursor(Qt.PointingHandCursor)
         open_btn.setStyleSheet(glass_button_qss("ghost"))
         open_btn.clicked.connect(

@@ -105,8 +105,8 @@ class TestHomeControllerDashboardService:
         assert svc._context_svc is win._context_svc
         assert svc._sync_mgr is win._sync_mgr
         assert svc._audio_output_ctrl is win._audio_output_ctrl
-        assert svc._player_engine is win._player
         assert svc._features is win._features
+        assert svc._michi_link_ctrl is getattr(win, "_michi_link_ctrl", None)
 
 
 class TestHomeControllerRefresh:

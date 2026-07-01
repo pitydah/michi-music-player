@@ -145,10 +145,11 @@ class TestEmptyLibrary:
         assert snap.audio.bitperfect_state == "not_available"
 
     def test_empty_db_ecosystem_defaults(self, empty_db):
-        svc = HomeDashboardService(db=empty_db)
-        snap = svc.build_snapshot()
-        assert snap.ecosystem.micro_server_state == "not_configured"
-        assert snap.ecosystem.mobile_sync_state == "no_device"
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
+            svc = HomeDashboardService(db=empty_db)
+            snap = svc.build_snapshot()
+            assert snap.ecosystem.micro_server_state == "disconnected"
+            assert snap.ecosystem.mobile_sync_state == "no_device"
 
     def test_empty_db_no_alerts(self, empty_db):
         svc = HomeDashboardService(db=empty_db)
@@ -164,7 +165,7 @@ class TestEmptyLibrary:
 
 class TestHealthyLibrary:
     def test_healthy_db_returns_ready(self, healthy_db):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(db=healthy_db)
             snap = svc.build_snapshot()
             assert snap.library.is_empty is False
@@ -179,16 +180,17 @@ class TestHealthyLibrary:
         assert snap.library.artist_count == 312
 
     def test_subtitle_includes_count(self, healthy_db):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(db=healthy_db)
             snap = svc.build_snapshot()
             assert "12,438" in snap.subtitle or "12438" in snap.subtitle
 
-    def test_healthy_has_no_micro_server_alert_if_not_configured(self, healthy_db):
-        svc = HomeDashboardService(db=healthy_db)
-        snap = svc.build_snapshot()
-        kinds = [a.kind for a in snap.alerts]
-        assert "micro_server" not in kinds
+    def test_healthy_has_micro_server_alert_when_not_connected(self, healthy_db):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
+            svc = HomeDashboardService(db=healthy_db)
+            snap = svc.build_snapshot()
+            kinds = [a.kind for a in snap.alerts]
+            assert "micro_server" in kinds
 
     def test_actions_include_view_library(self, healthy_db):
         svc = HomeDashboardService(db=healthy_db)
@@ -203,7 +205,7 @@ class TestHealthyLibrary:
 
 class TestPlayback:
     def test_playing_state(self, playing_playback):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(playback=playing_playback)
             snap = svc.build_snapshot()
             assert snap.playback.state == "playing"
@@ -231,12 +233,14 @@ class TestAudio:
         snap = svc.build_snapshot()
         assert snap.audio.bitperfect_state == "not_available"
 
-    def test_with_engine_shows_dsp(self, player_engine_with_dsp):
-        svc = HomeDashboardService(player_engine=player_engine_with_dsp)
+    def test_eq_active_via_playback(self):
+        pb = MagicMock()
+        pb.get_output_device_id.return_value = None
+        pb.get_eq_state.return_value = {"bypass": False}
+        pb.get_audio_diagnostics.return_value = {}
+        svc = HomeDashboardService(playback=pb)
         snap = svc.build_snapshot()
         assert snap.audio.eq_enabled is True
-        assert snap.audio.replaygain_enabled is True
-        assert snap.audio.dsp_active is True
 
     def test_output_device_fallback(self):
         pb = MagicMock()
@@ -255,44 +259,58 @@ class TestAudio:
 
 
 class TestEcosystem:
-    def test_no_servers_disconnected(self, empty_db):
+    def test_no_michi_link_disconnected(self, empty_db):
         svc = HomeDashboardService(db=empty_db)
         snap = svc.build_snapshot()
-        assert snap.ecosystem.micro_server_state == "not_configured"
+        assert snap.ecosystem.micro_server_state == "disconnected"
 
-    def test_with_servers_connected(self, empty_db):
-        srv = MagicMock()
-        srv.name = "MyServer"
-        srv.server_type = "subsonic"
-        with patch("streaming.subsonic_client.load_servers", return_value=[srv]):
-            svc = HomeDashboardService(db=empty_db)
-            snap = svc.build_snapshot()
-            assert snap.ecosystem.remote_music_server_state == "configured"
-            assert snap.ecosystem.remote_music_server_name == "MyServer"
-            assert snap.ecosystem.remote_music_server_count == 1
-            assert snap.ecosystem.micro_server_state == "not_configured"
+    def test_michi_link_connected(self, empty_db):
+        mlc = MagicMock()
+        mlc.get_connection_state.return_value = {
+            "micro_server_state": "connected",
+            "micro_server_name": "MyMicro",
+        }
+        svc = HomeDashboardService(db=empty_db, michi_link_ctrl=mlc)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.micro_server_state == "connected"
+        assert snap.ecosystem.micro_server_name == "MyMicro"
+
+    def test_michi_link_requires_pairing(self, empty_db):
+        mlc = MagicMock()
+        mlc.get_connection_state.return_value = {
+            "micro_server_state": "requires_pairing",
+        }
+        svc = HomeDashboardService(db=empty_db, michi_link_ctrl=mlc)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.micro_server_state == "requires_pairing"
+
+    def test_michi_link_contract_error(self, empty_db):
+        mlc = MagicMock()
+        mlc.get_connection_state.return_value = {
+            "micro_server_state": "contract_error",
+        }
+        svc = HomeDashboardService(db=empty_db, michi_link_ctrl=mlc)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.micro_server_state == "contract_error"
 
     def test_sync_with_peers(self, empty_db, sync_mgr_with_peers):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
-            svc = HomeDashboardService(db=empty_db, sync_mgr=sync_mgr_with_peers)
-            snap = svc.build_snapshot()
-            assert snap.ecosystem.mobile_sync_state == "paired"
-            assert snap.ecosystem.mobile_device_count == 2
-            assert snap.ecosystem.last_sync is not None
+        svc = HomeDashboardService(db=empty_db, sync_mgr=sync_mgr_with_peers)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.mobile_sync_state == "paired"
+        assert snap.ecosystem.mobile_device_count == 2
+        assert snap.ecosystem.last_sync is not None
 
     def test_sync_no_devices(self, empty_db, empty_sync_mgr):
         empty_sync_mgr.is_active = True
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
-            svc = HomeDashboardService(db=empty_db, sync_mgr=empty_sync_mgr)
-            snap = svc.build_snapshot()
-            assert snap.ecosystem.mobile_sync_state in ("paired", "no_device")
-            assert snap.ecosystem.mobile_device_count == 0
+        svc = HomeDashboardService(db=empty_db, sync_mgr=empty_sync_mgr)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.mobile_sync_state in ("paired", "no_device")
+        assert snap.ecosystem.mobile_device_count == 0
 
     def test_sync_no_mgr(self, empty_db):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
-            svc = HomeDashboardService(db=empty_db)
-            snap = svc.build_snapshot()
-            assert snap.ecosystem.mobile_sync_state == "no_device"
+        svc = HomeDashboardService(db=empty_db)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.mobile_sync_state == "no_device"
 
 
 class TestAlerts:
@@ -387,7 +405,7 @@ class TestSafeMode:
 
 class TestPartialFailure:
     def test_audio_card_failure_does_not_break_dashboard(self):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             db = MagicMock()
             db.get_dashboard_stats.return_value = {"total_songs": 1000}
             svc = HomeDashboardService(db=db)
@@ -397,7 +415,7 @@ class TestPartialFailure:
             assert any(e.card_name == "audio" for e in snap.errors)
 
     def test_library_card_failure_does_not_break_playback(self, playing_playback):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(playback=playing_playback)
             svc._build_library_status = lambda: (_ for _ in ()).throw(RuntimeError("Lib failure"))
             snap = svc.build_snapshot()
@@ -405,10 +423,11 @@ class TestPartialFailure:
             assert len(snap.errors) > 0
 
     def test_ecosystem_failure_defaults(self):
-        svc = HomeDashboardService()
-        svc._build_ecosystem_status = lambda: (_ for _ in ()).throw(RuntimeError("Eco failure"))
-        snap = svc.build_snapshot()
-        assert snap.ecosystem.micro_server_state == "not_configured"
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
+            svc = HomeDashboardService()
+            svc._build_ecosystem_status = lambda: (_ for _ in ()).throw(RuntimeError("Eco failure"))
+            snap = svc.build_snapshot()
+            assert snap.ecosystem.micro_server_state == "unknown"
 
 
 class TestAssistantSuggestions:
@@ -448,7 +467,7 @@ class TestNoAbsolutePaths:
                 self._check_no_paths(v, f"{path}[{i}]")
 
     def test_dashboard_snapshot_no_paths(self, healthy_db):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(db=healthy_db)
             snap = svc.build_snapshot()
             self._check_no_paths(snap)
@@ -456,7 +475,7 @@ class TestNoAbsolutePaths:
 
 class TestSubtitle:
     def test_subtitle_with_library(self, healthy_db):
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(db=healthy_db)
             snap = svc.build_snapshot()
             assert "canciones" in snap.subtitle.lower() or "12,438" in snap.subtitle
@@ -469,7 +488,7 @@ class TestSubtitle:
     def test_subtitle_with_audio(self, healthy_db):
         pb = MagicMock()
         pb.get_output_device_id.return_value = "USB DAC"
-        with patch("streaming.subsonic_client.load_servers", return_value=[]):
+        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
             svc = HomeDashboardService(db=healthy_db, playback=pb)
             snap = svc.build_snapshot()
             assert "USB DAC" in snap.subtitle or "Salida" in snap.subtitle

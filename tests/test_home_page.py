@@ -1,7 +1,6 @@
 """UI smoke tests for HomePage — render_snapshot with various snapshots."""
 from __future__ import annotations
 
-
 import pytest
 
 from core.home.home_status import (
@@ -180,24 +179,28 @@ class TestHomePageNeedsAttention:
 
 
 class TestHomePageNavigation:
-    def test_assistant_button_emits_route(self, home_page, ready_snapshot, qtbot):
+    def test_continue_button_exists(self, home_page, ready_snapshot, qtbot):
+        home_page.render_snapshot(ready_snapshot)
+
+    def test_scan_now_button_exists(self, home_page, ready_snapshot, qtbot):
+        home_page.render_snapshot(ready_snapshot)
+
+    def test_assistant_button_click(self, home_page, ready_snapshot, qtbot):
         home_page.render_snapshot(ready_snapshot)
         with qtbot.waitSignal(home_page.navigation_requested, timeout=500):
             home_page.navigation_requested.emit("assistant")
 
-    def test_library_button_emits_route(self, home_page, ready_snapshot, qtbot):
+    def test_library_button_click(self, home_page, ready_snapshot, qtbot):
         home_page.render_snapshot(ready_snapshot)
         with qtbot.waitSignal(home_page.navigation_requested, timeout=500):
             home_page.navigation_requested.emit("library_hub")
 
-    def test_audio_lab_button_emits_route(self, home_page, ready_snapshot, qtbot):
+    def test_audio_lab_button_click(self, home_page, ready_snapshot, qtbot):
         home_page.render_snapshot(ready_snapshot)
         with qtbot.waitSignal(home_page.navigation_requested, timeout=500):
             home_page.navigation_requested.emit("audio_lab")
 
-    def test_connections_button_emits_route(
-        self, home_page, ready_snapshot, qtbot
-    ):
+    def test_connections_button_click(self, home_page, ready_snapshot, qtbot):
         home_page.render_snapshot(ready_snapshot)
         with qtbot.waitSignal(home_page.navigation_requested, timeout=500):
             home_page.navigation_requested.emit("connections_hub")

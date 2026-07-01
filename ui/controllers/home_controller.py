@@ -42,20 +42,22 @@ class HomeController(QObject):
             )
             self._page.add_music_requested.connect(self._on_add_music)
             self._page.add_folder_requested.connect(self._on_add_folder)
+            self._page.refresh_requested.connect(self._on_scan_now)
         return self._page
 
     def _ensure_service(self) -> HomeDashboardService:
         if self._dashboard_svc is None:
             w = self._win
+            import core.settings_manager as settings_mgr
             self._dashboard_svc = HomeDashboardService(
                 db=getattr(w, "_db", None),
                 playback=getattr(w, "_playback", None),
                 context_svc=getattr(w, "_context_svc", None),
                 sync_mgr=getattr(w, "_sync_mgr", None),
                 audio_output_ctrl=getattr(w, "_audio_output_ctrl", None),
-                player_engine=getattr(w, "_player", None),
                 features=getattr(w, "_features", None),
-                settings_mgr=getattr(w, "_settings_mgr", None),
+                settings_mgr=settings_mgr,
+                michi_link_ctrl=getattr(w, "_michi_link_ctrl", None),
             )
         return self._dashboard_svc
 
@@ -105,6 +107,27 @@ class HomeController(QObject):
             page.render_snapshot(fallback)
 
     # ── Add Music handlers ──
+
+    def _on_scan_now(self):
+        w = self._win
+        try:
+            svc = self._get_import_service()
+            if svc and hasattr(svc, "scan_all_roots"):
+                svc.scan_all_roots(reason="home_scan_now")
+            elif hasattr(w, "_lib_ctrl") and hasattr(w._lib_ctrl, "scan_now"):
+                w._lib_ctrl.scan_now()
+            elif hasattr(w, "_reload_library_after_change"):
+                w._reload_library_after_change(reason="home_scan_now")
+            else:
+                logger.warning("No scan service available for Home refresh")
+            if getattr(w, "_toast_svc", None):
+                w._toast_svc.show("Escaneo de biblioteca iniciado", "info")
+        except Exception:
+            logger.exception("Home scan now failed")
+            if getattr(w, "_toast_svc", None):
+                w._toast_svc.show("No se pudo iniciar el escaneo", "error")
+        finally:
+            self.refresh()
 
     def _get_import_service(self):
         w = self._win
