@@ -50,7 +50,7 @@ class ViewModeRouter:
         if section == "library":
             if mode == "list":
                 w._songs_stack.setCurrentIndex(0)
-                w._apply_filters()
+                self._refresh_songs_list(w)
                 w._fade_content("library_hub")
             elif mode == "grid":
                 w._songs_stack.setCurrentIndex(1)
@@ -119,6 +119,22 @@ class ViewModeRouter:
             elif mode == "grid":
                 w._generic_song_grid.set_items(refs, card_size=170)
                 w._fade_content("library_hub")
+
+    @staticmethod
+    def _refresh_songs_list(w):
+        """Refresh songs list view using premium page if available."""
+        songs_ctrl = getattr(w, '_songs_ctrl', None)
+        premium_page = getattr(w, '_songs_premium_page', None)
+        if songs_ctrl and premium_page:
+            songs_ctrl.apply_filter(text=getattr(w, '_search_text', ""))
+            vs = songs_ctrl.view_state()
+            premium_page.load_data(
+                vs.items,
+                fav_set=set(vs.favorite_track_ids),
+                status_cache=dict(vs.status_cache),
+            )
+            return
+        w._apply_filters()
 
     def _do_nothing(self):
         pass

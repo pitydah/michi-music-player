@@ -427,6 +427,40 @@ class PlaylistController:
         self._record_playlist_created(pid, name.strip(), valid_count)
         return pid
 
+    def add_files_to_playlist_dialog(self, filepaths: list[str]):
+        """Show dialog to add files to an existing playlist or create a new one."""
+        if not filepaths:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        playlists = self._ctx.db.get_playlists()
+        names = [p["name"] for p in playlists] + ["+ Nueva playlist"]
+        name, ok = QInputDialog.getItem(
+            self._win, "Agregar a playlist", "Selecciona playlist:",
+            names, 0, False)
+        if not ok:
+            return
+        if name == "+ Nueva playlist":
+            name, ok = QInputDialog.getText(
+                self._win, "Nueva playlist", "Nombre:")
+            if not ok or not name.strip():
+                return
+            pid = self._ctx.db.create_playlist(name.strip())
+        else:
+            pl = next((p for p in playlists if p["name"] == name), None)
+            if not pl:
+                return
+            pid = pl["id"]
+        valid = 0
+        for fp in filepaths:
+            if os.path.isfile(fp):
+                self._ctx.db.add_to_playlist(pid, fp)
+                valid += 1
+        self._ctx.rebuild_sidebar()
+        self._toast(f"Agregados {valid} temas a '{name}'", "success")
+        ctx = self._context()
+        if ctx:
+            ctx.record_track_added_to_playlist(playlist_id=pid, name=name, count=valid)
+
     def metadata_saved(self, filepaths: list):
         self._toast(f"Metadatos guardados en {len(filepaths)} archivos", "success")
 

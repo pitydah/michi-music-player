@@ -230,7 +230,7 @@ class LibraryController(QObject):
                         else None
                     ),
                     add_to_playlist_cb=(
-                        lambda fps: w._playlist_ctrl.create_playlist_from_tracks(fps, "Nueva playlist")
+                        lambda fps: w._playlist_ctrl.add_files_to_playlist_dialog(fps)
                         if hasattr(w, '_playlist_ctrl') and w._playlist_ctrl
                         else None
                     ),

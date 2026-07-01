@@ -95,3 +95,15 @@ class TestSongsQueryService:
     def test_match_quality_false(self):
         item = _make_item(ext=".mp3")
         assert not _match_quality(item, {"hires"})
+
+    def test_only_missing_file_missing(self, tmp_path):
+        svc = SongsQueryService(None)
+        existing = tmp_path / "exists.flac"
+        existing.write_text("")
+        items = [
+            _make_item(filepath=str(existing)),
+            _make_item(fid=2, filepath=str(tmp_path / "gone.flac")),
+        ]
+        result = svc.filter(items, only_missing_file=True)
+        assert len(result) == 1
+        assert "gone.flac" in result[0].filepath

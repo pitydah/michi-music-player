@@ -217,7 +217,9 @@ class AlbumController:
 
             thread = Thread(target=_worker, daemon=True)
             thread.start()
-            timer = QTimer(self._win)
+            import PySide6.QtCore
+            timer_parent = self._win if isinstance(self._win, PySide6.QtCore.QObject) else None
+            timer = QTimer(timer_parent)
             timer.timeout.connect(_show_result)
             timer.setSingleShot(True)
             timer.start(2000)

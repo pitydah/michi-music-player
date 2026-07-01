@@ -41,3 +41,13 @@ class TestSongsPremiumPage:
         items = []
         fps = [i.filepath for i in items if hasattr(i, 'filepath') and i.filepath]
         assert fps == []
+
+    def test_add_to_playlist_uses_callback(self):
+        from unittest.mock import MagicMock
+        from ui.controllers.songs_controller import SongsController
+        cb = MagicMock()
+        svc = MagicMock()
+        ctrl = SongsController(svc, add_to_playlist_cb=cb)
+        items = [_make_item(filepath="/m/a.flac")]
+        ctrl.add_to_playlist(items)
+        cb.assert_called_once_with(["/m/a.flac"])

@@ -84,6 +84,12 @@ class SongsController(QObject):
         if qt:
             items = self._query_svc.search(qt)
         items = self._query_svc.filter(items, fav_ids=self._status_svc.favorite_track_ids(), **kwargs)
+
+        # Apply audio_lab_warning post-filter using status cache
+        if kwargs.get("only_audio_lab_warning"):
+            cache = self._status_svc.status_cache()
+            items = [i for i in items if _has_audio_lab_warning(i, cache)]
+
         self._filtered_items = items
         return items
 
@@ -203,3 +209,10 @@ class SongsController(QObject):
         toast = getattr(self._services, 'toast', None)
         if toast and hasattr(toast, 'show'):
             toast.show("Conversión de formato: pendiente", "info")
+
+
+def _has_audio_lab_warning(item, cache):
+    """Check if an item has an Audio Lab warning badge in its cached status."""
+    st = cache.get(getattr(item, 'id', 0), {})
+    badges = st.get("badges", [])
+    return any("warning" in b.lower() or "análisis" in b.lower() for b in badges)
