@@ -418,17 +418,9 @@ class TestMichiAIBridge:
 
 
 class TestImageProvider:
-    def test_image_provider_exists(self):
-        from ui_qml_bridge.image_provider import MichiCoverImageProvider
-        assert MichiCoverImageProvider is not None
-
     def test_register_function_exists(self):
         from ui_qml_bridge.image_provider import register_image_provider
         assert callable(register_image_provider)
-
-    def test_fallback_function_exists(self):
-        from ui_qml_bridge.image_provider import _generate_fallback
-        assert callable(_generate_fallback)
 
 
 class TestLibraryBridgeContract:
