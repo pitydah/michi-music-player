@@ -3,6 +3,7 @@
 This module provides clean functions for Biblioteca to consume
 technical badges computed by Audio Lab's Diagnostics service.
 It does NOT import PySide and does NOT depend on ui.audio_lab.
+Uses batch cache queries from core for efficiency.
 """
 
 from __future__ import annotations
@@ -76,6 +77,7 @@ def is_analysis_pending(path: str) -> bool:
     Returns True if the file exists but has no valid cache entry.
     Returns False if the file does not exist (nothing to analyse).
     Returns False if the cache has an error (not pending — is error).
+    Uses core batch helper for cache efficiency.
     """
     if not os.path.isfile(path):
         return False
@@ -90,6 +92,62 @@ def is_analysis_pending(path: str) -> bool:
         return False
     except Exception:
         return True
+
+
+def get_analysis_pending_map(paths: list[str]) -> dict[str, bool]:
+    """Return analysis pending status for multiple paths using batch cache."""
+    try:
+        from core.audio_lab.diagnostics_service import _get_cache
+        cache = _get_cache()
+        if cache:
+            cached_map = cache.get_many(paths)
+            result: dict[str, bool] = {}
+            for p in paths:
+                c = cached_map.get(p)
+                if c is None:
+                    result[p] = os.path.isfile(p)
+                elif c.get("error"):
+                    result[p] = False
+                else:
+                    result[p] = False
+            return result
+    except Exception:
+        pass
+    return {p: is_analysis_pending(p) for p in paths}
+
+
+def get_spectral_filter_values(paths: list[str]) -> dict[str, str]:
+    """Return spectral filter values for multiple paths using batch cache.
+
+    Values: suspicious | inconclusive | coherent | error | unknown
+    """
+    try:
+        from core.audio_lab.diagnostics_service import _get_cache
+        cache = _get_cache()
+        if cache:
+            cached_map = cache.get_many(paths)
+            result: dict[str, str] = {}
+            for p in paths:
+                c = cached_map.get(p)
+                if c is None:
+                    result[p] = "unknown"
+                else:
+                    spec = c.get("spectral", {})
+                    v = spec.get("verdict", "")
+                    if v in ("SUSPICIOUS_UPSAMPLING", "POSSIBLE_LOSSY_SOURCE"):
+                        result[p] = "suspicious"
+                    elif v == "INCONCLUSIVE":
+                        result[p] = "inconclusive"
+                    elif v in ("HI_RES_COHERENT", "LOSSLESS_COHERENT"):
+                        result[p] = "coherent"
+                    elif c.get("error"):
+                        result[p] = "error"
+                    else:
+                        result[p] = "unknown"
+            return result
+    except Exception:
+        pass
+    return {p: "unknown" for p in paths}
 
 
 def matches_quality_filter(path: str, value: str) -> bool:
@@ -118,20 +176,21 @@ def matches_spectral_filter(path: str, value: str) -> bool:
     """Check if a file matches a spectral filter value.
 
     value: suspicious | inconclusive
-    Only works if spectral analysis has been cached for the file.
+    Uses cache that now includes spectral data.
     """
     try:
-        from core.audio_lab.diagnostics_service import DiagnosticsCache
-        cache = DiagnosticsCache()
-        cached = cache.get(path)
-        if cached is None:
-            return False
-        spec = cached.get("spectral", {})
-        verdict = spec.get("verdict", "")
-        if value == "suspicious":
-            return verdict in ("SUSPICIOUS_UPSAMPLING", "POSSIBLE_LOSSY_SOURCE")
-        if value == "inconclusive":
-            return verdict == "INCONCLUSIVE"
+        from core.audio_lab.diagnostics_service import _get_cache
+        cache = _get_cache()
+        if cache:
+            cached = cache.get(path)
+            if cached is None:
+                return False
+            spec = cached.get("spectral", {})
+            verdict = spec.get("verdict", "")
+            if value == "suspicious":
+                return verdict in ("SUSPICIOUS_UPSAMPLING", "POSSIBLE_LOSSY_SOURCE")
+            if value == "inconclusive":
+                return verdict == "INCONCLUSIVE"
         return False
     except Exception:
         return False
@@ -141,11 +200,6 @@ def get_quality_filter_values(paths: list[str]) -> dict[str, str]:
     """Return quality filter values for multiple paths."""
     badges = get_audio_lab_badges_for_paths(paths)
     return {p: b.get("kind", "unknown") for p, b in badges.items()}
-
-
-def get_analysis_pending_map(paths: list[str]) -> dict[str, bool]:
-    """Return analysis pending status for multiple paths."""
-    return {p: is_analysis_pending(p) for p in paths}
 
 
 def _fallback_badge(path: str) -> dict[str, str]:
