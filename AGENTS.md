@@ -570,10 +570,30 @@ Commits outside the Audio Lab scope that touch `ui/audio_lab/diagnostics_page.py
 ```bash
 # QML experimental
 python -m ui_qml_bridge.qml_main
+python main.py --qml
 
 # Classic app
 python main.py
+
+# Tests
+python -m pytest tests/qml/ -q    # 41 tests
+ruff check ./ui_qml ./ui_qml_bridge ./tests/qml
 ```
+
+### Current QML Status (Jul 2026)
+- **41 tests** — bridges, structural, emoji/sidebar prohibition
+- **0 ruff errors** in QML/bridge/tests
+- **0 compileall errors** in QML/bridge/tests
+- PageStack with safe relative paths (`../pages/...`)
+- NavigationBridge with VALID_ROUTES, invalid routes → placeholder
+- Sidebar with glyph system (no emojis), forbidden routes check
+- Header with glass/smoked background, search field, experimental badge
+- ActionButton with scale 0.985, loading spinner, focus ring, 6 variants
+- MichiGlass 2.0: 30+ color tokens, microinteractions (Behavior on color/border)
+- Home, Connections, HomeAudio pages fully migrated with bridge navigation
+- Placeholders for Library, Assistant, AudioLab, Settings
+- Context menu without emojis, toggle_favorite_by_filepath secure method
+- SongsPremiumPage.load_data with stale result guard (`_load_counter`)
 
 ### QML Directory Structure
 ```

@@ -9,6 +9,30 @@
   - Lightweight delegates for data lists
   - ImageProvider (future) for cover art — no base64 in QML
 
+## Current Baseline (Jul 2026)
+
+### Build / Lint
+| Metric | Value |
+|--------|-------|
+| QML files | 55 |
+| QML bridge files | 9 |
+| QML tests | 41 |
+| `ruff` errors (QML/bridge/tests) | 0 |
+| `compileall` errors | 0 |
+| Python imports | `qml_main` OK, `main` OK |
+
+### Structural Integrity
+| Check | Status |
+|-------|--------|
+| PageStack routes exist | ✅ |
+| theme/qmldir singletons | ✅ (5) |
+| components/qmldir | ✅ (12) |
+| materials/qmldir | ✅ (6) |
+| shell/qmldir | ✅ (5) |
+| Sidebar forbidden routes | ✅ |
+| Sidebar emoji glyphs | ✅ (0) |
+| Context menu emoji | ✅ (0) |
+
 ## Measurement Commands
 ```bash
 # Process memory

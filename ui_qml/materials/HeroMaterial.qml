@@ -16,7 +16,6 @@ Item {
             anchors.fill: parent
             radius: parent.radius
             gradient: Gradient {
-                orientation: Gradient.Diagonal
                 GradientStop { position: 0.0; color: Qt.rgba(0.561, 0.718, 1.0, 0.05) }
                 GradientStop { position: 0.5; color: "transparent" }
                 GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.25) }
