@@ -185,10 +185,30 @@ class MainWindow(QMainWindow):
         self._ctx = AppContext(self)
         from ui.controllers.playlist_controller import PlaylistController
         self._playlist_ctrl = PlaylistController(self)
+        # Genre services — new DB-backed repository + services
+        from library.genre_repository import GenreRepository as DbGenreRepository
+        self._db_genre_repo = DbGenreRepository(self._db.conn)
+        from core.genre.genre_stats_service import GenreStatsService
+        self._genre_stats_svc = GenreStatsService(self._db, self._db_genre_repo)
+        from core.genre.genre_cleanup_service import GenreCleanupService
+        self._genre_cleanup_svc = GenreCleanupService(self._db, self._db_genre_repo)
+        from core.genre.genre_mix_service import GenreMixService
+        self._genre_mix_svc = GenreMixService(
+            self._db, self._db_genre_repo,
+            playlist_store=lambda name: self._db.create_playlist(name) if self._db else None,
+        )
+        # Legacy in-memory genre repo (for backward compat)
         from ui.controllers.genre_repository import GenreRepository
         self._genre_repo = GenreRepository()
         from ui.controllers.genre_controller import GenreController
-        self._genre_ctrl = GenreController(self, services=None)
+        self._genre_ctrl = GenreController(
+            self, services=None,
+            genre_stats_service=self._genre_stats_svc,
+            genre_mix_service=self._genre_mix_svc,
+        )
+        from ui.controllers.genre_cleanup_controller import GenreCleanupController
+        self._genre_cleanup_ctrl = GenreCleanupController(
+            self, self._genre_cleanup_svc, self._genre_stats_svc, self._db_genre_repo)
         from core.toast_service import ToastService
         self._toast_svc = ToastService(self)
         from core.worker_manager import WorkerManager
@@ -326,6 +346,14 @@ class MainWindow(QMainWindow):
         from ui.controllers.michi_link_controller import MichiLinkController
         self._michi_link_ctrl = MichiLinkController(self)
 
+        from ui.controllers.folder_controller import FolderController
+        self._folder_ctrl = FolderController(
+            db=self._db,
+            file_actions=self._file_actions,
+            context_svc=self._context_svc,
+            parent=self,
+        )
+
         from ui.controllers.hub_route_controller import HubRouteController
         self._hub_route_ctrl = HubRouteController(self)
 
@@ -352,6 +380,35 @@ class MainWindow(QMainWindow):
 
         from core.audio_lab.diagnostics_service import close_global_cache
         self._shutdown.register("diagnostics_cache", close_global_cache)
+
+        # Wire FolderController signals — deferred until UI is built
+        self._connect_folder_signals_later()
+
+    def _connect_folder_signals_later(self):
+        """Wire FolderController to FolderBrowserWidget after UI init."""
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self._wire_folder_controller)
+
+    def _wire_folder_controller(self):
+        """Connect FolderController to the FolderBrowserWidget instance."""
+        if not hasattr(self, '_folder_browser') or not self._folder_browser:
+            return
+        self._folder_ctrl.connect(self._folder_browser)
+        self._folder_ctrl.toast_requested.connect(self._on_folder_toast)
+
+    def _on_folder_toast(self, message: str, kind: str = "info"):
+        if kind == "success":
+            from ui.toast_notification import ToastNotification as T
+            T.success(message, self)
+        elif kind == "warning":
+            from ui.toast_notification import ToastNotification as T
+            T.warning(message, self)
+        elif kind == "error":
+            from ui.toast_notification import ToastNotification as T
+            T.error(message, self)
+        else:
+            from ui.toast_notification import ToastNotification as T
+            T.info(message, self)
 
     def _init_optional_services(self):
         """Music identifier, HomeAudioView, Snapcast, API, mDNS, enrichment, MPRIS."""
@@ -762,6 +819,8 @@ class MainWindow(QMainWindow):
         self._show_library_hub_page()
         if self._library_hub_page:
             self._library_hub_page.set_current_section("genres")
+        if self._genre_ctrl:
+            self._genre_ctrl.show_genres_hub()
 
     def _show_folders(self, key):
         self._lib_ctrl.show_folders(key)

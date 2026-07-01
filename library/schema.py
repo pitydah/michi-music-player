@@ -130,6 +130,82 @@ LIBRARY_ROOTS_SQL = """CREATE TABLE IF NOT EXISTS library_roots (
     updated_at    REAL
 )"""
 
+# ── Genre tables ──
+
+TRACK_GENRES_SQL = """CREATE TABLE IF NOT EXISTS track_genres (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    track_id        INTEGER NOT NULL REFERENCES media_items(id) ON DELETE CASCADE,
+    genre           TEXT NOT NULL,
+    canonical_genre TEXT NOT NULL DEFAULT '',
+    original_value  TEXT NOT NULL DEFAULT '',
+    confidence      REAL DEFAULT 1.0,
+    source          TEXT DEFAULT 'tag',
+    is_manual       INTEGER DEFAULT 0,
+    created_at      REAL DEFAULT (strftime('%s','now')),
+    updated_at      REAL,
+    UNIQUE(track_id, genre)
+)"""
+
+GENRE_ALIASES_SQL = """CREATE TABLE IF NOT EXISTS genre_aliases (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    alias           TEXT NOT NULL UNIQUE,
+    canonical_genre TEXT NOT NULL,
+    confidence      REAL DEFAULT 1.0,
+    source          TEXT DEFAULT 'builtin',
+    is_builtin      INTEGER DEFAULT 0,
+    is_user_defined INTEGER DEFAULT 0,
+    created_at      REAL DEFAULT (strftime('%s','now')),
+    updated_at      REAL
+)"""
+
+GENRE_STATS_CACHE_SQL = """CREATE TABLE IF NOT EXISTS genre_stats_cache (
+    genre               TEXT PRIMARY KEY,
+    canonical_genre     TEXT NOT NULL DEFAULT '',
+    track_count         INTEGER DEFAULT 0,
+    album_count         INTEGER DEFAULT 0,
+    artist_count        INTEGER DEFAULT 0,
+    duration_total      REAL DEFAULT 0.0,
+    dominant_format     TEXT DEFAULT '',
+    dominant_quality    TEXT DEFAULT '',
+    lossless_count      INTEGER DEFAULT 0,
+    lossy_count         INTEGER DEFAULT 0,
+    hires_count         INTEGER DEFAULT 0,
+    missing_metadata_count INTEGER DEFAULT 0,
+    play_count          INTEGER DEFAULT 0,
+    favorite_count      INTEGER DEFAULT 0,
+    year_min            INTEGER DEFAULT 0,
+    year_max            INTEGER DEFAULT 0,
+    dominant_decade     TEXT DEFAULT '',
+    health_status       TEXT DEFAULT 'ok',
+    last_computed_at    REAL DEFAULT 0
+)"""
+
+GENRE_CLEANUP_SUGGESTIONS_SQL = """CREATE TABLE IF NOT EXISTS genre_cleanup_suggestions (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    suggestion_type     TEXT NOT NULL,
+    source_genre        TEXT NOT NULL,
+    target_genre        TEXT DEFAULT '',
+    affected_track_count INTEGER DEFAULT 0,
+    confidence          REAL DEFAULT 0.0,
+    reason              TEXT DEFAULT '',
+    status              TEXT DEFAULT 'pending',
+    extra_json          TEXT DEFAULT '{}',
+    created_at          REAL DEFAULT (strftime('%s','now')),
+    resolved_at         REAL
+)"""
+
+GENRE_OPERATION_LOG_SQL = """CREATE TABLE IF NOT EXISTS genre_operation_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_type  TEXT NOT NULL,
+    source_genre    TEXT DEFAULT '',
+    target_genre    TEXT DEFAULT '',
+    track_ids       TEXT DEFAULT '',
+    affected_count  INTEGER DEFAULT 0,
+    wrote_tags      INTEGER DEFAULT 0,
+    details_json    TEXT DEFAULT '{}',
+    created_at      REAL DEFAULT (strftime('%s','now'))
+)"""
+
 # ── INDEX SQL ──
 
 INDEX_SQL = [
@@ -144,6 +220,11 @@ INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_media_directory ON media_items(directory)",
     "CREATE INDEX IF NOT EXISTS idx_media_genre ON media_items(genre)",
     "CREATE INDEX IF NOT EXISTS idx_media_year ON media_items(year)",
+    "CREATE INDEX IF NOT EXISTS idx_track_genres_track ON track_genres(track_id)",
+    "CREATE INDEX IF NOT EXISTS idx_track_genres_genre ON track_genres(canonical_genre)",
+    "CREATE INDEX IF NOT EXISTS idx_genre_aliases_canonical ON genre_aliases(canonical_genre)",
+    "CREATE INDEX IF NOT EXISTS idx_genre_suggestions_status ON genre_cleanup_suggestions(status)",
+    "CREATE INDEX IF NOT EXISTS idx_genre_suggestions_type ON genre_cleanup_suggestions(suggestion_type)",
 ]
 
 # ── MIGRATION DEFINITIONS ──
@@ -264,6 +345,14 @@ class Schema:
         conn.commit()
 
         for sql in [SCAN_ROOTS_SQL, INDEX_ERRORS_SQL, LIBRARY_ROOTS_SQL]:
+            conn.execute(sql)
+        conn.commit()
+
+        # Genre tables
+        for sql in [
+            TRACK_GENRES_SQL, GENRE_ALIASES_SQL, GENRE_STATS_CACHE_SQL,
+            GENRE_CLEANUP_SUGGESTIONS_SQL, GENRE_OPERATION_LOG_SQL,
+        ]:
             conn.execute(sql)
         conn.commit()
 

@@ -44,6 +44,12 @@ def ctrl(ctx, svc):
     c._grid = None
     c._detail = None
     c._metadata_editor = None
+    c._hub_page = None
+    c._detail_page = None
+    c._cleanup_page = None
+    c._cleanup_ctrl = None
+    c._stats_svc = None
+    c._mix_svc = None
     return c
 
 
@@ -102,6 +108,7 @@ class TestGenreController:
 
     def test_queue_genre_calls_enqueue(self, ctrl, svc):
         svc.genre_repo.filepaths_for_genre.return_value = ["/a.flac"]
+        ctrl._win._playback_ctrl = None
         ctrl.queue_genre("rock")
         svc.playback.enqueue.assert_called_with(["/a.flac"], play_now=False)
 

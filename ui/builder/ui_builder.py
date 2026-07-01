@@ -28,6 +28,9 @@ from ui.metadata_editor import MetadataEditorWidget
 from ui.artist_grid import ArtistGridWidget
 from ui.artist_detail_view import ArtistDetailView
 from ui.genre_grid import GenreGridWidget
+from ui.genres.genre_hub_page import GenreHubPage
+from ui.genres.genre_detail_page import GenreDetailPage
+from ui.genres.genre_cleanup_page import GenreCleanupPage
 from ui.genre_detail_view import GenreDetailView
 from ui.icons import get_icon, get_qicon
 from ui.nowplaying_bar import NowPlayingBar
@@ -557,8 +560,66 @@ class UIBuilder:
         w._genres_stack = QStackedWidget()
         w._genres_stack.setObjectName("genresStack")
         w._genres_stack.setStyleSheet("background: transparent; border: none;")
-        w._genres_stack.addWidget(w._genre_grid)
-        w._genres_stack.addWidget(w._genre_detail)
+        w._genres_stack.addWidget(w._genre_grid)     # index 0
+        w._genres_stack.addWidget(w._genre_detail)   # index 1
+
+        # New genre hub page, detail page, and cleanup page
+        w._genre_hub_page = GenreHubPage()
+        w._genre_detail_page = GenreDetailPage()
+        w._genre_cleanup_page = GenreCleanupPage()
+
+        w._genre_hub_page.genre_selected.connect(
+            lambda key, _w=w: _w._genre_ctrl.open_genre_detail(key))
+        w._genre_hub_page.genre_play_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.play_genre(key))
+        w._genre_hub_page.genre_shuffle_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.play_genre(key, shuffle=True))
+        w._genre_hub_page.genre_queue_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.queue_genre(key))
+        w._genre_hub_page.genre_mix_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.create_mix_for_genre(key))
+        w._genre_hub_page.genre_radio_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.create_radio_for_genre(key))
+        w._genre_hub_page.genre_playlist_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.create_playlist_from_genre(key))
+        w._genre_hub_page.genre_cleanup_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.show_cleanup_page())
+        w._genre_hub_page.cleanup_page_requested.connect(
+            lambda: w._genre_ctrl.show_cleanup_page())
+
+        w._genre_detail_page.back_requested.connect(
+            lambda: (w._genre_ctrl.show_genres_hub(), w._nav_ctrl.navigate_back()))
+        w._genre_detail_page.play_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.play_genre(key))
+        w._genre_detail_page.shuffle_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.play_genre(key, shuffle=True))
+        w._genre_detail_page.queue_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.queue_genre(key))
+        w._genre_detail_page.mix_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.create_mix_for_genre(key))
+        w._genre_detail_page.radio_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.create_radio_for_genre(key))
+        w._genre_detail_page.playlist_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.create_playlist_from_genre(key))
+        w._genre_detail_page.cleanup_requested.connect(
+            lambda key, _w=w: _w._genre_ctrl.show_cleanup_page())
+        w._genre_detail_page.track_play_requested.connect(
+            lambda fp, _w=w: _w._play_filepaths([fp], play_now=True))
+
+        w._genre_cleanup_page.back_requested.connect(
+            lambda: (w._genre_ctrl.show_genres_hub(), w._nav_ctrl.navigate_back()))
+        w._genre_cleanup_page.refresh_requested.connect(
+            lambda: w._genre_ctrl.show_cleanup_page())
+        w._genre_cleanup_page.cleanup_requested.connect(
+            lambda sug_type, target, _w=w: _w._genre_cleanup_ctrl.execute_merge(
+                [], target) if target else None)
+        w._genre_cleanup_page.apply_genre_requested.connect(
+            lambda tids, genre, _w=w: _w._genre_cleanup_ctrl.execute_apply_genre(tids, genre))
+
+        # Register new genre pages in the views system
+        w._genres_stack.addWidget(w._genre_hub_page)     # index 2
+        w._genres_stack.addWidget(w._genre_detail_page)   # index 3
+        w._genres_stack.addWidget(w._genre_cleanup_page)  # index 4
         w._genres_stack.setCurrentIndex(0)
 
         w._folder_browser = FolderBrowserWidget(db=w._db)
