@@ -203,7 +203,7 @@ def resolve_sidebar_active_key(key: str) -> str:
     # Hubs visibles
     if key in ("home", "library_hub", "genres", "mix_hub", "playlist_hub",
                 "playback_hub", "connections_hub", "home_audio",
-                "audio_lab", "assistant", "michi_ai", "devices_page"):
+                "broadcast_hub", "audio_lab", "assistant", "michi_ai", "devices_page"):
         return key
     # Hijos de library_hub (genres ya no está aquí porque tiene item propio)
     if key in ("library", "albums", "artists", "folders", "favs", "recent"):
