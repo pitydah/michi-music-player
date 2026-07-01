@@ -307,6 +307,32 @@ class V1_MIXIN:
             else:
                 _send_v1_error(handler, "ARTWORK_NOT_FOUND", "Cover not found", 404)
 
+        # ── Playlists API ──
+        elif path == "/api/v1/playlists/manifest/delta":
+            if not cls._check_v1_permission(handler, "GET", path):
+                return
+            cls._handle_playlist_delta(handler, srv)
+
+        elif path == "/api/v1/playlists/manifest":
+            if not cls._check_v1_permission(handler, "GET", path):
+                return
+            cls._handle_playlist_manifest(handler, srv)
+
+        elif path == "/api/v1/playlists":
+            if not cls._check_v1_permission(handler, "GET", path):
+                return
+            cls._handle_get_playlists(handler, srv)
+
+        elif path.startswith("/api/v1/playlists/") and path.endswith("/tracks"):
+            if not cls._check_v1_permission(handler, "GET", "/api/v1/playlists"):
+                return
+            cls._handle_get_playlist_tracks(handler, srv)
+
+        elif path.startswith("/api/v1/playlists/"):
+            if not cls._check_v1_permission(handler, "GET", "/api/v1/playlists"):
+                return
+            cls._handle_get_playlist(handler, srv)
+
         # ── Events (SSE not implemented) ──
         elif path == "/api/v1/events":
             _send_v1_error(handler, "NOT_IMPLEMENTED",
@@ -348,6 +374,22 @@ class V1_MIXIN:
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_queue_transfer(handler, body, srv)
+        elif path == "/api/v1/playlists":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_create_playlist(handler, srv, body)
+        elif path.startswith("/api/v1/playlists/") and path.endswith("/tracks"):
+            if not cls._check_v1_permission(handler, "POST", "/api/v1/playlists"):
+                return
+            cls._handle_add_playlist_tracks(handler, srv, body, path)
+        elif path.startswith("/api/v1/playlists/") and path.endswith("/reorder"):
+            if not cls._check_v1_permission(handler, "POST", "/api/v1/playlists"):
+                return
+            cls._handle_reorder_playlist(handler, srv, body, path)
+        elif path.startswith("/api/v1/playlists/"):
+            if not cls._check_v1_permission(handler, "DELETE", "/api/v1/playlists"):
+                return
+            cls._handle_delete_playlist(handler, srv, path)
         elif path == "/api/v1/token/refresh":
             _send_v1_error(handler, "NOT_IMPLEMENTED",
                            "Token refresh is not implemented by this server.", 501)
@@ -423,6 +465,7 @@ class V1_MIXIN:
             "sync.read_manifest", "sync.upload_state",
             "playback.read", "playback.control",
             "queue.read", "queue.write",
+            "playlist.read", "playlist.write",
         ]
         resp = V1PairConfirmResponse(
             success=True, device_id=client_id, device_token=token_str,
@@ -712,3 +755,221 @@ class V1_MIXIN:
         elif ps and hasattr(ps, "play_or_resume"):
             ps.play_or_resume()
         handler._send_json({"ok": True, "transferred": len(filepaths), "playback_started": True})
+
+    # ── Playlist API handlers ──
+
+    @staticmethod
+    def _extract_playlist_id(path: str):
+        parts = path.rstrip("/").split("/")
+        for i, p in enumerate(parts):
+            if p == "playlists" and i + 1 < len(parts):
+                try:
+                    return int(parts[i + 1])
+                except (ValueError, IndexError):
+                    return None
+        return None
+
+    @staticmethod
+    def _get_store(srv):
+        if srv is None or srv._db is None:
+            return None
+        try:
+            from library.playlists.playlist_store import PlaylistStore
+            conn = srv._db.conn if hasattr(srv._db, 'conn') else None
+            if conn is None and hasattr(srv._db, '_conn'):
+                conn = srv._db._conn
+            return PlaylistStore(conn) if conn else None
+        except Exception:
+            return None
+
+    @classmethod
+    def _handle_get_playlists(cls, handler, srv):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        summaries = store.get_all_playlists(include_stats=True)
+        result = []
+        for s in summaries:
+            result.append({
+                "id": s.id,
+                "name": s.name,
+                "description": s.description,
+                "track_count": s.track_count,
+                "duration": s.total_duration,
+                "is_smart": s.is_smart,
+                "is_locked": s.is_locked,
+                "cover_id": f"pl_{s.id}",
+                "updated_at": s.updated_at,
+                "health_score": s.health_score,
+                "sync_version": s.sync_version,
+            })
+        handler._send_json({"playlists": result, "total": len(result)})
+
+    @classmethod
+    def _handle_get_playlist(cls, handler, srv, path):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        pid = cls._extract_playlist_id(path)
+        if pid is None:
+            return _send_v1_error(handler, "INVALID_ID", "Invalid playlist id", 400)
+        pl = store.get_playlist(pid)
+        if pl is None:
+            return _send_v1_error(handler, "PLAYLIST_NOT_FOUND", "Playlist not found", 404)
+        summary = store.get_summary(pid)
+        handler._send_json({
+            "id": pl["id"],
+            "name": pl["name"],
+            "description": pl.get("description", ""),
+            "cover_path": pl.get("cover_path", ""),
+            "cover_type": pl.get("cover_type", "none"),
+            "is_smart": bool(pl.get("is_smart", 0)),
+            "is_locked": bool(pl.get("locked", 0)),
+            "track_count": summary.track_count,
+            "duration": summary.total_duration,
+            "created_at": pl.get("created_at", 0),
+            "updated_at": pl.get("updated_at", 0),
+            "health_score": pl.get("health_score", 100),
+        })
+
+    @classmethod
+    def _handle_get_playlist_tracks(cls, handler, srv, path):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        pid = cls._extract_playlist_id(path)
+        if pid is None:
+            return _send_v1_error(handler, "INVALID_ID", "Invalid playlist id", 400)
+        tracks = store.get_playlist_items(pid)
+        result = []
+        for t in tracks:
+            entry = {
+                "position": t.position,
+                "track_id": t.track_id,
+                "title": t.title,
+                "artist": t.artist,
+                "album": t.album,
+                "duration": t.duration,
+                "ext": t.ext,
+                "quality": t.quality_kind,
+            }
+            result.append(entry)
+        handler._send_json({"tracks": result, "total": len(result)})
+
+    @classmethod
+    def _handle_create_playlist(cls, handler, srv, body):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        name = data.get("name", "").strip()
+        if not name:
+            return _send_v1_error(handler, "MISSING_NAME", "Playlist name required", 400)
+        pid = store.create_playlist(
+            name,
+            description=data.get("description", ""),
+            is_smart=bool(data.get("is_smart", False)),
+            rules_json=data.get("rules_json", ""),
+        )
+        handler._send_json({"status": "ok", "id": pid, "name": name}, 201)
+
+    @classmethod
+    def _handle_add_playlist_tracks(cls, handler, srv, body, path):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        pid = cls._extract_playlist_id(path)
+        if pid is None:
+            return _send_v1_error(handler, "INVALID_ID", "Invalid playlist id", 400)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        track_ids = data.get("track_ids", data.get("tracks", []))
+        if not track_ids:
+            return _send_v1_error(handler, "NO_TRACKS", "No tracks provided", 400)
+        added = 0
+        for tid in track_ids:
+            if isinstance(tid, dict):
+                fp = tid.get("filepath", "")
+                track_id = tid.get("track_id", 0)
+            else:
+                fp = str(tid)
+                track_id = 0
+            if track_id and srv and srv._db:
+                row = srv._db.conn.execute(
+                    "SELECT filepath FROM media_items WHERE id=?", (track_id,)
+                ).fetchone()
+                if row:
+                    fp = row[0]
+            if fp:
+                store.add_track(pid, filepath=fp, source="api")
+                added += 1
+        handler._send_json({"status": "ok", "added": added})
+
+    @classmethod
+    def _handle_reorder_playlist(cls, handler, srv, body, path):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        pid = cls._extract_playlist_id(path)
+        if pid is None:
+            return _send_v1_error(handler, "INVALID_ID", "Invalid playlist id", 400)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        order = data.get("track_ids", data.get("order", []))
+        if not order:
+            return _send_v1_error(handler, "NO_ORDER", "No track_ids provided", 400)
+        if isinstance(order[0], int):
+            store.set_playlist_order(pid, ordered_track_ids=order)
+        else:
+            store.set_playlist_order(pid, ordered_filepaths=order)
+        handler._send_json({"status": "ok", "reordered": len(order)})
+
+    @classmethod
+    def _handle_delete_playlist(cls, handler, srv, path):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        pid = cls._extract_playlist_id(path)
+        if pid is None:
+            return _send_v1_error(handler, "INVALID_ID", "Invalid playlist id", 400)
+        store.delete_playlist(pid)
+        handler._send_json({"status": "ok", "deleted": pid})
+
+    @classmethod
+    def _handle_playlist_manifest(cls, handler, srv):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        from library.playlists.playlist_sync_manifest import build_manifest, serialize_manifest_safe
+        conn = srv._db.conn if hasattr(srv._db, 'conn') else getattr(srv._db, '_conn', None)
+        if conn is None:
+            return _send_v1_error(handler, "DB_UNAVAILABLE", "Database not available", 503)
+        manifest = build_manifest(store, conn, device_id="michi-link")
+        safe = serialize_manifest_safe(manifest)
+        handler._send_json(safe)
+
+    @classmethod
+    def _handle_playlist_delta(cls, handler, srv):
+        store = cls._get_store(srv)
+        if store is None:
+            return _send_v1_error(handler, "LIBRARY_UNAVAILABLE", "No library", 503)
+        qs = urllib.parse.parse_qs(
+            handler.path.split("?")[1] if "?" in handler.path else "")
+        since_str = (qs.get("since") or [""])[0]
+        try:
+            since = float(since_str) if since_str else 0.0
+        except ValueError:
+            since = 0.0
+        from library.playlists.playlist_sync_manifest import build_delta
+        conn = srv._db.conn if hasattr(srv._db, 'conn') else getattr(srv._db, '_conn', None)
+        if conn is None:
+            return _send_v1_error(handler, "DB_UNAVAILABLE", "Database not available", 503)
+        delta = build_delta(store, conn, since=since, device_id="michi-link")
+        handler._send_json(delta)

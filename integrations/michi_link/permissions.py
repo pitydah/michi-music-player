@@ -11,6 +11,8 @@ V1_PERMISSIONS: set[str] = {
     "playback.control",
     "queue.read",
     "queue.write",
+    "playlist.read",
+    "playlist.write",
 }
 
 V1_ENDPOINT_PERMISSIONS: dict[str, str] = {
@@ -30,4 +32,10 @@ V1_ENDPOINT_PERMISSIONS: dict[str, str] = {
     "GET/api/v1/queue": "queue.read",
     "POST/api/v1/queue/items": "queue.write",
     "POST/api/v1/queue/jump": "queue.write",
+    # Playlists
+    "GET/api/v1/playlists": "playlist.read",
+    "POST/api/v1/playlists": "playlist.write",
+    "DELETE/api/v1/playlists": "playlist.write",
+    "GET/api/v1/playlists/manifest": "playlist.read",
+    "GET/api/v1/playlists/manifest/delta": "playlist.read",
 }
