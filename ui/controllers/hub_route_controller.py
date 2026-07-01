@@ -78,6 +78,9 @@ class HubRouteController:
     def show_audio_lab_diagnostics(self, key: str = ""):
         self._win._audio_lab_ctrl.show_diagnostics(key)
 
+    def show_audio_lab_bitperfect_monitor(self, key: str = ""):
+        self._win._audio_lab_ctrl.show_bitperfect_monitor(key)
+
     def show_audio_lab_identifier(self, key: str = ""):
         self._win._audio_lab_ctrl.show_identifier(key)
 
@@ -174,6 +177,15 @@ class HubRouteController:
             from ui.controllers.ecosystem_controller import EcosystemController
             ctrl = EcosystemController(w)
             w._ecosystem_ctrl = ctrl
+        ctrl.show()
+
+    def show_michi_ai_page(self, key: str = ""):
+        w = self._win
+        ctrl = getattr(w, '_michi_ai_ctrl', None)
+        if ctrl is None:
+            from ui.controllers.michi_ai_controller import MichiAIController
+            ctrl = MichiAIController(w, context_service=getattr(w, '_context_svc', None))
+            w._michi_ai_ctrl = ctrl
         ctrl.show()
 
     def show_assistant(self, key: str = ""):

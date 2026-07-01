@@ -1,5 +1,5 @@
 """Tests for GenreMixService — mix creation, radio, smart playlists."""
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 import pytest
 
 from core.genre.genre_mix_service import GenreMixService

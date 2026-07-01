@@ -18,6 +18,7 @@ PRIVACIDAD:
 from __future__ import annotations
 
 import datetime
+import faulthandler
 import json
 import logging
 import os
@@ -70,6 +71,7 @@ class CrashReporter(QObject):
         self._install_all_hooks()
 
     def _install_all_hooks(self):
+        faulthandler.enable()
         self._original_excepthook = sys.excepthook
         sys.excepthook = self._on_unhandled_exception
         self._original_thread_hook = threading.excepthook
@@ -101,9 +103,14 @@ class CrashReporter(QObject):
 
     def _on_system_signal(self, signum, frame):
         sig_names = {signal.SIGSEGV: "SIGSEGV", signal.SIGABRT: "SIGABRT", signal.SIGFPE: "SIGFPE"}
-        report = self._build_report(exc_type=sig_names.get(signum, f"Signal {signum}"), exc_value="Signal received", traceback="".join(traceback.format_stack(frame)), signal=sig_names.get(signum, str(signum)))
-        path = self._save_report(report)
-        self.crash_occurred.emit(path)
+        sig_name = sig_names.get(signum, f"Signal {signum}")
+        try:
+            report = self._build_report(exc_type=sig_name, exc_value="Native signal received", traceback="", signal=sig_name)
+            path = self._save_report(report)
+            self.crash_occurred.emit(path)
+        except Exception:
+            pass
+        os._exit(128 + signum)
 
     def _on_qt_message(self, msg_type, context, message):
         if msg_type >= QtMsgType.QtWarningMsg:

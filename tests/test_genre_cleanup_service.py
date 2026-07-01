@@ -1,5 +1,5 @@
 """Tests for GenreCleanupService — detection, suggestions, execution."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pytest
 
 from core.genre.genre_cleanup_service import GenreCleanupService

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import logging
 from typing import TYPE_CHECKING
 
@@ -20,6 +21,43 @@ class AudioLabController:
         if not w._views.widget(name):
             w._views.register(name, factory())
         w._fade_content(name)
+
+    def analyze_filepaths(self, filepaths: list[str]):
+        """Analyze audio files in Audio Lab diagnostics. Non-blocking."""
+        if not filepaths:
+            return
+        from core.audio_lab.diagnostics_service import analyse_file
+        audio_paths = [fp for fp in filepaths if os.path.isfile(fp)]
+        if not audio_paths:
+            return
+        for fp in audio_paths:
+            try:
+                analyse_file(fp)
+            except Exception as e:
+                logger.debug("audio_lab analyze failed for %s: %s", fp, e)
+        self._refresh_songs_badges(audio_paths)
+        self.show_diagnostics("")
+
+    def _build_diagnostics(self):
+        w = self._win
+        from ui.audio_lab.sub_pages import AudioLabDiagnosticsPage
+        from core.jobs.job_manager import JobManager
+        jm = JobManager(
+            worker_mgr=getattr(w, '_workers', None),
+        ) if hasattr(w, '_workers') else None
+        page = AudioLabDiagnosticsPage(
+            worker_mgr=getattr(w, '_workers', None),
+            job_manager=jm,
+            db=getattr(w, '_db', None),
+        )
+        page.navigate_requested.connect(w._on_sidebar_navigate)
+        page.diagnostics_updated.connect(
+            lambda paths: self._refresh_songs_badges(paths))
+        return page
+
+    @staticmethod
+    def _show_page(name: str, factory):
+        pass  # Navigation is handled by the caller
 
     def show_audio_lab(self, key: str = ""):
         def _build():
@@ -85,26 +123,20 @@ class AudioLabController:
             pass
         page.set_status_text(" · ".join(parts))
 
-    def show_diagnostics(self, key: str = ""):
+    def show_bitperfect_monitor(self, key: str = ""):
         def _build():
-            w = self._win
-            from ui.audio_lab.sub_pages import AudioLabDiagnosticsPage
-            from core.jobs.job_manager import JobManager
-            jm = JobManager(
-                worker_mgr=getattr(w, '_workers', None),
-            ) if hasattr(w, '_workers') else None
-            page = AudioLabDiagnosticsPage(
-                worker_mgr=getattr(w, '_workers', None),
-                job_manager=jm,
-                db=getattr(w, '_db', None),
-            )
-            page.navigate_requested.connect(w._on_sidebar_navigate)
-            page.diagnostics_updated.connect(
-                lambda paths: self._refresh_songs_badges(paths)
-            )
+            from ui.audio_lab.bitperfect_monitor_page import BitperfectMonitorPage
+            page = BitperfectMonitorPage()
+            page.navigate_requested.connect(self._win._on_sidebar_navigate)
             return page
+        page_name = "audio_lab_bitperfect_monitor"
+        w = self._win
+        if not w._views.widget(page_name):
+            w._views.register(page_name, _build())
+        w._fade_content(page_name)
 
-        self._lazy("audio_lab_diagnostics", _build)
+    def show_diagnostics(self, key: str = ""):
+        self._lazy("audio_lab_diagnostics", self._build_diagnostics)
 
     def _refresh_songs_badges(self, paths: list[str]):
         """Refresh songs page badges after diagnostics update."""

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
 )
 
-from library.folder_index import list_folder_entries, list_audio_files, list_subfolders
+from library.folder_index import list_folder_entries, list_audio_files
 from library.folder_models import FolderEntry, FolderHealth
 from ui.icons import get_qicon
 from ui.central.central_styles import glass_button_qss, glass_card_qss
@@ -506,6 +506,7 @@ class FolderBrowserWidget(QWidget):
         r3.addWidget(self._btn_metadata)
         self._btn_audio_lab = QPushButton("Audio Lab")
         self._btn_audio_lab.setStyleSheet(action_style)
+        self._btn_audio_lab.setVisible(False)
         self._btn_audio_lab.clicked.connect(
             lambda: self.audio_lab_requested.emit(self._root))
         r3.addWidget(self._btn_audio_lab)
@@ -541,7 +542,7 @@ class FolderBrowserWidget(QWidget):
         label = _HEALTH_LABELS.get(health.status, "Desconocido")
         self._health_status_lbl.setText(f"Estado: {label}")
         self._health_status_lbl.setStyleSheet(
-            f"font-size:12px;font-weight:600;color:{color};")
+            "font-size:12px;font-weight:600;color:{};".format(color))
         stats = []
         if health.audio_count:
             stats.append(f"{health.audio_count} audios")
@@ -709,7 +710,6 @@ class FolderBrowserWidget(QWidget):
         for e in entries:
             item = QTreeWidgetItem()
             sv = _status_for_entry(e)
-            color = _STATUS_COLORS.get(sv, "rgba(255,255,255,0.62)")
 
             item.setIcon(0, get_qicon(_kind_icon_key(e.kind), size=24))
             item.setText(0, e.name)
@@ -969,6 +969,10 @@ class FolderBrowserWidget(QWidget):
     def set_db(self, db):
         self._db = db
         self._db_connected = db is not None
+
+    def set_audio_lab_available(self, available: bool):
+        if hasattr(self, '_btn_audio_lab'):
+            self._btn_audio_lab.setVisible(available)
 
     def set_watcher_active(self, active: bool):
         if not hasattr(self, '_scan_btn') or not self._scan_btn:

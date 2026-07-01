@@ -1,6 +1,6 @@
 """Tests for MPD Service Manager — mocked subprocess and os operations."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestMpdServiceManager:

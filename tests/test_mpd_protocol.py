@@ -147,7 +147,6 @@ class TestParseResponse:
 
 class TestMpdClientMock:
     def test_parse_status_via_client(self):
-        from audio.mpd.mpd_client import MpdClient
         from audio.mpd.mpd_protocol import parse_response
         raw = (
             "volume: 80\n"

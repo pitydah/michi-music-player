@@ -147,36 +147,22 @@ class PlayerService(QObject):
 
     def play(self, filepath, title="", artist=""):
         self._retry_url = None
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.play(filepath)
-        else:
-            self._hybrid.play(filepath)
+        self._hybrid.play(filepath)
         if title:
             self.track_changed.emit(title, artist)
 
     def pause(self):
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.pause()
-        else:
-            self._hybrid.pause()
+        self._hybrid.pause()
 
     def resume(self):
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.resume()
-        else:
-            self._hybrid.resume()
+        self._hybrid.resume()
 
     def play_or_resume(self):
-        if self._hybrid.active_id == "gstreamer":
-            current = self._engine.current
-            state = getattr(self._engine, '_state', None)
-            if current:
-                if state == PlaybackState.PAUSED:
-                    self._engine.resume()
-                else:
-                    self._engine.play(current)
-            else:
-                self.error_occurred.emit("No hay archivo para reproducir")
+        snap = self._hybrid.get_snapshot()
+        if snap.state == "paused":
+            self._hybrid.resume()
+        elif snap.state == "stopped" and snap.current_path:
+            self._hybrid.play(snap.current_path)
         else:
             self._hybrid.toggle()
 
@@ -187,29 +173,20 @@ class PlayerService(QObject):
         self._hybrid.stop()
 
     def seek(self, seconds):
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.seek(seconds)
-        else:
-            self._hybrid.seek(seconds)
+        self._hybrid.seek(seconds)
 
     def set_volume(self, vol):
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.set_volume(vol)
-        else:
+        try:
             self._hybrid.set_volume(vol)
-        self.volume_changed.emit(vol)
+            self.volume_changed.emit(vol)
+        except Exception as e:
+            self.error_occurred.emit(str(e))
 
     def play_next(self):
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.play_next()
-        else:
-            self._hybrid.play_next()
+        self._hybrid.play_next()
 
     def play_prev(self):
-        if self._hybrid.active_id == "gstreamer":
-            self._engine.play_prev()
-        else:
-            self._hybrid.play_prev()
+        self._hybrid.play_prev()
 
     def enqueue_next(self, paths):
         if not paths:
@@ -276,7 +253,8 @@ class PlayerService(QObject):
             self.track_changed.emit(title, artist)
 
     def set_audio_profile(self, profile):
-        self._engine.set_audio_profile(profile)
+        from core.settings_manager import set_
+        set_("audio/profile", profile)
         self.switch_backend_for_profile(profile)
 
     def set_output_device_id(self, device_id):
@@ -315,6 +293,9 @@ class PlayerService(QObject):
     def get_transmit_device(self):
         return self._engine.get_transmit_device()
 
+    def get_playback_snapshot(self):
+        return self._hybrid.get_snapshot()
+
     def set_eq_graphic(self, bands):
         if self._is_mpd_active():
             self.error_occurred.emit("EQ no disponible en modo MPD Hi-Fi")
@@ -346,35 +327,44 @@ class PlayerService(QObject):
             return
         self._engine.set_spectrum_enabled(enabled)
 
+    def get_bitperfect_report(self):
+        """Build a BitperfectReport from current diagnostics and profile."""
+        from audio.diagnostics.bitperfect_verifier import verify_bitperfect
+        from audio.format_probe import AudioFormatInfo
+        from audio.output_profiles import get_profile
+        diag = self.get_audio_diagnostics()
+        profile_key = getattr(diag, 'profile', 'standard')
+        profile = get_profile(profile_key)
+        fmt = AudioFormatInfo(
+            sample_rate=getattr(diag, 'input_sample_rate', 0),
+            bit_depth=getattr(diag, 'input_bit_depth', 0),
+            channels=getattr(diag, 'input_channels', 0),
+        )
+        return verify_bitperfect(fmt, profile, diag)
+
     def _is_mpd_active(self):
         return self._hybrid.active_id == "mpd"
 
     @property
     def state(self):
-        if self._hybrid.active_id == "mpd" and self._mpd_backend:
-            try:
-                return self._mpd_backend.get_snapshot().state
-            except Exception:
-                pass
-        return self._engine.state
+        try:
+            return self._hybrid.get_snapshot().state
+        except Exception:
+            return "stopped"
 
     @property
     def current(self):
-        if self._hybrid.active_id == "mpd" and self._mpd_backend:
-            try:
-                return self._mpd_backend.get_snapshot().current_path
-            except Exception:
-                pass
-        return self._engine.current
+        try:
+            return self._hybrid.get_snapshot().current_path
+        except Exception:
+            return ""
 
     @property
     def duration(self):
-        if self._hybrid.active_id == "mpd" and self._mpd_backend:
-            try:
-                return self._mpd_backend.get_snapshot().duration_seconds
-            except Exception:
-                pass
-        return getattr(self._engine, 'duration', 0.0) if hasattr(self._engine, 'duration') else 0.0
+        try:
+            return self._hybrid.get_snapshot().duration_seconds
+        except Exception:
+            return 0.0
 
     @property
     def hybrid(self):

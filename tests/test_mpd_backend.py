@@ -61,9 +61,11 @@ class TestMpdBackend:
         backend.seek(45.0)
         mock_client.seekcur.assert_called_once_with(45.0)
 
-    def test_set_volume(self, backend, mock_client):
-        backend.set_volume(50)
-        mock_client.setvol.assert_called_once_with(50)
+    def test_set_volume_blocked(self, backend, mock_client):
+        from audio.backends.errors import BackendCapabilityError
+        with pytest.raises(BackendCapabilityError, match="Volumen digital"):
+            backend.set_volume(50)
+        mock_client.setvol.assert_not_called()
 
     def test_set_queue(self, backend, mock_client):
         backend.set_queue(["a.flac", "b.flac"], start_index=1)

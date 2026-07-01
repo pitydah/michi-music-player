@@ -3,6 +3,9 @@
 Can start, stop, restart, and check status of a local MPD instance.
 Uses subprocess to launch mpd with a custom config file.
 Does NOT require root — runs as the current user with a data dir in ~/.local/share.
+
+SAFETY: stop() ONLY terminates the process started by this instance.
+It does NOT use pkill/killall to avoid killing external MPD instances.
 """
 
 import logging
@@ -15,7 +18,6 @@ import time
 from audio.mpd.mpd_client import MpdClient
 from audio.mpd.mpd_errors import MpdConnectionError
 from audio.mpd.mpd_config_builder import (
-    build_mpd_config,
     write_mpd_conf,
     default_data_dir,
 )
@@ -31,6 +33,9 @@ class MpdServiceManager:
         self._mpd_binary = mpd_binary or self._find_mpd()
         self._process: subprocess.Popen | None = None
         self._config_path = os.path.join(self._data_dir, "mpd.conf")
+        self._pid: int = 0
+        self._last_error: str = ""
+        self._log_file: str = os.path.join(self._data_dir, "mpd.log")
 
     @property
     def running(self) -> bool:
@@ -44,6 +49,18 @@ class MpdServiceManager:
     @property
     def config_path(self) -> str:
         return self._config_path
+
+    @property
+    def pid(self) -> int:
+        return self._pid
+
+    @property
+    def last_error(self) -> str:
+        return self._last_error
+
+    @property
+    def log_file(self) -> str:
+        return self._log_file
 
     @staticmethod
     def is_installed() -> bool:
@@ -67,7 +84,8 @@ class MpdServiceManager:
             return True
 
         if not self.is_installed():
-            logger.error("MPD binary not found")
+            self._last_error = "MPD binary not found"
+            logger.error(self._last_error)
             return False
 
         config_path = self._config_path
@@ -76,50 +94,50 @@ class MpdServiceManager:
         elif isinstance(config, str):
             config_path = config
         else:
-            logger.error("Invalid config argument")
+            self._last_error = "Invalid config argument"
+            logger.error(self._last_error)
             return False
 
         try:
             self._process = subprocess.Popen(
-                [self._mpd_binary, config_path],
+                [self._mpd_binary, "--no-daemon", config_path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+            self._pid = self._process.pid or 0
             time.sleep(0.5)
             if self._process.poll() is not None:
-                logger.error("MPD exited immediately (check %s)", config_path)
+                self._last_error = f"MPD exited immediately (check {config_path})"
+                logger.error(self._last_error)
+                self._read_log_tail()
                 return False
             logger.info("MPD started (pid %d)", self._process.pid)
             return True
         except OSError as e:
-            logger.error("Failed to start MPD: %s", e)
+            self._last_error = f"Failed to start MPD: {e}"
+            logger.error(self._last_error)
             return False
 
     def stop(self):
-        """Stop the local MPD instance."""
+        """Stop the local MPD instance.
+
+        ONLY terminates the process started by this instance.
+        Does NOT use pkill/killall.
+        """
         if self._process:
             try:
                 self._process.send_signal(signal.SIGTERM)
                 self._process.wait(timeout=5.0)
-                logger.info("MPD stopped")
+                logger.info("MPD stopped (pid %d)", self._pid)
             except subprocess.TimeoutExpired:
-                logger.warning("MPD did not stop gracefully, killing")
+                logger.warning("MPD pid %d did not stop gracefully, killing", self._pid)
                 self._process.kill()
                 self._process.wait(timeout=2.0)
             finally:
                 self._process = None
+                self._pid = 0
         else:
-            self._stop_all_mpd_instances()
-
-    @staticmethod
-    def _stop_all_mpd_instances():
-        """Kill all mpd processes owned by this user (fallback)."""
-        try:
-            subprocess.run(
-                ["pkill", "-u", os.environ.get("USER", ""), "mpd"],
-                capture_output=True, timeout=3.0)
-        except (subprocess.TimeoutExpired, OSError):
-            pass
+            logger.debug("No MPD process to stop")
 
     def restart(self, config=None) -> bool:
         """Restart MPD with optional new config."""
@@ -137,6 +155,7 @@ class MpdServiceManager:
             client.disconnect()
             return True, "Connected successfully"
         except MpdConnectionError as e:
+            self._last_error = str(e)
             return False, str(e)
 
     def get_status(self) -> dict:
@@ -147,4 +166,31 @@ class MpdServiceManager:
             "binary": self._mpd_binary,
             "data_dir": self._data_dir,
             "config_path": self._config_path,
+            "pid": self._pid,
+            "port": self._read_port(),
+            "last_error": self._last_error,
+            "log_file": self._log_file,
         }
+
+    def _read_port(self) -> int:
+        """Read port from config file."""
+        try:
+            with open(self._config_path) as f:
+                for line in f:
+                    if "port" in line and '"' in line:
+                        return int(line.split('"')[1])
+        except (OSError, ValueError, IndexError):
+            pass
+        return 6600
+
+    def _read_log_tail(self):
+        """Read last lines of MPD log for diagnostics."""
+        try:
+            if os.path.exists(self._log_file):
+                with open(self._log_file) as f:
+                    lines = f.readlines()
+                tail = "".join(lines[-10:])
+                if tail.strip():
+                    logger.warning("MPD log tail:\n%s", tail)
+        except OSError:
+            pass

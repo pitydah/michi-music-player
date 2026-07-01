@@ -96,6 +96,12 @@ def verify_bitperfect(
     if matching:
         _check_rate_match(report, input_format, matching)
         _check_format_match(report, input_format, matching)
+        _check_channels_match(report, input_format, matching)
+    else:
+        if active:
+            report.status = "not_verified"
+            report.reasons.append("Dispositivo ALSA activo no coincide con el esperado")
+            return report
 
     if report.reasons:
         report.status = "broken"
@@ -109,13 +115,21 @@ def verify_bitperfect(
 def _find_matching_device(
     active: list, device_str: str
 ):
-    """Find active hw_params that match the expected ALSA device."""
+    """Find active hw_params that match the expected ALSA device.
+
+    Supports formats: hw:X,Y, hw:CARD=X,DEV=Y, alsa:hw:X,Y
+    """
     import re
-    m = re.search(r"hw:(\d+),(\d+)", device_str)
+    m = re.search(r"(?:alsa:)?hw:(\d+|CARD=(\d+)),(\d+|DEV=(\d+))", device_str)
     if not m:
-        return None
-    target_card = int(m.group(1))
-    target_dev = int(m.group(2))
+        m = re.search(r"hw:(\d+),(\d+)", device_str)
+        if not m:
+            return None
+        target_card = int(m.group(1))
+        target_dev = int(m.group(2))
+    else:
+        target_card = int(m.group(2) or m.group(1))
+        target_dev = int(m.group(4) or m.group(3))
     for params in active:
         if params.card == target_card and params.device == target_dev:
             return params
@@ -147,6 +161,19 @@ _FORMAT_DEPTH_MAP = {
     "DSD_U8": 8,
     "IEC958_SUBFRAME_LE": 32,
 }
+
+
+def _check_channels_match(
+    report: BitperfectReport,
+    input_fmt: AudioFormatInfo,
+    hw_params,
+):
+    if input_fmt.channels > 0 and hw_params.channels > 0:
+        if input_fmt.channels != hw_params.channels:
+            report.reasons.append(
+                f"Canales distintos: archivo {input_fmt.channels}, "
+                f"DAC recibe {hw_params.channels}"
+            )
 
 
 def _check_format_match(

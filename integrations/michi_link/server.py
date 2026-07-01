@@ -344,6 +344,10 @@ class V1_MIXIN:
             if not cls._check_v1_permission(handler, "POST", path):
                 return
             cls._handle_queue_items(handler, body, srv)
+        elif path == "/api/v1/queue/transfer":
+            if not cls._check_v1_permission(handler, "POST", path):
+                return
+            cls._handle_queue_transfer(handler, body, srv)
         elif path == "/api/v1/token/refresh":
             _send_v1_error(handler, "NOT_IMPLEMENTED",
                            "Token refresh is not implemented by this server.", 501)
@@ -676,3 +680,35 @@ class V1_MIXIN:
         if filepaths:
             ps.enqueue(filepaths, play_now=data.get("play_now", False))
         handler._send_json({"added": len(filepaths)})
+
+    @classmethod
+    def _handle_queue_transfer(cls, handler, body, srv):
+        ps = cls._player_service
+        pb = cls._playback
+        if not ps:
+            return _send_v1_error(handler, "PLAYBACK_UNAVAILABLE", "Playback service not available", 503)
+        try:
+            data = json.loads(body)
+        except Exception:
+            return _send_v1_error(handler, "INVALID_JSON", "Invalid JSON", 400)
+        uris = data.get("queue", data.get("uris", data.get("track_ids", [])))
+        position_ms = data.get("position_ms", 0)
+        if not uris:
+            return _send_v1_error(handler, "NO_QUEUE", "No queue provided", 400)
+        filepaths = []
+        for uri in uris:
+            track_id = uri if isinstance(uri, (int, str)) else uri.get("track_id", "")
+            fp = srv._resolve_track(track_id) if srv else None
+            if fp:
+                filepaths.append(fp)
+        if filepaths:
+            ps.enqueue(filepaths, play_now=False)
+        if position_ms > 0:
+            import contextlib
+            with contextlib.suppress(Exception):
+                ps.seek(position_ms / 1000.0)
+        if pb and hasattr(pb, "play_or_resume"):
+            pb.play_or_resume()
+        elif ps and hasattr(ps, "play_or_resume"):
+            ps.play_or_resume()
+        handler._send_json({"ok": True, "transferred": len(filepaths), "playback_started": True})

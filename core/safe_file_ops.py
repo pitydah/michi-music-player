@@ -281,10 +281,7 @@ class SafeFileOperations:
                         "WHERE (filepath = ? OR filepath LIKE ?) AND deleted_at IS NULL",
                         (old_path, prefix + "%")).fetchall()
                     for rid, fp in rows:
-                        if fp == old_path:
-                            new_fp = new_path
-                        else:
-                            new_fp = fp.replace(old_path, new_path, 1)
+                        new_fp = new_path if fp == old_path else fp.replace(old_path, new_path, 1)
                         try:
                             conn.execute(
                                 "UPDATE media_items SET filepath=?, directory=?, "

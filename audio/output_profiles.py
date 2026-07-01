@@ -179,6 +179,14 @@ def get_profile(key: str) -> AudioOutputProfile:
     return PROFILES.get(key, PROFILES["standard"])
 
 
+def is_mpd_profile(key: str) -> bool:
+    return get_profile(key).preferred_backend == "mpd"
+
+
+def is_bitperfect_profile(key: str) -> bool:
+    return get_profile(key).bitperfect
+
+
 def bitperfect_breakers() -> list[str]:
     """List of features that break bit-perfect playback."""
     return ["EQ", "ReplayGain", "volume digital", "spectrum",

@@ -160,7 +160,6 @@ class FolderProblemReportDialog(QDialog):
                 sev = p.get("severity", "info")
                 sev_item = QTableWidgetItem(
                     _SEVERITY_LABELS.get(sev, sev.capitalize()))
-                sev_color = _SEVERITY_COLORS.get(sev, "#888")
                 sev_item.setForeground(Qt.GlobalColor.white)
                 sev_item.setToolTip(f"Severidad: {sev}")
                 table.setItem(row, 0, sev_item)

@@ -5,10 +5,8 @@ play_history, and queue_state in an actual SQLite database.
 """
 
 import os
-import shutil
 import tempfile
 import sqlite3
-import time
 
 from core.safe_file_ops import SafeFileOperations
 
@@ -263,6 +261,54 @@ class TestSafeFileOpsDBIntegration:
                 # Physical move happened, DB failed
                 if result.rollback_performed:
                     assert os.path.exists(old_dir) or not os.path.exists(new_dir)
+
+            conn.close()
+
+    def test_rollback_preserves_original_on_db_failure(self):
+        """When physical move succeeds but DB update fails, rollback should restore original."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = os.path.join(tmpdir, "Music")
+            old_dir = os.path.join(root, "Album")
+            new_dir = os.path.join(root, "Album_Moved")
+            os.makedirs(old_dir, exist_ok=True)
+            fp = os.path.join(old_dir, "song.flac")
+            with open(fp, "w") as f:
+                f.write("data")
+
+            db_path = os.path.join(tmpdir, "test.db")
+            conn = _create_temp_db(db_path)
+            conn.execute(
+                "INSERT INTO library_roots (path) VALUES (?)", (root,))
+            conn.execute(
+                "INSERT INTO media_items (filepath, filename, directory) "
+                "VALUES (?, ?, ?)", (fp, "song.flac", old_dir))
+            conn.commit()
+
+            # Simulate DB failure during execute_move — use a broken conn
+            import sqlite3
+            conn.close()
+            broken_conn = sqlite3.connect(db_path)
+            broken_conn.execute("DROP TABLE IF EXISTS media_items")
+            broken_conn.commit()
+            # Re-add table but with wrong schema so UPDATE fails
+            broken_conn.execute(
+                "CREATE TABLE media_items (id INTEGER PRIMARY KEY, garbage TEXT)")
+            broken_conn.commit()
+
+            db = FakeDB(broken_conn, root)
+            ops = SafeFileOperations(db=db)
+            plan = ops.plan_move(old_dir, new_dir)
+            if plan.can_proceed:
+                # Physical move will succeed, DB update will fail
+                result = ops.execute_move(plan)
+                assert result.rollback_performed, "Rollback should have been attempted"
+                # After rollback, original should exist
+                assert os.path.exists(old_dir), (
+                    f"Original dir should exist after rollback: {old_dir}")
+                assert os.path.isfile(fp), (
+                    f"Original file should exist after rollback: {fp}")
+
+            broken_conn.close()
 
             conn.close()
 

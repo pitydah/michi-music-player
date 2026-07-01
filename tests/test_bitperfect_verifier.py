@@ -122,3 +122,45 @@ class TestBitperfectVerifier:
             fmt = AudioFormatInfo(sample_rate=44100)
             report = verify_bitperfect(fmt, MockProfile(), MockDiagnostics())
             assert "hw_params" in " ".join(report.reasons).lower() or report.status == "not_verified"
+
+    def test_broken_channels_mismatch(self):
+        from audio.diagnostics.bitperfect_verifier import verify_bitperfect
+        from audio.format_probe import AudioFormatInfo
+        from audio.diagnostics.alsa_hw_params import AlsaHwParams
+
+        class MonoDiag:
+            device_string = "alsasink device=hw:0,0"
+            eq_active = False
+            replaygain_active = False
+            spectrum_active = False
+            resampling_active = False
+
+        fmt = AudioFormatInfo(sample_rate=44100, channels=2)
+        mock_hw = AlsaHwParams(card=0, device=0, sample_rate=44100,
+                                format="S16_LE", channels=6)
+        with patch("audio.diagnostics.bitperfect_verifier.find_active_hw_params") as mock_find:
+            mock_find.return_value = [mock_hw]
+            report = verify_bitperfect(fmt, MockProfile(), MonoDiag())
+            assert any("Canales" in r for r in report.reasons)
+            assert report.status == "broken"
+
+    def test_not_verified_when_no_matching_device(self):
+        from audio.diagnostics.bitperfect_verifier import verify_bitperfect
+        from audio.format_probe import AudioFormatInfo
+        from audio.diagnostics.alsa_hw_params import AlsaHwParams
+
+        class Hw1Diag:
+            device_string = "alsasink device=hw:1,0"
+            eq_active = False
+            replaygain_active = False
+            spectrum_active = False
+            resampling_active = False
+
+        fmt = AudioFormatInfo(sample_rate=44100, channels=2)
+        mock_hw = AlsaHwParams(card=0, device=0, sample_rate=44100,
+                                format="S16_LE", channels=2)
+        with patch("audio.diagnostics.bitperfect_verifier.find_active_hw_params") as mock_find:
+            mock_find.return_value = [mock_hw]
+            report = verify_bitperfect(fmt, MockProfile(), Hw1Diag())
+            assert report.status == "not_verified"
+            assert any("no coincide" in r for r in report.reasons)

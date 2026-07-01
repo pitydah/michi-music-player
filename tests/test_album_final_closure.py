@@ -28,7 +28,7 @@ def _make_item(album="A", artist="X", albumartist="", filepath="/m/s.flac",
 class TestFinalClosure:
     def test_mock_library_grouping(self):
         """Full mock library: normal, multi-disc, compilation, remaster, deluxe."""
-        from library.album_repository import AlbumRepository, album_groups_to_cover_items
+        from library.album_repository import AlbumRepository
 
         items = [
             # Normal album (2 tracks)

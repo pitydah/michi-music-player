@@ -1,8 +1,6 @@
 """MPD Discovery — finds MPD instances on the local network or system."""
 
 import logging
-import os
-import socket
 import subprocess
 
 from audio.mpd.mpd_client import MpdClient

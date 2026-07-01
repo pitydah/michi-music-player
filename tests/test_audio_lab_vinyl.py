@@ -16,21 +16,22 @@ def test_vinyl_export_no_recording_no_crash(qtbot):
     from ui.audio_lab.vinyl_lab_page import VinylLabPage
     page = VinylLabPage()
     qtbot.addWidget(page)
-    page._export_and_import()
-    # No debe crashear si no hay grabacion
+    with patch("ui.audio_lab.vinyl_lab_page.QMessageBox.information"):
+        page._export_and_import()
 
 
 def test_vinyl_export_no_split_points_no_crash(qtbot):
     from ui.audio_lab.vinyl_lab_page import VinylLabPage
-    import tempfile, os
+    import tempfile
+    import os
     page = VinylLabPage()
     qtbot.addWidget(page)
-    # Simular que hay grabacion pero sin split points
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         path = f.name
     try:
         page._side_a_path = path
         page._split_points = []
-        page._export_and_import()
+        with patch("ui.audio_lab.vinyl_lab_page.QMessageBox.information"):
+            page._export_and_import()
     finally:
         os.unlink(path)

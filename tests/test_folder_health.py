@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from library.folder_models import FolderEntry
 from library.folder_health import FolderHealthService

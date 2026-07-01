@@ -410,6 +410,8 @@ class MainWindow(QMainWindow):
         self._folder_ctrl.toast_requested.connect(self._on_folder_toast)
         self._folder_ctrl.health_ready.connect(self._folder_browser.update_health)
         self._folder_ctrl.integrity_ready.connect(self._on_folder_integrity_result)
+        self._folder_browser.set_audio_lab_available(
+            hasattr(self, '_audio_lab_ctrl') and self._audio_lab_ctrl is not None)
 
         fb = self._folder_browser
         fb.files_for_metadata.connect(self._open_metadata_for_files)
@@ -967,6 +969,9 @@ class MainWindow(QMainWindow):
     def _show_assistant(self, key=None):
         self._hub_route_ctrl.show_assistant(key)
 
+    def _show_michi_ai_page(self, key=None):
+        self._hub_route_ctrl.show_michi_ai_page(key)
+
     def _on_assistant_state(self, state: str):
         if self._assistant_panel:
             self._assistant_panel.set_thinking(state == "thinking")
@@ -990,6 +995,9 @@ class MainWindow(QMainWindow):
 
     def _show_audio_lab_diagnostics(self, key=None):
         self._hub_route_ctrl.show_audio_lab_diagnostics(key)
+
+    def _show_audio_lab_bitperfect_monitor(self, key=None):
+        self._hub_route_ctrl.show_audio_lab_bitperfect_monitor(key)
 
     def _show_audio_lab_identifier(self, key=None):
         self._hub_route_ctrl.show_audio_lab_identifier(key)

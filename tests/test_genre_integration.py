@@ -3,9 +3,6 @@ import sqlite3
 import pytest
 
 from library.genre_repository import GenreRepository
-from core.genre.genre_stats_service import GenreStatsService
-from core.genre.genre_cleanup_service import GenreCleanupService
-from core.genre.genre_mix_service import GenreMixService
 
 
 @pytest.fixture

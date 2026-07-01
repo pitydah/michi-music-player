@@ -4,6 +4,9 @@ Michi paths are absolute filesystem paths (/home/user/Music/Album/track.flac).
 MPD paths are relative to its music_directory (Album/track.flac).
 
 This mapper uses settings to translate between the two.
+
+Uses os.path.commonpath() for safe prefix detection instead of startswith()
+to avoid false matches like /home/user/Music vs /home/user/MusicBackup.
 """
 
 import os
@@ -23,27 +26,32 @@ class MpdPathMapper:
     def music_directory(self) -> str:
         return self._music_dir
 
+    @staticmethod
+    def _is_inside(path: str, root: str) -> bool:
+        """Check if path is inside root directory using commonpath."""
+        try:
+            common = os.path.commonpath([os.path.abspath(path), os.path.abspath(root)])
+            return common == os.path.abspath(root)
+        except ValueError:
+            return False
+
     def to_mpd_path(self, local_path: str) -> str:
         """Convert an absolute local path to a relative MPD path.
 
-        /home/user/Music/Album/track.flac → Album/track.flac
+        /home/user/Music/Album/track.flac -> Album/track.flac
         """
         if not self._mapping_enabled:
             return local_path
         local_path = os.path.normpath(local_path)
         root = os.path.normpath(self._local_root)
-        if local_path.startswith(root + "/") or local_path.startswith(root + os.sep):
-            rel = local_path[len(root) + 1:]
-            return rel
-        if local_path.startswith(root):
-            rel = local_path[len(root):]
-            return rel.lstrip("/")
+        if self._is_inside(local_path, root):
+            return os.path.relpath(local_path, root)
         return local_path
 
     def from_mpd_path(self, mpd_path: str) -> str:
         """Convert a relative MPD path to an absolute local path.
 
-        Album/track.flac → /home/user/Music/Album/track.flac
+        Album/track.flac -> /home/user/Music/Album/track.flac
         """
         if not self._mapping_enabled:
             return mpd_path

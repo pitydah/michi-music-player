@@ -23,7 +23,6 @@ class TestMPRISObjectHybrid:
     def mpris_obj(self):
         """Create a partial mock MPRISObject with player_service."""
         from adapters.mpris import MPRISObject
-        from PySide6.QtCore import QObject
 
         class FakeBusName:
             def __init__(self, *a, **kw): pass

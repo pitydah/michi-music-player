@@ -1,6 +1,5 @@
 """Tests for audio profile → backend selection rules."""
 
-from unittest.mock import MagicMock
 
 
 def _make_profile(key: str, preferred_backend: str = "auto"):

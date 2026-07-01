@@ -2,10 +2,8 @@
 
 Shows affected tracks count, source/target info, and write_tags checkbox.
 """
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QCheckBox, QFrame, QDialogButtonBox,
+    QDialog, QVBoxLayout, QLabel, QCheckBox, QFrame, QDialogButtonBox,
 )
 
 _BG = "#090B11"

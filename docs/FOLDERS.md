@@ -138,15 +138,22 @@ ui/folders/folder_problem_report.py → Diálogo de reporte de problemas
 |---|---|---|
 | `tests/test_folder_models.py` | 22 | ✅ |
 | `tests/test_folder_index.py` | 22 | ✅ |
-| `tests/test_folder_health.py` | 14 | ✅ |
+| `tests/test_folder_health.py` | 19 | ✅ |
 | `tests/test_file_manager_service.py` | 24 | ✅ |
 | `tests/test_folder_integrity.py` | 12 | ✅ |
 | `tests/test_safe_file_ops.py` | 10 | ✅ |
-| **Total** | **104** | ✅ |
+| `tests/test_safe_file_ops_db_integration.py` | 7 | ✅ |
+| **Total** | **116** | ✅ |
 
 ## Riesgos restantes
 
-1. **Symlinks**: No se siguen symlinks por defecto, pero un usuario que tenga symlinks dentro de su biblioteca podría ver carpetas duplicadas. No se implementó detección explícita de symlinks rotos.
-2. **Archivos bloqueados**: En Windows/Linux, archivos abiertos por otro proceso pueden fallar en el probe de metadatos. Se manejan con try/except.
-3. **CIFS/NFS montados**: Carpeta puede aparecer como "existente" pero no responder en operaciones de stat. `cleanup_missing_under_root` verifica `os.path.isdir()` antes de limpiar.
-4. **Hash completo**: La verificación profunda con hash completo puede ser lenta en carpetas grandes (>10GB). Se recomienda usar solo en archivos individuales sospechosos.
+1. **Symlinks**: No se siguen symlinks por defecto. No se implementó detección explícita de symlinks rotos.
+2. **Archivos bloqueados**: Archivos abiertos por otro proceso pueden fallar en el probe de metadatos. Se manejan con try/except.
+3. **CIFS/NFS montados**: Carpeta puede aparecer como "existente" pero no responder. `cleanup_missing_under_root` verifica `os.path.isdir()` antes de limpiar.
+4. **Hash completo**: La verificación profunda con hash completo puede ser lenta en carpetas grandes (>10GB). Recomendado solo en archivos individuales sospechosos.
+5. **Audio Lab**: La integración está preparada (señal + botón) pero depende de que `AudioLabController.analyze_filepaths()` esté implementado.
+
+## Funciones experimentales / no implementadas
+
+- **Safe Move/Rename**: Los handlers existen y están conectados con preflight, transacción DB y rollback. Se recomienda uso cuidadoso. No se han probado en repositorios CIFS/NFS.
+- **Audio Lab**: Botón visible en panel de acciones, envía archivos a `AudioLabController.analyze_filepaths()`. Si el controlador no está disponible, muestra toast.

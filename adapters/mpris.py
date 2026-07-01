@@ -77,11 +77,13 @@ class MPRISObject(dbus.service.Object):
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player")
     def Next(self):
-        self._engine and self._engine.play_next()
+        api = self._player_api()
+        api and api.play_next()
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player")
     def Previous(self):
-        self._engine and self._engine.play_prev()
+        api = self._player_api()
+        api and api.play_prev()
 
     def _player_api(self):
         ps = getattr(self, '_player_service', None)
@@ -115,10 +117,11 @@ class MPRISObject(dbus.service.Object):
     def Seek(self, offset):
         ps = getattr(self, '_player_service', None)
         if ps:
-            snap = ps.get_audio_diagnostics()
-            pos = getattr(snap, 'position_seconds', 0)
+            snap = ps.get_playback_snapshot() if hasattr(ps, 'get_playback_snapshot') else None
+            pos = snap.position_seconds if snap else 0
             ps.seek(max(0, pos + offset / 1e6))
-        elif self._engine:
+            return
+        if self._engine:
             pos_ns = self._engine.get_position_ns() if hasattr(self._engine, 'get_position_ns') else 0
             if pos_ns:
                 secs = pos_ns / 1e9 + offset / 1e6
@@ -130,15 +133,21 @@ class MPRISObject(dbus.service.Object):
         ps = getattr(self, '_player_service', None)
         if ps:
             ps.seek(position / 1e6)
-        elif self._engine:
+            return
+        if self._engine:
             current_us = (self._engine.get_position_ns() // 1000) if hasattr(self._engine, 'get_position_ns') else 0
-        offset = position - current_us
-        self.Seek(offset)
+            offset = position - current_us
+            self.Seek(offset)
 
     @dbus.service.method(dbus_interface="org.mpris.MediaPlayer2.Player",
                          in_signature="s")
     def OpenUri(self, uri):
-        self._engine and self._engine.play(uri)
+        api = self._player_api()
+        if api:
+            if uri.startswith(("http://", "https://", "icy://")):
+                api.play_url(uri)
+            else:
+                api.play(uri)
 
     @dbus.service.signal(dbus_interface="org.mpris.MediaPlayer2.Player",
                          signature="x")

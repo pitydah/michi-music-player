@@ -1,24 +1,46 @@
-"""GStreamerBackend — wraps GStreamerEngine behind the common AudioBackend API."""
+"""GStreamerBackend — wraps GStreamerEngine behind the common AudioBackend API.
+
+Re-emits engine Qt signals so PlayerService can delegate all operations
+to the HybridAudioManager without bifurcating between engine/backend.
+"""
+
+from PySide6.QtCore import QObject, Signal
 
 from audio.backends.types import (
     BackendCapabilities,
     PlaybackSnapshot,
     AudioDiagnostics,
 )
-from audio.backends.errors import BackendPlaybackError
 
 
-class GStreamerBackend:
+class GStreamerBackend(QObject):
     """Adapter that translates AudioBackend API calls to GStreamerEngine.
 
-    Does NOT re-implement GStreamerEngine — delegates to the existing engine.
+    Re-emits position_changed, state_changed, duration_changed from the engine
+    so PlayerService can listen to the active backend uniformly.
     """
+
+    position_changed = Signal(float)
+    state_changed = Signal(str)
+    duration_changed = Signal(float)
 
     backend_id = "gstreamer"
     display_name = "GStreamer"
 
-    def __init__(self, engine):
+    def __init__(self, engine, parent=None):
+        super().__init__(parent)
         self._engine = engine
+
+        engine.position_changed.connect(self.position_changed)
+        engine.state_changed.connect(self._forward_state)
+        engine.duration_changed.connect(self.duration_changed)
+
+    def _forward_state(self, state):
+        from audio.player import PlaybackState
+        s_map = {PlaybackState.PLAYING: "playing",
+                 PlaybackState.PAUSED: "paused",
+                 PlaybackState.STOPPED: "stopped"}
+        self.state_changed.emit(s_map.get(state, "stopped"))
 
     @property
     def capabilities(self) -> BackendCapabilities:
@@ -102,7 +124,6 @@ class GStreamerBackend:
 
     def get_diagnostics(self) -> AudioDiagnostics:
         diag = self._engine.get_audio_diagnostics()
-        dsp_state = getattr(self._engine, '_dsp_state', None)
         return AudioDiagnostics(
             backend_id=self.backend_id,
             profile=getattr(diag, 'profile', 'standard'),

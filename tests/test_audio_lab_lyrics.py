@@ -1,6 +1,5 @@
 """Tests for LyricsPage — requires pytest-qt."""
 
-from unittest.mock import patch, MagicMock
 
 
 def test_lyrics_page_renders(qtbot):

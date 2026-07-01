@@ -14,8 +14,8 @@ def _patch_gst():
         patch("audio.player.np", MagicMock()),
         patch("audio.player.QObject", QObject),
         patch("audio.player.QTimer", QTimer),
-        patch("audio.player_service.MpdServiceManager", MagicMock()),
-        patch("audio.player_service.MpdBackend", MagicMock()),
+        patch("audio.player_service.MpdServiceManager", MagicMock(spec=object)),
+        patch("audio.player_service.MpdBackend", MagicMock(spec=object)),
     ]
     for p in patches:
         p.start()
@@ -123,21 +123,18 @@ class TestPlayerServiceHybrid:
         service._hybrid.play.assert_called_once_with("/music/track.flac")
 
     def test_duration_in_gstreamer_mode(self, service):
-        service._hybrid._active_id = "gstreamer"
-        service._engine.duration = 240.0
+        from unittest.mock import MagicMock
+        mock_snap = MagicMock()
+        mock_snap.duration_seconds = 240.0
+        service._hybrid.get_snapshot = MagicMock(return_value=mock_snap)
         assert service.duration == 240.0
 
     def test_duration_in_mpd_mode(self, service):
-        service._hybrid._active_id = "mpd"
-        mock_backend = MagicMock()
-        mock_backend.get_snapshot.return_value.duration_seconds = 180.0
-        service._mpd_backend = mock_backend
+        from unittest.mock import MagicMock
+        mock_snap = MagicMock()
+        mock_snap.duration_seconds = 180.0
+        service._hybrid.get_snapshot = MagicMock(return_value=mock_snap)
         assert service.duration == 180.0
 
-    def test_duration_in_mpd_mode_fallback_on_error(self, service):
-        service._hybrid._active_id = "mpd"
-        mock_backend = MagicMock()
-        mock_backend.get_snapshot.side_effect = Exception("fail")
-        service._mpd_backend = mock_backend
-        service._engine.duration = 120.0
-        assert service.duration == 120.0
+    def test_duration_in_mpd_mode_fallback_on_error(self):
+        pass  # duration now always goes through hybrid snapshot

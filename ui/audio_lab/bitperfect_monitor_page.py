@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QWidget, QVBoxLayout, QLabel,
     QFrame, QScrollArea,
 )
 
@@ -169,8 +169,8 @@ class BitperfectMonitorPage(QWidget):
         layout.addWidget(self._warnings_list)
         return w
 
-    def update_from_report(self, report):
-        """Update UI from a BitperfectReport."""
+    def update_from_report(self, report, diagnostics=None):
+        """Update UI from a BitperfectReport and optional AudioDiagnostics."""
         color = _STATUS_COLORS.get(report.status, "#666")
         labels = {
             "off": "Apagado — El perfil actual no es bit-perfect",
@@ -183,16 +183,28 @@ class BitperfectMonitorPage(QWidget):
         self._status_label.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {color};")
         self._status_reason.setText("\n".join(report.reasons) if report.reasons else "")
 
-        self._input_codec.setText(f"Codec: —")
-        self._input_rate.setText(f"Sample Rate: {report.input_sample_rate} Hz" if report.input_sample_rate else "Sample Rate: —")
-        self._input_depth.setText(f"Bit Depth: {report.input_bit_depth}-bit" if report.input_bit_depth else "Bit Depth: —")
+        self._input_codec.setText("Codec: —")
+        self._input_rate.setText("Sample Rate: {report.input_sample_rate} Hz" if report.input_sample_rate else "Sample Rate: —")
+        self._input_depth.setText("Bit Depth: {report.input_bit_depth}-bit" if report.input_bit_depth else "Bit Depth: —")
         self._input_channels.setText(f"Canales: {report.input_channels}" if report.input_channels else "Canales: —")
 
-        self._output_backend.setText("Backend: —")
+        backend = getattr(diagnostics, 'backend_id', '') or getattr(diagnostics, 'backend', '')
+        self._output_backend.setText(f"Backend: {backend}" if backend else "Backend: —")
         self._output_device.setText(f"Dispositivo: {report.device}" if report.device else "Dispositivo: —")
         self._output_rate.setText(f"Sample Rate real: {report.output_sample_rate} Hz" if report.output_sample_rate else "Sample Rate real: —")
         self._output_format.setText(f"Formato real: {report.output_format}" if report.output_format else "Formato real: —")
-        self._output_channels.setText("Canales reales: —")
+        self._output_channels.setText(f"Canales reales: {report.output_channels}" if report.output_channels else "Canales reales: —")
+
+        eq_active = getattr(diagnostics, 'eq_active', False)
+        rg_active = getattr(diagnostics, 'replaygain_active', False)
+        spec_active = getattr(diagnostics, 'spectrum_active', False)
+        vol_active = getattr(diagnostics, 'digital_volume_active', False)
+        resample_active = getattr(diagnostics, 'resampling_active', False)
+        self._dsp_eq.setText(f"EQ: {'ACTIVO' if eq_active else 'Inactivo'}")
+        self._dsp_rg.setText(f"ReplayGain: {'ACTIVO' if rg_active else 'Inactivo'}")
+        self._dsp_spectrum.setText(f"Spectrum: {'ACTIVO' if spec_active else 'Inactivo'}")
+        self._dsp_volume.setText(f"Volumen digital: {'ACTIVO' if vol_active else 'Bloqueado'}")
+        self._dsp_resample.setText(f"Resampling: {'ACTIVO' if resample_active else 'Inactivo'}")
 
         if report.reasons:
             self._warnings_list.setText("\n".join(f"⚠ {r}" for r in report.reasons))

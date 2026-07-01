@@ -1,6 +1,6 @@
 """Tests for MusicBrainzPage — requires pytest-qt."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 def test_musicbrainz_page_renders(qtbot):
@@ -40,7 +40,7 @@ def test_musicbrainz_confirm_before_write(qtbot):
     page._apply_btn.setEnabled(True)
     # Simular confirmacion cancelada directamente
     with patch("ui.audio_lab.musicbrainz_page.QMessageBox.question",
-               return_value=0x10000):  # No
-        with patch("metadata.tag_writer.write_tags") as mock_write:
-            page._apply_btn.click()
-            mock_write.assert_not_called()
+               return_value=0x10000), \
+         patch("metadata.tag_writer.write_tags") as mock_write:
+        page._apply_btn.click()
+        mock_write.assert_not_called()

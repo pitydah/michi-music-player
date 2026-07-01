@@ -6,7 +6,7 @@ in /proc/asound. This module reads those files to verify bit-perfect output.
 
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 _PROC_ASOUND = "/proc/asound"

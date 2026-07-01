@@ -2,18 +2,21 @@
 
 GStreamer is always the default. MPD is selected when the profile demands it.
 The manager ensures queue continuity, safe shutdown, and normalized snapshots.
+
+Re-emits position_changed, state_changed, duration_changed from the active
+backend so PlayerService can listen to a single source of truth.
 """
 
 import logging
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+from PySide6.QtCore import QObject, Signal
 
 from audio.backends.types import (
     BackendCapabilities,
     PlaybackSnapshot,
     AudioDiagnostics,
-)
-from audio.backends.errors import (
-    BackendNotAvailableError,
 )
 
 if TYPE_CHECKING:
@@ -30,19 +33,33 @@ MPD_PROFILES = {
 }
 
 
-class HybridAudioManager:
+@dataclass
+class _SwitchState:
+    queue: list[str] = field(default_factory=list)
+    index: int = -1
+    play_state: str = "stopped"
+    position: float = 0.0
+
+
+class HybridAudioManager(QObject):
     """Orchestrates multiple AudioBackend instances and selects the active one."""
 
-    def __init__(self, default_backend: "AudioBackend" = None):
+    position_changed = Signal(float)
+    state_changed = Signal(str)
+    duration_changed = Signal(float)
+
+    def __init__(self, default_backend: "AudioBackend" = None, parent=None):
+        super().__init__(parent)
         self._backends: dict[str, "AudioBackend"] = {}
         self._active_id: str = "gstreamer"
         self._fallback_active: bool = False
-        self._saved_queue: list[str] = []
-        self._saved_queue_index: int = -1
+        self._switch_state = _SwitchState()
+        self._connected_signals: list = []
 
         if default_backend:
             self.register(default_backend)
             self._active_id = default_backend.backend_id
+            self._connect_backend_signals(default_backend)
 
     def register(self, backend: "AudioBackend"):
         self._backends[backend.backend_id] = backend
@@ -62,6 +79,26 @@ class HybridAudioManager:
     def is_fallback(self) -> bool:
         return self._fallback_active
 
+    def _connect_backend_signals(self, backend):
+        self._disconnect_backend_signals()
+        if hasattr(backend, 'position_changed'):
+            self._connected_signals.append(
+                backend.position_changed.connect(self.position_changed))
+        if hasattr(backend, 'state_changed'):
+            self._connected_signals.append(
+                backend.state_changed.connect(self.state_changed))
+        if hasattr(backend, 'duration_changed'):
+            self._connected_signals.append(
+                backend.duration_changed.connect(self.duration_changed))
+
+    def _disconnect_backend_signals(self):
+        for conn in self._connected_signals:
+            try:
+                QObject.disconnect(conn)
+            except Exception:
+                pass
+        self._connected_signals = []
+
     def choose_backend_for_profile(self, profile_key: str) -> str:
         if profile_key in MPD_PROFILES:
             if "mpd" in self._backends:
@@ -79,9 +116,9 @@ class HybridAudioManager:
             logger.error("Cannot switch to unknown backend: %s", backend_id)
             return False
 
-        old_backend = self.active
-        self._save_queue_state()
+        self._save_switch_state()
 
+        old_backend = self.active
         if old_backend:
             old_backend.stop()
 
@@ -89,8 +126,10 @@ class HybridAudioManager:
         self._fallback_active = False
 
         new_backend = self.active
-        if new_backend and self._saved_queue:
-            new_backend.set_queue(self._saved_queue, self._saved_queue_index)
+        if new_backend:
+            if self._switch_state.queue:
+                new_backend.set_queue(self._switch_state.queue, self._switch_state.index)
+            self._connect_backend_signals(new_backend)
 
         logger.info("Switched audio backend: %s → %s",
                      old_backend.backend_id if old_backend else "none",
@@ -106,15 +145,29 @@ class HybridAudioManager:
             return False
         return self.switch_to(target)
 
-    def _save_queue_state(self):
+    def fallback_to_default(self, reason: str = "") -> bool:
+        self._fallback_active = True
+        logger.warning("Falling back to GStreamer: %s", reason)
+        return self.switch_to("gstreamer")
+
+    def mark_fallback(self, active: bool = True):
+        self._fallback_active = active
+
+    def _save_switch_state(self):
         backend = self.active
         if backend:
-            self._saved_queue = [
+            queue = [
                 item.get("filepath", "")
                 for item in backend.get_queue()
                 if item.get("filepath")
             ]
-            self._saved_queue_index = backend.get_queue_index()
+            snap = backend.get_snapshot()
+            self._switch_state = _SwitchState(
+                queue=queue,
+                index=backend.get_queue_index(),
+                play_state=snap.state,
+                position=snap.position_seconds,
+            )
 
     # ── Delegated methods ──
 
@@ -154,14 +207,14 @@ class HybridAudioManager:
             b.set_volume(volume)
 
     def set_queue(self, paths: list[str], start_index: int = 0):
-        self._saved_queue = list(paths)
-        self._saved_queue_index = start_index
+        self._switch_state.queue = list(paths)
+        self._switch_state.index = start_index
         b = self.active
         if b:
             b.set_queue(paths, start_index)
 
     def enqueue(self, paths: list[str], play_now: bool = True):
-        self._saved_queue.extend(paths)
+        self._switch_state.queue.extend(paths)
         b = self.active
         if b:
             b.enqueue(paths, play_now)
@@ -172,8 +225,7 @@ class HybridAudioManager:
             b.enqueue_next(paths)
 
     def clear_queue(self):
-        self._saved_queue = []
-        self._saved_queue_index = -1
+        self._switch_state = _SwitchState()
         b = self.active
         if b:
             b.clear_queue()
@@ -213,6 +265,7 @@ class HybridAudioManager:
         return BackendCapabilities(backend_id="none", display_name="None")
 
     def shutdown(self):
+        self._disconnect_backend_signals()
         for bid, backend in self._backends.items():
             logger.info("Shutting down backend: %s", bid)
             backend.shutdown()

@@ -4,6 +4,7 @@ Minimal implementation. No external dependencies beyond standard library.
 Uses socket with timeout for non-blocking main thread safety.
 """
 
+import contextlib
 import logging
 import socket
 import threading
@@ -12,17 +13,17 @@ import time
 from audio.mpd.mpd_models import MpdStatus, MpdSong, MpdOutput
 from audio.mpd.mpd_protocol import parse_response
 from audio.mpd.mpd_errors import (
+    MpdAckError,
     MpdError,
     MpdConnectionError,
     MpdProtocolError,
-    MpdAckError,
 )
 
 logger = logging.getLogger("michi.mpd.client")
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 6600
-_DEFAULT_TIMEOUT = 5.0
+_DEFAULT_TIMEOUT = 2.0
 _RECONNECT_DELAY = 2.0
 _MAX_LINE = 65536
 
@@ -69,8 +70,12 @@ class MpdClient:
                 self._connected = True
                 logger.info("Connected to MPD at %s:%s (version %s)",
                             self._host, self._port, self._version)
-            except (socket.timeout, ConnectionRefusedError, OSError) as e:
+            except (socket.timeout, ConnectionRefusedError, OSError,
+                    MpdProtocolError, MpdAckError) as e:
                 self._connected = False
+                if self._sock:
+                    with contextlib.suppress(OSError):
+                        self._sock.close()
                 self._sock = None
                 raise MpdConnectionError(
                     f"Cannot connect to MPD at {self._host}:{self._port}: {e}")
@@ -110,6 +115,7 @@ class MpdClient:
     def ping(self) -> bool:
         """Test if MPD is responding. Returns True if OK."""
         try:
+            self.ensure_connected()
             self._send_command("ping")
             self._read_ok()
             return True
@@ -197,6 +203,16 @@ class MpdClient:
 
     def playpos(self, pos: int):
         self._command_ok(f"play {pos}")
+
+    def addid(self, path: str) -> int:
+        raw = self._command(f'addid "{_escape(path)}"')
+        return _int_or(raw.pairs.get("Id"), -1)
+
+    def moveid(self, song_id: int, to_pos: int):
+        self._command_ok(f"moveid {song_id} {to_pos}")
+
+    def move(self, from_pos: int, to_pos: int):
+        self._command_ok(f"move {from_pos} {to_pos}")
 
     def repeat(self, val: int):
         self._command_ok(f"repeat {val}")

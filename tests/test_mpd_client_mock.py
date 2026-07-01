@@ -1,4 +1,4 @@
-"""Tests for MpdClient with mocked sockets."""
+"""Tests for MpdClient with mocked socket methods."""
 
 import pytest
 from unittest.mock import MagicMock, patch
@@ -30,16 +30,17 @@ class TestMpdClientMock:
 
     def test_connect_sends_password_after_greeting(self):
         from audio.mpd.mpd_client import MpdClient
-        with patch("audio.mpd.mpd_client.socket.create_connection") as mock_conn:
-            mock_sock = MagicMock()
-            greeting_bytes = [bytes([b]) for b in b"OK MPD 0.23.12\n"]
-            ok_bytes = [bytes([b]) for b in b"OK\n"]
-            mock_sock.recv.side_effect = greeting_bytes + ok_bytes
-            mock_conn.return_value = mock_sock
-            client = MpdClient(password="secret", timeout=2.0)
-            client.connect()
-            calls = [c[0][0] for c in mock_sock.sendall.call_args_list]
-            assert any(b"password" in c for c in calls)
+        client = MpdClient(password="secret", timeout=2.0)
+        with patch.object(client, '_read_greeting', return_value="0.23.12"):
+            with patch.object(client, '_read_ok', return_value=None):
+                with patch.object(client, '_send_command') as mock_send:
+                    with patch("audio.mpd.mpd_client.socket.create_connection") as mock_conn:
+                        mock_conn.return_value = MagicMock()
+                        client.connect()
+                        assert client.connected is True
+                        password_calls = [c[0][0] for c in mock_send.call_args_list
+                                          if "password" in c[0][0]]
+                        assert len(password_calls) == 1
 
     def test_connect_connection_refused_raises(self):
         from audio.mpd.mpd_client import MpdClient
@@ -55,30 +56,39 @@ class TestMpdClientMock:
         client = MpdClient()
         client._sock = MagicMock()
         client._connected = True
-        client._sock.recv.side_effect = [b"O", b"K", b"\n"]
-        assert client.ping() is True
+        with patch.object(client, '_send_command'):
+            with patch.object(client, '_read_ok', return_value=None):
+                assert client.ping() is True
 
-    def test_ping_returns_false_on_error(self):
+    def test_ping_returns_false_on_mpd_error(self):
+        from audio.mpd.mpd_client import MpdClient
+        from audio.mpd.mpd_errors import MpdConnectionError
+        client = MpdClient()
+        client._sock = MagicMock()
+        client._connected = True
+        with patch.object(client, '_send_command', side_effect=MpdConnectionError("fail")):
+            assert client.ping() is False
+
+    def test_ping_returns_false_on_oserror(self):
         from audio.mpd.mpd_client import MpdClient
         client = MpdClient()
         client._sock = MagicMock()
         client._connected = True
-        client._sock.sendall.side_effect = OSError("broken")
-        assert client.ping() is False
+        with patch.object(client, '_send_command', side_effect=OSError("broken")):
+            assert client.ping() is False
 
     def test_ensure_connected_when_not_connected(self):
         from audio.mpd.mpd_client import MpdClient
-        with patch("audio.mpd.mpd_client.socket.create_connection") as mock_conn:
-            mock_sock = MagicMock()
-            mock_sock.recv.side_effect = [b"O", b"K", b" ", b"M", b"P", b"D", b" ", b"x", b"\n"]
-            mock_conn.return_value = mock_sock
-            client = MpdClient()
+        client = MpdClient()
+        with patch.object(client, 'connect') as mock_connect:
+            client._connected = False
             client.ensure_connected()
-            assert client.connected is True
+            mock_connect.assert_called_once()
 
     def test_ensure_connected_when_already_connected(self):
         from audio.mpd.mpd_client import MpdClient
         client = MpdClient()
         client._connected = True
-        client.ensure_connected()
-        assert client.connected is True
+        with patch.object(client, 'connect') as mock_connect:
+            client.ensure_connected()
+            mock_connect.assert_not_called()

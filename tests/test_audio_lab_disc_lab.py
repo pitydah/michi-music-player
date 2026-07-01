@@ -1,6 +1,5 @@
 """Tests for MichiDiscLabPage — requires pytest-qt."""
 
-from unittest.mock import patch
 
 
 def test_disc_lab_page_renders(qtbot):

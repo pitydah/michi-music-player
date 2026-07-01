@@ -1,6 +1,5 @@
 """Tests for ArtworkPage — requires pytest-qt."""
 
-from unittest.mock import patch, MagicMock
 
 
 def test_artwork_page_renders(qtbot):
