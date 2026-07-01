@@ -85,7 +85,7 @@ python main.py
 
 ## Commands
 ```bash
-python -m pytest tests/qml/ -q    # 53 tests
+python -m pytest tests/qml/ -q    # 60 tests
 python scripts/check_no_touch_contract.py  # verify no-touch compliance
 python -m ui_qml_bridge.qml_main  # launch QML UI
 python main.py --qml              # launch QML from main
@@ -94,12 +94,10 @@ ruff check ./ui_qml ./ui_qml_bridge ./tests/qml  # lint
 ```
 
 ## Next Phases (Recommended)
-1. **Library QML** — models, grids, lists, search, FTS5
-2. **ImageProvider** — cover art from Python to QML
-3. **Assistant QML** — real assistant page with chat UI
-4. **Metadata híbrido** — InspectorPanel with real data
-5. **Audio Lab QML**
-6. **NowPlayingBar QML** (last, most complex)
+1. **ImageProvider** — cover art Python → QML (requires cpp/cython bridge)
+2. **Metadata híbrido** — InspectorPanel with real data
+3. **Audio Lab QML**
+4. **NowPlayingBar QML** (last, most complex)
 
 ## Commands
 ```bash
