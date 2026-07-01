@@ -18,7 +18,7 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 | Audio analysis | librosa, soundfile, numpy (feature extraction, acoustic profiling) |
 | Smart mixes | recommendation engine based on acoustic features + play counts |
 | Build system | pip install . / Flatpak |
-| Tests | **909** (pytest + pytest-qt) |
+| Tests | **~950** (pytest + pytest-qt) |
 
 ## 2. Directory Structure
 
@@ -36,7 +36,9 @@ michi-music-player/
 │                     central/ (central_styles.py, central_tokens.py),
 │                     sidebar/ (7 módulos: tokens, styles, item, section, panel, brand, search)
 ├── core/           → app_context.py (DI container), interfaces.py, settings_manager.py,
-│                     playback_controller.py, file_actions.py
+│                     playback_controller.py, file_actions.py,
+│                     home/ (home_status.py dataclasses, home_dashboard_service.py),
+│                     audio_lab/ (diagnostics_helpers.py)
 ├── sources/        → base_source.py, local_source.py, radio_source.py, subsonic_source.py
 ├── streaming/      → subsonic_client.py, radio_manager.py, transmit_manager.py
 ├── sync/           → Android REST API + UDP multicast discovery
@@ -260,18 +262,22 @@ PySide6 mutagen numpy shazamio pyaudio requests
 | Metric | Value |
 |--------|-------|
 | Ruff | **0** (verificar con `ruff check .`) |
-| Tests | **454** (verificar con `pytest -q`)
+| Tests | **~950** (verificar con `pytest -q`)
 | Bugs (F-class) | **0** |
 | Stubs | **0** |
 | Dead code | **0** |
 | Audio profiles | **9** |
-| Controllers | **14** (with Qt Signals, DI via AppContext/AppServices) |
+| Controllers | **15** (with Qt Signals, DI via AppContext/AppServices) |
 | Recognition providers | **3 real** (ShazamIO, AudD, AcoustID) |
 | Icons registered | **38+** |
 | NAV_ROUTES validated | ✅ startup `RuntimeError` on stale routes |
 | XDG paths consolidated | ✅ all via `core.paths` |
 | System deps documented | ✅ PyGObject/pycairo/dbus-python via system, not pip |
 | `sqlite3.connect(DB_PATH)` bypass removed | ✅ all via `core.paths.database_path()` |
+| Home Dashboard dataclasses | ✅ `core/home/home_status.py` (9 dataclasses) |
+| Home Dashboard service | ✅ `core/home/home_dashboard_service.py` (10 builder methods) |
+| Home 7-card design | ✅ `ui/hubs/home_page.py` (render_snapshot entry point) |
+| Spectral FLAC support | ✅ `core/audio_analysis/spectral_authenticator.py:can_analyse()` |
 
 **Installation:**
 ```
@@ -372,6 +378,55 @@ stream starts → IdentifierController.set_current_track(source_type="radio", ..
 local file starts → IdentifierController.set_current_track(source_type="local_file", ...)
   → _should_listen("local_file") → False → _pause("Archivo local: Michi ya conoce sus metadatos")
 ```
+
+### Home Dashboard (Centro de Situación)
+```
+sidebar "Inicio" click → SidebarController → navigation_requested.emit("home")
+  → MainWindow._on_sidebar_navigate("home") → NavigationController.dispatch("home")
+    → configure_header("Inicio") → MainWindow._show_home_page()
+      → HomeController.show()
+        → _ensure_page() → HomePage()
+        → _ensure_service() → HomeDashboardService(db, playback, context_svc, ...)
+        → refresh()
+          → HomeDashboardService.build_snapshot()
+            → _build_library_status() [ContextService → DB fallback]
+            → _build_playback_status() [PlayerService state + queue]
+            → _build_audio_status() [engine + settings]
+            → _build_ecosystem_status() [servers + sync + API]
+            → _build_alerts() [max 5, critical > warning > info]
+            → _build_assistant_suggestions() [max 3, ContextService → basic]
+            → _derive_overall_state() [ready/empty_library/playback_active/...]
+            → _format_headline() + _format_subtitle()
+          → HomeDashboardSnapshot typed dataclass
+        → HomePage.render_snapshot(snapshot)
+          → _render_status() [headline + badges]
+          → _render_playback() [Continuar card]
+          → _render_library() [Biblioteca card with metrics]
+          → _render_audio() [Audio card with output/DSP]
+          → _render_ecosystem() [Ecosistema Michi card]
+          → _render_alerts() [Atención requerida card, 5 max]
+          → _render_assistant() [Michi Assistant card, 3 suggestions]
+          → _render_add_music() [contextual, visible on empty]
+```
+
+Each card tolerates partial failure without breaking the dashboard.
+Snapshot built every time the user navigates to Inicio.
+
+**HomeDashboardSnapshot** (`core/home/home_status.py`):
+- `overall_state`: ready | empty_library | playback_active | needs_attention | safe_mode | limited_services | error
+- `library`: LibraryHomeStatus (track/album/artist/genre counts, health)
+- `playback`: PlaybackHomeStatus (current track, queue, state)
+- `audio`: AudioHomeStatus (output device, profile, DSP, bit-perfect)
+- `ecosystem`: EcosystemHomeStatus (Micro Server, mobile sync, API, Home Audio)
+- `alerts`: list[HomeAlert] (prioritized, actionable, max 5)
+- `assistant_suggestions`: list[AssistantSuggestion] (contextual, max 3)
+- `actions`: list[HomeAction] (quick actions based on state)
+
+**Key files:**
+- `core/home/home_status.py` — 9 dataclasses
+- `core/home/home_dashboard_service.py` — HomeDashboardService
+- `ui/controllers/home_controller.py` — orchestration
+- `ui/hubs/home_page.py` — 7 glass cards, render_snapshot()
 
 ## 11. Common Tasks
 

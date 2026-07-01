@@ -19,6 +19,7 @@ from ui.hubs.home_page import HomePage
 def home_page(qtbot):
     page = HomePage()
     qtbot.addWidget(page)
+    page.show()
     return page
 
 
