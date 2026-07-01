@@ -9,6 +9,18 @@ class PlaylistController:
         self._win = window
         self._ctx = window._ctx
         self._svc = services
+        self._isfile_cache: dict[str, bool] = {}
+
+    def _invalid_isfile_cache(self):
+        self._isfile_cache.clear()
+
+    @staticmethod
+    def _cached_isfile(fp: str, cache: dict[str, bool]) -> bool:
+        if not fp:
+            return False
+        if fp not in cache:
+            cache[fp] = os.path.isfile(fp)
+        return cache[fp]
 
     def _context(self):
         return (
@@ -58,7 +70,7 @@ class PlaylistController:
                         name = line[len("#PLAYLIST:"):].strip()
                     continue
                 fp = os.path.join(os.path.dirname(path), line)
-                if os.path.isfile(fp):
+            if self._cached_isfile(fp, self._isfile_cache):
                     filepaths.append(fp)
             if not filepaths:
                 self._toast("No se encontraron archivos validos en el M3U", "error")
@@ -214,7 +226,7 @@ class PlaylistController:
         pid = self._ctx.db.create_playlist(name)
         for q in queue:
             fp = q.get("filepath", q) if isinstance(q, dict) else q
-            if os.path.isfile(fp):
+            if self._cached_isfile(fp, self._isfile_cache):
                 self._ctx.db.add_to_playlist(pid, fp)
         self._ctx.rebuild_sidebar()
         self._toast(f"Creada '{name}' con {len(queue)} temas", "success")
@@ -251,7 +263,7 @@ class PlaylistController:
         if not ok or not label:
             return
         tracks = album_tracks.get(label, [])
-        fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
+        fps = [t.filepath for t in tracks if self._cached_isfile(t.filepath, self._isfile_cache)]
         if fps:
             pid = self._ctx.db.create_playlist(label[:64])
             for fp in fps:
@@ -278,7 +290,7 @@ class PlaylistController:
             return
         group = next((g for g in groups if g.display_name == name), None)
         if group:
-            fps = [t.filepath for t in group.all_tracks if os.path.isfile(t.filepath)]
+            fps = [t.filepath for t in group.all_tracks if self._cached_isfile(t.filepath, self._isfile_cache)]
             if fps:
                 pid = self._ctx.db.create_playlist(name)
                 for fp in fps:
@@ -302,7 +314,7 @@ class PlaylistController:
         if not ok or not genre:
             return
         tracks = [i for i in all_items if i.genre == genre]
-        fps = [t.filepath for t in tracks if os.path.isfile(t.filepath)]
+        fps = [t.filepath for t in tracks if self._cached_isfile(t.filepath, self._isfile_cache)]
         if fps:
             pid = self._ctx.db.create_playlist(genre)
             for fp in fps:
@@ -325,7 +337,7 @@ class PlaylistController:
         for row in range(model.rowCount()):
             ref = model.get_trackref(row)
             fp = ref.uri if ref else ""
-            if fp and os.path.isfile(fp):
+            if fp and self._cached_isfile(fp, self._isfile_cache):
                 fps.append(fp)
         if fps:
             pid = self._ctx.db.create_playlist(name)
@@ -419,7 +431,7 @@ class PlaylistController:
         valid_count = 0
         for t in tracks:
             fp = t.filepath if hasattr(t, 'filepath') else str(t)
-            if os.path.isfile(fp):
+            if self._cached_isfile(fp, self._isfile_cache):
                 self._ctx.db.add_to_playlist(pid, fp)
                 valid_count += 1
         self._ctx.rebuild_sidebar()
