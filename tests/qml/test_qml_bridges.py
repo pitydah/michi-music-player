@@ -58,10 +58,7 @@ def test_page_stack_references_exist():
     shell_dir = QML_DIR / "shell"
     for ref in refs:
         p = Path(ref)
-        if not p.is_absolute():
-            p = (shell_dir / ref).resolve()
-        else:
-            p = p.resolve()
+        p = (shell_dir / ref).resolve() if not p.is_absolute() else p.resolve()
         if p.exists():
             continue
         rel = QML_DIR / ref.replace("../", "")
@@ -133,7 +130,6 @@ def test_sidebar_has_no_forbidden_routes():
 
 
 def test_sidebar_has_no_emoji_glyphs():
-    import unicodedata
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
     emoji_ranges = set(range(0x1F300, 0x1FAFF)) | set(range(0x2600, 0x27BF))
     safe = {0x2609, 0x2605, 0x2606, 0x2610, 0x2611, 0x2660, 0x2663, 0x2665, 0x2666}
