@@ -51,6 +51,25 @@ def test_shell_files():
         assert (QML_DIR / "shell" / f"{name}.qml").exists(), f"Missing shell: {name}.qml"
 
 
+def test_page_stack_contains_new_routes():
+    import re
+    page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
+    assert "radio" not in page_stack or "PlaceholderPage" in page_stack, \
+        "radio routes should resolve to PlaceholderPage"
+    assert "playlists" not in page_stack or "PlaceholderPage" in page_stack, \
+        "playlists routes should resolve to PlaceholderPage"
+
+    cases = {
+        "assistant": "../pages/assistant/AssistantPage.qml",
+        "home": "../pages/home/HomePage.qml",
+    }
+    for route, expected in cases.items():
+        assert re.search(rf'case "{route}":\s*return "{expected}"', page_stack), \
+            f"PageStack missing {route} -> {expected}"
+
+    assert "settings" not in page_stack, "PageStack still references 'settings'"
+
+
 def test_page_stack_references_exist():
     import re
     page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
@@ -123,10 +142,29 @@ def test_app_shell_titles_match_sidebar_routes():
 def test_sidebar_has_no_forbidden_routes():
     import re
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
-    forbidden = {"genres", "radio", "ecosystem"}
+    forbidden = {"genres", "ecosystem", "settings"}
     routes = set(re.findall(r'route: "(\w+)"', sidebar))
     found = routes & forbidden
     assert not found, f"Forbidden sidebar routes found: {found}"
+
+
+def test_sidebar_contains_radio_and_playlists():
+    import re
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    routes = set(re.findall(r'route: "(\w+)"', sidebar))
+    assert "radio" in routes, "Sidebar missing 'radio' route"
+    assert "playlists" in routes, "Sidebar missing 'playlists' route"
+
+
+def test_sidebar_uses_michi_ai_label():
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    assert "Michi AI" in sidebar, "Sidebar missing 'Michi AI' label"
+    assert "Asistente" not in sidebar, "Sidebar contains 'Asistente' label (use 'Michi AI')"
+
+
+def test_sidebar_has_no_settings():
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    assert "settings" not in sidebar, "Sidebar still contains 'settings' route"
 
 
 def test_sidebar_has_no_emoji_glyphs():
@@ -196,6 +234,31 @@ class TestNavigationBridge:
     def test_navigate_slot(self):
         bridge = NavigationBridge()
         assert hasattr(bridge, 'navigate')
+
+    def test_navigate_radio_works(self):
+        bridge = NavigationBridge()
+        bridge.navigate("radio")
+        assert bridge.currentRoute == "radio"
+
+    def test_navigate_playlists_works(self):
+        bridge = NavigationBridge()
+        bridge.navigate("playlists")
+        assert bridge.currentRoute == "playlists"
+
+    def test_navigate_assistant_works(self):
+        bridge = NavigationBridge()
+        bridge.navigate("assistant")
+        assert bridge.currentRoute == "assistant"
+
+    def test_navigate_settings_falls_to_placeholder(self):
+        bridge = NavigationBridge()
+        bridge.navigate("settings")
+        assert bridge.currentRoute == "placeholder", "settings should fall to placeholder"
+
+    def test_navigate_michi_ai_falls_to_placeholder(self):
+        bridge = NavigationBridge()
+        bridge.navigate("michi_ai")
+        assert bridge.currentRoute == "placeholder", "michi_ai is not a valid route"
 
 
 class TestCommandBus:
