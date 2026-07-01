@@ -720,6 +720,56 @@ class LibraryDB:
         except Exception:
             return []
 
+    def add_library_root(self, path: str, enabled: bool = True) -> bool:
+        """Add a new library root path. Returns True if inserted."""
+        try:
+            import time
+            now = time.time()
+            self._conn.execute(
+                "INSERT OR IGNORE INTO library_roots "
+                "(path, enabled, created_at, updated_at) VALUES (?,?,?,?)",
+                (path, int(enabled), now, now),
+            )
+            self._conn.commit()
+            return True
+        except Exception as e:
+            logger.warning("add_library_root failed: %s", e)
+            return False
+
+    def remove_library_root(self, path: str) -> bool:
+        """Remove a library root. Does NOT delete files."""
+        try:
+            self._conn.execute("DELETE FROM library_roots WHERE path=?", (path,))
+            self._conn.commit()
+            self._conn.execute(
+                "DELETE FROM scan_roots WHERE path=?", (path,))
+            self._conn.commit()
+            return True
+        except Exception as e:
+            logger.warning("remove_library_root failed: %s", e)
+            return False
+
+    def is_library_root(self, path: str) -> bool:
+        """Check if path is a registered library root."""
+        try:
+            row = self._conn.execute(
+                "SELECT 1 FROM library_roots WHERE enabled=1 AND path=?",
+                (path,)).fetchone()
+            return row is not None
+        except Exception:
+            return False
+
+    def is_inside_library_root(self, path: str) -> bool:
+        """Check if path is inside any enabled library root."""
+        try:
+            roots = self.get_library_roots()
+            norm = os.path.normpath(path) + os.sep
+            return any(norm.startswith(os.path.normpath(r) + os.sep)
+                       or os.path.normpath(path) == os.path.normpath(r)
+                       for r in roots)
+        except Exception:
+            return False
+
     # ── Partial metadata updates (for AI-assisted metadata review) ──
 
     _EDITABLE_FIELDS = frozenset({

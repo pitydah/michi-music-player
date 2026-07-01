@@ -195,6 +195,27 @@ class ContextService:
         safe_name = os.path.basename(str(folder_name or ""))
         self.record_event(AppEvent.FOLDER_SCANNED, {"folder_name": safe_name})
 
+    def record_folder_reindexed(self, folder_name: str = "") -> None:
+        import os
+        safe_name = os.path.basename(str(folder_name or ""))
+        self.record_event("folder_reindexed", {"folder_name": safe_name})
+
+    def record_folder_added_to_library(self, folder_name: str = "") -> None:
+        import os
+        safe_name = os.path.basename(str(folder_name or ""))
+        self.record_event("folder_added_to_library", {"folder_name": safe_name})
+
+    def record_folder_integrity_checked(self, folder_name: str = "") -> None:
+        import os
+        safe_name = os.path.basename(str(folder_name or ""))
+        self.record_event("folder_integrity_checked", {"folder_name": safe_name})
+
+    def record_folder_moved(self, source: str = "", destination: str = "") -> None:
+        self.record_event("folder_moved", {
+            "source": os.path.basename(str(source or "")),
+            "destination": os.path.basename(str(destination or "")),
+        })
+
     def record_assistant_opened(self) -> None:
         self.record_event(AppEvent.ASSISTANT_OPENED)
 

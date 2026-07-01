@@ -122,6 +122,7 @@ class SongsStatusService:
                     quality_category = d_kind
                 if d_kind == "warning":
                     badges.append(d_label)
+                    quality_category = "warning"
 
         # Spectral warning from media_items column
         spec_verdict = getattr(item, 'spectral_verdict', '') or ''

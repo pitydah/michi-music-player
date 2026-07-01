@@ -29,7 +29,7 @@ SECTION_CONFIG: dict[str, dict] = {
     "genres":     {"title": "Géneros", "subtitle": "Atlas de estilos de tu biblioteca",
                     "icon": "sidebar_popular", "views": ["grid", "list"],
                     "search": True, "default": "grid"},
-    "folders":    {"title": "Carpetas", "subtitle": "Explorador musical local",
+    "folders":    {"title": "Carpetas", "subtitle": "Mantenimiento físico: salud, integridad y organización de tu biblioteca",
                    "icon": "sidebar_folders", "views": ["tree"],
                    "search": True, "default": "tree"},
     "radio":      {"title": "Emisoras", "subtitle": "Radios por URL y mosaicos",
@@ -132,9 +132,13 @@ SECTION_CONFIG: dict[str, dict] = {
                              "icon": "sidebar_mix", "views": [],
                              "search": False, "default": None},
     "audio_lab_intelligence": {"title": "Inteligencia Local",
-                               "subtitle": "Extrae BPM, key y energía, genera radio local y recomendaciones",
-                               "icon": "sidebar_mix", "views": [],
-                               "search": False, "default": None},
+                                "subtitle": "Extrae BPM, key y energía, genera radio local y recomendaciones",
+                                "icon": "sidebar_mix", "views": [],
+                                "search": False, "default": None},
+    "genre_cleanup":      {"title": "Limpieza de géneros",
+                            "subtitle": "Normaliza estilos, detecta duplicados y corrige canciones sin género",
+                            "icon": "sidebar_popular", "views": [],
+                            "search": False, "default": None},
     "michi_disc_lab": {"title": "Michi Disc Lab",
                        "subtitle": "Importación Hi-Fi y ripeo seguro de CDs",
                        "icon": "sidebar_mix", "views": [],
@@ -222,7 +226,8 @@ def resolve_sidebar_active_key(key: str) -> str:
                "audio_lab_musicbrainz",
                "audio_lab_organize",
                "audio_lab_conversion",
-               "audio_lab_vinyl_lab"):
+               "audio_lab_vinyl_lab",
+               "genre_cleanup"):
         return "audio_lab"
     # Settings (ya no está en sidebar, pero la ruta sigue siendo válida)
     if key in ("settings_hub", "settings"):
@@ -259,6 +264,7 @@ NAV_ROUTES: dict[str, str] = {
     "audio_lab_organize": "_show_audio_lab_organize",
     "audio_lab_conversion": "_show_audio_lab_conversion",
     "audio_lab_vinyl_lab": "_show_audio_lab_vinyl_lab",
+    "genre_cleanup": "_show_genre_cleanup",
     "michi_disc_lab": "_show_michi_disc_lab",
     "home": "_show_home_page",
     "library_hub": "_show_library_hub_page",

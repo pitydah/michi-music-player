@@ -47,6 +47,13 @@ _SECTIONS = [
                      "local y recomendaciones musicales.",
         "status": "experimental", "nav": "audio_lab_intelligence",
     },
+    {
+        "key": "genre_cleanup", "icon": "sidebar_popular",
+        "title": "Limpieza de géneros",
+        "subtitle": "Normaliza estilos, detecta duplicados y\n"
+                     "corrige canciones sin género.",
+        "status": "disponible", "nav": "genre_cleanup",
+    },
 ]
 
 _STATUS_STYLES = {
@@ -126,8 +133,8 @@ class AudioLabPage(QWidget):
 
         for i, sec in enumerate(_SECTIONS):
             card = self._build_section_card(sec)
-            row = 0 if i < 3 else 1
-            col = i if i < 3 else i - 3
+            row = i // 3
+            col = i % 3
             grid.addWidget(card, row, col)
 
         for col in range(3):
