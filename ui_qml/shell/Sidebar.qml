@@ -50,11 +50,15 @@ Item {
                     model: ListModel {
                         ListElement { route: "home"; icon: "⌂"; label: "Inicio" }
                         ListElement { route: "library"; icon: "♫"; label: "Biblioteca" }
+                        ListElement { route: "genres"; icon: "♬"; label: "Géneros" }
+                        ListElement { route: "mix"; icon: "⚄"; label: "Mix" }
+                        ListElement { route: "playback"; icon: "▶"; label: "Reproducción" }
+                        ListElement { route: "radio"; icon: "📻"; label: "Radio" }
                         ListElement { route: "connections"; icon: "⇌"; label: "Conexiones" }
+                        ListElement { route: "ecosystem"; icon: "⚙"; label: "Ecosistema Michi" }
                         ListElement { route: "home_audio"; icon: "♬"; label: "Home Audio" }
-                        ListElement { route: "assistant"; icon: "⚡"; label: "Asistente" }
                         ListElement { route: "audio_lab"; icon: "⚙"; label: "Audio Lab" }
-                        ListElement { route: "settings"; icon: "☰"; label: "Ajustes" }
+                        ListElement { route: "assistant"; icon: "⚡"; label: "Michi AI" }
                     }
 
                     SidebarItem {

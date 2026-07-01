@@ -364,7 +364,6 @@ class UIBuilder:
         # Build albums: grid (carátulas) + detail view inside Álbumes tab
         from ui.album_detail_view import AlbumDetailView
         w._album_detail_view = AlbumDetailView()
-        w._album_detail_view.back_requested.connect(lambda: w._nav_ctrl.navigate_back())
         w._album_detail_view.track_play_requested.connect(w._play_file)
         w._album_detail_view.play_album_requested.connect(
             lambda tracks, _w=w: _w._album_ctrl.play_album(tracks))
@@ -485,7 +484,6 @@ class UIBuilder:
         w._artist_grid.artist_analyze_requested.connect(lambda key, _w=w: _w._artist_ctrl.analyze_artist_discography(key))
         w._artist_grid.artist_send_to_server_requested.connect(lambda key, _w=w: _w._artist_ctrl.send_artist_to_micro_server(key))
         w._artist_grid.artist_resolve_aliases_requested.connect(lambda key, _w=w: _w._artist_ctrl.resolve_artist_aliases(key))
-        w._artist_detail.back_requested.connect(lambda: w._nav_ctrl.navigate_back())
         w._artist_detail.play_all_requested.connect(lambda key, _w=w: _w._artist_ctrl.play_artist(key))
         w._artist_detail.shuffle_all_requested.connect(lambda key, _w=w: _w._artist_ctrl.play_artist(key, shuffle=True))
         w._artist_detail.queue_all_requested.connect(lambda key, _w=w: _w._artist_ctrl.queue_artist(key))
@@ -544,7 +542,6 @@ class UIBuilder:
         w._genre_grid.genre_playlist_requested.connect(lambda key, _w=w: _w._genre_ctrl.create_playlist_from_genre(key))
         w._genre_grid.genre_metadata_requested.connect(lambda key, _w=w: _w._genre_ctrl.edit_genre_metadata(key))
         w._genre_grid.genre_normalize_requested.connect(lambda key, _w=w: _w._genre_ctrl.normalize_genre(key))
-        w._genre_detail.back_requested.connect(lambda: w._nav_ctrl.navigate_back())
         w._genre_detail.play_requested.connect(lambda key, _w=w: _w._genre_ctrl.play_genre(key))
         w._genre_detail.shuffle_requested.connect(lambda key, _w=w: _w._genre_ctrl.play_genre(key, shuffle=True))
         w._genre_detail.queue_requested.connect(lambda key, _w=w: _w._genre_ctrl.queue_genre(key))
@@ -598,8 +595,6 @@ class UIBuilder:
         w._genre_hub_page.cleanup_page_requested.connect(
             lambda: w._genre_ctrl.show_cleanup_page())
 
-        w._genre_detail_page.back_requested.connect(
-            lambda: (w._genre_ctrl.show_genres_hub(), w._nav_ctrl.navigate_back()))
         w._genre_detail_page.play_requested.connect(
             lambda key, _w=w: _w._genre_ctrl.play_genre(key))
         w._genre_detail_page.shuffle_requested.connect(
@@ -617,8 +612,6 @@ class UIBuilder:
         w._genre_detail_page.track_play_requested.connect(
             lambda fp, _w=w: _w._play_filepaths([fp], play_now=True))
 
-        w._genre_cleanup_page.back_requested.connect(
-            lambda: (w._genre_ctrl.show_genres_hub(), w._nav_ctrl.navigate_back()))
         w._genre_cleanup_page.refresh_requested.connect(
             lambda: w._genre_ctrl.show_cleanup_page())
         w._genre_cleanup_page.merge_requested.connect(

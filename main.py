@@ -9,6 +9,11 @@ import sys
 
 
 def main():
+    if "--qml" in sys.argv:
+        from ui_qml_bridge.qml_main import main as qml_main
+        qml_main()
+        return
+
     os.environ.setdefault("QT_MEDIA_BACKEND", "gstreamer")
 
     # Setup persistent logging before any other imports

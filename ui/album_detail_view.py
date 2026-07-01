@@ -18,7 +18,6 @@ from ui.effects.michi_glass import AcrylicBrush
 
 
 class AlbumDetailView(QWidget):
-    back_requested = Signal()
     track_play_requested = Signal(str)
 
     play_album_requested = Signal(list)
@@ -53,12 +52,6 @@ class AlbumDetailView(QWidget):
         cl = QVBoxLayout(content)
         cl.setContentsMargins(32, 16, 32, 40)
         cl.setSpacing(16)
-
-        back_btn = QPushButton("← Volver")
-        back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.setStyleSheet(glass_button_qss("ghost"))
-        back_btn.clicked.connect(self.back_requested.emit)
-        cl.addWidget(back_btn)
 
         self._banner = _AlbumBanner()
         cl.addWidget(self._banner)

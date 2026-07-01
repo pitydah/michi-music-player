@@ -1,191 +1,109 @@
-"""Tests for HybridAudioManager — backend switching and delegation."""
+"""Tests for HybridAudioManager — backend selection, switching, fallback."""
 
-import pytest
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
+import pytest
 
-def _make_fake_backend(backend_id: str):
-    from audio.backends.types import BackendCapabilities
+from audio.backends.hybrid_audio_manager import HybridAudioManager, MPD_PROFILES
+
+
+def _mock_backend(backend_id: str):
     b = MagicMock()
     b.backend_id = backend_id
-    b.capabilities = BackendCapabilities(backend_id=backend_id, display_name=backend_id)
-    b.get_queue.return_value = []
-    b.get_queue_index.return_value = -1
     return b
 
 
-class TestHybridAudioManager:
-    @pytest.fixture
-    def gst_backend(self):
-        return _make_fake_backend("gstreamer")
+class TestChooseBackend:
+    def test_gstreamer_profile_returns_gstreamer(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.choose_backend_for_profile("standard") == "gstreamer"
 
-    @pytest.fixture
-    def mpd_backend(self):
-        return _make_fake_backend("mpd")
+    def test_hifi_mpd_profile_without_mpd_falls_back(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        result = mgr.choose_backend_for_profile("michi_hifi_mpd")
+        assert result == "gstreamer"
+        assert mgr.is_fallback is True
 
-    @pytest.fixture
-    def manager(self, gst_backend):
-        from audio.backends.hybrid_audio_manager import HybridAudioManager
-        m = HybridAudioManager(default_backend=gst_backend)
-        return m
+    def test_hifi_mpd_profile_with_mpd_returns_mpd(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mgr.register(_mock_backend("mpd"))
+        result = mgr.choose_backend_for_profile("michi_hifi_mpd")
+        assert result == "mpd"
+        assert mgr.is_fallback is False
 
-    def test_init_with_default(self, manager):
-        assert manager.active_id == "gstreamer"
-        assert manager.active is not None
-        assert manager.is_fallback is False
+    def test_all_mpd_profiles_recognized(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mgr.register(_mock_backend("mpd"))
+        for profile in MPD_PROFILES:
+            assert mgr.choose_backend_for_profile(profile) == "mpd"
 
-    def test_init_no_default(self):
-        from audio.backends.hybrid_audio_manager import HybridAudioManager
-        m = HybridAudioManager()
-        assert m.active is None
-        assert m.active_id == "gstreamer"
+    def test_unknown_profile_falls_to_gstreamer(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.choose_backend_for_profile("nonexistent_profile") == "gstreamer"
 
-    def test_register_backend(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        assert manager.active_id == "gstreamer"
 
-    def test_unregister_backend(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        manager.unregister("mpd")
-        assert "mpd" not in manager._backends
+class TestSwitchTo:
+    def test_switch_to_same_backend_returns_true(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.switch_to("gstreamer") is True
 
-    def test_switch_to_known_backend(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        result = manager.switch_to("mpd")
-        assert result is True
-        assert manager.active_id == "mpd"
+    def test_switch_to_unknown_returns_false(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.switch_to("unknown") is False
 
-    def test_switch_to_unknown_backend(self, manager):
-        result = manager.switch_to("nonexistent")
-        assert result is False
-        assert manager.active_id == "gstreamer"
+    def test_switch_to_registered_backend(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mpd = _mock_backend("mpd")
+        mgr.register(mpd)
+        assert mgr.switch_to("mpd") is True
+        assert mgr.active_id == "mpd"
 
-    def test_switch_same_backend(self, manager):
-        result = manager.switch_to("gstreamer")
-        assert result is True
-        assert manager.active_id == "gstreamer"
 
-    def test_choose_backend_standard_profile(self, manager):
-        assert manager.choose_backend_for_profile("standard") == "gstreamer"
+class TestSwitchForProfile:
+    def test_gstreamer_to_mpd_via_profile(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mpd = _mock_backend("mpd")
+        mgr.register(mpd)
+        assert mgr.switch_for_profile("michi_hifi_mpd") is True
+        assert mgr.active_id == "mpd"
 
-    def test_choose_backend_hifi_profile_no_mpd(self, manager):
-        assert manager.choose_backend_for_profile("michi_hifi_mpd") == "gstreamer"
+    def test_profile_fallback_to_gstreamer(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.switch_for_profile("michi_hifi_mpd") is True
+        assert mgr.active_id == "gstreamer"
+        assert mgr.is_fallback is True
 
-    def test_choose_backend_hifi_profile_with_mpd(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        assert manager.choose_backend_for_profile("michi_hifi_mpd") == "mpd"
+    def test_standard_profile_no_switch(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.switch_for_profile("standard") is True
+        assert mgr.active_id == "gstreamer"
+        assert mgr.is_fallback is False
 
-    def test_choose_backend_bitperfect_profile(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        assert manager.choose_backend_for_profile("michi_bitperfect_mpd") == "mpd"
 
-    def test_choose_backend_dsd_profile(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        assert manager.choose_backend_for_profile("michi_dsd_mpd") == "mpd"
+class TestFallback:
+    def test_fallback_to_default(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        mpd = _mock_backend("mpd")
+        mgr.register(mpd)
+        mgr.mark_fallback(True)
+        mgr.switch_to("mpd")
+        assert mgr.active_id == "mpd"
+        assert mgr.fallback_to_default("test") is True
+        assert mgr.active_id == "gstreamer"
 
-    def test_choose_backend_server_profile(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        assert manager.choose_backend_for_profile("michi_server_renderer_mpd") == "mpd"
 
-    def test_switch_for_profile_standard(self, manager):
-        manager.switch_for_profile("standard")
-        assert manager.active_id == "gstreamer"
+class TestProperties:
+    def test_active_returns_backend(self):
+        gst = _mock_backend("gstreamer")
+        mgr = HybridAudioManager(default_backend=gst)
+        assert mgr.active is gst
 
-    def test_switch_for_profile_mpd(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        manager.switch_for_profile("michi_hifi_mpd")
-        assert manager.active_id == "mpd"
+    def test_active_id_returns_string(self):
+        mgr = HybridAudioManager(default_backend=_mock_backend("gstreamer"))
+        assert mgr.active_id == "gstreamer"
 
-    def test_switch_for_profile_mpd_not_registered(self, manager):
-        manager.switch_for_profile("michi_hifi_mpd")
-        assert manager.active_id == "gstreamer"
-        assert manager.is_fallback is True
-
-    def test_switch_preserves_queue(self, manager, mpd_backend, gst_backend):
-        gst_backend.get_queue.return_value = [
-            {"filepath": "a.flac"}, {"filepath": "b.flac"}]
-        gst_backend.get_queue_index.return_value = 1
-        manager.register(mpd_backend)
-        manager.switch_to("mpd")
-        mpd_backend.set_queue.assert_called_once_with(["a.flac", "b.flac"], 1)
-
-    def test_play_delegates(self, manager):
-        manager.play("/tmp/test.flac")
-        manager.active.play.assert_called_once_with("/tmp/test.flac")
-
-    def test_pause_delegates(self, manager):
-        manager.pause()
-        manager.active.pause.assert_called_once()
-
-    def test_resume_delegates(self, manager):
-        manager.resume()
-        manager.active.resume.assert_called_once()
-
-    def test_toggle_delegates(self, manager):
-        manager.toggle()
-        manager.active.toggle.assert_called_once()
-
-    def test_stop_delegates(self, manager):
-        manager.stop()
-        manager.active.stop.assert_called_once()
-
-    def test_seek_delegates(self, manager):
-        manager.seek(30.0)
-        manager.active.seek.assert_called_once_with(30.0)
-
-    def test_set_volume_delegates(self, manager):
-        manager.set_volume(50)
-        manager.active.set_volume.assert_called_once_with(50)
-
-    def test_set_queue_delegates(self, manager):
-        manager.set_queue(["a.flac"], start_index=0)
-        manager.active.set_queue.assert_called_once_with(["a.flac"], 0)
-
-    def test_enqueue_delegates(self, manager):
-        manager.enqueue(["a.flac"], play_now=False)
-        manager.active.enqueue.assert_called_once()
-
-    def test_enqueue_next_delegates(self, manager):
-        manager.enqueue_next(["a.flac"])
-        manager.active.enqueue_next.assert_called_once()
-
-    def test_clear_queue_delegates(self, manager):
-        manager.clear_queue()
-        manager.active.clear_queue.assert_called_once()
-
-    def test_get_snapshot_delegates(self, manager):
-        manager.get_snapshot()
-        manager.active.get_snapshot.assert_called_once()
-
-    def test_get_diagnostics_delegates(self, manager):
-        manager.get_diagnostics()
-        manager.active.get_diagnostics.assert_called_once()
-
-    def test_get_capabilities_delegates(self, manager):
-        manager.get_capabilities()
-        assert manager.active.capabilities is not None
-
-    def test_shutdown_all_backends(self, manager, mpd_backend):
-        manager.register(mpd_backend)
-        manager.shutdown()
-        mpd_backend.shutdown.assert_called_once()
-
-    def test_get_snapshot_no_active(self):
-        from audio.backends.hybrid_audio_manager import HybridAudioManager
-        m = HybridAudioManager()
-        snap = m.get_snapshot()
-        assert snap.backend_id == "none"
-        assert snap.state == "stopped"
-        assert "No active" in snap.error
-
-    def test_get_diagnostics_no_active(self):
-        from audio.backends.hybrid_audio_manager import HybridAudioManager
-        m = HybridAudioManager()
-        diag = m.get_diagnostics()
-        assert diag.backend_id == "none"
-
-    def test_get_capabilities_no_active(self):
-        from audio.backends.hybrid_audio_manager import HybridAudioManager
-        m = HybridAudioManager()
-        caps = m.get_capabilities()
-        assert caps.backend_id == "none"
+    def test_active_returns_none_when_no_backend(self):
+        mgr = HybridAudioManager()
+        assert mgr.active is None

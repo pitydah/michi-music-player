@@ -52,7 +52,7 @@ class ExpandedNowPlaying(QWidget):
         # ── Header ──
         header = QHBoxLayout()
         header.setContentsMargins(16, 12, 16, 12)
-        self._back_btn = QPushButton("← Volver")
+        self._back_btn = QPushButton("Cerrar vista expandida")
         self._back_btn.setFlat(True)
         self._back_btn.setStyleSheet(
             "QPushButton { color: rgba(245,245,247,0.7); font-size: 13px; }"

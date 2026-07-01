@@ -131,7 +131,7 @@ class _PlaceholderPage(QWidget):
 
         layout.addSpacing(20)
 
-        btn = QPushButton("Volver a Audio Lab")
+        btn = QPushButton("Ir a Audio Lab")
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(glass_button_qss("secondary"))
         btn.setFixedWidth(200)

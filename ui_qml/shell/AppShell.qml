@@ -49,10 +49,15 @@ Item {
         var titles = {
             "home": "Inicio",
             "library": "Biblioteca",
+            "genres": "Géneros",
+            "mix": "Mix",
+            "playback": "Reproducción",
+            "radio": "Radio",
             "connections": "Conexiones",
+            "ecosystem": "Ecosistema Michi",
             "home_audio": "Home Audio",
-            "assistant": "Asistente",
             "audio_lab": "Audio Lab",
+            "assistant": "Michi AI",
             "settings": "Ajustes"
         }
         header.pageTitle = titles[route] || "Michi"

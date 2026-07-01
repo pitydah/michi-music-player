@@ -92,11 +92,10 @@ class HybridAudioManager(QObject):
                 backend.duration_changed.connect(self.duration_changed))
 
     def _disconnect_backend_signals(self):
+        import contextlib
         for conn in self._connected_signals:
-            try:
+            with contextlib.suppress(Exception):
                 QObject.disconnect(conn)
-            except Exception:
-                pass
         self._connected_signals = []
 
     def choose_backend_for_profile(self, profile_key: str) -> str:
