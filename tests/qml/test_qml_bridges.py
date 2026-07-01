@@ -491,5 +491,42 @@ class TestCoverBridge:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "michi-cover" not in content, "AlbumCard still uses old image provider"
 
+    def test_album_card_no_parent_source(self):
+        content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
+        assert "parent.source" not in content, "AlbumCard uses parent.source (deprecated)"
+        assert "parent.status" not in content, "AlbumCard uses parent.status (deprecated)"
+
+    def test_cover_bridge_no_bare_except_pass(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
+        assert "except Exception:\n        pass" not in content, (
+            "cover_bridge.py has bare except:pass"
+        )
+
+    def test_cover_bridge_uses_qt_enums(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
+        assert "Qt.AspectRatioMode" in content or "Qt.KeepAspectRatio" in content, (
+            "cover_bridge.py missing Qt aspect ratio enum"
+        )
+        assert "Qt.SmoothTransformation" in content or "Qt.FastTransformation" in content, (
+            "cover_bridge.py missing Qt transformation enum"
+        )
+
+    def test_cover_bridge_has_cache_limit(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
+        assert "_MAX_CACHE" in content, "cover_bridge.py missing _MAX_CACHE constant"
+        assert "_trim_cache" in content, "cover_bridge.py missing _trim_cache function"
+
+    def test_qml_main_registers_cover_bridge(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "qml_main.py").read_text()
+        assert "qmlRegisterType(CoverBridge" in content, (
+            "qml_main.py does not register CoverBridge"
+        )
+        assert "MichiCover" in content, (
+            "qml_main.py missing MichiCover import in qmlRegisterType"
+        )
+        assert "register_image_provider" not in content, (
+            "qml_main.py still calls register_image_provider (dead code)"
+        )
+
 
 

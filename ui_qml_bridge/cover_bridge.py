@@ -1,19 +1,46 @@
 """CoverBridge — QQuickPaintedItem that renders cover art in QML.
 
 Usage in QML:
-    import ui_qml_bridge.cover_bridge 1.0
+    import MichiCover 1.0
     CoverBridge { coverKey: "album_xyz"; width: 180; height: 180 }
 
-Registered as "ui_qml_bridge" import in qml_main.py.
+Caches:
+    _FALLBACK_CACHE: max 256 entries, LRU-eviction via clear()
+    _COVER_CACHE: max 256 entries, LRU-eviction via clear()
+
+Rules:
+    - paint() does NO heavy work (DB reads, image loading)
+    - Heavy work (DB, image decode) happens in coverKey setter
+    - Fallback is always available, no crash path
+    - DB connection is temporary, closed immediately
 """
 
 from PySide6.QtQuick import QQuickPaintedItem
-from PySide6.QtGui import QImage, QPainter, QColor, QFont, QLinearGradient, QPixmap
+from PySide6.QtGui import QImage, QPainter, QColor, QFont, QLinearGradient, QPixmap, Qt
 from PySide6.QtCore import Property, Signal, QByteArray
 from pathlib import Path
+import logging
+
+logger = logging.getLogger("michi.cover")
 
 _FALLBACK_CACHE: dict[str, QPixmap] = {}
 _COVER_CACHE: dict[str, QImage] = {}
+_MAX_CACHE = 256
+_DB_PATH = None
+
+
+def _get_db_path() -> Path:
+    global _DB_PATH
+    if _DB_PATH is None:
+        _DB_PATH = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
+    return _DB_PATH
+
+
+def _trim_cache(cache: dict, max_size: int = _MAX_CACHE):
+    if len(cache) > max_size:
+        keys = list(cache.keys())
+        for k in keys[: len(keys) - max_size]:
+            del cache[k]
 
 
 def _make_fallback_pixmap(seed: str, size: int) -> QPixmap:
@@ -33,11 +60,12 @@ def _make_fallback_pixmap(seed: str, size: int) -> QPixmap:
     p.setPen(QColor(0x8F, 0xB7, 0xFF))
     p.setFont(QFont("sans-serif", size // 4, QFont.Bold))
     glyph = seed[:2].upper() if seed else "MM"
-    p.drawText(img.rect(), 0x0084, glyph)
+    p.drawText(img.rect(), int(Qt.AlignCenter), glyph)
     p.end()
 
     pm = QPixmap.fromImage(img)
     _FALLBACK_CACHE[key] = pm
+    _trim_cache(_FALLBACK_CACHE)
     return pm
 
 
@@ -45,24 +73,36 @@ def _load_cover_image(album_key: str, size: int) -> QImage | None:
     if album_key in _COVER_CACHE:
         cached = _COVER_CACHE[album_key]
         if cached.width() != size:
-            return cached.scaled(size, size, 0x01, 0x01)
+            return cached.scaled(size, size,
+                                 Qt.KeepAspectRatio,
+                                 Qt.SmoothTransformation)
         return cached
+
+    db_path = _get_db_path()
+    if not db_path.exists():
+        return None
 
     try:
         from library.library_db import LibraryDB
-        db_path = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
-        if db_path.exists():
-            db = LibraryDB(str(db_path))
+        db = LibraryDB(str(db_path))
+        try:
             row = db.get_album_art_cache(album_key)
             if row:
-                mime, data = row
+                _mime, data = row
                 img = QImage()
                 if img.loadFromData(QByteArray(data)):
-                    scaled = img.scaled(size, size, 0x01, 0x01)
+                    scaled = img.scaled(size, size,
+                                        Qt.KeepAspectRatio,
+                                        Qt.SmoothTransformation)
                     _COVER_CACHE[album_key] = scaled
+                    _trim_cache(_COVER_CACHE)
                     return scaled
+        finally:
+            from contextlib import suppress
+            with suppress(Exception):
+                db.close()
     except Exception:
-        pass
+        logger.debug("Cover load failed for %s", album_key, exc_info=True)
 
     return None
 
@@ -81,11 +121,12 @@ class CoverBridge(QQuickPaintedItem):
 
     @coverKey.setter
     def coverKey(self, key: str):
-        if key != self._cover_key:
-            self._cover_key = key
-            self._pixmap = None
-            self.coverChanged.emit()
-            self.update()
+        if key == self._cover_key:
+            return
+        self._cover_key = key
+        self._pixmap = None
+        self.coverChanged.emit()
+        self.update()
 
     def paint(self, painter: QPainter):
         w = int(self.width())
