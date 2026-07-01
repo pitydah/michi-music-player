@@ -16,10 +16,11 @@ Item {
             "mix": "Mix",
             "playback": "Reproducción",
             "connections": "Conexiones",
+            "radio": "Radio",
+            "playlists": "Playlists",
             "home_audio": "Home Audio",
             "audio_lab": "Audio Lab",
             "assistant": "Michi AI",
-            "settings": "Ajustes"
         }
         header.pageTitle = titles[route] || "Michi"
     }

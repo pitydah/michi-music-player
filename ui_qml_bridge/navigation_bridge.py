@@ -2,9 +2,17 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
 VALID_ROUTES = {
-    "home", "library", "genres", "mix", "playback", "radio",
-    "connections", "ecosystem", "home_audio", "audio_lab",
-    "assistant", "settings", "placeholder",
+    "home",
+    "library",
+    "mix",
+    "playback",
+    "connections",
+    "radio",
+    "playlists",
+    "home_audio",
+    "audio_lab",
+    "assistant",
+    "placeholder",
 }
 
 

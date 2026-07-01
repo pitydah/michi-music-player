@@ -51,12 +51,13 @@ Item {
                         ListElement { route: "home"; glyph: "IN"; label: "Inicio" }
                         ListElement { route: "library"; glyph: "BL"; label: "Biblioteca" }
                         ListElement { route: "mix"; glyph: "MX"; label: "Mix" }
-                        ListElement { route: "playback"; glyph: "RP"; label: "Reproducción" }
+                        ListElement { route: "playback"; glyph: "RP"; label: "Reproduccion" }
                         ListElement { route: "connections"; glyph: "SV"; label: "Conexiones" }
+                        ListElement { route: "radio"; glyph: "RD"; label: "Radio" }
+                        ListElement { route: "playlists"; glyph: "PL"; label: "Playlists" }
                         ListElement { route: "home_audio"; glyph: "HA"; label: "Home Audio" }
-                        ListElement { route: "assistant"; glyph: "AI"; label: "Asistente" }
+                        ListElement { route: "assistant"; glyph: "AI"; label: "Michi AI" }
                         ListElement { route: "audio_lab"; glyph: "AL"; label: "Audio Lab" }
-                        ListElement { route: "settings"; glyph: "CF"; label: "Ajustes" }
                     }
 
                     SidebarItem {

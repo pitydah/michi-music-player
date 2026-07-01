@@ -21,7 +21,6 @@ Item {
             case "assistant": return "../pages/assistant/AssistantPage.qml"
             case "library": return "../pages/library/LibraryPage.qml"
             case "audio_lab": return "../pages/assistant/AudioLabPage.qml"
-            case "settings": return "../pages/assistant/SettingsPage.qml"
             default: return "../pages/PlaceholderPage.qml"
         }
     }
