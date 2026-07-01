@@ -213,6 +213,8 @@ INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_pl_playlist ON playlist_items(playlist_id)",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_pl_unique_track "
     "ON playlist_items(playlist_id, track_id) WHERE track_id IS NOT NULL",
+    "CREATE INDEX IF NOT EXISTS idx_pl_position ON playlist_items(playlist_id, position)",
+    "CREATE INDEX IF NOT EXISTS idx_playlist_smart ON playlists(is_smart)",
     "CREATE INDEX IF NOT EXISTS idx_detected_tracks_time ON detected_tracks(detected_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_detected_tracks_artist_title ON detected_tracks(artist, title)",
     "CREATE INDEX IF NOT EXISTS idx_media_artist ON media_items(artist)",
@@ -228,6 +230,14 @@ GENRE_INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_genre_aliases_canonical ON genre_aliases(canonical_genre)",
     "CREATE INDEX IF NOT EXISTS idx_genre_suggestions_status ON genre_cleanup_suggestions(status)",
     "CREATE INDEX IF NOT EXISTS idx_genre_suggestions_type ON genre_cleanup_suggestions(suggestion_type)",
+]
+
+# Extra indexes for columns added via migrations (not in CREATE TABLE)
+_PLAYLIST_EXTRA_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_pl_added_at ON playlist_items(playlist_id, added_at)",
+    "CREATE INDEX IF NOT EXISTS idx_pl_source ON playlist_items(source)",
+    "CREATE INDEX IF NOT EXISTS idx_playlist_updated ON playlists(updated_at)",
+    "CREATE INDEX IF NOT EXISTS idx_playlist_sync ON playlists(sync_enabled, sync_status)",
 ]
 
 # ── MIGRATION DEFINITIONS ──
@@ -291,12 +301,22 @@ MEDIA_ITEMS_MIGRATIONS = [
 ]
 
 PLAYLISTS_MIGRATIONS = [
-    ("cover_path", "TEXT DEFAULT ''"),
-    ("cover_type", "TEXT DEFAULT 'mosaic'"),
-    ("description", "TEXT DEFAULT ''"),
-    ("created_at", "REAL DEFAULT (strftime('%s','now'))"),
-    ("rules_json", "TEXT DEFAULT ''"),
-]
+     ("cover_path", "TEXT DEFAULT ''"),
+     ("cover_type", "TEXT DEFAULT 'mosaic'"),
+     ("description", "TEXT DEFAULT ''"),
+     ("created_at", "REAL DEFAULT (strftime('%s','now'))"),
+     ("rules_json", "TEXT DEFAULT ''"),
+     ("updated_at", "REAL"),
+     ("last_played", "REAL"),
+     ("sync_enabled", "INTEGER DEFAULT 0"),
+     ("sync_status", "TEXT DEFAULT ''"),
+     ("sync_version", "INTEGER DEFAULT 1"),
+     ("is_smart", "INTEGER DEFAULT 0"),
+     ("source", "TEXT DEFAULT 'local'"),
+     ("locked", "INTEGER DEFAULT 0"),
+     ("health_score", "INTEGER DEFAULT 100"),
+     ("health_json", "TEXT DEFAULT ''"),
+ ]
 
 DETECTED_TRACKS_MIGRATIONS = [
     ("source_type", "TEXT DEFAULT ''"),
@@ -311,9 +331,12 @@ DETECTED_TRACKS_MIGRATIONS = [
 ]
 
 PLAYLIST_ITEMS_MIGRATIONS = [
-    ("track_id", "INTEGER REFERENCES media_items(id)"),
-    ("position", "INTEGER DEFAULT 0"),
-]
+     ("track_id", "INTEGER REFERENCES media_items(id)"),
+     ("position", "INTEGER DEFAULT 0"),
+     ("added_at", "REAL DEFAULT (strftime('%s','now'))"),
+     ("source", "TEXT DEFAULT 'manual'"),
+     ("sync_status", "TEXT DEFAULT ''"),
+ ]
 
 SCAN_ROOTS_MIGRATIONS = [
     ("created_at", "REAL DEFAULT (strftime('%s','now'))"),
@@ -387,8 +410,13 @@ class Schema:
             """)
         conn.commit()
 
+        # Extra indexes for migration-only columns
+        for idx in _PLAYLIST_EXTRA_INDEXES:
+            with contextlib.suppress(sqlite3.OperationalError):
+                conn.execute(idx)
+
         # Track schema version
-        new_ver = 3  # Bump when adding new migrations
+        new_ver = 4  # Bump when adding new migrations
         old_ver = conn.execute("PRAGMA user_version").fetchone()[0]
         if old_ver < new_ver:
             conn.execute(f"PRAGMA user_version={new_ver}")

@@ -123,6 +123,37 @@ def test_app_shell_titles_match_sidebar_routes():
     )
 
 
+def test_sidebar_has_no_forbidden_routes():
+    import re
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    forbidden = {"genres", "radio", "ecosystem"}
+    routes = set(re.findall(r'route: "(\w+)"', sidebar))
+    found = routes & forbidden
+    assert not found, f"Forbidden sidebar routes found: {found}"
+
+
+def test_sidebar_has_no_emoji_glyphs():
+    import unicodedata
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    emoji_ranges = set(range(0x1F300, 0x1FAFF)) | set(range(0x2600, 0x27BF))
+    safe = {0x2609, 0x2605, 0x2606, 0x2610, 0x2611, 0x2660, 0x2663, 0x2665, 0x2666}
+    emoji_ranges -= safe
+    for ch in sidebar:
+        if ord(ch) in emoji_ranges:
+            assert False, f"Emoji U+{ord(ch):04X} found in Sidebar.qml"
+
+
+def test_context_menu_has_no_emojis():
+    import re
+    window_path = Path(__file__).resolve().parent.parent.parent / "ui" / "window.py"
+    content = window_path.read_text()
+    menu_items = re.findall(r'menu\.addAction\("([^"]+)"\)', content)
+    for item in menu_items:
+        for ch in item:
+            if ord(ch) > 127 and ord(ch) not in range(0x00C0, 0x02FF):
+                assert False, f"Non-ASCII/emoji in menu action: '{item}' (char U+{ord(ch):04X})"
+
+
 def test_qml_main_importable():
     import importlib
     mod = importlib.import_module("ui_qml_bridge.qml_main")
