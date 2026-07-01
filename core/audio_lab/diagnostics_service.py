@@ -740,12 +740,7 @@ def analyse_directory_job(folder_path: str, job_manager=None,
             try:
                 result = analyse_file(fp)
                 if include_spectral and fp.lower().endswith((".wav", ".flac")):
-                    try:
-                        spec = analyse_spectral(fp)
-                        if spec:
-                            result["spectral"] = spec
-                    except Exception:
-                        pass
+                    attach_spectral_analysis(result, fp, persist=True)
                 results.append(result)
             except Exception:
                 pass
@@ -780,13 +775,8 @@ def analyse_directory_job(folder_path: str, job_manager=None,
                 try:
                     result = analyse_file(fp)
                     processed_paths.append(fp)
-                    if spectral and fp.lower().endswith(".wav"):
-                        try:
-                            spec = analyse_spectral(fp)
-                            if spec:
-                                result["spectral"] = spec
-                        except Exception:
-                            pass
+                    if spectral and fp.lower().endswith((".wav", ".flac")):
+                        attach_spectral_analysis(result, fp, persist=True)
                 except Exception as e:
                     errs.append({"path": fp, "error": str(e)})
                 progress_cb((i + 1) / total)

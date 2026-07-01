@@ -123,21 +123,6 @@ def _find_original(tracks: list, attr: str, norm_key: str, default: str) -> str:
     return default
 
 
-def make_grouping_seed(item) -> tuple[str, str, str]:
-    """Generate a grouping seed for a single MediaItem.
-
-    Returns (artist_seed, title_seed, compilation_marker).
-    Seeds are normalized for safe grouping.
-    """
-    album = normalize_album_title(str(getattr(item, "album", "") or ""))
-    artist = normalize_artist_name(str(getattr(item, "artist", "") or ""))
-    albumartist = normalize_artist_name(str(getattr(item, "albumartist", "") or ""))
-    seed_artist = albumartist or artist
-    comp_marker = "comp" if (albumartist and is_various_artist_alias(albumartist)) or \
-                   (not albumartist and len({str(getattr(item, "artist", "") or "").strip()}) > 1) else ""
-    return seed_artist, album, comp_marker
-
-
 def make_canonical_album_identity(tracks: list) -> str:
     """Build a stable canonical album key from tracks.
 
@@ -153,16 +138,23 @@ def make_canonical_album_identity(tracks: list) -> str:
 
 
 def is_compilation(tracks: list) -> bool:
-    """Detect if a list of tracks represents a compilation album."""
+    """Detect if a list of tracks represents a compilation album.
+
+    Only returns True if:
+      - albumartist is explicitly set to a VA alias, OR
+      - any track has a truthy 'compilation' attribute
+    Multiple different artists WITHOUT an albumartist marker is NOT treated as
+    compilation (they will be split into separate artist groups instead).
+    """
     if not tracks:
         return False
-    artists = {str(getattr(t, "artist", "") or "").strip() for t in tracks}
     albumartists = {str(getattr(t, "albumartist", "") or "").strip()
                     for t in tracks if str(getattr(t, "albumartist", "") or "").strip()}
-    artist_set = {a for a in artists if a}
-    if len(artist_set) > 1:
+    if any(is_various_artist_alias(aa) for aa in albumartists):
         return True
-    return any(is_various_artist_alias(aa) for aa in albumartists)
+    if any(getattr(t, "compilation", False) for t in tracks):
+        return True
+    return False
 
 
 @dataclass(frozen=True)
