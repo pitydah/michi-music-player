@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, Property
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
 class AppBridge(QObject):
@@ -22,6 +22,7 @@ class AppBridge(QObject):
     def experimentalQml(self):
         return self._experimental_qml
 
+    @Slot()
     def quit(self):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.quit()

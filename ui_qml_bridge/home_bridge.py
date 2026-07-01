@@ -42,6 +42,7 @@ class HomeBridge(QObject):
     def refresh(self):
         self.snapshotChanged.emit()
 
+    @Slot(int, int, int)
     def set_library_stats(self, albums: int, artists: int, tracks: int):
         self._albums = albums
         self._artists = artists
