@@ -13,12 +13,9 @@ Item {
         var titles = {
             "home": "Inicio",
             "library": "Biblioteca",
-            "genres": "Géneros",
             "mix": "Mix",
             "playback": "Reproducción",
-            "radio": "Radio",
             "connections": "Conexiones",
-            "ecosystem": "Ecosistema Michi",
             "home_audio": "Home Audio",
             "audio_lab": "Audio Lab",
             "assistant": "Michi AI",
