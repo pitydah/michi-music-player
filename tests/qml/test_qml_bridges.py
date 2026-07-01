@@ -71,6 +71,58 @@ def test_page_stack_references_exist():
         )
 
 
+def test_qml_files_have_no_emoji_icons():
+    import unicodedata
+    emoji_codepoints = set()
+    for cp in range(0x1F300, 0x1FAFF):
+        try:
+            cat = unicodedata.category(chr(cp))
+        except ValueError:
+            continue
+        if cat in ("So", "Cn"):
+            emoji_codepoints.add(cp)
+    for cp in range(0x2600, 0x27BF):
+        try:
+            cat = unicodedata.category(chr(cp))
+        except ValueError:
+            continue
+        if cat == "So":
+            emoji_codepoints.add(cp)
+    known_non_emoji = {0x2609, 0x2605, 0x2606, 0x2610, 0x2611, 0x2660,
+                       0x2663, 0x2665, 0x2666, 0x2702, 0x2708, 0x2713,
+                       0x2714, 0x2716, 0x2728, 0x2744}
+    emoji_codepoints -= known_non_emoji
+
+    for qml_file in sorted(QML_DIR.rglob("*.qml")):
+        content = qml_file.read_text(encoding="utf-8", errors="ignore")
+        for ch in content:
+            cp = ord(ch)
+            if cp in emoji_codepoints:
+                assert False, (
+                    f"Emoji U+{cp:04X} ({ch}) found in "
+                    f"{qml_file.relative_to(QML_DIR)}"
+                )
+
+
+def test_app_shell_titles_match_sidebar_routes():
+    import re
+    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    appshell = (QML_DIR / "shell" / "AppShell.qml").read_text()
+
+    sidebar_routes = set(re.findall(r'route: "(\w+)"', sidebar))
+    appshell_routes = set(re.findall(r'"(\w+)":\s*"', appshell))
+
+    sidebar_only = sidebar_routes - appshell_routes
+    appshell_only = appshell_routes - sidebar_routes
+
+    assert not sidebar_only, (
+        f"Sidebar routes missing from AppShell titles: {sidebar_only}"
+    )
+    assert not appshell_only, (
+        f"AppShell titles without sidebar route: {appshell_only}"
+    )
+
+
 def test_qml_main_importable():
     import importlib
     mod = importlib.import_module("ui_qml_bridge.qml_main")
