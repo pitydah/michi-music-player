@@ -1249,6 +1249,38 @@ class MainWindow(QMainWindow):
 
     def _play_file(self, filepath: str, add_to_queue: bool = False):
         self._playback_ctrl.play_file(filepath, add_to_queue)
+
+    def _show_song_context_menu(self, filepath: str, pos):
+        from PySide6.QtWidgets import QMenu
+        from ui.central.central_styles import menu_qss
+        menu = QMenu(self)
+        menu.setStyleSheet(menu_qss())
+
+        play_act = menu.addAction("▶ Reproducir")
+        queue_act = menu.addAction("⊕ Añadir a la cola")
+        menu.addSeparator()
+        locate_act = menu.addAction("📁 Localizar archivo")
+        menu.addSeparator()
+        fav_act = menu.addAction("★ Favorito / Quitar favorito")
+        metadata_act = menu.addAction("✎ Editar metadatos")
+
+        action = menu.exec(pos)
+        if action == play_act:
+            self._play_file(filepath)
+        elif action == queue_act:
+            self._play_file(filepath, add_to_queue=True)
+        elif action == locate_act:
+            from core.file_actions import open_containing_folder
+            open_containing_folder(filepath)
+        elif action == fav_act:
+            songs_ctrl = getattr(self, '_songs_ctrl', None)
+            if songs_ctrl and hasattr(songs_ctrl, 'toggle_favorite'):
+                from library.library_db import MediaItem
+                item = MediaItem(filepath=filepath)
+                songs_ctrl.toggle_favorite(item)
+        elif action == metadata_act:
+            if hasattr(self, '_open_metadata_for_files'):
+                self._open_metadata_for_files([filepath])
     # Streaming/Cast/AudioOutput — now split into focused controllers
     # CastController → unified transmit menu (local + net + snapcast + HA)
     # AudioOutputController → local output device selection

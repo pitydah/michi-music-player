@@ -206,6 +206,28 @@ class SongsPremiumPage(QWidget):
     def load_data(self, items: list, fav_set: set[str] | None = None,
                   status_cache: dict[int, dict] | None = None):
         self._loading_label.show()
+        if self._ctrl:
+            wm = getattr(getattr(self._ctrl, '_services', None), 'workers', None)
+            if wm and hasattr(wm, 'run_task') and len(items) > 500:
+                def _compute():
+                    vs = self._ctrl.view_state()
+                    return vs
+                def _on_done(vs):
+                    if vs is None:
+                        return
+                    self._model.populate(
+                        vs.items,
+                        fav_set=set(vs.favorite_track_ids),
+                        status_cache=dict(vs.status_cache),
+                    )
+                    self._resize_columns()
+                    self._loading_label.hide()
+                    if not vs.items:
+                        self._empty_label.show()
+                    else:
+                        self._empty_label.hide()
+                wm.run_task("load_songs", _compute, on_done=_on_done)
+                return
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.processEvents()
         self._model.populate(items, fav_set=fav_set, status_cache=status_cache)

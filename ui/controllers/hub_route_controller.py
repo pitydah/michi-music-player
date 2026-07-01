@@ -113,21 +113,6 @@ class HubRouteController:
 
     def show_michi_disc_lab(self, key: str = ""):
         self._win._audio_lab_ctrl.show_disc_lab(key)
-        def _build():
-            w = self._win
-            from ui.hubs.library_hub_page import LibraryHubPage
-            page = LibraryHubPage(
-                db=w._db,
-                window=w,
-                songs_widget=w._songs_stack,
-                albums_widget=w._albums_stack,
-                artists_widget=w._artists_stack,
-                genres_widget=w._genres_stack,
-                folders_widget=w._folder_browser,
-            )
-            page.tab_changed.connect(w._lib_ctrl._on_library_tab_changed)
-            return page
-        self._lazy("library_hub", _build)
 
     def show_mix_hub(self, key: str = ""):
         def _build():

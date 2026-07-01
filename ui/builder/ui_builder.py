@@ -347,6 +347,8 @@ class UIBuilder:
         w._song_grid = SongGridWidget()
         w._song_grid.song_double_clicked.connect(
             lambda fp, _w=w: _w._play_file(fp))
+        w._song_grid.song_context_menu.connect(
+            lambda fp, pos, _w=w: _w._show_song_context_menu(fp, pos))
 
         # Generic song grid for external views (playlists, favs, recent)
         w._generic_song_grid = SongGridWidget()

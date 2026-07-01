@@ -141,7 +141,7 @@ class ConnectionsHubPage(QWidget):
         local_chip = QPushButton("Michi Local — servidor en esta máquina")
         local_chip.setCursor(Qt.PointingHandCursor)
         local_chip.setStyleSheet(glass_chip_button_qss())
-        local_chip.clicked.connect(lambda: self._navigate("michi_local"))
+        local_chip.clicked.connect(lambda: self._navigate("home_audio"))
         local_row.addWidget(local_chip)
         local_row.addStretch()
         cl.addLayout(local_row)

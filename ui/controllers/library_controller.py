@@ -320,6 +320,11 @@ class LibraryController(QObject):
         w._view_switcher.show()
         w._view_switcher.set_available_modes(views, default, context=section_key)
 
+        # Register tab change in navigation history (not during history restore)
+        nav = getattr(w, '_nav_ctrl', None)
+        if nav and not nav.is_restoring:
+            nav.push(section_key)
+
         if section_key == "albums":
             w._show_album_grid()
         elif section_key == "artists":
