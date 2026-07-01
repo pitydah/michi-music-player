@@ -308,3 +308,31 @@ class TestGenreActionsPanelQt:
     def test_play_signal(self, panel, qtbot):
         with qtbot.waitSignal(panel.play_requested, timeout=100):
             panel.play_requested.emit("Rock")
+
+
+class TestGenreOperationDialog:
+    def test_instantiation(self, qtbot):
+        from ui.genres.genre_operation_dialog import GenreOperationPreviewDialog
+        dlg = GenreOperationPreviewDialog(
+            "Fusionar géneros",
+            ["Hip Hop", "hiphop", "Hip-Hop"],
+            "Hip-Hop",
+            track_count=212,
+        )
+        qtbot.addWidget(dlg)
+        assert dlg.windowTitle() == "Confirmar operación"
+        assert dlg.write_tags is False
+        assert dlg._write_cb.isChecked() is False
+
+    def test_write_tags_checkbox(self, qtbot):
+        from ui.genres.genre_operation_dialog import GenreOperationPreviewDialog
+        dlg = GenreOperationPreviewDialog("Renombrar", ["Old"], "New")
+        qtbot.addWidget(dlg)
+        dlg._write_cb.setChecked(True)
+        assert dlg.write_tags is True
+
+    def test_single_source(self, qtbot):
+        from ui.genres.genre_operation_dialog import GenreOperationPreviewDialog
+        dlg = GenreOperationPreviewDialog("Aplicar género", [], "Rock", track_count=50)
+        qtbot.addWidget(dlg)
+        assert dlg is not None

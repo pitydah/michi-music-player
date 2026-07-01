@@ -79,8 +79,12 @@ SECTION_CONFIG: dict[str, dict] = {
     "new_playlist": {"title": "Nueva playlist", "subtitle": "Crear una playlist vacía",
                      "icon": "sidebar_add", "views": [],
                      "search": False, "default": None},
-    "assistant":  {"title": "Asistente",
+    "assistant":  {"title": "Michi AI",
                     "subtitle": "IA local para explorar tu biblioteca",
+                    "icon": "sidebar_mix", "views": [],
+                    "search": False, "default": None},
+    "michi_ai":   {"title": "Michi AI",
+                    "subtitle": "Contexto, análisis y acciones inteligentes para tu biblioteca",
                     "icon": "sidebar_mix", "views": [],
                     "search": False, "default": None},
     "metadata_review": {"title": "Revisión de metadata",
@@ -95,6 +99,10 @@ SECTION_CONFIG: dict[str, dict] = {
                               "subtitle": "Analiza calidad, detecta formatos falsos y verifica tu biblioteca",
                               "icon": "sidebar_identifier", "views": [],
                               "search": False, "default": None},
+    "audio_lab_bitperfect_monitor": {"title": "Monitor Bit-Perfect",
+                                     "subtitle": "Verifica ALSA hw_params, DAC, sample rate real y DSP activo",
+                                     "icon": "sidebar_identifier", "views": [],
+                                     "search": False, "default": None},
     "audio_lab_identifier": {"title": "Identificador de Audios",
                              "subtitle": "Edita metadatos, identifica con MusicBrainz, gestiona carátulas y letras",
                              "icon": "metadata_editor", "views": [],
@@ -193,12 +201,12 @@ def resolve_sidebar_active_key(key: str) -> str:
     bajo el hub/section padre del sidebar.
     """
     # Hubs visibles
-    if key in ("home", "library_hub", "mix_hub", "playlist_hub",
+    if key in ("home", "library_hub", "genres", "mix_hub", "playlist_hub",
                 "playback_hub", "connections_hub", "home_audio",
-                "audio_lab", "assistant", "devices_page"):
+                "audio_lab", "assistant", "michi_ai", "devices_page"):
         return key
-    # Hijos de library_hub
-    if key in ("library", "albums", "artists", "genres", "folders", "favs", "recent"):
+    # Hijos de library_hub (genres ya no está aquí porque tiene item propio)
+    if key in ("library", "albums", "artists", "folders", "favs", "recent"):
         return "library_hub"
     # Hijos de mix_hub
     if key.startswith("mix_") and key != "mix_hub":
@@ -220,6 +228,7 @@ def resolve_sidebar_active_key(key: str) -> str:
     # Hijos de audio_lab
     if key in ("metadata_editor", "metadata_review", "michi_disc_lab", "identifier",
                "audio_lab_diagnostics", "audio_lab_identifier",
+               "audio_lab_bitperfect_monitor",
                "audio_lab_backup", "audio_lab_output",
                "audio_lab_intelligence", "audio_lab_lyrics",
                "audio_lab_artwork",
@@ -237,7 +246,7 @@ def resolve_sidebar_active_key(key: str) -> str:
     return prefix if prefix in (
         "home", "library_hub", "mix_hub", "playlist_hub",
         "playback_hub", "connections_hub", "home_audio",
-        "audio_lab", "assistant", "devices_page",
+        "audio_lab", "assistant", "michi_ai", "devices_page",
     ) else "home"
 
 # Navigation routes — maps sidebar keys to window handler methods
@@ -251,9 +260,13 @@ NAV_ROUTES: dict[str, str] = {
     "favs": "_show_favs", "recent": "_show_recent",
     "new_playlist": "_show_new_playlist", "add_server": "_show_add_server",
     "assistant": "_show_assistant",
+    "michi_ai": "_show_michi_ai_page",
+    "michi_assistant": "_show_michi_ai_page",
+    "ai_assistant": "_show_michi_ai_page",
     "metadata_review": "_show_metadata_review",
     "audio_lab": "_show_audio_lab",
     "audio_lab_diagnostics": "_show_audio_lab_diagnostics",
+    "audio_lab_bitperfect_monitor": "_show_audio_lab_bitperfect_monitor",
     "audio_lab_identifier": "_show_audio_lab_identifier",
     "audio_lab_backup": "_show_audio_lab_backup",
     "audio_lab_output": "_show_audio_lab_output",

@@ -916,15 +916,18 @@ class LibraryDB:
 
     def get_playlists(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT id, name, cover_path, cover_type, description, created_at "
+            "SELECT id, name, cover_path, cover_type, description, created_at, "
+            "COALESCE(rules_json,'') as rules_json "
             "FROM playlists ORDER BY name").fetchall()
         return [{"id": r[0], "name": r[1], "cover_path": r[2] or "",
                  "cover_type": r[3] or "mosaic", "description": r[4] or "",
-                 "created_at": r[5] if len(r) > 5 else 0}
+                 "created_at": r[5] if len(r) > 5 else 0,
+                 "rules_json": r[6] if len(r) > 6 else ""}
                 for r in rows]
 
     def update_playlist(self, pid: int, name: str = "", description: str = "",
-                        cover_path: str = "", cover_type: str = ""):
+                        cover_path: str = "", cover_type: str = "",
+                        rules_json: str = ""):
         updates = []
         params = []
         if name is not None:
@@ -939,6 +942,9 @@ class LibraryDB:
         if cover_type is not None:
             updates.append("cover_type = ?")
             params.append(cover_type)
+        if rules_json is not None:
+            updates.append("rules_json = ?")
+            params.append(rules_json)
         if updates:
             params.append(pid)
             self._conn.execute(

@@ -221,11 +221,25 @@ class GenreCleanupService:
 
     def execute_merge(self, source_genres: list[str], target: str) -> dict:
         canonical = canonicalize_genre(target)
-        return self._repo.merge_genres(source_genres, canonical)
+        result = self._repo.merge_genres(source_genres, canonical)
+        # Persist aliases for future normalizations
+        if result.get("affected", 0) > 0:
+            for src in source_genres:
+                src_norm = canonicalize_genre(src)
+                if src_norm and src_norm != canonical:
+                    self._repo.add_alias(src_norm, canonical, source="auto",
+                                         is_user_defined=False)
+        return result
 
     def execute_rename(self, old_name: str, new_name: str) -> int:
         canonical = canonicalize_genre(new_name)
-        return self._repo.rename_genre(old_name, canonical)
+        count = self._repo.rename_genre(old_name, canonical)
+        if count:
+            old_canonical = canonicalize_genre(old_name)
+            if old_canonical and old_canonical != canonical:
+                self._repo.add_alias(old_canonical, canonical, source="auto",
+                                     is_user_defined=False)
+        return count
 
     def execute_apply_genre(self, track_ids: list[int], genre: str,
                             write_tags: bool = False) -> int:

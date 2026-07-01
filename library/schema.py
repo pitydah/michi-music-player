@@ -295,6 +295,7 @@ PLAYLISTS_MIGRATIONS = [
     ("cover_type", "TEXT DEFAULT 'mosaic'"),
     ("description", "TEXT DEFAULT ''"),
     ("created_at", "REAL DEFAULT (strftime('%s','now'))"),
+    ("rules_json", "TEXT DEFAULT ''"),
 ]
 
 DETECTED_TRACKS_MIGRATIONS = [
@@ -387,7 +388,7 @@ class Schema:
         conn.commit()
 
         # Track schema version
-        new_ver = 2  # Bump when adding new migrations
+        new_ver = 3  # Bump when adding new migrations
         old_ver = conn.execute("PRAGMA user_version").fetchone()[0]
         if old_ver < new_ver:
             conn.execute(f"PRAGMA user_version={new_ver}")

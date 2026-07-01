@@ -147,6 +147,14 @@ class GenreMixService:
                 self._db.add_to_playlist(pid, fp)
             except Exception as e:
                 _log.warning("add_to_playlist failed for %s: %s", fp, e)
+        # Persist rules as JSON so the playlist can be re-evaluated later
+        if rules:
+            import json
+            rules_payload = {"canonical": canonical, **rules}
+            try:
+                self._db.update_playlist(pid, rules_json=json.dumps(rules_payload))
+            except Exception as e:
+                _log.warning("persist smart playlist rules failed: %s", e)
         return pid
 
     def get_related_genres(self, canonical: str, max_results: int = 5) -> list[dict]:

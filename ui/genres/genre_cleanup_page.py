@@ -2,11 +2,12 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
-    QLabel, QPushButton, QFrame,
+    QLabel, QPushButton, QFrame, QDialog,
 )
 
 from ui.central.central_styles import glass_button_qss
 from ui.genres.genre_empty_states import GenreEmptyState
+from ui.genres.genre_operation_dialog import GenreOperationPreviewDialog
 
 _BG = "#090B11"
 _TEXT = "#FFFFFF"
@@ -159,8 +160,8 @@ class GenreCleanupPage(QWidget):
             sources = list(dup.get("raw_values", []))
             target = dup.get("canonical", "")
             apply_btn.clicked.connect(
-                lambda checked=False, s=sources, t=target:
-                self.merge_requested.emit(s, t))
+                lambda checked=False, s=sources, t=target, c=dup.get('count', 0):
+                self._show_merge_dialog(s, t, c))
             btn_row.addWidget(apply_btn)
             btn_row.addStretch()
             self._duplicates_section["layout"].addLayout(btn_row)
@@ -210,6 +211,12 @@ class GenreCleanupPage(QWidget):
             row_lbl = QLabel(f"{title}: '{raw}' → {suggested}")
             row_lbl.setStyleSheet(f"color: {_TEXT2}; font-size: 11px;")
             self._multi_section["layout"].addWidget(row_lbl)
+
+    def _show_merge_dialog(self, sources: list, target: str, count: int):
+        dialog = GenreOperationPreviewDialog(
+            "Fusionar géneros", sources, target, track_count=count, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            self.merge_requested.emit(sources, target)
 
     def show_empty(self, message: str = "No se detectaron problemas de géneros"):
         self._untagged_section["card"].setVisible(False)
