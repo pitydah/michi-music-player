@@ -11,6 +11,8 @@ from ui_qml_bridge.app_bridge import AppBridge
 from ui_qml_bridge.navigation_bridge import NavigationBridge
 from ui_qml_bridge.command_bus import CommandBus
 from ui_qml_bridge.theme_bridge import ThemeBridge
+from ui_qml_bridge.library_bridge import LibraryBridge
+from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 def main():
@@ -24,11 +26,15 @@ def main():
     nav_bridge = NavigationBridge()
     cmd_bus = CommandBus()
     theme_bridge = ThemeBridge()
+    library_bridge = LibraryBridge()
+    michi_ai_bridge = MichiAIBridge()
 
     engine.rootContext().setContextProperty("appBridge", app_bridge)
     engine.rootContext().setContextProperty("navigationBridge", nav_bridge)
     engine.rootContext().setContextProperty("commandBus", cmd_bus)
     engine.rootContext().setContextProperty("themeBridge", theme_bridge)
+    engine.rootContext().setContextProperty("libraryBridge", library_bridge)
+    engine.rootContext().setContextProperty("michiAiBridge", michi_ai_bridge)
 
     qml_dir = Path(__file__).resolve().parent.parent / "ui_qml"
     engine.addImportPath(str(qml_dir))

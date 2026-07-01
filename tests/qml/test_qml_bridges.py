@@ -8,6 +8,8 @@ from ui_qml_bridge.theme_bridge import ThemeBridge
 from ui_qml_bridge.home_bridge import HomeBridge
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
+from ui_qml_bridge.library_bridge import LibraryBridge
+from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent / "ui_qml"
@@ -376,3 +378,43 @@ class TestHomeAudioBridge:
         assert hasattr(bridge, 'configureHomeAssistant')
         assert hasattr(bridge, 'openDiagnostics')
         assert hasattr(bridge, 'openStreamConcept')
+
+
+class TestLibraryBridge:
+    def test_instantiate(self):
+        bridge = LibraryBridge()
+        assert bridge is not None
+
+    def test_default_counts(self):
+        bridge = LibraryBridge()
+        assert bridge.songCount == 0
+        assert bridge.albumCount == 0
+
+    def test_refresh_does_not_crash(self):
+        bridge = LibraryBridge()
+        bridge.refresh()
+
+
+class TestMichiAIBridge:
+    def test_instantiate(self):
+        bridge = MichiAIBridge()
+        assert bridge is not None
+
+    def test_refresh_does_not_crash(self):
+        bridge = MichiAIBridge()
+        bridge.refresh()
+
+    def test_send_message_returns_response(self):
+        bridge = MichiAIBridge()
+        bridge.sendMessage("hola")
+        history = bridge.getChatHistory()
+        assert "hola" in history
+        assert "assistant" in history
+
+    def test_suggestions_after_refresh(self):
+        bridge = MichiAIBridge()
+        bridge.refresh()
+        assert len(bridge.suggestions) > 0
+
+
+
