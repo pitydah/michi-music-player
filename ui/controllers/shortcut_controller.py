@@ -20,3 +20,9 @@ class ShortcutController:
                   lambda: self._ctx.player_bar.mute())
         QShortcut(QKeySequence("Ctrl+F"), self._win,
                   lambda: self._ctx.search_widget.setFocus())
+
+        # Navigation history shortcuts
+        nav_ctrl = getattr(self._win, '_nav_ctrl', None)
+        if nav_ctrl:
+            QShortcut(QKeySequence("Alt+Left"), self._win, nav_ctrl.navigate_back)
+            QShortcut(QKeySequence("Alt+Right"), self._win, nav_ctrl.navigate_forward)
