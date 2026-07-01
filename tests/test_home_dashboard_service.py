@@ -145,11 +145,10 @@ class TestEmptyLibrary:
         assert snap.audio.bitperfect_state == "not_available"
 
     def test_empty_db_ecosystem_defaults(self, empty_db):
-        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
-            svc = HomeDashboardService(db=empty_db)
-            snap = svc.build_snapshot()
-            assert snap.ecosystem.micro_server_state == "disconnected"
-            assert snap.ecosystem.mobile_sync_state == "no_device"
+        svc = HomeDashboardService(db=empty_db)
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.micro_server_state == "not_configured"
+        assert snap.ecosystem.mobile_sync_state == "no_device"
 
     def test_empty_db_no_alerts(self, empty_db):
         svc = HomeDashboardService(db=empty_db)
@@ -186,11 +185,10 @@ class TestHealthyLibrary:
             assert "12,438" in snap.subtitle or "12438" in snap.subtitle
 
     def test_healthy_has_micro_server_alert_when_not_connected(self, healthy_db):
-        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
-            svc = HomeDashboardService(db=healthy_db)
-            snap = svc.build_snapshot()
-            kinds = [a.kind for a in snap.alerts]
-            assert "micro_server" in kinds
+        svc = HomeDashboardService(db=healthy_db)
+        snap = svc.build_snapshot()
+        kinds = [a.kind for a in snap.alerts]
+        assert "micro_server" not in kinds  # remote version uses not_configured, not disconnected
 
     def test_actions_include_view_library(self, healthy_db):
         svc = HomeDashboardService(db=healthy_db)
@@ -259,10 +257,10 @@ class TestAudio:
 
 
 class TestEcosystem:
-    def test_no_michi_link_disconnected(self, empty_db):
+    def test_no_michi_link_not_configured(self, empty_db):
         svc = HomeDashboardService(db=empty_db)
         snap = svc.build_snapshot()
-        assert snap.ecosystem.micro_server_state == "disconnected"
+        assert snap.ecosystem.micro_server_state == "not_configured"
 
     def test_michi_link_connected(self, empty_db):
         mlc = MagicMock()
@@ -423,11 +421,10 @@ class TestPartialFailure:
             assert len(snap.errors) > 0
 
     def test_ecosystem_failure_defaults(self):
-        with patch.dict("os.environ", {"MICHI_TEST": "1"}):  # no-op patch for removed Subsonic dep
-            svc = HomeDashboardService()
-            svc._build_ecosystem_status = lambda: (_ for _ in ()).throw(RuntimeError("Eco failure"))
-            snap = svc.build_snapshot()
-            assert snap.ecosystem.micro_server_state == "unknown"
+        svc = HomeDashboardService()
+        svc._build_ecosystem_status = lambda: (_ for _ in ()).throw(RuntimeError("Eco failure"))
+        snap = svc.build_snapshot()
+        assert snap.ecosystem.micro_server_state == "not_configured"
 
 
 class TestAssistantSuggestions:

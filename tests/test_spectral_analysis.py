@@ -43,9 +43,17 @@ class TestSupportsSpectralAnalysis:
 
 class TestCanAnalyseFunction:
     def test_can_analyse_wav(self):
+        import os
+        import tempfile
         from core.audio_analysis.spectral_authenticator import can_analyse
 
-        assert can_analyse("test.wav") is True
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            f.write(b"RIFF\x00\x00\x00\x00WAVE")
+            path = f.name
+        try:
+            assert can_analyse(path) is True
+        finally:
+            os.unlink(path)
 
     def test_can_analyse_flac(self):
         import os

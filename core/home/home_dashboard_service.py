@@ -36,6 +36,7 @@ class HomeDashboardService:
         player_engine=None,
         features=None,
         settings_mgr=None,
+        michi_link_ctrl=None,
     ):
         self._db = db
         self._playback = playback
@@ -45,6 +46,7 @@ class HomeDashboardService:
         self._player_engine = player_engine
         self._features = features
         self._settings_mgr = settings_mgr
+        self._michi_link_ctrl = michi_link_ctrl
 
     def build_snapshot(self) -> HomeDashboardSnapshot:
         errors: list[HomeCardError] = []
@@ -95,6 +97,12 @@ class HomeDashboardService:
         headline = self._format_headline(overall_state)
         subtitle = self._format_subtitle(library, audio, ecosystem)
         actions = self._build_actions(overall_state, library, ecosystem)
+
+        playback.can_continue_remote = bool(
+            playback.can_continue
+            and ecosystem.micro_server_state == "connected"
+            and ecosystem.diagnostics_available
+        )
 
         return HomeDashboardSnapshot(
             overall_state=overall_state,
@@ -210,19 +218,23 @@ class HomeDashboardService:
             except Exception:
                 pass
             try:
-                if hasattr(pb, "position_changed") and hasattr(pb, "duration"):
-                    position = getattr(pb, "_position", 0.0)
-                    duration = getattr(pb, "_duration", 0.0)
+                if hasattr(pb, "duration"):
+                    duration = pb.duration if callable(pb.duration) is False else 0.0
             except Exception:
                 pass
 
         queue_active = False
         queue_count = 0
         try:
-            qs = pb.get_queue_state() if hasattr(pb, "get_queue_state") else None
-            if qs:
-                queue_active = qs.get("active", False) or qs.get("count", 0) > 0
-                queue_count = qs.get("count", 0)
+            if hasattr(pb, "get_queue_state"):
+                qs = pb.get_queue_state()
+                if isinstance(qs, tuple) and len(qs) == 2:
+                    paths, idx = qs
+                    queue_active = len(paths) > 0
+                    queue_count = len(paths)
+                elif isinstance(qs, dict):
+                    queue_active = qs.get("active", False) or qs.get("count", 0) > 0
+                    queue_count = qs.get("count", 0)
         except Exception:
             pass
 
@@ -305,6 +317,12 @@ class HomeDashboardService:
                     diag = pb.get_audio_diagnostics()
                     if isinstance(diag, dict) and diag.get("warnings"):
                         warnings_list = diag["warnings"]
+                # EQ from PlayerService public API
+                if hasattr(pb, "get_eq_state"):
+                    eq_state = pb.get_eq_state()
+                    if isinstance(eq_state, dict):
+                        eq_enabled = not eq_state.get("bypass", True)
+                        dsp_active = dsp_active or eq_enabled
             except Exception:
                 pass
 
@@ -345,6 +363,25 @@ class HomeDashboardService:
                 micro_name = f"{micro_host}:{micro_port}"
         except Exception:
             pass
+
+        # Use Michi Link controller for real Micro Server state
+        mlc = self._michi_link_ctrl
+        if mlc is not None:
+            try:
+                conn_state = mlc.get_connection_state()
+                if conn_state:
+                    ms = conn_state.get("micro_server_state")
+                    if ms == "connected":
+                        micro_state = "connected"
+                        micro_name = conn_state.get("micro_server_name", micro_name)
+                    elif ms == "requires_pairing":
+                        micro_state = "requires_pairing"
+                    elif ms == "contract_error":
+                        micro_state = "contract_error"
+                    elif ms == "disconnected":
+                        micro_state = "disconnected"
+            except Exception:
+                pass
 
         try:
             from streaming.subsonic_client import load_servers
