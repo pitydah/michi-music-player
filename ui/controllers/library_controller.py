@@ -38,6 +38,8 @@ class LibraryController(QObject):
                 on_done=self._on_backfill_done)
             workers.run_task("backfill_art",
                 self._win._db.backfill_missing_album_art)
+            workers.run_task("backfill_genres",
+                lambda: self._backfill_genres())
 
     def reload_after_change(self, reason: str = ""):
         """Centralized data reload entry point for all mutations."""
@@ -328,6 +330,18 @@ class LibraryController(QObject):
             self.refresh_genres()
         elif section_key == "library":
             w._apply_filters()
+
+    def _backfill_genres(self) -> int:
+        try:
+            from library.genre_repository import GenreRepository
+            repo = GenreRepository(self._win._db.conn)
+            count = repo.backfill_from_media_items()
+            if count:
+                logger.info("Backfilled %d track_genre entries on load", count)
+            return count
+        except Exception as e:
+            logger.warning("backfill_genres failed: %s", e)
+            return 0
 
     # ── Callbacks ──
 

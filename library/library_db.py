@@ -249,6 +249,12 @@ class LibraryDB:
             writer.add(record)
             writer.flush()
             self._conn.commit()
+            # Sync track_genres for this newly added file
+            try:
+                from library.genre_repository import GenreRepository
+                GenreRepository(self._conn).backfill_from_media_items()
+            except Exception:
+                pass
             return self._conn.execute(
                 "SELECT id FROM media_items WHERE filepath=?",
                 (filepath,)).fetchone()[0]

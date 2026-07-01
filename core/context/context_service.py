@@ -26,10 +26,11 @@ _SNAPSHOT_TTL = 120
 
 
 class ContextService:
-    def __init__(self, db=None, playback=None, sync=None):
+    def __init__(self, db=None, playback=None, sync=None, section_registry=None):
         self._db = db
         self._playback = playback
         self._sync = sync
+        self._section_registry = section_registry
         self._current_section = ""
         self._current_tab = ""
 
@@ -327,6 +328,16 @@ class ContextService:
 
     def get_navigation_state(self) -> dict:
         return repo.get_state("navigation", {"section": "", "tab": ""})
+
+    def get_current_section_snapshot(self) -> dict:
+        if self._section_registry:
+            return self._section_registry.get_context(self._current_section)
+        return {"section": self._current_section, "allowed_actions": []}
+
+    def get_current_section_suggestions(self) -> list[dict[str, object]]:
+        if self._section_registry:
+            return self._section_registry.get_suggestions(self._current_section)
+        return []
 
     def update_selection(self, track=None,
                           album: str | None = None,

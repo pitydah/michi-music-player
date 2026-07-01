@@ -196,6 +196,9 @@ class Indexer(QObject):
             self._state.set_phase(ScanPhase.ENRICHING)
             self._schedule_enrichment()
 
+            # Phase 9: Sync track_genres from media_items
+            self._sync_track_genres()
+
             self._db.update_scan_root(self._root_path,
                 last_scan_finished=time.time(),
                 file_count=self._state.file_count,
@@ -396,6 +399,17 @@ class Indexer(QObject):
             except Exception:
                 pass
             self._state.progress_pct = ((i + 1) / total) * 100
+
+    def _sync_track_genres(self):
+        """Sync track_genres table after indexing new/modified files."""
+        try:
+            from library.genre_repository import GenreRepository
+            repo = GenreRepository(self._db.conn)
+            count = repo.backfill_from_media_items()
+            if count:
+                logger.info("Synced %d track_genre entries after index", count)
+        except Exception as e:
+            logger.warning("track_genre sync failed: %s", e)
 
     def _schedule_enrichment(self):
         """Request MusicBrainz enrichment for newly indexed artists."""

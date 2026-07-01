@@ -266,11 +266,22 @@ class MainWindow(QMainWindow):
         from ui.controllers.artist_repository import ArtistRepository
         self._artist_repo = ArtistRepository()
 
-        # ContextService before AppServices so controllers can use it
+        # SectionContextRegistry + ContextService before AppServices
+        from core.context.setup_section_providers import setup_section_providers
+        from library.genre_repository import GenreRepository as DbGenreRepo
+        db_genre_repo = getattr(self, '_db_genre_repo', DbGenreRepo(self._db.conn))
+        genre_stats_svc = getattr(self, '_genre_stats_svc', None)
+        self._section_registry = setup_section_providers(
+            db=self._db,
+            playback=self._playback,
+            genre_repo=db_genre_repo,
+            genre_stats_svc=genre_stats_svc,
+        )
         from core.context.context_service import ContextService
         self._context_svc = ContextService(
             db=self._db,
             playback=self._playback,
+            section_registry=self._section_registry,
         )
 
         # AppServices before controllers that use them

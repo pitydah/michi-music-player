@@ -49,14 +49,10 @@ class SuggestionBarController(QObject):
     def _refresh_suggestions(self) -> None:
         if self._context_svc is None:
             return
-        try:
-            section = self._context_svc._current_section or ""
-            snapshot = self._context_svc.get_current_section_snapshot()
-            provider_suggestions = self._context_svc.get_current_section_suggestions()
-            suggestions = self._engine.get_suggestions(snapshot, provider_suggestions)
-            self._bar.set_suggestions(suggestions)
-        except Exception:
-            pass
+        snapshot = self._context_svc.get_current_section_snapshot()
+        provider_suggestions = self._context_svc.get_current_section_suggestions()
+        suggestions = self._engine.get_suggestions(snapshot, provider_suggestions)
+        self._bar.set_suggestions(suggestions)
 
     def _on_suggestion_clicked(self, suggestion: dict[str, Any]) -> None:
         pass
