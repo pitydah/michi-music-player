@@ -214,7 +214,7 @@ INDEX_SQL = [
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_pl_unique_track "
     "ON playlist_items(playlist_id, track_id) WHERE track_id IS NOT NULL",
     "CREATE INDEX IF NOT EXISTS idx_pl_position ON playlist_items(playlist_id, position)",
-    "CREATE INDEX IF NOT EXISTS idx_playlist_smart ON playlists(is_smart)",
+
     "CREATE INDEX IF NOT EXISTS idx_detected_tracks_time ON detected_tracks(detected_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_detected_tracks_artist_title ON detected_tracks(artist, title)",
     "CREATE INDEX IF NOT EXISTS idx_media_artist ON media_items(artist)",
@@ -238,6 +238,7 @@ _PLAYLIST_EXTRA_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_pl_source ON playlist_items(source)",
     "CREATE INDEX IF NOT EXISTS idx_playlist_updated ON playlists(updated_at)",
     "CREATE INDEX IF NOT EXISTS idx_playlist_sync ON playlists(sync_enabled, sync_status)",
+    "CREATE INDEX IF NOT EXISTS idx_playlist_smart ON playlists(is_smart)",
 ]
 
 # ── MIGRATION DEFINITIONS ──
