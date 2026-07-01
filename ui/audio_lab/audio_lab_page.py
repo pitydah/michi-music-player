@@ -63,6 +63,7 @@ class AudioLabPage(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("audioLabPage")
+        self.setStyleSheet("QWidget#audioLabPage { background: #090B11; }")
         self._status_label: QLabel | None = None
         self._build_ui()
 
