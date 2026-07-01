@@ -523,83 +523,12 @@ class HomeDashboardService:
         library: LibraryHomeStatus,
         playback: PlaybackHomeStatus,
     ) -> list[AssistantSuggestion]:
-        suggestions: list[AssistantSuggestion] = []
-
-        if self._context_svc is not None:
-            try:
-                snap = self._context_svc.get_assistant_snapshot()
-                if snap and "suggested_actions" in snap:
-                    for act in snap["suggested_actions"][:3]:
-                        suggestions.append(
-                            AssistantSuggestion(
-                                title=act.get("label", act.get("title", "")),
-                                message=act.get("description", ""),
-                                target_route=act.get("route", ""),
-                                action_kind=act.get("kind", "navigate"),
-                                priority=act.get("priority", 0),
-                            )
-                        )
-                    if suggestions:
-                        return suggestions
-            except Exception:
-                logger.debug("Assistant snapshot unavailable")
-
-        if library.missing_metadata_count > 0:
-            suggestions.append(
-                AssistantSuggestion(
-                    title="Limpiar metadatos",
-                    message=f"{library.missing_metadata_count} canciones con metadatos incompletos",
-                    target_route="metadata_editor",
-                    action_kind="navigate",
-                    priority=10,
-                )
-            )
-
-        if library.missing_cover_count > 0:
-            suggestions.append(
-                AssistantSuggestion(
-                    title="Buscar carátulas",
-                    message=f"{library.missing_cover_count} álbumes sin carátula",
-                    target_route="audio_lab_artwork",
-                    action_kind="navigate",
-                    priority=8,
-                )
-            )
-
-        if library.track_count > 0 and not playback.can_continue:
-            suggestions.append(
-                AssistantSuggestion(
-                    title="Explorar biblioteca",
-                    message="Descubre nueva música en tu biblioteca",
-                    target_route="library_hub",
-                    action_kind="navigate",
-                    priority=5,
-                )
-            )
-
-        if not suggestions and library.track_count > 0:
-            suggestions.append(
-                AssistantSuggestion(
-                    title="Crear mix de novedades",
-                    message="Genera un mix automático con canciones recién agregadas",
-                    target_route="mix_hub",
-                    action_kind="navigate",
-                    priority=3,
-                )
-            )
-
-        if not suggestions:
-            suggestions.append(
-                AssistantSuggestion(
-                    title="Añadir música",
-                    message="Agrega carpetas o archivos para comenzar",
-                    target_route="library_hub",
-                    action_kind="navigate",
-                    priority=1,
-                )
-            )
-
-        return suggestions[:3]
+        from core.home.builders.assistant_suggestions_home_builder import build_assistant_suggestions
+        return build_assistant_suggestions(
+            library=library,
+            playback=playback,
+            context_svc=self._context_svc,
+        )
 
     def _derive_overall_state(
         self,

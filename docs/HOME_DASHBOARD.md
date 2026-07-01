@@ -26,9 +26,9 @@ Sidebar "Inicio"
 
 | Capa | Archivo | Responsabilidad |
 |------|---------|-----------------|
-| Dataclasses | `core/home/home_status.py` | 9+ tipos: HomeDashboardSnapshot, LibraryHomeStatus, PlaybackHomeStatus, AudioHomeStatus, EcosystemHomeStatus, HomeAlert, AssistantSuggestion, HomeAction, HomeCardError |
-| Builders | `core/home/builders/` | 7 builders individuales (library, playback, audio, ecosystem, alerts, suggestions, actions) |
-| Servicio | `core/home/home_dashboard_service.py` | Orquesta builders, captura errores parciales, compone snapshot |
+| Dataclasses | `core/home/home_status.py` | 11+ tipos: HomeDashboardSnapshot, LibraryHomeStatus, PlaybackHomeStatus, AudioHomeStatus, EcosystemHomeStatus, HomeAlert, AssistantSuggestion, HomeAction, HomeCardError |
+| Builders | `core/home/builders/` | 4 builders usados: library, playback, assistant_suggestions; audio y ecosystem en service |
+| Servicio | `core/home/home_dashboard_service.py` | Orquesta builders y métodos internos, captura errores parciales, compone snapshot |
 | Controlador | `ui/controllers/home_controller.py` | Coordina ciclo de vida, refresh, señales, importación |
 | Vista | `ui/hubs/home_page.py` | Renderiza 7 cards desde el snapshot. Sin lógica de negocio |
 | Estilos | `ui/central/central_styles.py` | Funciones QSS: home_page_qss, home_headline_qss, home_badge_qss, home_metric_value/label, home_alert_item |
@@ -78,10 +78,12 @@ Sidebar "Inicio"
 - Botones: Escanear ahora, Ver biblioteca, Revisar problemas
 
 ### D. Audio
+- DAC activo (solo si dispositivo no predeterminado con identificador DAC real)
 - Dispositivo de salida
 - Perfil activo
 - Estado ReplayGain, EQ, DSP
-- Bit-Perfect (verified / not_verified / not_available)
+- Bit-Perfect: `intended` (perfil solicitado sin DSP), `disabled` (DSP/EQ/RG activo), `not_verified` (sin perfil bitperfect), `not_available`
+- **Nunca se muestra `verified`** — no existe monitor bit-perfect real
 - Botones: Configurar salida, Abrir Audio Lab, Diagnóstico
 
 ### E. Ecosistema Michi
@@ -165,7 +167,7 @@ Estados: `active` (configurado), `experimental` (no configurado pero disponible)
 
 ### Tests unitarios
 ```bash
-python -m pytest tests/test_home_dashboard_service.py -q   # 44 tests
+python -m pytest tests/test_home_dashboard_service.py -q   # 58 tests
 python -m pytest tests/test_home_controller.py -q         # 19 tests
 python -m pytest tests/test_home_page.py -q               # 24 tests
 python -m pytest tests/test_home_routes_contract.py -q    # 11 tests (incluye mouseClick)
