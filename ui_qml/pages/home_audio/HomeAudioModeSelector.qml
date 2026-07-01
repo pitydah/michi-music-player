@@ -9,8 +9,8 @@ Item {
 
     property int selectedMode: 0
     property var modes: [
-        { title: "Home Assistant", subtitle: "Integración con asistentes del hogar", icon: "⌂" },
-        { title: "Michi Music Stream", subtitle: "Streaming local del ecosistema Michi", icon: "♬" }
+        { title: "Home Assistant", subtitle: "Integración con asistentes del hogar", glyph: "HA" },
+        { title: "Michi Music Stream", subtitle: "Streaming local del ecosistema Michi", glyph: "MS" }
     ]
 
     signal modeSelected(int index)
@@ -50,11 +50,21 @@ Item {
                         anchors.centerIn: parent
                         spacing: MichiSpacing.sm
 
-                        Text {
+                        Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: modelData.icon
-                            color: root.selectedMode === index ? MichiColors.accentBlue : MichiColors.textSecondary
-                            font.pixelSize: 28
+                            width: 36
+                            height: 36
+                            radius: 8
+                            color: root.selectedMode === index ? Qt.rgba(0.561, 0.718, 1.0, 0.12) : "transparent"
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.glyph
+                                color: root.selectedMode === index ? MichiColors.accentBlue : MichiColors.textMuted
+                                font.pixelSize: 14
+                                font.weight: MichiTypography.weightSemiBold
+                                font.letterSpacing: 1.5
+                            }
                         }
 
                         Text {
