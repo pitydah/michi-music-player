@@ -1,56 +1,94 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../materials"
 
 Item {
     id: root
 
-    Column {
-        anchors.centerIn: parent
-        spacing: MichiSpacing.lg
-        width: 360
+    Flickable {
+        anchors.fill: parent
+        anchors.margins: MichiSpacing.xl
+        contentHeight: column.height + MichiSpacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
 
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: 48
-            height: 48
-            radius: 12
-            color: Qt.rgba(0.561, 0.718, 1.0, 0.08)
+        Column {
+            id: column
+            width: parent.width
+            spacing: MichiSpacing.lg
 
-            Text {
-                anchors.centerIn: parent
-                text: "AL"
-                color: MichiColors.accentBlue
-                font.pixelSize: 18
-                font.weight: MichiTypography.weightBold
-                font.letterSpacing: 1.5
-                opacity: 0.70
+            HeroMaterial {
+                width: parent.width
+                height: 140
+                radius: 16
+                showGlow: true
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: MichiSpacing.xl
+                    spacing: MichiSpacing.sm
+
+                    Text {
+                        text: "Audio Lab"
+                        color: MichiColors.textPrimary
+                        font.pixelSize: MichiTypography.heroTitleSize
+                        font.weight: MichiTypography.weightBold
+                    }
+
+                    Text {
+                        text: "Herramientas de análisis, conversión y diagnóstico para tu biblioteca musical."
+                        color: MichiColors.textSecondary
+                        font.pixelSize: MichiTypography.bodySize
+                        width: parent.width * 0.70
+                        wrapMode: Text.WordWrap
+                    }
+                }
             }
-        }
 
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Audio Lab"
-            color: MichiColors.textPrimary
-            font.pixelSize: MichiTypography.sectionTitleSize
-            font.weight: MichiTypography.weightMedium
-        }
+            SectionHeader {
+                text: "Herramientas disponibles"
+                width: parent.width
+            }
 
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Esta sección aún usa la interfaz clásica de Michi Music Player. La migración a QML está en progreso."
-            color: MichiColors.textSecondary
-            font.pixelSize: MichiTypography.bodySize
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
-            lineHeight: 1.5
-        }
+            Grid {
+                width: parent.width
+                columns: 2
+                columnSpacing: MichiSpacing.md
+                rowSpacing: MichiSpacing.md
 
-        StatusBadge {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Interfaz clásica"
-            kind: "info"
+                Repeater {
+                    model: [
+                        { title: "Diagnóstico", desc: "Analiza la calidad de tus archivos de audio" },
+                        { title: "Conversión", desc: "Convierte entre formatos de audio" },
+                        { title: "Identificador", desc: "Reconoce canciones por su huella digital" },
+                        { title: "Vinilo", desc: "Captura y digitaliza desde vinilo" },
+                        { title: "Organizar", desc: "Renombra y organiza archivos" },
+                        { title: "Letras", desc: "Busca y edita letras de canciones" },
+                        { title: "Carátulas", desc: "Gestiona las imágenes de tus álbumes" },
+                        { title: "MusicBrainz", desc: "Busca metadatos en MusicBrainz" },
+                    ]
+
+                    GlassCard {
+                        width: (parent.width - MichiSpacing.md) / 2
+                        height: 80
+                        title: modelData.title
+                        subtitle: modelData.desc
+                        variant: "base"
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("audio_lab")
+                        }
+                    }
+                }
+            }
+
+            StatusBadge {
+                text: "Interfaz clásica disponible"
+                kind: "info"
+            }
         }
     }
 }
