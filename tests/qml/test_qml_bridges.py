@@ -130,8 +130,9 @@ def test_app_shell_titles_match_sidebar_routes():
     sidebar_routes = set(re.findall(r'route: "(\w+)"', sidebar))
     appshell_routes = set(re.findall(r'"(\w+)":\s*"', appshell))
 
+    internal_routes = {"nowplaying"}
     sidebar_only = sidebar_routes - appshell_routes
-    appshell_only = appshell_routes - sidebar_routes
+    appshell_only = (appshell_routes - sidebar_routes) - internal_routes
 
     assert not sidebar_only, (
         f"Sidebar routes missing from AppShell titles: {sidebar_only}"

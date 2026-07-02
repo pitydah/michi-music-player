@@ -31,18 +31,22 @@ class MichiAIBridge(QObject):
 
     @Slot()
     def refresh(self):
-        from michi_ai.context.ai_context_bridge import MichiAIContextBridge
-        bridge = MichiAIContextBridge()
-        snapshot = bridge.build_snapshot()
-        if snapshot:
-            self._suggestions = []
-            for s in (snapshot.get("suggestions") or []):
-                self._suggestions.append({
-                    "title": s.get("title", ""),
-                    "description": s.get("description", ""),
-                    "action": s.get("action", "navigate"),
-                    "route": s.get("route", ""),
-                })
+        try:
+            from michi_ai.context.ai_context_bridge import MichiAIContextBridge
+            bridge = MichiAIContextBridge()
+            snapshot = bridge.build_snapshot()
+            if snapshot:
+                self._suggestions = []
+                for s in (snapshot.get("suggestions") or []):
+                    self._suggestions.append({
+                        "title": s.get("title", ""),
+                        "description": s.get("description", ""),
+                        "action": s.get("action", "navigate"),
+                        "route": s.get("route", ""),
+                    })
+        except Exception:
+            import logging
+            logging.getLogger("michi.ai").debug("MichiAI refresh failed", exc_info=True)
         if not self._suggestions:
             self._suggestions = [
                 {"title": "Explorar biblioteca", "description": "Navega por tus álbumes y canciones",
