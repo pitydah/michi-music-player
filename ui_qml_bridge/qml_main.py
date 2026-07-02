@@ -40,7 +40,7 @@ def main():
     playback_bridge = PlaybackBridge()
     nowplaying_bridge = NowPlayingBridge()
     devices_bridge = DevicesBridge()
-    playlists_bridge = PlaylistsBridge()
+    playlists_bridge = PlaylistsBridge(db_conn=None)
 
     engine.rootContext().setContextProperty("appBridge", app_bridge)
     engine.rootContext().setContextProperty("navigationBridge", nav_bridge)
