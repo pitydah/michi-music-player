@@ -70,6 +70,9 @@ python main.py
 | 17 | Sidebar Final + Scope Compliance — Settings eliminado, Radio/Playlists como rutas principales, Michi AI como label visible, PageStack casos explícitos, ActionButton keyboard support, PlaceholderPage parametrizable, no-touch contract verificable, 53 tests | ✅ |
 | 18 | Library QML Foundation + Michi AI Real — LibraryPage con tabs (Canciones/Álbumes), SongTable, AlbumGrid, bridges LibraryBridge/MichiAIBridge, chat funcional, 60 tests. Playlists backend separado a rama `playlists-premium-backend`. | ✅ |
 | 19 | ImageProvider Attempt — PySide6 no exporta QQuickImageProvider. Se usa fallback QML premium con gradiente+glyph. LibraryBridge robusto con QVariantList. 70 tests. | ✅ |
+| 20 | Phase 2.5 — Rama limpia: Broadcast/Podcasts separados, NowPlaying separado, Géneros eliminado del sidebar QML, Settings eliminado. CoverBridge final. | ✅ |
+| 21 | Phase 3 — Metadata Inspector read-only con lectura real vía mutagen (title, artist, album, bitrate, samplerate, duration, channels, size). canApply=false. Sin escritura. | ✅ |
+| 22 | Phase 4 Foundation — Audio Lab QML hub con Inspector de metadatos integrado. Cards seguras. Sin acciones destructivas. | ✅ |
 
 ## Sidebar Final
 ```
@@ -87,7 +90,7 @@ python main.py
 
 ## Commands
 ```bash
-python -m pytest tests/qml/ -q    # 70 tests
+python -m pytest tests/qml/ -q    # 99+ tests
 python scripts/check_no_touch_contract.py  # verify no-touch compliance
 python -m ui_qml_bridge.qml_main  # launch QML UI
 python main.py --qml              # launch QML from main

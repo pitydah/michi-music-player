@@ -582,7 +582,7 @@ python scripts/check_no_touch_contract.py
 ```
 
 ### Current QML Status (Jul 2026)
-- **70 tests** — bridges, structural, emoji/sidebar prohibition, Library, Michi AI, ImageProvider contract
+- **99+ tests** — bridges, structural, emoji/sidebar prohibition, Library, Michi AI, CoverBridge, MetadataBridge, Audio Lab
 - **0 ruff errors** in QML/bridge/tests
 - **0 compileall errors** in QML/bridge/tests
 - **Sidebar final** (10 items): Inicio, Biblioteca, Mix, Reproducción, Conexiones, Radio, Playlists, Home Audio, Michi AI, Audio Lab
