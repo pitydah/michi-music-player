@@ -9,8 +9,9 @@ Caches:
     _COVER_CACHE: max 256 entries, LRU-eviction via clear()
 
 Rules:
-    - paint() does NO heavy work (DB reads, image loading)
-    - Heavy work (DB, image decode) happens in coverKey setter
+    - paint() draws cached pixmap or fallback only — NO heavy work
+    - Heavy work (DB read, image decode, scale) happens ONCE in coverKey setter
+    - Result is cached in self._pixmap; paint() never touches DB nor decodes
     - Fallback is always available, no crash path
     - DB connection is temporary, closed immediately
 """
@@ -125,6 +126,11 @@ class CoverBridge(QQuickPaintedItem):
             return
         self._cover_key = key
         self._pixmap = None
+        size = max(int(self.width()) or 180, int(self.height()) or 180)
+        if key:
+            img = _load_cover_image(key, size)
+            if img:
+                self._pixmap = QPixmap.fromImage(img)
         self.coverChanged.emit()
         self.update()
 
@@ -133,11 +139,6 @@ class CoverBridge(QQuickPaintedItem):
         h = int(self.height())
         if w < 1 or h < 1:
             return
-
-        if self._pixmap is None and self._cover_key:
-            img = _load_cover_image(self._cover_key, max(w, h))
-            if img:
-                self._pixmap = QPixmap.fromImage(img)
 
         if self._pixmap:
             painter.drawPixmap(0, 0, w, h, self._pixmap)

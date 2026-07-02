@@ -528,5 +528,31 @@ class TestCoverBridge:
             "qml_main.py still calls register_image_provider (dead code)"
         )
 
+    def test_cover_bridge_paint_no_db_load(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
+        paint_body = content[content.find("def paint"):]
+        paint_body = paint_body[:paint_body.find("\n    def ") if "\n    def " in paint_body else len(paint_body)]
+        assert "_load_cover_image" not in paint_body, (
+            "paint() still calls _load_cover_image (should be in setter)"
+        )
+
+    def test_cover_bridge_docstring_honest(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "cover_bridge.py").read_text()
+        docstring = content.split('"""')[1] if '"""' in content else ""
+        assert "paint()" in docstring, "docstring missing paint() contract"
+        assert "NO heavy work" in docstring, (
+            "docstring should state paint() does no heavy work"
+        )
+
+    def test_no_broadcast_files_in_this_branch(self):
+        import subprocess
+        result = subprocess.run(
+            ["git", "ls-tree", "-r", "HEAD", "--name-only"],
+            capture_output=True, text=True, check=True,
+        )
+        files = result.stdout.split("\n")
+        forbidden = [f for f in files if "broadcast" in f or "podcast" in f]
+        assert not forbidden, f"Broadcast/podcast files found in branch: {forbidden}"
+
 
 
