@@ -21,6 +21,7 @@ Item {
             "home_audio": "Home Audio",
             "audio_lab": "Audio Lab",
             "assistant": "Michi AI",
+            "nowplaying": "Reproducción",
         }
         header.pageTitle = titles[route] || "Michi"
     }

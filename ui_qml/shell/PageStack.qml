@@ -23,6 +23,7 @@ Item {
             case "audio_lab": return "../pages/assistant/AudioLabPage.qml"
             case "radio": return "../pages/PlaceholderPage.qml"
             case "playlists": return "../pages/PlaceholderPage.qml"
+            case "nowplaying": return "../pages/NowPlayingPage.qml"
             default: return "../pages/PlaceholderPage.qml"
         }
     }
