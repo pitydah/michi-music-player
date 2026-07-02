@@ -25,12 +25,44 @@ from ui_qml_bridge.settings_bridge import SettingsBridge
 from ui_qml_bridge.radio_bridge import RadioBridge
 
 
+def _try_get_db():
+    """Try to open library DB for bridges that need it."""
+    db_path = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
+    if db_path.exists():
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception:
+            pass
+    return None
+
+
+def _try_get_sync_manager():
+    """Try to get SyncManager instance if available."""
+    try:
+        from library.library_db import LibraryDB
+        from sync.sync_manager import SyncManager
+        db_path = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
+        if db_path.exists():
+            ldb = LibraryDB(str(db_path))
+            mgr = SyncManager(ldb)
+            return mgr
+    except Exception:
+        pass
+    return None
+
+
 def main():
     app = QGuiApplication(sys.argv)
     app.setApplicationName("Michi Music Player")
     app.setApplicationVersion("0.1.0-qml")
 
     engine = QQmlApplicationEngine()
+
+    db_conn = _try_get_db()
+    sync_mgr = _try_get_sync_manager()
 
     app_bridge = AppBridge()
     nav_bridge = NavigationBridge()
@@ -42,9 +74,9 @@ def main():
     mix_bridge = MixBridge()
     playback_bridge = PlaybackBridge()
     nowplaying_bridge = NowPlayingBridge()
-    devices_bridge = DevicesBridge()
-    playlists_bridge = PlaylistsBridge(db_conn=None)
-    audio_lab_bridge = AudioLabBridge(db_conn=None)
+    devices_bridge = DevicesBridge(sync_manager=sync_mgr)
+    playlists_bridge = PlaylistsBridge(db_conn=db_conn)
+    audio_lab_bridge = AudioLabBridge(db_conn=db_conn)
     settings_bridge = SettingsBridge()
     radio_bridge = RadioBridge()
 
