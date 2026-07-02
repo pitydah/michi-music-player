@@ -7,16 +7,16 @@
   - No shadows per item
   - `Loader` for page lazy loading
   - Lightweight delegates for data lists
-  - ImageProvider (future) for cover art — no base64 in QML
+  - CoverBridge for cover art (QQuickPaintedItem, not ImageProvider)
 
 ## Current Baseline (Jul 2026)
 
 ### Build / Lint
 | Metric | Value |
 |--------|-------|
-| QML files | 55 |
-| QML bridge files | 9 |
-| QML tests | 41 |
+| QML files | 59 |
+| QML bridge files | 11 |
+| QML tests | 83 |
 | `ruff` errors (QML/bridge/tests) | 0 |
 | `compileall` errors | 0 |
 | Python imports | `qml_main` OK, `main` OK |
@@ -32,6 +32,23 @@
 | Sidebar forbidden routes | ✅ |
 | Sidebar emoji glyphs | ✅ (0) |
 | Context menu emoji | ✅ (0) |
+
+## CoverBridge Budget (Phase 2)
+- **CoverBridge** (QQuickPaintedItem) registered as `MichiCover 1.0` in qml_main.py
+- `paint()` only draws cached pixmap — **NO DB reads, NO image decode**
+- Heavy work (DB read, image decode, scale) happens ONCE in `coverKey` setter
+- Grid covers: max **512x512** via `_load_cover_image()` scaling
+- **No QQuickImageProvider** (unavailable in PySide6 — QQmlImageProviderBase not instantiable)
+- _COVER_CACHE: max **256 entries**, LRU-eviction via `_trim_cache()`
+- _FALLBACK_CACHE: max **256 entries**, deterministic fallback per seed+size
+- Fallback: QPixmap generated via QPainter (gradient + glyph), no disk I/O
+- DB reads: via `LibraryDB.get_album_art_cache(album_key)`, connection closed immediately
+- Invalid/empty covers: fallback returned. No crash
+- Large images: scaled with `Qt.SmoothTransformation` to max 512px
+- **No full-res images** in GridView delegates
+- **No blur** in grids/lists/tables
+- **No shadows** per item
+- **No opacity** on parent containers with text
 
 ## Measurement Commands
 ```bash
@@ -54,4 +71,4 @@ radeontop
 3. No opacity on parent containers with text
 4. Use Loader for page lazy loading
 5. Lightweight delegates for data lists
-6. Future: ImageProvider for cover art
+6. CoverBridge handles cover art — no ImageProvider needed

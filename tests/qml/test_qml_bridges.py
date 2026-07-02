@@ -417,12 +417,6 @@ class TestMichiAIBridge:
         assert len(bridge.suggestions) > 0
 
 
-class TestImageProvider:
-    def test_register_function_exists(self):
-        from ui_qml_bridge.image_provider import register_image_provider
-        assert callable(register_image_provider)
-
-
 class TestLibraryBridgeContract:
     def test_importable_without_db(self):
         bridge = LibraryBridge()
