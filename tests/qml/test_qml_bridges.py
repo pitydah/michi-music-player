@@ -635,3 +635,54 @@ class TestMetadataBridge:
         assert "canApply" in content, "Apply button must use canApply property"
 
 
+class TestLibraryComponents:
+    def test_artist_card_exists(self):
+        assert (QML_DIR / "pages" / "library" / "ArtistCard.qml").exists()
+
+    def test_artist_list_exists(self):
+        assert (QML_DIR / "pages" / "library" / "ArtistList.qml").exists()
+
+    def test_artist_detail_page_exists(self):
+        assert (QML_DIR / "pages" / "library" / "ArtistDetailPage.qml").exists()
+
+    def test_album_detail_page_exists(self):
+        assert (QML_DIR / "pages" / "library" / "AlbumDetailPage.qml").exists()
+
+    def test_folder_browser_exists(self):
+        assert (QML_DIR / "pages" / "library" / "FolderBrowser.qml").exists()
+
+    def test_library_page_has_artists_tab(self):
+        content = (QML_DIR / "pages" / "library" / "LibraryPage.qml").read_text()
+        assert "Artistas" in content, "LibraryPage missing Artists tab"
+
+    def test_library_page_has_folders_tab(self):
+        content = (QML_DIR / "pages" / "library" / "LibraryPage.qml").read_text()
+        assert "Carpetas" in content, "LibraryPage missing Folders tab"
+
+    def test_library_bridge_has_artists_property(self):
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        bridge = LibraryBridge()
+        assert hasattr(bridge, 'artists'), "LibraryBridge missing artists property"
+
+    def test_library_bridge_has_folders_property(self):
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        bridge = LibraryBridge()
+        assert hasattr(bridge, 'folders'), "LibraryBridge missing folders property"
+
+    def test_library_bridge_has_filter_methods(self):
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        bridge = LibraryBridge()
+        assert hasattr(bridge, 'filterByArtist'), "LibraryBridge missing filterByArtist"
+        assert hasattr(bridge, 'filterByAlbum'), "LibraryBridge missing filterByAlbum"
+        assert hasattr(bridge, 'clearFilters'), "LibraryBridge missing clearFilters"
+        assert hasattr(bridge, 'sortBy'), "LibraryBridge missing sortBy"
+
+    def test_folder_browser_no_emojis(self):
+        content = (QML_DIR / "pages" / "library" / "FolderBrowser.qml").read_text()
+        assert "📁" not in content, "FolderBrowser contains emoji"
+
+    def test_album_grid_has_album_clicked_signal(self):
+        content = (QML_DIR / "pages" / "library" / "AlbumGrid.qml").read_text()
+        assert "albumClicked" in content, "AlbumGrid missing albumClicked signal"
+
+

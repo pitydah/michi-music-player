@@ -9,6 +9,8 @@ Item {
     property var albums: []
     property var bridge: null
 
+    signal albumClicked(string key, string title, string artist, int year)
+
     GridView {
         anchors.fill: parent
         anchors.margins: MichiSpacing.md
@@ -25,6 +27,12 @@ Item {
             albumArtist: modelData.artist || ""
             trackCount: modelData.track_count || 0
             coverId: modelData.cover_key || modelData.album_key || ""
+            onClicked: root.albumClicked(
+                modelData.album_key || "",
+                modelData.title || modelData.album_key || "",
+                modelData.artist || "",
+                modelData.year || 0
+            )
         }
     }
 }
