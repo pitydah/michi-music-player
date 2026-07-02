@@ -1,8 +1,19 @@
 # Post-QML Stabilization Audit
 
-**Date:** 2026-07-01  
+**Date:** 2026-07-02  
 **Version:** 0.2.0-alpha.1  
-**Scope:** Project-wide audit and correction after QML incorporation
+**Scope:** Project-wide audit and correction after QML incorporation  
+**Branch audited:** `main` (HEAD = origin/main)  
+**Working tree:** Clean  
+**Rama QML pendiente:** `qml-migration-foundation` (34 commits ahead, no mergeados)
+
+## Repository State Conclusion
+
+- **`main` is the correct branch** — self-consistent, synced with `origin/main`, all QML infrastructure present.
+- **No contradictions remain** in version, AGENTS.md, or documentation.
+- **Demo data is properly gated** — not visible without `MICHI_QML_DEMO=1`.
+- **DB paths use `core.paths.database_path()`** — no hardcoded paths.
+- **`qml-migration-foundation` contains 34 unreleased QML refinements** (Home page, Sidebar premium, HomeAudio, ActionButton, Connections premium, playlists backend). These are NOT merged into `main`. This is the only significant gap between current state and a more refined QML experience.
 
 ## Initial State
 
