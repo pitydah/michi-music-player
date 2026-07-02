@@ -12,6 +12,10 @@ class MichiAIBridge(QObject):
         self._chat_history = []
         self._current_track = ""
         self._current_artist = ""
+        self._controller = None
+
+    def set_controller(self, controller):
+        self._controller = controller
 
     @Property(str, notify=contextChanged)
     def currentTrack(self):
@@ -27,14 +31,27 @@ class MichiAIBridge(QObject):
 
     @Slot()
     def refresh(self):
-        self._suggestions = [
-            {"title": "Explorar biblioteca", "description": "Navega por tus álbumes y canciones",
-             "action": "navigate", "route": "library"},
-            {"title": "Ver conexiones", "description": "Configura servidores y Michi Micro Server",
-             "action": "navigate", "route": "connections"},
-            {"title": "Abrir Home Audio", "description": "Controla la reproducción en tu hogar",
-             "action": "navigate", "route": "home_audio"},
-        ]
+        from michi_ai.context.ai_context_bridge import MichiAIContextBridge
+        bridge = MichiAIContextBridge()
+        snapshot = bridge.build_snapshot()
+        if snapshot:
+            self._suggestions = []
+            for s in (snapshot.get("suggestions") or []):
+                self._suggestions.append({
+                    "title": s.get("title", ""),
+                    "description": s.get("description", ""),
+                    "action": s.get("action", "navigate"),
+                    "route": s.get("route", ""),
+                })
+        if not self._suggestions:
+            self._suggestions = [
+                {"title": "Explorar biblioteca", "description": "Navega por tus álbumes y canciones",
+                 "action": "navigate", "route": "library"},
+                {"title": "Ver conexiones", "description": "Configura servidores y Michi Micro Server",
+                 "action": "navigate", "route": "connections"},
+                {"title": "Abrir Home Audio", "description": "Controla la reproducción en tu hogar",
+                 "action": "navigate", "route": "home_audio"},
+            ]
         self.contextChanged.emit()
 
     @Slot(str)
