@@ -12,10 +12,10 @@
 | **NowPlayingBar** | ✅ 90% | Barra inferior fija, controles, seek, volumen, cover | ✅ | Conectar a PlayerService |
 | **Metadata Inspector** | ⚠️ 60% | Read-only con mutagen | ✅ | Agregar escritura |
 | **Audio Lab** | ⚠️ 40% | Foundation con cards | ✅ | Conectar servicios |
-| **Playlists** | ⚠️ 50% | Hub + detail + bridge | ✅ | Conectar a backend real |
-| **Sync/Devices** | ⚠️ 50% | DevicesPage + bridge | ✅ | Conectar a SyncManager real |
-| **Settings** | ⚠️ 50% | Foundation 6 categorías | ✅ | Conectar a settings_manager |
-| **Radio** | ⚠️ 30% | Hero + cards informativas | ✅ | Desde rama broadcast |
-| **Home Audio** | ⚠️ 40% | Foundation + dispositivos | ✅ | Conectar a HA/Snapcast |
-| **ContextMenu** | ⚠️ 30% | SongContextMenu básico | ✅ | Expandir |
-| **Michi Link UI** | ✅ 80% | ConnectionsPage + MicroServerHero | ✅ | Mejorar estado real |
+| **Playlists** | ✅ 80% | Hub + detail + bridge + PlaylistStore real | 164 | Conectar a backend premium |
+| **Sync/Devices** | ✅ 70% | DevicesPage + bridge + SyncManager real | 164 | UI pulido |
+| **Settings** | ✅ 70% | Bridge + settings_manager real | 164 | UI pulido |
+| **Radio** | ✅ 60% | Bridge + RadioManager real | 164 | UI pulido |
+| **Home Audio** | ✅ 60% | Bridge + HA/Snapcast real | 164 | UI pulido |
+| **ContextMenu** | ✅ 50% | SongContextMenu básico | 164 | Expandir a albums |
+| **Michi Link UI** | ✅ 85% | ConnectionsBridge + MichiLinkController real | 164 | UI pulido |
