@@ -13,3 +13,5 @@
 | `--qml` flag no acepta argumentos adicionales | Baja | QML | `python main.py --qml --safe` no funciona | Pasar flags antes de `--qml` | Documentado |
 | FileWatcher degradado con >2048 directorios | Media | Biblioteca | Bibliotecas muy grandes con estructura profunda | Monitoreo parcial; usar escaneo manual | No corregido |
 | BatchWriter transaction nesting con cover art | Media | Indexer | Archivos con carátula embebida durante indexación | Se corrigió en MediaRecordBuilder (no hace commit inline); Indexer actualizado | **Corregido** |
+| `qml-migration-foundation` 34 commits sin mergear (1 syntax error urgente) | Media | QML / Integración | `git log main..qml-migration-foundation` | Cherry-pick `bcdf67b` (syntax error metadata_extractor) | Documentado |
+| 115 archivos compartidos con cambios divergentes entre ramas | Media | Merge | `git diff --name-only main...qml-migration-foundation` | Revisar `docs/QML_UNMERGED_COMMITS_REVIEW.md` | No mergear rama completa |

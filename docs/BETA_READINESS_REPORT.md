@@ -1,6 +1,6 @@
 # Beta Readiness Report — Michi Music Player
 
-**Date:** 2026-07-01  
+**Date:** 2026-07-02  
 **Current version:** 0.2.0-alpha.1  
 **Recommended version for release:** 0.2.0-alpha.1 (maintain alpha; not yet beta)
 
@@ -119,14 +119,28 @@ Todos los fallos son por el mismo bug preexistente: `sqlite3.OperationalError: n
 - [ ] Home Assistant integración real
 - [ ] Snapcast multiroom con 2+ dispositivos
 
-## 12. Riesgos técnicos
+## 12. CI Status
+
+| Check | Local | GitHub Actions | Estado |
+|---|---|---|---|
+| `ruff check .` | 51 pre-existing | ✅ (job packaging) | ✅ |
+| `compileall` | ✅ | ✅ (job packaging) | ✅ |
+| Smoke startup | 1 pre-existing (`is_smart`) | ✅ (con env test) | ⚠️ 1 pre-existing |
+| Smoke UI routes | 1 pre-existing (`is_smart`) | ✅ (con env test) | ⚠️ 1 pre-existing |
+| QML tests | 165 passed | ✅ (job QML bridge tests) | ✅ |
+| Album tests | 126 passed | ✅ (job Album-focused) | ✅ |
+| Audio Engine tests | — | ✅ (job Hybrid Audio Engine) | ✅ |
+| Anti-regression + Home | — | ✅ (job Tests) | ✅ |
+
+## 13. Riesgos técnicos
 
 1. `is_smart` schema migration no ejecutada correctamente
 2. MPD backend no probado en esta release
 3. QML con PlayerService no probado con audio real
-4. CI no validado en GitHub Actions
+4. `qml-migration-foundation` tiene 34 commits sin mergear (18 necesarios, 1 riesgoso)
+5. 115 archivos compartidos con cambios divergentes entre `main` y `qml-migration-foundation`
 
-## 13. Recomendación de versión
+## 14. Recomendación de versión
 
 **Mantener `0.2.0-alpha.1`.** No promover a beta hasta que:
 

@@ -1,5 +1,21 @@
 # Feature Status — Michi Music Player v0.2.0-alpha.1
 
+## Porcentajes estimados
+
+| Componente | % |
+|---|---|
+| Backend/core | 86% |
+| QtWidgets clásico | 85% |
+| QML Foundation estructural | 80% |
+| QML funcional real | 70% |
+| Playlists QML | 74% |
+| Connections/Michi Link QML | 74% |
+| Library QML | 76% |
+| Release beta pública | 78% |
+| **Estado global** | **85%** |
+
+## Tabla de áreas
+
 | Área | Estado | Notas |
 |---|---|---|
 | **Versión** | `0.2.0-alpha.1` | `importlib.metadata` canonical |
