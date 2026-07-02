@@ -222,7 +222,8 @@ class TestAppBridge:
     def test_instantiate(self):
         bridge = AppBridge()
         assert bridge.appName == "Michi Music Player"
-        assert bridge.version == "0.1.0-qml"
+        # Version comes from importlib.metadata, fallback to 0.2.0-alpha.1
+        assert bridge.version
         assert bridge.experimentalQml is True
 
     def test_quit_slot(self):
@@ -867,11 +868,14 @@ class TestRadioBridgeIntegration:
     def test_radio_bridge_refresh(self):
         bridge = RadioBridge()
         bridge.refresh()
-        assert len(bridge.stations) > 0
+        # Without a real RadioManager, stations should be empty
+        assert len(bridge.stations) == 0
 
     def test_radio_bridge_has_slots(self):
         bridge = RadioBridge()
         assert hasattr(bridge, 'addStation')
+        assert hasattr(bridge, 'playStation')
+        assert hasattr(bridge, 'deleteStation')
 
 
 class TestAudioLabIntegration:
@@ -911,7 +915,21 @@ class TestConnectionsV2Bridge:
     def test_connections_bridge_scan(self):
         bridge = ConnectionsBridge()
         bridge.scanForServers()
-        assert len(bridge.discoveredServers) > 0
+        # Without demo data and without a real controller, should return empty
+        assert len(bridge.discoveredServers) == 0
+
+    def test_connections_bridge_demo_flag(self):
+        import os
+        os.environ["MICHI_QML_DEMO"] = "1"
+        try:
+            bridge = ConnectionsBridge()
+            bridge.scanForServers()
+            servers = bridge.discoveredServers
+            assert len(servers) > 0
+            for s in servers:
+                assert s.get("is_demo") is True
+        finally:
+            os.environ.pop("MICHI_QML_DEMO", None)
 
 
 class TestHomeAudioV2Bridge:

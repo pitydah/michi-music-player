@@ -86,10 +86,13 @@ class LibraryBridge(QObject):
     def folders(self):
         result = []
         for f in self._folders[:200]:
+            raw_path = getattr(f, "path", None) or str(f) if not isinstance(f, str) else f
+            path = raw_path if raw_path else ""
+            name = Path(path).name if path else ""
             result.append({
-                "path": getattr(f, 'path', '') or str(f) if not hasattr(f, 'path') else '',
-                "name": Path(getattr(f, 'path', '') or str(f)).name if not hasattr(f, 'path') else '',
-                "track_count": getattr(f, 'track_count', 0) or 0,
+                "path": path,
+                "name": name or getattr(f, "name", ""),
+                "track_count": getattr(f, "track_count", 0) or 0,
             })
         return sorted(result, key=lambda x: x["name"].lower())
 
@@ -155,6 +158,8 @@ class LibraryBridge(QObject):
             "album_key": getattr(s, 'album_key', '') or '',
             "duration": getattr(s, 'duration', 0) or 0,
             "filepath": getattr(s, 'filepath', '') or '',
+            "track_id": getattr(s, 'id', 0) or 0,
+            "track_uid": getattr(s, 'track_uid', '') or '',
             "format": getattr(s, 'format', '') or '',
             "cover_key": getattr(s, 'album_key', '') or getattr(s, 'filepath', '') or '',
             "year": getattr(s, 'year', 0) or 0,

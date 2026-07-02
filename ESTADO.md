@@ -2,7 +2,9 @@
 
 > **Repositorio:** `pitydah/michi-music-player`  
 > **Última actualización:** 2026-07-01  
-> **Versión:** pre-alpha técnica — Hybrid Audio Engine implementado  
+> **Versión:** 0.2.0-alpha.1 — pre-beta técnica avanzada  
+> **UI estable:** QtWidgets (`python main.py`)  
+> **UI experimental:** QML (`python main.py --qml`)  
 > **Validación:** pendiente de confirmar en GitHub Actions.  
 > Para validar localmente ejecutar:  
 > `ruff check .`  

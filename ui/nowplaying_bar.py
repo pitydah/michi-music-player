@@ -279,6 +279,7 @@ class NowPlayingBar(QWidget):
         self._repeat = "none"
         self._source_type = "local_file"
         self._source_label = ""
+        self._bitperfect_state = ""
         self._source_quality = ""
         self._codec = ""
         self._bitrate = ""
@@ -871,7 +872,7 @@ class NowPlayingBar(QWidget):
                           sample_rate: str = "", bit_depth: str = "", filepath: str = "",
                           audio_output: str = "", identifier_state: str = "",
                           replaygain: str = "", transmitting: bool = False,
-                          transmit_device: str = ""):
+                          transmit_device: str = "", bitperfect_state: str = ""):
         self._source_type = source_type
         self._source_label = service
         self._source_quality = quality
@@ -881,6 +882,7 @@ class NowPlayingBar(QWidget):
         self._bit_depth = bit_depth
         self._filepath = filepath
         self._audio_output_label = audio_output
+        self._bitperfect_state = bitperfect_state
         self._identifier_state = identifier_state
         self._replaygain = replaygain
         self._transmitting = transmitting
@@ -910,8 +912,8 @@ class NowPlayingBar(QWidget):
             identifier_state=self._identifier_state,
             replaygain=self._replaygain,
         )
-        # Build unified tooltip: quality + source + filepath + audio output
-        lines = [self._source_quality] if self._source_quality else []
+        # Build unified tooltip: quality + source + filepath + audio output + bit-perfect
+        bits = [self._source_quality] if self._source_quality else []
         if self._codec:
             detail = self._codec.upper() if self._codec else ""
             if self._bit_depth:
@@ -921,7 +923,7 @@ class NowPlayingBar(QWidget):
             if self._bitrate:
                 detail += f" · {self._bitrate}".replace("kbps", "").strip() + " kbps"
             if detail:
-                lines.append(detail)
+                bits.append(detail)
         src = ""
         if self._source_type == "radio":
             src = "Radio" if not self._source_label else f"Radio · {self._source_label}"
@@ -932,15 +934,26 @@ class NowPlayingBar(QWidget):
             fn = os.path.basename(self._filepath)
             src = f"Archivo local · {fn[:80]}"
         if src:
-            lines.append(src)
+            bits.append(src)
         if self._audio_output_label:
-            lines.append(f"Salida · {self._audio_output_label}")
+            bits.append(f"Salida · {self._audio_output_label}")
         if self._transmitting and self._transmit_device_name:
-            lines.append(f"Transmitiendo a · {self._transmit_device_name}")
+            bits.append(f"Transmitiendo a · {self._transmit_device_name}")
         if self._replaygain:
-            lines.append("ReplayGain activo")
-        if lines:
-            self._quality_badge.setToolTip("\n".join(lines))
+            bits.append("ReplayGain activo")
+        if self._bitperfect_state:
+            state_labels = {
+                "verified": "✅ Bit-Perfect verificado",
+                "intended": "🎯 Bit-Perfect (no verificado)",
+                "disabled": "Bit-Perfect desactivado",
+                "not_available": "Bit-Perfect no disponible",
+                "blocked_by_eq": "Bit-Perfect bloqueado por EQ/DSP",
+                "blocked_by_mpd": "Bit-Perfect no disponible (MPD)",
+            }
+            label = state_labels.get(self._bitperfect_state, self._bitperfect_state)
+            bits.append(label)
+        if bits:
+            self._quality_badge.setToolTip("\n".join(bits))
 
     def set_transmit_active(self, active: bool, device_name: str = ""):
         """Update transmit button style and tooltip from external controllers."""

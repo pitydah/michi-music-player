@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "michi-music-player"
-version = "0.2.0-beta"
+version = "0.2.0-alpha.1"
 description = "Modern music player for Linux/KDE built with Python, PySide6 and GStreamer"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}

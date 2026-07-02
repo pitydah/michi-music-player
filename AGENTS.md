@@ -10,7 +10,7 @@ Written in Python 3.11+ with PySide6, GStreamer 1.0, SQLite FTS5, mutagen, shaza
 | License | GPL-3.0-or-later (derived from Miro Player — see NOTICE) |
 | Repository | https://github.com/pitydah/michi-music-player |
 | Python | 3.11+ |
-| UI toolkit | PySide6 (Qt 6) — native widgets only, no QML, no Electron |
+| UI toolkit | PySide6 (Qt 6) — QtWidgets stable/fallback + QML experimental skin |
 | Audio engine | Hybrid: GStreamer 1.28 (default) + MPD (Hi-Fi/bit-perfect) |
 | Hybrid engine | `audio/backends/` — `AudioBackend` API, `GStreamerBackend`, `MpdBackend`, `HybridAudioManager` |
 | Database | SQLite 3 (WAL mode) + FTS5 full-text search |
@@ -543,21 +543,26 @@ Commits outside the Audio Lab scope that touch `ui/audio_lab/diagnostics_page.py
 3. Keep the `# INTEGRITY GUARD` block at the end of the file
 4. If you need to add/remove constructor params, update the guard accordingly and update `AudioLabDiagnosticsPage` in `ui/audio_lab/sub_pages.py`
 
-## 13. QML Migration Rules (for AI assistants)
+## 13. QML Experimental Skin (for AI assistants)
+
+**Status:** QML is experimental/premium — NOT the default or stable UI.
+Always run `python main.py` unless explicitly testing QML.
 
 ### Architecture
 - QML does NOT access the database directly
 - QML emits intention; Python executes
 - Bridges (ui_qml_bridge/) are the only communication layer between QML and Python
-- Python remains the brain; QML is the premium skin
+- Python remains the brain; QML is a premium skin
+- QtWidgets (`main.py`) remains stable/fallback; never break it
 
-### Protected Files — QML Migration
-- `ui_qml/` is the new QML UI layer (experimental, parallel)
+### Protected Files — QML
+- `ui_qml/` is the QML UI layer (experimental, parallel to QtWidgets)
 - `ui_qml_bridge/` is the Python bridge layer
 - Do NOT touch `ui/devices_page.py`, `sync/`, `ui/nowplaying_bar.py`, `ui/source_status_badge.py`
 - Do NOT touch playback logic (`audio/player.py`, `audio/player_service.py`, `audio/pipeline_factory.py`, `core/playback_controller.py`)
 - Do NOT touch Android integration or sync protocol
 - Keep fallback QtWidgets intact
+- Never show demo data as if it were real
 
 ### Visual Rules (QML)
 - No `opacity` on parent containers with text

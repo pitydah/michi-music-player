@@ -9,9 +9,10 @@ logger = logging.getLogger("michi.radio")
 class RadioBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, radio_manager=None, parent=None):
+    def __init__(self, radio_manager=None, player_service=None, parent=None):
         super().__init__(parent)
         self._radio_mgr = radio_manager
+        self._player = player_service
         self._stations = []
         self._favorites = []
 
@@ -46,10 +47,7 @@ class RadioBridge(QObject):
                         favs.append(entry)
             except Exception:
                 logger.debug("Radio refresh failed", exc_info=True)
-        if not result:
-            result = [
-                {"id": 1, "name": "Ejemplo Radio", "url": "http://example.com/stream", "codec": "MP3", "favorite": False},
-            ]
+        # No demo data — empty list is the correct state
         self._stations = result
         self._favorites = favs
         self.dataChanged.emit()
@@ -62,3 +60,20 @@ class RadioBridge(QObject):
                 self.refresh()
             except Exception:
                 logger.debug("Radio add station failed", exc_info=True)
+
+    @Slot(str)
+    def playStation(self, url: str):
+        if self._player and hasattr(self._player, 'play_url'):
+            try:
+                self._player.play_url(url)
+            except Exception:
+                logger.debug("Radio play station failed", exc_info=True)
+
+    @Slot(str)
+    def deleteStation(self, url: str):
+        if self._radio_mgr and hasattr(self._radio_mgr, 'remove_station'):
+            try:
+                self._radio_mgr.remove_station(url)
+                self.refresh()
+            except Exception:
+                logger.debug("Radio delete station failed", exc_info=True)

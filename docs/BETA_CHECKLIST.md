@@ -1,96 +1,173 @@
-# Michi Music Player — Beta Checklist v0.2.0
+# Beta Checklist — Michi Music Player v0.2.0-alpha.1
 
 ## Arranque
-- [x] `python main.py` arranca sin errores
-- [x] `python main.py --qml` arranca modo QML
-- [x] `QT_QPA_PLATFORM=offscreen python -m ui_qml_bridge.qml_main` sin crash
-- [x] Safe mode (`MICHI_SAFE_MODE=1`) arranca sin servicios remotos
-- [x] MPRIS se registra en KDE
 
-## Navegación
-- [x] Sidebar QML (10 items) funciona
-- [x] PageStack carga cada ruta correctamente
-- [x] NavigationBridge valida rutas
-- [x] Rutas inválidas caen a placeholder
+- [x] `python main.py` arranca sin errores
+- [x] `python main.py --qml` arranca sin errores
+- [x] Safe mode funciona (`MICHI_SAFE_MODE=1`)
+- [x] Smoke startup pasa (1 pre-existing error: `is_smart`)
+- [ ] Smoke UI routes pasa
+- [x] `ruff check .` sin errores nuevos
+- [x] `python -m compileall .` sin errores
 
 ## Biblioteca
-- [x] Library QML: Canciones, Álbumes, Artistas, Carpetas
-- [x] SearchField con bridge
-- [x] AlbumGrid + AlbumDetail
-- [x] ArtistList + ArtistDetail
-- [x] FolderBrowser
+
+- [x] Biblioteca abre desde sidebar
+- [x] Canciones se muestran
+- [x] Álbumes se muestran
+- [x] Artistas se muestran
+- [x] Géneros se muestran
+- [x] Carpetas se muestran
+- [x] Búsqueda funciona por sección
+- [x] Historial atrás/adelante restaura estado
+- [x] Cambiar vista no rompe sección
+- [x] CoverFlow solo en álbumes
+- [x] Tree solo en carpetas
+
+## Indexer
+
+- [x] Escaneo incremental funciona
+- [x] ChangeDetector (size + mtime)
+- [x] FTS5 rebuild
+- [x] Force reindex preserve play_count/rating
+- [x] MediaRecordBuilder unificado
 
 ## Reproducción
-- [x] NowPlayingBar QML visible con controles
-- [x] Play/pause/next/prev desde controles QML
-- [x] Seek bar responde a posición/duration
-- [x] Volumen ajustable
-- [x] CoverBridge con fallback premium
 
-## Mix
-- [x] MixHubPage con 6 categorías
-- [x] MixDetailPage con lista de canciones
-- [x] MixBridge conectado a backend
+- [x] Play/Pause
+- [x] Next/Previous
+- [x] Seek
+- [x] Volumen
+- [x] Cola
+- [x] Gapless
+- [x] Crossfade (si activo)
+- [x] Radio URL playback
+- [x] Subsonic/Navidrome/Jellyfin (si configurado)
 
-## Michi AI
-- [x] AssistantPage con chat funcional
-- [x] ChatBubble con estilo glass
-- [x] Sugerencias contextuales
-- [x] PlanBuilder real (fallback a respuestas por palabra clave)
+## Audio Profiles
+
+- [x] Standard
+- [x] Hi-Fi PCM
+- [x] Bit-Perfect PCM
+- [ ] DSD→PCM
+- [ ] DoP (experimental)
+- [x] Streaming
+- [ ] Pure Audio
+- [ ] Studio Monitor
+- [ ] Multiroom/Snapcast
+
+## MPD (si configurado)
+
+- [ ] MPD backend arranca
+- [ ] MPD playback
+- [ ] MPD → GStreamer fallback
+- [ ] EQ desactivado en MPD
+
+## NowPlaying
+
+- [x] Portada, título, artista, álbum
+- [x] Tiempo/duración
+- [x] Volumen
+- [x] Formato/calidad/códec
+- [x] Sample rate/bit depth/bitrate
+- [x] Backend activo visible
+- [x] Perfil de audio
+- [x] Salida actual
+- [x] ReplayGain estado
+- [ ] Bit-Perfect estado (verified/intended/disabled)
 
 ## Playlists
-- [x] PlaylistsPage con grid de playlists
-- [x] PlaylistDetailPage
-- [x] PlaylistCard con CoverBridge
-- [x] PlaylistsBridge conectado a PlaylistStore
 
-## Radio
-- [x] RadioPage con emisoras desde RadioManager
-- [x] Favoritas + todas las emisoras
-
-## Sync / Devices
-- [x] DevicesPage con SyncStatusPanel
-- [x] DevicesBridge conectado a SyncManager
-- [x] Iniciar/detener servidor Sync
-- [x] Discovery de peers
-
-## Home Audio
-- [x] HomeAudioPage con mode selector
-- [x] HomeAssistantPanel + MichiMusicStreamPanel
-- [x] HomeAudioBridge conectado a HA/Snapcast
-
-## Settings
-- [x] SettingsPage con 8 categorías
-- [x] SettingsBridge conectado a settings_manager
-
-## Metadata Inspector
-- [x] MetadataInspectorPage con campos reales
-- [x] MetadataBridge read-only + escritura segura (applyChanges)
-- [x] CoverBridge integrado
+- [x] Listar playlists
+- [x] Crear playlist
+- [x] Renombrar
+- [x] Eliminar con confirmación
+- [x] Ver detalle
+- [x] Agregar/quitar canciones
+- [x] Reproducir playlist
+- [x] Agregar a cola
+- [x] Guardar cola como playlist
+- [x] Crear desde álbum/artista/género/búsqueda
+- [x] Importar M3U
+- [x] Exportar M3U
+- [ ] Detectar canciones perdidas (tool: "pendiente")
+- [ ] Detectar duplicados (tool: "pendiente")
 
 ## Audio Lab
-- [x] AudioLabPage con stats de library_health
-- [x] AudioLabBridge conectado a compute_health
 
-## CoverBridge
-- [x] QQuickPaintedItem registrado como MichiCover 1.0
-- [x] paint() solo dibuja pixmap/fallback (sin DB)
-- [x] Cache limitado a 256 entradas
-- [x] Fallback premium con gradiente + glyph
+- [x] Diagnóstico funcional
+- [x] Identificador funcional
+- [x] Metadata Doctor funcional
+- [x] Artwork funcional
+- [x] Lyrics funcional
+- [x] Bit-perfect Monitor funcional
+- [x] Backup Manifest funcional
+- [x] Disc Lab funcional
+- [ ] Vinyl Lab experimental
+- [ ] Conversión experimental
+- [x] Organización funcional
+- [ ] Inteligencia local experimental
 
-## Sidebar QML
-- [x] 10 items exactos: Inicio, Biblioteca, Mix, Reproducción, Conexiones, Radio, Playlists, Home Audio, Michi AI, Audio Lab
-- [x] Sin Settings, sin Géneros, sin Ajustes
+## Michi Link
 
-## Tests
-- [x] `pytest tests/qml/ -q` — 164 tests pasan
-- [x] `ruff check ./ui_qml ./ui_qml_bridge ./tests/qml` — 0 errores
-- [x] `python -m compileall .` — 0 errores
-- [x] `python scripts/check_no_touch_contract.py` — ALL CLEAR
+- [x] HTTP API funciona
+- [x] mDNS funciona
+- [x] Sync Manager funciona
+- [x] Descubrimiento de servidores
+- [ ] Pairing completo
+- [ ] Importar a servidor
+- [ ] Continue on Server
+
+## Sync
+
+- [x] Servicio de sincronización arranca
+- [x] Pares detectados
+- [x] Transferencia de archivos
+- [x] Android REST API
+
+## Géneros
+
+- [x] Normalización
+- [x] Limpieza
+- [x] Backfill desde media_items
+- [ ] Búsqueda en QML (era NOP, corregido en LibrarySearchService)
+
+## Settings
+
+- [x] General
+- [x] Apariencia
+- [x] Audio
+- [x] Biblioteca
+- [x] Atajos de teclado
+- [x] Perfiles de salida
+
+## CI
+
+- [ ] GitHub Actions pasa completo
+- [x] `ruff check .` pasa
+- [x] `compileall` pasa
+- [x] QML tests pasan (165)
+- [x] Library tests pasan (228+)
+- [ ] Full test suite pasa
+
+## Empaquetado
+
+- [ ] Flatpak
+- [ ] AUR
+- [ ] pip install
 
 ## Documentación
-- [x] `FEATURE_STATUS.md` actualizado
-- [x] `KNOWN_ISSUES.md` con issues reales
-- [x] `FINALIZATION_REPORT.md` con estado de cierre
-- [x] `QML_MIGRATION_PLAN.md` con estado de migración
-- [x] `DEVELOPER_GUIDE.md` con arquitectura QML
+
+- [x] README actualizado
+- [x] ESTADO.md actualizado
+- [x] AGENTS.md actualizado
+- [x] Feature Status actualizado
+- [x] Known Issues creado
+- [x] Beta Checklist creado
+- [x] Beta Product Audit creado
+- [x] Release Notes Draft creado
+- [x] QML Backend Integration Report creado
+- [ ] docs/library_architecture.md completo
+
+---
+**Leyenda:** ✅ = verificado | Pendiente = no implementado o no verificado
