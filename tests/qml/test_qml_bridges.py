@@ -769,3 +769,55 @@ class TestSettingsComponents:
         assert "SettingsPage" in content, "PageStack missing SettingsPage"
 
 
+class TestNowPlayingBar:
+    def test_nowplaying_bar_exists(self):
+        assert (QML_DIR / "components" / "NowPlayingBar.qml").exists()
+
+    def test_nowplaying_cover_exists(self):
+        assert (QML_DIR / "components" / "NowPlayingCover.qml").exists()
+
+    def test_nowplaying_info_exists(self):
+        assert (QML_DIR / "components" / "NowPlayingInfo.qml").exists()
+
+    def test_nowplaying_controls_exists(self):
+        assert (QML_DIR / "components" / "NowPlayingControls.qml").exists()
+
+    def test_nowplaying_seekbar_exists(self):
+        assert (QML_DIR / "components" / "NowPlayingSeekBar.qml").exists()
+
+    def test_nowplaying_volume_exists(self):
+        assert (QML_DIR / "components" / "NowPlayingVolume.qml").exists()
+
+    def test_appshell_has_nowplaying(self):
+        content = (QML_DIR / "shell" / "AppShell.qml").read_text()
+        assert "NowPlayingBar" in content, "AppShell missing NowPlayingBar"
+
+    def test_nowplaying_bridge_importable(self):
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        assert NowPlayingBridge is not None
+
+    def test_playback_bridge_has_nowplaying_props(self):
+        from ui_qml_bridge.playback_bridge import PlaybackBridge
+        bridge = PlaybackBridge()
+        assert hasattr(bridge, 'coverPath')
+        assert hasattr(bridge, 'sourceType')
+        assert hasattr(bridge, 'qualityLabel')
+        assert hasattr(bridge, 'repeatMode')
+        assert hasattr(bridge, 'shuffleEnabled')
+
+    def test_playback_bridge_advanced_slots(self):
+        from ui_qml_bridge.playback_bridge import PlaybackBridge
+        bridge = PlaybackBridge()
+        assert hasattr(bridge, 'toggleShuffle')
+        assert hasattr(bridge, 'toggleRepeat')
+        assert hasattr(bridge, 'seekRelative')
+
+    def test_nowplaying_bar_no_emojis(self):
+        for name in ("NowPlayingBar", "NowPlayingCover", "NowPlayingInfo",
+                     "NowPlayingControls", "NowPlayingSeekBar", "NowPlayingVolume"):
+            content = (QML_DIR / "components" / f"{name}.qml").read_text()
+            for ch in content:
+                if ord(ch) in set(range(0x1F300, 0x1FAFF)):
+                    assert False, f"Emoji U+{ord(ch):04X} found in {name}.qml"
+
+

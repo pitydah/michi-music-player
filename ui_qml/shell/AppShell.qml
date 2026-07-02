@@ -27,43 +27,54 @@ Item {
         header.pageTitle = titles[route] || "Michi"
     }
 
-    Row {
+    Column {
         anchors.fill: parent
         spacing: 0
 
-        Sidebar {
-            id: sidebar
-            height: parent.height
-            currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
+        Row {
+            width: parent.width
+            height: parent.height - nowPlayingBar.height
+            spacing: 0
 
-            onRouteRequested: function(route) {
-                if (typeof navigationBridge !== "undefined" && navigationBridge) {
-                    navigationBridge.navigate(route)
-                } else {
-                    pageStack.loadRoute(route)
-                    sidebar.currentRoute = route
-                    updateHeaderTitle(route)
+            Sidebar {
+                id: sidebar
+                height: parent.height
+                currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
+
+                onRouteRequested: function(route) {
+                    if (typeof navigationBridge !== "undefined" && navigationBridge) {
+                        navigationBridge.navigate(route)
+                    } else {
+                        pageStack.loadRoute(route)
+                        sidebar.currentRoute = route
+                        updateHeaderTitle(route)
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width - sidebar.width
+                height: parent.height
+                spacing: 0
+
+                HeaderBar {
+                    id: header
+                    width: parent.width
+                    pageTitle: "Inicio"
+                }
+
+                PageStack {
+                    id: pageStack
+                    width: parent.width
+                    height: parent.height - header.height
+                    currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
                 }
             }
         }
 
-        Column {
-            width: parent.width - sidebar.width
-            height: parent.height
-            spacing: 0
-
-            HeaderBar {
-                id: header
-                width: parent.width
-                pageTitle: "Inicio"
-            }
-
-            PageStack {
-                id: pageStack
-                width: parent.width
-                height: parent.height - header.height
-                currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
-            }
+        NowPlayingBar {
+            id: nowPlayingBar
+            width: parent.width
         }
     }
 
