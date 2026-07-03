@@ -9,7 +9,7 @@ Item {
     property bool hovered: false
     property bool interactive: false
     property bool pressed: false
-    property int radius: 12
+    property int radius: MichiTheme.radiusMd
     property alias backgroundColor: bgRect.color
     property alias borderColor: bgRect.border.color
     property alias borderWidth: bgRect.border.width
@@ -25,36 +25,36 @@ Item {
                 if (root.pressed && root.interactive) return Qt.rgba(1.0, 1.0, 1.0, 0.03)
                 switch (root.variant) {
                     case "compact": return Qt.rgba(0.05, 0.06, 0.09, 0.85)
-                    case "elevated": return MichiColors.surfaceCardElevated
-                    case "accent": return Qt.rgba(0.561, 0.718, 1.0, 0.06)
+                    case "elevated": return MichiTheme.colors.surfaceCardElevated
+                    case "accent": return MichiTheme.colors.accentSurface
                     case "floating": return Qt.rgba(0.05, 0.06, 0.09, 0.92)
                     case "status": return Qt.rgba(0.05, 0.06, 0.09, 0.75)
-                    case "hero": return MichiColors.surfaceHero
+                    case "hero": return MichiTheme.colors.surfaceHero
                     case "danger": return Qt.rgba(0.95, 0.25, 0.25, 0.08)
-                    default: return MichiColors.surfaceCard
+                    default: return MichiTheme.colors.surfaceCard
                 }
             }
 
             Behavior on color {
-                ColorAnimation { duration: MichiMotion.fast; easing.type: MichiMotion.easing.standard }
+                ColorAnimation { duration: MichiTheme.motion.fast; easing.type: MichiTheme.motion.easing.standard }
             }
 
             border.color: {
-                if (root.hovered && root.interactive) return MichiColors.borderFocus
+                if (root.hovered && root.interactive) return MichiTheme.colors.borderFocus
                 switch (root.variant) {
-                    case "accent": return Qt.rgba(0.561, 0.718, 1.0, 0.20)
+                    case "accent": return MichiTheme.colors.borderActive
                     case "danger": return Qt.rgba(0.95, 0.25, 0.25, 0.20)
-                    case "floating": return Qt.rgba(1.0, 1.0, 1.0, 0.08)
-                    case "hero": return Qt.rgba(1.0, 1.0, 1.0, 0.04)
-                    default: return MichiColors.borderCard
+                    case "floating": return MichiTheme.colors.borderCard
+                    case "hero": return MichiTheme.colors.borderSubtle
+                    default: return MichiTheme.colors.borderCard
                 }
             }
 
             Behavior on border.color {
-                ColorAnimation { duration: MichiMotion.fast; easing.type: MichiMotion.easing.standard }
+                ColorAnimation { duration: MichiTheme.motion.fast; easing.type: MichiTheme.motion.easing.standard }
             }
 
-            border.width: 1
+            border.width: MichiTheme.borderWidth
 
             Rectangle {
                 anchors.fill: parent
@@ -70,7 +70,7 @@ Item {
                 radius: parent.radius
                 color: "transparent"
                 border.color: Qt.rgba(1.0, 1.0, 1.0, 0.02)
-                border.width: 1
+                border.width: MichiTheme.borderWidth
             }
         }
     }

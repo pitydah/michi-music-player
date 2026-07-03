@@ -14,3 +14,4 @@ MichiButton 1.0 MichiButton.qml
 MichiIconButton 1.0 MichiIconButton.qml
 MichiSlider 1.0 MichiSlider.qml
 MichiBadge 1.0 MichiBadge.qml
+MichiProgressBar 1.0 MichiProgressBar.qml

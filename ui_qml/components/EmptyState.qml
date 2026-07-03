@@ -12,13 +12,13 @@ Column {
 
     signal actionClicked()
 
-    spacing: MichiSpacing.md
+    spacing: MichiTheme.spacing.md
     anchors.centerIn: parent ? undefined : undefined
 
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.iconText
-        color: MichiColors.textMuted
+        color: MichiTheme.colors.textMuted
         font.pixelSize: 36
         visible: root.iconText !== ""
     }
@@ -26,19 +26,19 @@ Column {
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.title
-        color: MichiColors.textPrimary
-        font.pixelSize: MichiTypography.sectionTitleSize
-        font.weight: MichiTypography.weightMedium
+        color: MichiTheme.colors.textPrimary
+        font.pixelSize: MichiTheme.typography.sectionTitleSize
+        font.weight: MichiTheme.typography.weightMedium
         horizontalAlignment: Text.AlignHCenter
-        opacity: 0.80
+        opacity: MichiTheme.opacityHover
         visible: root.title !== ""
     }
 
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.subtitle
-        color: MichiColors.textSecondary
-        font.pixelSize: MichiTypography.bodySize
+        color: MichiTheme.colors.textSecondary
+        font.pixelSize: MichiTheme.typography.bodySize
         horizontalAlignment: Text.AlignHCenter
         opacity: 0.56
         width: Math.min(implicitWidth, 400)
@@ -46,7 +46,7 @@ Column {
         visible: root.subtitle !== ""
     }
 
-    ActionButton {
+    MichiButton {
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.actionText
         variant: "primary"

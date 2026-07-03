@@ -10,34 +10,34 @@ Item {
 
     property string pageTitle: "Inicio"
 
-    height: 56
+    height: MichiTheme.headerHeight
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0.027, 0.039, 0.063, 0.92)
+        color: MichiTheme.colors.surfaceToolbar
 
         Rectangle {
             anchors.bottom: parent.bottom
             width: parent.width
-            height: 1
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.04)
+            height: MichiTheme.borderWidth
+            color: MichiTheme.colors.borderSubtle
         }
 
         Row {
             anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.xl
-            anchors.rightMargin: MichiSpacing.xl
-            spacing: MichiSpacing.lg
+            anchors.leftMargin: MichiTheme.spacing.xl
+            anchors.rightMargin: MichiTheme.spacing.xl
+            spacing: MichiTheme.spacing.lg
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
 
                 Text {
                     text: root.pageTitle
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.pageTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
 

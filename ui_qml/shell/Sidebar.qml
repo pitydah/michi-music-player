@@ -10,36 +10,36 @@ Item {
     property string currentRoute: "home"
     signal routeRequested(string route)
 
-    width: 220
+    width: MichiTheme.sidebarWidth
 
     SidebarMaterial {
         anchors.fill: parent
 
         Column {
             anchors.fill: parent
-            anchors.topMargin: MichiSpacing.xl
-            spacing: MichiSpacing.xs
+            anchors.topMargin: MichiTheme.spacing.xl
+            spacing: MichiTheme.spacing.xs
 
             Text {
                 anchors.left: parent.left
-                anchors.leftMargin: 20
+                anchors.leftMargin: MichiTheme.spacing.lg
                 text: "Michi"
-                color: MichiColors.textPrimary
-                font.pixelSize: 20
-                font.weight: MichiTypography.weightBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightBold
                 height: 40
             }
 
             Text {
                 anchors.left: parent.left
-                anchors.leftMargin: 20
+                anchors.leftMargin: MichiTheme.spacing.lg
                 text: "Music Player"
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
                 height: 20
             }
 
-            Item { height: MichiSpacing.xl; width: 1 }
+            Item { height: MichiTheme.spacing.xl; width: 1 }
 
             Column {
                 anchors.left: parent.left
@@ -70,11 +70,11 @@ Item {
                 }
             }
 
-            Item { height: MichiSpacing.xl; width: 1 }
+            Item { height: MichiTheme.spacing.xl; width: 1 }
 
             StatusBadge {
                 anchors.left: parent.left
-                anchors.leftMargin: 20
+                anchors.leftMargin: MichiTheme.spacing.lg
                 text: "Experimental"
                 kind: "experimental"
             }
