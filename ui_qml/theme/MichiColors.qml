@@ -39,6 +39,9 @@ QtObject {
     readonly property color badgeActiveText: "#4ADE80"
     readonly property color badgeExperimentalBg: Qt.rgba(0.655, 0.545, 0.980, 0.15)
     readonly property color badgeExperimentalText: "#A78BFA"
+    readonly property color badgeWarningBg: Qt.rgba(1, 0.75, 0.14, 0.20)
+    readonly property color badgeDangerBg: Qt.rgba(1, 0.44, 0.44, 0.20)
+    readonly property color badgeMutedBg: Qt.rgba(1, 1, 1, 0.06)
     readonly property color shadowSoft: Qt.rgba(0.0, 0.0, 0.0, 0.30)
     readonly property color shadowFloating: Qt.rgba(0.0, 0.0, 0.0, 0.45)
     readonly property color surfaceInspector: "#0B0D14"

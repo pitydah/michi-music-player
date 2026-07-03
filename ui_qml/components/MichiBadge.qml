@@ -15,10 +15,10 @@ Rectangle {
     color: {
         switch (root.variant) {
             case "success": return MichiTheme.colors.badgeActiveBg
-            case "warning": return Qt.rgba(1, 0.75, 0.14, 0.20)
-            case "danger": return Qt.rgba(1, 0.44, 0.44, 0.20)
+            case "warning": return MichiTheme.colors.badgeWarningBg
+            case "danger": return MichiTheme.colors.badgeDangerBg
             case "experimental": return MichiTheme.colors.badgeExperimentalBg
-            case "muted": return Qt.rgba(1,1,1,0.06)
+            case "muted": return MichiTheme.colors.badgeMutedBg
             default: return MichiTheme.colors.badgeInfoBg
         }
     }

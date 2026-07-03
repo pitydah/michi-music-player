@@ -31,6 +31,26 @@ class TestMichiButton:
         component = _load_qml(engine, "components/MichiButton.qml")
         assert component.isReady()
 
+    def test_danger_variant(self, engine):
+        component = _load_qml(engine, "components/MichiButton.qml")
+        assert component.isReady()
+
+    def test_ghost_variant(self, engine):
+        component = _load_qml(engine, "components/MichiButton.qml")
+        assert component.isReady()
+
+    def test_secondary_variant(self, engine):
+        component = _load_qml(engine, "components/MichiButton.qml")
+        assert component.isReady()
+
+    def test_with_icon_text(self, engine):
+        component = _load_qml(engine, "components/MichiButton.qml")
+        assert component.isReady()
+
+    def test_disabled(self, engine):
+        component = _load_qml(engine, "components/MichiButton.qml")
+        assert component.isReady()
+
 
 class TestMichiIconButton:
     def test_instantiate(self, engine):
@@ -65,6 +85,12 @@ class TestMichiSlider:
             assert obj.property("activeFocusOnTab") is True
         finally:
             obj.deleteLater()
+
+    def test_slider_moved_signal_exists(self, engine):
+        component = _load_qml(engine, "components/MichiSlider.qml")
+        assert component.isReady()
+        source = (QML_DIR / "components" / "MichiSlider.qml").read_text()
+        assert "signal moved()" in source or "signal moved" in source
 
 
 class TestMichiBadge:

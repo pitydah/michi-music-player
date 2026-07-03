@@ -14,11 +14,11 @@ Rectangle {
 
     color: {
         switch (root.kind) {
-            case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.15)
-            case "warning": return Qt.rgba(0.98, 0.75, 0.14, 0.15)
-            case "error": return Qt.rgba(0.95, 0.25, 0.25, 0.15)
-            case "experimental": return Qt.rgba(0.655, 0.545, 0.980, 0.15)
-            case "disconnected": return Qt.rgba(0.42, 0.44, 0.50, 0.15)
+            case "success": return MichiTheme.colors.badgeActiveBg
+            case "warning": return MichiTheme.colors.badgeWarningBg
+            case "error": return MichiTheme.colors.badgeDangerBg
+            case "experimental": return MichiTheme.colors.badgeExperimentalBg
+            case "disconnected": return MichiTheme.colors.badgeMutedBg
             case "active": return MichiTheme.colors.badgeActiveBg
             default: return MichiTheme.colors.badgeInfoBg
         }
