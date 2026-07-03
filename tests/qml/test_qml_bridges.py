@@ -130,7 +130,7 @@ def test_app_shell_titles_match_sidebar_routes():
     sidebar_routes = set(re.findall(r'route: "(\w+)"', sidebar))
     appshell_routes = set(re.findall(r'"(\w+)":\s*"', appshell))
 
-    internal_routes = {"nowplaying", "metadata_inspector", "mix_detail", "settings", "devices", "playlist_detail"}
+    internal_routes = {"nowplaying", "metadata_inspector", "mix_detail", "settings", "devices", "playlist_detail", "eq", "library_doctor"}
     sidebar_only = sidebar_routes - appshell_routes
     appshell_only = (appshell_routes - sidebar_routes) - internal_routes
 

@@ -431,6 +431,26 @@ class TestRemainingPages:
         assert component.isReady()
 
 
+class TestEqLibraryDoctor:
+    FILES = [
+        "pages/EqPage.qml",
+        "pages/LibraryDoctorPage.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_eq_page_instantiate(self, engine):
+        component = _load_qml(engine, "pages/EqPage.qml")
+        assert component.isReady()
+
+    def test_library_doctor_instantiate(self, engine):
+        component = _load_qml(engine, "pages/LibraryDoctorPage.qml")
+        assert component.isReady()
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
