@@ -33,7 +33,11 @@ _DB_PATH = None
 def _get_db_path() -> Path:
     global _DB_PATH
     if _DB_PATH is None:
-        _DB_PATH = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
+        try:
+            from core.paths import database_path
+            _DB_PATH = database_path()
+        except Exception:
+            _DB_PATH = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
     return _DB_PATH
 
 
