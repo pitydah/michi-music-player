@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import "../../theme"
 import "../../components"
-import "../../materials"
 
 Item {
     id: root
@@ -21,7 +20,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: root.hovered ? Qt.rgba(1.0, 1.0, 1.0, 0.03) : "transparent"
+        color: root.hovered ? MichiTheme.colors.surfaceCardHover : "transparent"
         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
         Row {

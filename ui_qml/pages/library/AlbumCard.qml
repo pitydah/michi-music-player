@@ -41,7 +41,7 @@ Item {
                 width: parent.width
                 height: width
                 radius: MichiTheme.radiusSm
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
+                color: MichiTheme.colors.borderInner
                 clip: true
 
                 CoverBridge {

@@ -44,67 +44,122 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        Rectangle {
+        TabBar {
+            id: tabBar
             width: parent.width
-            height: 48
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.02)
-
-            Row {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.xl
-                spacing: MichiTheme.spacing.md
-
-                Text {
-                    text: "Canciones"
-                    color: tabBar.currentIndex === 0 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: tabBar.currentIndex === 0 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
-                    anchors.verticalCenter: parent.verticalCenter
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 0 }
-                }
-                Text {
-                    text: "Álbumes"
-                    color: tabBar.currentIndex === 1 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: tabBar.currentIndex === 1 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
-                    anchors.verticalCenter: parent.verticalCenter
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 1 }
-                }
-                Text {
-                    text: "Artistas"
-                    color: tabBar.currentIndex === 2 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: tabBar.currentIndex === 2 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
-                    anchors.verticalCenter: parent.verticalCenter
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 2 }
-                }
-                Text {
-                    text: "Carpetas"
-                    color: tabBar.currentIndex === 3 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: tabBar.currentIndex === 3 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
-                    anchors.verticalCenter: parent.verticalCenter
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 3 }
+            height: 42
+            background: Rectangle {
+                color: "transparent"
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    width: parent.width
+                    height: 1
+                    color: MichiTheme.colors.borderSubtle
                 }
             }
-        }
 
-        SearchField {
-            width: parent.width
-            anchors.margins: MichiTheme.spacing.md
-            placeholderText: "Buscar canciones, artistas o álbumes..."
-            onSearchTextChanged: {
-                if (root.libraryBridge && typeof root.libraryBridge.search !== "undefined") {
-                    root.libraryBridge.search(text)
+            TabButton {
+                text: "Canciones"
+                width: implicitWidth + MichiTheme.spacing.xl
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: tabBar.currentIndex === 0 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
+                contentItem: Text {
+                    text: parent.text
+                    color: tabBar.currentIndex === 0 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font: parent.font
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Item {
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 2
+                        radius: 1
+                        color: MichiTheme.colors.accentBlue
+                        visible: tabBar.currentIndex === 0
+                    }
+                }
+            }
+
+            TabButton {
+                text: "Álbumes"
+                width: implicitWidth + MichiTheme.spacing.xl
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: tabBar.currentIndex === 1 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
+                contentItem: Text {
+                    text: parent.text
+                    color: tabBar.currentIndex === 1 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font: parent.font
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Item {
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 2
+                        radius: 1
+                        color: MichiTheme.colors.accentBlue
+                        visible: tabBar.currentIndex === 1
+                    }
+                }
+            }
+
+            TabButton {
+                text: "Artistas"
+                width: implicitWidth + MichiTheme.spacing.xl
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: tabBar.currentIndex === 2 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
+                contentItem: Text {
+                    text: parent.text
+                    color: tabBar.currentIndex === 2 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font: parent.font
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Item {
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 2
+                        radius: 1
+                        color: MichiTheme.colors.accentBlue
+                        visible: tabBar.currentIndex === 2
+                    }
+                }
+            }
+
+            TabButton {
+                text: "Carpetas"
+                width: implicitWidth + MichiTheme.spacing.xl
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: tabBar.currentIndex === 3 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
+                contentItem: Text {
+                    text: parent.text
+                    color: tabBar.currentIndex === 3 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font: parent.font
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Item {
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 2
+                        radius: 1
+                        color: MichiTheme.colors.accentBlue
+                        visible: tabBar.currentIndex === 3
+                    }
                 }
             }
         }
 
         StackLayout {
-            id: tabBar
+            id: stackContainer
             width: parent.width
-            height: parent.height - 48 - 38
-            currentIndex: 0
+            height: parent.height - tabBar.height
+            currentIndex: tabBar.currentIndex
 
             SongTable {
                 id: songsView
