@@ -35,7 +35,7 @@ def _get_db_path() -> Path:
     if _DB_PATH is None:
         try:
             from core.paths import database_path
-            _DB_PATH = database_path()
+            _DB_PATH = Path(database_path())
         except Exception:
             _DB_PATH = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
     return _DB_PATH

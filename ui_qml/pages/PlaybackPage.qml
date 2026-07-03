@@ -69,21 +69,21 @@ Item {
                         spacing: MichiSpacing.md
 
                         ActionButton {
-                            text: "⏮"
+                            text: "<<"
                             variant: "ghost"
                             width: 40; height: 40
                             onClicked: { if (root.playbackBridge) root.playbackBridge.previous() }
                         }
 
                         ActionButton {
-                            text: root.playbackBridge && root.playbackBridge.isPlaying ? "⏸" : "▶"
+                            text: root.playbackBridge && root.playbackBridge.isPlaying ? "||" : ">"
                             variant: "primary"
                             width: 52; height: 52; radius: 26
                             onClicked: { if (root.playbackBridge) root.playbackBridge.togglePlay() }
                         }
 
                         ActionButton {
-                            text: "⏭"
+                            text: ">>"
                             variant: "ghost"
                             width: 40; height: 40
                             onClicked: { if (root.playbackBridge) root.playbackBridge.next() }

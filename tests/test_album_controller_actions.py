@@ -146,11 +146,12 @@ class TestAlbumControllerActions:
             ctrl.review_album_duplicates(tracks)
             assert mock_info.called or w._ctx.toast.show.called
 
-    def test_open_album_folder(self):
+    def test_open_album_folder(self, tmp_path):
         from ui.controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
-        tracks = [_make_track()]
+        audio_file = tmp_path / "s.flac"
+        tracks = [_make_track(filepath=str(audio_file))]
         with patch("subprocess.Popen") as mock_popen:
             ctrl.open_album_folder(tracks)
             mock_popen.assert_called_once()

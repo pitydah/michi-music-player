@@ -799,6 +799,160 @@ class TestNowPlayingBar:
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
         assert NowPlayingBridge is not None
 
+    def test_nowplaying_bridge_mirrors_player_signals(self):
+        from PySide6.QtCore import QObject, Signal
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+        class FakePlayer(QObject):
+            track_changed = Signal(str, str)
+            state_changed = Signal(str)
+            position_changed = Signal(float)
+            duration_changed = Signal(float)
+            volume_changed = Signal(int)
+            queue_changed = Signal(list)
+
+            @property
+            def current(self):
+                return "/music/track.flac"
+
+            @property
+            def state(self):
+                return "stopped"
+
+            @property
+            def duration(self):
+                return 0
+
+            def get_queue(self):
+                return []
+
+        player = FakePlayer()
+        bridge = NowPlayingBridge(player_service=player)
+
+        player.track_changed.emit("A Song", "An Artist")
+        player.state_changed.emit("playing")
+        player.position_changed.emit(42.0)
+        player.duration_changed.emit(180.0)
+        player.volume_changed.emit(55)
+        player.queue_changed.emit([{"title": "A Song", "artist": "An Artist"}])
+
+        assert bridge.trackTitle == "A Song"
+        assert bridge.trackArtist == "An Artist"
+        assert bridge.isPlaying is True
+        assert bridge.position == 42
+        assert bridge.duration == 180
+        assert bridge.volume == 55
+        assert bridge.coverPath.startswith("track_")
+        assert bridge.queue[0]["title"] == "A Song"
+
+    def test_nowplaying_bridge_reads_current_track_object(self):
+        from types import SimpleNamespace
+        from PySide6.QtCore import QObject, Signal
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+        class FakePlayer(QObject):
+            track_changed = Signal(str, str)
+            state_changed = Signal(str)
+            position_changed = Signal(float)
+            duration_changed = Signal(float)
+            volume_changed = Signal(int)
+            queue_changed = Signal(list)
+
+            @property
+            def current(self):
+                return SimpleNamespace(
+                    filepath="/music/object-track.flac",
+                    title="Object Song",
+                    artist="Object Artist",
+                    album="Object Album",
+                )
+
+            @property
+            def state(self):
+                return "playing"
+
+            @property
+            def duration(self):
+                return 240
+
+            def get_queue(self):
+                return []
+
+        bridge = NowPlayingBridge(player_service=FakePlayer())
+
+        assert bridge.trackTitle == "Object Song"
+        assert bridge.trackArtist == "Object Artist"
+        assert bridge.trackAlbum == "Object Album"
+        assert bridge.coverPath == "track_c79b4c2b8e46"
+        assert bridge.hasTrack is True
+
+    def test_nowplaying_bridge_commands_call_player_service(self):
+        from PySide6.QtCore import QObject, Signal
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+        class FakePlayer(QObject):
+            track_changed = Signal(str, str)
+            state_changed = Signal(str)
+            position_changed = Signal(float)
+            duration_changed = Signal(float)
+            volume_changed = Signal(int)
+            queue_changed = Signal(list)
+
+            def __init__(self):
+                super().__init__()
+                self.calls = []
+
+            @property
+            def current(self):
+                return ""
+
+            @property
+            def state(self):
+                return "stopped"
+
+            @property
+            def duration(self):
+                return 0
+
+            def get_queue(self):
+                return []
+
+            def play_or_resume(self):
+                self.calls.append(("play_or_resume",))
+
+            def pause(self):
+                self.calls.append(("pause",))
+
+            def play_next(self):
+                self.calls.append(("play_next",))
+
+            def play_prev(self):
+                self.calls.append(("play_prev",))
+
+            def seek(self, position):
+                self.calls.append(("seek", position))
+
+            def set_volume(self, volume):
+                self.calls.append(("set_volume", volume))
+
+        player = FakePlayer()
+        bridge = NowPlayingBridge(player_service=player)
+
+        bridge.togglePlay()
+        bridge.next()
+        bridge.previous()
+        bridge.seek(30)
+        bridge.setVolume(65)
+        bridge._on_state("playing")
+        bridge.togglePlay()
+
+        assert ("play_or_resume",) in player.calls
+        assert ("play_next",) in player.calls
+        assert ("play_prev",) in player.calls
+        assert ("seek", 30) in player.calls
+        assert ("set_volume", 65) in player.calls
+        assert ("pause",) in player.calls
+
     def test_playback_bridge_has_nowplaying_props(self):
         from ui_qml_bridge.playback_bridge import PlaybackBridge
         bridge = PlaybackBridge()
@@ -814,6 +968,12 @@ class TestNowPlayingBar:
         assert hasattr(bridge, 'toggleShuffle')
         assert hasattr(bridge, 'toggleRepeat')
         assert hasattr(bridge, 'seekRelative')
+
+    def test_nowplaying_bar_uses_nowplaying_bridge_first(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "nowplayingBridge" in content
+        assert "playbackState" in content
+        assert "? nowplayingBridge" in content
 
     def test_nowplaying_bar_no_emojis(self):
         for name in ("NowPlayingBar", "NowPlayingCover", "NowPlayingInfo",
@@ -941,5 +1101,3 @@ class TestHomeAudioV2Bridge:
     def test_home_audio_bridge_devices(self):
         bridge = HomeAudioBridge()
         assert len(bridge.devices) == 0
-
-

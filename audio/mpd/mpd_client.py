@@ -11,7 +11,7 @@ import threading
 import time
 
 from audio.mpd.mpd_models import MpdStatus, MpdSong, MpdOutput
-from audio.mpd.mpd_protocol import parse_response
+from audio.mpd.mpd_protocol import MpdResponse, parse_response
 from audio.mpd.mpd_errors import (
     MpdAckError,
     MpdError,
@@ -78,7 +78,8 @@ class MpdClient:
                         self._sock.close()
                 self._sock = None
                 raise MpdConnectionError(
-                    f"Cannot connect to MPD at {self._host}:{self._port}: {e}")
+                    f"Cannot connect to MPD at {self._host}:{self._port}: {e}"
+                ) from e
 
     def _read_greeting(self) -> str:
         """Read the initial MPD greeting: 'OK MPD <version>'."""
@@ -95,10 +96,8 @@ class MpdClient:
         with self._lock:
             self._connected = False
             if self._sock:
-                try:
+                with contextlib.suppress(OSError):
                     self._sock.close()
-                except OSError:
-                    pass
                 self._sock = None
 
     def reconnect(self):
@@ -222,7 +221,7 @@ class MpdClient:
 
     # ── Internal ──
 
-    def _command(self, cmd: str) -> "MpdResponse":
+    def _command(self, cmd: str) -> MpdResponse:
         """Send command and return parsed response (expects OK)."""
         self._send_command(cmd)
         return self._read_response()
@@ -240,9 +239,9 @@ class MpdClient:
                 self._sock.sendall((cmd + "\n").encode("utf-8"))
             except OSError as e:
                 self._connected = False
-                raise MpdConnectionError(f"Send failed: {e}")
+                raise MpdConnectionError(f"Send failed: {e}") from e
 
-    def _read_response(self) -> "MpdResponse":
+    def _read_response(self) -> MpdResponse:
         """Read full response until OK or ACK."""
         lines = []
         while True:
@@ -250,7 +249,7 @@ class MpdClient:
                 line = self._read_line()
             except OSError as e:
                 self._connected = False
-                raise MpdConnectionError(f"Read failed: {e}")
+                raise MpdConnectionError(f"Read failed: {e}") from e
 
             if line is None:
                 break

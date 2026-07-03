@@ -135,8 +135,8 @@ def parse_response(raw: str) -> MpdResponse:
     """
     all_lines = raw.split("\n")
     non_empty = []
-    for i, l in enumerate(all_lines):
-        stripped = l.strip()
+    for i, line in enumerate(all_lines):
+        stripped = line.strip()
         if not stripped:
             if i < len(all_lines) - 1 and any(all_lines[j].strip() for j in range(i + 1, len(all_lines))):
                 non_empty.append("")

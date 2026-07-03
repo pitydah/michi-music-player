@@ -6,7 +6,11 @@ import "../components"
 Item {
     id: root
 
-    property QtObject playbackBridge: typeof playbackBridge !== "undefined" ? playbackBridge : null
+    property var playbackState: (
+        typeof nowplayingBridge !== "undefined" && nowplayingBridge
+        ? nowplayingBridge
+        : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
+    )
 
     height: 64
 
@@ -33,15 +37,15 @@ Item {
 
                 NowPlayingCover {
                     anchors.verticalCenter: parent.verticalCenter
-                    coverKey: root.playbackBridge ? root.playbackBridge.coverPath : ""
+                    coverKey: root.playbackState ? root.playbackState.coverPath : ""
                 }
 
                 NowPlayingInfo {
                     anchors.verticalCenter: parent.verticalCenter
-                    trackTitle: root.playbackBridge ? root.playbackBridge.trackTitle : "—"
-                    trackArtist: root.playbackBridge ? root.playbackBridge.trackArtist : ""
-                    trackAlbum: root.playbackBridge ? root.playbackBridge.trackAlbum : ""
-                    isPlaying: root.playbackBridge ? root.playbackBridge.isPlaying : false
+                    trackTitle: root.playbackState ? root.playbackState.trackTitle : "—"
+                    trackArtist: root.playbackState ? root.playbackState.trackArtist : ""
+                    trackAlbum: root.playbackState ? root.playbackState.trackAlbum : ""
+                    isPlaying: root.playbackState ? root.playbackState.isPlaying : false
                 }
             }
 
@@ -52,22 +56,22 @@ Item {
 
                 NowPlayingControls {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    isPlaying: root.playbackBridge ? root.playbackBridge.isPlaying : false
-                    shuffleEnabled: root.playbackBridge ? root.playbackBridge.shuffleEnabled : false
-                    repeatMode: root.playbackBridge ? root.playbackBridge.repeatMode : "none"
-                    onPlayClicked: { if (root.playbackBridge) root.playbackBridge.togglePlay() }
-                    onPrevClicked: { if (root.playbackBridge) root.playbackBridge.previous() }
-                    onNextClicked: { if (root.playbackBridge) root.playbackBridge.next() }
-                    onShuffleClicked: { if (root.playbackBridge) root.playbackBridge.toggleShuffle() }
-                    onRepeatClicked: { if (root.playbackBridge) root.playbackBridge.toggleRepeat() }
+                    isPlaying: root.playbackState ? root.playbackState.isPlaying : false
+                    shuffleEnabled: root.playbackState ? root.playbackState.shuffleEnabled : false
+                    repeatMode: root.playbackState ? root.playbackState.repeatMode : "none"
+                    onPlayClicked: { if (root.playbackState) root.playbackState.togglePlay() }
+                    onPrevClicked: { if (root.playbackState) root.playbackState.previous() }
+                    onNextClicked: { if (root.playbackState) root.playbackState.next() }
+                    onShuffleClicked: { if (root.playbackState) root.playbackState.toggleShuffle() }
+                    onRepeatClicked: { if (root.playbackState) root.playbackState.toggleRepeat() }
                 }
 
                 NowPlayingSeekBar {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    position: root.playbackBridge ? root.playbackBridge.position : 0
-                    duration: root.playbackBridge ? root.playbackBridge.duration : 0
+                    position: root.playbackState ? root.playbackState.position : 0
+                    duration: root.playbackState ? root.playbackState.duration : 0
                     onSeekRequested: function(pos) {
-                        if (root.playbackBridge) root.playbackBridge.seek(pos)
+                        if (root.playbackState) root.playbackState.seek(pos)
                     }
                 }
             }
@@ -79,9 +83,13 @@ Item {
 
                 NowPlayingVolume {
                     anchors.verticalCenter: parent.verticalCenter
-                    volume: root.playbackBridge ? root.playbackBridge.volume : 80
+                    volume: root.playbackState ? root.playbackState.volume : 80
+                    muted: root.playbackState ? root.playbackState.muted : false
                     onVolumeAdjusted: function(vol) {
-                        if (root.playbackBridge) root.playbackBridge.setVolume(vol)
+                        if (root.playbackState) root.playbackState.setVolume(vol)
+                    }
+                    onMuteClicked: {
+                        if (root.playbackState) root.playbackState.toggleMute()
                     }
                 }
             }

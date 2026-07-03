@@ -30,5 +30,5 @@ class TestAudioSettingsSchema:
 
     def test_legacy_map_targets_exist(self):
         from audio.settings.audio_settings_schema import LEGACY_KEY_MAP, AUDIO_SETTINGS_SCHEMA
-        for legacy, canonical in LEGACY_KEY_MAP.items():
+        for _legacy, canonical in LEGACY_KEY_MAP.items():
             assert canonical in AUDIO_SETTINGS_SCHEMA, f"Target {canonical} not in schema"

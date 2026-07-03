@@ -26,6 +26,7 @@ class TestEnqueueNext:
         engine = MagicMock()
         svc = PlayerService.__new__(PlayerService)
         svc._engine = engine
+        svc._hybrid = MagicMock(active_id="gstreamer")
         svc._retry_url = None
 
         svc.enqueue_next(["/p/s1.flac", "/p/s2.flac"])
@@ -36,6 +37,7 @@ class TestEnqueueNext:
         engine = MagicMock()
         svc = PlayerService.__new__(PlayerService)
         svc._engine = engine
+        svc._hybrid = MagicMock(active_id="gstreamer")
         svc.enqueue_next([])
         engine.enqueue_next.assert_not_called()
 

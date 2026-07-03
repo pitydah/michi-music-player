@@ -10,6 +10,11 @@ from core.home.home_dashboard_service import HomeDashboardService
 from core.home.home_status import LibraryHomeStatus, EcosystemHomeStatus
 
 
+@pytest.fixture(autouse=True)
+def default_safe_mode_off(monkeypatch):
+    monkeypatch.delenv("MICHI_SAFE_MODE", raising=False)
+
+
 @pytest.fixture
 def empty_db():
     db = MagicMock()
@@ -325,7 +330,7 @@ class TestSubtitle:
 
 class TestSettingsKeys:
     def test_home_audio_url_uses_get_str(self):
-        with patch("core.home.home_dashboard_service.logger") as mock_log:
+        with patch("core.home.home_dashboard_service.logger"):
             svc = HomeDashboardService()
             snap = svc.build_snapshot()
             assert snap.ecosystem.home_audio_state in ("disabled", "configured", "active")

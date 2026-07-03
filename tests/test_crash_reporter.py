@@ -1,5 +1,6 @@
 """Tests for CrashReporter — capture, metadata, rotation."""
 
+import contextlib
 import glob
 import json
 import os
@@ -28,10 +29,8 @@ class TestCrashReporter:
         for root, _dirs, files in os.walk(self._tmpdir, topdown=False):
             for fn in files:
                 os.unlink(os.path.join(root, fn))
-            try:
+            with contextlib.suppress(OSError):
                 os.rmdir(root)
-            except OSError:
-                pass
 
     def _logs_dir(self):
         from core.paths import logs_dir

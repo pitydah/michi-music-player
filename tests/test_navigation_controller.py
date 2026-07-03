@@ -87,6 +87,18 @@ class TestNavigationHistory:
         h.push("albums")
         assert len(h._history) == 1
 
+    def test_return_to_recent_route_creates_back_entry(self):
+        h = NavigationHistory()
+        h.push("library_hub")
+        h.push("albums", "beatles")
+        h.push("library_hub")
+        assert h._history == [
+            ("library_hub", ""),
+            ("albums", "beatles"),
+            ("library_hub", ""),
+        ]
+        assert h.back() == ("albums", "beatles")
+
     def test_back_and_forward(self):
         h = NavigationHistory()
         h.push("albums")
@@ -384,8 +396,11 @@ class TestResolveSidebarActiveKey:
         assert resolve_sidebar_active_key("home") == "home"
 
     def test_library_children(self):
-        for key in ("albums", "artists", "genres", "folders", "favs", "recent"):
+        for key in ("albums", "artists", "folders", "favs", "recent"):
             assert resolve_sidebar_active_key(key) == "library_hub", f"Failed for {key}"
+
+    def test_genres_has_own_sidebar_item(self):
+        assert resolve_sidebar_active_key("genres") == "genres"
 
     def test_mix_children(self):
         assert resolve_sidebar_active_key("mix_daily") == "mix_hub"
@@ -420,4 +435,3 @@ class TestResolveSidebarActiveKey:
     def test_independent_hubs(self):
         assert resolve_sidebar_active_key("assistant") == "assistant"
         assert resolve_sidebar_active_key("identifier") == "audio_lab"
-

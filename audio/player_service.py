@@ -100,15 +100,14 @@ class PlayerService(QObject):
         target = self._hybrid.choose_backend_for_profile(profile_key)
         if target == "mpd" and not self._mpd_backend:
             self._ensure_mpd_service()
-        if target == "mpd" and self._mpd_backend:
-            if not self._mpd_backend.connected:
-                try:
-                    self._ensure_mpd_service()
-                    self._mpd_backend.connect()
-                except MpdConnectionError as e:
-                    self.error_occurred.emit(f"MPD connection failed: {e}")
-                    self._do_fallback_backend(old_id)
-                    return False
+        if target == "mpd" and self._mpd_backend and not self._mpd_backend.connected:
+            try:
+                self._ensure_mpd_service()
+                self._mpd_backend.connect()
+            except MpdConnectionError as e:
+                self.error_occurred.emit(f"MPD connection failed: {e}")
+                self._do_fallback_backend(old_id)
+                return False
         result = self._hybrid.switch_for_profile(profile_key)
         new_id = self._hybrid.active_id
         if new_id != old_id:
