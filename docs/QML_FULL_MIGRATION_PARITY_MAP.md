@@ -26,9 +26,9 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Metadata | ✅ | ✅ | MetadataBridge | ✅ | FUNCIONAL | Media |
 | Audio Lab | ✅ | ✅ | AudioLabBridge | Sí | FUNCIONAL | Baja |
 | Disc Lab | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
-| Library Doctor | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
+| Library Doctor | ✅ | ✅ LibraryDoctorPage.qml | — | ✅ | VISUAL_PLACEHOLDER | Baja |
 | Smart Tagging | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
-| DSP/EQ | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
+| DSP/EQ | ✅ | ✅ EqPage.qml | — | ✅ | VISUAL_PLACEHOLDER | Baja |
 | Output Profiles | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
 
 ## Alpha2 Readiness Gate
@@ -42,7 +42,7 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Runtime check | ✅ | OK |
 | QML bridge tests | ✅ | 170 passed |
 | QML component tests | ✅ | 62 passed |
-| Total QML tests | ✅ | 232 passed |
+| Total QML tests | ✅ | 235 passed |
 | Schema tests | ✅ | 15 passed |
 | Format probe | ✅ | 41 passed |
 | Playback controller | ✅ | 6 passed |
@@ -216,9 +216,10 @@ El gate automatizado está aprobado. El proyecto es candidato fuerte a `0.2.0-al
 | #15 | Metadata QML phase 1 | Medio | ✅ Mergeado |
 | #16 | Audio Lab QML tests | Bajo | ✅ Mergeado |
 | #17 | Full QML route coverage | Bajo | ✅ Mergeado |
-| #18 | Library Doctor + Smart Tagging QML | Alto | ⏳ Pendiente (backend pesado) |
-| #19 | DSP/EQ/Output profiles QML | Bajo | ⏳ Pendiente |
-| #20 | QML default behind guarded flag | Alto | ⏳ Pendiente (requiere release gate) |
+| #18 | Release gate documentation update | Bajo | ✅ Mergeado |
+| #19 | EQ page + Library Doctor page | Bajo | ✅ Mergeado |
+| #20 | Smart Tagging + Output profiles QML | Alto | ⏳ Pendiente (backend pesado) |
+| #21 | QML default behind guarded flag | Alto | ⏳ Pendiente (requiere release gate + prueba humana) |
 
 ## Validación del PR
 
