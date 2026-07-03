@@ -16,6 +16,27 @@ def _cover_key_for_path(filepath: str) -> str:
     return f"track_{digest}"
 
 
+def _field(source, *names: str) -> str:
+    if source is None:
+        return ""
+    if isinstance(source, dict):
+        for name in names:
+            value = source.get(name)
+            if value:
+                return str(value)
+        return ""
+    if isinstance(source, str):
+        return source if "filepath" in names or "path" in names else ""
+    for name in names:
+        value = getattr(source, name, "")
+        if callable(value):
+            with contextlib.suppress(Exception):
+                value = value()
+        if value:
+            return str(value)
+    return ""
+
+
 class NowPlayingBridge(QObject):
     """Expose current playback state and commands to QML.
 
@@ -80,7 +101,11 @@ class NowPlayingBridge(QObject):
     def _current_path(self) -> str:
         if not self._player:
             return ""
-        for attr in ("current", "current_filepath", "current_path"):
+        current = getattr(self._player, "current", None)
+        path = _field(current, "filepath", "path", "url", "uri")
+        if path:
+            return path
+        for attr in ("current_filepath", "current_path"):
             value = getattr(self._player, attr, "")
             if callable(value):
                 try:
@@ -101,9 +126,10 @@ class NowPlayingBridge(QObject):
         return fallback
 
     def _on_track(self, title: str = "", artist: str = "", album: str = ""):
-        self._track_title = title or "—"
-        self._track_artist = artist or ""
-        self._track_album = album or self._track_album
+        current = getattr(self._player, "current", None) if self._player else None
+        self._track_title = title or _field(current, "title", "name") or "—"
+        self._track_artist = artist or _field(current, "artist", "albumartist")
+        self._track_album = album or _field(current, "album") or self._track_album
         self._set_cover_from_current_path()
         self._emit_state()
 
@@ -146,6 +172,16 @@ class NowPlayingBridge(QObject):
                 self._queue = list(get_queue() or [])
             except Exception:
                 self._queue = []
+        current = getattr(self._player, "current", None)
+        title = _field(current, "title", "name")
+        artist = _field(current, "artist", "albumartist")
+        album = _field(current, "album")
+        if title:
+            self._track_title = title
+        if artist:
+            self._track_artist = artist
+        if album:
+            self._track_album = album
         self._set_cover_from_current_path()
         self._emit_state()
 

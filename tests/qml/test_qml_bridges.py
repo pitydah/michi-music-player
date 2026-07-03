@@ -845,6 +845,47 @@ class TestNowPlayingBar:
         assert bridge.coverPath.startswith("track_")
         assert bridge.queue[0]["title"] == "A Song"
 
+    def test_nowplaying_bridge_reads_current_track_object(self):
+        from types import SimpleNamespace
+        from PySide6.QtCore import QObject, Signal
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+        class FakePlayer(QObject):
+            track_changed = Signal(str, str)
+            state_changed = Signal(str)
+            position_changed = Signal(float)
+            duration_changed = Signal(float)
+            volume_changed = Signal(int)
+            queue_changed = Signal(list)
+
+            @property
+            def current(self):
+                return SimpleNamespace(
+                    filepath="/music/object-track.flac",
+                    title="Object Song",
+                    artist="Object Artist",
+                    album="Object Album",
+                )
+
+            @property
+            def state(self):
+                return "playing"
+
+            @property
+            def duration(self):
+                return 240
+
+            def get_queue(self):
+                return []
+
+        bridge = NowPlayingBridge(player_service=FakePlayer())
+
+        assert bridge.trackTitle == "Object Song"
+        assert bridge.trackArtist == "Object Artist"
+        assert bridge.trackAlbum == "Object Album"
+        assert bridge.coverPath == "track_c79b4c2b8e46"
+        assert bridge.hasTrack is True
+
     def test_nowplaying_bridge_commands_call_player_service(self):
         from PySide6.QtCore import QObject, Signal
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
@@ -1060,4 +1101,3 @@ class TestHomeAudioV2Bridge:
     def test_home_audio_bridge_devices(self):
         bridge = HomeAudioBridge()
         assert len(bridge.devices) == 0
-
