@@ -7,6 +7,13 @@ import "../materials"
 Item {
     id: root
 
+    property var disc: typeof discLabBridge !== "undefined" ? discLabBridge : null
+
+    Component.onCompleted: {
+        if (root.disc && typeof root.disc.refresh !== "undefined")
+            root.disc.refresh()
+    }
+
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
@@ -27,7 +34,7 @@ Item {
             }
 
             HeroMaterial {
-                width: parent.width; height: 160; radius: MichiTheme.radiusLg; showGlow: true
+                width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text { text: "Laboratorio de discos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
@@ -35,25 +42,55 @@ Item {
                 }
             }
 
-            GlassCard {
-                width: parent.width; height: 70
-                title: "Escanear disco"
-                subtitle: "Detecta la unidad y analiza el contenido"
-                variant: "base"
+            Row {
+                spacing: MichiTheme.spacing.sm
+                Text { text: "Unidad:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                StatusBadge {
+                    text: root.disc ? root.disc.status : "unavailable"
+                    kind: root.disc && root.disc.status === "ready" ? "success" :
+                          root.disc && root.disc.status === "scanning" ? "warning" :
+                          root.disc && root.disc.status === "scanned" ? "success" : "disconnected"
+                }
             }
 
-            GlassCard {
-                width: parent.width; height: 70
-                title: "Estado del ripping"
-                subtitle: "Sin trabajos activos"
-                variant: "base"
+            Text {
+                text: root.disc ? root.disc.driveInfo : ""
+                color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
+                visible: text !== ""
             }
 
-            GlassCard {
-                width: parent.width; height: 70
-                title: "Perfil de ripping"
-                subtitle: "Formato: FLAC, Calidad: CD (16/44.1)"
-                variant: "base"
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton { text: "Detectar unidad"; variant: "primary"; onClicked: { if (root.disc) root.disc.refresh() } }
+                MichiButton { text: "Escanear disco"; variant: "secondary"; enabled: root.disc && root.disc.status === "ready"; onClicked: { if (root.disc) root.disc.scanDisc() } }
+            }
+
+            SectionHeader { text: "Pistas detectadas"; width: parent.width }
+
+            Repeater {
+                model: root.disc ? root.disc.tracks : []
+
+                GlassMaterial {
+                    width: parent.width; height: 36; radius: MichiTheme.radiusSm; variant: "base"
+                    Row {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                        Text { width: 30; text: modelData.track || ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width - 50; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
+                    }
+                }
+            }
+
+            Text {
+                text: root.disc && root.disc.tracks.length === 0 ? (root.disc && root.disc.status === "unavailable" ? "Servicio de discos no disponible." : "Escanea un disco para ver sus pistas.") : ""
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                visible: text !== ""
+            }
+
+            MichiButton {
+                text: "Rip CD"
+                variant: "ghost"
+                width: parent.width
+                enabled: false
             }
 
             GlassMaterial {
@@ -61,7 +98,7 @@ Item {
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
-                    StatusBadge { text: "Experimental — Sin unidad detectada"; kind: "experimental" }
+                    StatusBadge { text: "Experimental — Sin ripping automático"; kind: "experimental" }
                 }
             }
         }

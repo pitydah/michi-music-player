@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -12,6 +13,8 @@ Item {
     property var bridge: null
     property var tracks: []
     property bool _confirmDelete: false
+    property string _renameText: ""
+    property string _errorMsg: ""
 
     signal backRequested()
 
@@ -55,8 +58,11 @@ Item {
                     }
                 }
                 MichiButton {
-                    text: "Editar"; variant: "secondary"
-                    enabled: false
+                    text: "Renombrar"; variant: "secondary"
+                    onClicked: {
+                        _renameText = root.playlistTitle
+                        renameDialog.open()
+                    }
                 }
                 MichiButton {
                     text: root._confirmDelete ? "Confirmar eliminación" : "Eliminar"
@@ -116,6 +122,49 @@ Item {
                 text: root.tracks.length === 0 ? "Esta playlist está vacía. Agrega canciones desde la biblioteca." : ""
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
+            }
+
+            Text {
+                text: root._errorMsg
+                color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize
+                visible: text !== ""
+            }
+        }
+    }
+
+    Dialog {
+        id: renameDialog
+        title: "Renombrar playlist"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 3
+
+        Column {
+            spacing: MichiTheme.spacing.md
+            Text { text: "Nuevo nombre:"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+            TextField {
+                id: renameInput
+                text: root._renameText
+                width: 280
+                onAccepted: renameDialog.accept()
+            }
+        }
+
+        onAccepted: {
+            var name = renameInput.text.trim()
+            if (name === "") {
+                root._errorMsg = "El nombre no puede estar vacío."
+                return
+            }
+            if (root.bridge && typeof root.bridge.renamePlaylist !== "undefined" && root.playlistId >= 0) {
+                var result = root.bridge.renamePlaylist(root.playlistId, name)
+                if (result && !result.ok) {
+                    root._errorMsg = result.error || "Error al renombrar."
+                } else {
+                    root.playlistTitle = name
+                    root._errorMsg = ""
+                }
             }
         }
     }

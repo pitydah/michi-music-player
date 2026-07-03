@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -9,10 +10,32 @@ Item {
 
     property var md: typeof metadataBridge !== "undefined" ? metadataBridge : null
     property bool _editing: false
+    property string _editTitle: ""
+    property string _editArtist: ""
+    property string _editAlbum: ""
 
     function inspect(filepath) {
         if (root.md && typeof root.md.inspectTrack !== "undefined") {
             root.md.inspectTrack(filepath)
+            _editing = false
+        }
+    }
+
+    function startEdit() {
+        _editTitle = root.md ? root.md.trackTitle : ""
+        _editArtist = root.md ? root.md.trackArtist : ""
+        _editAlbum = root.md ? root.md.trackAlbum : ""
+        _editing = true
+    }
+
+    function cancelEdit() {
+        _editing = false
+    }
+
+    function doSave() {
+        if (root.md && typeof root.md.applyChanges !== "undefined") {
+            root.md.applyChanges(_editTitle, _editArtist, _editAlbum)
+            _editing = false
         }
     }
 
@@ -54,29 +77,22 @@ Item {
                 width: 48; height: 48; radius: MichiTheme.radiusMd
                 color: MichiTheme.colors.accentSurface
                 Text {
-                    anchors.centerIn: parent
-                    text: "MI"
-                    color: MichiTheme.colors.accentBlue
-                    font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
-                    font.letterSpacing: 1.5; opacity: 0.70
+                    anchors.centerIn: parent; text: "MI"
+                    color: MichiTheme.colors.accentBlue; font.pixelSize: 18
+                    font.weight: MichiTheme.typography.weightBold; font.letterSpacing: 1.5; opacity: 0.70
                 }
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Selecciona una canción"
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                font.weight: MichiTheme.typography.weightMedium
+                color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Selecciona una canción en la Biblioteca para inspeccionar sus metadatos."
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
+                color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
             }
         }
     }
@@ -106,12 +122,12 @@ Item {
                         width: parent.width; spacing: MichiTheme.spacing.sm
                         Text { text: "Metadatos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
-                        Item { width: 1; height: 1; Layout.fillWidth: true }
+                        Item { Layout.fillWidth: true; width: 1; height: 1 }
 
                         MichiButton {
                             text: root._editing ? "Cancelar" : "Editar"
                             variant: "ghost"
-                            onClicked: root._editing = !root._editing
+                            onClicked: root._editing ? root.cancelEdit() : root.startEdit()
                         }
                     }
 
@@ -140,34 +156,46 @@ Item {
             }
 
             GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: root._editing ? "accent" : "base"
+                visible: root._editing
+                Column {
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
+                    Text { text: "Editar metadatos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Título:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                        TextField { id: editTitle; text: root._editTitle; width: parent.width - 70; onTextChanged: root._editTitle = text }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Artista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                        TextField { id: editArtist; text: root._editArtist; width: parent.width - 70; onTextChanged: root._editArtist = text }
+                    }
+                    Row { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Álbum:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
+                        TextField { id: editAlbum; text: root._editAlbum; width: parent.width - 70; onTextChanged: root._editAlbum = text }
+                    }
+
+                    Row { spacing: MichiTheme.spacing.sm
+                        MichiButton { text: "Guardar"; variant: "primary"; onClicked: root.doSave() }
+                        MichiButton { text: "Cancelar"; variant: "ghost"; onClicked: root.cancelEdit() }
+                    }
+                }
+            }
+
+            GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                     Text { text: "Acciones"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
-                    MichiButton {
-                        text: "Guardar cambios"
-                        variant: "primary"
-                        enabled: root._editing && root.md && root.md.canApply
-                        onClicked: {
-                            if (root.md && typeof root.md.applyChanges !== "undefined")
-                                root.md.applyChanges("", "", "")
-                        }
-                    }
-
-                    MichiButton {
-                        text: root.md && root.md.errorMessage ? "Error: " + root.md.errorMessage : "Previsualizar sugerencias"
-                        variant: "secondary"
-                        enabled: root.md && root.md.errorMessage === ""
-                        onClicked: {
-                            if (root.md && typeof root.md.previewSuggestedFixes !== "undefined")
-                                root.md.previewSuggestedFixes()
-                        }
+                    Text {
+                        text: root.md && root.md.errorMessage ? "Error: " + root.md.errorMessage : ""
+                        color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize; visible: text !== ""
                     }
                 }
             }
 
-            StatusBadge { text: "Solo lectura — edición habilitada en fase experimental"; kind: "info" }
+            StatusBadge { text: "Edición experimental — guarda cambios directamente en el archivo"; kind: "info" }
         }
     }
 }

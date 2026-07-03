@@ -10,6 +10,12 @@ Item {
 
     property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
     property string selectedFile: ""
+    property string _errorMsg: ""
+
+    function isValidAudio(path) {
+        var ext = path.split(".").pop().toLowerCase()
+        return ["mp3", "flac", "wav", "ogg", "m4a", "opus", "wma"].indexOf(ext) >= 0
+    }
 
     Flickable {
         anchors.fill: parent
@@ -67,6 +73,11 @@ Item {
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
                     onClicked: {
+                        if (!root.isValidAudio(root.selectedFile)) {
+                            root._errorMsg = "Formato no soportado. Usa MP3, FLAC, WAV, OGG, M4A, OPUS o WMA."
+                            return
+                        }
+                        root._errorMsg = ""
                         if (root.stb && typeof root.stb.scanTrack !== "undefined" && root.selectedFile)
                             root.stb.scanTrack(root.selectedFile)
                     }
@@ -75,8 +86,14 @@ Item {
                     text: "Limpiar"
                     variant: "ghost"
                     visible: root.selectedFile !== ""
-                    onClicked: root.selectedFile = ""
+                    onClicked: { root.selectedFile = ""; root._errorMsg = "" }
                 }
+            }
+
+            Text {
+                text: root._errorMsg
+                color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize
+                visible: text !== ""
             }
 
             StatusBadge {

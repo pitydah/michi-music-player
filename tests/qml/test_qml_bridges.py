@@ -669,8 +669,8 @@ class TestMetadataBridge:
 
     def test_metadata_inspector_apply_button_disabled(self):
         content = (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").read_text()
-        assert "enabled:" in content, "Apply button missing enabled state"
-        assert "canApply" in content, "Apply button must use canApply property"
+        assert "applyChanges" in content, "Metadata page missing applyChanges call"
+        assert "_editing" in content, "Metadata page missing editing state"
 
 
 class TestLibraryComponents:

@@ -55,7 +55,15 @@ Item {
                 spacing: MichiTheme.spacing.md
                 visible: root.doc && root.doc.status === "done"
                 Text { text: "Revisados: " + (root.doc ? root.doc.totalChecked : 0); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-                Text { text: "Problemas: " + (root.doc ? root.doc.issueCount : 0); color: MichiTheme.colors.warning; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: "Problemas: " + (root.doc ? root.doc.issueCount : 0); color: root.doc && root.doc.issueCount > 0 ? MichiTheme.colors.warning : MichiTheme.colors.success; font.pixelSize: MichiTheme.typography.bodySize }
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.md
+                visible: root.doc && root.doc.status === "done" && root.doc.issueCount > 0
+                Text { text: "Metadata: " + (root.doc ? root.doc.missingMetadataCount : 0); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                Text { text: "Archivos: " + (root.doc ? root.doc.missingFileCount : 0); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                Text { text: "OK: " + (root.doc ? root.doc.healthyCount : 0); color: MichiTheme.colors.success; font.pixelSize: MichiTheme.typography.metaSize }
             }
 
             SectionHeader { text: "Problemas detectados"; width: parent.width }
@@ -67,8 +75,8 @@ Item {
                     width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: root.doc && root.doc.issueCount > 0 ? "danger" : "base"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { width: parent.width * 0.30; text: modelData.type || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
-                        Text { width: parent.width * 0.60; text: modelData.detail || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.25; text: modelData.type || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
+                        Text { width: parent.width * 0.65; text: modelData.detail || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
             }
