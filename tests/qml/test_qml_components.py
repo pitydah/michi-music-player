@@ -583,6 +583,20 @@ class TestSprintNewPages:
         content = (QML_DIR / "pages" / "playlists" / "PlaylistsPage.qml").read_text()
         assert 'createPlaylist("Nueva playlist")' not in content, "PlaylistsPage still uses auto-generated name"
 
+    def test_playlist_detail_has_rename_dialog(self):
+        content = (QML_DIR / "pages" / "playlists" / "PlaylistDetailPage.qml").read_text()
+        assert "renameDialog" in content, "PlaylistDetailPage missing rename dialog"
+        assert "renamePlaylist" in content, "PlaylistDetailPage missing renamePlaylist call"
+
+    def test_smart_tagging_has_extension_validation(self):
+        content = (QML_DIR / "pages" / "SmartTaggingPage.qml").read_text()
+        assert "isValidAudio" in content, "SmartTaggingPage missing extension validation"
+        assert "/example/" not in content, "SmartTaggingPage still has fake path"
+
+    def test_disc_lab_bridge_importable(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        assert DiscLabBridge is not None
+
 
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):

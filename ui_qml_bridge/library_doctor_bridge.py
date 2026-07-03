@@ -34,6 +34,18 @@ class LibraryDoctorBridge(QObject):
     def issueCount(self):
         return self._issue_count
 
+    @Property(int, notify=dataChanged)
+    def missingMetadataCount(self):
+        return sum(1 for i in self._issues if i.get("type") == "missing_metadata")
+
+    @Property(int, notify=dataChanged)
+    def missingFileCount(self):
+        return sum(1 for i in self._issues if i.get("type") == "missing_file")
+
+    @Property(int, notify=dataChanged)
+    def healthyCount(self):
+        return max(0, self._total_checked - self._issue_count)
+
     @Slot()
     def scan(self):
         self._status = "scanning"
