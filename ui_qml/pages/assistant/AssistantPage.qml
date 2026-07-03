@@ -132,7 +132,7 @@ Item {
                 }
 
                 MichiIconButton {
-                    iconSource: "icons/sidebar_add.svg"
+                    iconSource: "../icons/sidebar_add.svg"
                     iconText: ">"
                     tooltipText: "Enviar"
                     btnSize: 38

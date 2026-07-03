@@ -99,7 +99,7 @@ Item {
                         }
 
                         SidebarItem {
-                            iconSource: "file:" + Qt.resolvedUrl(model.iconSource)
+                            iconSource: Qt.resolvedUrl("../../" + model.iconSource)
                             iconText: model.glyph
                             label: model.label
                             active: root.currentRoute === model.route
