@@ -39,7 +39,14 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                MichiButton { text: "+ Nueva playlist"; variant: "primary" }
+                MichiButton {
+                    text: "+ Nueva playlist"; variant: "primary"
+                    onClicked: {
+                        if (root.playlistsBridge && typeof root.playlistsBridge.createPlaylist !== "undefined") {
+                            root.playlistsBridge.createPlaylist("Nueva playlist")
+                        }
+                    }
+                }
                 MichiButton { text: "Importar M3U"; variant: "secondary" }
             }
 
