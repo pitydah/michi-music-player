@@ -48,12 +48,8 @@ Item {
             GlassCard {
                 width: parent.width; height: 70
                 title: "Analizar archivo"
-                subtitle: root.smartTaggingBridge ? "Estado: " + root.smartTaggingBridge.status : "Selecciona un archivo para analizar"
-                variant: root.smartTaggingBridge && root.smartTaggingBridge.status === "done" ? "accent" : "base"
-                onClicked: {
-                    if (root.smartTaggingBridge && typeof root.smartTaggingBridge.scanTrack !== "undefined")
-                        root.smartTaggingBridge.scanTrack("/example/track.mp3")
-                }
+                subtitle: "Selecciona una canción desde Biblioteca para analizar"
+                variant: "base"
             }
 
             SectionHeader { text: "Sugerencias"; width: parent.width }

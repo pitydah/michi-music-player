@@ -26,10 +26,10 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Metadata | ✅ | ✅ | MetadataBridge | ✅ | FUNCIONAL | Media |
 | Audio Lab | ✅ | ✅ | AudioLabBridge | Sí | FUNCIONAL | Baja |
 | Disc Lab | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
-| Library Doctor | ✅ | ✅ LibraryDoctorPage.qml | — | ✅ | VISUAL_PLACEHOLDER | Baja |
-| Smart Tagging | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
-| DSP/EQ | ✅ | ✅ EqPage.qml | — | ✅ | VISUAL_PLACEHOLDER | Baja |
-| Output Profiles | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
+| Library Doctor | ✅ | ✅ LibraryDoctorPage.qml | — | ✅ | COMPLETO_VISUAL | Baja |
+| Smart Tagging | ✅ | ✅ SmartTaggingPage.qml | SmartTaggingBridge | ✅ | PARCIAL | Baja |
+| DSP/EQ | ✅ | ✅ EqPage.qml | — | ✅ | COMPLETO_VISUAL | Baja |
+| Output Profiles | ✅ | ✅ OutputProfilesPage.qml | SettingsBridge (outputProfiles) | ✅ | FUNCIONAL | Baja |
 
 ## Alpha2 Readiness Gate
 
@@ -42,7 +42,7 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Runtime check | ✅ | OK |
 | QML bridge tests | ✅ | 170 passed |
 | QML component tests | ✅ | 62 passed |
-| Total QML tests | ✅ | 235 passed |
+| Total QML tests | ✅ | 238 passed |
 | Schema tests | ✅ | 15 passed |
 | Format probe | ✅ | 41 passed |
 | Playback controller | ✅ | 6 passed |
