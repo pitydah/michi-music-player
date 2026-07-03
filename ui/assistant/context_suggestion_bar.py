@@ -27,6 +27,8 @@ class ContextSuggestionBar(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cards: list[SuggestionCard] = []
+        self._section_key = ""
+        self._section_title = ""
         self._build_ui()
 
     def _build_ui(self):
@@ -38,9 +40,9 @@ class ContextSuggestionBar(QFrame):
 
         header_row = QHBoxLayout()
         header_row.setContentsMargins(8, 4, 8, 0)
-        header_label = QLabel("Sugerencias")
-        header_label.setObjectName("suggestionBarHeader")
-        header_row.addWidget(header_label)
+        self._header_label = QLabel("Sugerencias")
+        self._header_label.setObjectName("suggestionBarHeader")
+        header_row.addWidget(self._header_label)
         header_row.addStretch()
 
         show_more_btn = QPushButton("Ver mas")
@@ -78,6 +80,15 @@ class ContextSuggestionBar(QFrame):
             self._cards.append(card)
             self._card_layout.insertWidget(len(self._cards) - 1, card)
         self.setVisible(len(self._cards) > 0)
+
+    def set_section(self, section_key: str, title: str = ""):
+        self._section_key = section_key
+        self._section_title = title or section_key.replace("_", " ").title()
+        label = f"Sugerencias - {self._section_title}" if self._section_title else "Sugerencias"
+        self._header_label.setText(label)
+
+    def clear_suggestions(self):
+        self.clear()
 
     def clear(self):
         self._clear_cards()

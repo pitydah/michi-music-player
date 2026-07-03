@@ -371,12 +371,16 @@ class NavigationHistory:
         When force=True, always creates a new entry even if the key matches
         the current one (used for detail view checkpoints).
 
-        Deduplicates: if key already exists within the last 2 entries,
-        do not add a duplicate (handles rapid tab switching).
+        Deduplicates only exact consecutive entries. Returning to a recent
+        route from another route must create a new entry so back/forward works.
         """
         if not force:
-            recent = self._history[max(0, self._index - 2):self._index + 1]
-            if any(entry[0] == key for entry in recent):
+            current = (
+                self._history[self._index]
+                if 0 <= self._index < len(self._history)
+                else None
+            )
+            if current and current[0] == key:
                 return
         if self._index < len(self._history) - 1:
             self._history = self._history[:self._index + 1]
