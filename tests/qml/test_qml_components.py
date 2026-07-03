@@ -451,6 +451,26 @@ class TestEqLibraryDoctor:
         assert component.isReady()
 
 
+class TestOutputProfilesSmartTagging:
+    FILES = [
+        "pages/OutputProfilesPage.qml",
+        "pages/SmartTaggingPage.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_output_profiles_instantiate(self, engine):
+        component = _load_qml(engine, "pages/OutputProfilesPage.qml")
+        assert component.isReady()
+
+    def test_smart_tagging_instantiate(self, engine):
+        component = _load_qml(engine, "pages/SmartTaggingPage.qml")
+        assert component.isReady()
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
