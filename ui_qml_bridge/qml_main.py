@@ -171,8 +171,11 @@ def main():
     michi_ai_bridge = MichiAIBridge()
     metadata_bridge = MetadataBridge()
     mix_bridge = MixBridge(db=db)
-    playback_bridge = PlaybackBridge(player_service=player_service)
-    nowplaying_bridge = NowPlayingBridge()
+    nowplaying_bridge = NowPlayingBridge(player_service=player_service)
+    playback_bridge = PlaybackBridge(
+        player_service=player_service,
+        nowplaying_bridge=nowplaying_bridge,
+    )
     devices_bridge = DevicesBridge(sync_manager=sync_mgr)
     playlists_bridge = PlaylistsBridge(db=db)
     audio_lab_bridge = AudioLabBridge(db_conn=db_conn)
