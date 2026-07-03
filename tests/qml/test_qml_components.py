@@ -174,3 +174,75 @@ class TestPageFiles:
         for rel_path in PAGE_FILES:
             p = QML_DIR / rel_path
             assert p.exists(), f"Missing page file: {p}"
+
+
+class TestShellComponents:
+    SHELL_FILES = [
+        "shell/HeaderBar.qml",
+        "shell/Sidebar.qml",
+        "shell/RouteTransition.qml",
+        "shell/PageStack.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.SHELL_FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_header_bar_instantiate(self, engine):
+        component = _load_qml(engine, "shell/HeaderBar.qml")
+        assert component.isReady()
+
+    def test_sidebar_instantiate(self, engine):
+        component = _load_qml(engine, "shell/Sidebar.qml")
+        assert component.isReady()
+
+    def test_route_transition_instantiate(self, engine):
+        component = _load_qml(engine, "shell/RouteTransition.qml")
+        assert component.isReady()
+
+    def test_page_stack_instantiate(self, engine):
+        component = _load_qml(engine, "shell/PageStack.qml")
+        assert component.isReady()
+
+
+class TestNowPlayingComponents:
+    NOWPLAYING_FILES = [
+        "components/NowPlayingBar.qml",
+        "components/NowPlayingControls.qml",
+        "components/NowPlayingInfo.qml",
+        "components/NowPlayingCover.qml",
+        "components/NowPlayingSeekBar.qml",
+        "components/NowPlayingVolume.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.NOWPLAYING_FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_now_playing_controls_exists(self, engine):
+        component = _load_qml(engine, "components/NowPlayingControls.qml")
+        assert component.isReady()
+
+    def test_now_playing_info_exists(self, engine):
+        component = _load_qml(engine, "components/NowPlayingInfo.qml")
+        assert component.isReady()
+
+    def test_now_playing_seek_bar_exists(self, engine):
+        component = _load_qml(engine, "components/NowPlayingSeekBar.qml")
+        assert component.isReady()
+
+    def test_now_playing_volume_exists(self, engine):
+        component = _load_qml(engine, "components/NowPlayingVolume.qml")
+        assert component.isReady()
+
+
+class TestActionButtonNotPresent:
+    def test_action_button_not_in_components(self):
+        qmldir = QML_DIR / "components" / "qmldir"
+        if qmldir.exists():
+            content = qmldir.read_text()
+            assert "ActionButton" not in content, "ActionButton still registered in components/qmldir"
+        action_button = QML_DIR / "components" / "ActionButton.qml"
+        assert not action_button.exists(), "ActionButton.qml still exists"

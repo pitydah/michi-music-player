@@ -43,6 +43,7 @@ Item {
 
                 NowPlayingInfo {
                     anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - NowPlayingCover.width - MichiTheme.spacing.md
                     trackTitle: root.playbackState ? root.playbackState.trackTitle : "—"
                     trackArtist: root.playbackState ? root.playbackState.trackArtist : ""
                     trackAlbum: root.playbackState ? root.playbackState.trackAlbum : ""

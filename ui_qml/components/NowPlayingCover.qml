@@ -14,7 +14,7 @@ Item {
 
     Rectangle {
         width: root.coverSize; height: root.coverSize; radius: 6
-        color: Qt.rgba(1.0, 1.0, 1.0, 0.04)
+        color: MichiTheme.colors.borderInner
         clip: true
 
         CoverBridge {

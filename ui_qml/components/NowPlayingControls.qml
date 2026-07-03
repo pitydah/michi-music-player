@@ -37,20 +37,25 @@ Item {
             onClicked: root.prevClicked()
         }
 
-        Rectangle {
+        Item {
             width: 44
             height: 44
-            radius: MichiTheme.radiusPill
-            color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
-            Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
-            Text {
-                anchors.centerIn: parent
-                text: root.isPlaying ? "||" : ">"
-                font.pixelSize: 18
-                font.weight: MichiTheme.typography.weightBold
-                color: MichiTheme.colors.textOnAccent
+            Rectangle {
+                anchors.fill: parent
+                radius: MichiTheme.radiusPill
+                color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
+                Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: root.isPlaying ? "||" : ">"
+                    font.pixelSize: 18
+                    font.weight: MichiTheme.typography.weightBold
+                    color: MichiTheme.colors.textOnAccent
+                }
             }
+
             MouseArea {
                 id: maPlay
                 anchors.fill: parent

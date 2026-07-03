@@ -53,7 +53,7 @@ Item {
             SearchField {
                 anchors.verticalCenter: parent.verticalCenter
                 placeholderText: "Buscar en Michi..."
-                implicitWidth: Math.min(320, root.width * 0.25)
+                implicitWidth: Math.min(280, root.width * 0.25)
             }
         }
     }

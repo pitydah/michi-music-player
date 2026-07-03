@@ -39,6 +39,9 @@ Item {
         asynchronous: true
         source: getSource(currentRoute)
 
+        opacity: status === Loader.Ready ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: MichiTheme.motion.fast; easing.type: Easing.OutCubic } }
+
         onStatusChanged: {
             if (status === Loader.Error) {
                 console.warn("[PageStack] Failed to load:", source)

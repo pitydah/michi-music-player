@@ -14,6 +14,8 @@ Item {
 
     Column {
         anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.right: parent.right
         spacing: 2
 
         Text {
@@ -22,7 +24,7 @@ Item {
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
             elide: Text.ElideRight
-            width: 200
+            width: parent.width
         }
 
         Text {
@@ -30,7 +32,7 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             elide: Text.ElideRight
-            width: 200
+            width: parent.width
             visible: text !== ""
         }
     }
