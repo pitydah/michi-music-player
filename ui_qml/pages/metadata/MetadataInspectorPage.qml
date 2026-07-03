@@ -8,6 +8,7 @@ Item {
     id: root
 
     property var md: typeof metadataBridge !== "undefined" ? metadataBridge : null
+    property bool _editing: false
 
     function inspect(filepath) {
         if (root.md && typeof root.md.inspectTrack !== "undefined") {
@@ -87,55 +88,31 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             GlassMaterial {
-                width: parent.width
-                height: 120
-                radius: MichiTheme.radiusMd
-                variant: "base"
-
+                width: parent.width; height: 120; radius: MichiTheme.radiusMd; variant: "base"
                 Column {
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.sm
-
-                    Text {
-                        text: root.md ? root.md.trackTitle : "—"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                    }
-
-                    Text {
-                        text: root.md ? root.md.trackArtist : ""
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        visible: text !== ""
-                    }
-
-                    Text {
-                        text: root.md ? root.md.trackAlbum : ""
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        visible: text !== ""
-                    }
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
+                    Text { text: root.md ? root.md.trackTitle : "—"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+                    Text { text: root.md ? root.md.trackArtist : ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: text !== "" }
+                    Text { text: root.md ? root.md.trackAlbum : ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; visible: text !== "" }
                 }
             }
 
             GlassMaterial {
-                width: parent.width
-                radius: MichiTheme.radiusMd
-                variant: "base"
-
+                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
                 Column {
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.xs
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
-                    Text {
-                        text: "Metadatos"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.cardTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                        bottomPadding: MichiTheme.spacing.sm
+                    Row {
+                        width: parent.width; spacing: MichiTheme.spacing.sm
+                        Text { text: "Metadatos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
+
+                        Item { width: 1; height: 1; Layout.fillWidth: true }
+
+                        MichiButton {
+                            text: root._editing ? "Cancelar" : "Editar"
+                            variant: "ghost"
+                            onClicked: root._editing = !root._editing
+                        }
                     }
 
                     Repeater {
@@ -147,6 +124,12 @@ Item {
                             fieldValue: modelData.value || ""
                         }
                     }
+
+                    Text {
+                        text: root.md ? root.md.qualitySummary : ""
+                        color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
+                        visible: text !== ""
+                    }
                 }
             }
 
@@ -157,40 +140,34 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width
-                radius: MichiTheme.radiusMd
-                variant: "base"
-
+                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
                 Column {
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "Acciones"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.cardTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                    }
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
+                    Text { text: "Acciones"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
 
                     MichiButton {
-                        text: "Previsualizar sugerencias"
-                        variant: "secondary"
+                        text: "Guardar cambios"
+                        variant: "primary"
+                        enabled: root._editing && root.md && root.md.canApply
                         onClicked: {
-                            if (root.md && typeof root.md.previewSuggestedFixes !== "undefined") {
-                                root.md.previewSuggestedFixes()
-                            }
+                            if (root.md && typeof root.md.applyChanges !== "undefined")
+                                root.md.applyChanges("", "", "")
                         }
                     }
 
                     MichiButton {
-                        text: "Aplicar cambios"
-                        variant: "ghost"
-                        enabled: root.md ? root.md.canApply : false
-                        tooltip: "La escritura de metadatos se habilitará en una fase posterior."
+                        text: root.md && root.md.errorMessage ? "Error: " + root.md.errorMessage : "Previsualizar sugerencias"
+                        variant: "secondary"
+                        enabled: root.md && root.md.errorMessage === ""
+                        onClicked: {
+                            if (root.md && typeof root.md.previewSuggestedFixes !== "undefined")
+                                root.md.previewSuggestedFixes()
+                        }
                     }
                 }
             }
+
+            StatusBadge { text: "Solo lectura — edición habilitada en fase experimental"; kind: "info" }
         }
     }
 }

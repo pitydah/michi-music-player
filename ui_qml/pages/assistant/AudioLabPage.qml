@@ -97,6 +97,40 @@ Item {
                 }
             }
 
+            SectionHeader { text: "Herramientas QML"; width: parent.width }
+
+            Grid {
+                width: parent.width; columns: 2; columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
+
+                GlassCard {
+                    width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
+                    title: "Smart Tagging"; subtitle: "Sugerencias de metadatos"
+                    variant: "accent"
+                    onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("smart_tagging") }
+                }
+
+                GlassCard {
+                    width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
+                    title: "Ecualizador"; subtitle: "Ajuste de frecuencias"
+                    variant: "base"
+                    onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("eq") }
+                }
+
+                GlassCard {
+                    width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
+                    title: "Library Doctor"; subtitle: "Diagnóstico de biblioteca"
+                    variant: "base"
+                    onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("library_doctor") }
+                }
+
+                GlassCard {
+                    width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
+                    title: "Disc Lab"; subtitle: "Laboratorio de discos"
+                    variant: "base"
+                    onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("disc_lab") }
+                }
+            }
+
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
                 Column {
