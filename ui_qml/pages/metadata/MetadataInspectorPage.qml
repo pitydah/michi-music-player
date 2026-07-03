@@ -174,7 +174,7 @@ Item {
                         font.weight: MichiTheme.typography.weightSemiBold
                     }
 
-                    ActionButton {
+                    MichiButton {
                         text: "Previsualizar sugerencias"
                         variant: "secondary"
                         onClicked: {
@@ -184,7 +184,7 @@ Item {
                         }
                     }
 
-                    ActionButton {
+                    MichiButton {
                         text: "Aplicar cambios"
                         variant: "ghost"
                         enabled: root.metadataBridge ? root.metadataBridge.canApply : false

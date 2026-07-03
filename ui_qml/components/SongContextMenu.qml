@@ -30,10 +30,10 @@ Item {
 
         MenuSeparator {}
 
-        ActionButton { text: "Reproducir"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.playClicked() }
-        ActionButton { text: "Añadir a la cola"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.queueClicked() }
-        ActionButton { text: "Añadir a playlist"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.addToPlaylistClicked() }
-        ActionButton { text: "Editar metadatos"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.editMetadataClicked() }
-        ActionButton { text: "Mostrar en biblioteca"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.showInLibraryClicked() }
+        MichiButton { text: "Reproducir"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.playClicked() }
+        MichiButton { text: "Añadir a la cola"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.queueClicked() }
+        MichiButton { text: "Añadir a playlist"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.addToPlaylistClicked() }
+        MichiButton { text: "Editar metadatos"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.editMetadataClicked() }
+        MichiButton { text: "Mostrar en biblioteca"; variant: "ghost"; width: parent.width; height: 32; onClicked: root.showInLibraryClicked() }
     }
 }

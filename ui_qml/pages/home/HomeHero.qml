@@ -43,7 +43,7 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
 
-                    ActionButton {
+                    MichiButton {
                         text: "Continuar escuchando"
                         variant: "primary"
                         onClicked: {
@@ -52,7 +52,7 @@ Item {
                         }
                     }
 
-                    ActionButton {
+                    MichiButton {
                         text: "Explorar"
                         variant: "ghost"
                         onClicked: {

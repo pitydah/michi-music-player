@@ -131,7 +131,7 @@ Item {
                     }
                 }
 
-                ActionButton {
+                MichiButton {
                     width: 40
                     height: 38
                     text: "→"

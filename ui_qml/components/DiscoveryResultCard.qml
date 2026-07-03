@@ -77,7 +77,7 @@ Item {
                 visible: root.serverType !== ""
             }
 
-            ActionButton {
+            MichiButton {
                 text: root.ctaText
                 variant: "secondary"
                 onClicked: root.ctaClicked()

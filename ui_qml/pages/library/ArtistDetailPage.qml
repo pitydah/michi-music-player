@@ -47,7 +47,7 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
 
-                ActionButton {
+                MichiButton {
                     text: "←"
                     variant: "ghost"
                     onClicked: root.backRequested()

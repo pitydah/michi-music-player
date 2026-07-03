@@ -47,12 +47,12 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                    ActionButton {
+                    MichiButton {
                         text: root.state === "not_configured" ? "Configurar Home Assistant" : "Abrir Home Assistant"
                         variant: "primary"
                         onClicked: root.configureClicked()
                     }
-                    ActionButton {
+                    MichiButton {
                         text: "Diagnóstico"
                         variant: "ghost"
                         onClicked: root.openDiagnostics()

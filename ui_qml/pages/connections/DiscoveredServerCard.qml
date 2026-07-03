@@ -66,7 +66,7 @@ Item {
                         : "disconnected"
                 }
 
-                ActionButton {
+                MichiButton {
                     text: "Conectar"
                     variant: "accent"
                     onClicked: root.connectClicked()

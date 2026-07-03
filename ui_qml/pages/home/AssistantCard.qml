@@ -51,7 +51,7 @@ Item {
                 }
             }
 
-            ActionButton {
+            MichiButton {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Abrir"
                 variant: "ghost"

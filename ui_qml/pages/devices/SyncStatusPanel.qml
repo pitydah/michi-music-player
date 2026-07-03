@@ -46,7 +46,7 @@ Item {
                 color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
             }
 
-            ActionButton {
+            MichiButton {
                 text: root.serverActive ? "Detener servidor" : "Iniciar servidor"
                 variant: root.serverActive ? "secondary" : "primary"
                 onClicked: root.serverActive ? root.stopServer() : root.startServer()

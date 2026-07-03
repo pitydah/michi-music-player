@@ -23,7 +23,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                ActionButton { text: "←"; variant: "ghost"; onClicked: root.backRequested() }
+                MichiButton { text: "←"; variant: "ghost"; onClicked: root.backRequested() }
                 Text {
                     text: root.playlistTitle; color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
@@ -33,8 +33,8 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                ActionButton { text: "Reproducir"; variant: "primary" }
-                ActionButton { text: "Editar"; variant: "secondary" }
+                MichiButton { text: "Reproducir"; variant: "primary" }
+                MichiButton { text: "Editar"; variant: "secondary" }
             }
 
             Text {

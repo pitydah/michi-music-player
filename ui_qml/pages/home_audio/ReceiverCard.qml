@@ -62,7 +62,7 @@ Item {
                     kind: root.receiverState === "connected" ? "active" : "disconnected"
                 }
 
-                ActionButton {
+                MichiButton {
                     text: "Configurar"
                     variant: "ghost"
                     onClicked: root.configureClicked()

@@ -62,13 +62,13 @@ Item {
 
                 StatusBadge { text: root.statusText; kind: root.statusKind }
 
-                ActionButton {
+                MichiButton {
                     text: "Configurar"
                     variant: "secondary"
                     onClicked: root.configureClicked()
                 }
 
-                ActionButton {
+                MichiButton {
                     text: "Desconectar"
                     variant: "ghost"
                     onClicked: root.disconnectClicked()

@@ -39,8 +39,8 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                ActionButton { text: "+ Nueva playlist"; variant: "primary" }
-                ActionButton { text: "Importar M3U"; variant: "secondary" }
+                MichiButton { text: "+ Nueva playlist"; variant: "primary" }
+                MichiButton { text: "Importar M3U"; variant: "secondary" }
             }
 
             SectionHeader { text: "Tus playlists"; width: parent.width }

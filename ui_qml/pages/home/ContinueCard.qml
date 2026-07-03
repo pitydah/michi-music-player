@@ -54,7 +54,7 @@ Item {
                 }
             }
 
-            ActionButton {
+            MichiButton {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.hasPlayback ? "Reproducir" : "Sin reproducción"
                 variant: root.hasPlayback ? "accent" : "secondary"

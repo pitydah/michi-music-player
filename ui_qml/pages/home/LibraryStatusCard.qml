@@ -46,7 +46,7 @@ Item {
                 width: parent.width
             }
 
-            ActionButton {
+            MichiButton {
                 text: "Explorar biblioteca"
                 variant: "secondary"
                 onClicked: root.openLibrary()

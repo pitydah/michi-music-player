@@ -57,7 +57,7 @@ Item {
             kind: "info"
         }
 
-        ActionButton {
+        MichiButton {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Abrir en ventana clásica"
             variant: "secondary"

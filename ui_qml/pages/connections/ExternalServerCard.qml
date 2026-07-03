@@ -58,7 +58,7 @@ Item {
 
                 StatusBadge { text: root.badgeText; kind: root.badgeKind }
 
-                ActionButton {
+                MichiButton {
                     text: "Configurar"
                     variant: "ghost"
                     onClicked: root.configureClicked()

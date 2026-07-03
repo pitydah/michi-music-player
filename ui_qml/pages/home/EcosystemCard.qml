@@ -70,12 +70,12 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                ActionButton {
+                MichiButton {
                     text: "Ver servidores"
                     variant: "primary"
                     onClicked: root.openConnections()
                 }
-                ActionButton {
+                MichiButton {
                     text: "Home Audio"
                     variant: "secondary"
                     onClicked: root.openHomeAudio()
