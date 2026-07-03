@@ -61,15 +61,15 @@ Item {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
-                    Column { spacing: 4
+                    Column { spacing: MichiTheme.spacing.xs
                         Text { text: root.audioLabBridge ? root.audioLabBridge.totalTracks : "—"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Canciones"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
-                    Column { spacing: 4
+                    Column { spacing: MichiTheme.spacing.xs
                         Text { text: root.audioLabBridge ? root.audioLabBridge.missingMetadata : "—"; color: root.audioLabBridge && root.audioLabBridge.missingMetadata > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Sin metadata"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
-                    Column { spacing: 4
+                    Column { spacing: MichiTheme.spacing.xs
                         Text { text: root.audioLabBridge ? root.audioLabBridge.missingCovers : "—"; color: root.audioLabBridge && root.audioLabBridge.missingCovers > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Sin carátula"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }

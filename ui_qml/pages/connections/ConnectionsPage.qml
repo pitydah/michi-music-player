@@ -52,29 +52,16 @@ Item {
                 columnSpacing: MichiTheme.spacing.md
                 rowSpacing: MichiTheme.spacing.md
 
-                ExternalServerCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
-                    height: 80
-                    serverName: "Navidrome"
-                    serverType: "Subsonic API"
-                }
-                ExternalServerCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
-                    height: 80
-                    serverName: "Jellyfin"
-                    serverType: "Jellyfin API"
-                }
-                ExternalServerCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
-                    height: 80
-                    serverName: "Subsonic"
-                    serverType: "Subsonic API"
-                }
-                ExternalServerCard {
-                    width: (parent.width - MichiTheme.spacing.md) / 2
-                    height: 80
-                    serverName: "Servidor manual"
-                    serverType: "URL personalizada"
+                Repeater {
+                    model: typeof connectionsBridge !== "undefined" && connectionsBridge
+                           ? connectionsBridge.externalServers : []
+
+                    ExternalServerCard {
+                        width: (parent.width - MichiTheme.spacing.md) / 2
+                        height: 80
+                        serverName: modelData.name || "Servidor externo"
+                        serverType: modelData.serverType || modelData.apiType || "API"
+                    }
                 }
             }
 

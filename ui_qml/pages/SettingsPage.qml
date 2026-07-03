@@ -21,7 +21,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                MichiButton { text: "←"; variant: "ghost"; onClicked: root.closeRequested() }
+                MichiButton { text: "Volver"; variant: "ghost"; onClicked: root.closeRequested() }
                 Text {
                     text: "Ajustes"; color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
