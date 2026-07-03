@@ -10,3 +10,7 @@ SectionHeader 1.0 SectionHeader.qml
 IconSlot 1.0 IconSlot.qml
 InspectorPanel 1.0 InspectorPanel.qml
 DiscoveryResultCard 1.0 DiscoveryResultCard.qml
+MichiButton 1.0 MichiButton.qml
+MichiIconButton 1.0 MichiIconButton.qml
+MichiSlider 1.0 MichiSlider.qml
+MichiBadge 1.0 MichiBadge.qml

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import "../theme"
-import "../materials"
+import "../components"
 
 Item {
     id: root
@@ -16,70 +16,63 @@ Item {
     signal shuffleClicked()
     signal repeatClicked()
 
-    implicitHeight: 36
+    implicitHeight: 40
 
     Row {
         anchors.centerIn: parent
-        spacing: MichiSpacing.sm
+        spacing: MichiTheme.spacing.xs
 
-        Item {
-            width: 34; height: 34
-            GlassMaterial {
-                anchors.fill: parent; radius: 17
-                variant: root.shuffleEnabled ? "accent" : "status"
-                hovered: shuffleMouse.containsMouse
-                interactive: true
-                MouseArea {
-                    id: shuffleMouse; anchors.fill: parent
-                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.shuffleClicked()
-                }
-                Text {
-                    anchors.centerIn: parent
-                    text: "S"
-                    color: root.shuffleEnabled ? MichiColors.accentBlue : MichiColors.textMuted
-                    font.pixelSize: 12; font.weight: MichiTypography.weightBold
-                }
-            }
+        MichiIconButton {
+            iconText: "S"
+            tooltipText: "Aleatorio"
+            selected: root.shuffleEnabled
+            btnSize: 34
+            onClicked: root.shuffleClicked()
         }
 
-        ActionButton {
-            text: "<<"
-            variant: "ghost"; width: 34; height: 34
+        MichiIconButton {
+            iconText: "<<"
+            tooltipText: "Anterior"
+            btnSize: 34
             onClicked: root.prevClicked()
         }
 
-        ActionButton {
-            text: root.isPlaying ? "||" : ">"
-            variant: "primary"; width: 44; height: 44; radius: 22
-            onClicked: root.playClicked()
+        Rectangle {
+            width: 44
+            height: 44
+            radius: MichiTheme.radiusPill
+            color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
+            Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
+
+            Text {
+                anchors.centerIn: parent
+                text: root.isPlaying ? "||" : ">"
+                font.pixelSize: 18
+                font.weight: MichiTheme.typography.weightBold
+                color: MichiTheme.colors.textOnAccent
+            }
+            MouseArea {
+                id: maPlay
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.playClicked()
+            }
         }
 
-        ActionButton {
-            text: ">>"
-            variant: "ghost"; width: 34; height: 34
+        MichiIconButton {
+            iconText: ">>"
+            tooltipText: "Siguiente"
+            btnSize: 34
             onClicked: root.nextClicked()
         }
 
-        Item {
-            width: 34; height: 34
-            GlassMaterial {
-                anchors.fill: parent; radius: 17
-                variant: root.repeatMode !== "none" ? "accent" : "status"
-                hovered: repeatMouse.containsMouse
-                interactive: true
-                MouseArea {
-                    id: repeatMouse; anchors.fill: parent
-                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.repeatClicked()
-                }
-                Text {
-                    anchors.centerIn: parent
-                    text: root.repeatMode === "one" ? "1" : "R"
-                    color: root.repeatMode !== "none" ? MichiColors.accentBlue : MichiColors.textMuted
-                    font.pixelSize: 12; font.weight: MichiTypography.weightBold
-                }
-            }
+        MichiIconButton {
+            iconText: root.repeatMode === "one" ? "1" : "R"
+            tooltipText: "Repetir"
+            selected: root.repeatMode !== "none"
+            btnSize: 34
+            onClicked: root.repeatClicked()
         }
     }
 }

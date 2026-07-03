@@ -12,28 +12,29 @@ Item {
         : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
     )
 
-    height: 64
+    height: MichiTheme.nowPlayingHeight
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0.02, 0.03, 0.05, 0.95)
+        color: MichiTheme.colors.surfaceToolbar
 
         Rectangle {
             anchors.top: parent.top
-            width: parent.width; height: 1
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.04)
+            width: parent.width
+            height: MichiTheme.borderWidth
+            color: MichiTheme.colors.borderSubtle
         }
 
         Row {
             anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.md
-            anchors.rightMargin: MichiSpacing.md
-            spacing: MichiSpacing.md
+            anchors.leftMargin: MichiTheme.spacing.md
+            anchors.rightMargin: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.md
 
             Row {
                 width: parent.width * 0.28
                 height: parent.height
-                spacing: MichiSpacing.md
+                spacing: MichiTheme.spacing.md
 
                 NowPlayingCover {
                     anchors.verticalCenter: parent.verticalCenter

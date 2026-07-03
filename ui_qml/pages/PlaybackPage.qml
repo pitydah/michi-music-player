@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import "../theme"
 import "../components"
-import "../materials"
 
 Item {
     id: root
@@ -11,81 +10,91 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Text {
                 text: "Reproducción"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.pageTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
-            GlassMaterial {
+            MichiGlassPanel {
                 width: parent.width
                 height: 200
-                radius: 16
-                variant: "hero"
 
                 Column {
                     anchors.centerIn: parent
-                    spacing: MichiSpacing.md
+                    spacing: MichiTheme.spacing.md
                     width: parent.width * 0.80
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: root.playbackBridge ? root.playbackBridge.trackTitle : "Sin reproducción"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.sectionTitleSize
-                        font.weight: MichiTypography.weightSemiBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
                         elide: Text.ElideRight
                     }
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: root.playbackBridge ? root.playbackBridge.trackArtist : ""
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
                         visible: text !== ""
                     }
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: root.playbackBridge ? root.playbackBridge.trackAlbum : ""
-                        color: MichiColors.textMuted
-                        font.pixelSize: MichiTypography.metaSize
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
                     }
 
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: MichiSpacing.md
+                        spacing: MichiTheme.spacing.md
 
-                        ActionButton {
-                            text: "<<"
-                            variant: "ghost"
-                            width: 40; height: 40
+                        MichiIconButton {
+                            iconText: "<<"
+                            tooltipText: "Anterior"
+                            btnSize: 40
                             onClicked: { if (root.playbackBridge) root.playbackBridge.previous() }
                         }
 
-                        ActionButton {
-                            text: root.playbackBridge && root.playbackBridge.isPlaying ? "||" : ">"
-                            variant: "primary"
-                            width: 52; height: 52; radius: 26
-                            onClicked: { if (root.playbackBridge) root.playbackBridge.togglePlay() }
+                        Rectangle {
+                            width: 52; height: 52
+                            radius: MichiTheme.radiusPill
+                            color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
+                            Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.playbackBridge && root.playbackBridge.isPlaying ? "||" : ">"
+                                font.pixelSize: 20
+                                font.weight: MichiTheme.typography.weightBold
+                                color: MichiTheme.colors.textOnAccent
+                            }
+                            MouseArea {
+                                id: maPlay; anchors.fill: parent
+                                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: { if (root.playbackBridge) root.playbackBridge.togglePlay() }
+                            }
                         }
 
-                        ActionButton {
-                            text: ">>"
-                            variant: "ghost"
-                            width: 40; height: 40
+                        MichiIconButton {
+                            iconText: ">>"
+                            tooltipText: "Siguiente"
+                            btnSize: 40
                             onClicked: { if (root.playbackBridge) root.playbackBridge.next() }
                         }
                     }
@@ -94,30 +103,30 @@ Item {
 
             SectionHeader { text: "Cola"; width: parent.width }
 
-            GlassMaterial {
+            GlassPanel {
                 width: parent.width
-                radius: 12
-                variant: "base"
                 height: 120
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: MichiSpacing.lg
-                    spacing: MichiSpacing.sm
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.sm
 
                     Repeater {
                         model: root.playbackBridge ? root.playbackBridge.queue.slice(0, 5) : []
 
                         Row {
-                            width: parent.width; height: 24; spacing: MichiSpacing.sm
+                            width: parent.width; height: 24; spacing: MichiTheme.spacing.sm
                             Text {
                                 text: modelData.title || "—"
-                                color: MichiColors.textPrimary; font.pixelSize: MichiTypography.metaSize
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.metaSize
                                 elide: Text.ElideRight; width: parent.width * 0.5
                             }
                             Text {
                                 text: modelData.artist || ""
-                                color: MichiColors.textSecondary; font.pixelSize: MichiTypography.metaSize
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.metaSize
                                 elide: Text.ElideRight; width: parent.width * 0.4
                             }
                         }
@@ -125,7 +134,8 @@ Item {
 
                     Text {
                         text: root.playbackBridge && root.playbackBridge.queue.length === 0 ? "Cola vacía" : ""
-                        color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
                     }
                 }
@@ -134,8 +144,11 @@ Item {
             SectionHeader { text: "Historial"; width: parent.width }
 
             Text {
-                text: root.playbackBridge && root.playbackBridge.history.length > 0 ? root.playbackBridge.history.length + " canciones" : "Sin historial"
-                color: MichiColors.textMuted; font.pixelSize: MichiTypography.bodySize
+                text: root.playbackBridge && root.playbackBridge.history.length > 0
+                      ? root.playbackBridge.history.length + " canciones"
+                      : "Sin historial"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
             }
         }
     }
