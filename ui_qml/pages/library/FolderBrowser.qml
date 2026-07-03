@@ -50,7 +50,7 @@ Item {
 
                         Rectangle {
                             width: 24; height: 24; radius: MichiTheme.radiusXs
-                            color: Qt.rgba(1.0, 1.0, 1.0, 0.04)
+                            color: MichiTheme.colors.borderInner
                             anchors.verticalCenter: parent.verticalCenter
                             Text {
                                 anchors.centerIn: parent

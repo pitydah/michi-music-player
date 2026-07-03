@@ -169,6 +169,44 @@ PAGE_FILES = [
 ]
 
 
+class TestLibraryComponents:
+    LIBRARY_FILES = [
+        "pages/library/LibraryPage.qml",
+        "pages/library/SongTable.qml",
+        "pages/library/SongRow.qml",
+        "pages/library/AlbumGrid.qml",
+        "pages/library/AlbumCard.qml",
+        "pages/library/ArtistList.qml",
+        "pages/library/ArtistCard.qml",
+        "pages/library/FolderBrowser.qml",
+        "pages/library/ArtistDetailPage.qml",
+        "pages/library/AlbumDetailPage.qml",
+    ]
+
+    INSTANTIABLE = [
+        "pages/library/SongTable.qml",
+        "pages/library/SongRow.qml",
+        "pages/library/FolderBrowser.qml",
+    ]
+
+    def test_all_library_files_exist(self):
+        for rel_path in self.LIBRARY_FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing library file: {p}"
+
+    def test_song_table_instantiate(self, engine):
+        component = _load_qml(engine, "pages/library/SongTable.qml")
+        assert component.isReady()
+
+    def test_song_row_instantiate(self, engine):
+        component = _load_qml(engine, "pages/library/SongRow.qml")
+        assert component.isReady()
+
+    def test_folder_browser_instantiate(self, engine):
+        component = _load_qml(engine, "pages/library/FolderBrowser.qml")
+        assert component.isReady()
+
+
 class TestPageFiles:
     def test_all_pages_exist(self):
         for rel_path in PAGE_FILES:

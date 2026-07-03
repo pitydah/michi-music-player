@@ -41,7 +41,7 @@ Item {
                 width: parent.width
                 height: width
                 radius: MichiTheme.radiusPill
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
+                color: MichiTheme.colors.borderInner
                 clip: true
 
                 CoverBridge {
@@ -55,7 +55,7 @@ Item {
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: 32
                     font.weight: MichiTheme.typography.weightBold
-                    visible: !root.coverId && parent.source === ""
+                    visible: !root.coverId
                 }
             }
 
