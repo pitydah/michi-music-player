@@ -10,6 +10,11 @@ from core.home.home_dashboard_service import HomeDashboardService
 from core.home.home_status import LibraryHomeStatus, EcosystemHomeStatus
 
 
+@pytest.fixture(autouse=True)
+def default_safe_mode_off(monkeypatch):
+    monkeypatch.delenv("MICHI_SAFE_MODE", raising=False)
+
+
 @pytest.fixture
 def empty_db():
     db = MagicMock()
