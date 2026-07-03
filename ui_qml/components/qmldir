@@ -1,7 +1,6 @@
 GlassPanel 1.0 GlassPanel.qml
 GlassCard 1.0 GlassCard.qml
 HeroPanel 1.0 HeroPanel.qml
-ActionButton 1.0 ActionButton.qml
 StatusBadge 1.0 StatusBadge.qml
 EmptyState 1.0 EmptyState.qml
 SearchField 1.0 SearchField.qml

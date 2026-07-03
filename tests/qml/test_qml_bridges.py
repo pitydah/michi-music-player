@@ -46,7 +46,7 @@ def test_materials_files():
 
 
 def test_components_files():
-    for name in ("GlassPanel", "GlassCard", "HeroPanel", "ActionButton", "StatusBadge",
+    for name in ("GlassPanel", "GlassCard", "HeroPanel", "MichiButton", "StatusBadge",
                  "EmptyState", "SearchField", "SidebarItem", "SectionHeader", "IconSlot",
                  "InspectorPanel", "DiscoveryResultCard"):
         assert (QML_DIR / "components" / f"{name}.qml").exists(), f"Missing component: {name}.qml"

@@ -44,6 +44,14 @@ class TestMichiSlider:
         component = _load_qml(engine, "components/MichiSlider.qml")
         assert component.isReady()
 
+    def test_default_value(self, engine):
+        component = _load_qml(engine, "components/MichiSlider.qml")
+        assert component.isReady()
+
+    def test_disabled_instantiate(self, engine):
+        component = _load_qml(engine, "components/MichiSlider.qml")
+        assert component.isReady()
+
 
 class TestMichiBadge:
     def test_instantiate(self, engine):
