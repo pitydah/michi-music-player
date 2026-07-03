@@ -553,6 +553,37 @@ class TestRemainingRisks:
         assert EqBridge is not None
 
 
+class TestSprintNewPages:
+    FILES = [
+        "pages/DiscLabPage.qml",
+    ]
+
+    BRIDGES_IMPORTABLE = [
+        "library_doctor_bridge",
+    ]
+
+    def test_disc_lab_page_exists(self):
+        p = QML_DIR / "pages" / "DiscLabPage.qml"
+        assert p.exists(), "Missing DiscLabPage.qml"
+
+    def test_disc_lab_instantiate(self, engine):
+        component = _load_qml(engine, "pages/DiscLabPage.qml")
+        assert component.isReady()
+
+    def test_library_doctor_bridge_importable(self):
+        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
+        assert LibraryDoctorBridge is not None
+
+    def test_playlists_has_create_dialog(self):
+        content = (QML_DIR / "pages" / "playlists" / "PlaylistsPage.qml").read_text()
+        assert "Dialog" in content, "PlaylistsPage missing create dialog"
+        assert "nameInput" in content, "PlaylistsPage missing name input"
+
+    def test_playlists_create_dialog_no_auto_name(self):
+        content = (QML_DIR / "pages" / "playlists" / "PlaylistsPage.qml").read_text()
+        assert 'createPlaylist("Nueva playlist")' not in content, "PlaylistsPage still uses auto-generated name"
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"

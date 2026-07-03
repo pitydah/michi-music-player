@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -8,6 +9,7 @@ Item {
     id: root
 
     property var pl: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
+    property string _newName: ""
 
     Component.onCompleted: {
         if (root.pl && typeof root.pl.refresh !== "undefined")
@@ -41,11 +43,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     text: "+ Nueva playlist"; variant: "primary"
-                    onClicked: {
-                        if (root.pl && typeof root.pl.createPlaylist !== "undefined") {
-                            root.pl.createPlaylist("Nueva playlist")
-                        }
-                    }
+                    onClicked: createDialog.open()
                 }
                 MichiButton { text: "Importar M3U"; variant: "secondary" }
             }
@@ -73,5 +71,33 @@ Item {
 
             StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
         }
+    }
+
+    Dialog {
+        id: createDialog
+        title: "Nueva playlist"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        modal: true
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 3
+
+        Column {
+            spacing: MichiTheme.spacing.md
+            Text { text: "Ingresa el nombre de la playlist:"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+            TextField {
+                id: nameInput
+                width: 280
+                placeholderText: "Mi nueva playlist"
+                onAccepted: createDialog.accept()
+            }
+        }
+
+        onAccepted: {
+            var name = nameInput.text.trim()
+            if (name !== "" && root.pl && typeof root.pl.createPlaylist !== "undefined")
+                root.pl.createPlaylist(name)
+            nameInput.text = ""
+        }
+        onRejected: { nameInput.text = "" }
     }
 }

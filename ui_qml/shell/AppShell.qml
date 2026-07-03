@@ -27,6 +27,7 @@ Item {
             "playlist_detail": "Playlist",
             "eq": "Ecualizador",
             "library_doctor": "Library Doctor",
+            "disc_lab": "Disc Lab",
             "output_profiles": "Perfiles de salida",
             "smart_tagging": "Smart Tagging",
         }

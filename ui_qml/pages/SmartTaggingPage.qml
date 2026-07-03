@@ -49,28 +49,44 @@ Item {
 
             GlassCard {
                 width: parent.width; height: 70
-                title: "Analizar archivo"
-                subtitle: root.selectedFile ? "Archivo: " + root.selectedFile : "Selecciona un archivo de audio"
+                title: root.selectedFile ? "Archivo seleccionado" : "Analizar archivo"
+                subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : "Selecciona un archivo de audio"
                 variant: root.selectedFile ? "accent" : "base"
                 onClicked: fileDialog.open()
             }
 
-            MichiButton {
-                text: "Seleccionar archivo de audio"
-                variant: "primary"
-                width: parent.width
-                onClicked: fileDialog.open()
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: "Seleccionar archivo"
+                    variant: "primary"
+                    onClicked: fileDialog.open()
+                }
+                MichiButton {
+                    text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
+                    variant: "secondary"
+                    enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
+                    onClicked: {
+                        if (root.stb && typeof root.stb.scanTrack !== "undefined" && root.selectedFile)
+                            root.stb.scanTrack(root.selectedFile)
+                    }
+                }
+                MichiButton {
+                    text: "Limpiar"
+                    variant: "ghost"
+                    visible: root.selectedFile !== ""
+                    onClicked: root.selectedFile = ""
+                }
             }
 
-            MichiButton {
-                text: "Escanear"
-                variant: "secondary"
-                width: parent.width
-                enabled: root.selectedFile !== ""
-                onClicked: {
-                    if (root.stb && typeof root.stb.scanTrack !== "undefined" && root.selectedFile)
-                        root.stb.scanTrack(root.selectedFile)
-                }
+            StatusBadge {
+                text: root.stb && root.stb.status === "scanning" ? "Escaneando..." :
+                      root.stb && root.stb.status === "done" ? "Análisis completado" :
+                      root.stb && root.stb.status === "error" ? "Error en escaneo" :
+                      root.stb && root.stb.status === "unavailable" ? "Servicio no disponible" : ""
+                kind: root.stb && root.stb.status === "done" ? "success" :
+                      root.stb && (root.stb.status === "error" || root.stb.status === "unavailable") ? "error" : "info"
+                visible: root.stb && root.stb.status !== "idle"
             }
 
             SectionHeader { text: "Sugerencias"; width: parent.width }
