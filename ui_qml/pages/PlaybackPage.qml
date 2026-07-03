@@ -66,7 +66,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiIconButton {
-                            iconSource: "icons/nowplaying_clean/warm_prev_32.png"
+                            iconSource: "../icons/nowplaying_clean/warm_prev_32.png"
                             iconText: "<<"
                             tooltipText: "Anterior"
                             btnSize: 40
@@ -84,8 +84,8 @@ Item {
                                 width: 24
                                 height: 24
                                 source: root.playbackBridge && root.playbackBridge.isPlaying
-                                    ? "icons/nowplaying_clean/warm_pause_32.png"
-                                    : "icons/nowplaying_clean/warm_play_32.png"
+                                    ? "../icons/nowplaying_clean/warm_pause_32.png"
+                                    : "../icons/nowplaying_clean/warm_play_32.png"
                                 sourceSize.width: 32
                                 sourceSize.height: 32
                                 fillMode: Image.PreserveAspectFit
@@ -99,7 +99,7 @@ Item {
                         }
 
                         MichiIconButton {
-                            iconSource: "icons/nowplaying_clean/warm_next_32.png"
+                            iconSource: "../icons/nowplaying_clean/warm_next_32.png"
                             iconText: ">>"
                             tooltipText: "Siguiente"
                             btnSize: 40

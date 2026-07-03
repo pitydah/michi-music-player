@@ -35,10 +35,10 @@ Item {
                     width: 16
                     height: 16
                     source: root.muted || root.volume === 0
-                        ? "icons/nowplaying_clean/warm_mute_32.png"
+                        ? "../../icons/nowplaying_clean/warm_mute_32.png"
                         : root.volume < 40
-                            ? "icons/nowplaying_clean/warm_vol_low_32.png"
-                            : "icons/nowplaying_clean/warm_vol_high_32.png"
+                            ? "../../icons/nowplaying_clean/warm_vol_low_32.png"
+                            : "../../icons/nowplaying_clean/warm_vol_high_32.png"
                     sourceSize.width: 32
                     sourceSize.height: 32
                     fillMode: Image.PreserveAspectFit

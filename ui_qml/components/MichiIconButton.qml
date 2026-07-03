@@ -30,7 +30,7 @@ Rectangle {
         anchors.centerIn: parent
         width: 18
         height: 18
-        source: root.iconSource
+        source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : ""
         visible: root.iconSource !== ""
         sourceSize.width: 32
         sourceSize.height: 32
