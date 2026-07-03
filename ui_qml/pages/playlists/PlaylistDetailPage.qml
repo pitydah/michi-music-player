@@ -11,12 +11,14 @@ Item {
     property int playlistId: -1
     property var bridge: null
     property var tracks: []
+    property bool _confirmDelete: false
 
     signal backRequested()
 
     function loadPlaylist(pid, title) {
         playlistId = pid
         playlistTitle = title
+        _confirmDelete = false
         if (root.bridge && typeof root.bridge.getPlaylistDetail !== "undefined") {
             var result = root.bridge.getPlaylistDetail(pid)
             if (result && result.ok) {
@@ -54,19 +56,28 @@ Item {
                 }
                 MichiButton {
                     text: "Editar"; variant: "secondary"
+                    enabled: false
+                }
+                MichiButton {
+                    text: root._confirmDelete ? "Confirmar eliminación" : "Eliminar"
+                    variant: root._confirmDelete ? "danger" : "ghost"
                     onClicked: {
-                        if (root.bridge && typeof root.bridge.renamePlaylist !== "undefined" && root.playlistId >= 0)
-                            root.bridge.renamePlaylist(root.playlistId, root.playlistTitle + " (editada)")
+                        if (!root._confirmDelete) {
+                            root._confirmDelete = true
+                        } else {
+                            if (root.bridge && typeof root.bridge.deletePlaylist !== "undefined" && root.playlistId >= 0) {
+                                root.bridge.deletePlaylist(root.playlistId)
+                                root.backRequested()
+                            }
+                            root._confirmDelete = false
+                        }
                     }
                 }
                 MichiButton {
-                    text: "Eliminar"; variant: "ghost"
-                    onClicked: {
-                        if (root.bridge && typeof root.bridge.deletePlaylist !== "undefined" && root.playlistId >= 0) {
-                            root.bridge.deletePlaylist(root.playlistId)
-                            root.backRequested()
-                        }
-                    }
+                    text: "Cancelar"
+                    variant: "ghost"
+                    visible: root._confirmDelete
+                    onClicked: root._confirmDelete = false
                 }
             }
 
