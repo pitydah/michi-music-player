@@ -7,13 +7,13 @@ import "../materials"
 Item {
     id: root
 
-    property var settingsBridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
+    property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
 
     signal closeRequested()
 
     Component.onCompleted: {
-        if (root.settingsBridge && typeof root.settingsBridge.refresh !== "undefined")
-            root.settingsBridge.refresh()
+        if (root.stg && typeof root.stg.refresh !== "undefined")
+            root.stg.refresh()
     }
 
     Flickable {
@@ -35,7 +35,7 @@ Item {
             }
 
             Repeater {
-                model: root.settingsBridge ? root.settingsBridge.sections : []
+                model: root.stg ? root.stg.sections : []
 
                 GlassCard {
                     width: parent.width; height: 70

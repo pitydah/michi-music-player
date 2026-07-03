@@ -7,7 +7,7 @@ import "../materials"
 Item {
     id: root
 
-    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
+    property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
     property string _filterText: ""
 
     function doSearch(text) {
@@ -15,8 +15,8 @@ Item {
     }
 
     Component.onCompleted: {
-        if (root.radioBridge && typeof root.radioBridge.refresh !== "undefined")
-            root.radioBridge.refresh()
+        if (root.rd && typeof root.rd.refresh !== "undefined")
+            root.rd.refresh()
     }
 
     Flickable {
@@ -51,7 +51,7 @@ Item {
             SectionHeader { text: "Favoritas"; width: parent.width }
 
             Repeater {
-                model: root.radioBridge ? root.radioBridge.favorites : []
+                model: root.rd ? root.rd.favorites : []
 
                 GlassCard {
                     width: parent.width; height: 60
@@ -60,8 +60,8 @@ Item {
                     variant: "base"
                     interactive: true
                     onClicked: {
-                        if (root.radioBridge && typeof root.radioBridge.playStation !== "undefined")
-                            root.radioBridge.playStation(modelData.url)
+                        if (root.rd && typeof root.rd.playStation !== "undefined")
+                            root.rd.playStation(modelData.url)
                     }
                 }
             }
@@ -70,14 +70,14 @@ Item {
                 text: "No hay emisoras favoritas."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
-                visible: root.radioBridge && root.radioBridge.favorites.length === 0
+                visible: root.rd && root.rd.favorites.length === 0
             }
 
             SectionHeader { text: "Todas las emisoras"; width: parent.width }
 
             Repeater {
                 model: {
-                    var all = root.radioBridge ? root.radioBridge.stations : []
+                    var all = root.rd ? root.rd.stations : []
                     if (root._filterText === "") return all
                     var filtered = []
                     for (var i = 0; i < all.length; i++) {
@@ -96,8 +96,8 @@ Item {
                     variant: "base"
                     interactive: true
                     onClicked: {
-                        if (root.radioBridge && typeof root.radioBridge.playStation !== "undefined")
-                            root.radioBridge.playStation(modelData.url)
+                        if (root.rd && typeof root.rd.playStation !== "undefined")
+                            root.rd.playStation(modelData.url)
                     }
                 }
             }
@@ -108,7 +108,7 @@ Item {
                       : "No hay emisoras configuradas. Agrega una URL para comenzar."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
-                visible: root.radioBridge && root.radioBridge.stations.length === 0
+                visible: root.rd && root.rd.stations.length === 0
             }
 
             StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }

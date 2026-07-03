@@ -7,11 +7,11 @@ import "../../materials"
 Item {
     id: root
 
-    property var playlistsBridge: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
+    property var pl: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
 
     Component.onCompleted: {
-        if (root.playlistsBridge && typeof root.playlistsBridge.refresh !== "undefined")
-            root.playlistsBridge.refresh()
+        if (root.pl && typeof root.pl.refresh !== "undefined")
+            root.pl.refresh()
     }
 
     Flickable {
@@ -42,8 +42,8 @@ Item {
                 MichiButton {
                     text: "+ Nueva playlist"; variant: "primary"
                     onClicked: {
-                        if (root.playlistsBridge && typeof root.playlistsBridge.createPlaylist !== "undefined") {
-                            root.playlistsBridge.createPlaylist("Nueva playlist")
+                        if (root.pl && typeof root.pl.createPlaylist !== "undefined") {
+                            root.pl.createPlaylist("Nueva playlist")
                         }
                     }
                 }
@@ -56,7 +56,7 @@ Item {
                 width: parent.width; spacing: MichiTheme.spacing.md
 
                 Repeater {
-                    model: root.playlistsBridge ? root.playlistsBridge.playlists : []
+                    model: root.pl ? root.pl.playlists : []
 
                     PlaylistCard {
                         playlistTitle: modelData.title || ""

@@ -7,7 +7,7 @@ import "../materials"
 Item {
     id: root
 
-    property var smartTaggingBridge: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
+    property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
 
     Flickable {
         anchors.fill: parent
@@ -55,7 +55,7 @@ Item {
             SectionHeader { text: "Sugerencias"; width: parent.width }
 
             Repeater {
-                model: root.smartTaggingBridge ? root.smartTaggingBridge.suggestions : []
+                model: root.stb ? root.stb.suggestions : []
 
                 GlassMaterial {
                     width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: "base"
@@ -83,7 +83,7 @@ Item {
             Text {
                 text: "No hay sugerencias. Escanea un archivo para comenzar."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                visible: root.smartTaggingBridge && root.smartTaggingBridge.suggestions.length === 0
+                visible: root.stb && root.stb.suggestions.length === 0
             }
 
             GlassMaterial {

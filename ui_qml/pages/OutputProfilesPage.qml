@@ -7,7 +7,7 @@ import "../materials"
 Item {
     id: root
 
-    property var settingsBridge: typeof settingsBridge !== "undefined" ? settingsBridge : null
+    property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
 
     Flickable {
         anchors.fill: parent
@@ -37,17 +37,17 @@ Item {
             }
 
             Repeater {
-                model: root.settingsBridge ? root.settingsBridge.outputProfiles : []
+                model: root.stg ? root.stg.outputProfiles : []
 
                 GlassCard {
                     width: parent.width
                     height: 80
                     title: modelData.name || ""
                     subtitle: modelData.description || ""
-                    variant: modelData.key === (root.settingsBridge ? root.settingsBridge.getActiveProfile() : "")
+                    variant: modelData.key === (root.stg ? root.stg.getActiveProfile() : "")
                              ? "accent" : "base"
                     onClicked: {
-                        if (root.settingsBridge) root.settingsBridge.setActiveProfile(modelData.key)
+                        if (root.stg) root.stg.setActiveProfile(modelData.key)
                     }
                 }
             }

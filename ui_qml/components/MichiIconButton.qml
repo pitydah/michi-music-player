@@ -9,7 +9,6 @@ Rectangle {
     property string iconSource: ""
     property string tooltipText: ""
     property bool selected: false
-    property bool enabled: true
     property int btnSize: 36
 
     signal clicked()

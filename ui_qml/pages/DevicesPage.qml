@@ -8,11 +8,11 @@ import "devices"
 Item {
     id: root
 
-    property var devicesBridge: typeof devicesBridge !== "undefined" ? devicesBridge : null
+    property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
 
     Component.onCompleted: {
-        if (root.devicesBridge && typeof root.devicesBridge.refresh !== "undefined")
-            root.devicesBridge.refresh()
+        if (root.dv && typeof root.dv.refresh !== "undefined")
+            root.dv.refresh()
     }
 
     Flickable {
@@ -32,17 +32,17 @@ Item {
 
             SyncStatusPanel {
                 width: parent.width
-                serverActive: root.devicesBridge ? root.devicesBridge.serverActive : false
-                serverPort: root.devicesBridge ? root.devicesBridge.serverPort : 53318
-                peerCount: root.devicesBridge ? root.devicesBridge.peers.length : 0
-                onStartServer: { if (root.devicesBridge) root.devicesBridge.startServer() }
-                onStopServer: { if (root.devicesBridge) root.devicesBridge.stopServer() }
+                serverActive: root.dv ? root.dv.serverActive : false
+                serverPort: root.dv ? root.dv.serverPort : 53318
+                peerCount: root.dv ? root.dv.peers.length : 0
+                onStartServer: { if (root.dv) root.dv.startServer() }
+                onStopServer: { if (root.dv) root.dv.stopServer() }
             }
 
             SectionHeader { text: "Dispositivos vinculados"; width: parent.width }
 
             Repeater {
-                model: root.devicesBridge ? root.devicesBridge.pairedDevices : []
+                model: root.dv ? root.dv.pairedDevices : []
 
                 DeviceCard {
                     width: parent.width
@@ -56,13 +56,13 @@ Item {
                 text: "No hay dispositivos vinculados. Inicia el servidor y usa la app Android para conectar."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
-                visible: root.devicesBridge && root.devicesBridge.pairedDevices.length === 0
+                visible: root.dv && root.dv.pairedDevices.length === 0
             }
 
             SectionHeader { text: "Detectados en la red"; width: parent.width }
 
             Repeater {
-                model: root.devicesBridge ? root.devicesBridge.peers : []
+                model: root.dv ? root.dv.peers : []
 
                 DeviceCard {
                     width: parent.width
@@ -78,7 +78,7 @@ Item {
                 text: "No se encontraron dispositivos en la red."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
-                visible: root.devicesBridge && root.devicesBridge.peers.length === 0
+                visible: root.dv && root.dv.peers.length === 0
             }
         }
     }

@@ -27,3 +27,10 @@ Thumbs.db
 *.tmpl.
 .venv/
 .vscode/
+node_modules/
+package-lock.json
+package.json
+.webui_secret_key
+.webui_secret_key
+package-lock.json
+package.json

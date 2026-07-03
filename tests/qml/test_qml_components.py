@@ -471,6 +471,71 @@ class TestOutputProfilesSmartTagging:
         assert component.isReady()
 
 
+class TestRuntimeBlockerFixes:
+    def test_library_page_has_layouts_import(self):
+        content = (QML_DIR / "pages" / "library" / "LibraryPage.qml").read_text()
+        assert "import QtQuick.Layouts" in content, "LibraryPage missing QtQuick.Layouts import"
+
+    def test_home_audio_page_has_layouts_import(self):
+        content = (QML_DIR / "pages" / "home_audio" / "HomeAudioPage.qml").read_text()
+        assert "import QtQuick.Layouts" in content, "HomeAudioPage missing QtQuick.Layouts import"
+
+    def test_no_bridge_binding_loops(self):
+        import re
+        pages = list((QML_DIR / "pages").rglob("*.qml"))
+        violations = []
+        for p in pages:
+            text = p.read_text()
+            matches = re.findall(r'property var (\w+Bridge): typeof \w+Bridge', text)
+            for m in matches:
+                violations.append(f"{p.relative_to(QML_DIR)}: {m}")
+        assert not violations, "Bridge binding loop pattern found:\n" + "\n".join(violations)
+
+    def test_no_placeholder_text_on_text_input(self):
+        pages = list((QML_DIR / "pages").rglob("*.qml"))
+        for p in pages:
+            text = p.read_text()
+            if "TextInput" in text and "placeholderText" in text:
+                # Verify it's not TextInput.placeholderText (only TextField has it)
+                lines = text.split("\n")
+                for i, line in enumerate(lines):
+                    if "TextInput" in line.strip():
+                        for j in range(i, min(i + 15, len(lines))):
+                            if "placeholderText" in lines[j] and not lines[j].strip().startswith("//"):
+                                assert False, f"{p.relative_to(QML_DIR)}:{j+1}: TextInput cannot have placeholderText"
+
+    def test_michi_icon_button_no_enabled_override(self):
+        content = (QML_DIR / "components" / "MichiIconButton.qml").read_text()
+        assert "property bool enabled" not in content, "MichiIconButton still overrides enabled"
+
+    def test_glass_card_has_interactive_property(self):
+        content = (QML_DIR / "components" / "GlassCard.qml").read_text()
+        assert "property bool interactive" in content, "GlassCard missing interactive property"
+
+    def test_metadata_inspector_no_duplicate_width(self):
+        lines = (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").read_text().split("\n")
+        in_component = False
+        width_count = 0
+        for line in lines:
+            if "Component {" in line and "emptyComponent" in lines[lines.index(line)-1] if lines.index(line) > 0 else False:
+                in_component = True
+            stripped = line.strip()
+            if stripped.startswith("width:") and in_component:
+                width_count += 1
+        assert width_count <= 1, f"EmptyComponent has {width_count} width assignments (should be 1)"
+
+    def test_no_ui_qml_icon_paths(self):
+        pages = list((QML_DIR / "pages").rglob("*.qml"))
+        components = list((QML_DIR / "components").rglob("*.qml"))
+        all_files = pages + components
+        violations = []
+        for p in all_files:
+            text = p.read_text()
+            if '"ui_qml/icons' in text or "'ui_qml/icons" in text:
+                violations.append(str(p.relative_to(QML_DIR)))
+        assert not violations, f"Files referencing ui_qml/icons path: {violations}"
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
