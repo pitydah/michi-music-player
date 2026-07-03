@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import "theme"
 
 Window {
     id: mainWindow
@@ -7,7 +8,7 @@ Window {
     width: 1440
     height: 900
     title: "Michi Music Player (QML Experimental)"
-    color: "#070A10"
+    color: MichiTheme.colors.bgApp
     minimumWidth: 1024
     minimumHeight: 640
 

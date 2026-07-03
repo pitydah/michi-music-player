@@ -44,7 +44,7 @@
 | `MichiButton` no tiene test de `variant` específico | Baja | Cubierto por test de instanciación |
 | `MichiSlider` no testea `stepSize`/`moved(value)` | Baja | Agregar test |
 | `StatusBadge` usa `Qt.rgba` para variantes (sin token) | Baja | No hay token específico para badge backgrounds |
-| `Main.qml` y `MichiApp.qml` tienen colores hardcodeados | Baja | Entry points, aceptable |
+| `Main.qml` y `MichiApp.qml` tienen colores hardcodeados | Baja | ✅ Corregido en polish commit — ahora usan `MichiTheme.colors.bgApp` |
 
 ## Pantallas revisadas
 | Pantalla | Resultado | Observación |
@@ -68,11 +68,11 @@
 | `compileall` | ✅ |
 | `smoke_startup` | ✅ |
 | `smoke_ui_routes` | ✅ |
-| `tests/qml/ -q` | 196 passed |
+| `tests/qml/ -q` | 207 passed |
 | `tests/test_schema.py -q` | 15 passed |
 
 ## Closeout
-- Inconsistencia de conteo QML corregida (186→196).
+- Inconsistencia de conteo QML corregida (186→196→207).
 - Ruff verificado limpio (0 errores).
 - Referencias prohibidas revisadas: 0 ActionButton, 0 imports directos, 0 emojis control.
 - No se tocaron backend/audio/QtWidgets.

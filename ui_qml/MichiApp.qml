@@ -23,7 +23,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#070A10"
+        color: MichiTheme.colors.bgApp
         visible: !bridgesReady
 
         Text {
