@@ -134,14 +134,14 @@ class MpdBackend(QObject):
                 self._client.playpos(0)
                 self._start_poll()
             except MpdConnectionError as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def pause(self):
         try:
             self._ensure()
             self._client.pause(1)
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-            raise BackendPlaybackError(str(e))
+            raise BackendPlaybackError(str(e)) from e
 
     def resume(self):
         try:
@@ -149,7 +149,7 @@ class MpdBackend(QObject):
             self._client.pause(0)
             self._start_poll()
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-            raise BackendPlaybackError(str(e))
+            raise BackendPlaybackError(str(e)) from e
 
     def toggle(self):
         try:
@@ -164,7 +164,7 @@ class MpdBackend(QObject):
                 if status.playlistlength > 0:
                     self._client.playpos(0)
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-            raise BackendPlaybackError(str(e))
+            raise BackendPlaybackError(str(e)) from e
 
     def stop(self):
         try:
@@ -172,14 +172,14 @@ class MpdBackend(QObject):
             self._client.stop()
             self._stop_poll()
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-            raise BackendPlaybackError(str(e))
+            raise BackendPlaybackError(str(e)) from e
 
     def seek(self, seconds: float):
         try:
             self._ensure()
             self._client.seekcur(seconds)
         except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-            raise BackendPlaybackError(str(e))
+            raise BackendPlaybackError(str(e)) from e
 
     def set_volume(self, volume: int):
         raise BackendCapabilityError("Volumen digital bloqueado en MPD bit-perfect")
@@ -198,7 +198,7 @@ class MpdBackend(QObject):
                     self._client.playpos(self._queue_index)
                 self._start_poll()
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def enqueue(self, paths: list[str], play_now: bool = True):
         with self._lock:
@@ -213,7 +213,7 @@ class MpdBackend(QObject):
                     self._queue_index = new_idx
                     self._client.playpos(new_idx)
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def enqueue_next(self, paths: list[str]):
         with self._lock:
@@ -229,7 +229,7 @@ class MpdBackend(QObject):
                 self._local_paths[insert_pos:insert_pos] = paths
                 self._queue_index = st.song
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def clear_queue(self):
         with self._lock:
@@ -239,7 +239,7 @@ class MpdBackend(QObject):
                 self._ensure()
                 self._client.clear()
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def play_next(self) -> bool:
         with self._lock:
@@ -251,7 +251,7 @@ class MpdBackend(QObject):
                     return True
                 return False
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def play_prev(self) -> bool:
         with self._lock:
@@ -263,7 +263,7 @@ class MpdBackend(QObject):
                     return True
                 return False
             except (MpdConnectionError, MpdAckError, MpdProtocolError) as e:
-                raise BackendPlaybackError(str(e))
+                raise BackendPlaybackError(str(e)) from e
 
     def get_queue(self) -> list[dict]:
         try:

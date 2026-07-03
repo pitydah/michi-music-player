@@ -13,9 +13,9 @@ class TestMetadataDoctor:
     def test_suggest_empty_title(self):
         from library.library_db import LibraryDB
         import os
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        db = LibraryDB(tmp.name)
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            tmp_name = tmp.name
+        db = LibraryDB(tmp_name)
         conn = db._conn
         conn.execute("INSERT INTO media_items (directory, ext, kind, filepath, filename, title, artist) "
                      "VALUES ('', '', '', '/song.flac', 'song.flac', '', 'Artist')")
@@ -23,15 +23,15 @@ class TestMetadataDoctor:
         from core.audio_lab.metadata_doctor import suggest_normalizations
         s = suggest_normalizations(conn)
         db.close()
-        os.unlink(tmp.name)
+        os.unlink(tmp_name)
         assert any(x["field"] == "title" for x in s)
 
     def test_suggest_invalid_year(self):
         from library.library_db import LibraryDB
         import os
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        db = LibraryDB(tmp.name)
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            tmp_name = tmp.name
+        db = LibraryDB(tmp_name)
         conn = db._conn
         conn.execute("INSERT INTO media_items (directory, ext, kind, filepath, filename, title, year) "
                      "VALUES ('', '', '', '/song.flac', 'song.flac', 'Song', 9999)")
@@ -39,15 +39,15 @@ class TestMetadataDoctor:
         from core.audio_lab.metadata_doctor import suggest_normalizations
         s = suggest_normalizations(conn)
         db.close()
-        os.unlink(tmp.name)
+        os.unlink(tmp_name)
         assert any(x["field"] == "year" for x in s)
 
     def test_suggest_empty_genre(self):
         from library.library_db import LibraryDB
         import os
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        db = LibraryDB(tmp.name)
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            tmp_name = tmp.name
+        db = LibraryDB(tmp_name)
         conn = db._conn
         conn.execute("INSERT INTO media_items (directory, ext, kind, filepath, filename, title, genre) "
                      "VALUES ('', '', '', '/song.flac', 'song.flac', 'Song', '')")
@@ -55,5 +55,5 @@ class TestMetadataDoctor:
         from core.audio_lab.metadata_doctor import suggest_normalizations
         s = suggest_normalizations(conn)
         db.close()
-        os.unlink(tmp.name)
+        os.unlink(tmp_name)
         assert any(x["field"] == "genre" for x in s)

@@ -155,7 +155,6 @@ class TestGenreIntegration:
         # Step 5: Merge
         result = repo.merge_genres(["Hip Hop", "hiphop"], "Hip-Hop")
         assert result["affected"] > 0
-        tids = repo.get_tracks_for_genre("Hip-Hop")
         # Rock/Alternative Rock should not be affected
         rock_tids = repo.get_tracks_for_genre("Rock")
         assert len(rock_tids) >= 2

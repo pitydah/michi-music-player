@@ -48,7 +48,7 @@ def find_active_hw_params() -> list[AlsaHwParams]:
         return []
 
     results: list[AlsaHwParams] = []
-    for root, dirs, files in os.walk(_PROC_ASOUND):
+    for root, _dirs, files in os.walk(_PROC_ASOUND):
         if "hw_params" in files:
             hw_path = os.path.join(root, "hw_params")
             m = _PCM_PATH_RE.search(hw_path)

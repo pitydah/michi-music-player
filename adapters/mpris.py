@@ -235,12 +235,13 @@ class MPRISObject(dbus.service.Object):
             state = getattr(ps, 'state', None)
             if callable(state):
                 state = state()
-            if state == "playing":
-                return "Playing"
-            elif state == "paused":
-                return "Paused"
-            elif state == "stopped":
-                return "Stopped"
+            mapped = {
+                "playing": "Playing",
+                "paused": "Paused",
+                "stopped": "Stopped",
+            }.get(state)
+            if mapped:
+                return mapped
         if not self._engine:
             return "Stopped"
         s = self._engine.state

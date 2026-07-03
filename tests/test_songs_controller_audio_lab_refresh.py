@@ -29,10 +29,12 @@ class TestSongsControllerAudioLabRefresh:
         svc = MagicMock()
         svc.db = MagicMock()
         songs = SongsController(svc)
-        with patch.object(songs._status_svc, 'invalidate_cache_for_paths') as mock_inv:
-            with patch.object(songs._status_svc, 'compute_batch'):
-                songs.refresh_audio_lab_badges(["/p1.flac"])
-                mock_inv.assert_called_once_with(["/p1.flac"])
+        with (
+            patch.object(songs._status_svc, 'invalidate_cache_for_paths') as mock_inv,
+            patch.object(songs._status_svc, 'compute_batch'),
+        ):
+            songs.refresh_audio_lab_badges(["/p1.flac"])
+            mock_inv.assert_called_once_with(["/p1.flac"])
 
     def test_refresh_llama_compute_batch(self):
         from ui.controllers.songs_controller import SongsController

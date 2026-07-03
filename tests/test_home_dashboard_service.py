@@ -325,7 +325,7 @@ class TestSubtitle:
 
 class TestSettingsKeys:
     def test_home_audio_url_uses_get_str(self):
-        with patch("core.home.home_dashboard_service.logger") as mock_log:
+        with patch("core.home.home_dashboard_service.logger"):
             svc = HomeDashboardService()
             snap = svc.build_snapshot()
             assert snap.ecosystem.home_audio_state in ("disabled", "configured", "active")

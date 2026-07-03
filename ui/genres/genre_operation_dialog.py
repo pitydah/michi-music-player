@@ -107,7 +107,7 @@ class GenreOperationPreviewDialog(QDialog):
               padding: 8px 20px; font-size: 12px; }}
             QPushButton:hover {{ background: rgba(255,255,255,0.08); }}
         """)
-        cancel_btn = buttons.addButton("Cancelar", QDialogButtonBox.RejectRole)
+        buttons.addButton("Cancelar", QDialogButtonBox.RejectRole)
         apply_btn = buttons.addButton("Aplicar", QDialogButtonBox.AcceptRole)
         apply_btn.setStyleSheet(f"""
             QPushButton {{ background: {_ACCENT}; color: #090B11;

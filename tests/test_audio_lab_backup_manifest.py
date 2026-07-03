@@ -13,9 +13,9 @@ class TestBackupManifest:
     def test_generate_manifest_with_real_db(self):
         from library.library_db import LibraryDB
         import os
-        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        tmp.close()
-        db = LibraryDB(tmp.name)
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            tmp_name = tmp.name
+        db = LibraryDB(tmp_name)
         conn = db._conn
         conn.execute("INSERT INTO media_items (directory, ext, kind, filepath, filename, title, artist) "
                      "VALUES ('', '', '', '/a.flac', 'a.flac', 'A', 'X')")
@@ -25,7 +25,7 @@ class TestBackupManifest:
         from core.audio_lab.backup_manifest import generate_manifest
         m = generate_manifest(conn)
         db.close()
-        os.unlink(tmp.name)
+        os.unlink(tmp_name)
         assert len(m) == 2
         assert m[0]["filepath"] == "/a.flac"
         assert m[1]["filepath"] == "/b.flac"

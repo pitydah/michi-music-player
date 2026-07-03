@@ -141,12 +141,15 @@ def _check_rate_match(
     input_fmt: AudioFormatInfo,
     hw_params,
 ):
-    if input_fmt.sample_rate > 0 and hw_params.sample_rate > 0:
-        if input_fmt.sample_rate != hw_params.sample_rate:
-            report.reasons.append(
-                f"Resampling: archivo {input_fmt.sample_rate} Hz, "
-                f"DAC recibe {hw_params.sample_rate} Hz"
-            )
+    if (
+        input_fmt.sample_rate > 0
+        and hw_params.sample_rate > 0
+        and input_fmt.sample_rate != hw_params.sample_rate
+    ):
+        report.reasons.append(
+            f"Resampling: archivo {input_fmt.sample_rate} Hz, "
+            f"DAC recibe {hw_params.sample_rate} Hz"
+        )
 
 
 _FORMAT_DEPTH_MAP = {
@@ -168,12 +171,15 @@ def _check_channels_match(
     input_fmt: AudioFormatInfo,
     hw_params,
 ):
-    if input_fmt.channels > 0 and hw_params.channels > 0:
-        if input_fmt.channels != hw_params.channels:
-            report.reasons.append(
-                f"Canales distintos: archivo {input_fmt.channels}, "
-                f"DAC recibe {hw_params.channels}"
-            )
+    if (
+        input_fmt.channels > 0
+        and hw_params.channels > 0
+        and input_fmt.channels != hw_params.channels
+    ):
+        report.reasons.append(
+            f"Canales distintos: archivo {input_fmt.channels}, "
+            f"DAC recibe {hw_params.channels}"
+        )
 
 
 def _check_format_match(
