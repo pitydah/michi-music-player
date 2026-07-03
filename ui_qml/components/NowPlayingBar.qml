@@ -16,13 +16,13 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.surfaceToolbar
+        color: "#0F1219"
 
         Rectangle {
             anchors.top: parent.top
             width: parent.width
             height: MichiTheme.borderWidth
-            color: MichiTheme.colors.borderSubtle
+            color: MichiTheme.colors.accentBlue
         }
 
         Row {
