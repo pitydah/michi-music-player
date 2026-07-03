@@ -276,6 +276,33 @@ class TestNowPlayingComponents:
         assert component.isReady()
 
 
+class TestPlaylistsComponents:
+    PLAYLISTS_FILES = [
+        "pages/playlists/PlaylistsPage.qml",
+        "pages/playlists/PlaylistDetailPage.qml",
+        "pages/playlists/PlaylistCard.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.PLAYLISTS_FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_playlist_card_instantiate(self, engine):
+        component = _load_qml(engine, "pages/playlists/PlaylistCard.qml")
+        assert component.isReady()
+
+    def test_playlist_detail_instantiate(self, engine):
+        component = _load_qml(engine, "pages/playlists/PlaylistDetailPage.qml")
+        assert component.isReady()
+
+
+class TestRadioComponents:
+    def test_radio_page_exists(self):
+        p = QML_DIR / "pages" / "RadioPage.qml"
+        assert p.exists(), "Missing RadioPage.qml"
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"

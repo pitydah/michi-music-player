@@ -8,6 +8,11 @@ Item {
     id: root
 
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
+    property string _filterText: ""
+
+    function doSearch(text) {
+        _filterText = text.toLowerCase()
+    }
 
     Component.onCompleted: {
         if (root.radioBridge && typeof root.radioBridge.refresh !== "undefined")
@@ -37,6 +42,12 @@ Item {
                 }
             }
 
+            SearchField {
+                width: parent.width
+                placeholderText: "Buscar emisoras..."
+                onSearchTextChanged: root.doSearch(text)
+            }
+
             SectionHeader { text: "Favoritas"; width: parent.width }
 
             Repeater {
@@ -47,6 +58,11 @@ Item {
                     title: modelData.name || ""
                     subtitle: modelData.codec ? modelData.codec + (modelData.country ? " · " + modelData.country : "") : ""
                     variant: "base"
+                    interactive: true
+                    onClicked: {
+                        if (root.radioBridge && typeof root.radioBridge.playStation !== "undefined")
+                            root.radioBridge.playStation(modelData.url)
+                    }
                 }
             }
 
@@ -60,18 +76,36 @@ Item {
             SectionHeader { text: "Todas las emisoras"; width: parent.width }
 
             Repeater {
-                model: root.radioBridge ? root.radioBridge.stations : []
+                model: {
+                    var all = root.radioBridge ? root.radioBridge.stations : []
+                    if (root._filterText === "") return all
+                    var filtered = []
+                    for (var i = 0; i < all.length; i++) {
+                        var name = (all[i].name || "").toLowerCase()
+                        var tags = (all[i].tags || []).join(" ").toLowerCase()
+                        if (name.indexOf(root._filterText) >= 0 || tags.indexOf(root._filterText) >= 0)
+                            filtered.push(all[i])
+                    }
+                    return filtered
+                }
 
                 GlassCard {
                     width: parent.width; height: 60
                     title: modelData.name || ""
-                    subtitle: modelData.url || ""
+                    subtitle: modelData.codec ? modelData.codec + (modelData.country ? " · " + modelData.country : "") : modelData.url || ""
                     variant: "base"
+                    interactive: true
+                    onClicked: {
+                        if (root.radioBridge && typeof root.radioBridge.playStation !== "undefined")
+                            root.radioBridge.playStation(modelData.url)
+                    }
                 }
             }
 
             Text {
-                text: "No hay emisoras configuradas. Agrega una URL para comenzar."
+                text: root._filterText !== ""
+                      ? "No se encontraron emisoras para \"" + root._filterText + "\""
+                      : "No hay emisoras configuradas. Agrega una URL para comenzar."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
                 visible: root.radioBridge && root.radioBridge.stations.length === 0

@@ -109,6 +109,14 @@ class PlaylistsBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(int)
+    def playPlaylist(self, pid: int):
+        if self._db and hasattr(self._db, 'play_playlist'):
+            try:
+                self._db.play_playlist(pid)
+            except Exception:
+                logger.debug("Play playlist failed", exc_info=True)
+
     @staticmethod
     def _format_duration(secs: float) -> str:
         if secs <= 0:
