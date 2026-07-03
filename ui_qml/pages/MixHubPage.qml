@@ -8,11 +8,11 @@ import "../materials"
 Item {
     id: root
 
-    property var mixBridge: typeof mixBridge !== "undefined" ? mixBridge : null
+    property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 
     Component.onCompleted: {
-        if (root.mixBridge && typeof root.mixBridge.refresh !== "undefined") {
-            root.mixBridge.refresh()
+        if (root.mx && typeof root.mx.refresh !== "undefined") {
+            root.mx.refresh()
         }
     }
 
@@ -68,7 +68,7 @@ Item {
                 rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
-                    model: root.mixBridge ? root.mixBridge.categories : []
+                    model: root.mx ? root.mx.categories : []
 
                     GlassCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2
@@ -77,8 +77,8 @@ Item {
                         subtitle: modelData.desc || ""
                         variant: "base"
                         onClicked: {
-                            if (root.mixBridge && typeof root.mixBridge.loadMix !== "undefined") {
-                                root.mixBridge.loadMix(modelData.id || "")
+                            if (root.mx && typeof root.mx.loadMix !== "undefined") {
+                                root.mx.loadMix(modelData.id || "")
                             }
                             if (typeof navigationBridge !== "undefined" && navigationBridge) {
                                 navigationBridge.navigate("mix_detail")

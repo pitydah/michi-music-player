@@ -11,6 +11,7 @@ Item {
     property string iconName: ""
     property string variant: "base"
     property bool hovered: false
+    property bool interactive: true
     property alias cardRadius: glass.radius
 
     signal clicked()

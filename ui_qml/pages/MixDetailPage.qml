@@ -7,7 +7,7 @@ import "../materials"
 Item {
     id: root
 
-    property var mixBridge: typeof mixBridge !== "undefined" ? mixBridge : null
+    property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 
     signal backRequested()
 
@@ -33,7 +33,7 @@ Item {
                 }
 
                 Text {
-                    text: root.mixBridge ? root.mixBridge.currentMixTitle : "Mix"
+                    text: root.mx ? root.mx.currentMixTitle : "Mix"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
@@ -44,7 +44,7 @@ Item {
             SongTable {
                 width: parent.width
                 height: parent.height - 60
-                songs: root.mixBridge ? root.mixBridge.currentSongs : []
+                songs: root.mx ? root.mx.currentSongs : []
                 bridge: null
             }
         }

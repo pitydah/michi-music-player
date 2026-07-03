@@ -1,18 +1,19 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 
 Item {
     id: root
 
-    property var libraryBridge: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property int _artistDetailTab: -1
     property int _albumDetailTab: -1
 
     function refreshData() {
-        if (root.libraryBridge && typeof root.libraryBridge.refresh !== "undefined") {
-            root.libraryBridge.refresh()
+        if (root.lib && typeof root.lib.refresh !== "undefined") {
+            root.lib.refresh()
         }
     }
 
@@ -163,14 +164,14 @@ Item {
 
             SongTable {
                 id: songsView
-                songs: root.libraryBridge ? root.libraryBridge.songs : []
-                bridge: root.libraryBridge
+                songs: root.lib ? root.lib.songs : []
+                bridge: root.lib
             }
 
             AlbumGrid {
                 id: albumView
-                albums: root.libraryBridge ? root.libraryBridge.albums : []
-                bridge: root.libraryBridge
+                albums: root.lib ? root.lib.albums : []
+                bridge: root.lib
                 onAlbumClicked: function(key, title, artist, year) {
                     root.showAlbumDetail(key, title, artist, year)
                 }
@@ -178,8 +179,8 @@ Item {
 
             ArtistList {
                 id: artistView
-                artists: root.libraryBridge ? root.libraryBridge.artists : []
-                bridge: root.libraryBridge
+                artists: root.lib ? root.lib.artists : []
+                bridge: root.lib
                 onArtistSelected: function(name) {
                     root.showArtistDetail(name)
                 }
@@ -187,21 +188,21 @@ Item {
 
             FolderBrowser {
                 id: folderView
-                folders: root.libraryBridge ? root.libraryBridge.folders : []
-                bridge: root.libraryBridge
+                folders: root.lib ? root.lib.folders : []
+                bridge: root.lib
             }
 
             ArtistDetailPage {
                 id: artistDetail
                 visible: tabBar.currentIndex === 4
-                bridge: root.libraryBridge
+                bridge: root.lib
                 onBackRequested: root.backFromDetail()
             }
 
             AlbumDetailPage {
                 id: albumDetail
                 visible: tabBar.currentIndex === 5
-                bridge: root.libraryBridge
+                bridge: root.lib
                 onBackRequested: root.backFromDetail()
             }
         }

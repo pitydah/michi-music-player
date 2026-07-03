@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 import "."
@@ -7,11 +8,11 @@ import "."
 Item {
     id: root
 
-    property var homeAudioBridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+    property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
 
     Component.onCompleted: {
-        if (root.homeAudioBridge && typeof root.homeAudioBridge.refresh !== "undefined")
-            root.homeAudioBridge.refresh()
+        if (root.ha && typeof root.ha.refresh !== "undefined")
+            root.ha.refresh()
     }
 
     Flickable {
@@ -45,26 +46,26 @@ Item {
                 HomeAssistantPanel {
                     id: haPanel
                     width: parent.width
-                    state: root.homeAudioBridge ? root.homeAudioBridge.homeAssistantState : "not_configured"
+                    state: root.ha ? root.ha.homeAssistantState : "not_configured"
                     onConfigureClicked: {
-                        if (root.homeAudioBridge) root.homeAudioBridge.configureHomeAssistant()
+                        if (root.ha) root.ha.configureHomeAssistant()
                     }
                     onOpenDiagnostics: {
-                        if (root.homeAudioBridge) root.homeAudioBridge.openDiagnostics()
+                        if (root.ha) root.ha.openDiagnostics()
                     }
                 }
 
                 MichiMusicStreamPanel {
                     id: streamPanel
                     width: parent.width
-                    streamState: root.homeAudioBridge ? root.homeAudioBridge.streamState : "concept"
+                    streamState: root.ha ? root.ha.streamState : "concept"
                 }
             }
 
             SectionHeader { text: "Dispositivos"; width: parent.width }
 
             Repeater {
-                model: root.homeAudioBridge ? root.homeAudioBridge.devices : []
+                model: root.ha ? root.ha.devices : []
 
                 ReceiverCard {
                     width: parent.width
@@ -79,7 +80,7 @@ Item {
                 text: "No hay dispositivos Home Audio configurados."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
-                visible: root.homeAudioBridge && root.homeAudioBridge.devices.length === 0
+                visible: root.ha && root.ha.devices.length === 0
             }
 
             GlassCard {

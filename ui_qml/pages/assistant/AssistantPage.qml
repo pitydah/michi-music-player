@@ -8,12 +8,12 @@ import "../../materials"
 Item {
     id: root
 
-    property var michiAiBridge: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
+    property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
     property var chatItems: []
 
     Component.onCompleted: {
-        if (root.michiAiBridge && typeof root.michiAiBridge.refresh !== "undefined") {
-            root.michiAiBridge.refresh()
+        if (root.ai && typeof root.ai.refresh !== "undefined") {
+            root.ai.refresh()
         }
     }
 
@@ -116,7 +116,7 @@ Item {
                         anchors.bottomMargin: MichiTheme.spacing.xs
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
-                        placeholderText: "Pregunta a Michi AI..."
+
                         verticalAlignment: TextInput.AlignVCenter
 
                         Text {
@@ -132,7 +132,7 @@ Item {
                 }
 
                 MichiIconButton {
-                    iconSource: "../icons/sidebar_add.svg"
+                    iconSource: "../../icons/sidebar_add.svg"
                     iconText: ">"
                     tooltipText: "Enviar"
                     btnSize: 38
@@ -152,8 +152,8 @@ Item {
         if (text === "") return
         chatInput.text = ""
 
-        if (root.michiAiBridge && typeof root.michiAiBridge.sendMessage !== "undefined") {
-            root.michiAiBridge.sendMessage(text)
+        if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+            root.ai.sendMessage(text)
         }
 
         var bubble = Qt.createQmlObject(
@@ -161,8 +161,8 @@ Item {
             chatColumn
         )
 
-        if (root.michiAiBridge) {
-            root.michiAiBridge.responseReceived.connect(function(response) {
+        if (root.ai) {
+            root.ai.responseReceived.connect(function(response) {
                 var respBubble = Qt.createQmlObject(
                     'import QtQuick; import "../assistant"; ChatBubble { width: chatColumn.width; messageText: "' + escapeText(response) + '"; role: "assistant" }',
                     chatColumn
@@ -176,10 +176,10 @@ Item {
     }
 
     Connections {
-        target: root.michiAiBridge
+        target: root.ai
         function onContextChanged() {
-            if (!root.michiAiBridge) return
-            var items = root.michiAiBridge.suggestions || []
+            if (!root.ai) return
+            var items = root.ai.suggestions || []
             suggestionsRepeater.model.clear()
             for (var i = 0; i < items.length; i++) {
                 suggestionsRepeater.model.append(items[i])

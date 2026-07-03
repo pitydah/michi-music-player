@@ -8,11 +8,11 @@ import "."
 Item {
     id: root
 
-    property var connectionsBridge: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
+    property var conn: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
 
     Component.onCompleted: {
-        if (root.connectionsBridge && typeof root.connectionsBridge.refresh !== "undefined")
-            root.connectionsBridge.refresh()
+        if (root.conn && typeof root.conn.refresh !== "undefined")
+            root.conn.refresh()
     }
 
     Flickable {
@@ -37,12 +37,12 @@ Item {
             MicroServerHero {
                 id: microHero
                 width: parent.width
-                state: root.connectionsBridge ? root.connectionsBridge.microServerState : "not_configured"
+                state: root.conn ? root.conn.microServerState : "not_configured"
                 onScanClicked: {
-                    if (root.connectionsBridge) root.connectionsBridge.scanForServers()
+                    if (root.conn) root.conn.scanForServers()
                 }
                 onManualAddClicked: {
-                    if (root.connectionsBridge) root.connectionsBridge.addManualServer()
+                    if (root.conn) root.conn.addManualServer()
                 }
             }
 
@@ -58,7 +58,7 @@ Item {
                 rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
-                    model: root.connectionsBridge ? root.connectionsBridge.externalServers : []
+                    model: root.conn ? root.conn.externalServers : []
 
                     ExternalServerCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2
@@ -79,10 +79,10 @@ Item {
             NetworkDiscoveryPanel {
                 id: discoveryPanel
                 width: parent.width
-                discoveredServers: root.connectionsBridge ? root.connectionsBridge.discoveredServers : []
+                discoveredServers: root.conn ? root.conn.discoveredServers : []
                 onServerSelected: function(index) {
-                    if (root.connectionsBridge && typeof root.connectionsBridge.requestPair !== "undefined")
-                        root.connectionsBridge.requestPair(index)
+                    if (root.conn && typeof root.conn.requestPair !== "undefined")
+                        root.conn.requestPair(index)
                 }
             }
 

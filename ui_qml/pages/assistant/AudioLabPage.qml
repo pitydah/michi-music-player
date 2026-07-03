@@ -8,11 +8,11 @@ import "../../materials"
 Item {
     id: root
 
-    property var audioLabBridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
+    property var alab: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
 
     Component.onCompleted: {
-        if (root.audioLabBridge && typeof root.audioLabBridge.refresh !== "undefined")
-            root.audioLabBridge.refresh()
+        if (root.alab && typeof root.alab.refresh !== "undefined")
+            root.alab.refresh()
     }
 
     Flickable {
@@ -62,15 +62,15 @@ Item {
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: root.audioLabBridge ? root.audioLabBridge.totalTracks : "—"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: root.alab ? root.alab.totalTracks : "—"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Canciones"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: root.audioLabBridge ? root.audioLabBridge.missingMetadata : "—"; color: root.audioLabBridge && root.audioLabBridge.missingMetadata > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: root.alab ? root.alab.missingMetadata : "—"; color: root.alab && root.alab.missingMetadata > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Sin metadata"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                     Column { spacing: MichiTheme.spacing.xs
-                        Text { text: root.audioLabBridge ? root.audioLabBridge.missingCovers : "—"; color: root.audioLabBridge && root.audioLabBridge.missingCovers > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: root.alab ? root.alab.missingCovers : "—"; color: root.alab && root.alab.missingCovers > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Sin carátula"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                 }
@@ -82,7 +82,7 @@ Item {
                 width: parent.width; columns: 2; columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
-                    model: root.audioLabBridge ? root.audioLabBridge.modules : []
+                    model: root.alab ? root.alab.modules : []
 
                     GlassCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2; height: 90

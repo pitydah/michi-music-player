@@ -7,11 +7,11 @@ import "../../materials"
 Item {
     id: root
 
-    property var metadataBridge: typeof metadataBridge !== "undefined" ? metadataBridge : null
+    property var md: typeof metadataBridge !== "undefined" ? metadataBridge : null
 
     function inspect(filepath) {
-        if (root.metadataBridge && typeof root.metadataBridge.inspectTrack !== "undefined") {
-            root.metadataBridge.inspectTrack(filepath)
+        if (root.md && typeof root.md.inspectTrack !== "undefined") {
+            root.md.inspectTrack(filepath)
         }
     }
 
@@ -36,7 +36,7 @@ Item {
 
             Loader {
                 width: parent.width
-                sourceComponent: root.metadataBridge && root.metadataBridge.hasSelection ? inspectorContent : emptyComponent
+                sourceComponent: root.md && root.md.hasSelection ? inspectorContent : emptyComponent
             }
         }
     }
@@ -44,10 +44,9 @@ Item {
     Component {
         id: emptyComponent
         Column {
-            width: parent.width
+            width: 360
             spacing: MichiTheme.spacing.lg
             anchors.centerIn: parent
-            width: 360
 
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -99,21 +98,21 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Text {
-                        text: root.metadataBridge ? root.metadataBridge.trackTitle : "—"
+                        text: root.md ? root.md.trackTitle : "—"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
                     }
 
                     Text {
-                        text: root.metadataBridge ? root.metadataBridge.trackArtist : ""
+                        text: root.md ? root.md.trackArtist : ""
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: text !== ""
                     }
 
                     Text {
-                        text: root.metadataBridge ? root.metadataBridge.trackAlbum : ""
+                        text: root.md ? root.md.trackAlbum : ""
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
@@ -140,7 +139,7 @@ Item {
                     }
 
                     Repeater {
-                        model: root.metadataBridge ? root.metadataBridge.fields : []
+                        model: root.md ? root.md.fields : []
 
                         MetadataFieldRow {
                             width: parent.width
@@ -153,8 +152,8 @@ Item {
 
             MetadataArtworkPreview {
                 width: parent.width
-                artworkStatus: root.metadataBridge ? root.metadataBridge.artworkStatus : ""
-                coverKey: root.metadataBridge && root.metadataBridge.hasSelection ? "inspector" : ""
+                artworkStatus: root.md ? root.md.artworkStatus : ""
+                coverKey: root.md && root.md.hasSelection ? "inspector" : ""
             }
 
             GlassMaterial {
@@ -178,8 +177,8 @@ Item {
                         text: "Previsualizar sugerencias"
                         variant: "secondary"
                         onClicked: {
-                            if (root.metadataBridge && typeof root.metadataBridge.previewSuggestedFixes !== "undefined") {
-                                root.metadataBridge.previewSuggestedFixes()
+                            if (root.md && typeof root.md.previewSuggestedFixes !== "undefined") {
+                                root.md.previewSuggestedFixes()
                             }
                         }
                     }
@@ -187,7 +186,7 @@ Item {
                     MichiButton {
                         text: "Aplicar cambios"
                         variant: "ghost"
-                        enabled: root.metadataBridge ? root.metadataBridge.canApply : false
+                        enabled: root.md ? root.md.canApply : false
                         tooltip: "La escritura de metadatos se habilitará en una fase posterior."
                     }
                 }

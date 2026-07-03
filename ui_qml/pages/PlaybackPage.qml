@@ -6,7 +6,7 @@ import "../components"
 Item {
     id: root
 
-    property var playbackBridge: typeof playbackBridge !== "undefined" ? playbackBridge : null
+    property var pb: typeof playbackBridge !== "undefined" ? playbackBridge : null
 
     Flickable {
         anchors.fill: parent
@@ -38,7 +38,7 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.playbackBridge ? root.playbackBridge.trackTitle : "Sin reproducción"
+                        text: root.pb ? root.pb.trackTitle : "Sin reproducción"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
@@ -47,7 +47,7 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.playbackBridge ? root.playbackBridge.trackArtist : ""
+                        text: root.pb ? root.pb.trackArtist : ""
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: text !== ""
@@ -55,7 +55,7 @@ Item {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.playbackBridge ? root.playbackBridge.trackAlbum : ""
+                        text: root.pb ? root.pb.trackAlbum : ""
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
@@ -66,11 +66,11 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiIconButton {
-                            iconSource: "../icons/nowplaying_clean/warm_prev_32.png"
+                            iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
                             iconText: "<<"
                             tooltipText: "Anterior"
                             btnSize: 40
-                            onClicked: { if (root.playbackBridge) root.playbackBridge.previous() }
+                            onClicked: { if (root.pb) root.pb.previous() }
                         }
 
                         Rectangle {
@@ -83,9 +83,9 @@ Item {
                                 anchors.centerIn: parent
                                 width: 24
                                 height: 24
-                                source: root.playbackBridge && root.playbackBridge.isPlaying
-                                    ? "../icons/nowplaying_clean/warm_pause_32.png"
-                                    : "../icons/nowplaying_clean/warm_play_32.png"
+                                source: root.pb && root.pb.isPlaying
+                                    ? "../../icons/nowplaying_clean/warm_pause_32.png"
+                                    : "../../icons/nowplaying_clean/warm_play_32.png"
                                 sourceSize.width: 32
                                 sourceSize.height: 32
                                 fillMode: Image.PreserveAspectFit
@@ -94,16 +94,16 @@ Item {
                             MouseArea {
                                 id: maPlay; anchors.fill: parent
                                 hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: { if (root.playbackBridge) root.playbackBridge.togglePlay() }
+                                onClicked: { if (root.pb) root.pb.togglePlay() }
                             }
                         }
 
                         MichiIconButton {
-                            iconSource: "../icons/nowplaying_clean/warm_next_32.png"
+                            iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
                             iconText: ">>"
                             tooltipText: "Siguiente"
                             btnSize: 40
-                            onClicked: { if (root.playbackBridge) root.playbackBridge.next() }
+                            onClicked: { if (root.pb) root.pb.next() }
                         }
                     }
                 }
@@ -121,7 +121,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Repeater {
-                        model: root.playbackBridge ? root.playbackBridge.queue.slice(0, 5) : []
+                        model: root.pb ? root.pb.queue.slice(0, 5) : []
 
                         Row {
                             width: parent.width; height: 24; spacing: MichiTheme.spacing.sm
@@ -141,7 +141,7 @@ Item {
                     }
 
                     Text {
-                        text: root.playbackBridge && root.playbackBridge.queue.length === 0 ? "Cola vacía" : ""
+                        text: root.pb && root.pb.queue.length === 0 ? "Cola vacía" : ""
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
@@ -152,8 +152,8 @@ Item {
             SectionHeader { text: "Historial"; width: parent.width }
 
             Text {
-                text: root.playbackBridge && root.playbackBridge.history.length > 0
-                      ? root.playbackBridge.history.length + " canciones"
+                text: root.pb && root.pb.history.length > 0
+                      ? root.pb.history.length + " canciones"
                       : "Sin historial"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
