@@ -35,6 +35,7 @@ from ui_qml_bridge.settings_bridge import SettingsBridge
 from ui_qml_bridge.radio_bridge import RadioBridge
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
 from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+from ui_qml_bridge.eq_bridge import EqBridge
 
 logger = logging.getLogger("michi.qml")
 
@@ -183,6 +184,7 @@ def main():
     settings_bridge = SettingsBridge()
     radio_bridge = RadioBridge(radio_manager=radio_mgr, player_service=player_service)
     connections_bridge = ConnectionsBridge(michi_link_ctrl=michi_link)
+    eq_bridge = EqBridge(player_service=player_service) if player_service else None
     smart_tagging_bridge = SmartTaggingBridge()
     try:
         from ui.audio_lab.services.smart_tagging_service import SmartTaggingService
@@ -208,6 +210,8 @@ def main():
     engine.rootContext().setContextProperty("radioBridge", radio_bridge)
     engine.rootContext().setContextProperty("connectionsBridge", connections_bridge)
     engine.rootContext().setContextProperty("smartTaggingBridge", smart_tagging_bridge)
+    if eq_bridge:
+        engine.rootContext().setContextProperty("eqBridge", eq_bridge)
 
     qmlRegisterType(CoverBridge, "MichiCover", 1, 0, "CoverBridge")
 

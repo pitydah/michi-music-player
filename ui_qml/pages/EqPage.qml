@@ -7,6 +7,14 @@ import "../materials"
 Item {
     id: root
 
+    property var eq: typeof eqBridge !== "undefined" ? eqBridge : null
+    property string _selectedPreset: "Plano"
+
+    Component.onCompleted: {
+        if (root.eq && typeof root.eq.refresh !== "undefined")
+            root.eq.refresh()
+    }
+
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
@@ -26,56 +34,47 @@ Item {
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
-            HeroMaterial {
-                width: parent.width; height: 200; radius: MichiTheme.radiusLg; showGlow: true
-                Column {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "EQ"
-                        color: MichiTheme.colors.accentBlue
-                        font.pixelSize: 48; font.weight: MichiTheme.typography.weightBold
-                    }
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Ecualizador paramétrico y gráfico"
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
+            Row {
+                spacing: MichiTheme.spacing.sm
+                Text {
+                    text: "Bypass"
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                MichiButton {
+                    text: root.eq && root.eq.bypass ? "Activado" : "Desactivado"
+                    variant: root.eq && root.eq.bypass ? "danger" : "primary"
+                    onClicked: {
+                        if (root.eq) root.eq.toggleBypass(!root.eq.bypass)
                     }
                 }
-            }
-
-            GlassCard {
-                width: parent.width; height: 80
-                title: "Modo gráfico"
-                subtitle: "Control visual de bandas de frecuencia"
-                variant: "base"
-                onClicked: {
-                    if (typeof navigationBridge !== "undefined" && navigationBridge)
-                        navigationBridge.navigate("settings")
-                }
-            }
-
-            GlassCard {
-                width: parent.width; height: 80
-                title: "Modo paramétrico"
-                subtitle: "Control preciso con Q, frecuencia y ganancia"
-                variant: "base"
             }
 
             GlassCard {
                 width: parent.width; height: 80
                 title: "Preamplificador"
-                subtitle: "Ajuste de ganancia general antes del EQ"
+                subtitle: "Ganancia: " + (root.eq ? root.eq.preamp.toFixed(1) : "0.0") + " dB"
                 variant: "base"
+                onClicked: {
+                    if (root.eq) root.eq.setPreamp(root.eq.preamp === 0.0 ? -6.0 : 0.0)
+                }
             }
 
-            GlassCard {
-                width: parent.width; height: 80
-                title: "Presets"
-                subtitle: "Rock, Pop, Jazz, Clásica, Vocal, Bass Boost..."
-                variant: "accent"
+            SectionHeader { text: "Presets"; width: parent.width }
+
+            Repeater {
+                model: root.eq ? root.eq.presets : []
+
+                GlassCard {
+                    width: parent.width; height: 60
+                    title: modelData.name || ""
+                    subtitle: modelData.bands ? modelData.bands.length + " bandas" : ""
+                    variant: modelData.name === (root.eq ? root.eq.currentPreset : "") ? "accent" : "base"
+                    onClicked: {
+                        if (root.eq) root.eq.applyPreset(modelData.name)
+                    }
+                }
             }
 
             GlassMaterial {

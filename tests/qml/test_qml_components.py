@@ -536,6 +536,23 @@ class TestRuntimeBlockerFixes:
         assert not violations, f"Files referencing ui_qml/icons path: {violations}"
 
 
+class TestRemainingRisks:
+    def test_smart_tagging_has_file_dialog(self):
+        content = (QML_DIR / "pages" / "SmartTaggingPage.qml").read_text()
+        assert "FileDialog" in content, "SmartTaggingPage missing FileDialog"
+        assert "selectedFile" in content, "SmartTaggingPage missing selectedFile"
+        assert "/example/" not in content, "SmartTaggingPage still has fake path"
+
+    def test_eq_page_has_bridge_property(self):
+        content = (QML_DIR / "pages" / "EqPage.qml").read_text()
+        assert "eqBridge" in content, "EqPage missing eqBridge property"
+        assert "applyPreset" in content, "EqPage missing applyPreset"
+
+    def test_eq_bridge_importable(self):
+        from ui_qml_bridge.eq_bridge import EqBridge
+        assert EqBridge is not None
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
