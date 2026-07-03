@@ -31,6 +31,8 @@ Item {
             case "devices": return "../pages/DevicesPage.qml"
             case "eq": return "../pages/EqPage.qml"
             case "library_doctor": return "../pages/LibraryDoctorPage.qml"
+            case "output_profiles": return "../pages/OutputProfilesPage.qml"
+            case "smart_tagging": return "../pages/SmartTaggingPage.qml"
             default: return "../pages/PlaceholderPage.qml"
         }
     }
