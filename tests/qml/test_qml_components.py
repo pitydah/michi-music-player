@@ -368,6 +368,20 @@ class TestMetadataComponents:
         assert "MichiCover" not in content, "MetadataArtworkPreview still imports MichiCover directly"
 
 
+class TestAudioLab:
+    def test_audio_lab_page_exists(self):
+        p = QML_DIR / "pages" / "assistant" / "AudioLabPage.qml"
+        assert p.exists(), "Missing AudioLabPage.qml"
+
+    def test_suggestion_card_exists(self):
+        p = QML_DIR / "pages" / "assistant" / "SuggestionCard.qml"
+        assert p.exists(), "Missing SuggestionCard.qml"
+
+    def test_chat_bubble_exists(self):
+        p = QML_DIR / "pages" / "assistant" / "ChatBubble.qml"
+        assert p.exists(), "Missing ChatBubble.qml"
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
