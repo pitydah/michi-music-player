@@ -23,6 +23,7 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         MichiIconButton {
+            iconSource: "icons/nowplaying_clean/warm_shuffle_32.png"
             iconText: "S"
             tooltipText: "Aleatorio"
             selected: root.shuffleEnabled
@@ -31,6 +32,7 @@ Item {
         }
 
         MichiIconButton {
+            iconSource: "icons/nowplaying_clean/warm_prev_32.png"
             iconText: "<<"
             tooltipText: "Anterior"
             btnSize: 34
@@ -47,12 +49,14 @@ Item {
                 color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
                 Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
-                Text {
+                Image {
                     anchors.centerIn: parent
-                    text: root.isPlaying ? "||" : ">"
-                    font.pixelSize: 18
-                    font.weight: MichiTheme.typography.weightBold
-                    color: MichiTheme.colors.textOnAccent
+                    width: 20
+                    height: 20
+                    source: root.isPlaying ? "icons/nowplaying_clean/warm_pause_32.png" : "icons/nowplaying_clean/warm_play_32.png"
+                    sourceSize.width: 32
+                    sourceSize.height: 32
+                    fillMode: Image.PreserveAspectFit
                 }
             }
 
@@ -66,6 +70,7 @@ Item {
         }
 
         MichiIconButton {
+            iconSource: "icons/nowplaying_clean/warm_next_32.png"
             iconText: ">>"
             tooltipText: "Siguiente"
             btnSize: 34
@@ -73,6 +78,7 @@ Item {
         }
 
         MichiIconButton {
+            iconSource: "icons/nowplaying_clean/warm_repeat_32.png"
             iconText: root.repeatMode === "one" ? "1" : "R"
             tooltipText: "Repetir"
             selected: root.repeatMode !== "none"

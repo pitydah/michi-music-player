@@ -6,6 +6,7 @@ Rectangle {
     id: root
 
     property string iconText: ""
+    property string iconSource: ""
     property string tooltipText: ""
     property bool selected: false
     property bool enabled: true
@@ -25,6 +26,17 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast; easing: Easing.OutCubic } }
 
+    Image {
+        anchors.centerIn: parent
+        width: 18
+        height: 18
+        source: root.iconSource
+        visible: root.iconSource !== ""
+        sourceSize.width: 32
+        sourceSize.height: 32
+        fillMode: Image.PreserveAspectFit
+    }
+
     Text {
         anchors.centerIn: parent
         text: root.iconText
@@ -34,6 +46,7 @@ Rectangle {
             if (root.selected) return MichiTheme.colors.accentBlue
             return MichiTheme.colors.textPrimary
         }
+        visible: root.iconSource === ""
     }
 
     MouseArea {

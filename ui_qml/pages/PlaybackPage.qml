@@ -27,7 +27,7 @@ Item {
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
-            MichiGlassPanel {
+            GlassPanel {
                 width: parent.width
                 height: 200
 
@@ -66,6 +66,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiIconButton {
+                            iconSource: "icons/nowplaying_clean/warm_prev_32.png"
                             iconText: "<<"
                             tooltipText: "Anterior"
                             btnSize: 40
@@ -77,13 +78,19 @@ Item {
                             radius: MichiTheme.radiusPill
                             color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
                             Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                            Text {
+
+                            Image {
                                 anchors.centerIn: parent
-                                text: root.playbackBridge && root.playbackBridge.isPlaying ? "||" : ">"
-                                font.pixelSize: 20
-                                font.weight: MichiTheme.typography.weightBold
-                                color: MichiTheme.colors.textOnAccent
+                                width: 24
+                                height: 24
+                                source: root.playbackBridge && root.playbackBridge.isPlaying
+                                    ? "icons/nowplaying_clean/warm_pause_32.png"
+                                    : "icons/nowplaying_clean/warm_play_32.png"
+                                sourceSize.width: 32
+                                sourceSize.height: 32
+                                fillMode: Image.PreserveAspectFit
                             }
+
                             MouseArea {
                                 id: maPlay; anchors.fill: parent
                                 hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -92,6 +99,7 @@ Item {
                         }
 
                         MichiIconButton {
+                            iconSource: "icons/nowplaying_clean/warm_next_32.png"
                             iconText: ">>"
                             tooltipText: "Siguiente"
                             btnSize: 40
