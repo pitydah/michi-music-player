@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import MichiCover 1.0
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -23,7 +22,7 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                MichiButton { text: "←"; variant: "ghost"; onClicked: root.backRequested() }
+                MichiButton { text: "Volver"; variant: "ghost"; onClicked: root.backRequested() }
                 Text {
                     text: root.playlistTitle; color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold

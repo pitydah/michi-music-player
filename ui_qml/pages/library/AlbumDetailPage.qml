@@ -41,7 +41,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
-                    text: "←"
+                    text: "Volver"
                     variant: "ghost"
                     onClicked: root.backRequested()
                 }

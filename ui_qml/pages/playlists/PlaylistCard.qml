@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import MichiCover 1.0
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -29,10 +28,10 @@ Item {
         Column {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
-            Rectangle {
-                width: parent.width; height: width; radius: MichiTheme.radiusSm
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.03); clip: true
-                CoverBridge { anchors.fill: parent; coverKey: root.coverKey || root.playlistTitle || "PL" }
+            CoverImage {
+                width: parent.width; height: width
+                coverRadius: MichiTheme.radiusSm
+                coverKey: root.coverKey || root.playlistTitle || "PL"
             }
 
             Text {

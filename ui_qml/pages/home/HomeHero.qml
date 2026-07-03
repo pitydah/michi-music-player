@@ -73,8 +73,8 @@ Item {
                     width: 100
                     height: 100
                     radius: 50
-                    color: Qt.rgba(0.561, 0.718, 1.0, 0.06)
-                    border.color: Qt.rgba(0.561, 0.718, 1.0, 0.12)
+                    color: MichiTheme.colors.accentSurface
+                    border.color: MichiTheme.colors.borderFocus
                     border.width: 1
 
                     Text {

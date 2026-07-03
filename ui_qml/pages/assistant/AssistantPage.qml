@@ -131,11 +131,11 @@ Item {
                     }
                 }
 
-                MichiButton {
-                    width: 40
-                    height: 38
-                    text: "→"
-                    variant: "accent"
+                MichiIconButton {
+                    iconSource: "icons/sidebar_add.svg"
+                    iconText: ">"
+                    tooltipText: "Enviar"
+                    btnSize: 38
                     onClicked: sendMessage()
                 }
             }

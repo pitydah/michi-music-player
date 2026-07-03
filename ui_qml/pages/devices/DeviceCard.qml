@@ -37,7 +37,7 @@ Item {
 
             Rectangle {
                 width: 40; height: 40; radius: 8; anchors.verticalCenter: parent.verticalCenter
-                color: root.paired ? Qt.rgba(0.29, 0.87, 0.50, 0.12) : Qt.rgba(0.561, 0.718, 1.0, 0.08)
+                color: root.paired ? MichiTheme.colors.badgeActiveBg : MichiTheme.colors.accentSurface
                 Text {
                     anchors.centerIn: parent
                     text: root.deviceAlias ? root.deviceAlias.charAt(0).toUpperCase() : "?"
@@ -48,7 +48,7 @@ Item {
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 4; width: parent.width - 120
+                spacing: MichiTheme.spacing.xs; width: parent.width - 120
                 Text {
                     text: root.deviceAlias || "Dispositivo"
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
