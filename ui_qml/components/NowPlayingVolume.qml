@@ -16,7 +16,7 @@ Item {
 
     Row {
         anchors.centerIn: parent
-        spacing: MichiSpacing.sm
+        spacing: MichiTheme.spacing.sm
 
         Item {
             width: 28; height: 28
@@ -33,8 +33,8 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.muted || root.volume === 0 ? "X" : root.volume < 40 ? "V" : "V"
-                    color: root.muted ? MichiColors.textMuted : MichiColors.textPrimary
-                    font.pixelSize: 12; font.weight: MichiTypography.weightBold
+                    color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
+                    font.pixelSize: 12; font.weight: MichiTheme.typography.weightBold
                 }
             }
         }
@@ -47,7 +47,7 @@ Item {
             Rectangle {
                 width: parent.width * (root.volume / 100.0)
                 height: parent.height; radius: 2
-                color: root.muted ? MichiColors.textMuted : MichiColors.accentBlue
+                color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
             }
 
             MouseArea {

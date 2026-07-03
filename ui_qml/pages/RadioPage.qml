@@ -15,24 +15,24 @@ Item {
     }
 
     Flickable {
-        anchors.fill: parent; anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
         Column {
-            id: column; width: parent.width; spacing: MichiSpacing.lg
+            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
                 width: parent.width; height: 140; radius: 16; showGlow: true
                 Column {
-                    anchors.fill: parent; anchors.margins: MichiSpacing.xl; spacing: MichiSpacing.sm
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
-                        text: "Radio"; color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.heroTitleSize; font.weight: MichiTypography.weightBold
+                        text: "Radio"; color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
-                        text: "Emisoras de todo el mundo."; color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
+                        text: "Emisoras de todo el mundo."; color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
                     }
                 }
             }
@@ -52,7 +52,7 @@ Item {
 
             Text {
                 text: "No hay emisoras favoritas."
-                color: MichiColors.textMuted; font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
                 visible: root.radioBridge && root.radioBridge.favorites.length === 0
             }
@@ -72,7 +72,7 @@ Item {
 
             Text {
                 text: "No hay emisoras configuradas. Agrega una URL para comenzar."
-                color: MichiColors.textMuted; font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
                 visible: root.radioBridge && root.radioBridge.stations.length === 0
             }

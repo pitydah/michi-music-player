@@ -10,21 +10,21 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Text {
                 text: "Servidores y conexiones"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.pageTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             MicroServerHero {
@@ -49,29 +49,29 @@ Item {
             Grid {
                 width: parent.width
                 columns: 2
-                columnSpacing: MichiSpacing.md
-                rowSpacing: MichiSpacing.md
+                columnSpacing: MichiTheme.spacing.md
+                rowSpacing: MichiTheme.spacing.md
 
                 ExternalServerCard {
-                    width: (parent.width - MichiSpacing.md) / 2
+                    width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 80
                     serverName: "Navidrome"
                     serverType: "Subsonic API"
                 }
                 ExternalServerCard {
-                    width: (parent.width - MichiSpacing.md) / 2
+                    width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 80
                     serverName: "Jellyfin"
                     serverType: "Jellyfin API"
                 }
                 ExternalServerCard {
-                    width: (parent.width - MichiSpacing.md) / 2
+                    width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 80
                     serverName: "Subsonic"
                     serverType: "Subsonic API"
                 }
                 ExternalServerCard {
-                    width: (parent.width - MichiSpacing.md) / 2
+                    width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 80
                     serverName: "Servidor manual"
                     serverType: "URL personalizada"

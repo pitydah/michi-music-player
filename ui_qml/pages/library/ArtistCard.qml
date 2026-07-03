@@ -20,7 +20,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: 12
+        radius: MichiTheme.radiusMd
         hovered: mouseArea.containsMouse
         interactive: true
 
@@ -34,13 +34,13 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.md
-            spacing: MichiSpacing.sm
+            anchors.margins: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             Rectangle {
                 width: parent.width
                 height: width
-                radius: width / 2
+                radius: MichiTheme.radiusPill
                 color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
                 clip: true
 
@@ -52,18 +52,18 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.artistName ? root.artistName.charAt(0).toUpperCase() : "?"
-                    color: MichiColors.accentBlue
+                    color: MichiTheme.colors.accentBlue
                     font.pixelSize: 32
-                    font.weight: MichiTypography.weightBold
+                    font.weight: MichiTheme.typography.weightBold
                     visible: !root.coverId && parent.source === ""
                 }
             }
 
             Text {
                 text: root.artistName
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.cardTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.cardTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
                 elide: Text.ElideRight
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
@@ -71,8 +71,8 @@ Item {
 
             Text {
                 text: root.albumCount > 0 ? root.albumCount + " álbumes" : ""
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
                 horizontalAlignment: Text.AlignHCenter
                 width: parent.width
             }

@@ -29,18 +29,18 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.sm
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.sm
 
             Row {
                 width: parent.width
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
 
                 Text {
                     text: root.serverName
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.cardTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                     elide: Text.ElideRight
                     width: parent.width - 100
                 }
@@ -65,15 +65,15 @@ Item {
 
             Text {
                 text: root.serverHost
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.serverHost !== ""
             }
 
             Text {
                 text: root.serverType
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.serverType !== ""
             }
 

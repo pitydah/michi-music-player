@@ -18,7 +18,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: 10
+        radius: MichiTheme.radiusSm
         hovered: mouseArea.containsMouse
         interactive: true
 
@@ -32,27 +32,27 @@ Item {
 
         Row {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.md
-            spacing: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.md
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 80
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
 
                 Text {
                     text: root.suggestionTitle
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.cardTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                     elide: Text.ElideRight
                     width: parent.width
                 }
 
                 Text {
                     text: root.suggestionDescription
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
                     wrapMode: Text.WordWrap
                     width: parent.width
                     lineHeight: 1.3

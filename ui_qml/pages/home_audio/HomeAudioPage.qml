@@ -9,21 +9,21 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Text {
                 text: "Home Audio"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.pageTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             HomeAudioModeSelector {

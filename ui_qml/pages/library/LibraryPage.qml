@@ -51,38 +51,38 @@ Item {
 
             Row {
                 anchors.fill: parent
-                anchors.leftMargin: MichiSpacing.xl
-                spacing: MichiSpacing.md
+                anchors.leftMargin: MichiTheme.spacing.xl
+                spacing: MichiTheme.spacing.md
 
                 Text {
                     text: "Canciones"
-                    color: tabBar.currentIndex === 0 ? MichiColors.accentBlue : MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
-                    font.weight: tabBar.currentIndex === 0 ? MichiTypography.weightSemiBold : MichiTypography.weightNormal
+                    color: tabBar.currentIndex === 0 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: tabBar.currentIndex === 0 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 0 }
                 }
                 Text {
                     text: "Álbumes"
-                    color: tabBar.currentIndex === 1 ? MichiColors.accentBlue : MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
-                    font.weight: tabBar.currentIndex === 1 ? MichiTypography.weightSemiBold : MichiTypography.weightNormal
+                    color: tabBar.currentIndex === 1 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: tabBar.currentIndex === 1 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 1 }
                 }
                 Text {
                     text: "Artistas"
-                    color: tabBar.currentIndex === 2 ? MichiColors.accentBlue : MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
-                    font.weight: tabBar.currentIndex === 2 ? MichiTypography.weightSemiBold : MichiTypography.weightNormal
+                    color: tabBar.currentIndex === 2 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: tabBar.currentIndex === 2 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 2 }
                 }
                 Text {
                     text: "Carpetas"
-                    color: tabBar.currentIndex === 3 ? MichiColors.accentBlue : MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
-                    font.weight: tabBar.currentIndex === 3 ? MichiTypography.weightSemiBold : MichiTypography.weightNormal
+                    color: tabBar.currentIndex === 3 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: tabBar.currentIndex === 3 ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightNormal
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tabBar.currentIndex = 3 }
                 }
@@ -91,7 +91,7 @@ Item {
 
         SearchField {
             width: parent.width
-            anchors.margins: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.md
             placeholderText: "Buscar canciones, artistas o álbumes..."
             onSearchTextChanged: {
                 if (root.libraryBridge && typeof root.libraryBridge.search !== "undefined") {

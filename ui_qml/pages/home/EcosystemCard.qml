@@ -18,7 +18,7 @@ Item {
         anchors.fill: parent
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         MouseArea {
             id: mouseArea
@@ -29,18 +29,18 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             Text {
                 text: "Ecosistema Michi"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.sectionTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 StatusBadge {
                     text: {
                         switch (root.microServerState) {
@@ -62,14 +62,14 @@ Item {
 
             Text {
                 text: "Michi Micro Server — Servidor musical doméstico del ecosistema Michi"
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
                 wrapMode: Text.WordWrap
             }
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 ActionButton {
                     text: "Ver servidores"
                     variant: "primary"

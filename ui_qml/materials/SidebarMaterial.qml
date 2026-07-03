@@ -8,13 +8,13 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#080A10"
+        color: MichiTheme.colors.surfaceSidebar
 
         Rectangle {
             anchors.right: parent.right
-            width: 1
+            width: MichiTheme.borderWidth
             height: parent.height
-            color: Qt.rgba(0.561, 0.718, 1.0, 0.03)
+            color: MichiTheme.colors.borderSubtle
         }
     }
 }

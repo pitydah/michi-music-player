@@ -13,17 +13,17 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 8
+        radius: MichiTheme.radiusSm
         color: Qt.rgba(1.0, 1.0, 1.0, 0.02)
 
         Row {
             anchors.centerIn: parent
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Rectangle {
                 width: 80
                 height: 80
-                radius: 6
+                radius: MichiTheme.radiusXs
                 color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
                 clip: true
 
@@ -35,19 +35,19 @@ Item {
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
 
                 Text {
                     text: "Carátula"
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.bodySize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
                     text: root.artworkStatus || "Sin carátula"
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
         }

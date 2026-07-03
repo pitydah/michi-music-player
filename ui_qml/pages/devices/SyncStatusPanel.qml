@@ -23,15 +23,15 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.sm
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.sm
 
             Row {
-                width: parent.width; spacing: MichiSpacing.sm
+                width: parent.width; spacing: MichiTheme.spacing.sm
                 Text {
                     text: "Servidor Sync"
-                    color: MichiColors.textPrimary; font.pixelSize: MichiTypography.cardTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                 }
                 StatusBadge {
                     text: root.serverActive ? "Activo" : "Inactivo"
@@ -43,7 +43,7 @@ Item {
                 text: root.serverActive
                     ? "Puerto " + root.serverPort + " · " + root.peerCount + " peer(s) detectados"
                     : "Servidor de sincronización detenido"
-                color: MichiColors.textSecondary; font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
             }
 
             ActionButton {

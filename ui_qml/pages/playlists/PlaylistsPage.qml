@@ -15,30 +15,30 @@ Item {
     }
 
     Flickable {
-        anchors.fill: parent; anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
         Column {
-            id: column; width: parent.width; spacing: MichiSpacing.lg
+            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
-                width: parent.width; height: 140; radius: 16; showGlow: true
+                width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
                 Column {
-                    anchors.fill: parent; anchors.margins: MichiSpacing.xl; spacing: MichiSpacing.sm
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
-                        text: "Playlists"; color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.heroTitleSize; font.weight: MichiTypography.weightBold
+                        text: "Playlists"; color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
-                        text: "Gestiona tus listas de reproducción."; color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
+                        text: "Gestiona tus listas de reproducción."; color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
                     }
                 }
             }
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 ActionButton { text: "+ Nueva playlist"; variant: "primary" }
                 ActionButton { text: "Importar M3U"; variant: "secondary" }
             }
@@ -46,7 +46,7 @@ Item {
             SectionHeader { text: "Tus playlists"; width: parent.width }
 
             Flow {
-                width: parent.width; spacing: MichiSpacing.md
+                width: parent.width; spacing: MichiTheme.spacing.md
 
                 Repeater {
                     model: root.playlistsBridge ? root.playlistsBridge.playlists : []

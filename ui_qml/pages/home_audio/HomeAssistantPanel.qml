@@ -15,38 +15,38 @@ Item {
 
     Column {
         anchors.fill: parent
-        spacing: MichiSpacing.lg
+        spacing: MichiTheme.spacing.lg
 
         GlassMaterial {
             width: parent.width
             height: 200
             variant: "base"
-            radius: 12
+            radius: MichiTheme.radiusMd
 
             Column {
                 anchors.fill: parent
-                anchors.margins: MichiSpacing.lg
-                spacing: MichiSpacing.md
+                anchors.margins: MichiTheme.spacing.lg
+                spacing: MichiTheme.spacing.md
 
                 Text {
                     text: "Home Assistant"
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.sectionTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
                     text: root.state === "not_configured"
                         ? "Home Assistant no está configurado. Conéctalo para controlar la reproducción en tu hogar."
                         : "Home Assistant conectado y operativo."
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
 
                 Row {
-                    spacing: MichiSpacing.sm
+                    spacing: MichiTheme.spacing.sm
                     ActionButton {
                         text: root.state === "not_configured" ? "Configurar Home Assistant" : "Abrir Home Assistant"
                         variant: "primary"

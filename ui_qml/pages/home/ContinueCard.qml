@@ -17,7 +17,7 @@ Item {
         anchors.fill: parent
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         MouseArea {
             id: mouseArea
@@ -28,27 +28,27 @@ Item {
 
         Row {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.lg
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 140
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
 
                 Text {
                     text: "Continuar escuchando"
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.cardTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
                     text: root.hasPlayback
                         ? (root.trackTitle + " · " + root.trackArtist)
                         : "No hay reproducción activa"
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
                     width: parent.width
                 }

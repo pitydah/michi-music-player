@@ -13,39 +13,39 @@ Item {
 
     HeroMaterial {
         anchors.fill: parent
-        radius: 16
+        radius: MichiTheme.radiusLg
         showGlow: true
 
         Row {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.xl
-            spacing: MichiSpacing.xl
+            anchors.margins: MichiTheme.spacing.xl
+            spacing: MichiTheme.spacing.xl
 
             Column {
                 width: visualSlot ? parent.width * 0.55 : parent.width
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiSpacing.md
+                spacing: MichiTheme.spacing.md
 
                 Text {
                     text: root.heroTitle
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.heroTitleSize
-                    font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.weight: MichiTheme.typography.weightBold
                     width: parent.width
                     wrapMode: Text.WordWrap
                 }
 
                 Text {
                     text: root.heroSubtitle
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     wrapMode: Text.WordWrap
                     lineHeight: 1.5
                 }
 
                 Row {
-                    spacing: MichiSpacing.sm
+                    spacing: MichiTheme.spacing.sm
                     visible: root.actions.length > 0
                 }
             }

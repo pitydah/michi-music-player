@@ -20,27 +20,27 @@ Item {
         variant: root.variant
         hovered: root.hovered
         interactive: root.interactive
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         Column {
             id: layout
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.sm
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.sm
             visible: root.title !== "" || root.subtitle !== ""
 
             Text {
                 text: root.title
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.cardTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.cardTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
                 visible: text !== ""
             }
 
             Text {
                 text: root.subtitle
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
             }
         }
@@ -48,10 +48,10 @@ Item {
         Item {
             id: contentArea
             anchors.fill: parent
-            anchors.topMargin: (root.title !== "" || root.subtitle !== "") ? 56 : MichiSpacing.lg
-            anchors.leftMargin: MichiSpacing.lg
-            anchors.rightMargin: MichiSpacing.lg
-            anchors.bottomMargin: MichiSpacing.lg
+            anchors.topMargin: (root.title !== "" || root.subtitle !== "") ? 56 : MichiTheme.spacing.lg
+            anchors.leftMargin: MichiTheme.spacing.lg
+            anchors.rightMargin: MichiTheme.spacing.lg
+            anchors.bottomMargin: MichiTheme.spacing.lg
         }
     }
 }

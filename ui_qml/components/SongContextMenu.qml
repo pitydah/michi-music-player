@@ -16,16 +16,16 @@ Item {
     signal editMetadataClicked()
     signal showInLibraryClicked()
 
-    implicitHeight: menuColumn.height + MichiSpacing.md * 2
+    implicitHeight: menuColumn.height + MichiTheme.spacing.md * 2
 
     Column {
         id: menuColumn; spacing: 2
-        anchors.fill: parent; anchors.margins: MichiSpacing.sm
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm
 
         Text {
-            text: root.trackTitle; color: MichiColors.textPrimary
-            font.pixelSize: MichiTypography.bodySize; font.weight: MichiTypography.weightSemiBold
-            bottomPadding: MichiSpacing.xs; elide: Text.ElideRight; width: parent.width
+            text: root.trackTitle; color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightSemiBold
+            bottomPadding: MichiTheme.spacing.xs; elide: Text.ElideRight; width: parent.width
         }
 
         MenuSeparator {}

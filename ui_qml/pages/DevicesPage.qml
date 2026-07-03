@@ -17,17 +17,17 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
         Column {
-            id: column; width: parent.width; spacing: MichiSpacing.lg
+            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
             Text {
                 text: "Dispositivos"
-                color: MichiColors.textPrimary; font.pixelSize: MichiTypography.pageTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             SyncStatusPanel {
@@ -54,7 +54,7 @@ Item {
 
             Text {
                 text: "No hay dispositivos vinculados. Inicia el servidor y usa la app Android para conectar."
-                color: MichiColors.textMuted; font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
                 visible: root.devicesBridge && root.devicesBridge.pairedDevices.length === 0
             }
@@ -76,7 +76,7 @@ Item {
 
             Text {
                 text: "No se encontraron dispositivos en la red."
-                color: MichiColors.textMuted; font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
                 visible: root.devicesBridge && root.devicesBridge.peers.length === 0
             }

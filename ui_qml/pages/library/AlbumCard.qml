@@ -20,7 +20,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: 12
+        radius: MichiTheme.radiusMd
         hovered: mouseArea.containsMouse
         interactive: true
 
@@ -34,13 +34,13 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.md
-            spacing: MichiSpacing.sm
+            anchors.margins: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             Rectangle {
                 width: parent.width
                 height: width
-                radius: 8
+                radius: MichiTheme.radiusSm
                 color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
                 clip: true
 
@@ -54,17 +54,17 @@ Item {
 
             Text {
                 text: root.albumTitle
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.cardTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.cardTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
                 elide: Text.ElideRight
                 width: parent.width
             }
 
             Text {
                 text: root.albumArtist
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
                 elide: Text.ElideRight
                 width: parent.width
                 visible: root.albumArtist !== ""
@@ -72,8 +72,8 @@ Item {
 
             Text {
                 text: root.trackCount > 0 ? root.trackCount + " canciones" : ""
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
             }
         }
     }

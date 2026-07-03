@@ -32,8 +32,8 @@ Item {
 
         Row {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.md
-            spacing: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.md
 
             Rectangle {
                 width: 40; height: 40; radius: 8; anchors.verticalCenter: parent.verticalCenter
@@ -41,8 +41,8 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.deviceAlias ? root.deviceAlias.charAt(0).toUpperCase() : "?"
-                    color: root.paired ? MichiColors.success : MichiColors.accentBlue
-                    font.pixelSize: 18; font.weight: MichiTypography.weightBold
+                    color: root.paired ? MichiTheme.colors.success : MichiTheme.colors.accentBlue
+                    font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
                 }
             }
 
@@ -51,12 +51,12 @@ Item {
                 spacing: 4; width: parent.width - 120
                 Text {
                     text: root.deviceAlias || "Dispositivo"
-                    color: MichiColors.textPrimary; font.pixelSize: MichiTypography.bodySize
-                    font.weight: MichiTypography.weightMedium; elide: Text.ElideRight; width: parent.width
+                    color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideRight; width: parent.width
                 }
                 Text {
                     text: root.deviceIp ? root.deviceIp + ":" + root.devicePort : root.deviceType
-                    color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize; elide: Text.ElideRight; width: parent.width
+                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; width: parent.width
                 }
             }
 

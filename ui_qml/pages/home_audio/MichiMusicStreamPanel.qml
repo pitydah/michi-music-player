@@ -10,34 +10,34 @@ Item {
 
     Column {
         anchors.fill: parent
-        spacing: MichiSpacing.lg
+        spacing: MichiTheme.spacing.lg
 
         GlassMaterial {
             width: parent.width
             height: 80
             variant: "base"
-            radius: 12
+            radius: MichiTheme.radiusMd
 
             Row {
                 anchors.fill: parent
-                anchors.margins: MichiSpacing.lg
-                spacing: MichiSpacing.lg
+                anchors.margins: MichiTheme.spacing.lg
+                spacing: MichiTheme.spacing.lg
 
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: MichiSpacing.xs
+                    spacing: MichiTheme.spacing.xs
 
                     Text {
                         text: "Michi Music Stream"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.sectionTitleSize
-                        font.weight: MichiTypography.weightSemiBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
                     }
 
                     Text {
                         text: "Sistema propio del ecosistema Michi para transmitir música a receptores y equipos de audio dentro de la red local."
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width - 100
                         wrapMode: Text.WordWrap
                     }
@@ -49,16 +49,16 @@ Item {
 
         Text {
             text: "Componentes del sistema"
-            color: MichiColors.textPrimary
-            font.pixelSize: MichiTypography.sectionTitleSize
-            font.weight: MichiTypography.weightSemiBold
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.weight: MichiTheme.typography.weightSemiBold
         }
 
         Grid {
             width: parent.width
             columns: 2
-            columnSpacing: MichiSpacing.md
-            rowSpacing: MichiSpacing.md
+            columnSpacing: MichiTheme.spacing.md
+            rowSpacing: MichiTheme.spacing.md
 
             Repeater {
                 model: [
@@ -71,7 +71,7 @@ Item {
                 ]
 
                 GlassCard {
-                    width: (parent.width - MichiSpacing.md) / 2
+                    width: (parent.width - MichiTheme.spacing.md) / 2
                     height: 80
                     title: modelData.title
                     subtitle: modelData.desc

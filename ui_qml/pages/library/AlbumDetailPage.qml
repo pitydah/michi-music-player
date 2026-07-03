@@ -28,18 +28,18 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
 
                 ActionButton {
                     text: "←"
@@ -50,12 +50,12 @@ Item {
 
             Row {
                 width: parent.width
-                spacing: MichiSpacing.xl
+                spacing: MichiTheme.spacing.xl
 
                 Rectangle {
                     width: 160
                     height: 160
-                    radius: 8
+                    radius: MichiTheme.radiusSm
                     color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
                     clip: true
 
@@ -67,35 +67,35 @@ Item {
 
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: MichiSpacing.sm
+                    spacing: MichiTheme.spacing.sm
 
                     Text {
                         text: root.albumTitle
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.heroTitleSize
-                        font.weight: MichiTypography.weightBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize
+                        font.weight: MichiTheme.typography.weightBold
                         width: parent.width
                         wrapMode: Text.WordWrap
                     }
 
                     Text {
                         text: root.albumArtist
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.sectionTitleSize
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
                         visible: root.albumArtist !== ""
                     }
 
                     Text {
                         text: root.albumYear > 0 ? root.albumYear : ""
-                        color: MichiColors.textMuted
-                        font.pixelSize: MichiTypography.bodySize
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.bodySize
                         visible: text !== ""
                     }
 
                     Text {
                         text: "Canciones: " + (root.bridge ? root.bridge.songCount : 0)
-                        color: MichiColors.textMuted
-                        font.pixelSize: MichiTypography.metaSize
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
                     }
                 }
             }

@@ -17,21 +17,21 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Text {
                 text: "Inspector de metadatos"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.pageTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Loader {
@@ -45,19 +45,19 @@ Item {
         id: emptyComponent
         Column {
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
             anchors.centerIn: parent
             width: 360
 
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 48; height: 48; radius: 12
+                width: 48; height: 48; radius: MichiTheme.radiusMd
                 color: Qt.rgba(0.561, 0.718, 1.0, 0.08)
                 Text {
                     anchors.centerIn: parent
                     text: "MI"
-                    color: MichiColors.accentBlue
-                    font.pixelSize: 18; font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.accentBlue
+                    font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
                     font.letterSpacing: 1.5; opacity: 0.70
                 }
             }
@@ -65,16 +65,16 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Selecciona una canción"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.sectionTitleSize
-                font.weight: MichiTypography.weightMedium
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.weight: MichiTheme.typography.weightMedium
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Selecciona una canción en la Biblioteca para inspeccionar sus metadatos."
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -85,37 +85,37 @@ Item {
         id: inspectorContent
         Column {
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             GlassMaterial {
                 width: parent.width
                 height: 120
-                radius: 12
+                radius: MichiTheme.radiusMd
                 variant: "base"
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: MichiSpacing.lg
-                    spacing: MichiSpacing.sm
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.sm
 
                     Text {
                         text: root.metadataBridge ? root.metadataBridge.trackTitle : "—"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.sectionTitleSize
-                        font.weight: MichiTypography.weightSemiBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
                     }
 
                     Text {
                         text: root.metadataBridge ? root.metadataBridge.trackArtist : ""
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
                         visible: text !== ""
                     }
 
                     Text {
                         text: root.metadataBridge ? root.metadataBridge.trackAlbum : ""
-                        color: MichiColors.textMuted
-                        font.pixelSize: MichiTypography.metaSize
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
                     }
                 }
@@ -123,20 +123,20 @@ Item {
 
             GlassMaterial {
                 width: parent.width
-                radius: 12
+                radius: MichiTheme.radiusMd
                 variant: "base"
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: MichiSpacing.lg
-                    spacing: MichiSpacing.xs
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.xs
 
                     Text {
                         text: "Metadatos"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.cardTitleSize
-                        font.weight: MichiTypography.weightSemiBold
-                        bottomPadding: MichiSpacing.sm
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        bottomPadding: MichiTheme.spacing.sm
                     }
 
                     Repeater {
@@ -159,19 +159,19 @@ Item {
 
             GlassMaterial {
                 width: parent.width
-                radius: 12
+                radius: MichiTheme.radiusMd
                 variant: "base"
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: MichiSpacing.lg
-                    spacing: MichiSpacing.md
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.md
 
                     Text {
                         text: "Acciones"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.cardTitleSize
-                        font.weight: MichiTypography.weightSemiBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
                     }
 
                     ActionButton {

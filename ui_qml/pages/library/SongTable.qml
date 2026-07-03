@@ -19,7 +19,7 @@ Item {
         Row {
             width: parent.width
             height: 32
-            spacing: MichiSpacing.sm
+            spacing: MichiTheme.spacing.sm
             Rectangle {
                 width: parent.width
                 height: parent.height
@@ -27,14 +27,14 @@ Item {
 
                 Row {
                     anchors.fill: parent
-                    anchors.leftMargin: MichiSpacing.md
-                    anchors.rightMargin: MichiSpacing.md
-                    spacing: MichiSpacing.sm
+                    anchors.leftMargin: MichiTheme.spacing.md
+                    anchors.rightMargin: MichiTheme.spacing.md
+                    spacing: MichiTheme.spacing.sm
 
-                    Text { width: parent.width * 0.30; text: "Título"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize; font.weight: MichiTypography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
-                    Text { width: parent.width * 0.25; text: "Artista"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize; font.weight: MichiTypography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
-                    Text { width: parent.width * 0.25; text: "Álbum"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize; font.weight: MichiTypography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
-                    Text { width: parent.width * 0.12; text: "Duración"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize; font.weight: MichiTypography.weightMedium; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                    Text { width: parent.width * 0.30; text: "Título"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
+                    Text { width: parent.width * 0.25; text: "Artista"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
+                    Text { width: parent.width * 0.25; text: "Álbum"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
+                    Text { width: parent.width * 0.12; text: "Duración"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
                 }
             }
         }

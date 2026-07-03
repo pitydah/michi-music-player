@@ -11,24 +11,24 @@ Item {
     GlassMaterial {
         anchors.fill: parent
         variant: "base"
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.sm
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.sm
 
             Text {
                 text: root.panelTitle
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.sectionTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
                 text: root.ready ? "Inspector activo" : "Inspector no disponible en modo experimental"
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 visible: true
             }
         }

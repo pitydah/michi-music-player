@@ -16,24 +16,24 @@ Item {
     GlassMaterial {
         anchors.fill: parent
         variant: "base"
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             Text {
                 text: "Descubrimiento en red"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.sectionTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Text {
                 text: "Servidores Michi detectados en la red local"
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.discoveredServers.length > 0
             }
 
@@ -54,8 +54,8 @@ Item {
 
             Text {
                 text: "No se encontraron servidores en la red. Asegúrate de que Michi Micro Server esté ejecutándose."
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.discoveredServers.length === 0
                 wrapMode: Text.WordWrap
                 width: parent.width

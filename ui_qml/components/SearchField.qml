@@ -20,19 +20,19 @@ Item {
         anchors.fill: parent
         focused: root.fieldFocused
         hoveredInput: searchInput.hovered
-        radius: 10
+        radius: MichiTheme.radiusSm
     }
 
     TextInput {
         id: searchInput
         anchors.fill: parent
-        anchors.leftMargin: MichiSpacing.md
-        anchors.rightMargin: MichiSpacing.md
-        anchors.topMargin: MichiSpacing.xs
-        anchors.bottomMargin: MichiSpacing.xs
-        color: MichiColors.textPrimary
-        font.pixelSize: MichiTypography.bodySize
-        selectionColor: MichiColors.accentSelection
+        anchors.leftMargin: MichiTheme.spacing.md
+        anchors.rightMargin: MichiTheme.spacing.md
+        anchors.topMargin: MichiTheme.spacing.xs
+        anchors.bottomMargin: MichiTheme.spacing.xs
+        color: MichiTheme.colors.textPrimary
+        font.pixelSize: MichiTheme.typography.bodySize
+        selectionColor: MichiTheme.colors.accentSelection
         clip: true
         verticalAlignment: TextInput.AlignVCenter
 
@@ -41,8 +41,8 @@ Item {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.placeholderText
-            color: MichiColors.textMuted
-            font.pixelSize: MichiTypography.bodySize
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.bodySize
             visible: parent.text === "" && !parent.activeFocus
         }
 

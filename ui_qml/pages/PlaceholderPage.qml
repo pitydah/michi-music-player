@@ -12,7 +12,7 @@ Item {
 
     Column {
         anchors.centerIn: parent
-        spacing: MichiSpacing.lg
+        spacing: MichiTheme.spacing.lg
         width: 360
 
         Rectangle {
@@ -25,9 +25,9 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: root.sectionGlyph
-                color: MichiColors.accentBlue
+                color: MichiTheme.colors.accentBlue
                 font.pixelSize: 18
-                font.weight: MichiTypography.weightBold
+                font.weight: MichiTheme.typography.weightBold
                 font.letterSpacing: 1.5
                 opacity: 0.70
             }
@@ -36,16 +36,16 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.sectionTitle
-            color: MichiColors.textPrimary
-            font.pixelSize: MichiTypography.sectionTitleSize
-            font.weight: MichiTypography.weightMedium
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.weight: MichiTheme.typography.weightMedium
         }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.sectionDescription
-            color: MichiColors.textSecondary
-            font.pixelSize: MichiTypography.bodySize
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
             lineHeight: 1.5

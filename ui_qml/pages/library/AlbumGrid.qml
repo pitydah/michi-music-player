@@ -13,7 +13,7 @@ Item {
 
     GridView {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.md
+        anchors.margins: MichiTheme.spacing.md
         model: root.albums
         cellWidth: 200
         cellHeight: 260

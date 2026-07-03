@@ -23,9 +23,9 @@ Rectangle {
     Keys.onEnterPressed: root.clicked()
     Keys.onSpacePressed: root.clicked()
 
-    implicitWidth: Math.max(minWidth, text !== "" ? contentText.implicitWidth + MichiSpacing.xl * 2 + (loading ? 24 : 0) : 40)
+    implicitWidth: Math.max(minWidth, text !== "" ? contentText.implicitWidth + MichiTheme.spacing.xl * 2 + (loading ? 24 : 0) : 40)
     height: 36
-    radius: 10
+    radius: MichiTheme.radiusSm
 
     color: {
         if (!enabled) return Qt.rgba(0.3, 0.3, 0.35, 0.15)
@@ -48,28 +48,28 @@ Rectangle {
             }
         }
         switch (root.variant) {
-            case "primary": return MichiColors.accentBlue
+                case "primary": return MichiTheme.colors.accentBlue
             case "secondary": return Qt.rgba(1.0, 1.0, 1.0, 0.06)
             case "ghost": return "transparent"
-            case "accent": return Qt.rgba(0.561, 0.718, 1.0, 0.08)
+            case "accent": return MichiTheme.colors.accentSurface
             case "danger": return Qt.rgba(0.95, 0.25, 0.25, 0.08)
-            default: return MichiColors.accentBlue
+            default: return MichiTheme.colors.accentBlue
         }
     }
 
     Behavior on color {
-        ColorAnimation { duration: MichiMotion.fast; easing.type: MichiMotion.easing.standard }
+        ColorAnimation { duration: MichiTheme.motion.fast; easing.type: MichiTheme.motion.easing.standard }
     }
 
     border.color: {
         if (!enabled) return "transparent"
-        if (root.focused) return MichiColors.borderFocus
+        if (root.focused) return MichiTheme.colors.borderFocus
         if (root.variant === "ghost") {
             return root.hoveredBtn ? Qt.rgba(1.0, 1.0, 1.0, 0.12) : "transparent"
         }
         return "transparent"
     }
-    border.width: root.focused ? 2 : 1
+    border.width: root.focused ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
 
     scale: root.pressed ? 0.985 : 1.0
     Behavior on scale {
@@ -81,12 +81,12 @@ Rectangle {
         anchors.centerIn: parent
         text: root.text
         color: {
-            if (!enabled) return MichiColors.textMuted
-            if (root.variant === "primary") return MichiColors.textOnAccent
-            return MichiColors.textPrimary
+            if (!enabled) return MichiTheme.colors.textMuted
+            if (root.variant === "primary") return MichiTheme.colors.textOnAccent
+            return MichiTheme.colors.textPrimary
         }
-        font.pixelSize: MichiTypography.bodySize
-        font.weight: MichiTypography.weightMedium
+        font.pixelSize: MichiTheme.typography.bodySize
+        font.weight: MichiTheme.typography.weightMedium
         visible: text !== "" && !root.loading
     }
 
@@ -96,8 +96,8 @@ Rectangle {
         height: 16
         radius: 8
         color: "transparent"
-        border.color: root.variant === "primary" ? MichiColors.textOnAccent : MichiColors.textSecondary
-        border.width: 2
+        border.color: root.variant === "primary" ? MichiTheme.colors.textOnAccent : MichiTheme.colors.textSecondary
+        border.width: MichiTheme.borderWidthFocus
         visible: root.loading
         NumberAnimation on rotation {
             from: 0; to: 360

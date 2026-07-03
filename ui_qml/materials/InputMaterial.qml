@@ -6,17 +6,17 @@ Item {
 
     property bool focused: false
     property bool hoveredInput: false
-    property int radius: 10
+    property int radius: MichiTheme.radiusSm
 
     Rectangle {
         anchors.fill: parent
         radius: root.radius
-        color: MichiColors.surfaceInput
+        color: MichiTheme.colors.surfaceInput
         border.color: {
-            if (root.focused) return MichiColors.borderFocus
+            if (root.focused) return MichiTheme.colors.borderFocus
             if (root.hoveredInput) return Qt.rgba(1.0, 1.0, 1.0, 0.12)
-            return MichiColors.borderSubtle
+            return MichiTheme.colors.borderSubtle
         }
-        border.width: root.focused ? 2 : 1
+        border.width: root.focused ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
     }
 }

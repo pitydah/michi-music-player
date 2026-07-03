@@ -17,17 +17,17 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        anchors.leftMargin: MichiSpacing.sm
-        anchors.rightMargin: MichiSpacing.sm
-        radius: 8
+        anchors.leftMargin: MichiTheme.spacing.sm
+        anchors.rightMargin: MichiTheme.spacing.sm
+        radius: MichiTheme.radiusSm
         color: {
-            if (root.active) return Qt.rgba(0.561, 0.718, 1.0, 0.12)
+            if (root.active) return MichiTheme.colors.accentSelection
             if (root.sidebarHovered) return Qt.rgba(1.0, 1.0, 1.0, 0.04)
             return "transparent"
         }
 
         Behavior on color {
-            ColorAnimation { duration: MichiMotion.fast; easing.type: MichiMotion.easing.standard }
+            ColorAnimation { duration: MichiTheme.motion.fast; easing.type: MichiTheme.motion.easing.standard }
         }
 
         Rectangle {
@@ -37,7 +37,7 @@ Item {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             radius: 2
-            color: MichiColors.accentBlue
+            color: MichiTheme.colors.accentBlue
         }
 
         Row {
@@ -49,26 +49,26 @@ Item {
             Rectangle {
                 width: 28
                 height: 28
-                radius: 6
-                color: root.active ? Qt.rgba(0.561, 0.718, 1.0, 0.10) : "transparent"
+                radius: MichiTheme.radiusXs
+                color: root.active ? MichiTheme.colors.accentSurface : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.iconText !== ""
 
                 Text {
                     anchors.centerIn: parent
                     text: root.iconText
-                    color: root.active ? MichiColors.accentBlue : MichiColors.textMuted
+                    color: root.active ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                     font.pixelSize: 12
-                    font.weight: MichiTypography.weightSemiBold
+                    font.weight: MichiTheme.typography.weightSemiBold
                     font.letterSpacing: 1.2
                 }
             }
 
             Text {
                 text: root.label
-                color: root.active ? MichiColors.textPrimary : MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
-                font.weight: root.active ? MichiTypography.weightMedium : MichiTypography.weightNormal
+                color: root.active ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: root.active ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
                 anchors.verticalCenter: parent.verticalCenter
             }
         }

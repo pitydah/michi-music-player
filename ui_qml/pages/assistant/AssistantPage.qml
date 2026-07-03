@@ -19,38 +19,38 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
                 width: parent.width
                 height: 140
-                radius: 16
+                radius: MichiTheme.radiusLg
                 showGlow: true
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: MichiSpacing.xl
-                    spacing: MichiSpacing.sm
+                    anchors.margins: MichiTheme.spacing.xl
+                    spacing: MichiTheme.spacing.sm
 
                     Text {
                         text: "Michi AI"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.heroTitleSize
-                        font.weight: MichiTypography.weightBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize
+                        font.weight: MichiTheme.typography.weightBold
                     }
 
                     Text {
                         text: "Asistente inteligente para tu ecosistema musical. Pregunta, explora y descubre."
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70
                         wrapMode: Text.WordWrap
                     }
@@ -92,38 +92,38 @@ Item {
             Column {
                 id: chatColumn
                 width: parent.width
-                spacing: MichiSpacing.md
+                spacing: MichiTheme.spacing.md
             }
 
             Row {
                 width: parent.width
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
 
                 Rectangle {
                     width: parent.width - 50
                     height: 38
-                    radius: 10
-                    color: MichiColors.surfaceInput
-                    border.color: chatInput.activeFocus ? MichiColors.borderFocus : MichiColors.borderSubtle
-                    border.width: chatInput.activeFocus ? 2 : 1
+                    radius: MichiTheme.radiusSm
+                    color: MichiTheme.colors.surfaceInput
+                    border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
+                    border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
 
                     TextInput {
                         id: chatInput
                         anchors.fill: parent
-                        anchors.leftMargin: MichiSpacing.md
-                        anchors.rightMargin: MichiSpacing.md
-                        anchors.topMargin: MichiSpacing.xs
-                        anchors.bottomMargin: MichiSpacing.xs
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.bodySize
+                        anchors.leftMargin: MichiTheme.spacing.md
+                        anchors.rightMargin: MichiTheme.spacing.md
+                        anchors.topMargin: MichiTheme.spacing.xs
+                        anchors.bottomMargin: MichiTheme.spacing.xs
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.bodySize
                         placeholderText: "Pregunta a Michi AI..."
                         verticalAlignment: TextInput.AlignVCenter
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "Pregunta a Michi AI..."
-                            color: MichiColors.textMuted
-                            font.pixelSize: MichiTypography.bodySize
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.bodySize
                             visible: parent.text === "" && !parent.activeFocus
                         }
 

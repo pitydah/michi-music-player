@@ -21,7 +21,7 @@ Item {
         variant: root.variant
         hovered: root.hovered
         interactive: true
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         MouseArea {
             anchors.fill: parent
@@ -33,14 +33,14 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.xs
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.xs
 
             Text {
                 text: root.title
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.cardTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.cardTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
                 elide: Text.ElideRight
                 width: parent.width
                 visible: text !== ""
@@ -48,8 +48,8 @@ Item {
 
             Text {
                 text: root.subtitle
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 elide: Text.ElideRight
                 width: parent.width
                 visible: text !== ""

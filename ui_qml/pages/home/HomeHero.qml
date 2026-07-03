@@ -11,37 +11,37 @@ Item {
 
     HeroMaterial {
         anchors.fill: parent
-        radius: 16
+        radius: MichiTheme.radiusLg
         showGlow: true
 
         Row {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.xl
-            spacing: MichiSpacing.xl
+            anchors.margins: MichiTheme.spacing.xl
+            spacing: MichiTheme.spacing.xl
 
             Column {
                 width: parent.width * 0.60
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiSpacing.md
+                spacing: MichiTheme.spacing.md
 
                 Text {
                     text: "Centro Michi"
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.heroTitleSize
-                    font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.weight: MichiTheme.typography.weightBold
                 }
 
                 Text {
                     text: "Tu ecosistema musical. Biblioteca, servidores, Home Audio y asistente en un solo lugar."
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.bodySize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     wrapMode: Text.WordWrap
                     lineHeight: 1.5
                 }
 
                 Row {
-                    spacing: MichiSpacing.sm
+                    spacing: MichiTheme.spacing.sm
 
                     ActionButton {
                         text: "Continuar escuchando"
@@ -80,9 +80,9 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         text: "MM"
-                        color: MichiColors.accentBlue
+                        color: MichiTheme.colors.accentBlue
                         font.pixelSize: 28
-                        font.weight: MichiTypography.weightBold
+                        font.weight: MichiTheme.typography.weightBold
                         font.letterSpacing: 2.0
                         opacity: 0.50
                     }

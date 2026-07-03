@@ -19,7 +19,7 @@ Item {
         anchors.fill: parent
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         MouseArea {
             id: mouseArea
@@ -30,31 +30,31 @@ Item {
 
         Row {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.lg
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 width: parent.width - 140
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
 
                 Text {
                     text: root.serverName
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.cardTitleSize
-                    font.weight: MichiTypography.weightSemiBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
                 }
 
                 Text {
                     text: root.serverType
-                    color: MichiColors.textSecondary
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
 
                 StatusBadge { text: root.badgeText; kind: root.badgeKind }
 

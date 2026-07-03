@@ -14,20 +14,20 @@ Item {
     Row {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
-        spacing: MichiSpacing.sm
+        spacing: MichiTheme.spacing.sm
 
         Text {
             text: root.uppercase ? root.text.toUpperCase() : root.text
-            color: MichiColors.textPrimary
-            font.pixelSize: MichiTypography.sectionTitleSize
-            font.weight: MichiTypography.weightSemiBold
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.weight: MichiTheme.typography.weightSemiBold
             font.letterSpacing: root.uppercase ? 0.5 : 0.0
         }
 
         Text {
             text: "›"
-            color: MichiColors.textMuted
-            font.pixelSize: MichiTypography.sectionTitleSize
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
             visible: root.showChevron
             anchors.verticalCenter: parent.verticalCenter
         }

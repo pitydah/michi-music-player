@@ -18,15 +18,15 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
                 width: parent.width
@@ -36,20 +36,20 @@ Item {
 
                 Column {
                     anchors.fill: parent
-                    anchors.margins: MichiSpacing.xl
-                    spacing: MichiSpacing.sm
+                    anchors.margins: MichiTheme.spacing.xl
+                    spacing: MichiTheme.spacing.sm
 
                     Text {
                         text: "Mix"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.heroTitleSize
-                        font.weight: MichiTypography.weightBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize
+                        font.weight: MichiTheme.typography.weightBold
                     }
 
                     Text {
                         text: "Descubre, revive y explora tu música desde nuevas perspectivas."
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70
                         wrapMode: Text.WordWrap
                     }
@@ -64,14 +64,14 @@ Item {
             Grid {
                 width: parent.width
                 columns: 2
-                columnSpacing: MichiSpacing.md
-                rowSpacing: MichiSpacing.md
+                columnSpacing: MichiTheme.spacing.md
+                rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
                     model: root.mixBridge ? root.mixBridge.categories : []
 
                     GlassCard {
-                        width: (parent.width - MichiSpacing.md) / 2
+                        width: (parent.width - MichiTheme.spacing.md) / 2
                         height: 100
                         title: modelData.title || ""
                         subtitle: modelData.desc || ""

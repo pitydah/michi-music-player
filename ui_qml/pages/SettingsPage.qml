@@ -12,19 +12,19 @@ Item {
     signal closeRequested()
 
     Flickable {
-        anchors.fill: parent; anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
 
         Column {
-            id: column; width: parent.width; spacing: MichiSpacing.lg
+            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 ActionButton { text: "←"; variant: "ghost"; onClicked: root.closeRequested() }
                 Text {
-                    text: "Ajustes"; color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.pageTitleSize; font.weight: MichiTypography.weightSemiBold
+                    text: "Ajustes"; color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }

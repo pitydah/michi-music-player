@@ -19,13 +19,13 @@ Item {
 
     Row {
         anchors.fill: parent
-        spacing: MichiSpacing.md
+        spacing: MichiTheme.spacing.md
 
         Repeater {
             model: root.modes
 
             Item {
-                width: (parent.width - MichiSpacing.md) / 2
+                width: (parent.width - MichiTheme.spacing.md) / 2
                 height: parent.height
 
                 GlassMaterial {
@@ -48,21 +48,21 @@ Item {
 
                     Column {
                         anchors.centerIn: parent
-                        spacing: MichiSpacing.sm
+                        spacing: MichiTheme.spacing.sm
 
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 36
                             height: 36
-                            radius: 8
+                            radius: MichiTheme.radiusSm
                             color: root.selectedMode === index ? Qt.rgba(0.561, 0.718, 1.0, 0.12) : "transparent"
 
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData.glyph
-                                color: root.selectedMode === index ? MichiColors.accentBlue : MichiColors.textMuted
+                                color: root.selectedMode === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                                 font.pixelSize: 14
-                                font.weight: MichiTypography.weightSemiBold
+                                font.weight: MichiTheme.typography.weightSemiBold
                                 font.letterSpacing: 1.5
                             }
                         }
@@ -70,16 +70,16 @@ Item {
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: modelData.title
-                            color: root.selectedMode === index ? MichiColors.textPrimary : MichiColors.textSecondary
-                            font.pixelSize: MichiTypography.cardTitleSize
-                            font.weight: MichiTypography.weightSemiBold
+                            color: root.selectedMode === index ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.cardTitleSize
+                            font.weight: MichiTheme.typography.weightSemiBold
                         }
 
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: modelData.subtitle
-                            color: MichiColors.textMuted
-                            font.pixelSize: MichiTypography.metaSize
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
                         }
                     }
                 }

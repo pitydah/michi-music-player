@@ -17,29 +17,29 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
-                width: parent.width; height: 140; radius: 16; showGlow: true
+                width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
                 Column {
-                    anchors.fill: parent; anchors.margins: MichiSpacing.xl; spacing: MichiSpacing.sm
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
                         text: "Audio Lab"
-                        color: MichiColors.textPrimary
-                        font.pixelSize: MichiTypography.heroTitleSize; font.weight: MichiTypography.weightBold
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
                         text: "Herramientas de análisis, conversión y diagnóstico para tu biblioteca musical."
-                        color: MichiColors.textSecondary
-                        font.pixelSize: MichiTypography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
                     }
                 }
             }
@@ -58,20 +58,20 @@ Item {
             SectionHeader { text: "Estado de la biblioteca"; width: parent.width }
 
             GlassMaterial {
-                width: parent.width; radius: 12; variant: "base"
+                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
                 Row {
-                    anchors.fill: parent; anchors.margins: MichiSpacing.lg; spacing: MichiSpacing.xl
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                     Column { spacing: 4
-                        Text { text: root.audioLabBridge ? root.audioLabBridge.totalTracks : "—"; color: MichiColors.accentBlue; font.pixelSize: MichiTypography.heroTitleSize; font.weight: MichiTypography.weightBold }
-                        Text { text: "Canciones"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize }
+                        Text { text: root.audioLabBridge ? root.audioLabBridge.totalTracks : "—"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: "Canciones"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                     Column { spacing: 4
-                        Text { text: root.audioLabBridge ? root.audioLabBridge.missingMetadata : "—"; color: root.audioLabBridge && root.audioLabBridge.missingMetadata > 0 ? MichiColors.warning : MichiColors.textPrimary; font.pixelSize: MichiTypography.heroTitleSize; font.weight: MichiTypography.weightBold }
-                        Text { text: "Sin metadata"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize }
+                        Text { text: root.audioLabBridge ? root.audioLabBridge.missingMetadata : "—"; color: root.audioLabBridge && root.audioLabBridge.missingMetadata > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: "Sin metadata"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                     Column { spacing: 4
-                        Text { text: root.audioLabBridge ? root.audioLabBridge.missingCovers : "—"; color: root.audioLabBridge && root.audioLabBridge.missingCovers > 0 ? MichiColors.warning : MichiColors.textPrimary; font.pixelSize: MichiTypography.heroTitleSize; font.weight: MichiTypography.weightBold }
-                        Text { text: "Sin carátula"; color: MichiColors.textMuted; font.pixelSize: MichiTypography.metaSize }
+                        Text { text: root.audioLabBridge ? root.audioLabBridge.missingCovers : "—"; color: root.audioLabBridge && root.audioLabBridge.missingCovers > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }
+                        Text { text: "Sin carátula"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
                 }
             }
@@ -79,13 +79,13 @@ Item {
             SectionHeader { text: "Herramientas"; width: parent.width }
 
             Grid {
-                width: parent.width; columns: 2; columnSpacing: MichiSpacing.md; rowSpacing: MichiSpacing.md
+                width: parent.width; columns: 2; columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
                     model: root.audioLabBridge ? root.audioLabBridge.modules : []
 
                     GlassCard {
-                        width: (parent.width - MichiSpacing.md) / 2; height: 90
+                        width: (parent.width - MichiTheme.spacing.md) / 2; height: 90
                         title: modelData.title || ""
                         subtitle: modelData.desc || ""
                         variant: modelData.status === "available" ? "base" : "status"
@@ -98,9 +98,9 @@ Item {
             }
 
             GlassMaterial {
-                width: parent.width; radius: 12; variant: "status"
+                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
                 Column {
-                    anchors.fill: parent; anchors.margins: MichiSpacing.lg; spacing: MichiSpacing.sm
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Solo lectura"; kind: "info" }
                     StatusBadge { text: "Interfaz clásica disponible"; kind: "disconnected" }
                 }

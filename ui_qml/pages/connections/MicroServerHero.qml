@@ -16,37 +16,37 @@ Item {
 
     HeroMaterial {
         anchors.fill: parent
-        radius: 16
+        radius: MichiTheme.radiusLg
         showGlow: true
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.xl
-            spacing: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.xl
+            spacing: MichiTheme.spacing.md
 
             Text {
                 text: "Michi Micro Server"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.heroTitleSize
-                font.weight: MichiTypography.weightBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.heroTitleSize
+                font.weight: MichiTheme.typography.weightBold
             }
 
             Text {
                 text: "Servidor musical doméstico del ecosistema Michi."
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width * 0.60
                 wrapMode: Text.WordWrap
             }
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 StatusBadge { text: "Ecosistema Michi"; kind: "info" }
                 StatusBadge { text: "Rust - Streaming - Biblioteca central"; kind: "info" }
             }
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 StatusBadge {
                     text: {
                         switch (root.state) {
@@ -66,7 +66,7 @@ Item {
             }
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
                 ActionButton {
                     text: "Buscar Michi Micro Server"
                     variant: "primary"

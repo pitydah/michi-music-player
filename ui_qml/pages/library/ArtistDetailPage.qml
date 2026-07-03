@@ -34,18 +34,18 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             Row {
-                spacing: MichiSpacing.sm
+                spacing: MichiTheme.spacing.sm
 
                 ActionButton {
                     text: "←"
@@ -55,9 +55,9 @@ Item {
 
                 Text {
                     text: root.artistName
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.heroTitleSize
-                    font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.weight: MichiTheme.typography.weightBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }
@@ -65,7 +65,7 @@ Item {
             Rectangle {
                 width: 120
                 height: 120
-                radius: 60
+                radius: MichiTheme.radiusPill
                 color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
                 anchors.horizontalCenter: parent.horizontalCenter
 
@@ -77,9 +77,9 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root.artistName ? root.artistName.charAt(0).toUpperCase() : "?"
-                    color: MichiColors.accentBlue
+                    color: MichiTheme.colors.accentBlue
                     font.pixelSize: 42
-                    font.weight: MichiTypography.weightBold
+                    font.weight: MichiTheme.typography.weightBold
                     visible: false
                 }
             }

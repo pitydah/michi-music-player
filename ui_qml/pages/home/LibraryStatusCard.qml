@@ -19,7 +19,7 @@ Item {
         anchors.fill: parent
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: 12
+        radius: MichiTheme.radiusMd
 
         MouseArea {
             id: mouseArea
@@ -31,14 +31,14 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: MichiSpacing.lg
-            spacing: MichiSpacing.md
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
 
             Text {
                 text: "Biblioteca"
-                color: MichiColors.textPrimary
-                font.pixelSize: MichiTypography.sectionTitleSize
-                font.weight: MichiTypography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
             }
 
             Loader {
@@ -57,47 +57,47 @@ Item {
     Component {
         id: statsComponent
         Row {
-            spacing: MichiSpacing.xl
+            spacing: MichiTheme.spacing.xl
             Column {
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
                 Text {
                     text: root.albums
-                    color: MichiColors.accentBlue
-                    font.pixelSize: MichiTypography.heroTitleSize
-                    font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.accentBlue
+                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.weight: MichiTheme.typography.weightBold
                 }
                 Text {
                     text: "Álbumes"
-                    color: MichiColors.textMuted
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
             Column {
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
                 Text {
                     text: root.artists
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.heroTitleSize
-                    font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.weight: MichiTheme.typography.weightBold
                 }
                 Text {
                     text: "Artistas"
-                    color: MichiColors.textMuted
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
             Column {
-                spacing: MichiSpacing.xs
+                spacing: MichiTheme.spacing.xs
                 Text {
                     text: root.tracks
-                    color: MichiColors.textPrimary
-                    font.pixelSize: MichiTypography.heroTitleSize
-                    font.weight: MichiTypography.weightBold
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.heroTitleSize
+                    font.weight: MichiTheme.typography.weightBold
                 }
                 Text {
                     text: "Canciones"
-                    color: MichiColors.textMuted
-                    font.pixelSize: MichiTypography.metaSize
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
         }
@@ -107,8 +107,8 @@ Item {
         id: emptyComponent
         Text {
             text: "Biblioteca no indexada. Agrega carpetas con música para comenzar."
-            color: MichiColors.textMuted
-            font.pixelSize: MichiTypography.bodySize
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.bodySize
             width: parent.width
             wrapMode: Text.WordWrap
         }

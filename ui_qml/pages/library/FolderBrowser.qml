@@ -14,15 +14,15 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.md
-        contentHeight: column.height + MichiSpacing.md
+        anchors.margins: MichiTheme.spacing.md
+        contentHeight: column.height + MichiTheme.spacing.md
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.xs
+            spacing: MichiTheme.spacing.xs
 
             Repeater {
                 model: root.folders
@@ -30,7 +30,7 @@ Item {
                 GlassMaterial {
                     width: parent.width
                     height: 48
-                    radius: 8
+                    radius: MichiTheme.radiusSm
                     hovered: mouseArea.containsMouse
                     interactive: true
 
@@ -44,20 +44,20 @@ Item {
 
                     Row {
                         anchors.fill: parent
-                        anchors.leftMargin: MichiSpacing.md
-                        anchors.rightMargin: MichiSpacing.md
-                        spacing: MichiSpacing.sm
+                        anchors.leftMargin: MichiTheme.spacing.md
+                        anchors.rightMargin: MichiTheme.spacing.md
+                        spacing: MichiTheme.spacing.sm
 
                         Rectangle {
-                            width: 24; height: 24; radius: 4
+                            width: 24; height: 24; radius: MichiTheme.radiusXs
                             color: Qt.rgba(1.0, 1.0, 1.0, 0.04)
                             anchors.verticalCenter: parent.verticalCenter
                             Text {
                                 anchors.centerIn: parent
                                 text: "FD"
-                                color: MichiColors.textMuted
+                                color: MichiTheme.colors.textMuted
                                 font.pixelSize: 10
-                                font.weight: MichiTypography.weightBold
+                                font.weight: MichiTheme.typography.weightBold
                             }
                         }
 
@@ -67,16 +67,16 @@ Item {
 
                             Text {
                                 text: modelData.name || modelData.path || ""
-                                color: MichiColors.textPrimary
-                                font.pixelSize: MichiTypography.bodySize
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
                                 elide: Text.ElideRight
                                 width: parent.width - 60
                             }
 
                             Text {
                                 text: modelData.track_count > 0 ? modelData.track_count + " canciones" : ""
-                                color: MichiColors.textMuted
-                                font.pixelSize: MichiTypography.metaSize
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.metaSize
                                 visible: text !== ""
                             }
                         }
@@ -86,8 +86,8 @@ Item {
 
             Text {
                 text: root.folders.length === 0 ? "No hay carpetas disponibles" : ""
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 visible: text !== ""

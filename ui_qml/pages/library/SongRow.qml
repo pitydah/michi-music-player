@@ -22,20 +22,20 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: root.hovered ? Qt.rgba(1.0, 1.0, 1.0, 0.03) : "transparent"
-        Behavior on color { ColorAnimation { duration: MichiMotion.fast } }
+        Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
         Row {
             anchors.fill: parent
-            anchors.leftMargin: MichiSpacing.md
-            anchors.rightMargin: MichiSpacing.md
-            spacing: MichiSpacing.sm
+            anchors.leftMargin: MichiTheme.spacing.md
+            anchors.rightMargin: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             Text {
                 width: parent.width * 0.30
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.trackTitle
-                color: root.hovered ? MichiColors.textPrimary : MichiColors.textNormal
-                font.pixelSize: MichiTypography.bodySize
+                color: root.hovered ? MichiTheme.colors.textPrimary : MichiTheme.colors.textNormal
+                font.pixelSize: MichiTheme.typography.bodySize
                 elide: Text.ElideRight
             }
 
@@ -43,8 +43,8 @@ Item {
                 width: parent.width * 0.25
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.trackArtist
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 elide: Text.ElideRight
             }
 
@@ -52,8 +52,8 @@ Item {
                 width: parent.width * 0.25
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.trackAlbum
-                color: MichiColors.textSecondary
-                font.pixelSize: MichiTypography.bodySize
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
                 elide: Text.ElideRight
             }
 
@@ -61,8 +61,8 @@ Item {
                 width: parent.width * 0.12
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.trackDuration
-                color: MichiColors.textMuted
-                font.pixelSize: MichiTypography.metaSize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
                 horizontalAlignment: Text.AlignRight
             }
         }

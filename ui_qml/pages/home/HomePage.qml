@@ -10,15 +10,15 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiSpacing.xl
-        contentHeight: column.height + MichiSpacing.xxl
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
             id: column
             width: parent.width
-            spacing: MichiSpacing.lg
+            spacing: MichiTheme.spacing.lg
 
             HomeHero {}
 
@@ -29,7 +29,7 @@ Item {
 
             Row {
                 width: parent.width
-                spacing: MichiSpacing.lg
+                spacing: MichiTheme.spacing.lg
 
                 LibraryStatusCard {
                     id: libraryCard

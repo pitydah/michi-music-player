@@ -18,17 +18,17 @@ Item {
 
         Text {
             text: root.trackTitle
-            color: root.isPlaying ? MichiColors.textPrimary : MichiColors.textSecondary
-            font.pixelSize: MichiTypography.bodySize
-            font.weight: MichiTypography.weightMedium
+            color: root.isPlaying ? MichiTheme.colors.textPrimary : MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightMedium
             elide: Text.ElideRight
             width: 200
         }
 
         Text {
             text: root.trackArtist ? root.trackArtist + (root.trackAlbum ? " · " + root.trackAlbum : "") : ""
-            color: MichiColors.textMuted
-            font.pixelSize: MichiTypography.metaSize
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
             elide: Text.ElideRight
             width: 200
             visible: text !== ""

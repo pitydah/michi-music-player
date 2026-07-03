@@ -14,12 +14,12 @@ Item {
 
     Row {
         anchors.centerIn: parent
-        spacing: MichiSpacing.sm
+        spacing: MichiTheme.spacing.sm
 
         Text {
             text: formatTime(root.position)
-            color: MichiColors.textMuted
-            font.pixelSize: MichiTypography.metaSize
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -31,7 +31,7 @@ Item {
             Rectangle {
                 width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
                 height: parent.height; radius: 2
-                color: MichiColors.accentBlue
+                color: MichiTheme.colors.accentBlue
             }
 
             MouseArea {
@@ -48,8 +48,8 @@ Item {
 
         Text {
             text: formatTime(root.duration)
-            color: MichiColors.textMuted
-            font.pixelSize: MichiTypography.metaSize
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
             anchors.verticalCenter: parent.verticalCenter
         }
     }
