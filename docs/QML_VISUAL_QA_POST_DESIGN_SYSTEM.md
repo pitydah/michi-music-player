@@ -64,11 +64,18 @@
 ## Tests
 | Comando | Resultado |
 |---|---|
-| `ruff check .` | ✅ 1 pre-existing |
+| `ruff check .` | ✅ OK |
 | `compileall` | ✅ |
 | `smoke_startup` | ✅ |
 | `smoke_ui_routes` | ✅ |
-| `tests/qml/ -q` | 186 passed |
+| `tests/qml/ -q` | 196 passed |
+| `tests/test_schema.py -q` | 15 passed |
+
+## Closeout
+- Inconsistencia de conteo QML corregida (186→196).
+- Ruff verificado limpio (0 errores).
+- Referencias prohibidas revisadas: 0 ActionButton, 0 imports directos, 0 emojis control.
+- No se tocaron backend/audio/QtWidgets.
 
 ## Veredicto
 Design System QML estable, sin regresiones visuales. No se requiere acción correctiva urgente.
