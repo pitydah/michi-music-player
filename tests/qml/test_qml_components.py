@@ -14,7 +14,6 @@ QML_DIR = Path(__file__).resolve().parent.parent.parent / "ui_qml"
 @pytest.fixture
 def engine(qapp):
     return QQmlEngine(qapp)
-    return QQmlEngine()
 
 
 def _load_qml(engine, source: str) -> QQmlComponent:
@@ -37,6 +36,10 @@ class TestMichiIconButton:
     def test_instantiate(self, engine):
         component = _load_qml(engine, "components/MichiIconButton.qml")
         assert component.isReady()
+
+    def test_smoke_can_load(self, engine):
+        component = _load_qml(engine, "components/MichiIconButton.qml")
+        assert component.status() == QQmlComponent.Ready
 
 
 class TestMichiSlider:
@@ -79,6 +82,10 @@ class TestMichiProgressBar:
         component = _load_qml(engine, "components/MichiProgressBar.qml")
         assert component.isReady()
 
+    def test_smoke_can_load(self, engine):
+        component = _load_qml(engine, "components/MichiProgressBar.qml")
+        assert component.status() == QQmlComponent.Ready
+
 
 class TestGlassPanel:
     def test_instantiate(self, engine):
@@ -120,3 +127,24 @@ class TestEmptyState:
     def test_instantiate(self, engine):
         component = _load_qml(engine, "components/EmptyState.qml")
         assert component.isReady()
+
+
+# ── Page smoke tests (file existence) ──
+
+PAGE_FILES = [
+    "pages/home/HomePage.qml",
+    "pages/library/LibraryPage.qml",
+    "pages/PlaybackPage.qml",
+    "pages/connections/ConnectionsPage.qml",
+    "pages/SettingsPage.qml",
+    "pages/assistant/AssistantPage.qml",
+    "pages/playlists/PlaylistsPage.qml",
+    "pages/RadioPage.qml",
+]
+
+
+class TestPageFiles:
+    def test_all_pages_exist(self):
+        for rel_path in PAGE_FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing page file: {p}"

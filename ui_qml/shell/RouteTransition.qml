@@ -10,7 +10,7 @@ Item {
         target: root.target
         from: 0.0
         to: 1.0
-        duration: MichiMotion.fast
-        easing.type: MichiMotion.easing.standard
+        duration: MichiTheme.motion.fast
+        easing.type: MichiTheme.motion.easing.standard
     }
 }
