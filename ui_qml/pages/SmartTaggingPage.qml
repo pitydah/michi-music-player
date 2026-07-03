@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import "../theme"
 import "../components"
 import "../materials"
@@ -8,6 +9,7 @@ Item {
     id: root
 
     property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
+    property string selectedFile: ""
 
     Flickable {
         anchors.fill: parent
@@ -48,8 +50,27 @@ Item {
             GlassCard {
                 width: parent.width; height: 70
                 title: "Analizar archivo"
-                subtitle: "Selecciona una canción desde Biblioteca para analizar"
-                variant: "base"
+                subtitle: root.selectedFile ? "Archivo: " + root.selectedFile : "Selecciona un archivo de audio"
+                variant: root.selectedFile ? "accent" : "base"
+                onClicked: fileDialog.open()
+            }
+
+            MichiButton {
+                text: "Seleccionar archivo de audio"
+                variant: "primary"
+                width: parent.width
+                onClicked: fileDialog.open()
+            }
+
+            MichiButton {
+                text: "Escanear"
+                variant: "secondary"
+                width: parent.width
+                enabled: root.selectedFile !== ""
+                onClicked: {
+                    if (root.stb && typeof root.stb.scanTrack !== "undefined" && root.selectedFile)
+                        root.stb.scanTrack(root.selectedFile)
+                }
             }
 
             SectionHeader { text: "Sugerencias"; width: parent.width }
@@ -94,6 +115,15 @@ Item {
                     StatusBadge { text: "Experimental"; kind: "experimental" }
                 }
             }
+        }
+    }
+
+    FileDialog {
+        id: fileDialog
+        title: "Seleccionar archivo de audio"
+        nameFilters: ["Archivos de audio (*.mp3 *.flac *.wav *.ogg *.m4a *.opus *.wma)", "Todos los archivos (*)"]
+        onAccepted: {
+            root.selectedFile = fileDialog.selectedFile.toString().replace("file://", "")
         }
     }
 }
