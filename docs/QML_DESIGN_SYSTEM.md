@@ -27,11 +27,10 @@ Base visual premium para Michi Music Player — dark premium, smoked glass, tipo
 |---|---|---|
 | `MichiButton.qml` | Botón genérico (primary/secondary/ghost/danger) | ✅ Nuevo |
 | `MichiIconButton.qml` | Botón circular para controles/toolbar | ✅ Nuevo |
-| `MichiSlider.qml` | Slider de progreso/volumen con thumb | ✅ Nuevo |
+| `MichiSlider.qml` | Slider de progreso/volumen con thumb, foco y teclado | ✅ Nuevo |
 | `MichiBadge.qml` | Badge de estado (info/success/warning/danger/experimental/muted) | ✅ Nuevo |
 | `GlassPanel.qml` | Panel glass base | ✅ Existente |
 | `GlassCard.qml` | Card glass con bordes | ✅ Existente |
-| `ActionButton.qml` | Botón de acción específico | ✅ Existente |
 | `SearchField.qml` | Campo de búsqueda | ✅ Existente |
 | `SectionHeader.qml` | Encabezado de sección | ✅ Existente |
 | `SidebarItem.qml` | Item de sidebar | ✅ Existente |
@@ -44,7 +43,7 @@ Base visual premium para Michi Music Player — dark premium, smoked glass, tipo
 |---|---|
 | `NowPlayingBar.qml` | Usa `MichiTheme` tokens (colores, spacing, height, border) |
 | `NowPlayingControls.qml` | Reemplazado `GlassMaterial`+`MouseArea` por `MichiIconButton` |
-| `PlaybackPage.qml` | Usa `MichiTheme` tokens, `MichiIconButton`, `MichiGlassPanel` en vez de `GlassMaterial` |
+| `PlaybackPage.qml` | Usa `MichiTheme` tokens, `MichiIconButton` y paneles glass canónicos |
 
 ## Reglas
 - No lógica de DB en QML
@@ -78,8 +77,8 @@ Reemplazar:
 
 - ❌ No hardcodear colores (`#XXXXXX` o `Qt.rgba(...)`) — usar `MichiTheme.colors`
 - ❌ No importar `MichiColors`, `MichiSpacing`, `MichiTypography` directamente — usar `MichiTheme`
-- ❌ No usar emojis como controles — usar `MichiIconButton` con glyph
-- ❌ No usar `ActionButton` — usar `MichiButton`
+- ❌ No usar emojis como controles — usar `MichiIconButton` con glifos ASCII estables o un proveedor de iconos futuro
+- ❌ No usar `ActionButton` — fue retirado; usar `MichiButton`
 - ❌ No poner lógica de DB o backend en QML — usar bridges Python
 - ❌ No reemplazar QtWidgets todavía — mantener coexistencia
 
@@ -100,7 +99,7 @@ Reemplazar:
 |---|---|
 | `MichiButton` | Botón genérico (primary, secondary, ghost, danger) |
 | `MichiIconButton` | Botón circular para controles/toolbar |
-| `MichiSlider` | Slider de progreso/volumen |
+| `MichiSlider` | Slider de progreso/volumen con `moved(value)`, foco y teclado |
 | `MichiBadge` | Badge de estado (info, success, warning, danger, experimental, muted) |
 | `MichiProgressBar` | Barra de progreso (determinada o indeterminada) |
 | `GlassPanel` | Panel glass base |
@@ -111,6 +110,14 @@ Reemplazar:
 | `StatusBadge` | Badge de estado fuente |
 | `EmptyState` | Estado vacío con icono, título, subtítulo y acción |
 
+### Glass canónico
+
+`GlassMaterial` es el material base. `GlassPanel` y `GlassCard` son wrappers canónicos para layouts:
+
+- Usar `GlassPanel` para superficies de página o paneles de herramienta.
+- Usar `GlassCard` para elementos repetidos, tarjetas de lista o previews.
+- Evitar crear nuevos fondos glass con `Rectangle` manual si `GlassPanel` o `GlassCard` cubren el caso.
+
 ### Ejemplo: Card simple usando tokens
 
 ```qml
@@ -118,7 +125,7 @@ import QtQuick
 import "../theme"
 import "../components"
 
-MichiGlassPanel {
+GlassPanel {
     width: parent.width
     height: 120
 

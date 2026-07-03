@@ -52,6 +52,17 @@ class TestMichiSlider:
         component = _load_qml(engine, "components/MichiSlider.qml")
         assert component.isReady()
 
+    def test_slider_contract_properties(self, engine):
+        component = _load_qml(engine, "components/MichiSlider.qml")
+        assert component.isReady()
+        obj = component.create()
+        try:
+            assert obj.property("stepSize") == 1
+            assert obj.property("enabled") is True
+            assert obj.property("activeFocusOnTab") is True
+        finally:
+            obj.deleteLater()
+
 
 class TestMichiBadge:
     def test_instantiate(self, engine):
