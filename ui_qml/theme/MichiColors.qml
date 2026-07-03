@@ -45,4 +45,5 @@ QtObject {
     readonly property color shadowSoft: Qt.rgba(0.0, 0.0, 0.0, 0.30)
     readonly property color shadowFloating: Qt.rgba(0.0, 0.0, 0.0, 0.45)
     readonly property color surfaceInspector: "#0B0D14"
+    readonly property color surfaceNowPlaying: "#141620"
 }

@@ -13,16 +13,22 @@ Item {
     )
 
     height: MichiTheme.nowPlayingHeight
+    visible: true
 
     Rectangle {
         anchors.fill: parent
-        color: "#0F1219"
+        color: MichiTheme.colors.surfaceNowPlaying
+        border.color: MichiTheme.colors.accentBlue
+        border.width: 1
 
         Rectangle {
             anchors.top: parent.top
-            width: parent.width
-            height: MichiTheme.borderWidth
+            width: 60
+            height: 2
+            anchors.horizontalCenter: parent.horizontalCenter
+            radius: 1
             color: MichiTheme.colors.accentBlue
+            opacity: 0.5
         }
 
         Row {
