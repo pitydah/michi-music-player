@@ -8,6 +8,13 @@ import "."
 Item {
     id: root
 
+    property var connectionsBridge: typeof connectionsBridge !== "undefined" ? connectionsBridge : null
+
+    Component.onCompleted: {
+        if (root.connectionsBridge && typeof root.connectionsBridge.refresh !== "undefined")
+            root.connectionsBridge.refresh()
+    }
+
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
@@ -30,14 +37,12 @@ Item {
             MicroServerHero {
                 id: microHero
                 width: parent.width
-                state: "not_configured"
+                state: root.connectionsBridge ? root.connectionsBridge.microServerState : "not_configured"
                 onScanClicked: {
-                    if (typeof connectionsBridge !== "undefined" && connectionsBridge)
-                        connectionsBridge.scanForServers()
+                    if (root.connectionsBridge) root.connectionsBridge.scanForServers()
                 }
                 onManualAddClicked: {
-                    if (typeof connectionsBridge !== "undefined" && connectionsBridge)
-                        connectionsBridge.addManualServer()
+                    if (root.connectionsBridge) root.connectionsBridge.addManualServer()
                 }
             }
 
@@ -53,8 +58,7 @@ Item {
                 rowSpacing: MichiTheme.spacing.md
 
                 Repeater {
-                    model: typeof connectionsBridge !== "undefined" && connectionsBridge
-                           ? connectionsBridge.externalServers : []
+                    model: root.connectionsBridge ? root.connectionsBridge.externalServers : []
 
                     ExternalServerCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2
@@ -63,12 +67,23 @@ Item {
                         serverType: modelData.serverType || modelData.apiType || "API"
                     }
                 }
+
+                Text {
+                    text: "No hay servidores externos configurados."
+                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
+                    width: parent.width; wrapMode: Text.WordWrap
+                    visible: parent.children.length === 0
+                }
             }
 
             NetworkDiscoveryPanel {
                 id: discoveryPanel
                 width: parent.width
-                discoveredServers: []
+                discoveredServers: root.connectionsBridge ? root.connectionsBridge.discoveredServers : []
+                onServerSelected: function(index) {
+                    if (root.connectionsBridge && typeof root.connectionsBridge.requestPair !== "undefined")
+                        root.connectionsBridge.requestPair(index)
+                }
             }
 
             HomeAudioAccess {

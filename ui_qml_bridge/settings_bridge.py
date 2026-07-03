@@ -13,6 +13,10 @@ class SettingsBridge(QObject):
         super().__init__(parent)
         self._sections = []
 
+    @Slot()
+    def refresh(self):
+        self.settingsChanged.emit()
+
     @Property("QVariantList", notify=settingsChanged)
     def sections(self):
         return [

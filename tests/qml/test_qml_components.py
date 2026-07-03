@@ -303,6 +303,46 @@ class TestRadioComponents:
         assert p.exists(), "Missing RadioPage.qml"
 
 
+class TestSettingsDevicesConnections:
+    FILES = [
+        "pages/SettingsPage.qml",
+        "pages/DevicesPage.qml",
+        "pages/devices/DeviceCard.qml",
+        "pages/devices/SyncStatusPanel.qml",
+        "pages/connections/ConnectionsPage.qml",
+        "pages/connections/ExternalServerCard.qml",
+        "pages/home_audio/HomeAudioPage.qml",
+    ]
+
+    INSTANTIABLE = [
+        "pages/SettingsPage.qml",
+        "pages/devices/DeviceCard.qml",
+        "pages/devices/SyncStatusPanel.qml",
+        "pages/connections/ExternalServerCard.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_device_card_instantiate(self, engine):
+        component = _load_qml(engine, "pages/devices/DeviceCard.qml")
+        assert component.isReady()
+
+    def test_sync_status_instantiate(self, engine):
+        component = _load_qml(engine, "pages/devices/SyncStatusPanel.qml")
+        assert component.isReady()
+
+    def test_settings_page_instantiate(self, engine):
+        component = _load_qml(engine, "pages/SettingsPage.qml")
+        assert component.isReady()
+
+    def test_external_server_card_instantiate(self, engine):
+        component = _load_qml(engine, "pages/connections/ExternalServerCard.qml")
+        assert component.isReady()
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"

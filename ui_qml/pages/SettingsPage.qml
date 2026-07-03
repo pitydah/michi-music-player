@@ -11,6 +11,11 @@ Item {
 
     signal closeRequested()
 
+    Component.onCompleted: {
+        if (root.settingsBridge && typeof root.settingsBridge.refresh !== "undefined")
+            root.settingsBridge.refresh()
+    }
+
     Flickable {
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
@@ -39,6 +44,8 @@ Item {
                     variant: "base"
                 }
             }
+
+            StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
         }
     }
 }
