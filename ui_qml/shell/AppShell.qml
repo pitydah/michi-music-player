@@ -25,6 +25,8 @@ Item {
             "settings": "Ajustes",
             "devices": "Dispositivos",
             "playlist_detail": "Playlist",
+            "eq": "Ecualizador",
+            "library_doctor": "Library Doctor",
         }
         header.pageTitle = titles[route] || "Michi"
     }

@@ -29,6 +29,8 @@ Item {
             case "playback": return "../pages/PlaybackPage.qml"
             case "settings": return "../pages/SettingsPage.qml"
             case "devices": return "../pages/DevicesPage.qml"
+            case "eq": return "../pages/EqPage.qml"
+            case "library_doctor": return "../pages/LibraryDoctorPage.qml"
             default: return "../pages/PlaceholderPage.qml"
         }
     }
