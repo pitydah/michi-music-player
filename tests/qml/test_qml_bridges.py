@@ -439,6 +439,33 @@ class TestLibraryBridgeContract:
         bridge = LibraryBridge()
         bridge.refresh()
 
+    def test_play_song_delegates_to_player_service_with_metadata(self):
+        from types import SimpleNamespace
+
+        class FakePlayback:
+            def __init__(self):
+                self.calls = []
+
+            def play(self, filepath, title="", artist="", album=""):
+                self.calls.append((filepath, title, artist, album))
+
+        playback = FakePlayback()
+        bridge = LibraryBridge(playback_ctrl=playback)
+        bridge._songs = [
+            SimpleNamespace(
+                filepath="/music/song.flac",
+                title="Song Title",
+                artist="Song Artist",
+                album="Song Album",
+            )
+        ]
+
+        bridge.play_song("/music/song.flac")
+
+        assert playback.calls == [
+            ("/music/song.flac", "Song Title", "Song Artist", "Song Album")
+        ]
+
 
 class TestAlbumGrid:
     def test_album_grid_qml_exists(self):
@@ -935,6 +962,14 @@ class TestNowPlayingBar:
             def set_volume(self, volume):
                 self.calls.append(("set_volume", volume))
 
+            def toggle_shuffle(self):
+                self.calls.append(("toggle_shuffle",))
+                return True
+
+            def toggle_repeat(self):
+                self.calls.append(("toggle_repeat",))
+                return "all"
+
         player = FakePlayer()
         bridge = NowPlayingBridge(player_service=player)
 
@@ -943,6 +978,8 @@ class TestNowPlayingBar:
         bridge.previous()
         bridge.seek(30)
         bridge.setVolume(65)
+        bridge.toggleShuffle()
+        bridge.toggleRepeat()
         bridge._on_state("playing")
         bridge.togglePlay()
 
@@ -951,7 +988,11 @@ class TestNowPlayingBar:
         assert ("play_prev",) in player.calls
         assert ("seek", 30) in player.calls
         assert ("set_volume", 65) in player.calls
+        assert ("toggle_shuffle",) in player.calls
+        assert ("toggle_repeat",) in player.calls
         assert ("pause",) in player.calls
+        assert bridge.shuffleEnabled is True
+        assert bridge.repeatMode == "all"
 
     def test_playback_bridge_has_nowplaying_props(self):
         from ui_qml_bridge.playback_bridge import PlaybackBridge

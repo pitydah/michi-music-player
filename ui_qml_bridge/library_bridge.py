@@ -149,6 +149,15 @@ class LibraryBridge(QObject):
     def play_song(self, filepath: str):
         if self._playback_ctrl and hasattr(self._playback_ctrl, 'play_file'):
             self._playback_ctrl.play_file(filepath)
+            return
+        track = self._track_for_filepath(filepath)
+        title = getattr(track, "title", "") if track else ""
+        artist = getattr(track, "artist", "") if track else ""
+        album = getattr(track, "album", "") if track else ""
+        if self._playback_ctrl and hasattr(self._playback_ctrl, 'play'):
+            self._playback_ctrl.play(filepath, title, artist, album)
+        elif self._playback_ctrl and hasattr(self._playback_ctrl, 'enqueue'):
+            self._playback_ctrl.enqueue([filepath], play_now=True)
 
     def _song_to_dict(self, s):
         return {
@@ -183,6 +192,12 @@ class LibraryBridge(QObject):
         elif k == 'format':
             return sorted(items, key=lambda x: getattr(x, 'format', '') or '', reverse=reverse)
         return items
+
+    def _track_for_filepath(self, filepath: str):
+        for song in self._songs:
+            if getattr(song, "filepath", "") == filepath:
+                return song
+        return None
 
     def _refresh_albums_artists(self):
         seen_albums = {}

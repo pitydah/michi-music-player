@@ -33,6 +33,9 @@ class PlayerService(QObject):
         self._retry_url = None
         self._retry_title = ""
         self._retry_artist = ""
+        self._current_title = ""
+        self._current_artist = ""
+        self._current_album = ""
         self._retry_timer = QTimer(self)
         self._retry_timer.setSingleShot(True)
         self._retry_timer.timeout.connect(self._do_retry)
@@ -150,8 +153,11 @@ class PlayerService(QObject):
             return self._mpd_service.get_status()
         return {"installed": False, "running": False}
 
-    def play(self, filepath, title="", artist=""):
+    def play(self, filepath, title="", artist="", album=""):
         self._retry_url = None
+        self._current_title = title or ""
+        self._current_artist = artist or ""
+        self._current_album = album or ""
         self._hybrid.play(filepath)
         if title:
             self.track_changed.emit(title, artist)
@@ -239,17 +245,21 @@ class PlayerService(QObject):
 
     def toggle_shuffle(self):
         if self._hybrid.active_id == "gstreamer":
-            self._engine.toggle_shuffle()
+            return self._engine.toggle_shuffle()
+        return False
 
     def toggle_repeat(self):
         if self._hybrid.active_id == "gstreamer":
             return self._engine.toggle_repeat()
         return "none"
 
-    def play_url(self, url, title="", artist=""):
+    def play_url(self, url, title="", artist="", album=""):
         self._retry_url = url
         self._retry_title = title
         self._retry_artist = artist
+        self._current_title = title or ""
+        self._current_artist = artist or ""
+        self._current_album = album or ""
         if self._hybrid.active_id == "gstreamer" or url.startswith(("http://", "https://", "icy://")):
             self._engine.play_url(url)
         else:
@@ -363,6 +373,18 @@ class PlayerService(QObject):
             return self._hybrid.get_snapshot().current_path
         except Exception:
             return ""
+
+    @property
+    def current_title(self):
+        return self._current_title
+
+    @property
+    def current_artist(self):
+        return self._current_artist
+
+    @property
+    def current_album(self):
+        return self._current_album
 
     @property
     def duration(self):
