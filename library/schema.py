@@ -358,13 +358,13 @@ class Schema:
             conn.execute(sql)
         conn.commit()
 
-        for sql in INDEX_SQL[:5]:
+        for sql in INDEX_SQL[:4]:
             conn.execute(sql)
         conn.commit()
 
         Schema.run_migrations(conn)
 
-        for sql in INDEX_SQL[5:]:
+        for sql in INDEX_SQL[4:]:
             conn.execute(sql)
         with contextlib.suppress(sqlite3.OperationalError):
             conn.execute(
