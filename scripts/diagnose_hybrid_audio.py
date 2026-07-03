@@ -82,7 +82,7 @@ def check_mpd_connection(host="127.0.0.1", port=6600):
 
 def check_profile_and_backend():
     try:
-        from audio.output_profiles import get_profile, is_mpd_profile, is_bitperfect_profile
+        from audio.output_profiles import get_profile, is_mpd_profile
         from core.settings_manager import get
         key = get("audio/profile") or "standard"
         prof = get_profile(key)
@@ -100,9 +100,7 @@ def check_registered_backends():
     try:
         from unittest.mock import MagicMock
         with (MagicMock()):
-            from PySide6.QtCore import QObject, QTimer
-        import audio.player_service as aps
-        import audio.player as ap
+            pass
         with (MagicMock()):
             pass
         return "check requires runtime context"

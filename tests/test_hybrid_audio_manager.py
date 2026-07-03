@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from audio.backends.hybrid_audio_manager import HybridAudioManager, MPD_PROFILES
 
