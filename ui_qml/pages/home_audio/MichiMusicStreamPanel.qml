@@ -6,6 +6,8 @@ import "../../components"
 Item {
     id: root
 
+    property string streamState: "concept"
+
     implicitHeight: 420
 
     Column {

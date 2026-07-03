@@ -13,7 +13,7 @@ Item {
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
 
-    Behavior on width { NumberAnimation { duration: MichiTheme.motion.medium; easing.type: Easing.OutCubic } }
+    Behavior on width { NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic } }
 
     SidebarMaterial {
         anchors.fill: parent
