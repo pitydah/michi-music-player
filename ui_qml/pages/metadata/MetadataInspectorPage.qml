@@ -52,7 +52,7 @@ Item {
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 48; height: 48; radius: MichiTheme.radiusMd
-                color: Qt.rgba(0.561, 0.718, 1.0, 0.08)
+                color: MichiTheme.colors.accentSurface
                 Text {
                     anchors.centerIn: parent
                     text: "MI"
