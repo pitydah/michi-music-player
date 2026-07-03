@@ -382,6 +382,55 @@ class TestAudioLab:
         assert p.exists(), "Missing ChatBubble.qml"
 
 
+class TestRemainingPages:
+    REMAINING_FILES = [
+        "pages/connections/ConfiguredServerCard.qml",
+        "pages/connections/DiscoveredServerCard.qml",
+        "pages/connections/HomeAudioAccess.qml",
+        "pages/connections/MicroServerHero.qml",
+        "pages/connections/NetworkDiscoveryPanel.qml",
+        "pages/home/AssistantCard.qml",
+        "pages/home_audio/AudioZoneCard.qml",
+        "pages/home_audio/HomeAssistantPanel.qml",
+        "pages/home_audio/HomeAudioModeSelector.qml",
+        "pages/home_audio/MichiMusicStreamPanel.qml",
+        "pages/home_audio/ReceiverCard.qml",
+        "pages/home/ContinueCard.qml",
+        "pages/home/EcosystemCard.qml",
+        "pages/home/HomeHero.qml",
+        "pages/home/LibraryStatusCard.qml",
+        "pages/PlaceholderPage.qml",
+    ]
+
+    INSTANTIABLE = [
+        "pages/connections/HomeAudioAccess.qml",
+        "pages/connections/MicroServerHero.qml",
+        "pages/home/HomeHero.qml",
+        "pages/PlaceholderPage.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.REMAINING_FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_home_audio_access_instantiate(self, engine):
+        component = _load_qml(engine, "pages/connections/HomeAudioAccess.qml")
+        assert component.isReady()
+
+    def test_micro_server_hero_instantiate(self, engine):
+        component = _load_qml(engine, "pages/connections/MicroServerHero.qml")
+        assert component.isReady()
+
+    def test_home_hero_instantiate(self, engine):
+        component = _load_qml(engine, "pages/home/HomeHero.qml")
+        assert component.isReady()
+
+    def test_placeholder_instantiate(self, engine):
+        component = _load_qml(engine, "pages/PlaceholderPage.qml")
+        assert component.isReady()
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
