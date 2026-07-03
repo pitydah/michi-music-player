@@ -5,10 +5,12 @@ import "../theme"
 Item {
     id: root
 
+    property string iconSource: ""
     property string iconText: ""
     property string label: ""
     property bool active: false
     property bool sidebarHovered: false
+    property bool collapsed: false
 
     signal clicked()
 
@@ -52,7 +54,18 @@ Item {
                 radius: MichiTheme.radiusXs
                 color: root.active ? MichiTheme.colors.accentSurface : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.iconText !== ""
+                visible: root.iconSource !== "" || root.iconText !== ""
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 18
+                    height: 18
+                    source: root.iconSource
+                    visible: root.iconSource !== ""
+                    sourceSize.width: 18
+                    sourceSize.height: 18
+                    fillMode: Image.PreserveAspectFit
+                }
 
                 Text {
                     anchors.centerIn: parent
@@ -61,6 +74,7 @@ Item {
                     font.pixelSize: 12
                     font.weight: MichiTheme.typography.weightSemiBold
                     font.letterSpacing: 1.2
+                    visible: root.iconSource === ""
                 }
             }
 
@@ -70,6 +84,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: root.active ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !root.collapsed
             }
         }
 

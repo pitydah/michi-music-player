@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import MichiCover 1.0
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -19,7 +18,6 @@ Item {
         if (root.bridge && typeof root.bridge.filterByArtist !== "undefined") {
             root.bridge.filterByArtist(name)
         }
-        // Collect albums for this artist from bridge data
         if (root.bridge && typeof root.bridge.albums !== "undefined") {
             var all = root.bridge.albums || []
             var filtered = []
@@ -62,26 +60,12 @@ Item {
                 }
             }
 
-            Rectangle {
+            CoverImage {
                 width: 120
                 height: 120
-                radius: MichiTheme.radiusPill
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
+                coverRadius: MichiTheme.radiusPill
+                coverKey: root.artistName || "ARTIST"
                 anchors.horizontalCenter: parent.horizontalCenter
-
-                CoverBridge {
-                    anchors.fill: parent
-                    coverKey: root.artistName || "ARTIST"
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: root.artistName ? root.artistName.charAt(0).toUpperCase() : "?"
-                    color: MichiTheme.colors.accentBlue
-                    font.pixelSize: 42
-                    font.weight: MichiTheme.typography.weightBold
-                    visible: false
-                }
             }
 
             SectionHeader {

@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import MichiCover 1.0
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -37,26 +36,12 @@ Item {
             anchors.margins: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.sm
 
-            Rectangle {
+            CoverImage {
                 width: parent.width
                 height: width
-                radius: MichiTheme.radiusPill
-                color: MichiTheme.colors.borderInner
-                clip: true
-
-                CoverBridge {
-                    anchors.fill: parent
-                    coverKey: root.coverId || root.artistName || "ARTIST"
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: root.artistName ? root.artistName.charAt(0).toUpperCase() : "?"
-                    color: MichiTheme.colors.accentBlue
-                    font.pixelSize: 32
-                    font.weight: MichiTheme.typography.weightBold
-                    visible: !root.coverId
-                }
+                coverRadius: MichiTheme.radiusPill
+                coverKey: root.coverId || root.artistName || "ARTIST"
+                showPlaceholder: true
             }
 
             Text {

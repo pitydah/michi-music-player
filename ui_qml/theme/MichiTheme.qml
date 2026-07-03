@@ -24,6 +24,7 @@ QtObject {
     readonly property real opacityOverlay: 0.72
 
     readonly property int sidebarWidth: 250
+    readonly property int sidebarWidthCompact: 68
     readonly property int nowPlayingHeight: 88
     readonly property int headerHeight: 56
 }

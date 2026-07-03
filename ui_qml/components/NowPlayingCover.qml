@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import MichiCover 1.0
 import "../theme"
 
 Item {
@@ -12,14 +11,10 @@ Item {
     implicitWidth: root.coverSize
     implicitHeight: root.coverSize
 
-    Rectangle {
-        width: root.coverSize; height: root.coverSize; radius: 6
-        color: MichiTheme.colors.borderInner
-        clip: true
-
-        CoverBridge {
-            anchors.fill: parent
-            coverKey: root.coverKey || "NOWPLAYING"
-        }
+    CoverImage {
+        width: root.coverSize
+        height: root.coverSize
+        coverRadius: 6
+        coverKey: root.coverKey || "NOWPLAYING"
     }
 }

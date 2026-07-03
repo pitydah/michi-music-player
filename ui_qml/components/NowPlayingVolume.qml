@@ -22,7 +22,7 @@ Item {
             width: 28; height: 28
             GlassMaterial {
                 anchors.fill: parent; radius: 14
-                variant: root.muted ? "status" : "status"
+                variant: "status"
                 hovered: muteMouse.containsMouse
                 interactive: true
                 MouseArea {
@@ -30,11 +30,18 @@ Item {
                     hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: root.muteClicked()
                 }
-                Text {
+                Image {
                     anchors.centerIn: parent
-                    text: root.muted || root.volume === 0 ? "X" : root.volume < 40 ? "V" : "V"
-                    color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
-                    font.pixelSize: 12; font.weight: MichiTheme.typography.weightBold
+                    width: 16
+                    height: 16
+                    source: root.muted || root.volume === 0
+                        ? "icons/nowplaying_clean/warm_mute_32.png"
+                        : root.volume < 40
+                            ? "icons/nowplaying_clean/warm_vol_low_32.png"
+                            : "icons/nowplaying_clean/warm_vol_high_32.png"
+                    sourceSize.width: 32
+                    sourceSize.height: 32
+                    fillMode: Image.PreserveAspectFit
                 }
             }
         }
