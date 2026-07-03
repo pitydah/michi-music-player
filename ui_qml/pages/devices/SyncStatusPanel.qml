@@ -18,7 +18,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: 12
+        radius: MichiTheme.radiusMd
         variant: root.serverActive ? "accent" : "base"
 
         Column {

@@ -71,4 +71,16 @@ class DevicesBridge(QObject):
                 logger.debug("Sync peers refresh failed", exc_info=True)
             self._peers = peers
             self._server_active = hasattr(self._sync_mgr, 'is_active') and self._sync_mgr.is_active
+            paired = []
+            try:
+                if hasattr(self._sync_mgr, 'get_paired_devices'):
+                    all_paired = self._sync_mgr.get_paired_devices()
+                    for p in all_paired:
+                        paired.append({
+                            "alias": p.get("alias", "") if isinstance(p, dict) else getattr(p, 'alias', '') or str(p),
+                            "device": p.get("device", "desktop") if isinstance(p, dict) else getattr(p, 'device', 'desktop'),
+                        })
+            except Exception:
+                logger.debug("Sync paired devices refresh failed", exc_info=True)
+            self._paired_devices = paired
         self.stateChanged.emit()

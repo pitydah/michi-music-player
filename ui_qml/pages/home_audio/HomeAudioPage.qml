@@ -7,6 +7,13 @@ import "."
 Item {
     id: root
 
+    property var homeAudioBridge: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
+
+    Component.onCompleted: {
+        if (root.homeAudioBridge && typeof root.homeAudioBridge.refresh !== "undefined")
+            root.homeAudioBridge.refresh()
+    }
+
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
@@ -38,39 +45,41 @@ Item {
                 HomeAssistantPanel {
                     id: haPanel
                     width: parent.width
-                    state: "not_configured"
+                    state: root.homeAudioBridge ? root.homeAudioBridge.homeAssistantState : "not_configured"
                     onConfigureClicked: {
-                        if (typeof homeAudioBridge !== "undefined" && homeAudioBridge)
-                            homeAudioBridge.configureHomeAssistant()
+                        if (root.homeAudioBridge) root.homeAudioBridge.configureHomeAssistant()
                     }
                     onOpenDiagnostics: {
-                        if (typeof homeAudioBridge !== "undefined" && homeAudioBridge)
-                            homeAudioBridge.openDiagnostics()
+                        if (root.homeAudioBridge) root.homeAudioBridge.openDiagnostics()
                     }
                 }
 
                 MichiMusicStreamPanel {
                     id: streamPanel
                     width: parent.width
+                    streamState: root.homeAudioBridge ? root.homeAudioBridge.streamState : "concept"
                 }
             }
 
             SectionHeader { text: "Dispositivos"; width: parent.width }
 
-            ReceiverCard {
-                width: parent.width
-                receiverName: "Receptor principal"
-                receiverRoom: "Sala de estar"
-                receiverState: "disconnected"
-                receiverType: "Michi Stream"
+            Repeater {
+                model: root.homeAudioBridge ? root.homeAudioBridge.devices : []
+
+                ReceiverCard {
+                    width: parent.width
+                    receiverName: modelData.name || ""
+                    receiverRoom: modelData.room || ""
+                    receiverState: modelData.state || "disconnected"
+                    receiverType: modelData.type || "Michi Stream"
+                }
             }
 
-            ReceiverCard {
+            Text {
+                text: "No hay dispositivos Home Audio configurados."
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
-                receiverName: "Receptor secundario"
-                receiverRoom: "Dormitorio"
-                receiverState: "disconnected"
-                receiverType: "Michi Stream"
+                visible: root.homeAudioBridge && root.homeAudioBridge.devices.length === 0
             }
 
             GlassCard {
@@ -80,7 +89,7 @@ Item {
                 variant: "base"
             }
 
-            StatusBadge { text: "Experimental — Sin dispositivos conectados"; kind: "experimental" }
+            StatusBadge { text: "Experimental"; kind: "experimental" }
         }
     }
 }
