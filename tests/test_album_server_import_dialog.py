@@ -34,13 +34,19 @@ class TestAlbumServerImportDialog:
     def test_show_report_success(self, qtbot):
         from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
+        from unittest.mock import patch
         parent = QWidget()
         qtbot.addWidget(parent)
-        AlbumServerImportDialog.show_report(parent, "OK", "All good", is_error=False)
+        with patch("PySide6.QtWidgets.QMessageBox.information") as mock_info:
+            AlbumServerImportDialog.show_report(parent, "OK", "All good", is_error=False)
+            mock_info.assert_called_once()
 
     def test_show_report_error(self, qtbot):
         from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
+        from unittest.mock import patch
         parent = QWidget()
         qtbot.addWidget(parent)
-        AlbumServerImportDialog.show_report(parent, "Error", "Failed", is_error=True)
+        with patch("PySide6.QtWidgets.QMessageBox.critical") as mock_critical:
+            AlbumServerImportDialog.show_report(parent, "Error", "Failed", is_error=True)
+            mock_critical.assert_called_once()
