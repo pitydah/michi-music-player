@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import MichiCover 1.0
 import "../../theme"
+import "../../components"
 
 Item {
     id: root
@@ -14,23 +14,17 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: MichiTheme.radiusSm
-        color: Qt.rgba(1.0, 1.0, 1.0, 0.02)
+        color: MichiTheme.colors.surfaceCard
 
         Row {
             anchors.centerIn: parent
             spacing: MichiTheme.spacing.lg
 
-            Rectangle {
+            CoverImage {
                 width: 80
                 height: 80
-                radius: MichiTheme.radiusXs
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.03)
-                clip: true
-
-                CoverBridge {
-                    anchors.fill: parent
-                    coverKey: root.coverKey
-                }
+                coverRadius: MichiTheme.radiusXs
+                coverKey: root.coverKey
             }
 
             Column {

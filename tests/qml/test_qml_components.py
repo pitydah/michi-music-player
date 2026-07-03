@@ -343,6 +343,31 @@ class TestSettingsDevicesConnections:
         assert component.isReady()
 
 
+class TestMetadataComponents:
+    FILES = [
+        "pages/metadata/MetadataInspectorPage.qml",
+        "pages/metadata/MetadataFieldRow.qml",
+        "pages/metadata/MetadataArtworkPreview.qml",
+    ]
+
+    def test_all_files_exist(self):
+        for rel_path in self.FILES:
+            p = QML_DIR / rel_path
+            assert p.exists(), f"Missing: {p}"
+
+    def test_field_row_instantiate(self, engine):
+        component = _load_qml(engine, "pages/metadata/MetadataFieldRow.qml")
+        assert component.isReady()
+
+    def test_artwork_preview_instantiate(self, engine):
+        component = _load_qml(engine, "pages/metadata/MetadataArtworkPreview.qml")
+        assert component.isReady()
+
+    def test_no_michi_cover_direct(self):
+        content = (QML_DIR / "pages" / "metadata" / "MetadataArtworkPreview.qml").read_text()
+        assert "MichiCover" not in content, "MetadataArtworkPreview still imports MichiCover directly"
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"
