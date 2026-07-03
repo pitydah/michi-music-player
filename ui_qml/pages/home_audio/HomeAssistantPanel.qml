@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../../theme"
 import "../../components"
+import "../../materials"
 
 Item {
     id: root
