@@ -15,16 +15,16 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Inicio | ✅ | ✅ | HomeBridge | Parcial | FUNCIONAL | Alta |
 | Biblioteca | ✅ | ✅ | LibraryBridge | ✅ | FUNCIONAL | Alta |
 | Reproducción | ✅ | ✅ | PlaybackBridge | ✅ | FUNCIONAL | Alta |
-| Playlists | ✅ | ✅ | PlaylistsBridge | Sí | PARCIAL | Media |
-| Radio | ✅ | ✅ | RadioBridge | Sí | PARCIAL | Media |
-| Mix | ✅ | ✅ | MixBridge | Parcial | PARCIAL | Media |
-| Assistant | ✅ | ✅ | MichiAIBridge | Sí | FUNCIONAL | Media |
-| Conexiones | ✅ | ✅ | ConnectionsBridge | Sí | FUNCIONAL | Alta |
-| Home Audio | ✅ | ✅ | HomeAudioBridge | No | FUNCIONAL | Baja |
-| Dispositivos | ✅ | ✅ | DevicesBridge | No | PARCIAL | Baja |
-| Ajustes | ✅ | ✅ | SettingsBridge | No | PARCIAL | Baja |
-| Metadata | ✅ | ✅ | MetadataBridge | Sí | PARCIAL | Media |
-| Audio Lab | ✅ | ✅ | AudioLabBridge | No | PARCIAL | Baja |
+| Playlists | ✅ | ✅ | PlaylistsBridge | ✅ | FUNCIONAL | Media |
+| Radio | ✅ | ✅ | RadioBridge | ✅ | FUNCIONAL | Media |
+| Mix | ✅ | ✅ | MixBridge | Parcial | FUNCIONAL | Media |
+| Assistant | ✅ | ✅ | MichiAIBridge | ✅ | FUNCIONAL | Media |
+| Conexiones | ✅ | ✅ | ConnectionsBridge | ✅ | FUNCIONAL | Alta |
+| Home Audio | ✅ | ✅ | HomeAudioBridge | Parcial | FUNCIONAL | Baja |
+| Dispositivos | ✅ | ✅ | DevicesBridge | Sí | FUNCIONAL | Baja |
+| Ajustes | ✅ | ✅ | SettingsBridge | Sí | FUNCIONAL | Baja |
+| Metadata | ✅ | ✅ | MetadataBridge | ✅ | FUNCIONAL | Media |
+| Audio Lab | ✅ | ✅ | AudioLabBridge | Sí | FUNCIONAL | Baja |
 | Disc Lab | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
 | Library Doctor | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
 | Smart Tagging | ✅ | ❌ (no existe) | — | — | LEGACY_ONLY | Baja |
@@ -41,11 +41,17 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Smoke UI routes | ✅ | 2/2 |
 | Runtime check | ✅ | OK |
 | QML bridge tests | ✅ | 170 passed |
-| QML component tests | ✅ | 41 passed |
-| Total QML tests | ✅ | 211 passed |
+| QML component tests | ✅ | 62 passed |
+| Total QML tests | ✅ | 232 passed |
 | Schema tests | ✅ | 15 passed |
 | Format probe | ✅ | 41 passed |
 | Playback controller | ✅ | 6 passed |
+| Todas las páginas QML con test | ✅ | 100% cobertura de existencia |
+| MichiCover directo en páginas | ✅ | 0 (solo CoverBridgeProxy) |
+| Emojis como controles | ✅ | 0 |
+| ActionButton en código activo | ✅ | 0 |
+| Demo data en QML | ✅ | Eliminado (Connections, HomeAudio) |
+| Radius hardcodeados → MichiTheme | ✅ | Corregido (DeviceCard, SyncStatusPanel) |
 | Manual visual QML | ⏳ | Pendiente |
 | Audio físico real | ⏳ | Pendiente |
 | Pre-existing non-QML failure | ⚠️ | album_import_worker.py / test_services_no_qt_dependency (deuda preexistente fuera de alcance QML) |
@@ -202,17 +208,17 @@ El gate automatizado está aprobado. El proyecto es candidato fuerte a `0.2.0-al
 
 ## Orden recomendado de PRs
 
-| PR sugerido | Objetivo | Riesgo | Criterio de aceptación |
-|---|---|---|---|
-| PR #12 | QML Full Migration Parity Map (este PR) | Ninguno | Documentos creados |
-| PR #13 | Playlists + Radio functional parity | Medio | CRUD playlists + filtros radio funcionales |
-| PR #14 | Settings + Devices + Connections parity | Medio | Secciones settings reales, devices sync |
-| PR #15 | Metadata QML migration phase 1 | Medio | CoverImage en metadata, campos completos |
-| PR #16 | Audio Lab QML migration phase 1 | Medio | Subpáginas Audio Lab migradas |
-| PR #17 | Library Doctor + Smart Tagging QML | Alto | Flujo completo doctor + tagging |
-| PR #18 | DSP/EQ/Output profiles QML | Bajo | EQ visual en QML |
-| PR #19 | Full QML route smoke + release gate | Bajo | Todas las rutas QML funcionales |
-| PR #20 | QML default behind guarded flag | Alto | Release gate pasado, QtWidgets intacto |
+| PR | Objetivo | Riesgo | Estado |
+| -- | -------- | ------ | ------ |
+| #12 | QML Full Migration Parity Map | Ninguno | ✅ Mergeado |
+| #13 | Playlists + Radio functional parity | Medio | ✅ Mergeado |
+| #14 | Settings + Devices + Connections parity | Medio | ✅ Mergeado |
+| #15 | Metadata QML phase 1 | Medio | ✅ Mergeado |
+| #16 | Audio Lab QML tests | Bajo | ✅ Mergeado |
+| #17 | Full QML route coverage | Bajo | ✅ Mergeado |
+| #18 | Library Doctor + Smart Tagging QML | Alto | ⏳ Pendiente (backend pesado) |
+| #19 | DSP/EQ/Output profiles QML | Bajo | ⏳ Pendiente |
+| #20 | QML default behind guarded flag | Alto | ⏳ Pendiente (requiere release gate) |
 
 ## Validación del PR
 
