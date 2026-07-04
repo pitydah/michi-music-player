@@ -13,7 +13,7 @@ Item {
 
     signal openLibrary()
 
-    implicitHeight: 160
+    implicitHeight: 190
 
     GlassMaterial {
         anchors.fill: parent

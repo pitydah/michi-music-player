@@ -10,6 +10,9 @@ Item {
                      ? nowplayingBridge
                      : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property bool _canPlay: root.ps ? root.ps.backendAvailable : false
+    property bool _hasTrack: root.ps ? root.ps.hasTrack : false
+    property string _emptyLabel: "Sin reproducción"
 
     height: MichiTheme.nowPlayingHeight
     visible: true
@@ -17,14 +20,21 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.surfaceNowPlaying
-        border.color: MichiTheme.colors.accentBlue
-        border.width: 1
 
         Rectangle {
             anchors.top: parent.top
-            width: 60; height: 2
+            width: parent.width
+            height: 1
+            color: MichiTheme.colors.surfaceNowPlayingBorder
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            width: 40; height: 2
             anchors.horizontalCenter: parent.horizontalCenter
-            radius: 1; color: MichiTheme.colors.accentBlue; opacity: 0.5
+            radius: 1
+            color: MichiTheme.colors.accentBlue
+            opacity: 0.4
         }
 
         Row {
@@ -40,24 +50,38 @@ Item {
                 NowPlayingCover {
                     anchors.verticalCenter: parent.verticalCenter
                     coverKey: root.ps ? root.ps.coverPath : ""
+                    opacity: root._hasTrack ? 1.0 : 0.5
                 }
 
-                NowPlayingInfo {
+                Column {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - NowPlayingCover.width - MichiTheme.spacing.md
-                    trackTitle: root.ps ? root.ps.trackTitle : "—"
-                    trackArtist: root.ps ? root.ps.trackArtist : ""
-                    trackAlbum: root.ps ? root.ps.trackAlbum : ""
-                    isPlaying: root.ps ? root.ps.isPlaying : false
-                    backendAvailable: root.ps ? root.ps.backendAvailable : false
+                    spacing: 3
+
+                    Text {
+                        text: root._hasTrack && root.ps ? root.ps.trackTitle : root._emptyLabel
+                        color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                        elide: Text.ElideRight
+                        width: parent.width - NowPlayingCover.width - MichiTheme.spacing.md
+                    }
+
+                    Text {
+                        text: root._hasTrack && root.ps && root.ps.trackArtist
+                              ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
+                              : root._canPlay ? "Selecciona una canción desde Biblioteca" : "Playback no disponible"
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        elide: Text.ElideRight
+                        width: parent.width - NowPlayingCover.width - MichiTheme.spacing.md
+                    }
                 }
 
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 2
-                    visible: root.ps && !root.ps.backendAvailable
+                    visible: !root._canPlay
                     StatusBadge { text: "Safe mode"; kind: "experimental" }
-                    StatusBadge { text: root.ps && root.ps.playbackStatus === "unavailable" ? "No disponible" : root.ps && root.ps.errorMessage ? root.ps.errorMessage : ""; kind: "disconnected"; visible: text !== "" }
                 }
             }
 
@@ -69,9 +93,11 @@ Item {
                     isPlaying: root.ps ? root.ps.isPlaying : false
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
+                    enabled: root._canPlay && root._hasTrack
+                    opacity: root._canPlay && root._hasTrack ? 1.0 : 0.35
                     onPlayClicked: {
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
                         if (root.ps) root.ps.togglePlay()
-                        if (root.notif && root.ps && !root.ps.backendAvailable) root.notif.showMessage("Playback no disponible", "warning")
                     }
                     onPrevClicked: { if (root.ps) root.ps.previous() }
                     onNextClicked: { if (root.ps) root.ps.next() }
@@ -83,14 +109,11 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     position: root.ps ? root.ps.position : 0
                     duration: root.ps ? root.ps.duration : 0
+                    enabled: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false)
+                    opacity: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false) ? 1.0 : 0.35
                     onSeekRequested: function(pos) {
-                        if (root.ps) {
-                            if (root.ps.duration <= 0) {
-                                if (root.notif) root.notif.showMessage("No se puede buscar", "warning")
-                            } else {
-                                root.ps.seek(pos)
-                            }
-                        }
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.seek(pos)
                     }
                 }
             }
@@ -103,17 +126,15 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
+                    enabled: root._canPlay
+                    opacity: root._canPlay ? 1.0 : 0.35
                     onVolumeAdjusted: function(vol) {
-                        if (root.ps) {
-                            root.ps.setVolume(vol)
-                            if (root.notif) root.notif.showMessage("Volumen: " + vol + "%", "info")
-                        }
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.setVolume(vol)
                     }
                     onMuteClicked: {
-                        if (root.ps) {
-                            root.ps.toggleMute()
-                            if (root.notif) root.notif.showMessage(root.ps.muted ? "Silenciado" : "Sonido activado", "info")
-                        }
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.toggleMute()
                     }
                 }
             }
