@@ -12,7 +12,6 @@ ROUTES: dict[str, dict] = {
     "playlists": {"title": "Playlists", "source": "../pages/playlists/PlaylistsPage.qml", "category": "core", "status": "functional"},
     "playlist_detail": {"title": "Playlist", "source": "../pages/playlists/PlaylistDetailPage.qml", "category": "detail", "status": "functional"},
     "metadata_inspector": {"title": "Inspector de metadatos", "source": "../pages/metadata/MetadataInspectorPage.qml", "category": "tools", "status": "functional"},
-    "mix_detail": {"title": "Mix", "source": "../pages/MixDetailPage.qml", "category": "detail", "status": "experimental"},
     "settings": {"title": "Ajustes", "source": "../pages/SettingsPage.qml", "category": "core", "status": "functional"},
     "devices": {"title": "Dispositivos", "source": "../pages/DevicesPage.qml", "category": "core", "status": "functional"},
     "eq": {"title": "Ecualizador", "source": "../pages/EqPage.qml", "category": "tools", "status": "functional"},

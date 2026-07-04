@@ -109,13 +109,34 @@ Item {
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                         }
-                        Text {
-                            width: parent.width * 0.15; text: modelData.album || ""
-                            color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
-                            elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                    Text {
+                        width: parent.width * 0.10; text: modelData.album || ""
+                        color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
+                        elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        width: 24; text: "[X]"; color: MichiTheme.colors.error
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: root.bridge && typeof root.bridge.removeTrackFromPlaylist !== "undefined"
+
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (root.bridge && typeof root.bridge.removeTrackFromPlaylist !== "undefined") {
+                                    var result = root.bridge.removeTrackFromPlaylist(root.playlistId, modelData.track_id)
+                                    if (result && result.ok) {
+                                        root._errorMsg = ""
+                                        root.loadPlaylist(root.playlistId, root.playlistTitle)
+                                    } else {
+                                        root._errorMsg = result && result.error ? result.error : "Error al quitar canción"
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            }
             }
 
             Text {

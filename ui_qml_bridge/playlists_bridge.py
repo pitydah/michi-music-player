@@ -135,6 +135,17 @@ class PlaylistsBridge(QObject):
             logger.debug("Add track to playlist failed", exc_info=True)
             return {"ok": False, "error": str(e)}
 
+    @Slot(int, int, result=dict)
+    def removeTrackFromPlaylist(self, pid: int, track_id: int):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            self._db.remove_track_from_playlist(pid, track_id)
+            return {"ok": True}
+        except Exception as e:
+            logger.debug("Remove track from playlist failed", exc_info=True)
+            return {"ok": False, "error": str(e)}
+
     @Slot(int)
     def playPlaylist(self, pid: int):
         if self._db and hasattr(self._db, 'play_playlist'):
