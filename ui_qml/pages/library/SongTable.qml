@@ -8,6 +8,12 @@ Item {
 
     property var songs: []
     property var bridge: null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property string _selId: ""
+    property string _selTitle: ""
+    property string _selArtist: ""
+    property string _selAlbum: ""
+    property string _selFilepath: ""
 
     signal songSelected(string filepath)
     signal songPlayRequested(string filepath)
@@ -17,8 +23,7 @@ Item {
         spacing: 0
 
         Rectangle {
-            width: parent.width
-            height: 32
+            width: parent.width; height: 32
             color: MichiTheme.colors.surfaceCard
 
             Row {
@@ -30,7 +35,8 @@ Item {
                 Text { width: parent.width * 0.30; text: "Título"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
                 Text { width: parent.width * 0.25; text: "Artista"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
                 Text { width: parent.width * 0.25; text: "Álbum"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter }
-                Text { width: parent.width * 0.12; text: "Duración"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                Text { width: parent.width * 0.08; text: "Dur."; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
+                Item { width: 28; height: 1 }
             }
         }
 
@@ -49,70 +55,67 @@ Item {
                 trackDuration: modelData.duration ? formatDuration(modelData.duration) : ""
                 trackFilepath: modelData.filepath || ""
 
-                onDoubleClicked: {
+                onPlayClicked: {
                     if (modelData.filepath) {
-                        root.songPlayRequested(modelData.filepath)
-                        if (root.bridge && typeof root.bridge.play_song !== "undefined") {
-                            root.bridge.play_song(modelData.filepath)
-                        }
+                        doPlay(modelData.filepath, modelData.title || "", modelData.artist || "", modelData.album || "")
                     }
                 }
 
-                MouseArea {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.RightButton
-                    onClicked: {
-                        contextMenu.x = mouse.x
-                        contextMenu.y = mouse.y
-                        contextMenu.trackTitle = modelData.title || ""
-                        contextMenu.trackArtist = modelData.artist || ""
-                        contextMenu.trackFilepath = modelData.filepath || ""
-                        contextMenu.visible = true
+                onDoubleClicked: {
+                    if (modelData.filepath) {
+                        doPlay(modelData.filepath, modelData.title || "", modelData.artist || "", modelData.album || "")
                     }
+                }
+
+                onRightClicked: {
+                    root._selId = modelData.id || ""
+                    root._selTitle = modelData.title || ""
+                    root._selArtist = modelData.artist || ""
+                    root._selAlbum = modelData.album || ""
+                    root._selFilepath = modelData.filepath || ""
+                    contextMenu.x = mouseX + 16
+                    contextMenu.y = mouseY
+                    contextMenu.visible = true
                 }
             }
 
             SongContextMenu {
                 id: contextMenu
-                width: 200
-                z: 100
-                visible: false
+                width: 200; z: 100; visible: false
 
                 onPlayClicked: {
                     visible = false
-                    if (contextMenu.trackFilepath && root.bridge && typeof root.bridge.play_song !== "undefined") {
-                        root.bridge.play_song(contextMenu.trackFilepath)
-                    }
+                    if (root._selFilepath) doPlay(root._selFilepath, root._selTitle, root._selArtist, root._selAlbum)
                 }
+
                 onQueueClicked: { visible = false }
+
                 onAddToPlaylistClicked: {
                     visible = false
                     if (typeof selectionContextBridge !== "undefined" && selectionContextBridge) {
                         selectionContextBridge.setSelected({
-                            "id": modelData.id || "",
-                            "title": modelData.title || "",
-                            "artist": modelData.artist || "",
-                            "album": modelData.album || "",
-                            "filepath": modelData.filepath || ""
+                            "id": root._selId, "title": root._selTitle,
+                            "artist": root._selArtist, "album": root._selAlbum,
+                            "filepath": root._selFilepath
                         })
                     }
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("playlists")
                 }
+
                 onEditMetadataClicked: {
                     visible = false
                     if (typeof selectionContextBridge !== "undefined" && selectionContextBridge) {
                         selectionContextBridge.setSelected({
-                            "id": modelData.id || "",
-                            "title": modelData.title || "",
-                            "artist": modelData.artist || "",
-                            "album": modelData.album || "",
-                            "filepath": modelData.filepath || ""
+                            "id": root._selId, "title": root._selTitle,
+                            "artist": root._selArtist, "album": root._selAlbum,
+                            "filepath": root._selFilepath
                         })
                     }
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("metadata_inspector")
                 }
+
                 onShowInLibraryClicked: { visible = false }
             }
 
@@ -120,6 +123,21 @@ Item {
                 var m = Math.floor(secs / 60)
                 var s = Math.floor(secs % 60)
                 return m + ":" + (s < 10 ? "0" : "") + s
+            }
+        }
+    }
+
+    function doPlay(filepath, title, artist, album) {
+        root.songPlayRequested(filepath)
+        if (root.bridge && typeof root.bridge.play_song !== "undefined") {
+            var result = root.bridge.play_song(filepath)
+            if (root.notif) {
+                if (result && result.ok) {
+                    root.notif.showMessage("Reproduciendo: " + (title || "canción"), "success")
+                } else {
+                    var err = result && result.error ? result.error : "Error al reproducir"
+                    root.notif.showMessage("No se pudo reproducir: " + err, "error")
+                }
             }
         }
     }

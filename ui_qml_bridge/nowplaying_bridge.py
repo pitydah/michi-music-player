@@ -337,10 +337,11 @@ class NowPlayingBridge(QObject):
                 self._error_message = ""
                 self._emit_state()
                 return
-        self._is_playing = not self._is_playing
-        self._last_command_ok = not self._backend_available
-        self._error_message = "Playback no disponible" if not self._backend_available else ""
-        self._emit_state()
+        if not self._backend_available:
+            self._last_command_ok = False
+            self._error_message = "Playback no disponible"
+            self._emit_state()
+            return
 
     @Slot()
     def next(self):

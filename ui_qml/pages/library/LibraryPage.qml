@@ -3,11 +3,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../materials"
 
 Item {
     id: root
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property int _artistDetailTab: -1
     property int _albumDetailTab: -1
 
@@ -156,10 +158,23 @@ Item {
             }
         }
 
+        Row {
+            width: parent.width; height: 28; spacing: MichiTheme.spacing.sm
+            leftPadding: MichiTheme.spacing.md
+
+            StatusBadge {
+                text: root.lib ? root.lib.songCount + " canciones" : ""
+                kind: "info"
+                visible: root.lib && root.lib.songCount > 0
+            }
+
+            MichiButton { text: "Refrescar"; variant: "ghost"; height: 24; onClicked: { root.refreshData(); if (root.notif) root.notif.showMessage("Biblioteca actualizada", "info") } }
+        }
+
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - tabBar.height
+            height: parent.height - tabBar.height - 28
             currentIndex: tabBar.currentIndex
 
             SongTable {
