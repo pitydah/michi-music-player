@@ -1184,6 +1184,59 @@ class TestAudioLabIntegration:
         bridge.refresh()
 
 
+class TestDiscLabBridge:
+    def test_disc_lab_importable(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        assert DiscLabBridge is not None
+
+    def test_disc_lab_unavailable_no_service(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        bridge = DiscLabBridge()
+        assert bridge.status == "unavailable"
+        result = bridge.refresh()
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_disc_lab_scan_no_disc(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        svc = MagicMock()
+        svc.detect_drives.return_value = ["/dev/sr0"]
+        svc.get_default_drive.return_value = "/dev/sr0"
+        svc.detect_audio_cd.return_value = False
+        bridge = DiscLabBridge(disc_detection_service=svc)
+        result = bridge.refresh()
+        assert result.get("ok") is True
+        assert bridge.status == "no_disc"
+
+    def test_disc_lab_scan_with_tracks(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        svc = MagicMock()
+        svc.detect_drives.return_value = ["/dev/sr0"]
+        svc.get_default_drive.return_value = "/dev/sr0"
+        svc.detect_audio_cd.return_value = True
+        svc.get_disc_toc.return_value = {"tracks": 3, "duration_seconds": 300}
+        svc.get_track_durations.return_value = [100.0, 100.0, 100.0]
+        bridge = DiscLabBridge(disc_detection_service=svc)
+        bridge.refresh()
+        assert bridge.status == "ready"
+        result = bridge.scanDisc()
+        assert result.get("ok") is True
+        assert result.get("tracks") == 3
+        assert len(bridge.tracks) == 3
+
+    def test_disc_lab_eject(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        bridge = DiscLabBridge()
+        bridge._status = "scanned"
+        bridge._tracks = [{"track": 1, "title": "Track 1"}]
+        result = bridge.eject()
+        assert result.get("ok") is True
+        assert bridge.status == "no_disc"
+        assert len(bridge.tracks) == 0
+
+
 class TestSettingsBridgeIntegration:
     def test_settings_bridge_importable(self):
         from ui_qml_bridge.settings_bridge import SettingsBridge

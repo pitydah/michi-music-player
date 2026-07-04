@@ -211,7 +211,7 @@ class BridgeFactory(QObject):
         from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
         if "disc_lab" not in self._bridges:
             self._bridges["disc_lab"] = DiscLabBridge(
-                disc_service=self._services.disc_service,
+                disc_detection_service=self._services.disc_service,
             )
         self._register_capability("disc_lab", "disc_service")
         return self._bridges["disc_lab"]
