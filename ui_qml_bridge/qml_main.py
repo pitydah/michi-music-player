@@ -140,7 +140,17 @@ def _create_services() -> ServiceBundle:
     return bundle
 
 
+def _qt_message_handler(mode, context, message):
+    if "ERROR" in str(mode) or "FATAL" in str(mode):
+        logger.error("Qt: %s — %s (%s:%d)", message, context.file or "", context.function or "", context.line or 0)
+
+
 def main():
+    import faulthandler
+    faulthandler.enable()
+    from PySide6.QtCore import qInstallMessageHandler
+    qInstallMessageHandler(_qt_message_handler)
+
     app = QGuiApplication(sys.argv)
     app.setApplicationName("Michi Music Player")
     app.setApplicationVersion(_get_app_version())
@@ -233,8 +243,18 @@ def main():
     if audit["duplicates"]:
         logger.warning("QML: Duplicate context properties: %s", audit["duplicates"])
 
-    print(f"[QML] Michi Music Player {_get_app_version()} — experimental QML UI")
-    sys.exit(app.exec())
+    logger.info("Michi Music Player %s — experimental QML UI", _get_app_version())
+
+    try:
+        exit_code = app.exec()
+        logger.info("QML app exited with code %d", exit_code)
+        sys.exit(exit_code)
+    except Exception as e:
+        logger.critical("QML app crashed: %s", e, exc_info=True)
+        print(f"[QML] CRASH: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
