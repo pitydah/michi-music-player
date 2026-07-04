@@ -156,7 +156,7 @@ Item {
             }
 
             MouseArea {
-                anchors.left: parent.left; anchors.right: parent.right
+                anchors.left: parent.left; width: parent.width * 0.28
                 anchors.top: parent.top; height: parent.height
                 cursorShape: root._canPlay && root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: { if (root._canPlay && root._hasTrack) root._panelExpanded = !root._panelExpanded }
