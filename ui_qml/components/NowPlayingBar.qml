@@ -27,6 +27,7 @@ Item {
         Rectangle {
             width: parent.width
             height: MichiTheme.nowPlayingHeight
+            color: MichiTheme.colors.surfaceNowPlaying
 
             Rectangle {
                 anchors.top: parent.top
@@ -146,17 +147,12 @@ Item {
                             }
                         }
 
-                        Text {
-                            text: "[+]"
-                            color: MichiTheme.colors.textMuted; font.pixelSize: 10; opacity: 0.6
+                        MichiIconButton {
+                            iconText: root._panelExpanded ? "−" : "+"
+                            tooltipText: root._panelExpanded ? "Contraer" : "Expandir"
+                            btnSize: 22
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: !root._panelExpanded
-                        }
-                        Text {
-                            text: "[-]"
-                            color: MichiTheme.colors.textMuted; font.pixelSize: 10; opacity: 0.6
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            visible: root._panelExpanded
+                            onClicked: root._panelExpanded = !root._panelExpanded
                         }
                     }
                 }

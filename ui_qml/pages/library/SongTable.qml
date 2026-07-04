@@ -111,11 +111,39 @@ Item {
                 onShowInLibraryClicked: { visible = false; if (root.notif) root.notif.showMessage("Mostrar en biblioteca: " + root._selTitle, "info") }
             }
 
-            Text {
-                anchors.centerIn: parent
-                text: root.songs.length === 0 ? "No hay canciones. Presiona Refrescar o agrega carpetas con música." : ""
-                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+            Item {
+                anchors.centerIn: parent; width: 300; height: 180
                 visible: root.songs.length === 0
+
+                Column {
+                    anchors.centerIn: parent; spacing: MichiTheme.spacing.lg
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 48; height: 48; radius: 12
+                        color: MichiTheme.colors.accentSurface
+                        Text { anchors.centerIn: parent; text: "BL"; color: MichiTheme.colors.accentBlue; font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 }
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Biblioteca vacía"; color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Agrega carpetas con música o refresca la biblioteca para comenzar."
+                        color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
+                        horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                    }
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
+                        MichiButton { text: "Refrescar"; variant: "primary"; onClicked: { if (root.bridge && typeof root.bridge.refresh !== "undefined") root.bridge.refresh() } }
+                        MichiButton { text: "Ajustes"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined" && navigationBridge) navigationBridge.navigate("settings") } }
+                    }
+                }
             }
         }
 

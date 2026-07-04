@@ -53,68 +53,83 @@ Item {
     Component.onCompleted: refreshData()
 
     Column {
-        anchors.fill: parent
-        spacing: 0
+        anchors.fill: parent; spacing: 0
 
         TabBar {
             id: tabBar
-            width: parent.width; height: 36
-            background: Rectangle {
-                color: "transparent"
-                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
-            }
+            width: parent.width; height: 38
+            background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle } }
 
-            TabButton { text: "Canciones"; width: implicitWidth + MichiTheme.spacing.lg; font.pixelSize: MichiTheme.typography.metaSize }
-            TabButton { text: "Álbumes"; width: implicitWidth + MichiTheme.spacing.lg; font.pixelSize: MichiTheme.typography.metaSize }
-            TabButton { text: "Artistas"; width: implicitWidth + MichiTheme.spacing.lg; font.pixelSize: MichiTheme.typography.metaSize }
-            TabButton { text: "Carpetas"; width: implicitWidth + MichiTheme.spacing.lg; font.pixelSize: MichiTheme.typography.metaSize }
+            TabButton {
+                text: "Canciones"
+                font.pixelSize: MichiTheme.typography.bodySize
+                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 0 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 0 } }
+            }
+            TabButton {
+                text: "Álbumes"
+                font.pixelSize: MichiTheme.typography.bodySize
+                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 1 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 1 } }
+            }
+            TabButton {
+                text: "Artistas"
+                font.pixelSize: MichiTheme.typography.bodySize
+                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 2 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 2 } }
+            }
+            TabButton {
+                text: "Carpetas"
+                font.pixelSize: MichiTheme.typography.bodySize
+                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 3 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 3 } }
+            }
         }
 
         Rectangle {
-            width: parent.width; height: 36; color: MichiTheme.colors.surfaceCard
-            Row {
-                anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.xs
+            width: parent.width; height: 40; color: MichiTheme.colors.surfaceCard
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
+                spacing: MichiTheme.spacing.sm
 
                 SearchField {
-                    width: 200; height: 28; anchors.verticalCenter: parent.verticalCenter
+                    id: searchField
+                    Layout.preferredWidth: 220; Layout.maximumWidth: 300
                     placeholderText: "Buscar..."
                     onSearchTextChanged: {
                         root._filterText = text
-                        if (root.lib && typeof root.lib.search !== "undefined")
-                            root.lib.search(text)
+                        if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text)
                     }
                 }
 
-                StatusBadge { text: root.lib ? root.lib.songCount + " canciones" : ""; kind: "info"; anchors.verticalCenter: parent.verticalCenter; visible: root.lib && root.lib.songCount > 0 }
-                StatusBadge { text: root.lib ? root.lib.albumCount + " álbumes" : ""; kind: "info"; anchors.verticalCenter: parent.verticalCenter; visible: root.lib && root.lib.albumCount > 0 }
-                StatusBadge { text: root.lib ? root.lib.artistCount + " artistas" : ""; kind: "info"; anchors.verticalCenter: parent.verticalCenter; visible: root.lib && root.lib.artistCount > 0 }
+                StatusBadge { text: root.lib ? root.lib.songCount + " canciones" : ""; kind: "info"; visible: root.lib && root.lib.songCount > 0 }
+                StatusBadge { text: root.lib ? root.lib.albumCount + " álbumes" : ""; kind: "info"; visible: root.lib && root.lib.albumCount > 0 }
+                StatusBadge { text: root.lib ? root.lib.artistCount + " artistas" : ""; kind: "info"; visible: root.lib && root.lib.artistCount > 0 }
 
-                Item { Layout.fillWidth: true; width: 1; height: 1 }
+                Item { Layout.fillWidth: true }
 
-                MichiButton { text: "Limpiar filtros"; variant: "ghost"; height: 24; anchors.verticalCenter: parent.verticalCenter; onClicked: root.clearFilters() }
-                MichiButton { text: "Refrescar"; variant: "ghost"; height: 24; anchors.verticalCenter: parent.verticalCenter; onClicked: root.refreshData() }
+                MichiButton { text: "Limpiar filtros"; variant: "ghost"; onClicked: root.clearFilters() }
+                MichiButton { text: "Refrescar"; variant: "ghost"; onClicked: root.refreshData() }
             }
         }
 
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - tabBar.height - 36
+            height: parent.height - tabBar.height - 40
             currentIndex: tabBar.currentIndex
 
             SongTable { id: songsView; songs: root.lib ? root.lib.songs : []; bridge: root.lib }
 
             AlbumGrid {
-                id: albumView
-                albums: root.lib ? root.lib.albums : []
-                bridge: root.lib
+                id: albumView; albums: root.lib ? root.lib.albums : []; bridge: root.lib
                 onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
             }
 
             ArtistList {
-                id: artistView
-                artists: root.lib ? root.lib.artists : []
-                bridge: root.lib
+                id: artistView; artists: root.lib ? root.lib.artists : []; bridge: root.lib
                 onArtistSelected: function(name) { root.showArtistDetail(name) }
             }
 
