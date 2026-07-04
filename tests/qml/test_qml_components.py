@@ -620,7 +620,7 @@ class TestSprintNewPages:
 
     def test_playlists_page_has_add_track(self):
         content = (QML_DIR / "pages" / "playlists" / "PlaylistsPage.qml").read_text()
-        assert "addTrackToPlaylist" in content, "PlaylistsPage missing addTrackToPlaylist"
+        assert "addSelectedTrackToPlaylist" in content, "PlaylistsPage missing addSelectedTrackToPlaylist"
         assert "selectionContextBridge" in content, "PlaylistsPage missing selection context"
 
     def test_library_doctor_issue_clickable(self):
@@ -642,7 +642,7 @@ class TestSprintNewPages:
     def test_playlists_bridge_add_track(self):
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         bridge = PlaylistsBridge()
-        result = bridge.addTrackToPlaylist(0, "/nonexistent/file.mp3")
+        result = bridge.addSelectedTrackToPlaylist(0)
         assert result.get("ok") is False  # No DB
 
 

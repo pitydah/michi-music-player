@@ -104,13 +104,26 @@ Item {
                 visible: text !== ""
             }
 
-            MichiButton {
-                text: "Escanear biblioteca"
-                variant: "primary"
-                width: parent.width
-                onClicked: {
-                    if (root.doc && typeof root.doc.scan !== "undefined")
-                        root.doc.scan()
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: root.doc && root.doc.status === "scanning" ? "Escaneando..." : "Escanear biblioteca"
+                    variant: "primary"
+                    onClicked: {
+                        if (root.doc && typeof root.doc.scan !== "undefined") {
+                            root.doc.scan()
+                            if (typeof notificationBridge !== "undefined" && notificationBridge)
+                                notificationBridge.showMessage("Escaneando biblioteca...", "info")
+                        }
+                    }
+                }
+                MichiButton {
+                    text: "Refrescar"
+                    variant: "ghost"
+                    onClicked: {
+                        if (root.doc && typeof root.doc.refresh !== "undefined")
+                            root.doc.refresh()
+                    }
                 }
             }
 

@@ -15,6 +15,8 @@ class SelectionContextBridge(QObject):
         self._artist = ""
         self._album = ""
         self._filepath = ""
+        self._cover_key = ""
+        self._source = ""
 
     @Property(str, notify=selectionChanged)
     def selectedTrackId(self):
@@ -36,16 +38,26 @@ class SelectionContextBridge(QObject):
     def selectedFilepath(self):
         return self._filepath
 
+    @Property(str, notify=selectionChanged)
+    def selectedCoverKey(self):
+        return self._cover_key
+
+    @Property(str, notify=selectionChanged)
+    def selectedSource(self):
+        return self._source
+
     @Property(bool, notify=selectionChanged)
     def hasSelection(self):
         return bool(self._track_id) or bool(self._filepath)
 
     def setSelected(self, track_dict: dict):
-        self._track_id = str(track_dict.get("id", ""))
+        self._track_id = str(track_dict.get("id", track_dict.get("track_id", "")))
         self._title = track_dict.get("title", "")
         self._artist = track_dict.get("artist", "")
         self._album = track_dict.get("album", "")
         self._filepath = track_dict.get("filepath", "")
+        self._cover_key = track_dict.get("cover_key", track_dict.get("coverKey", ""))
+        self._source = "track_id" if self._track_id else ("filepath" if self._filepath else "")
         self.selectionChanged.emit()
 
     def clearSelection(self):
@@ -54,4 +66,6 @@ class SelectionContextBridge(QObject):
         self._artist = ""
         self._album = ""
         self._filepath = ""
+        self._cover_key = ""
+        self._source = ""
         self.selectionChanged.emit()

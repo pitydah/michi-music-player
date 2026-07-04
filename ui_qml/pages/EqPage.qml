@@ -8,6 +8,7 @@ Item {
     id: root
 
     property var eq: typeof eqBridge !== "undefined" ? eqBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string _selectedPreset: "Plano"
 
     Component.onCompleted: {
@@ -34,6 +35,11 @@ Item {
                 font.weight: MichiTheme.typography.weightSemiBold
             }
 
+            StatusBadge {
+                text: root.eq && root.eq.backendAvailable ? "DSP conectado" : "DSP no disponible"
+                kind: root.eq && root.eq.backendAvailable ? "success" : "disconnected"
+            }
+
             Row {
                 spacing: MichiTheme.spacing.sm
                 Text {
@@ -45,8 +51,10 @@ Item {
                 MichiButton {
                     text: root.eq && root.eq.bypass ? "Activado" : "Desactivado"
                     variant: root.eq && root.eq.bypass ? "danger" : "primary"
+                    enabled: root.eq ? root.eq.backendAvailable : false
                     onClicked: {
                         if (root.eq) root.eq.toggleBypass(!root.eq.bypass)
+                        if (root.notif) root.notif.showMessage("Bypass " + (root.eq && root.eq.bypass ? "activado" : "desactivado"), "info")
                     }
                 }
             }
@@ -72,7 +80,10 @@ Item {
                     subtitle: modelData.bands ? modelData.bands.length + " bandas" : ""
                     variant: modelData.name === (root.eq ? root.eq.currentPreset : "") ? "accent" : "base"
                     onClicked: {
-                        if (root.eq) root.eq.applyPreset(modelData.name)
+                        if (root.eq) {
+                            root.eq.applyPreset(modelData.name)
+                            if (root.notif) root.notif.showMessage("Preset aplicado: " + modelData.name, "success")
+                        }
                     }
                 }
             }

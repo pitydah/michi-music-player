@@ -64,8 +64,8 @@ Item {
                         duration: modelData.duration || ""
                         coverKey: modelData.cover_key || ""
                         onClicked: {
-                            if (root.sel && root.sel.hasSelection && root.sel.selectedFilepath) {
-                                var result = root.pl.addTrackToPlaylist(modelData.id, root.sel.selectedFilepath)
+                            if (root.sel && root.sel.hasSelection) {
+                                var result = root.pl.addSelectedTrackToPlaylist(modelData.id)
                                 if (result && result.ok) {
                                     root._addResult = "Canción agregada a \"" + modelData.title + "\""
                                 } else {

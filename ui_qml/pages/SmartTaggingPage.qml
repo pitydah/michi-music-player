@@ -9,8 +9,10 @@ Item {
     id: root
 
     property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
+    property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property string selectedFile: ""
     property string _errorMsg: ""
+    property bool _confirmApply: false
 
     function isValidAudio(path) {
         var ext = path.split(".").pop().toLowerCase()
@@ -55,18 +57,24 @@ Item {
 
             GlassCard {
                 width: parent.width; height: 70
-                title: root.selectedFile ? "Archivo seleccionado" : "Analizar archivo"
-                subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : "Selecciona un archivo de audio"
-                variant: root.selectedFile ? "accent" : "base"
+                title: root.selectedFile ? "Archivo seleccionado" : (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Canción desde Biblioteca" : "Analizar archivo")
+                subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : (root.sel && root.sel.hasSelection && root.sel.selectedTitle ? root.sel.selectedTitle : "Selecciona un archivo de audio")
+                variant: root.selectedFile || (root.sel && root.sel.hasSelection) ? "accent" : "base"
                 onClicked: fileDialog.open()
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "Seleccionar archivo"
+                    text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : "Seleccionar archivo"
                     variant: "primary"
-                    onClicked: fileDialog.open()
+                    onClicked: {
+                        if (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" && root.sel.selectedFilepath) {
+                            root.selectedFile = root.sel.selectedFilepath
+                        } else {
+                            fileDialog.open()
+                        }
+                    }
                 }
                 MichiButton {
                     text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
@@ -138,6 +146,30 @@ Item {
                 text: "No hay sugerencias. Escanea un archivo para comenzar."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.stb && root.stb.suggestions.length === 0
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: root._confirmApply ? "Confirmar aplicar sugerencias" : "Aplicar sugerencias"
+                    variant: root._confirmApply ? "danger" : "primary"
+                    visible: root.stb && root.stb.suggestions.length > 0
+                    onClicked: {
+                        if (!root._confirmApply) {
+                            root._confirmApply = true
+                        } else {
+                            root._confirmApply = false
+                            if (typeof notificationBridge !== "undefined" && notificationBridge)
+                                notificationBridge.showMessage("Sugerencias aplicadas (simulado)", "success")
+                        }
+                    }
+                }
+                MichiButton {
+                    text: "Cancelar"
+                    variant: "ghost"
+                    visible: root._confirmApply
+                    onClicked: root._confirmApply = false
+                }
             }
 
             GlassMaterial {
