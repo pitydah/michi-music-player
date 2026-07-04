@@ -71,7 +71,7 @@ Item {
     CommandPalette {
         id: commandPalette
         anchors.fill: parent
-        cmdBridge: typeof commandPaletteBridge !== "undefined" ? commandPaletteBridge : null
+        cpb: typeof commandPaletteBridge !== "undefined" ? commandPaletteBridge : null
     }
 
     ShortcutLayer {
