@@ -1127,6 +1127,104 @@ class TestConnectionsV2Bridge:
             os.environ.pop("MICHI_QML_DEMO", None)
 
 
+class TestLyricsBridge:
+    def test_lyrics_idle_on_create(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        assert bridge.status == "idle"
+        assert bridge.lyrics == ""
+        assert bridge.syncedLyrics == []
+
+    def test_lyrics_parse_lrc(self):
+        from ui_qml_bridge.lyrics_bridge import _parse_lrc
+        lrc_text = "[00:01.00]Line 1\n[00:02.50]Line 2\n[00:03.75]Line 3"
+        synced = _parse_lrc(lrc_text)
+        assert len(synced) == 3
+        assert synced[0]["time"] == 1.0
+        assert synced[0]["text"] == "Line 1"
+        assert synced[1]["time"] == 2.5
+        assert synced[2]["time"] == 3.75
+
+    def test_lyrics_parse_lrc_no_timestamp(self):
+        from ui_qml_bridge.lyrics_bridge import _parse_lrc
+        synced = _parse_lrc("Plain text line")
+        assert len(synced) == 1
+        assert synced[0]["time"] == 0
+
+    def test_lyrics_cache_hit(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._cache["test||artist||album||0"] = {
+            "lyrics": "cached lyrics", "synced_lyrics": "",
+            "source": "LRCLIB", "timestamp": 1000,
+        }
+        result = bridge.search("test", "artist", "album", 0)
+        assert result.get("cached") is True
+        assert bridge.lyrics == "cached lyrics"
+        assert bridge.status == "done"
+
+    def test_lyrics_cancel_search(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._status = "searching"
+        bridge.cancelSearch()
+        assert bridge.status == "idle"
+
+    def test_lyrics_clear_cache_for_track(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._cache["test||artist||album||0"] = {"lyrics": "x", "synced_lyrics": "", "source": "L", "timestamp": 1000}
+        bridge._current_title = "test"
+        bridge._current_artist = "artist"
+        bridge._current_album = "album"
+        bridge._current_duration = 0
+        result = bridge.clearCacheForCurrentTrack()
+        assert result.get("ok") is True
+        assert "test||artist||album||0" not in bridge._cache
+
+    def test_lyrics_search_manual_empty(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        result = bridge.searchManual("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_QUERY"
+
+    def test_lyrics_search_current_track_no_np(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        result = bridge.searchCurrentTrack()
+        assert result.get("ok") is False
+
+    def test_lyrics_get_active_line(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._synced_lyrics = [{"time": 1.0, "text": "A"}, {"time": 2.0, "text": "B"}, {"time": 3.0, "text": "C"}]
+        assert bridge.getActiveLine(0) == 0
+        assert bridge.getActiveLine(1500) == 0
+        assert bridge.getActiveLine(2500) == 1
+        assert bridge.getActiveLine(5000) == 2
+
+    def test_lyrics_get_active_line_empty(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        assert bridge.getActiveLine(1000) is None
+
+    def test_lyrics_on_track_changed_noop_same_track(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._current_title = "Same"
+        bridge._current_artist = "Same"
+        np_mock = MagicMock()
+        np_mock.trackTitle = "Same"
+        np_mock.trackArtist = "Same"
+        bridge._np_bridge = np_mock
+        bridge._on_track_changed()
+        # No search started — status stays idle
+        assert bridge.status == "idle"
+
+
 class TestHomeAudioV2Bridge:
     def test_home_audio_bridge_refresh(self):
         bridge = HomeAudioBridge()
