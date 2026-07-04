@@ -30,6 +30,8 @@ Item {
             "home": "../pages/home/HomePage.qml",
             "mix": "../pages/MixHubPage.qml",
             "connections": "../pages/connections/ConnectionsPage.qml",
+            "album_detail": "../pages/library/AlbumDetailPage.qml",
+            "artist_detail": "../pages/library/ArtistDetailPage.qml",
             "home_audio": "../pages/home_audio/HomeAudioPage.qml",
             "assistant": "../pages/assistant/AssistantPage.qml",
             "library": "../pages/library/LibraryPage.qml",

@@ -76,6 +76,11 @@ class NowPlayingBridge(QObject):
         self._last_command = ""
         self._last_command_ok = False
         self._safe_mode = False
+        self._format_label = ""
+        self._sample_rate = ""
+        self._bit_depth = ""
+        self._channels = ""
+        self._bitrate = ""
 
         self._backend_available = self._player is not None
         self._playback_status = "idle" if self._backend_available else "unavailable"
@@ -139,6 +144,31 @@ class NowPlayingBridge(QObject):
                 return method
         return fallback
 
+    def _update_quality_info(self, filepath: str = ""):
+        if not filepath:
+            return
+        from pathlib import Path
+        ext = Path(filepath).suffix.lower().lstrip(".")
+        self._format_label = ext.upper() if ext else ""
+        try:
+            from mutagen import File
+            audio = File(filepath, easy=True)
+            if audio and hasattr(audio, 'info'):
+                info = audio.info
+                if hasattr(info, 'sample_rate') and info.sample_rate:
+                    self._sample_rate = f"{info.sample_rate} Hz"
+                if hasattr(info, 'bitrate') and info.bitrate:
+                    self._bitrate = f"{info.bitrate // 1000} kbps"
+                if hasattr(info, 'channels') and info.channels:
+                    self._channels = f"{info.channels}ch"
+                if hasattr(info, 'bits_per_sample') and info.bits_per_sample:
+                    self._bit_depth = f"{info.bits_per_sample} bit"
+        except Exception:
+            self._sample_rate = ""
+            self._bitrate = ""
+            self._channels = ""
+            self._bit_depth = ""
+
     def _on_track(self, title: str = "", artist: str = "", album: str = ""):
         # Push current track to history if it's not a duplicate
         if self._track_title and self._track_title != "—":
@@ -176,7 +206,9 @@ class NowPlayingBridge(QObject):
                 if fmt:
                     self._quality_label = fmt.upper()
                 self._source_type = "radio" if getattr(current, 'source_type', '') == 'radio' else "local_file"
+        fp = self._current_path()
         self._set_cover_from_current_path()
+        self._update_quality_info(fp)
         self._emit_state()
 
     def _on_state(self, state):
@@ -347,6 +379,72 @@ class NowPlayingBridge(QObject):
     @Property(bool, notify=stateChanged)
     def repeatSupported(self):
         return self._player is not None and hasattr(self._player, 'toggle_repeat')
+
+    @Property(bool, notify=stateChanged)
+    def seekSupported(self):
+        return self._player is not None
+
+    @Property(bool, notify=stateChanged)
+    def volumeSupported(self):
+        return self._player is not None
+
+    @Property(bool, notify=stateChanged)
+    def queueSupported(self):
+        return self._player is not None
+
+    @Property(bool, notify=stateChanged)
+    def qualityInfoAvailable(self):
+        return bool(self._format_label)
+
+    @Property(str, notify=stateChanged)
+    def formatLabel(self):
+        return self._format_label
+
+    @Property(str, notify=stateChanged)
+    def sampleRate(self):
+        return self._sample_rate
+
+    @Property(str, notify=stateChanged)
+    def bitDepth(self):
+        return self._bit_depth
+
+    @Property(str, notify=stateChanged)
+    def channels(self):
+        return self._channels
+
+    @Property(str, notify=stateChanged)
+    def bitrate(self):
+        return self._bitrate
+
+    @Slot(str, result=dict)
+    def enqueueSong(self, filepath: str):
+        self._last_command = "enqueueSong"
+        if not self._player:
+            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+        if hasattr(self._player, 'enqueue'):
+            try:
+                self._player.enqueue([filepath], play_now=False)
+                self._last_command_ok = True
+                return {"ok": True}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "UNSUPPORTED"}
+
+    @Slot(int, result=dict)
+    def removeFromQueue(self, index: int):
+        self._last_command = "removeFromQueue"
+        if 0 <= index < len(self._queue):
+            self._queue.pop(index)
+            self._emit_state()
+            return {"ok": True}
+        return {"ok": False, "error": "INVALID_INDEX"}
+
+    @Slot(result=dict)
+    def clearQueue(self):
+        self._last_command = "clearQueue"
+        self._queue.clear()
+        self._emit_state()
+        return {"ok": True}
 
     @Slot()
     def togglePlay(self):

@@ -95,8 +95,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 SearchField {
-                    id: searchField
-                    Layout.preferredWidth: 260; Layout.minimumWidth: 180; Layout.maximumWidth: 340
+                    Layout.preferredWidth: 240; Layout.minimumWidth: 160; Layout.maximumWidth: 320
                     placeholderText: "Buscar..."
                     onSearchTextChanged: {
                         root._filterText = text
@@ -110,15 +109,25 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                MichiButton { text: "Limpiar filtros"; variant: "ghost"; Layout.preferredWidth: 130; Layout.minimumWidth: 120; onClicked: root.clearFilters() }
-                MichiButton { text: "Refrescar"; variant: "ghost"; Layout.preferredWidth: 100; Layout.minimumWidth: 92; onClicked: root.refreshData() }
+                MichiButton { text: "Limpiar filtros"; variant: "ghost"; Layout.preferredWidth: 120; Layout.minimumWidth: 110; onClicked: root.clearFilters() }
+                MichiButton { text: "Refrescar"; variant: "ghost"; Layout.preferredWidth: 92; Layout.minimumWidth: 84; onClicked: root.refreshData() }
             }
+        }
+
+        Flow {
+            width: parent.width; height: 30; spacing: MichiTheme.spacing.xs
+            leftPadding: MichiTheme.spacing.md; visible: tabBar.currentIndex === 0
+
+            FilterChip { text: "Todos"; selected: root.lib && root.lib.activeFormatFilter === ""; onClicked: { if (root.lib) root.lib.setFormatFilter("") } }
+            FilterChip { text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: { if (root.lib) root.lib.setFormatFilter("flac") } }
+            FilterChip { text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: { if (root.lib) root.lib.setFormatFilter("mp3") } }
+            FilterChip { text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: { if (root.lib) root.lib.setFormatFilter("wav") } }
         }
 
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - tabBar.height - 40
+            height: parent.height - tabBar.height - 40 - 30
             currentIndex: tabBar.currentIndex
 
             SongTable { id: songsView; songs: root.lib ? root.lib.songs : []; bridge: root.lib }
