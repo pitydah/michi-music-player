@@ -18,7 +18,7 @@ Item {
     }
 
     Shortcut {
-        sequence: "Ctrl+," 
+        sequence: "Ctrl+,"
         onActivated: navigateIf("settings")
     }
 
@@ -35,18 +35,16 @@ Item {
         onActivated: {
             if (root.palette && root.palette.open) {
                 root.palette.open = false
-                return
             }
         }
     }
 
     Shortcut {
         sequence: "Space"
+        enabled: !isInputFocused()
         onActivated: {
-            if (!activeFocusOnInput()) {
-                if (typeof nowplayingBridge !== "undefined" && nowplayingBridge)
-                    nowplayingBridge.togglePlay()
-            }
+            if (typeof nowplayingBridge !== "undefined" && nowplayingBridge)
+                nowplayingBridge.togglePlay()
         }
     }
 
@@ -55,9 +53,10 @@ Item {
             navigationBridge.navigate(route)
     }
 
-    function activeFocusOnInput() {
-        var item = window.activeFocusItem
+    function isInputFocused() {
+        var item = activeFocusItem
         if (!item) return false
-        return item.toString().indexOf("TextInput") >= 0 || item.toString().indexOf("TextField") >= 0
+        var s = item.toString()
+        return s.indexOf("TextInput") >= 0 || s.indexOf("TextField") >= 0 || s.indexOf("TextArea") >= 0
     }
 }

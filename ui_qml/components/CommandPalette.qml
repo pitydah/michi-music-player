@@ -13,7 +13,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0.02, 0.03, 0.05, 0.70)
+        color: MichiTheme.colors.overlayDark
         z: 9998
 
         MouseArea { anchors.fill: parent; onClicked: root.open = false }

@@ -92,11 +92,15 @@ class QmlServiceFactory:
         try:
             from audio.player_engine import GStreamerEngine
             from audio.player_service import PlayerService
+            logger.info("QML: Creating GStreamerEngine...")
             engine = GStreamerEngine()
+            logger.info("QML: GStreamerEngine created OK, creating PlayerService...")
             self._player_service = PlayerService(engine)
-            logger.info("QML: PlayerService created")
+            logger.info("QML: PlayerService created OK")
+        except ImportError as e:
+            logger.warning("QML: PlayerService ImportError — %s", e)
         except Exception as e:
-            logger.debug("QML: PlayerService init failed: %s", e)
+            logger.warning("QML: PlayerService init failed: %s — %s", type(e).__name__, e)
         return self._player_service
 
     def create_sync_manager(self):
@@ -200,8 +204,23 @@ def main():
     notification_bridge = NotificationBridge()
     route_registry_bridge = RouteRegistryBridge()
     app_state_bridge = AppStateBridge()
-    diagnostics_bridge = DiagnosticsBridge()
-    command_palette_bridge = CommandPaletteBridge(navigation_bridge=nav_bridge)
+    diagnostics_bridge = DiagnosticsBridge(
+        player_service=player_service,
+        db=db,
+        radio_manager=radio_mgr,
+        sync_manager=sync_mgr,
+    )
+    command_palette_bridge = CommandPaletteBridge(
+        navigation_bridge=nav_bridge,
+        library_bridge=library_bridge,
+        nowplaying_bridge=nowplaying_bridge,
+    )
+    app_state_bridge.setServiceAvailability(
+        player_service is not None,
+        db is not None,
+        "available" if player_service else "unavailable"
+    )
+
     try:
         from ui.audio_lab.services.smart_tagging_service import SmartTaggingService
         smart_tagging_bridge.set_service(SmartTaggingService())

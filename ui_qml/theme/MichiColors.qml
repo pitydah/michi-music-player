@@ -48,4 +48,5 @@ QtObject {
     readonly property color surfaceNowPlaying: "#141620"
     readonly property color surfaceNowPlayingBorder: Qt.rgba(1.0, 1.0, 1.0, 0.06)
     readonly property color surfacePlaybackPanel: "#141620"
+    readonly property color overlayDark: Qt.rgba(0.02, 0.03, 0.05, 0.70)
 }

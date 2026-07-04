@@ -10,9 +10,12 @@ import platform
 class DiagnosticsBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, service_registry=None, parent=None):
+    def __init__(self, player_service=None, db=None, radio_manager=None, sync_manager=None, parent=None):
         super().__init__(parent)
-        self._registry = service_registry
+        self._player = player_service
+        self._db = db
+        self._radio = radio_manager
+        self._sync = sync_manager
 
     @Slot(result="QVariantMap")
     def runQuickCheck(self):
@@ -21,15 +24,11 @@ class DiagnosticsBridge(QObject):
             "platform": platform.platform(),
             "qml_mode": True,
             "app_version": "0.2.0a0",
+            "player_available": self._player is not None,
+            "db_available": self._db is not None,
+            "radio_available": self._radio is not None,
+            "sync_available": self._sync is not None,
         }
-        if self._registry:
-            result["player_available"] = self._registry.isAvailable("player_service")
-            result["db_available"] = self._registry.isAvailable("db")
-            result["radio_available"] = self._registry.isAvailable("radio_manager")
-            result["sync_available"] = self._registry.isAvailable("sync_manager")
-        else:
-            for key in ("player_available", "db_available", "radio_available", "sync_available"):
-                result[key] = False
         return result
 
     @Property("QVariantList", notify=dataChanged)
@@ -37,7 +36,8 @@ class DiagnosticsBridge(QObject):
         check = self.runQuickCheck()
         items = []
         for key, value in check.items():
-            items.append({"key": key, "value": str(value), "ok": bool(value) if isinstance(value, (bool, int)) else True})
+            ok = bool(value) if isinstance(value, (bool, type(None))) else bool(value)
+            items.append({"key": key, "value": str(value), "ok": ok})
         return items
 
     @Slot(result=str)

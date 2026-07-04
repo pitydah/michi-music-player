@@ -45,6 +45,11 @@ def check_file(path: Path):
                 if "MICHI_QML_DEMO" in node.value.value:
                     has_demo = True
 
+    # Check for Signal declarations via regex (AST doesn't detect from-import easily)
+    source = path.read_text()
+    if "Signal()" in source or "Signal(" in source:
+        has_signal = True
+
     # Check top-level imports from heavy modules
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):

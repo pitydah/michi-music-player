@@ -11,13 +11,16 @@ Item {
     property string lastError: ""
     property string lastLoadedRoute: ""
     property bool loading: false
+    property string _prevRoute: ""
 
     function loadRoute(route) {
-        currentRoute = route
         var source = registry ? registry.getSource(route) : getFallbackSource(route)
         if (!source) source = "../pages/PlaceholderPage.qml"
+        _prevRoute = currentRoute
+        currentRoute = route
         lastError = ""
         loading = true
+        callOnPage("routeLeave", _prevRoute)
         pageLoader.source = ""
         pageLoader.source = source
     }
@@ -55,8 +58,11 @@ Item {
         }
     }
 
-    onCurrentRouteChanged: {
-        callOnPage("routeEnter", currentRoute)
+    Connections {
+        target: typeof navigationBridge !== "undefined" ? navigationBridge : null
+        function onRouteRefreshRequested(route) {
+            callOnPage("routeRefresh", route)
+        }
     }
 
     Loader {
