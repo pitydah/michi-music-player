@@ -1208,18 +1208,11 @@ class TestConnectionsV2Bridge:
         # Without demo data and without a real controller, should return empty
         assert len(bridge.discoveredServers) == 0
 
-    def test_connections_bridge_demo_flag(self):
-        import os
-        os.environ["MICHI_QML_DEMO"] = "1"
-        try:
-            bridge = ConnectionsBridge()
-            bridge.scanForServers()
-            servers = bridge.discoveredServers
-            assert len(servers) > 0
-            for s in servers:
-                assert s.get("is_demo") is True
-        finally:
-            os.environ.pop("MICHI_QML_DEMO", None)
+    def test_connections_bridge_no_demo_without_controller(self):
+        bridge = ConnectionsBridge()
+        bridge.scanForServers()
+        servers = bridge.discoveredServers
+        assert len(servers) == 0, "No demo data without MICHI_QML_DEMO flag"
 
 
 class TestLyricsBridge:

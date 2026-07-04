@@ -1,7 +1,16 @@
-"""DevicesBridge — connects QML Sync/Devices page to real SyncManager."""
+"""DevicesBridge — connects QML Sync/Devices page to real SyncManager.
+
+Returns dict ok/error from all actions. Does not mark serverActive=true
+if start() fails.
+"""
+from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sync.sync_manager import SyncManager
 
 logger = logging.getLogger("michi.devices")
 
@@ -9,13 +18,13 @@ logger = logging.getLogger("michi.devices")
 class DevicesBridge(QObject):
     stateChanged = Signal()
 
-    def __init__(self, sync_manager=None, parent=None):
+    def __init__(self, sync_manager: SyncManager | None = None, parent=None):
         super().__init__(parent)
         self._sync_mgr = sync_manager
         self._server_active = False
         self._server_port = 53318
-        self._peers = []
-        self._paired_devices = []
+        self._peers: list[dict] = []
+        self._paired_devices: list[dict] = []
 
     @Property(bool, notify=stateChanged)
     def serverActive(self):
@@ -33,30 +42,42 @@ class DevicesBridge(QObject):
     def pairedDevices(self):
         return self._paired_devices
 
-    @Slot()
+    @Slot(result=dict)
     def startServer(self):
-        if self._sync_mgr and hasattr(self._sync_mgr, 'start'):
-            try:
+        if not self._sync_mgr:
+            return {"ok": False, "error": "NO_SYNC_MANAGER"}
+        try:
+            if hasattr(self._sync_mgr, 'start'):
                 self._sync_mgr.start()
-            except Exception:
-                logger.debug("SyncManager start failed", exc_info=True)
-        self._server_active = True
-        self.stateChanged.emit()
+            self._server_active = True
+            self.stateChanged.emit()
+            return {"ok": True}
+        except Exception as e:
+            logger.debug("SyncManager start failed", exc_info=True)
+            self._server_active = False
+            self.stateChanged.emit()
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def stopServer(self):
-        if self._sync_mgr and hasattr(self._sync_mgr, 'stop'):
-            try:
+        if not self._sync_mgr:
+            return {"ok": True}
+        try:
+            if hasattr(self._sync_mgr, 'stop'):
                 self._sync_mgr.stop()
-            except Exception:
-                logger.debug("SyncManager stop failed", exc_info=True)
-        self._server_active = False
-        self.stateChanged.emit()
+            self._server_active = False
+            self.stateChanged.emit()
+            return {"ok": True}
+        except Exception as e:
+            logger.debug("SyncManager stop failed", exc_info=True)
+            self.stateChanged.emit()
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def refresh(self):
+        peers = []
+        paired = []
         if self._sync_mgr:
-            peers = []
             try:
                 if hasattr(self._sync_mgr, 'get_all_peers'):
                     all_peers = self._sync_mgr.get_all_peers()
@@ -67,11 +88,14 @@ class DevicesBridge(QObject):
                             "ip": p.get("ip", "") if isinstance(p, dict) else getattr(p, 'ip', ''),
                             "port": p.get("port", 0) if isinstance(p, dict) else getattr(p, 'port', 0),
                         })
+            except Exception as e:
+                logger.debug("Sync peers refresh failed: %s", e)
+            try:
+                self._server_active = bool(getattr(self._sync_mgr, 'is_active', False))
+                if callable(self._server_active):
+                    self._server_active = self._sync_mgr.is_active()
             except Exception:
-                logger.debug("Sync peers refresh failed", exc_info=True)
-            self._peers = peers
-            self._server_active = hasattr(self._sync_mgr, 'is_active') and self._sync_mgr.is_active
-            paired = []
+                pass
             try:
                 if hasattr(self._sync_mgr, 'get_paired_devices'):
                     all_paired = self._sync_mgr.get_paired_devices()
@@ -80,7 +104,9 @@ class DevicesBridge(QObject):
                             "alias": p.get("alias", "") if isinstance(p, dict) else getattr(p, 'alias', '') or str(p),
                             "device": p.get("device", "desktop") if isinstance(p, dict) else getattr(p, 'device', 'desktop'),
                         })
-            except Exception:
-                logger.debug("Sync paired devices refresh failed", exc_info=True)
-            self._paired_devices = paired
+            except Exception as e:
+                logger.debug("Sync paired devices refresh failed: %s", e)
+        self._peers = peers
+        self._paired_devices = paired
         self.stateChanged.emit()
+        return {"ok": True, "peers": len(peers), "paired": len(paired)}
