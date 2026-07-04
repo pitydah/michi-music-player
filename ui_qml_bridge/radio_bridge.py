@@ -49,11 +49,16 @@ class RadioBridge(QObject):
             return {"ok": False, "error": "EMPTY_URL"}
         if self._radio_mgr and hasattr(self._radio_mgr, 'add'):
             try:
-                self._radio_mgr.add(name, url, country=country, codec=codec)
+                station = self._radio_mgr.add(name, url, country=country, codec=codec)
+                logger.info("Radio station added: id=%s, name=%s, url=%s",
+                            getattr(station, 'id', '?'), name, url)
                 self.refresh()
-                return {"ok": True}
+                count = len(self._stations) if hasattr(self, '_stations') else 0
+                return {"ok": True, "id": getattr(station, 'id', 0), "count": count}
             except Exception as e:
+                logger.warning("Radio add failed: %s", e, exc_info=True)
                 return {"ok": False, "error": str(e)}
+        logger.warning("Radio add failed: no radio manager or missing 'add' method")
         return {"ok": False, "error": "NO_RADIO_MANAGER"}
 
     @Slot(str, result=dict)
