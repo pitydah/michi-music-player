@@ -4,6 +4,7 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger("michi.playlists")
 
@@ -11,10 +12,11 @@ logger = logging.getLogger("michi.playlists")
 class PlaylistsBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, selection_context=None, parent=None):
+    def __init__(self, db=None, selection_context=None, player_service=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._sel_ctx = selection_context
+        self._player = player_service
         self._playlists = []
 
     def setSelectionContext(self, ctx):
@@ -117,9 +119,9 @@ class PlaylistsBridge(QObject):
     def addTrackToPlaylist(self, pid: int, filepath: str = "", track_id: str = ""):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
-        if not filepath and not track_id and self._sel_ctx:
-            filepath = self._sel_ctx.selectedFilepath
-            track_id = self._sel_ctx.selectedTrackId
+            if not filepath and not track_id and self._sel_ctx:
+                filepath = self._sel_ctx.selectedFilepath
+                track_id = self._sel_ctx.selectedTrackId
         try:
             if not filepath and not track_id:
                 return {"ok": False, "error": "NO_SELECTION"}
@@ -130,10 +132,11 @@ class PlaylistsBridge(QObject):
                     tid = 0
                 if tid:
                     self._db.add_track_to_playlist(pid, track_id=tid)
+                    self.refresh()
                     return {"ok": True}
-            from pathlib import Path
             if filepath and Path(filepath).is_file():
                 self._db.add_track_to_playlist(pid, filepath)
+                self.refresh()
                 return {"ok": True}
             return {"ok": False, "error": "NO_VALID_TRACK"}
         except Exception as e:
@@ -179,19 +182,16 @@ class PlaylistsBridge(QObject):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
-            if hasattr(self._db, 'play_playlist'):
-                self._db.play_playlist(pid)
-                return {"ok": True}
             detail = self.getPlaylistDetail(pid)
             if detail.get("ok"):
                 tracks = detail.get("tracks", [])
                 fps = [t["filepath"] for t in tracks if t.get("filepath")]
                 if not fps:
                     return {"ok": False, "error": "NO_TRACKS"}
-                from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
-                np = NowPlayingBridge()
-                np.enqueueSong(fps[0])
-                return {"ok": True, "count": len(fps)}
+                if self._player and hasattr(self._player, 'enqueue'):
+                    self._player.enqueue(fps, play_now=True)
+                    return {"ok": True, "count": len(fps)}
+                return {"ok": False, "error": "UNSUPPORTED"}
             return {"ok": False, "error": "NO_TRACKS"}
         except Exception as e:
             logger.debug("Play playlist failed", exc_info=True)
