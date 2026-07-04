@@ -848,7 +848,7 @@ class TestMixComponents:
         assert "ai_recommended" not in [c["id"] for c in bridge.categories]
 
     def test_mix_daily_uses_smart_mix_service(self):
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
         from ui_qml_bridge.mix_bridge import MixBridge
         from library.media_item import MediaItem
         db = MagicMock()

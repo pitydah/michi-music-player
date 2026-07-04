@@ -77,7 +77,7 @@ def main():
     print("\n## 4. CoverBridge")
     try:
         from ui_qml_bridge.cover_bridge import CoverBridge
-        cb = CoverBridge()
+        CoverBridge()
         check("CoverBridge created", True)
     except Exception as e:
         check("CoverBridge init failed", False, str(e))
@@ -103,17 +103,17 @@ def main():
     qml_dir = Path(__file__).resolve().parent.parent / "ui_qml"
     for route, info in ROUTES.items():
         if info.get("source"):
-            source = info["source"].lstrip("..").lstrip("/")
+            source = info["source"].replace("../", "").lstrip("/")
             qml_path = qml_dir / source
             exists = qml_path.exists()
             check(f"Route '{route}' page exists", exists, f"missing at {qml_path}")
 
     # Summary
-    print(f"\n## Summary")
+    print("\n## Summary")
     print(f"**Passed:** {len(PASSED)}")
     print(f"**Failed:** {len(FAILED)}")
-    print(f"**Audio output:** NOT VERIFIED (needs display)")
-    print(f"**Seek/Next/Prev:** NOT VERIFIED (needs runtime)")
+    print("**Audio output:** NOT VERIFIED (needs display)")
+    print("**Seek/Next/Prev:** NOT VERIFIED (needs runtime)")
 
     return 0 if not FAILED else 1
 

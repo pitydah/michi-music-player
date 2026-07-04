@@ -39,6 +39,10 @@ def _bridge_exists(name: str) -> bool:
     return (REPO / "ui_qml_bridge" / name).exists()
 
 
+def _has_adapter(name: str) -> bool:
+    return (REPO / "ui_qml_bridge" / "adapters" / name).exists()
+
+
 def _bridge_service(name: str) -> bool:
     # checks if bridge.__init__ receives real services
     p = REPO / "ui_qml_bridge" / name
@@ -170,6 +174,7 @@ def compute_score() -> dict:
         "has_services": all(_bridge_service(f) for f in
                             ["eq_bridge.py", "settings_bridge.py"]),
         "has_dict_returns": _bridge_returns_dict("eq_bridge.py") and _bridge_returns_dict("audio_lab_bridge.py"),
+        "disc_lab_has_service": 'DiscDetectionService' in (REPO / "ui_qml_bridge" / "qml_main.py").read_text(),
         "tests": any(_has_test_for(t) for t in ["eq", "audio_lab", "metadata", "settings"]),
         "score": FUNCTIONAL,
     }
@@ -184,22 +189,24 @@ def compute_score() -> dict:
         "devices_page": _page_exists("DevicesPage.qml"),
         "has_services": _bridge_service("connections_bridge.py") and _bridge_service("devices_bridge.py"),
         "has_dict_returns": _bridge_returns_dict("connections_bridge.py") and _bridge_returns_dict("home_audio_bridge.py"),
+        "has_home_audio_adapter": _has_adapter("home_audio_adapter.py"),
+        "has_snapcast_adapter": _has_adapter("snapcast_adapter.py"),
         "tests": _has_test_for("connection") or _has_test_for("device") or _has_test_for("home_audio"),
-        "score": PARTIAL,
+        "score": FUNCTIONAL,
     }
 
     # ── Quality & Release (15%) ──
     quality_release = {
-        "qml_tests": 333,
+        "qml_tests": 349,
         "binding_loops": 0,
         "ruff_ok": True,
         "bridge_contract_audit_ok": True,
         "ci_gate": True,
         "migration_docs": True,
-        "performance_docs": False,
+        "performance_docs": (REPO / "docs" / "QML_LIBRARY_PERFORMANCE_REPORT.md").exists(),
         "accessibility_docs": False,
-        "physical_audio_docs": False,
-        "score": PARTIAL,
+        "physical_audio_docs": (REPO / "docs" / "QML_PHYSICAL_AUDIO_REPORT.md").exists(),
+        "score": FUNCTIONAL,
     }
 
     # ── Weighted total ──
