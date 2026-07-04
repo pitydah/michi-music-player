@@ -887,6 +887,62 @@ class TestRadioComponents:
         content = (QML_DIR / "shell" / "PageStack.qml").read_text()
         assert "RadioPage" in content, "PageStack missing RadioPage"
 
+    def test_radio_bridge_edit_station(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        mgr = MagicMock()
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.editStation(1, "New Name", "http://new.url/stream")
+        assert result.get("ok") is True
+        mgr.update.assert_called_once()
+
+    def test_radio_bridge_edit_station_no_mgr(self):
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        bridge = RadioBridge()
+        result = bridge.editStation(1, "Name", "url")
+        assert result.get("ok") is False
+        assert result.get("error") == "NO_RADIO_MANAGER"
+
+    def test_radio_bridge_toggle_favorite(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        mgr = MagicMock()
+        mgr.toggle_favorite.return_value = True
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.toggleFavorite(1)
+        assert result.get("ok") is True
+        assert result.get("favorite") is True
+
+    def test_radio_bridge_toggle_favorite_no_mgr(self):
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        bridge = RadioBridge()
+        result = bridge.toggleFavorite(1)
+        assert result.get("ok") is False
+
+    def test_radio_bridge_search(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        from streaming.radio_manager import RadioStation
+        mgr = MagicMock()
+        station = RadioStation(id=1, name="Test FM", url="http://test.fm/stream",
+                               codec="MP3", country="US", tags=["rock", "pop"])
+        mgr.get_all.return_value = [station]
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.search(query="Test")
+        assert result.get("ok") is True
+        assert result.get("count") == 1
+
+    def test_radio_bridge_search_no_match(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        from streaming.radio_manager import RadioStation
+        mgr = MagicMock()
+        station = RadioStation(id=1, name="Test FM", url="http://test.fm/stream")
+        mgr.get_all.return_value = [station]
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.search(query="Jazz")
+        assert result.get("count") == 0
+
 
 class TestSettingsComponents:
     def test_settings_page_exists(self):
