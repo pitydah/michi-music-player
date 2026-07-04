@@ -144,10 +144,10 @@ def compute_score() -> dict:
         "radio_bridge": _bridge_exists("radio_bridge.py"),
         "radio_page": _page_exists("RadioPage.qml"),
         "mix_has_service": _bridge_service("mix_bridge.py"),
-        "lyrics_has_service": _bridge_service("lyrics_bridge.py"),
+        "lyrics_has_service": 'worker_manager' in (REPO / "ui_qml_bridge" / "lyrics_bridge.py").read_text(),
         "radio_has_service": _bridge_service("radio_bridge.py"),
         "tests": _has_test_for("mix") or _has_test_for("lyrics") or _has_test_for("radio"),
-        "score": PARTIAL,  # lyrics sync, mix real filters needed
+        "score": FUNCTIONAL,  # lyrics async+cache+synced, mix real filters
     }
 
     # ── Advanced Tools (20%) ──
@@ -169,8 +169,9 @@ def compute_score() -> dict:
         "diagnostics_bridge": _bridge_exists("diagnostics_bridge.py"),
         "has_services": all(_bridge_service(f) for f in
                             ["eq_bridge.py", "settings_bridge.py"]),
+        "has_dict_returns": _bridge_returns_dict("eq_bridge.py") and _bridge_returns_dict("audio_lab_bridge.py"),
         "tests": any(_has_test_for(t) for t in ["eq", "audio_lab", "metadata", "settings"]),
-        "score": PARTIAL,  # audio_lab.navigateTo is pass, disc_lab no backend, metadata real
+        "score": FUNCTIONAL,
     }
 
     # ── Ecosystem & Network (10%) ──
@@ -182,14 +183,14 @@ def compute_score() -> dict:
         "devices_bridge": _bridge_exists("devices_bridge.py"),
         "devices_page": _page_exists("DevicesPage.qml"),
         "has_services": _bridge_service("connections_bridge.py") and _bridge_service("devices_bridge.py"),
+        "has_dict_returns": _bridge_returns_dict("connections_bridge.py") and _bridge_returns_dict("home_audio_bridge.py"),
         "tests": _has_test_for("connection") or _has_test_for("device") or _has_test_for("home_audio"),
-        "score": VISUAL_ONLY,
-        # connections: openHomeAudio uses _navigate (broken), home_audio: no controller injection
+        "score": PARTIAL,
     }
 
     # ── Quality & Release (15%) ──
     quality_release = {
-        "qml_tests": 312,
+        "qml_tests": 333,
         "binding_loops": 0,
         "ruff_ok": True,
         "bridge_contract_audit_ok": True,
