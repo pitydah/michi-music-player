@@ -1,0 +1,27 @@
+"""RouteRegistry — single source of truth for QML routes."""
+
+ROUTES: dict[str, dict] = {
+    "home": {"title": "Inicio", "source": "../pages/home/HomePage.qml", "category": "core", "status": "functional"},
+    "library": {"title": "Biblioteca", "source": "../pages/library/LibraryPage.qml", "category": "core", "status": "functional"},
+    "playback": {"title": "Reproducción", "source": "../pages/PlaybackPage.qml", "category": "core", "status": "functional"},
+    "connections": {"title": "Conexiones", "source": "../pages/connections/ConnectionsPage.qml", "category": "core", "status": "functional"},
+    "home_audio": {"title": "Home Audio", "source": "../pages/home_audio/HomeAudioPage.qml", "category": "core", "status": "experimental"},
+    "assistant": {"title": "Michi AI", "source": "../pages/assistant/AssistantPage.qml", "category": "core", "status": "functional"},
+    "audio_lab": {"title": "Audio Lab", "source": "../pages/assistant/AudioLabPage.qml", "category": "tools", "status": "functional"},
+    "radio": {"title": "Radio", "source": "../pages/RadioPage.qml", "category": "core", "status": "functional"},
+    "playlists": {"title": "Playlists", "source": "../pages/playlists/PlaylistsPage.qml", "category": "core", "status": "functional"},
+    "playlist_detail": {"title": "Playlist", "source": "../pages/playlists/PlaylistDetailPage.qml", "category": "detail", "status": "functional"},
+    "metadata_inspector": {"title": "Inspector de metadatos", "source": "../pages/metadata/MetadataInspectorPage.qml", "category": "tools", "status": "functional"},
+    "mix_detail": {"title": "Mix", "source": "../pages/MixDetailPage.qml", "category": "detail", "status": "experimental"},
+    "settings": {"title": "Ajustes", "source": "../pages/SettingsPage.qml", "category": "core", "status": "functional"},
+    "devices": {"title": "Dispositivos", "source": "../pages/DevicesPage.qml", "category": "core", "status": "functional"},
+    "eq": {"title": "Ecualizador", "source": "../pages/EqPage.qml", "category": "tools", "status": "functional"},
+    "library_doctor": {"title": "Library Doctor", "source": "../pages/LibraryDoctorPage.qml", "category": "tools", "status": "functional"},
+    "disc_lab": {"title": "Disc Lab", "source": "../pages/DiscLabPage.qml", "category": "tools", "status": "experimental"},
+    "output_profiles": {"title": "Perfiles de salida", "source": "../pages/OutputProfilesPage.qml", "category": "settings", "status": "functional"},
+    "smart_tagging": {"title": "Smart Tagging", "source": "../pages/SmartTaggingPage.qml", "category": "tools", "status": "functional"},
+    "mix": {"title": "Mix", "source": "../pages/MixHubPage.qml", "category": "core", "status": "experimental"},
+    "mix_detail": {"title": "Mix", "source": "../pages/MixDetailPage.qml", "category": "detail", "status": "experimental"},
+    "diagnostics": {"title": "Diagnóstico", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "experimental"},
+    "placeholder": {"title": "Sección en migración", "source": "../pages/PlaceholderPage.qml", "category": "system", "status": "placeholder"},
+}

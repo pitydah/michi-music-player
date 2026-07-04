@@ -40,6 +40,10 @@ from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
 from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
 from ui_qml_bridge.notification_bridge import NotificationBridge
+from ui_qml_bridge.route_registry_bridge import RouteRegistryBridge
+from ui_qml_bridge.app_state_bridge import AppStateBridge
+from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
+from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 
 logger = logging.getLogger("michi.qml")
 
@@ -194,6 +198,10 @@ def main():
     library_doctor_bridge = LibraryDoctorBridge(db=db)
     disc_lab_bridge = DiscLabBridge()
     notification_bridge = NotificationBridge()
+    route_registry_bridge = RouteRegistryBridge()
+    app_state_bridge = AppStateBridge()
+    diagnostics_bridge = DiagnosticsBridge()
+    command_palette_bridge = CommandPaletteBridge(navigation_bridge=nav_bridge)
     try:
         from ui.audio_lab.services.smart_tagging_service import SmartTaggingService
         smart_tagging_bridge.set_service(SmartTaggingService())
@@ -222,6 +230,10 @@ def main():
     engine.rootContext().setContextProperty("discLabBridge", disc_lab_bridge)
     engine.rootContext().setContextProperty("selectionContextBridge", selection_context_bridge)
     engine.rootContext().setContextProperty("notificationBridge", notification_bridge)
+    engine.rootContext().setContextProperty("routeRegistryBridge", route_registry_bridge)
+    engine.rootContext().setContextProperty("appStateBridge", app_state_bridge)
+    engine.rootContext().setContextProperty("diagnosticsBridge", diagnostics_bridge)
+    engine.rootContext().setContextProperty("commandPaletteBridge", command_palette_bridge)
     if eq_bridge:
         engine.rootContext().setContextProperty("eqBridge", eq_bridge)
 

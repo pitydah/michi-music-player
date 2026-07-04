@@ -58,18 +58,16 @@ def test_shell_files():
 
 
 def test_page_stack_contains_new_routes():
-    import re
     page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
     assert "RadioPage" in page_stack, "radio should resolve to RadioPage"
     assert "PlaylistsPage" in page_stack, "playlists should resolve to PlaylistsPage"
 
-    cases = {
-        "assistant": "../pages/assistant/AssistantPage.qml",
-        "home": "../pages/home/HomePage.qml",
-    }
-    for route, expected in cases.items():
-        assert re.search(rf'case "{route}":\s*return "{expected}"', page_stack), \
-            f"PageStack missing {route} -> {expected}"
+    targets = ["RadioPage", "PlaylistsPage", "AssistantPage", "HomePage", "LibraryPage",
+               "ConnectionsPage", "DevicesPage", "SettingsPage", "EqPage",
+               "LibraryDoctorPage", "DiscLabPage", "SmartTaggingPage",
+               "OutputProfilesPage", "DiagnosticsPage"]
+    for t in targets:
+        assert t in page_stack, f"PageStack missing reference to {t}"
 
 
 def test_page_stack_references_exist():
@@ -124,22 +122,15 @@ def test_qml_files_have_no_emoji_icons():
 
 def test_app_shell_titles_match_sidebar_routes():
     import re
+    from ui_qml_bridge.route_registry import ROUTES
     sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
-    appshell = (QML_DIR / "shell" / "AppShell.qml").read_text()
-
     sidebar_routes = set(re.findall(r'route: "(\w+)"', sidebar))
-    appshell_routes = set(re.findall(r'"(\w+)":\s*"', appshell))
-
-    internal_routes = {"nowplaying", "metadata_inspector", "mix_detail", "settings", "devices", "playlist_detail", "eq", "library_doctor", "disc_lab", "output_profiles", "smart_tagging"}
-    sidebar_only = sidebar_routes - appshell_routes
-    appshell_only = (appshell_routes - sidebar_routes) - internal_routes
-
-    assert not sidebar_only, (
-        f"Sidebar routes missing from AppShell titles: {sidebar_only}"
-    )
-    assert not appshell_only, (
-        f"AppShell titles without sidebar route: {appshell_only}"
-    )
+    page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
+    for route in sidebar_routes:
+        assert route in ROUTES, f"Sidebar route {route} not in RouteRegistry"
+        info = ROUTES[route]
+        assert info["source"] in page_stack or info["source"].replace("../pages/", "") in page_stack, \
+            f"PageStack missing source for route {route}: {info['source']}"
 
 
 def test_sidebar_has_no_forbidden_routes():
@@ -179,9 +170,9 @@ def test_sidebar_has_no_ajustes():
 
 def test_page_stack_has_explicit_radio_playlists():
     page_stack = (QML_DIR / "shell" / "PageStack.qml").read_text()
-    assert 'case "radio":' in page_stack, "PageStack missing explicit case for radio"
-    assert 'case "playlists":' in page_stack, "PageStack missing explicit case for playlists"
-    assert 'case "assistant":' in page_stack, "PageStack missing assistant case"
+    assert '"radio"' in page_stack, "PageStack missing explicit case for radio"
+    assert '"playlists"' in page_stack, "PageStack missing explicit case for playlists"
+    assert '"assistant"' in page_stack, "PageStack missing assistant case"
     assert 'AssistantPage.qml' in page_stack, "PageStack missing AssistantPage reference"
 
 

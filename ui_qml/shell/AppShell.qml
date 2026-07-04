@@ -2,36 +2,19 @@ import QtQuick
 import QtQuick.Controls
 import "../theme"
 import "../components"
+import "."
 
 Item {
     id: root
 
     property alias currentRoute: sidebar.currentRoute
     property alias pageTitle: header.pageTitle
+    property var palette: commandPalette
 
     function updateHeaderTitle(route) {
-        var titles = {
-            "home": "Inicio",
-            "library": "Biblioteca",
-            "mix": "Mix",
-            "playback": "Reproducción",
-            "connections": "Conexiones",
-            "radio": "Radio",
-            "playlists": "Playlists",
-            "home_audio": "Home Audio",
-            "audio_lab": "Audio Lab",
-            "assistant": "Michi AI",
-            "mix_detail": "Mix",
-            "settings": "Ajustes",
-            "devices": "Dispositivos",
-            "playlist_detail": "Playlist",
-            "eq": "Ecualizador",
-            "library_doctor": "Library Doctor",
-            "disc_lab": "Disc Lab",
-            "output_profiles": "Perfiles de salida",
-            "smart_tagging": "Smart Tagging",
+        if (typeof routeRegistryBridge !== "undefined" && routeRegistryBridge) {
+            header.pageTitle = routeRegistryBridge.getTitle(route)
         }
-        header.pageTitle = titles[route] || "Michi"
     }
 
     Column {
@@ -83,6 +66,17 @@ Item {
             id: nowPlayingBar
             width: parent.width
         }
+    }
+
+    CommandPalette {
+        id: commandPalette
+        anchors.fill: parent
+        cmdBridge: typeof commandPaletteBridge !== "undefined" ? commandPaletteBridge : null
+    }
+
+    ShortcutLayer {
+        anchors.fill: parent
+        palette: commandPalette
     }
 
     Connections {

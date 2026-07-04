@@ -800,8 +800,80 @@ class TestNowPlayingBarMigration:
         bridge = NowPlayingBridge()
         bridge.togglePlay()
         assert not bridge.lastCommandOk
-        assert not bridge.isPlaying  # must not toggle without backend
+        assert not bridge.isPlaying
         assert bridge.playbackStatus == "unavailable"
+
+    def test_route_registry_exists(self):
+        from ui_qml_bridge.route_registry import ROUTES
+        assert "home" in ROUTES
+        assert "library" in ROUTES
+        assert "placeholder" in ROUTES
+
+    def test_route_registry_bridge_importable(self):
+        from ui_qml_bridge.route_registry_bridge import RouteRegistryBridge
+        bridge = RouteRegistryBridge()
+        assert bridge.isValidRoute("home")
+        assert not bridge.isValidRoute("nonexistent_route_xyz")
+        assert bridge.getTitle("home") == "Inicio"
+
+    def test_navigation_bridge_back_stack(self):
+        from ui_qml_bridge.navigation_bridge import NavigationBridge
+        nav = NavigationBridge()
+        assert not nav.canGoBack
+        nav.navigate("library")
+        assert nav.canGoBack
+        nav.back()
+        assert nav.currentRoute == "home"
+        assert not nav.canGoBack
+
+    def test_navigation_bridge_params(self):
+        from ui_qml_bridge.navigation_bridge import NavigationBridge
+        nav = NavigationBridge()
+        nav.navigateWithParams("playlist_detail", {"id": 42})
+        assert nav.currentParams != {}
+
+    def test_app_state_bridge_importable(self):
+        from ui_qml_bridge.app_state_bridge import AppStateBridge
+        bridge = AppStateBridge()
+        assert bridge.appVersion is not None
+        bridge.pushWarning("test", "test warning")
+        assert len(bridge.runtimeWarnings) > 0
+        bridge.clearWarnings()
+        assert len(bridge.runtimeWarnings) == 0
+
+    def test_diagnostics_bridge_importable(self):
+        from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
+        bridge = DiagnosticsBridge()
+        check = bridge.runQuickCheck()
+        assert "python_version" in check
+        assert check["qml_mode"] is True
+
+    def test_command_palette_bridge_importable(self):
+        from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
+        bridge = CommandPaletteBridge()
+        assert len(bridge.commands) > 0
+        results = bridge.searchCommands("biblioteca")
+        assert len(results) > 0
+
+    def test_diagnostics_page_exists(self):
+        p = QML_DIR / "pages" / "DiagnosticsPage.qml"
+        assert p.exists(), "Missing DiagnosticsPage.qml"
+
+    def test_confirm_action_dialog_exists(self):
+        p = QML_DIR / "components" / "ConfirmActionDialog.qml"
+        assert p.exists(), "Missing ConfirmActionDialog.qml"
+
+    def test_command_palette_exists(self):
+        p = QML_DIR / "components" / "CommandPalette.qml"
+        assert p.exists(), "Missing CommandPalette.qml"
+
+    def test_shortcut_layer_exists(self):
+        p = QML_DIR / "shell" / "ShortcutLayer.qml"
+        assert p.exists(), "Missing ShortcutLayer.qml"
+
+    def test_page_header_exists(self):
+        p = QML_DIR / "components" / "PageHeader.qml"
+        assert p.exists(), "Missing PageHeader.qml"
 
 
 class TestActionButtonNotPresent:
