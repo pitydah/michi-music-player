@@ -45,6 +45,7 @@ from ui_qml_bridge.app_state_bridge import AppStateBridge
 from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
 from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 
+logging.basicConfig(level=logging.INFO, format="[QML] %(levelname)s: %(message)s", stream=sys.stderr)
 logger = logging.getLogger("michi.qml")
 
 
