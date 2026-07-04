@@ -25,13 +25,26 @@ Item {
             }
         }
 
-        Text {
-            anchors.centerIn: parent
-            text: root.coverKey ? root.coverKey.charAt(0).toUpperCase() : "?"
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: 14
-            font.weight: MichiTheme.typography.weightBold
+        Column {
+            anchors.centerIn: parent; spacing: 0
             visible: bridgeLoader.status === Loader.Error || (bridgeLoader.status === Loader.Ready && !bridgeLoader.item.ready)
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "MP"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: 16
+                font.weight: MichiTheme.typography.weightBold
+                opacity: 0.6
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "*"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: 10
+                opacity: 0.4
+            }
         }
     }
 }

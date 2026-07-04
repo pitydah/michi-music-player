@@ -739,6 +739,32 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
         assert "0.25" in content, "NowPlayingControls missing disabled accent color"
 
+    def test_nowplaying_cover_no_n_placeholder(self):
+        content = (QML_DIR / "components" / "NowPlayingCover.qml").read_text()
+        assert '"NOWPLAYING"' not in content, "NowPlayingCover still has NOWPLAYING fallback"
+        assert "placeholderMode" in content, "NowPlayingCover missing placeholderMode"
+
+    def test_cover_image_has_mp_placeholder(self):
+        content = (QML_DIR / "components" / "CoverImage.qml").read_text()
+        assert '"MP"' in content, "CoverImage missing MP monogram placeholder"
+
+    def test_expanded_nowplaying_panel_exists(self):
+        p = QML_DIR / "components" / "ExpandedNowPlayingPanel.qml"
+        assert p.exists(), "Missing ExpandedNowPlayingPanel.qml"
+
+    def test_expanded_nowplaying_panel_instantiate(self, engine):
+        component = _load_qml(engine, "components/ExpandedNowPlayingPanel.qml")
+        assert component.isReady()
+
+    def test_nowplaying_bar_has_expanded_panel(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "ExpandedNowPlayingPanel" in content, "NowPlayingBar missing ExpandedNowPlayingPanel"
+        assert "_panelExpanded" in content, "NowPlayingBar missing panel toggle"
+
+    def test_nowplaying_bar_expanded_height(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "280" in content, "NowPlayingBar missing expanded panel height"
+
 
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
