@@ -331,8 +331,11 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self):
-        if self._db and hasattr(self._db, 'fetch_all'):
-            self._base_songs = self._db.fetch_all() or []
+        if self._db:
+            if hasattr(self._db, 'fetch_all'):
+                self._base_songs = self._db.fetch_all() or []
+            elif hasattr(self._db, 'get_all'):
+                self._base_songs = self._db.get_all() or []
         self._invalidate_view()
         self._refresh_albums_artists()
         self._loaded_count = min(self._page_size, self.visibleCount)
