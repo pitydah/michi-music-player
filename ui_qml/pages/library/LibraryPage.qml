@@ -121,7 +121,7 @@ Item {
             title: "Seleccionar carpeta de música"
             currentFolder: "file://" + (typeof StandardPaths !== "undefined" ? StandardPaths.writableLocation(StandardPaths.MusicLocation) : "")
             onAccepted: {
-                var folderPath = String(selectedFolder).replace("file://", "")
+                var folderPath = selectedFolder.toLocalFile()
                 if (root.lib && typeof root.lib.addFolder !== "undefined") {
                     var result = root.lib.addFolder(folderPath)
                     if (root.notif) {

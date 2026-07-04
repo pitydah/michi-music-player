@@ -104,15 +104,18 @@ Item {
         keys: ["text/uri-list"]
         onDropped: function(drop) {
             if (drop.hasUrls) {
-                var droppedPath = String(drop.urls[0]).replace("file://", "")
                 var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
                 var notif = typeof notificationBridge !== "undefined" ? notificationBridge : null
-                if (lib && typeof lib.addMedia !== "undefined") {
-                    var result = lib.addMedia(droppedPath)
-                    if (notif) {
-                        var ok = result && result.ok
-                        var msg = ok ? "Añadido: " + droppedPath.split("/").pop() : "Error: " + (result ? result.error : "desconocido")
-                        notif.showMessage(msg, ok ? "info" : "error")
+                for (var i = 0; i < drop.urls.length; i++) {
+                    var droppedPath = drop.urls[i].toLocalFile()
+                    if (!droppedPath) continue
+                    if (lib && typeof lib.addMedia !== "undefined") {
+                        var result = lib.addMedia(droppedPath)
+                        if (notif) {
+                            var ok = result && result.ok
+                            var msg = ok ? "Añadido: " + droppedPath.split("/").pop() : "Error: " + (result ? result.error : "desconocido")
+                            notif.showMessage(msg, ok ? "info" : "error")
+                        }
                     }
                 }
                 drop.accept()
