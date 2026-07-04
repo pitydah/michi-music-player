@@ -18,10 +18,14 @@ Item {
     }
 
     function addStationFromUI() {
+        var notif = typeof notificationBridge !== "undefined" ? notificationBridge : null
         if (root.rd && _newUrl.trim()) {
             var result = root.rd.addStation(_newName.trim() || "New station", _newUrl.trim(), "MP3", "")
             if (result && result.ok) {
                 _newName = ""; _newUrl = ""; _showAddStation = false
+                if (notif) notif.showMessage("Emisora añadida", "success")
+            } else {
+                if (notif) notif.showMessage("Error: " + (result ? result.error : "desconocido"), "error")
             }
         }
     }

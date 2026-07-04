@@ -16,15 +16,18 @@ Item {
 
     height: MichiTheme.nowPlayingHeight
     visible: true
+    z: 10
 
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.surfaceNowPlaying
+        z: 10
 
         Rectangle {
             anchors.top: parent.top
             width: parent.width; height: 1
             color: MichiTheme.colors.surfaceNowPlayingBorder
+            z: 11
         }
 
         Row {
@@ -32,10 +35,10 @@ Item {
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.md
+            z: 12
 
-            // Cover + info
             Row {
-                width: parent.width * 0.25; height: parent.height
+                width: parent.width * 0.22; height: parent.height
                 spacing: MichiTheme.spacing.md
 
                 NowPlayingCover {
@@ -49,7 +52,7 @@ Item {
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 3
-                    width: parent.width - coverArt.width - MichiTheme.spacing.md
+                    width: Math.max(80, parent.width - coverArt.width - MichiTheme.spacing.md)
 
                     Text {
                         text: root._hasTrack && root.ps ? root.ps.trackTitle : root._emptyLabel
@@ -72,9 +75,12 @@ Item {
                 }
             }
 
-            // Controls + seek
+            Item {
+                width: parent.width * 0.08; height: 1
+            }
+
             Column {
-                width: parent.width * 0.45; height: parent.height
+                width: parent.width * 0.40; height: parent.height
                 spacing: 2
                 anchors.verticalCenter: parent.verticalCenter
 
@@ -97,6 +103,7 @@ Item {
 
                 NowPlayingSeekBar {
                     anchors.horizontalCenter: parent.horizontalCenter
+                    width: parent.width
                     position: root.ps ? root.ps.position : 0
                     duration: root.ps ? root.ps.duration : 0
                     enabled: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false)
@@ -108,11 +115,10 @@ Item {
                 }
             }
 
-            // Volume
             Row {
-                width: parent.width * 0.20; height: parent.height
+                width: parent.width * 0.22; height: parent.height
                 layoutDirection: Qt.RightToLeft
-                spacing: MichiTheme.spacing.sm
+                spacing: MichiTheme.spacing.xs
 
                 NowPlayingVolume {
                     anchors.verticalCenter: parent.verticalCenter
@@ -131,8 +137,8 @@ Item {
                 }
 
                 MichiIconButton {
-                    iconText: "＋"
-                    tooltipText: "Cola"
+                    iconText: "⏏"
+                    tooltipText: "Reproducción"
                     btnSize: 22
                     anchors.verticalCenter: parent.verticalCenter
                     onClicked: {
@@ -141,15 +147,15 @@ Item {
                 }
             }
         }
+    }
 
-        MouseArea {
-            anchors.left: parent.left; width: parent.width * 0.25
-            anchors.top: parent.top; height: parent.height
-            cursorShape: root._canPlay && root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: {
-                if (root._canPlay && root._hasTrack && typeof navigationBridge !== "undefined")
-                    navigationBridge.navigate("playback")
-            }
+    MouseArea {
+        anchors.fill: parent
+        z: 5
+        cursorShape: root._canPlay && root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
+        onClicked: {
+            if (root._canPlay && root._hasTrack && typeof navigationBridge !== "undefined")
+                navigationBridge.navigate("playback")
         }
     }
 }

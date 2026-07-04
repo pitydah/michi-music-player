@@ -542,22 +542,24 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "DIR_NOT_FOUND"}
         try:
             from library.indexer import Indexer
-            if self._db:
-                import logging as _lg
-                _log = _lg.getLogger("michi.qml.addfolder")
-                _log.info("Indexing: %s", folder_path)
-                worker = Indexer(self._db, folder_path)
-                worker.run()
-                _log.info("Indexer done, committing...")
-                if hasattr(self._db, 'conn') and self._db.conn:
-                    self._db.conn.commit()
-                self.refresh()
-                _log.info("Refresh done, count=%d", len(self._base_songs))
-                return {"ok": True, "path": folder_path, "count": len(self._base_songs)}
-            return {"ok": False, "error": "NO_DATABASE"}
+            if not self._db:
+                return {"ok": False, "error": "NO_DATABASE"}
+            import logging as _lg
+            _log = _lg.getLogger("michi.qml.addfolder")
+            _log.info("Indexing: %s", folder_path)
+            worker = Indexer(self._db, folder_path)
+            worker.run()
+            _log.info("Indexer done, committing...")
+            if hasattr(self._db, 'conn') and self._db.conn:
+                self._db.conn.commit()
+            self.refresh()
+            _log.info("Refresh done, total=%d, visible=%d",
+                      len(self._base_songs), self._cached_visible_count)
+            return {"ok": True, "path": folder_path, "count": len(self._base_songs)}
         except Exception as e:
             import logging as _lg
-            _lg.getLogger("michi.qml.addfolder").error("addFolder failed: %s", e, exc_info=True)
+            _lg.getLogger("michi.qml.addfolder").error(
+                "addFolder failed: %s", e, exc_info=True)
             return {"ok": False, "error": str(e)}
 
     @Slot(result=str)
