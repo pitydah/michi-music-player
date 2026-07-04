@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 import "../materials"
 
@@ -16,15 +17,15 @@ Item {
     implicitHeight: 24
     implicitWidth: 100
 
-    Row {
+    RowLayout {
         anchors.fill: parent
         spacing: MichiTheme.spacing.xs
 
         Item {
-            width: 24; height: 24
-            anchors.verticalCenter: parent.verticalCenter
+            Layout.preferredWidth: 22
+            Layout.preferredHeight: 22
             GlassMaterial {
-                anchors.fill: parent; radius: 12
+                anchors.fill: parent; radius: 11
                 variant: "status"
                 hovered: muteMouse.containsMouse
                 MouseArea {
@@ -35,7 +36,7 @@ Item {
                 }
                 Image {
                     anchors.centerIn: parent
-                    width: 14; height: 14
+                    width: 13; height: 13
                     source: root.muted || root.volume === 0
                         ? "../../icons/nowplaying_clean/warm_mute_32.png"
                         : root.volume < 40
@@ -47,16 +48,22 @@ Item {
             }
         }
 
-        Rectangle {
-            height: 4; radius: 2
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - 24 - MichiTheme.spacing.xs
+        Item {
+            Layout.fillWidth: true
+            height: 5
 
             Rectangle {
-                width: parent.width * Math.min(1.0, root.volume / 100.0)
-                height: parent.height; radius: 2
-                color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
+                anchors.fill: parent
+                radius: 2
+                color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                clip: true
+
+                Rectangle {
+                    height: parent.height
+                    width: parent.width * Math.min(1.0, root.volume / 100.0)
+                    radius: 2
+                    color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
+                }
             }
 
             MouseArea {

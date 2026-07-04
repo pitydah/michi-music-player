@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 
 Item {
@@ -11,25 +12,21 @@ Item {
 
     signal seekRequested(int pos)
 
-    implicitHeight: 24
+    implicitHeight: 28
 
-    Row {
+    RowLayout {
         anchors.fill: parent
-        spacing: MichiTheme.spacing.sm
+        spacing: MichiTheme.spacing.xs
 
         Text {
-            id: timeLeft
             text: formatTime(root.position)
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
-            anchors.verticalCenter: parent.verticalCenter
         }
 
         Item {
-            height: 4
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: timeLeft.right; anchors.leftMargin: MichiTheme.spacing.sm
-            anchors.right: timeRight.left; anchors.rightMargin: MichiTheme.spacing.sm
+            Layout.fillWidth: true
+            height: 5
 
             Rectangle {
                 anchors.fill: parent
@@ -38,8 +35,9 @@ Item {
                 clip: true
 
                 Rectangle {
+                    height: parent.height
                     width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
-                    height: parent.height; radius: 2
+                    radius: 2
                     color: MichiTheme.colors.accentBlue
                 }
             }
@@ -57,11 +55,9 @@ Item {
         }
 
         Text {
-            id: timeRight
             text: formatTime(root.duration)
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
-            anchors.verticalCenter: parent.verticalCenter
         }
     }
 
