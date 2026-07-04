@@ -91,26 +91,24 @@ Item {
 
             SectionHeader { text: "Todas las emisoras"; width: parent.width }
 
-            Repeater {
-                model: {
-                    var all = root.rd ? root.rd.stations : []
-                    if (root._filterText === "") return all
-                    var filtered = []
-                    for (var i = 0; i < all.length; i++) {
-                        var name = (all[i].name || "").toLowerCase()
-                        var tags = (all[i].tags || []).join(" ").toLowerCase()
-                        if (name.indexOf(root._filterText) >= 0 || tags.indexOf(root._filterText) >= 0)
-                            filtered.push(all[i])
-                    }
-                    return filtered
-                }
+            ListView {
+                width: parent.width; height: Math.min(400, contentHeight)
+                model: root.rd ? root.rd.stations : []
+                clip: true
+                visible: root.rd ? root.rd.stations.length > 0 : false
 
-                GlassCard {
-                    width: parent.width; height: 60
+                delegate: GlassCard {
+                    width: ListView.view.width; height: 60
                     title: modelData.name || ""
                     subtitle: modelData.codec ? modelData.codec + (modelData.country ? " · " + modelData.country : "") : modelData.url || ""
                     variant: "base"
                     interactive: true
+                    visible: {
+                        if (root._filterText === "") return true
+                        var name = (modelData.name || "").toLowerCase()
+                        var tags = (modelData.tags || []).join(" ").toLowerCase()
+                        return name.indexOf(root._filterText) >= 0 || tags.indexOf(root._filterText) >= 0
+                    }
                     onClicked: {
                         if (root.rd && typeof root.rd.playStation !== "undefined")
                             root.rd.playStation(modelData.url)

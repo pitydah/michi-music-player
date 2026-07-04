@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import contextlib
+import logging
 from typing import Any
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
+
+logger = logging.getLogger("michi.nowplaying")
 
 
 def _cover_key_for_path(filepath: str) -> str:
@@ -487,18 +490,28 @@ class NowPlayingBridge(QObject):
             self._error_message = "No se puede retroceder — backend no disponible"
         self._emit_state()
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def setVolume(self, volume: int):
         self._last_command = "setVolume"
         self._volume = max(0, min(100, int(volume)))
         self._muted = self._volume == 0
         call = self._player_call("set_volume")
         if call:
-            call(self._volume)
-            self._last_command_ok = True
+            try:
+                call(self._volume)
+                self._last_command_ok = True
+                logger.debug("Volume set to %d", self._volume)
+                self._emit_state()
+                return {"ok": True, "volume": self._volume}
+            except Exception as e:
+                logger.warning("Volume set failed: %s", e)
+                self._last_command_ok = False
+                self._emit_state()
+                return {"ok": False, "error": str(e)}
         else:
             self._last_command_ok = False
-        self._emit_state()
+            self._emit_state()
+            return {"ok": False, "error": "NO_PLAYER"}
 
     @Slot()
     def toggleMute(self):

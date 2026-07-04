@@ -851,7 +851,7 @@ class GStreamerEngine(QObject):
     def set_volume(self, vol: int):
         self._volume = max(0.0, min(1.0, vol / 100.0))
         if self._pipeline:
-            vol_elem = self._pipeline.get_by_name("michi_volume")
+            vol_elem = self._pipeline.get_by_name("michi_volume") if hasattr(self._pipeline, 'get_by_name') else None
             if vol_elem:
                 vol_elem.set_property("volume", self._volume)
 
