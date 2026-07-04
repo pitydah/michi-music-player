@@ -204,7 +204,7 @@ def compute_score() -> dict:
         "ci_gate": True,
         "migration_docs": True,
         "performance_docs": (REPO / "docs" / "QML_LIBRARY_PERFORMANCE_REPORT.md").exists(),
-        "accessibility_docs": False,
+        "accessibility_docs": (REPO / "docs" / "QML_ACCESSIBILITY_REPORT.md").exists(),
         "physical_audio_docs": (REPO / "docs" / "QML_PHYSICAL_AUDIO_REPORT.md").exists(),
         "score": FUNCTIONAL,
     }

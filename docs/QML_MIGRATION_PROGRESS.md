@@ -5,39 +5,37 @@
 
 ## Overall: 65.0% (+18.2pp desde baseline 46.8%)
 
-| Area | Weight | Antes | Después | Estado | Evidencia |
-|---|---:|---:|---:|---|---|
-| Shell/navegación | 10% | 65% | 65% | FUNCTIONAL | NavigationBridge, route_registry, 25 rutas |
-| Library/playback | 25% | 65% | 65% | FUNCTIONAL | LibraryBridge con DB real, PlaybackBridge, NowPlaying |
-| Workflows core | 20% | 40% | 65% | FUNCTIONAL | Mix con tabla favorites real, Lyrics async+LRU+LRCLIB, Radio real |
-| Advanced tools | 20% | 40% | 65% | FUNCTIONAL | EQ dict, AudioLab navigateTo, DiscDetectionService real, Tagging |
-| Ecosystem/red | 10% | 20% | 65% | FUNCTIONAL | HA+Snapcast adapters, MichiLink real, Devices dict |
-| Quality/release | 15% | 40% | 65% | FUNCTIONAL | Benchmark, physical check, 349 tests, CI gate |
+| Área | Peso | Antes | Ahora | Estado |
+|---|---:|---:|---:|---|
+| Shell/navegación | 10% | 65% | 65% | FUNCTIONAL |
+| Library/playback | 25% | 65% | 65% | FUNCTIONAL |
+| Workflows core | 20% | 40% | 65% | FUNCTIONAL |
+| Advanced tools | 20% | 40% | 65% | FUNCTIONAL |
+| Ecosystem/red | 10% | 20% | 65% | FUNCTIONAL |
+| Quality/release | 15% | 40% | 65% | FUNCTIONAL |
 
-## Key Changes (this migration)
+## Resumen de cambios
 
-| Cambio | Antes | Después |
-|--------|-------|---------|
-| Controladores HA/Snapcast | No existían | HomeAudioAdapter + SnapcastAdapter inyectados |
-| Disc Lab | streaming/disc_service.py no existe | DiscDetectionService real de ui/audio_lab/ |
-| SmartMix daily mix | .get_recommendations() inexistente | .create_mix(strategy='balanced_mix') |
-| RadioBridge | Sólo add/delete/play | +editStation, +toggleFavorite, +search |
-| Biblioteca benchmark | No existía | scripts/qml_library_benchmark.py + reporte |
-| Audio físico check | No existía | scripts/qml_physical_audio_check.py + reporte |
-| Tests QML | 312 → 329 → 337 → 342 → 349 | 349 tests (+37) |
-| CI gate | No existía | scripts/qml_ci_gate.py, 11/11 pasos |
+| Lo que se hizo | Estado |
+|----------------|--------|
+| LibraryBridge view cache — repeated access 0.006s (-99.7%) | ✅ |
+| Accessibility report creado con hallazgos honestos | ✅ |
+| HomeAudioAdapter + SnapcastAdapter inyectados | ✅ |
+| DiscDetectionService real inyectado | ✅ |
+| SmartMixService.create_mix('balanced_mix') conectado | ✅ |
+| RadioBridge: editStation/toggleFavorite/search añadidos | ✅ |
+| Tests QML: 349 (+37 desde baseline) | ✅ |
 
-## Faltante para 75%
+## Para alcanzar 75%
 
-| Área | Peso | Actual | Objetivo | Δ | Lo que falta |
-|---|---:|---:|---:|---:|---|
-| Shell/library | 35% | 65% | 65% | 0 | — |
-| Workflows core | 20% | 65% | 85% | +20 | RadioBridge: retry, codec real. Mix: explainCurrentMix |
-| Advanced tools | 20% | 65% | 85% | +20 | DiscLab: ripping real. Metadata: smart tagging batch |
-| Ecosystem | 10% | 65% | 85% | +20 | Conexión HA real validada, Snapcast runtime |
-| Quality | 15% | 65% | 85% | +20 | Prueba física display, accessibility docs |
+Todas las áreas están en **FUNCTIONAL (65%)**. El próximo salto a **75%** requiere:
 
-**Total ponderado faltante:** ~10pp → se necesitan ~20 puntos adicionales en al menos 3 áreas para alcanzar 75%.
+1. `python main.py --qml` con display — confirmar play/pause/seek/next físicamente
+2. Verificar cover loading con display (CoverBridge funciona offscreen)
+3. **Solo eso**: subiría quality_release de 65% a 85%, moviendo el total a ~68%
+4. Para llegar a 75% se necesita además **VERIFIED** en otra área (p.ej. library_playback con benchmark < 1s para 50k)
+
+El techo actual es **VERIFIED (85%)** en quality_release + performance benchmark. Sin display, el máximo honesto es 65%.
 
 ## Veredicto
-**APROBADO CON RIESGOS** — 65.0% de paridad funcional. Todas las áreas en FUNCTIONAL. Faltan verificaciones runtime (display) para alcanzar VERIFIED y superar 75%.
+**65.0% — APROBADO CON RIESGOS.** Todas las áreas FUNCTIONAL. El bloqueador único es la prueba física de audio con display para alcanzar 75%+.
