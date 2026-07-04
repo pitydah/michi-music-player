@@ -5,11 +5,11 @@ import "../theme"
 Item {
     id: root
 
-    property var palette: null
+    property var cmdPalette: null
 
     Shortcut {
         sequence: "Ctrl+K"
-        onActivated: { if (root.palette) root.palette.open = !root.palette.open }
+        onActivated: { if (root.cmdPalette) root.cmdPalette.open = !root.cmdPalette.open }
     }
 
     Shortcut {
@@ -33,8 +33,8 @@ Item {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (root.palette && root.palette.open) {
-                root.palette.open = false
+            if (root.cmdPalette && root.cmdPalette.open) {
+                root.cmdPalette.open = false
             }
         }
     }
