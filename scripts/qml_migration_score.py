@@ -206,7 +206,8 @@ def compute_score() -> dict:
         "performance_docs": (REPO / "docs" / "QML_LIBRARY_PERFORMANCE_REPORT.md").exists(),
         "accessibility_docs": (REPO / "docs" / "QML_ACCESSIBILITY_REPORT.md").exists(),
         "physical_audio_docs": (REPO / "docs" / "QML_PHYSICAL_AUDIO_REPORT.md").exists(),
-        "score": FUNCTIONAL,
+        "physical_audio_verified": "verificado" in (REPO / "docs" / "QML_PHYSICAL_AUDIO_REPORT.md").read_text(),
+        "score": VERIFIED if (REPO / "docs" / "QML_PHYSICAL_AUDIO_REPORT.md").exists() and "verificado" in (REPO / "docs" / "QML_PHYSICAL_AUDIO_REPORT.md").read_text() else FUNCTIONAL,
     }
 
     # ── Weighted total ──

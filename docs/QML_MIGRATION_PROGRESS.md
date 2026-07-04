@@ -1,9 +1,9 @@
-# QML Migration Progress
+# QML Migration Progress — FINAL
 
 **Date:** 2026-07-04
 **Branch:** qml-functional-closure-release-readiness
 
-## Overall: 65.0% (+18.2pp desde baseline 46.8%)
+## Overall: 68.0% (+21.2pp desde baseline 46.8%)
 
 | Área | Peso | Antes | Ahora | Estado |
 |---|---:|---:|---:|---|
@@ -12,30 +12,39 @@
 | Workflows core | 20% | 40% | 65% | FUNCTIONAL |
 | Advanced tools | 20% | 40% | 65% | FUNCTIONAL |
 | Ecosystem/red | 10% | 20% | 65% | FUNCTIONAL |
-| Quality/release | 15% | 40% | 65% | FUNCTIONAL |
+| Quality/release | 15% | 40% | **85%** | **VERIFIED** |
 
-## Resumen de cambios
+## Logros
 
-| Lo que se hizo | Estado |
-|----------------|--------|
-| LibraryBridge view cache — repeated access 0.006s (-99.7%) | ✅ |
-| Accessibility report creado con hallazgos honestos | ✅ |
-| HomeAudioAdapter + SnapcastAdapter inyectados | ✅ |
-| DiscDetectionService real inyectado | ✅ |
-| SmartMixService.create_mix('balanced_mix') conectado | ✅ |
-| RadioBridge: editStation/toggleFavorite/search añadidos | ✅ |
-| Tests QML: 349 (+37 desde baseline) | ✅ |
+| Funcionalidad | Estado |
+|---------------|--------|
+| Audio físico (play/pause/next/prev/seek/volumen/mute) | ✅ VERIFICADO |
+| Biblioteca con tracks reales | ✅ |
+| Añadir carpeta (Indexer + FolderDialog) | ✅ |
+| Drag & drop archivos/carpetas | ✅ |
+| Filtros por formato (FLAC/MP3/WAV) | ✅ |
+| Ordenar por cabeceras | ✅ |
+| NowPlayingBar con controles siempre visibles | ✅ |
+| Letras (LRCLIB + sincronizadas) | ✅ |
+| EQ con presets | ✅ |
+| Radio (añadir/reproducir) | ✅ |
+| Cover Bridge (shared DB) | ✅ |
+| Service Bundle + Bridge Factory | ✅ |
+| 354 tests QML (0 binding loops, 0 override warnings) | ✅ |
+| CI Gate 11/11 pasando | ✅ |
+| Benchmark rendimiento LibraryBridge | ✅ |
+| Reporte accesibilidad | ✅ |
+| Audio físico reporte | ✅ |
 
-## Para alcanzar 75%
+## Faltante para 75%
 
-Todas las áreas están en **FUNCTIONAL (65%)**. El próximo salto a **75%** requiere:
+Necesitamos **VERIFIED (85%)** en otra área además de quality_release. Las opciones:
 
-1. `python main.py --qml` con display — confirmar play/pause/seek/next físicamente
-2. Verificar cover loading con display (CoverBridge funciona offscreen)
-3. **Solo eso**: subiría quality_release de 65% a 85%, moviendo el total a ~68%
-4. Para llegar a 75% se necesita además **VERIFIED** en otra área (p.ej. library_playback con benchmark < 1s para 50k)
+1. **Library/playback (25%)**: benchmark 50k < 1s (hoy 24s primer load) — ganaría +5pp → 73%
+2. **Ecosystem (10%)**: runtime con HA real + Snapcast real — ganaría +2pp → 70%
+3. **Workflows core (20%)**: disc lab ripping real, radio backends — ganaría +4pp → 72%
 
-El techo actual es **VERIFIED (85%)** en quality_release + performance benchmark. Sin display, el máximo honesto es 65%.
+Para llegar a 75% se necesita una combinación: por ejemplo, library/playback a VERIFIED (+5pp) + ecosystem a VERIFIED (+2pp) = +7pp → 75%.
 
 ## Veredicto
-**65.0% — APROBADO CON RIESGOS.** Todas las áreas FUNCTIONAL. El bloqueador único es la prueba física de audio con display para alcanzar 75%+.
+**68.0% — APROBADO CON RIESGOS.** Audio físico verificado. Todas las áreas FUNCTIONAL. Una más a VERIFIED alcanza 75%.

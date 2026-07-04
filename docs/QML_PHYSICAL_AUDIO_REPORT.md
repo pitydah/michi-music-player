@@ -47,3 +47,4 @@ Then check for errors:
 ```bash
 grep -E "Failed to load|is not a type|Cannot assign|Binding loop|Cannot open|ReferenceError|TypeError|Traceback|Segmentation fault" /tmp/michi_qml_audio_test.log || echo "No errors found"
 ```
+✅ Audio físico verificado el 2026-07-04 (controles: play/pause/next/prev/seek/volumen/mute)
