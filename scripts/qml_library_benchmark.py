@@ -72,10 +72,17 @@ def benchmark(count: int, label: str) -> dict:
     bridge.refresh()
     t_sort = time.perf_counter() - t0
 
+    # Measure repeated property access (QML reads visibleCount + songs after filter)
+    t0 = time.perf_counter()
+    for _ in range(10):
+        _ = bridge.visibleCount
+        _ = bridge.songs
+    t_repeated = (time.perf_counter() - t0) / 10
+
     # Count memory
     import sys as _sys
     mem_songs = _sys.getsizeof(bridge._base_songs)
-    mem_filtered = _sys.getsizeof(bridge._filtered_songs) if hasattr(bridge, '_filtered_songs') else 0
+    mem_filtered = _sys.getsizeof(bridge._cached_view) if hasattr(bridge, '_cached_view') and bridge._cached_view else 0
 
     return {
         "count": count,
@@ -84,6 +91,7 @@ def benchmark(count: int, label: str) -> dict:
         "filter_artist_seconds": round(t_filter_artist, 4),
         "filter_reset_seconds": round(t_filter_reset, 4),
         "sort_seconds": round(t_sort, 4),
+        "repeated_access_seconds": round(t_repeated, 4),
         "memory_songs_bytes": mem_songs,
         "memory_filtered_bytes": mem_filtered,
     }
@@ -94,8 +102,8 @@ def main():
     print(f"\n**Date:** {time.strftime('%Y-%m-%dT%H:%M:%S')}")
     print("**Environment:** Linux, Python 3.11, PySide6 6.11, offscreen")
     print("\n## Results\n")
-    print("| Tracks | Load (s) | Filter Artist (s) | Reset Filter (s) | Sort (s) |")
-    print("|---|---|---|---|---|")
+    print("| Tracks | Load (s) | Filter Artist (s) | Reset Filter (s) | Sort (s) | Repeated (s) |")
+    print("|---|---|---|---|---|---|")
 
     results = []
     for count, label in [(100, "100 tracks"), (1000, "1,000 tracks"),
@@ -103,7 +111,7 @@ def main():
         r = benchmark(count, label)
         results.append(r)
         print(f"| {r['label']} | {r['load_seconds']} | {r['filter_artist_seconds']} | "
-              f"{r['filter_reset_seconds']} | {r['sort_seconds']} |")
+              f"{r['filter_reset_seconds']} | {r['sort_seconds']} | {r.get('repeated_access_seconds', '-')} |")
 
     # Save JSON
     outpath = Path("/tmp/michi_qml_library_benchmark.json")
@@ -130,12 +138,12 @@ def main():
         "",
         "## Synthetic Benchmark Results",
         "",
-        "| Tracks | Load (s) | Filter Artist (s) | Reset Filter (s) | Sort (s) |",
-        "|---|---|---|---|---|",
+        "| Tracks | Load (s) | Filter Artist (s) | Reset Filter (s) | Sort (s) | Repeated (s) |",
+        "|---|---|---|---|---|---|",
     ]
     for r in results:
-        doc_lines.append(f"| {r['label']} | {r['load_seconds']} | {r['filter_artist_seconds']} | "
-                         f"{r['filter_reset_seconds']} | {r['sort_seconds']} |")
+            doc_lines.append(f"| {r['label']} | {r['load_seconds']} | {r['filter_artist_seconds']} | "
+                         f"{r['filter_reset_seconds']} | {r['sort_seconds']} | {r.get('repeated_access_seconds', '-')} |")
     doc_lines.extend([
         "",
         "## Methodology",

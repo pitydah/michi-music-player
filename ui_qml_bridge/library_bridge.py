@@ -34,6 +34,9 @@ class LibraryBridge(QObject):
         self._error_message = ""
         self._last_operation = ""
         self._last_op_ok = False
+        self._cached_view: list | None = None
+        self._cached_visible_count: int = 0
+        self._view_dirty = True
 
     # ── Internal pipeline ──
 
@@ -92,16 +95,24 @@ class LibraryBridge(QObject):
             return sorted(items, key=lambda x: getattr(x, 'format', '') or '', reverse=reverse)
         return items
 
+    def _invalidate_view(self):
+        self._view_dirty = True
+        self._cached_view = None
+
     def _rebuild_view(self):
+        if not self._view_dirty and self._cached_view is not None:
+            return self._cached_view
         items = self._base_songs[:]
         items = self._apply_search(items)
         items = self._apply_filters(items)
         items = self._apply_sort(items)
+        self._cached_view = items
+        self._cached_visible_count = len(items)
+        self._view_dirty = False
         return items
 
     @property
     def _filtered_view(self):
-        # cached per cycle — recalculation happens on demand
         return self._rebuild_view()
 
     # ── Properties ──
@@ -124,7 +135,8 @@ class LibraryBridge(QObject):
 
     @Property(int, notify=dataChanged)
     def visibleCount(self):
-        return len(self._rebuild_view())
+        self._rebuild_view()
+        return self._cached_visible_count
 
     @Property(int, notify=dataChanged)
     def loadedCount(self):
@@ -223,6 +235,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setSearchQuery(self, query: str):
         self._search_query = query
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -230,6 +243,7 @@ class LibraryBridge(QObject):
     @Slot(result=dict)
     def clearSearch(self):
         self._search_query = ""
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -243,6 +257,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFormatFilter(self, fmt: str):
         self._filter_format = fmt
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -251,6 +266,7 @@ class LibraryBridge(QObject):
     def filterByArtist(self, artist: str):
         self._filter_artist = artist
         self._filter_album = ""
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -262,6 +278,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def filterByAlbum(self, album_key: str):
         self._filter_album = album_key
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -277,6 +294,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFolderFilter(self, folder_path: str):
         self._filter_folder = folder_path
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -289,6 +307,7 @@ class LibraryBridge(QObject):
         self._filter_folder = ""
         self._filter_missing_artist = False
         self._filter_missing_album = False
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self._error_message = ""
         self.dataChanged.emit()
@@ -303,19 +322,22 @@ class LibraryBridge(QObject):
         else:
             self._sort_key = key
             self._sort_asc = True
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "key": key, "asc": self._sort_asc}
 
     # ── Data loading ──
 
-    @Slot()
+    @Slot(result=dict)
     def refresh(self):
         if self._db and hasattr(self._db, 'fetch_all'):
             self._base_songs = self._db.fetch_all() or []
+        self._invalidate_view()
         self._refresh_albums_artists()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
+        return {"ok": True, "count": len(self._base_songs)}
 
     # ── Playback actions (single) ──
 
