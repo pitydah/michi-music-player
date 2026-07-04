@@ -147,9 +147,16 @@ Item {
                         }
 
                         Text {
-                            text: root._panelExpanded ? "▼" : "▲"
+                            text: "[+]"
                             color: MichiTheme.colors.textMuted; font.pixelSize: 10; opacity: 0.6
                             anchors.horizontalCenter: parent.horizontalCenter
+                            visible: !root._panelExpanded
+                        }
+                        Text {
+                            text: "[-]"
+                            color: MichiTheme.colors.textMuted; font.pixelSize: 10; opacity: 0.6
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: root._panelExpanded
                         }
                     }
                 }

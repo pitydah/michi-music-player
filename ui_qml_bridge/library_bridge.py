@@ -34,16 +34,33 @@ class LibraryBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def songs(self):
-        items = self._songs[:500]
+        return self._get_songs_page(0, 500)
+
+    @Property(int, notify=dataChanged)
+    def totalSongs(self):
+        return len(self._songs)
+
+    def _get_filtered_sorted(self):
+        items = self._songs
         if self._filter_artist:
             items = [s for s in items if (getattr(s, 'artist', '') or '') == self._filter_artist]
         if self._filter_album:
             items = [s for s in items if (getattr(s, 'album_key', '') or getattr(s, 'album', '') or '') == self._filter_album]
-        items = self._sort_items(items)
+        return self._sort_items(items)
+
+    def _get_songs_page(self, page, page_size):
+        filtered = self._get_filtered_sorted()
+        start = page * page_size
+        end = start + page_size
+        page_items = filtered[start:end]
         result = []
-        for s in items:
+        for s in page_items:
             result.append(self._song_to_dict(s))
         return result
+
+    @Slot(int, int, result="QVariantList")
+    def getSongsPage(self, page: int, pageSize: int):
+        return self._get_songs_page(page, pageSize)
 
     @Property("QVariantList", notify=dataChanged)
     def albums(self):
@@ -144,6 +161,34 @@ class LibraryBridge(QObject):
             self._sort_key = key
             self._sort_asc = True
         self.dataChanged.emit()
+
+    _page_size = 100
+    _current_page = 0
+
+    @Property(int, notify=dataChanged)
+    def currentPage(self):
+        return self._current_page
+
+    @Property(int, notify=dataChanged)
+    def pageSize(self):
+        return self._page_size
+
+    @Property(bool, notify=dataChanged)
+    def hasMoreSongs(self):
+        total = len(self._get_filtered_sorted())
+        return (self._current_page + 1) * self._page_size < total
+
+    @Slot(result=dict)
+    def loadNextPage(self):
+        self._current_page += 1
+        self.dataChanged.emit()
+        return {"ok": True, "page": self._current_page}
+
+    @Slot(result=dict)
+    def resetPaging(self):
+        self._current_page = 0
+        self.dataChanged.emit()
+        return {"ok": True}
 
     @Slot(str, result=dict)
     def play_song(self, filepath: str):

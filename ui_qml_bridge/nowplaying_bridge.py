@@ -140,6 +140,17 @@ class NowPlayingBridge(QObject):
         return fallback
 
     def _on_track(self, title: str = "", artist: str = "", album: str = ""):
+        # Push current track to history if it's not a duplicate
+        if self._track_title and self._track_title != "—":
+            last = self._history[-1] if self._history else {}
+            if last.get("title") != self._track_title:
+                self._history.append({
+                    "title": self._track_title,
+                    "artist": self._track_artist,
+                    "album": self._track_album,
+                })
+                if len(self._history) > 50:
+                    self._history.pop(0)
         current = getattr(self._player, "current", None) if self._player else None
         self._track_title = (
             title
@@ -158,6 +169,13 @@ class NowPlayingBridge(QObject):
             or _field(current, "album")
             or self._track_album
         )
+        if self._player and hasattr(self._player, 'current'):
+            current = self._player.current
+            if current:
+                fmt = getattr(current, 'format', '') or getattr(current, 'filepath', '').split('.')[-1] if '.' in getattr(current, 'filepath', '') else ''
+                if fmt:
+                    self._quality_label = fmt.upper()
+                self._source_type = "radio" if getattr(current, 'source_type', '') == 'radio' else "local_file"
         self._set_cover_from_current_path()
         self._emit_state()
 
@@ -322,6 +340,14 @@ class NowPlayingBridge(QObject):
     def safeMode(self):
         return self._safe_mode
 
+    @Property(bool, notify=stateChanged)
+    def shuffleSupported(self):
+        return self._player is not None and hasattr(self._player, 'toggle_shuffle')
+
+    @Property(bool, notify=stateChanged)
+    def repeatSupported(self):
+        return self._player is not None and hasattr(self._player, 'toggle_repeat')
+
     @Slot()
     def togglePlay(self):
         self._last_command = "togglePlay"
@@ -416,6 +442,7 @@ class NowPlayingBridge(QObject):
 
     @Slot()
     def toggleShuffle(self):
+        self._last_command = "toggleShuffle"
         call = self._player_call("toggle_shuffle")
         if call:
             result = call()
@@ -423,12 +450,15 @@ class NowPlayingBridge(QObject):
                 self._shuffle_enabled = bool(result)
             else:
                 self._shuffle_enabled = not self._shuffle_enabled
+            self._last_command_ok = True
         else:
-            self._shuffle_enabled = not self._shuffle_enabled
+            self._last_command_ok = False
+            self._error_message = "Aleatorio no soportado por el backend"
         self._emit_state()
 
     @Slot()
     def toggleRepeat(self):
+        self._last_command = "toggleRepeat"
         call = self._player_call("toggle_repeat")
         if call:
             mode = call()
@@ -436,8 +466,10 @@ class NowPlayingBridge(QObject):
                 self._repeat_mode = str(mode)
             else:
                 self._cycle_repeat_mode()
+            self._last_command_ok = True
         else:
-            self._cycle_repeat_mode()
+            self._last_command_ok = False
+            self._error_message = "Repetición no soportada por el backend"
         self._emit_state()
 
     def _cycle_repeat_mode(self):
