@@ -113,19 +113,24 @@ class PlaylistsBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    @Slot(int, result=dict)
-    def addSelectedTrackToPlaylist(self, pid: int):
+    @Slot(int, str, str, result=dict)
+    def addTrackToPlaylist(self, pid: int, filepath: str = "", track_id: str = ""):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
+        if not filepath and not track_id and self._sel_ctx:
+            filepath = self._sel_ctx.selectedFilepath
+            track_id = self._sel_ctx.selectedTrackId
         try:
-            if hasattr(self, '_sel_ctx') and self._sel_ctx:
-                filepath = self._sel_ctx.selectedFilepath
-                track_id = self._sel_ctx.selectedTrackId
-            else:
+            if not filepath and not track_id:
                 return {"ok": False, "error": "NO_SELECTION"}
             if track_id:
-                self._db.add_track_to_playlist(pid, track_id=track_id)
-                return {"ok": True}
+                try:
+                    tid = int(track_id)
+                except (ValueError, TypeError):
+                    tid = 0
+                if tid:
+                    self._db.add_track_to_playlist(pid, track_id=tid)
+                    return {"ok": True}
             from pathlib import Path
             if filepath and Path(filepath).is_file():
                 self._db.add_track_to_playlist(pid, filepath)
@@ -146,13 +151,51 @@ class PlaylistsBridge(QObject):
             logger.debug("Remove track from playlist failed", exc_info=True)
             return {"ok": False, "error": str(e)}
 
-    @Slot(int)
+    @Slot(int, result=dict)
+    def addSelectedTrackToPlaylist(self, pid: int):
+        return self.addTrackToPlaylist(pid)
+
+    @Slot(int, result=dict)
+    def enqueuePlaylist(self, pid: int):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            detail = self.getPlaylistDetail(pid)
+            if detail.get("ok"):
+                tracks = detail.get("tracks", [])
+                fps = [t["filepath"] for t in tracks if t.get("filepath")]
+                if not fps:
+                    return {"ok": False, "error": "NO_TRACKS"}
+                from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+                np = NowPlayingBridge()
+                result = np.enqueueSong(fps[0])
+                return result
+            return {"ok": False, "error": "NO_TRACKS"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, result=dict)
     def playPlaylist(self, pid: int):
-        if self._db and hasattr(self._db, 'play_playlist'):
-            try:
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            if hasattr(self._db, 'play_playlist'):
                 self._db.play_playlist(pid)
-            except Exception:
-                logger.debug("Play playlist failed", exc_info=True)
+                return {"ok": True}
+            detail = self.getPlaylistDetail(pid)
+            if detail.get("ok"):
+                tracks = detail.get("tracks", [])
+                fps = [t["filepath"] for t in tracks if t.get("filepath")]
+                if not fps:
+                    return {"ok": False, "error": "NO_TRACKS"}
+                from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+                np = NowPlayingBridge()
+                np.enqueueSong(fps[0])
+                return {"ok": True, "count": len(fps)}
+            return {"ok": False, "error": "NO_TRACKS"}
+        except Exception as e:
+            logger.debug("Play playlist failed", exc_info=True)
+            return {"ok": False, "error": str(e)}
 
     @staticmethod
     def _format_duration(secs: float) -> str:
