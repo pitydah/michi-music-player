@@ -37,12 +37,12 @@ Item {
                 color: root.hovered ? MichiTheme.colors.accentSurface : "transparent"
                 visible: root.hovered
 
-                Text {
+                Image {
                     anchors.centerIn: parent
-                    text: ">"
-                    color: MichiTheme.colors.accentBlue
-                    font.pixelSize: 10
-                    font.weight: MichiTheme.typography.weightBold
+                    width: 12; height: 12
+                    source: "../../icons/nowplaying_clean/warm_play_32.png"
+                    sourceSize.width: 32; sourceSize.height: 32
+                    fillMode: Image.PreserveAspectFit
                 }
 
                 MouseArea {

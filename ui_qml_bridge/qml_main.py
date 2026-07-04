@@ -182,8 +182,9 @@ def main():
         player_service=player_service,
         nowplaying_bridge=nowplaying_bridge,
     )
+    selection_context_bridge = SelectionContextBridge()
     devices_bridge = DevicesBridge(sync_manager=sync_mgr)
-    playlists_bridge = PlaylistsBridge(db=db)
+    playlists_bridge = PlaylistsBridge(db=db, selection_context=selection_context_bridge)
     audio_lab_bridge = AudioLabBridge(db_conn=db_conn)
     settings_bridge = SettingsBridge()
     radio_bridge = RadioBridge(radio_manager=radio_mgr, player_service=player_service)
@@ -192,7 +193,6 @@ def main():
     smart_tagging_bridge = SmartTaggingBridge()
     library_doctor_bridge = LibraryDoctorBridge(db=db)
     disc_lab_bridge = DiscLabBridge()
-    selection_context_bridge = SelectionContextBridge()
     notification_bridge = NotificationBridge()
     try:
         from ui.audio_lab.services.smart_tagging_service import SmartTaggingService

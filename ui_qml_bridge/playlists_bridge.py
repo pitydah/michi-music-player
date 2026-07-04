@@ -11,10 +11,14 @@ logger = logging.getLogger("michi.playlists")
 class PlaylistsBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, parent=None):
+    def __init__(self, db=None, selection_context=None, parent=None):
         super().__init__(parent)
         self._db = db
+        self._sel_ctx = selection_context
         self._playlists = []
+
+    def setSelectionContext(self, ctx):
+        self._sel_ctx = ctx
 
     def _can(self) -> bool:
         return self._db is not None and hasattr(self._db, 'get_playlists')

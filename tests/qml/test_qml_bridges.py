@@ -453,17 +453,17 @@ class TestLibraryBridgeContract:
         bridge = LibraryBridge(playback_ctrl=playback)
         bridge._songs = [
             SimpleNamespace(
-                filepath="/music/song.flac",
+                filepath="http://example.com/song.flac",
                 title="Song Title",
                 artist="Song Artist",
                 album="Song Album",
             )
         ]
 
-        bridge.play_song("/music/song.flac")
+        bridge.play_song("http://example.com/song.flac")
 
         assert playback.calls == [
-            ("/music/song.flac", "Song Title", "Song Artist", "Song Album")
+            ("http://example.com/song.flac", "Song Title", "Song Artist", "Song Album")
         ]
 
 
