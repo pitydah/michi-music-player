@@ -55,7 +55,7 @@ Item {
                             width: 36
                             height: 36
                             radius: MichiTheme.radiusSm
-                            color: root.selectedMode === index ? Qt.rgba(0.561, 0.718, 1.0, 0.12) : "transparent"
+                            color: root.selectedMode === index ? MichiTheme.colors.accentSelection : "transparent"
 
                             Text {
                                 anchors.centerIn: parent

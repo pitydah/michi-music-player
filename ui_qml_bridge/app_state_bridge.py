@@ -94,5 +94,10 @@ class AppStateBridge(QObject):
         self._runtime_warnings.clear()
         self.stateChanged.emit()
 
-    def _update_availability(self):
-        pass
+    @Slot(bool, bool, str)
+    def setServiceAvailability(self, player_ok: bool, db_ok: bool, audio_status: str):
+        self._player_available = player_ok
+        self._db_available = db_ok
+        self._audio_status = audio_status if audio_status else ("available" if player_ok else "unavailable")
+        self._safe_mode = not player_ok
+        self.stateChanged.emit()

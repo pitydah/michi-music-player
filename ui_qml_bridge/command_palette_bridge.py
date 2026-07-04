@@ -23,9 +23,11 @@ _COMMANDS = [
 class CommandPaletteBridge(QObject):
     commandsChanged = Signal()
 
-    def __init__(self, navigation_bridge=None, parent=None):
+    def __init__(self, navigation_bridge=None, library_bridge=None, nowplaying_bridge=None, parent=None):
         super().__init__(parent)
         self._nav = navigation_bridge
+        self._lib = library_bridge
+        self._np = nowplaying_bridge
 
     @Property("QVariantList", notify=commandsChanged)
     def commands(self):
@@ -45,7 +47,13 @@ class CommandPaletteBridge(QObject):
             self._nav.navigate(route)
             return {"ok": True}
         if command_id == "playback_toggle":
-            if self._nav:
+            if self._np:
+                self._np.togglePlay()
+            elif self._nav:
                 self._nav.navigate("playback")
+            return {"ok": True}
+        if command_id == "refresh_library":
+            if self._lib and hasattr(self._lib, 'refresh'):
+                self._lib.refresh()
             return {"ok": True}
         return {"ok": False, "error": "UNKNOWN_COMMAND"}
