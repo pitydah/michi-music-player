@@ -21,6 +21,11 @@ Item {
         visible: bridgesReady
     }
 
+    ToastHost {
+        anchors.fill: parent
+        z: 9999
+    }
+
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.bgApp
