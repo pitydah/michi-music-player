@@ -9,7 +9,7 @@ Item {
 
     property string currentRoute: "home"
     property bool collapsed: false
-    property bool deliveryMode: typeof appStateBridge !== "undefined" && appStateBridge ? appStateBridge.safeMode : false
+    property bool deliveryMode: typeof appStateBridge !== "undefined" && appStateBridge ? appStateBridge.deliveryMode : false
     signal routeRequested(string route)
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth

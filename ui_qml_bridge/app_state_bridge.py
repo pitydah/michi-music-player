@@ -1,8 +1,8 @@
-"""AppStateBridge — global QML application state."""
-
+"""AppStateBridge — global QML application state with independent modes."""
 from __future__ import annotations
 
 import os
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
@@ -12,6 +12,7 @@ class AppStateBridge(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._safe_mode = False
+        self._delivery_mode = os.environ.get("MICHI_QML_DELIVERY_MODE") == "1"
         self._qml_mode = True
         self._app_version = "0.2.0a0"
         self._current_route = "home"
@@ -26,6 +27,10 @@ class AppStateBridge(QObject):
     @Property(bool, notify=stateChanged)
     def safeMode(self):
         return self._safe_mode
+
+    @Property(bool, notify=stateChanged)
+    def deliveryMode(self):
+        return self._delivery_mode
 
     @Property(bool, notify=stateChanged)
     def qmlMode(self):
@@ -100,5 +105,8 @@ class AppStateBridge(QObject):
         self._player_available = player_ok
         self._db_available = db_ok
         self._audio_status = audio_status if audio_status else ("available" if player_ok else "unavailable")
-        self._safe_mode = os.environ.get("MICHI_QML_DELIVERY_MODE") == "1" or not player_ok
+        if os.environ.get("MICHI_SAFE_MODE") == "1":
+            self._safe_mode = True
+        else:
+            self._safe_mode = not player_ok
         self.stateChanged.emit()
