@@ -109,6 +109,20 @@ class PlaylistsBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(int, str, result=dict)
+    def addTrackToPlaylist(self, pid: int, filepath: str):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            from pathlib import Path
+            if not filepath or not Path(filepath).is_file():
+                return {"ok": False, "error": "FILE_NOT_FOUND"}
+            self._db.add_track_to_playlist(pid, filepath)
+            return {"ok": True}
+        except Exception as e:
+            logger.debug("Add track to playlist failed", exc_info=True)
+            return {"ok": False, "error": str(e)}
+
     @Slot(int)
     def playPlaylist(self, pid: int):
         if self._db and hasattr(self._db, 'play_playlist'):

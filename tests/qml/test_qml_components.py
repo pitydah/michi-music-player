@@ -597,6 +597,54 @@ class TestSprintNewPages:
         from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
         assert DiscLabBridge is not None
 
+    def test_selection_context_bridge_importable(self):
+        from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
+        bridge = SelectionContextBridge()
+        assert not bridge.hasSelection
+        bridge.setSelected({"title": "test", "filepath": "/test.mp3"})
+        assert bridge.hasSelection
+        assert bridge.selectedTitle == "test"
+        bridge.clearSelection()
+        assert not bridge.hasSelection
+
+    def test_metadata_page_has_selection_context(self):
+        content = (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").read_text()
+        assert "selectionContextBridge" in content, "Metadata page missing selection context"
+        assert "loadFromSelection" in content, "Metadata page missing loadFromSelection"
+
+    def test_song_table_has_workflow_actions(self):
+        content = (QML_DIR / "pages" / "library" / "SongTable.qml").read_text()
+        assert "selectionContextBridge.setSelected" in content, "SongTable missing selection context integration"
+        assert "navigationBridge.navigate(\"metadata_inspector\")" in content, "SongTable missing metadata navigation"
+        assert "navigationBridge.navigate(\"playlists\")" in content, "SongTable missing playlists navigation"
+
+    def test_playlists_page_has_add_track(self):
+        content = (QML_DIR / "pages" / "playlists" / "PlaylistsPage.qml").read_text()
+        assert "addTrackToPlaylist" in content, "PlaylistsPage missing addTrackToPlaylist"
+        assert "selectionContextBridge" in content, "PlaylistsPage missing selection context"
+
+    def test_library_doctor_issue_clickable(self):
+        content = (QML_DIR / "pages" / "LibraryDoctorPage.qml").read_text()
+        assert "metadata_inspector" in content, "LibraryDoctorPage missing metadata navigation"
+        assert "MouseArea" in content, "LibraryDoctorPage issues not clickable"
+
+    def test_audio_lab_has_metadata_card(self):
+        content = (QML_DIR / "pages" / "assistant" / "AudioLabPage.qml").read_text()
+        assert "metadata_inspector" in content, "AudioLabPage missing metadata inspector link"
+
+    def test_eq_bridge_backend_available(self):
+        from ui_qml_bridge.eq_bridge import EqBridge
+        bridge = EqBridge()
+        bridge.refresh()
+        assert hasattr(bridge, 'backendAvailable')
+        assert not bridge.backendAvailable  # No player_service
+
+    def test_playlists_bridge_add_track(self):
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        bridge = PlaylistsBridge()
+        result = bridge.addTrackToPlaylist(0, "/nonexistent/file.mp3")
+        assert result.get("ok") is False  # No DB
+
 
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):

@@ -9,7 +9,9 @@ Item {
     id: root
 
     property var pl: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
+    property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property string _newName: ""
+    property string _addResult: ""
 
     Component.onCompleted: {
         if (root.pl && typeof root.pl.refresh !== "undefined")
@@ -62,11 +64,27 @@ Item {
                         duration: modelData.duration || ""
                         coverKey: modelData.cover_key || ""
                         onClicked: {
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("playlist_detail")
+                            if (root.sel && root.sel.hasSelection && root.sel.selectedFilepath) {
+                                var result = root.pl.addTrackToPlaylist(modelData.id, root.sel.selectedFilepath)
+                                if (result && result.ok) {
+                                    root._addResult = "Canción agregada a \"" + modelData.title + "\""
+                                } else {
+                                    root._addResult = result && result.error ? "Error: " + result.error : "Error al agregar"
+                                }
+                            } else {
+                                if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                    navigationBridge.navigate("playlist_detail")
+                            }
                         }
                     }
                 }
+            }
+
+            Text {
+                text: root._addResult
+                color: root._addResult.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.success
+                font.pixelSize: MichiTheme.typography.metaSize
+                visible: text !== ""
             }
 
             StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }

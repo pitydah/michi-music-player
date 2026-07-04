@@ -76,7 +76,24 @@ Item {
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.25; text: modelData.type || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
-                        Text { width: parent.width * 0.65; text: modelData.detail || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.50; text: modelData.detail || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
+                        Text {
+                            width: parent.width * 0.15; text: "Abrir >"; color: MichiTheme.colors.accentBlue
+                            font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
+                            visible: modelData.type === "missing_metadata"
+                        }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        enabled: modelData.type === "missing_metadata" && modelData.filepath
+                        onClicked: {
+                            if (typeof selectionContextBridge !== "undefined" && selectionContextBridge) {
+                                selectionContextBridge.setSelected({"filepath": modelData.filepath, "title": modelData.detail})
+                            }
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("metadata_inspector")
+                        }
                     }
                 }
             }

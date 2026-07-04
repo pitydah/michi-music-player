@@ -9,6 +9,7 @@ Item {
     id: root
 
     property var md: typeof metadataBridge !== "undefined" ? metadataBridge : null
+    property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property bool _editing: false
     property string _editTitle: ""
     property string _editArtist: ""
@@ -31,6 +32,14 @@ Item {
     function cancelEdit() {
         _editing = false
     }
+
+    function loadFromSelection() {
+        if (root.sel && root.sel.hasSelection && root.sel.selectedFilepath) {
+            root.inspect(root.sel.selectedFilepath)
+        }
+    }
+
+    Component.onCompleted: root.loadFromSelection()
 
     function doSave() {
         if (root.md && typeof root.md.applyChanges !== "undefined") {
@@ -191,6 +200,15 @@ Item {
                     Text {
                         text: root.md && root.md.errorMessage ? "Error: " + root.md.errorMessage : ""
                         color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize; visible: text !== ""
+                    }
+
+                    MichiButton {
+                        text: "Sugerir etiquetas (Smart Tagging)"
+                        variant: "ghost"
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("smart_tagging")
+                        }
                     }
                 }
             }
