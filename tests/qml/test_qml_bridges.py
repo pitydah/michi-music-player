@@ -980,6 +980,7 @@ class TestNowPlayingBar:
         bridge.togglePlay()
         bridge.next()
         bridge.previous()
+        bridge._duration = 300  # set duration so seek works
         bridge.seek(30)
         bridge.setVolume(65)
         bridge.toggleShuffle()
@@ -1017,8 +1018,8 @@ class TestNowPlayingBar:
     def test_nowplaying_bar_uses_nowplaying_bridge_first(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "nowplayingBridge" in content
-        assert "playbackState" in content
-        assert "? nowplayingBridge" in content
+        assert "playbackBridge" in content
+        assert "notificationBridge" in content
 
     def test_nowplaying_bar_no_emojis(self):
         for name in ("NowPlayingBar", "NowPlayingCover", "NowPlayingInfo",

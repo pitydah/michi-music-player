@@ -9,6 +9,7 @@ Item {
     property string trackArtist: ""
     property string trackAlbum: ""
     property bool isPlaying: false
+    property bool backendAvailable: true
 
     implicitHeight: 44
 
