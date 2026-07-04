@@ -145,19 +145,28 @@ class LibraryBridge(QObject):
             self._sort_asc = True
         self.dataChanged.emit()
 
-    @Slot(str)
+    @Slot(str, result=dict)
     def play_song(self, filepath: str):
-        if self._playback_ctrl and hasattr(self._playback_ctrl, 'play_file'):
-            self._playback_ctrl.play_file(filepath)
-            return
+        if not filepath:
+            return {"ok": False, "error": "EMPTY_FILEPATH"}
+        if not self._playback_ctrl:
+            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
         track = self._track_for_filepath(filepath)
         title = getattr(track, "title", "") if track else ""
         artist = getattr(track, "artist", "") if track else ""
         album = getattr(track, "album", "") if track else ""
-        if self._playback_ctrl and hasattr(self._playback_ctrl, 'play'):
-            self._playback_ctrl.play(filepath, title, artist, album)
-        elif self._playback_ctrl and hasattr(self._playback_ctrl, 'enqueue'):
-            self._playback_ctrl.enqueue([filepath], play_now=True)
+        try:
+            if hasattr(self._playback_ctrl, 'play_file'):
+                self._playback_ctrl.play_file(filepath)
+            elif hasattr(self._playback_ctrl, 'play'):
+                self._playback_ctrl.play(filepath, title, artist, album)
+            elif hasattr(self._playback_ctrl, 'enqueue'):
+                self._playback_ctrl.enqueue([filepath], play_now=True)
+            else:
+                return {"ok": False, "error": "NO_PLAY_METHOD"}
+            return {"ok": True, "filepath": filepath, "title": title, "artist": artist, "album": album}
+        except Exception as e:
+            return {"ok": False, "error": f"PLAYBACK_ERROR: {e}"}
 
     def _song_to_dict(self, s):
         return {

@@ -765,6 +765,44 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "280" in content, "NowPlayingBar missing expanded panel height"
 
+    def test_song_row_has_play_button(self):
+        content = (QML_DIR / "pages" / "library" / "SongRow.qml").read_text()
+        assert "playClicked" in content, "SongRow missing playClicked signal"
+        assert "rightClicked" in content, "SongRow missing rightClicked signal"
+
+    def test_song_table_has_selected_props(self):
+        content = (QML_DIR / "pages" / "library" / "SongTable.qml").read_text()
+        assert "_selFilepath" in content, "SongTable missing _selFilepath"
+        assert "doPlay" in content, "SongTable missing doPlay function"
+        assert "notificationBridge" in content, "SongTable missing notificationBridge"
+
+    def test_song_table_sets_selection_on_right_click(self):
+        content = (QML_DIR / "pages" / "library" / "SongTable.qml").read_text()
+        assert "onRightClicked" in content, "SongTable missing onRightClicked handler"
+        assert "root._selId" in content, "SongTable doesn't store selection on right click"
+
+    def test_library_page_has_refresh_button(self):
+        content = (QML_DIR / "pages" / "library" / "LibraryPage.qml").read_text()
+        assert "Refrescar" in content, "LibraryPage missing refresh button"
+
+    def test_library_bridge_play_song_returns_dict(self):
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        bridge = LibraryBridge()
+        result = bridge.play_song("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_FILEPATH"
+        result2 = bridge.play_song("/nonexistent/file.mp3")
+        assert result2.get("ok") is False
+        assert "NO_PLAYER_SERVICE" in result2.get("error", "")
+
+    def test_nowplaying_bridge_no_toggle_without_player(self):
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        bridge = NowPlayingBridge()
+        bridge.togglePlay()
+        assert not bridge.lastCommandOk
+        assert not bridge.isPlaying  # must not toggle without backend
+        assert bridge.playbackStatus == "unavailable"
+
 
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
