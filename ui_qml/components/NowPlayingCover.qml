@@ -7,6 +7,7 @@ Item {
 
     property string coverKey: ""
     property int coverSize: 56
+    property bool placeholderMode: true
 
     implicitWidth: root.coverSize
     implicitHeight: root.coverSize
@@ -15,6 +16,7 @@ Item {
         width: root.coverSize
         height: root.coverSize
         coverRadius: 6
-        coverKey: root.coverKey || "NOWPLAYING"
+        coverKey: root.coverKey
+        showPlaceholder: root.placeholderMode
     }
 }
