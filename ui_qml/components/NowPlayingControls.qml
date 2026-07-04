@@ -9,7 +9,6 @@ Item {
     property bool isPlaying: false
     property bool shuffleEnabled: false
     property string repeatMode: "none"
-    property bool enabled: true
 
     signal playClicked()
     signal prevClicked()

@@ -56,7 +56,8 @@ class LibraryBridge(QObject):
         result = []
         for a in self._artists[:200]:
             name = getattr(a, 'artist', '') or getattr(a, 'album_artist', '') or ''
-            if not name: continue
+            if not name:
+                continue
             result.append({"name": name, "track_count": getattr(a, 'track_count', 0) or 0, "album_count": getattr(a, 'album_count', 0) or 0, "cover_key": getattr(a, 'album_key', '') or ''})
         return sorted(result, key=lambda x: x["name"].lower())
 
@@ -209,9 +210,11 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "EMPTY_FILEPATH"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        if not filepath.startswith(("http://", "https://", "radio://", "stream://")):
-            if not Path(filepath).is_file():
-                return {"ok": False, "error": "FILE_NOT_FOUND"}
+        if (
+            not filepath.startswith(("http://", "https://", "radio://", "stream://"))
+            and not Path(filepath).is_file()
+        ):
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
         track = self._track_for_filepath(filepath)
         title = getattr(track, "title", "") if track else ""
         artist = getattr(track, "artist", "") if track else ""

@@ -7,7 +7,6 @@ Item {
 
     property int position: 0
     property int duration: 0
-    property bool enabled: true
 
     signal seekRequested(int pos)
 

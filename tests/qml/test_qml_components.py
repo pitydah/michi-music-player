@@ -6,9 +6,11 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QUrl
-from PySide6.QtQml import QQmlComponent, QQmlEngine
+from PySide6.QtQml import QQmlComponent, QQmlEngine, qmlRegisterType
+from PySide6.QtQuick import QQuickItem
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent / "ui_qml"
+_COVER_BRIDGE_REGISTERED = False
 
 
 @pytest.fixture
@@ -20,6 +22,27 @@ def _load_qml(engine, source: str) -> QQmlComponent:
     component = QQmlComponent(engine)
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / source)))
     return component
+
+
+def _register_cover_bridge():
+    global _COVER_BRIDGE_REGISTERED
+    if _COVER_BRIDGE_REGISTERED:
+        return
+    from ui_qml_bridge.cover_bridge import CoverBridge
+
+    qmlRegisterType(CoverBridge, "MichiCover", 1, 0, "CoverBridge")
+    _COVER_BRIDGE_REGISTERED = True
+
+
+def _negative_item_dimensions(item):
+    found = []
+    if not isinstance(item, QQuickItem):
+        return found
+    if item.width() < 0 or item.height() < 0:
+        found.append((item.metaObject().className(), item.width(), item.height()))
+    for child in item.childItems():
+        found.extend(_negative_item_dimensions(child))
+    return found
 
 
 class TestMichiButton:
@@ -685,6 +708,18 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
         assert "notificationBridge" in content  # notification integrated
 
+    def test_nowplaying_bar_layout_has_no_negative_dimensions(self, engine, qapp):
+        _register_cover_bridge()
+        component = _load_qml(engine, "components/NowPlayingBar.qml")
+        assert component.isReady(), [e.toString() for e in component.errors()]
+        obj = component.create()
+        try:
+            obj.setWidth(1200)
+            qapp.processEvents()
+            assert _negative_item_dimensions(obj) == []
+        finally:
+            obj.deleteLater()
+
     def test_nowplaying_queue_panel_exists(self):
         p = QML_DIR / "components" / "NowPlayingQueuePanel.qml"
         assert p.exists(), "Missing NowPlayingQueuePanel.qml"
@@ -692,6 +727,17 @@ class TestNowPlayingBarMigration:
     def test_nowplaying_queue_panel_instantiate(self, engine):
         component = _load_qml(engine, "components/NowPlayingQueuePanel.qml")
         assert component.isReady()
+
+    def test_filter_chip_has_stable_implicit_width(self, engine, qapp):
+        component = _load_qml(engine, "components/FilterChip.qml")
+        assert component.isReady(), [e.toString() for e in component.errors()]
+        obj = component.create()
+        try:
+            obj.setProperty("text", "Todos")
+            qapp.processEvents()
+            assert obj.property("implicitWidth") >= 40
+        finally:
+            obj.deleteLater()
 
     def test_nowplaying_bar_has_notification_bridge(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
@@ -710,18 +756,21 @@ class TestNowPlayingBarMigration:
         assert '"NO"' not in content, "NowPlayingBar still has NO placeholder"
         assert '"Sin reproducción"' in content, "NowPlayingBar missing empty state text"
 
-    def test_nowplaying_controls_has_enabled_property(self):
+    def test_nowplaying_controls_use_inherited_enabled(self):
         content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
-        assert "property bool enabled" in content, "NowPlayingControls missing enabled property"
+        assert "property bool enabled" not in content, "NowPlayingControls overrides Item.enabled"
+        assert "root.enabled" in content, "NowPlayingControls should still react to enabled state"
         assert "opacity:" in content, "NowPlayingControls missing opacity for disabled state"
 
-    def test_nowplaying_seek_has_enabled_property(self):
+    def test_nowplaying_seek_uses_inherited_enabled(self):
         content = (QML_DIR / "components" / "NowPlayingSeekBar.qml").read_text()
-        assert "property bool enabled" in content, "NowPlayingSeekBar missing enabled property"
+        assert "property bool enabled" not in content, "NowPlayingSeekBar overrides Item.enabled"
+        assert "root.enabled" in content, "NowPlayingSeekBar should still react to enabled state"
 
-    def test_nowplaying_volume_has_enabled_property(self):
+    def test_nowplaying_volume_uses_inherited_enabled(self):
         content = (QML_DIR / "components" / "NowPlayingVolume.qml").read_text()
-        assert "property bool enabled" in content, "NowPlayingVolume missing enabled property"
+        assert "property bool enabled" not in content, "NowPlayingVolume overrides Item.enabled"
+        assert "root.enabled" in content, "NowPlayingVolume should still react to enabled state"
 
     def test_nowplaying_bar_no_full_border(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()

@@ -12,6 +12,7 @@ Item {
                      ? nowplayingBridge
                      : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
     property bool expanded: false
+    property real panelMargin: Math.min(MichiTheme.spacing.lg, Math.max(0, root.height / 4))
     property bool _canPlay: root.ps ? root.ps.backendAvailable : false
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
 
@@ -34,7 +35,7 @@ Item {
         }
 
         Flickable {
-            anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg
+            anchors.fill: parent; anchors.margins: root.panelMargin
             contentHeight: contentColumn.height; clip: true
             boundsBehavior: Flickable.StopAtBounds
 

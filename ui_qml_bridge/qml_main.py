@@ -31,6 +31,7 @@ from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from ui_qml_bridge.devices_bridge import DevicesBridge
 from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 from ui_qml_bridge.settings_bridge import SettingsBridge
 from ui_qml_bridge.radio_bridge import RadioBridge
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
@@ -195,6 +196,7 @@ def main():
     devices_bridge = DevicesBridge(sync_manager=sync_mgr)
     playlists_bridge = PlaylistsBridge(db=db, selection_context=selection_context_bridge)
     audio_lab_bridge = AudioLabBridge(db_conn=db_conn)
+    home_audio_bridge = HomeAudioBridge()
     settings_bridge = SettingsBridge()
     radio_bridge = RadioBridge(radio_manager=radio_mgr, player_service=player_service)
     connections_bridge = ConnectionsBridge(michi_link_ctrl=michi_link)
@@ -242,6 +244,7 @@ def main():
     engine.rootContext().setContextProperty("devicesBridge", devices_bridge)
     engine.rootContext().setContextProperty("playlistsBridge", playlists_bridge)
     engine.rootContext().setContextProperty("audioLabBridge", audio_lab_bridge)
+    engine.rootContext().setContextProperty("homeAudioBridge", home_audio_bridge)
     engine.rootContext().setContextProperty("settingsBridge", settings_bridge)
     engine.rootContext().setContextProperty("radioBridge", radio_bridge)
     engine.rootContext().setContextProperty("connectionsBridge", connections_bridge)

@@ -754,6 +754,11 @@ class TestMixComponents:
         assert "MixBridge" in content, "qml_main missing MixBridge import"
         assert "mixBridge" in content, "qml_main missing mixBridge context property"
 
+    def test_qml_main_registers_home_audio_bridge(self):
+        content = (QML_DIR.parent / "ui_qml_bridge" / "qml_main.py").read_text()
+        assert "HomeAudioBridge" in content, "qml_main missing HomeAudioBridge import"
+        assert "homeAudioBridge" in content, "qml_main missing homeAudioBridge context property"
+
 
 class TestPlaybackComponents:
     def test_playback_bridge_importable(self):

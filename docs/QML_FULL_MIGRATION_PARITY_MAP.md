@@ -40,9 +40,9 @@ Definir el estado real de paridad funcional entre QtWidgets y QML para preparar 
 | Smoke startup | ✅ | 7/7 |
 | Smoke UI routes | ✅ | 2/2 |
 | Runtime check | ✅ | OK |
-| QML bridge tests | ✅ | 170 passed |
-| QML component tests | ✅ | 62 passed |
-| Total QML tests | ✅ | 238 passed |
+| QML bridge tests | ✅ | 171 passed |
+| QML component tests | ✅ | 139 passed |
+| Total QML tests | ✅ | 310 passed |
 | Schema tests | ✅ | 15 passed |
 | Format probe | ✅ | 41 passed |
 | Playback controller | ✅ | 6 passed |
@@ -227,7 +227,7 @@ El gate automatizado está aprobado. El proyecto es candidato fuerte a `0.2.0-al
 |---|---|
 | `ruff check .` | ✅ All checks passed |
 | `compileall` | ✅ OK |
-| `tests/qml/ -q` | ✅ 211 passed |
+| `tests/qml/ -q` | ✅ 310 passed |
 | `tests/test_schema.py -q` | ✅ 15 passed |
 
 ## Veredicto

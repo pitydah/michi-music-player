@@ -10,12 +10,14 @@ Rectangle {
     signal clicked()
 
     implicitHeight: 26
+    implicitWidth: label.implicitWidth + MichiTheme.spacing.md * 2
     radius: MichiTheme.radiusPill
     color: root.selected ? MichiTheme.colors.accentSurface : "transparent"
     border.color: root.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.borderSubtle
     border.width: 1
 
     Text {
+        id: label
         anchors.centerIn: parent
         leftPadding: MichiTheme.spacing.md
         rightPadding: MichiTheme.spacing.md

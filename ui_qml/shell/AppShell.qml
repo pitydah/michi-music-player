@@ -9,7 +9,7 @@ Item {
 
     property alias currentRoute: sidebar.currentRoute
     property alias pageTitle: header.pageTitle
-    property var palette: commandPalette
+    property alias commandPaletteItem: commandPalette
 
     function updateHeaderTitle(route) {
         if (typeof routeRegistryBridge !== "undefined" && routeRegistryBridge) {
@@ -76,7 +76,7 @@ Item {
 
     ShortcutLayer {
         anchors.fill: parent
-        palette: commandPalette
+        commandPalette: commandPalette
     }
 
     Connections {

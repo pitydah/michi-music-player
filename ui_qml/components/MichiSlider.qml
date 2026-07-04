@@ -8,7 +8,6 @@ Rectangle {
     property real from: 0
     property real to: 100
     property real value: 0
-    property bool enabled: true
     property real stepSize: 1
     property bool hovered: ma.containsMouse
     property bool pressed: ma.pressed
