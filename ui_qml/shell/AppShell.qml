@@ -98,4 +98,24 @@ Item {
             pageStack.loadRoute("home")
         }
     }
+
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onDropped: function(drop) {
+            if (drop.hasUrls) {
+                var droppedPath = String(drop.urls[0]).replace("file://", "")
+                var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
+                var notif = typeof notificationBridge !== "undefined" ? notificationBridge : null
+                if (lib && typeof lib.addFolder !== "undefined") {
+                    var result = lib.addFolder(droppedPath)
+                    if (notif) {
+                        notif.showMessage(result.ok ? "Añadiendo: " + droppedPath : "Error: " + result.error,
+                                         result.ok ? "info" : "error")
+                    }
+                }
+                drop.accept()
+            }
+        }
+    }
 }

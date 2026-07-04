@@ -377,6 +377,18 @@ class TestLibraryBridge:
         bridge = LibraryBridge()
         bridge.refresh()
 
+    def test_add_folder_empty_path(self):
+        bridge = LibraryBridge()
+        result = bridge.addFolder("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_PATH"
+
+    def test_add_folder_not_found(self):
+        bridge = LibraryBridge()
+        result = bridge.addFolder("/nonexistent/path/12345")
+        assert result.get("ok") is False
+        assert result.get("error") == "DIR_NOT_FOUND"
+
 
 class TestMichiAIBridge:
     def test_instantiate(self):

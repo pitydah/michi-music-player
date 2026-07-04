@@ -531,6 +531,23 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(str, result=dict)
+    def addFolder(self, folder_path: str):
+        if not folder_path:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        if not Path(folder_path).is_dir():
+            return {"ok": False, "error": "DIR_NOT_FOUND"}
+        try:
+            from core.file_actions import FileActions
+            from core.paths import database_path
+            db_path = database_path()
+            actions = FileActions(db_path=db_path)
+            actions.scan_path(folder_path)
+            self.refresh()
+            return {"ok": True, "path": folder_path}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     # ── Internal ──
 
     def _song_to_dict(self, s):
