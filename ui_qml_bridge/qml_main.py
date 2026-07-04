@@ -90,7 +90,7 @@ class QmlServiceFactory:
         if self._player_service is not None:
             return self._player_service
         try:
-            from audio.player_engine import GStreamerEngine
+            from audio.player import GStreamerEngine
             from audio.player_service import PlayerService
             logger.info("QML: Creating GStreamerEngine...")
             engine = GStreamerEngine()
