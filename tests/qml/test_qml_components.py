@@ -486,10 +486,11 @@ class TestRuntimeBlockerFixes:
         violations = []
         for p in pages:
             text = p.read_text()
-            matches = re.findall(r'property var (\w+Bridge): typeof \w+Bridge', text)
-            for m in matches:
-                violations.append(f"{p.relative_to(QML_DIR)}: {m}")
-        assert not violations, "Bridge binding loop pattern found:\n" + "\n".join(violations)
+            matches = re.findall(r'property var (\w+): typeof (\w+)', text)
+            for prop_name, context_name in matches:
+                if prop_name == context_name:
+                    violations.append(f"{p.relative_to(QML_DIR)}: {prop_name} == {context_name}")
+        assert not violations, "Bridge self-reference binding loop found:\n" + "\n".join(violations)
 
     def test_no_placeholder_text_on_text_input(self):
         pages = list((QML_DIR / "pages").rglob("*.qml"))

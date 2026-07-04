@@ -39,6 +39,7 @@ from ui_qml_bridge.eq_bridge import EqBridge
 from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
+from ui_qml_bridge.lyrics_bridge import LyricsBridge
 from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
 from ui_qml_bridge.notification_bridge import NotificationBridge
 from ui_qml_bridge.route_registry_bridge import RouteRegistryBridge
@@ -202,6 +203,7 @@ def main():
     eq_bridge = EqBridge(player_service=player_service) if player_service else None
     smart_tagging_bridge = SmartTaggingBridge()
     home_audio_bridge = HomeAudioBridge()
+    lyrics_bridge = LyricsBridge()
     library_doctor_bridge = LibraryDoctorBridge(db=db)
     disc_lab_bridge = DiscLabBridge()
     notification_bridge = NotificationBridge()
@@ -252,6 +254,7 @@ def main():
     engine.rootContext().setContextProperty("discLabBridge", disc_lab_bridge)
     engine.rootContext().setContextProperty("selectionContextBridge", selection_context_bridge)
     engine.rootContext().setContextProperty("homeAudioBridge", home_audio_bridge)
+    engine.rootContext().setContextProperty("lyricsBridge", lyrics_bridge)
     engine.rootContext().setContextProperty("notificationBridge", notification_bridge)
     engine.rootContext().setContextProperty("routeRegistryBridge", route_registry_bridge)
     engine.rootContext().setContextProperty("appStateBridge", app_state_bridge)

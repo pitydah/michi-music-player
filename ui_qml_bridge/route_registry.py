@@ -22,6 +22,7 @@ ROUTES: dict[str, dict] = {
     "mix": {"title": "Mix", "source": "../pages/MixHubPage.qml", "category": "core", "status": "experimental"},
     "mix_detail": {"title": "Mix", "source": "../pages/MixDetailPage.qml", "category": "detail", "status": "experimental"},
     "diagnostics": {"title": "Diagnóstico", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "experimental"},
+    "lyrics": {"title": "Letra", "source": "../pages/LyricsPage.qml", "category": "tools", "status": "experimental"},
     "album_detail": {"title": "Álbum", "source": "../pages/library/AlbumDetailPage.qml", "category": "detail", "status": "experimental"},
     "artist_detail": {"title": "Artista", "source": "../pages/library/ArtistDetailPage.qml", "category": "detail", "status": "experimental"},
     "placeholder": {"title": "Sección en migración", "source": "../pages/PlaceholderPage.qml", "category": "system", "status": "placeholder"},

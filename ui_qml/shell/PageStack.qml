@@ -28,6 +28,7 @@ Item {
     function getFallbackSource(route) {
         var sources = {
             "home": "../pages/home/HomePage.qml",
+            "lyrics": "../pages/LyricsPage.qml",
             "mix": "../pages/MixHubPage.qml",
             "connections": "../pages/connections/ConnectionsPage.qml",
             "album_detail": "../pages/library/AlbumDetailPage.qml",

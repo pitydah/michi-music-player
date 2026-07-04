@@ -171,13 +171,33 @@ class ConnectionsBridge(QObject):
             pass
         self.disconnect()
 
-    @Slot()
-    def addManualServer(self):
-        self.stateChanged.emit()
+    @Slot(str, int, str, result=dict)
+    def addManualServer(self, host: str = "", port: int = 0, alias: str = ""):
+        if not host:
+            return {"ok": False, "error": "EMPTY_HOST"}
+        try:
+            from core.settings_manager import set_ as settings_set
+            settings_set("michi_link/micro_host", host)
+            if port > 0:
+                settings_set("michi_link/micro_port", port)
+            if alias:
+                settings_set("michi_link/micro_alias", alias)
+            self._state = "detected"
+            self.stateChanged.emit()
+            return {"ok": True}
+        except Exception as e:
+            self._state = "error"
+            self._last_error = str(e)
+            self.stateChanged.emit()
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
-    def openHomeAudio(self):
+    @Slot(str, result=dict)
+    def openHomeAudio(self, route: str = "home_audio"):
+        if route == "home_audio":
+            from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+            QMetaObject.invokeMethod(self, "_navigate", Qt.QueuedConnection, Q_ARG(str, route))
         self.stateChanged.emit()
+        return {"ok": True}
 
     @Slot()
     def refresh(self):
