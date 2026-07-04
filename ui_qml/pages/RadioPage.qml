@@ -9,9 +9,21 @@ Item {
 
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
     property string _filterText: ""
+    property bool _showAddStation: false
+    property string _newName: ""
+    property string _newUrl: ""
 
     function doSearch(text) {
         _filterText = text.toLowerCase()
+    }
+
+    function addStationFromUI() {
+        if (root.rd && _newUrl.trim()) {
+            var result = root.rd.addStation(_newName.trim() || "New station", _newUrl.trim(), "MP3", "")
+            if (result && result.ok) {
+                _newName = ""; _newUrl = ""; _showAddStation = false
+            }
+        }
     }
 
     Component.onCompleted: {
@@ -105,13 +117,31 @@ Item {
             Text {
                 text: root._filterText !== ""
                       ? "No se encontraron emisoras para \"" + root._filterText + "\""
-                      : "No hay emisoras configuradas. Agrega una URL para comenzar."
+                      : "No hay emisoras configuradas."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width; wrapMode: Text.WordWrap
                 visible: root.rd && root.rd.stations.length === 0
             }
 
-            StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }
+            MichiButton {
+                text: _showAddStation ? "Cancelar" : "Añadir emisora"
+                variant: "ghost"
+                anchors.horizontalCenter: parent.horizontalCenter
+                onClicked: _showAddStation = !_showAddStation
+            }
+
+            Column {
+                width: parent.width; spacing: MichiTheme.spacing.sm
+                visible: _showAddStation
+
+                Rectangle { width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                SearchField { placeholderText: "Nombre"; width: parent.width; onSearchTextChanged: _newName = text }
+                SearchField { placeholderText: "URL del stream"; width: parent.width; onSearchTextChanged: _newUrl = text }
+                MichiButton { text: "Añadir"; variant: "primary"; anchors.horizontalCenter: parent.horizontalCenter; onClicked: addStationFromUI() }
+            }
+
+            StatusBadge { text: "Radio QML"; kind: "info" }
         }
     }
 }

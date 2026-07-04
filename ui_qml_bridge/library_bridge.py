@@ -541,13 +541,13 @@ class LibraryBridge(QObject):
         if not Path(folder_path).is_dir():
             return {"ok": False, "error": "DIR_NOT_FOUND"}
         try:
-            from core.paths import database_path
             from library.indexer import Indexer
-            db_path = database_path()
-            worker = Indexer.from_db_path(db_path, folder_path)
-            worker.run()
-            self.refresh()
-            return {"ok": True, "path": folder_path}
+            if self._db:
+                worker = Indexer(self._db, folder_path)
+                worker.run()
+                self.refresh()
+                return {"ok": True, "path": folder_path}
+            return {"ok": False, "error": "NO_DATABASE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

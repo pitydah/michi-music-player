@@ -4,41 +4,33 @@ Usage in QML:
     import MichiCover 1.0
     CoverBridge { coverKey: "album_xyz"; width: 180; height: 180 }
 
-Caches:
-    _FALLBACK_CACHE: max 256 entries, LRU-eviction via clear()
-    _COVER_CACHE: max 256 entries, LRU-eviction via clear()
-
-Rules:
+Contract:
     - paint() draws cached pixmap or fallback only — NO heavy work
     - Heavy work (DB read, image decode, scale) happens ONCE in coverKey setter
     - Result is cached in self._pixmap; paint() never touches DB nor decodes
     - Fallback is always available, no crash path
-    - DB connection is temporary, closed immediately
+    - DB connection uses shared instance from set_shared_db() when available
 """
+from __future__ import annotations
 
 from PySide6.QtQuick import QQuickPaintedItem
 from PySide6.QtGui import QImage, QPainter, QColor, QFont, QLinearGradient, QPixmap, Qt
 from PySide6.QtCore import Property, Signal, QByteArray
 from pathlib import Path
 import logging
+from typing import Any
 
 logger = logging.getLogger("michi.cover")
 
 _FALLBACK_CACHE: dict[str, QPixmap] = {}
 _COVER_CACHE: dict[str, QImage] = {}
 _MAX_CACHE = 256
-_DB_PATH = None
+_SHARED_DB: Any = None
 
 
-def _get_db_path() -> Path:
-    global _DB_PATH
-    if _DB_PATH is None:
-        try:
-            from core.paths import database_path
-            _DB_PATH = Path(database_path())
-        except Exception:
-            _DB_PATH = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
-    return _DB_PATH
+def set_shared_db(db):
+    global _SHARED_DB
+    _SHARED_DB = db
 
 
 def _trim_cache(cache: dict, max_size: int = _MAX_CACHE):
@@ -52,10 +44,8 @@ def _make_fallback_pixmap(seed: str, size: int) -> QPixmap:
     key = f"fallback_{seed}_{size}"
     if key in _FALLBACK_CACHE:
         return _FALLBACK_CACHE[key]
-
     img = QImage(size, size, QImage.Format_ARGB32)
     img.fill(0x0D0F16)
-
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
     gradient = QLinearGradient(0, 0, size, size)
@@ -67,7 +57,6 @@ def _make_fallback_pixmap(seed: str, size: int) -> QPixmap:
     glyph = seed[:2].upper() if seed else "MM"
     p.drawText(img.rect(), int(Qt.AlignCenter), glyph)
     p.end()
-
     pm = QPixmap.fromImage(img)
     _FALLBACK_CACHE[key] = pm
     _trim_cache(_FALLBACK_CACHE)
@@ -75,40 +64,40 @@ def _make_fallback_pixmap(seed: str, size: int) -> QPixmap:
 
 
 def _load_cover_image(album_key: str, size: int) -> QImage | None:
+    if not album_key:
+        return None
     if album_key in _COVER_CACHE:
         cached = _COVER_CACHE[album_key]
         if cached.width() != size:
-            return cached.scaled(size, size,
-                                 Qt.KeepAspectRatio,
-                                 Qt.SmoothTransformation)
+            return cached.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         return cached
-
-    db_path = _get_db_path()
-    if not db_path.exists():
-        return None
-
-    try:
+    db = _SHARED_DB
+    if db is None:
+        db_path = Path.home() / ".local" / "share" / "michi-music-player" / "library.db"
+        if not db_path.exists():
+            return None
         from library.library_db import LibraryDB
         db = LibraryDB(str(db_path))
-        try:
+        _close = True
+    else:
+        _close = False
+    try:
+        from contextlib import suppress
+        with suppress(Exception):
             row = db.get_album_art_cache(album_key)
             if row:
                 _mime, data = row
                 img = QImage()
                 if img.loadFromData(QByteArray(data)):
-                    scaled = img.scaled(size, size,
-                                        Qt.KeepAspectRatio,
-                                        Qt.SmoothTransformation)
+                    scaled = img.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     _COVER_CACHE[album_key] = scaled
                     _trim_cache(_COVER_CACHE)
                     return scaled
-        finally:
-            from contextlib import suppress
-            with suppress(Exception):
+    finally:
+        if _close:
+            from contextlib import suppress as sup2
+            with sup2(Exception):
                 db.close()
-    except Exception:
-        logger.debug("Cover load failed for %s", album_key, exc_info=True)
-
     return None
 
 
@@ -143,7 +132,6 @@ class CoverBridge(QQuickPaintedItem):
         h = int(self.height())
         if w < 1 or h < 1:
             return
-
         if self._pixmap:
             painter.drawPixmap(0, 0, w, h, self._pixmap)
         else:

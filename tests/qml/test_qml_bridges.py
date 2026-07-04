@@ -389,6 +389,18 @@ class TestLibraryBridge:
         assert result.get("ok") is False
         assert result.get("error") == "DIR_NOT_FOUND"
 
+    def test_add_folder_no_db(self):
+        import tempfile, os
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        bridge = LibraryBridge()
+        tmpdir = tempfile.mkdtemp()
+        try:
+            result = bridge.addFolder(tmpdir)
+            assert result.get("ok") is False
+            assert result.get("error") == "NO_DATABASE"
+        finally:
+            os.rmdir(tmpdir)
+
     def test_add_media_empty(self):
         bridge = LibraryBridge()
         result = bridge.addMedia("")

@@ -49,6 +49,8 @@ def _create_services() -> ServiceBundle:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         bundle.db = LibraryDB(str(db_path))
         bundle.db_connection = getattr(bundle.db, 'conn', None)
+        from ui_qml_bridge.cover_bridge import set_shared_db
+        set_shared_db(bundle.db)
         logger.info("QML: LibraryDB opened at %s", db_path)
     except Exception as e:
         logger.debug("QML: LibraryDB init failed: %s", e)

@@ -48,12 +48,26 @@ Item {
             }
         }
 
+        Timer {
+            interval: 250
+            running: root.autoScroll && root.lyricsBridge && root.lyricsBridge.hasSyncedLyrics
+            repeat: true
+            onTriggered: {
+                var active = root._activeLine()
+                if (active >= 0) {
+                    listView.positionViewAtIndex(active, ListView.Contain)
+                }
+            }
+        }
+
         onContentYChanged: {
             if (root.autoScroll) {
                 var active = root._activeLine()
                 if (active >= 0) {
-                    var y = active * (root.lineHeight + MichiTheme.spacing.md)
-                    if (Math.abs(contentY - y) > 5) root.autoScroll = false
+                    var expectedY = active * (root.lineHeight + MichiTheme.spacing.md)
+                    if (Math.abs(contentY - expectedY) > root.lineHeight) {
+                        root.autoScroll = false
+                    }
                 }
             }
         }
@@ -61,10 +75,9 @@ Item {
         Connections {
             target: root
             function onCurrentPositionMsChanged() {
-                if (root.autoScroll) {
+                if (root.autoScroll && root.lyricsBridge && root.lyricsBridge.hasSyncedLyrics) {
                     var active = root._activeLine()
                     if (active >= 0) {
-                        var y = active * (root.lineHeight + MichiTheme.spacing.md)
                         listView.positionViewAtIndex(active, ListView.Contain)
                     }
                 }
