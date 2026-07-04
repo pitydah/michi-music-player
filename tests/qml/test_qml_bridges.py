@@ -390,7 +390,8 @@ class TestLibraryBridge:
         assert result.get("error") == "DIR_NOT_FOUND"
 
     def test_add_folder_no_db(self):
-        import tempfile, os
+        import tempfile
+        import os
         from ui_qml_bridge.library_bridge import LibraryBridge
         bridge = LibraryBridge()
         tmpdir = tempfile.mkdtemp()

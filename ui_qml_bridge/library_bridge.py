@@ -543,12 +543,21 @@ class LibraryBridge(QObject):
         try:
             from library.indexer import Indexer
             if self._db:
+                import logging as _lg
+                _log = _lg.getLogger("michi.qml.addfolder")
+                _log.info("Indexing: %s", folder_path)
                 worker = Indexer(self._db, folder_path)
                 worker.run()
+                _log.info("Indexer done, committing...")
+                if hasattr(self._db, 'conn') and self._db.conn:
+                    self._db.conn.commit()
                 self.refresh()
-                return {"ok": True, "path": folder_path}
+                _log.info("Refresh done, count=%d", len(self._base_songs))
+                return {"ok": True, "path": folder_path, "count": len(self._base_songs)}
             return {"ok": False, "error": "NO_DATABASE"}
         except Exception as e:
+            import logging as _lg
+            _lg.getLogger("michi.qml.addfolder").error("addFolder failed: %s", e, exc_info=True)
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)

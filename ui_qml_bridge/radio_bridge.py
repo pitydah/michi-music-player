@@ -47,9 +47,9 @@ class RadioBridge(QObject):
     def addStation(self, name: str, url: str, codec: str, country: str):
         if not url:
             return {"ok": False, "error": "EMPTY_URL"}
-        if self._radio_mgr and hasattr(self._radio_mgr, 'add_station'):
+        if self._radio_mgr and hasattr(self._radio_mgr, 'add'):
             try:
-                self._radio_mgr.add_station(name, url, country=country, codec=codec)
+                self._radio_mgr.add(name, url, country=country, codec=codec)
                 self.refresh()
                 return {"ok": True}
             except Exception as e:

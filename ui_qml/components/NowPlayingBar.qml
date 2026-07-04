@@ -128,36 +128,21 @@ Item {
                     }
                 }
 
-                Row {
-                    width: parent.width * 0.22; height: parent.height
-                    layoutDirection: Qt.RightToLeft
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter;
-                        spacing: 4
-
-                        NowPlayingVolume {
-                            volume: root.ps ? root.ps.volume : 80
-                            muted: root.ps ? root.ps.muted : false
-                            enabled: root._canPlay
-                            opacity: root._canPlay ? 1.0 : 0.45
-                            onVolumeAdjusted: function(vol) {
-                                if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
-                                if (root.ps) root.ps.setVolume(vol)
-                            }
-                            onMuteClicked: {
-                                if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
-                                if (root.ps) root.ps.toggleMute()
-                            }
-                        }
-
-                        MichiIconButton {
-                            iconText: root._panelExpanded ? "−" : "+"
-                            tooltipText: root._panelExpanded ? "Contraer" : "Expandir"
-                            btnSize: 22
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            onClicked: root._panelExpanded = !root._panelExpanded
-                        }
+                NowPlayingVolume {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.rightMargin: MichiTheme.spacing.md
+                    volume: root.ps ? root.ps.volume : 80
+                    muted: root.ps ? root.ps.muted : false
+                    enabled: root._canPlay && root._hasTrack
+                    opacity: root._canPlay && root._hasTrack ? 1.0 : 0.45
+                    onVolumeAdjusted: function(vol) {
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.setVolume(vol)
+                    }
+                    onMuteClicked: {
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.toggleMute()
                     }
                 }
             }
