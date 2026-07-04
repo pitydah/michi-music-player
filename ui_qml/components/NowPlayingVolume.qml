@@ -8,11 +8,13 @@ Item {
 
     property int volume: 80
     property bool muted: false
+    property bool enabled: true
 
     signal volumeAdjusted(int vol)
     signal muteClicked()
 
     implicitHeight: 24
+    opacity: root.enabled ? 1.0 : 0.35
 
     Row {
         anchors.centerIn: parent
@@ -23,12 +25,13 @@ Item {
             GlassMaterial {
                 anchors.fill: parent; radius: 14
                 variant: "status"
-                hovered: muteMouse.containsMouse
-                interactive: true
+                hovered: root.enabled && muteMouse.containsMouse
+                interactive: root.enabled
                 MouseArea {
                     id: muteMouse; anchors.fill: parent
-                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.muteClicked()
+                    hoverEnabled: root.enabled
+                    cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: { if (root.enabled) root.muteClicked() }
                 }
                 Image {
                     anchors.centerIn: parent
@@ -59,10 +62,12 @@ Item {
 
             MouseArea {
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+                cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: {
-                    var pct = Math.round((mouse.x / width) * 100)
-                    root.volumeAdjusted(Math.max(0, Math.min(100, pct)))
+                    if (root.enabled) {
+                        var pct = Math.round((mouse.x / width) * 100)
+                        root.volumeAdjusted(Math.max(0, Math.min(100, pct)))
+                    }
                 }
             }
         }

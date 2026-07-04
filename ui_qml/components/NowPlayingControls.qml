@@ -9,6 +9,7 @@ Item {
     property bool isPlaying: false
     property bool shuffleEnabled: false
     property string repeatMode: "none"
+    property bool enabled: true
 
     signal playClicked()
     signal prevClicked()
@@ -17,6 +18,7 @@ Item {
     signal repeatClicked()
 
     implicitHeight: 40
+    opacity: root.enabled ? 1.0 : 0.35
 
     Row {
         anchors.centerIn: parent
@@ -28,6 +30,7 @@ Item {
             tooltipText: "Aleatorio"
             selected: root.shuffleEnabled
             btnSize: 34
+            enabled: root.enabled
             onClicked: root.shuffleClicked()
         }
 
@@ -36,6 +39,7 @@ Item {
             iconText: "<<"
             tooltipText: "Anterior"
             btnSize: 34
+            enabled: root.enabled
             onClicked: root.prevClicked()
         }
 
@@ -46,7 +50,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: MichiTheme.radiusPill
-                color: maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : MichiTheme.colors.accentBlue
+                color: root.enabled && maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : root.enabled ? MichiTheme.colors.accentBlue : Qt.rgba(0.561, 0.718, 1.0, 0.25)
                 Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
                 Image {
@@ -63,9 +67,9 @@ Item {
             MouseArea {
                 id: maPlay
                 anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.playClicked()
+                hoverEnabled: root.enabled
+                cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: { if (root.enabled) root.playClicked() }
             }
         }
 
@@ -74,6 +78,7 @@ Item {
             iconText: ">>"
             tooltipText: "Siguiente"
             btnSize: 34
+            enabled: root.enabled
             onClicked: root.nextClicked()
         }
 
@@ -83,6 +88,7 @@ Item {
             tooltipText: "Repetir"
             selected: root.repeatMode !== "none"
             btnSize: 34
+            enabled: root.enabled
             onClicked: root.repeatClicked()
         }
     }

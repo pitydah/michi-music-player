@@ -7,10 +7,12 @@ Item {
 
     property int position: 0
     property int duration: 0
+    property bool enabled: true
 
     signal seekRequested(int pos)
 
     implicitHeight: 24
+    opacity: root.enabled ? 1.0 : 0.35
 
     Row {
         anchors.centerIn: parent
@@ -31,14 +33,14 @@ Item {
             Rectangle {
                 width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
                 height: parent.height; radius: 2
-                color: MichiTheme.colors.accentBlue
+                color: root.enabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
             }
 
             MouseArea {
                 anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
+                cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: {
-                    if (root.duration > 0) {
+                    if (root.enabled && root.duration > 0) {
                         var pct = mouse.x / width
                         root.seekRequested(Math.round(pct * root.duration))
                     }

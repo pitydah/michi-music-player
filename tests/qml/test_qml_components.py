@@ -705,6 +705,40 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingInfo.qml").read_text()
         assert "backendAvailable" in content, "NowPlayingInfo missing backendAvailable"
 
+    def test_nowplaying_bar_no_placeholder_no(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert '"NO"' not in content, "NowPlayingBar still has NO placeholder"
+        assert '"Sin reproducción"' in content, "NowPlayingBar missing empty state text"
+
+    def test_nowplaying_controls_has_enabled_property(self):
+        content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
+        assert "property bool enabled" in content, "NowPlayingControls missing enabled property"
+        assert "opacity:" in content, "NowPlayingControls missing opacity for disabled state"
+
+    def test_nowplaying_seek_has_enabled_property(self):
+        content = (QML_DIR / "components" / "NowPlayingSeekBar.qml").read_text()
+        assert "property bool enabled" in content, "NowPlayingSeekBar missing enabled property"
+
+    def test_nowplaying_volume_has_enabled_property(self):
+        content = (QML_DIR / "components" / "NowPlayingVolume.qml").read_text()
+        assert "property bool enabled" in content, "NowPlayingVolume missing enabled property"
+
+    def test_nowplaying_bar_no_full_border(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "border.width: 1" not in content, "NowPlayingBar still has full border"
+
+    def test_home_ecosystem_card_height_fixed(self):
+        content = (QML_DIR / "pages" / "home" / "EcosystemCard.qml").read_text()
+        assert "implicitHeight: 210" in content, "EcosystemCard height not updated"
+
+    def test_home_library_card_height_fixed(self):
+        content = (QML_DIR / "pages" / "home" / "LibraryStatusCard.qml").read_text()
+        assert "implicitHeight: 190" in content, "LibraryStatusCard height not updated"
+
+    def test_nowplaying_controls_disabled_color(self):
+        content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
+        assert "0.25" in content, "NowPlayingControls missing disabled accent color"
+
 
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
