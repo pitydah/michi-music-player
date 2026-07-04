@@ -96,7 +96,7 @@ Item {
 
                 SearchField {
                     id: searchField
-                    Layout.preferredWidth: 220; Layout.maximumWidth: 300
+                    Layout.preferredWidth: 260; Layout.minimumWidth: 180; Layout.maximumWidth: 340
                     placeholderText: "Buscar..."
                     onSearchTextChanged: {
                         root._filterText = text
@@ -110,8 +110,8 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                MichiButton { text: "Limpiar filtros"; variant: "ghost"; onClicked: root.clearFilters() }
-                MichiButton { text: "Refrescar"; variant: "ghost"; onClicked: root.refreshData() }
+                MichiButton { text: "Limpiar filtros"; variant: "ghost"; Layout.preferredWidth: 130; Layout.minimumWidth: 120; onClicked: root.clearFilters() }
+                MichiButton { text: "Refrescar"; variant: "ghost"; Layout.preferredWidth: 100; Layout.minimumWidth: 92; onClicked: root.refreshData() }
             }
         }
 

@@ -100,7 +100,7 @@ Item {
                         shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                         repeatMode: root.ps ? root.ps.repeatMode : "none"
                         enabled: root._canPlay && root._hasTrack
-                        opacity: root._canPlay && root._hasTrack ? 1.0 : 0.35
+                        opacity: root._canPlay && root._hasTrack ? 1.0 : 0.45
                         onPlayClicked: {
                             if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
                             if (root.ps) root.ps.togglePlay()
@@ -116,7 +116,7 @@ Item {
                         position: root.ps ? root.ps.position : 0
                         duration: root.ps ? root.ps.duration : 0
                         enabled: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false)
-                        opacity: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false) ? 1.0 : 0.35
+                        opacity: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false) ? 1.0 : 0.45
                         onSeekRequested: function(pos) {
                             if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
                             if (root.ps) root.ps.seek(pos)
@@ -136,7 +136,7 @@ Item {
                             volume: root.ps ? root.ps.volume : 80
                             muted: root.ps ? root.ps.muted : false
                             enabled: root._canPlay
-                            opacity: root._canPlay ? 1.0 : 0.35
+                            opacity: root._canPlay ? 1.0 : 0.45
                             onVolumeAdjusted: function(vol) {
                                 if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
                                 if (root.ps) root.ps.setVolume(vol)

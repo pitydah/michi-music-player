@@ -10,9 +10,12 @@ QQC2.Button {
 
     topPadding: MichiTheme.spacing.sm
     bottomPadding: MichiTheme.spacing.sm
-    leftPadding: iconText ? MichiTheme.spacing.lg : MichiTheme.spacing.lg
+    leftPadding: MichiTheme.spacing.lg
     rightPadding: MichiTheme.spacing.lg
     spacing: MichiTheme.spacing.sm
+
+    implicitWidth: Math.max(72, contentRow.implicitWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(30, contentRow.implicitHeight + topPadding + bottomPadding)
 
     font.pixelSize: MichiTheme.typography.bodySize
     font.weight: MichiTheme.typography.weightMedium
@@ -33,9 +36,10 @@ QQC2.Button {
 
     contentItem: Item {
         Row {
+            id: contentRow
             anchors.centerIn: parent
             spacing: root.spacing
-            visible: root.text || root.iconText
+
             Text {
                 text: root.iconText
                 font.pixelSize: MichiTheme.typography.cardTitleSize
