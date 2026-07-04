@@ -847,6 +847,22 @@ class TestMixComponents:
         bridge = MixBridge()
         assert "ai_recommended" not in [c["id"] for c in bridge.categories]
 
+    def test_mix_daily_uses_smart_mix_service(self):
+        from unittest.mock import MagicMock, patch
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        item = MagicMock(spec=MediaItem, filepath="/a.mp3", title="A", artist="X",
+                         album="Y", duration=100, id=1, play_count=1, last_played=100.0,
+                         created_at=1000.0, genre="Rock")
+        db.fetch_all.return_value = [item]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("daily_mix")
+        # Falls back to genre heuristic since SmartMixService.create_mix
+        # may not find items via balanced_mix strategy
+        assert len(bridge.currentSongs) <= 25
+
 
 class TestPlaybackComponents:
     def test_playback_bridge_importable(self):

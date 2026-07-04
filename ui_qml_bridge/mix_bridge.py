@@ -29,8 +29,8 @@ def _to_dict(s, reason: str = "") -> dict:
         "artist": getattr(s, 'artist', '') or '',
         "album": getattr(s, 'album', '') or '',
         "duration": getattr(s, 'duration', 0) or 0,
-        "filepath": getattr(s, 'filepath', '') or '',
-        "track_id": getattr(s, 'id', 0) or 0,
+        "filepath": getattr(s, 'filepath', '') or getattr(s, 'track_id', '') and "" or "",
+        "track_id": getattr(s, 'id', 0) or getattr(s, 'track_id', 0) or 0,
         "reason": reason,
     }
 
@@ -132,17 +132,28 @@ class MixBridge(QObject):
 
         return [_to_dict(s) for s in items[:25]]
 
+    def _smart_mix_to_dict(self, track) -> dict:
+        """Convert RecommendationResult to dict."""
+        return {
+            "title": getattr(track, 'title', '') or '',
+            "artist": getattr(track, 'artist', '') or '',
+            "album": getattr(track, 'album', '') or '',
+            "duration": getattr(track, 'duration', 0) or 0,
+            "track_id": getattr(track, 'track_id', 0) or 0,
+            "reason": "Recomendado",
+        }
+
     def _build_daily_mix(self, items: list) -> list[dict]:
-        # Try recommendation engine first
         try:
             from recommendation.smart_mix_service import SmartMixService
             if self._db:
                 svc = SmartMixService(self._db)
-                result = svc.get_recommendations(limit=25)
-                if result:
-                    return [_to_dict(s, "Recomendado") for s in result[:25]]
-        except Exception:
-            pass
+                mix = svc.create_mix(strategy="balanced_mix", limit=25)
+                tracks = getattr(mix, 'tracks', []) or []
+                if tracks:
+                    return [self._smart_mix_to_dict(t) for t in tracks[:25]]
+        except Exception as e:
+            logger.debug("SmartMix daily_mix failed: %s", e)
 
         # Fallback: genre mix from recent tracks
         recent_with_play = [s for s in items if getattr(s, 'last_played', 0) or 0 > 0]
@@ -183,20 +194,11 @@ class MixBridge(QObject):
         if result:
             return result
 
-        # Ultimate fallback: randomish recent additions
+        # Ultimate fallback: newest additions
         sorted_items = sorted(items, key=lambda x: getattr(x, 'created_at', 0) or 0, reverse=True)
         return [_to_dict(s, "Mix diario") for s in sorted_items[:25]]
 
     def _build_ai_mix(self, items: list) -> list[dict]:
-        try:
-            from recommendation.smart_mix_service import SmartMixService
-            if self._db:
-                svc = SmartMixService(self._db)
-                result = svc.get_ai_recommendations(limit=25)
-                if result:
-                    return [_to_dict(s, "Recomendación IA") for s in result[:25]]
-        except Exception:
-            pass
         return []
 
     @Slot(result=dict)
