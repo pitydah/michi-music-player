@@ -20,9 +20,10 @@ logger = logging.getLogger("michi.connections")
 class ConnectionsBridge(QObject):
     stateChanged = Signal()
 
-    def __init__(self, michi_link_ctrl: MichiLinkController | None = None, parent=None):
+    def __init__(self, michi_link_ctrl: MichiLinkController | None = None, navigation_bridge=None, parent=None):
         super().__init__(parent)
         self._ctrl = michi_link_ctrl
+        self._nav_bridge = navigation_bridge
         self._state = "not_configured"
         self._alias = ""
         self._contract = ""
@@ -193,11 +194,15 @@ class ConnectionsBridge(QObject):
 
     @Slot(str, result=dict)
     def openHomeAudio(self, route: str = "home_audio"):
-        if route == "home_audio":
-            from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-            QMetaObject.invokeMethod(self, "_navigate", Qt.QueuedConnection, Q_ARG(str, route))
-        self.stateChanged.emit()
-        return {"ok": True}
+        if self._nav_bridge and hasattr(self._nav_bridge, 'navigate'):
+            try:
+                self._nav_bridge.navigate(route)
+                self.stateChanged.emit()
+                return {"ok": True}
+            except Exception as e:
+                logger.debug("Navigation failed: %s", e)
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "UNSUPPORTED"}
 
     @Slot()
     def refresh(self):

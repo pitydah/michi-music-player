@@ -11,8 +11,10 @@ logger = logging.getLogger("michi.lyrics")
 class LyricsBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, worker_manager=None, nowplaying_bridge=None, parent=None):
         super().__init__(parent)
+        self._worker_manager = worker_manager
+        self._np_bridge = nowplaying_bridge
         self._lyrics = ""
         self._synced_lyrics = []
         self._source = ""
@@ -20,6 +22,7 @@ class LyricsBridge(QObject):
         self._error_message = ""
         self._current_title = ""
         self._current_artist = ""
+        self._search_counter = 0
 
     @Property(str, notify=dataChanged)
     def lyrics(self):
