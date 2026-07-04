@@ -10,11 +10,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from integrations.home_assistant.controller import HomeAssistantController
-    from integrations.snapcast.controller import SnapcastController
+from typing import Any
 
 logger = logging.getLogger("michi.home_audio")
 
@@ -22,8 +18,8 @@ logger = logging.getLogger("michi.home_audio")
 class HomeAudioBridge(QObject):
     stateChanged = Signal()
 
-    def __init__(self, ha_controller: HomeAssistantController | None = None,
-                 snapcast_ctrl: SnapcastController | None = None, parent=None):
+    def __init__(self, ha_controller: Any = None,
+                 snapcast_ctrl: Any = None, parent=None):
         super().__init__(parent)
         self._ha_ctrl = ha_controller
         self._snapcast_ctrl = snapcast_ctrl
@@ -100,9 +96,8 @@ class HomeAudioBridge(QObject):
         try:
             if self._ha_ctrl:
                 try:
-                    connected = bool(getattr(self._ha_ctrl, 'is_connected', False))
-                    if callable(connected):
-                        connected = connected()
+                    raw = getattr(self._ha_ctrl, 'is_connected', False)
+                    connected = raw() if callable(raw) else bool(raw)
                     self._ha_state = "connected" if connected else "not_configured"
                     if connected and hasattr(self._ha_ctrl, 'get_devices'):
                         devs = self._ha_ctrl.get_devices()

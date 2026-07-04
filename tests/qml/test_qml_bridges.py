@@ -1359,3 +1359,44 @@ class TestHomeAudioV2Bridge:
         bridge = HomeAudioBridge()
         result = bridge.assignStream("stream1")
         assert result.get("ok") is False
+
+    def test_home_audio_bridge_with_ha_adapter(self):
+        from unittest.mock import MagicMock
+        ha_adapter = MagicMock()
+        ha_adapter.is_connected = True
+        ha_adapter.get_devices.return_value = [
+            {"name": "Salón", "entity_id": "media_player.salon", "available": True},
+        ]
+        bridge = HomeAudioBridge(ha_controller=ha_adapter)
+        bridge.refresh()
+        assert bridge.homeAssistantAvailable is True
+        assert bridge.homeAssistantState == "connected"
+
+    def test_home_audio_bridge_with_snapcast_adapter(self):
+        from unittest.mock import MagicMock
+        snap_adapter = MagicMock()
+        snap_adapter.is_available = True
+        snap_adapter.get_groups.return_value = [
+            {"id": "zone1", "name": "Salón", "muted": False, "volume": 80},
+        ]
+        bridge = HomeAudioBridge(snapcast_ctrl=snap_adapter)
+        bridge.refresh()
+        assert bridge.snapcastAvailable is True
+        assert bridge.snapcastState == "available"
+        assert len(bridge.zones) == 1
+
+    def test_home_audio_bridge_configure_with_ha_adapter(self):
+        from unittest.mock import MagicMock
+        ha_adapter = MagicMock()
+        bridge = HomeAudioBridge(ha_controller=ha_adapter)
+        result = bridge.configureHomeAssistant("192.168.1.100", 8123, "token")
+        assert result.get("ok") is True
+        ha_adapter.configure.assert_called_once()
+
+    def test_home_audio_bridge_volume_with_snapcast(self):
+        from unittest.mock import MagicMock
+        snap_adapter = MagicMock()
+        bridge = HomeAudioBridge(snapcast_ctrl=snap_adapter)
+        result = bridge.setZoneVolume("zone1", 0.8)
+        assert result.get("ok") is True
+        snap_adapter.set_group_volume.assert_called_once_with("zone1", 0.8)

@@ -94,10 +94,29 @@ def _create_services() -> ServiceBundle:
         except Exception as e:
             logger.debug("QML: SyncManager init failed: %s", e)
 
+    # Home Audio & Snapcast adapters (no MainWindow needed)
+    try:
+        from integrations.home_assistant.client import HomeAssistantClient
+        from ui_qml_bridge.adapters.home_audio_adapter import HomeAudioAdapter
+        bundle.home_audio_controller = HomeAudioAdapter(ha_client=HomeAssistantClient())
+        logger.info("QML: HomeAudioAdapter created")
+    except Exception as e:
+        logger.debug("QML: HomeAudioAdapter init failed: %s", e)
+
+    try:
+        from integrations.snapcast.group_manager import GroupManager
+        from ui_qml_bridge.adapters.snapcast_adapter import SnapcastAdapter
+        gm = GroupManager()
+        bundle.snapcast_controller = SnapcastAdapter(group_manager=gm)
+        logger.info("QML: SnapcastAdapter created")
+    except Exception as e:
+        logger.debug("QML: SnapcastAdapter init failed: %s", e)
+
     # Michi Link
     try:
         from integrations.michi_link.services.service_manager import ServiceManager
         bundle.michi_link_controller = ServiceManager()
+        logger.info("QML: MichiLink ServiceManager created")
     except Exception as e:
         logger.debug("QML: MichiLink init failed: %s", e)
 
