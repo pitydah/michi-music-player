@@ -37,13 +37,10 @@ def check_file(path: Path):
                                     pass  # has result type
                 if isinstance(item, ast.FunctionDef) and item.name == "refresh":
                     has_refresh = True
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Attribute) and node.func.attr == "Signal":
-                has_signal = True
-        if isinstance(node, ast.Expr):
-            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                if "MICHI_QML_DEMO" in node.value.value:
-                    has_demo = True
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "Signal":
+            has_signal = True
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str) and "MICHI_QML_DEMO" in node.value.value:
+            has_demo = True
 
     # Check for Signal declarations via regex (AST doesn't detect from-import easily)
     source = path.read_text()
@@ -56,8 +53,7 @@ def check_file(path: Path):
             for alias in (node.names if isinstance(node, ast.Import) else []):
                 if alias.name and any(h in alias.name for h in ["audio.", "gstreamer", "player_service"]):
                     has_heavy_top_import = True
-            if isinstance(node, ast.ImportFrom) and node.module:
-                if any(h in node.module for h in ["audio.", "gstreamer", "player_service"]):
+            if isinstance(node, ast.ImportFrom) and node.module and any(h in node.module for h in ["audio.", "gstreamer", "player_service"]):
                     has_heavy_top_import = True
 
     # Report
@@ -80,7 +76,8 @@ def check_file(path: Path):
 
 def main():
     for f in sorted(BRIDGE_DIR.glob("*.py")):
-        if f.name == "__init__.py" or f.name == "route_registry.py":
+        # Skip non-bridge utility files
+        if f.name in {"__init__.py", "route_registry.py", "qml_main.py", "audio_quality_adapter.py", "command_bus.py"}:
             continue
         check_file(f)
 

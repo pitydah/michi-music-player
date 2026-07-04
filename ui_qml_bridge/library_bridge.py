@@ -325,9 +325,8 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "EMPTY_FILEPATH"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        if not filepath.startswith(("http://", "https://", "radio://", "stream://")):
-            if not Path(filepath).is_file():
-                return {"ok": False, "error": "FILE_NOT_FOUND"}
+        if not filepath.startswith(("http://", "https://", "radio://", "stream://")) and not Path(filepath).is_file():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
         track = self._track_for_filepath(filepath)
         title = getattr(track, "title", "") if track else ""
         artist = getattr(track, "artist", "") if track else ""
