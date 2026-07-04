@@ -542,9 +542,11 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "DIR_NOT_FOUND"}
         try:
             from core.file_actions import FileActions
-            from core.paths import database_path
-            db_path = database_path()
-            actions = FileActions(db_path=db_path)
+            if self._db and hasattr(self._db, 'conn'):
+                actions = FileActions(db_conn=self._db.conn)
+            else:
+                from core.paths import database_path
+                actions = FileActions(db_path=database_path())
             actions.scan_path(folder_path)
             self.refresh()
             return {"ok": True, "path": folder_path}

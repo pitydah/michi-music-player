@@ -45,13 +45,11 @@ def _create_services() -> ServiceBundle:
     try:
         from library.library_db import LibraryDB
         from core.paths import database_path
-        db_path = database_path()
-        if db_path.exists():
-            bundle.db = LibraryDB(str(db_path))
-            bundle.db_connection = getattr(bundle.db, 'conn', None)
-            logger.info("QML: LibraryDB opened at %s", db_path)
-        else:
-            logger.info("QML: No library DB at %s", db_path)
+        db_path = Path(database_path())
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        bundle.db = LibraryDB(str(db_path))
+        bundle.db_connection = getattr(bundle.db, 'conn', None)
+        logger.info("QML: LibraryDB opened at %s", db_path)
     except Exception as e:
         logger.debug("QML: LibraryDB init failed: %s", e)
 
