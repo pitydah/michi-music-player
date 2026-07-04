@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 import "../components"
 
@@ -12,11 +13,6 @@ Item {
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
-    property string _emptyLabel: "Sin reproducción"
-
-    height: MichiTheme.nowPlayingHeight
-    visible: true
-    z: 10
 
     Rectangle {
         anchors.fill: parent
@@ -27,58 +23,65 @@ Item {
             color: MichiTheme.colors.surfaceNowPlayingBorder
         }
 
-        Row {
+        RowLayout {
             anchors.fill: parent
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.md
 
-            // Cover + title
-            Row {
-                width: parent.width * 0.22; height: parent.height
+            // Cover + info (25%)
+            RowLayout {
+                Layout.preferredWidth: parent.width * 0.22
+                Layout.fillHeight: true
                 spacing: MichiTheme.spacing.md
 
                 NowPlayingCover {
                     id: coverArt
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.preferredWidth: 56
+                    Layout.preferredHeight: 56
                     coverKey: root.ps ? root.ps.coverPath : ""
                     placeholderMode: !root._hasTrack
                 }
 
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                     spacing: 3
-                    width: Math.max(80, parent.width - coverArt.width - MichiTheme.spacing.md)
+
                     Text {
-                        text: root._hasTrack && root.ps ? root.ps.trackTitle : root._emptyLabel
+                        Layout.fillWidth: true
+                        text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                        elide: Text.ElideRight; width: parent.width
+                        elide: Text.ElideRight
                     }
                     Text {
+                        Layout.fillWidth: true
                         text: root._hasTrack && root.ps && root.ps.trackArtist
                               ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
                               : "Selecciona una canción desde Biblioteca"
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight; width: parent.width
+                        elide: Text.ElideRight
                     }
                 }
             }
 
-            // Controls + seek
-            Column {
-                width: parent.width * 0.45; height: parent.height; spacing: 2
-                anchors.verticalCenter: parent.verticalCenter
+            // Spacer
+            Item { Layout.fillWidth: true; Layout.preferredWidth: 1 }
+
+            // Controls + seek (45%)
+            ColumnLayout {
+                Layout.preferredWidth: parent.width * 0.40
+                Layout.fillHeight: true
+                spacing: 2
 
                 NowPlayingControls {
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    Layout.alignment: Qt.AlignHCenter
                     isPlaying: root.ps ? root.ps.isPlaying : false
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
-                    enabled: true
-                    opacity: 1.0
                     onPlayClicked: { if (root.ps) root.ps.togglePlay() }
                     onPrevClicked: { if (root.ps) root.ps.previous() }
                     onNextClicked: { if (root.ps) root.ps.next() }
@@ -87,28 +90,40 @@ Item {
                 }
 
                 NowPlayingSeekBar {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: parent.width
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
                     position: root.ps ? root.ps.position : 0
                     duration: root.ps ? root.ps.duration : 0
-                    enabled: root.ps ? root.ps.duration > 0 : false
-                    opacity: 1.0
                     onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                 }
             }
 
-            // Volume
-            Row {
-                width: parent.width * 0.22; height: parent.height
-                layoutDirection: Qt.RightToLeft; spacing: MichiTheme.spacing.sm
+            // Spacer
+            Item { Layout.fillWidth: true; Layout.preferredWidth: 1 }
+
+            // Volume + extra (22%)
+            RowLayout {
+                Layout.preferredWidth: parent.width * 0.20
+                Layout.fillHeight: true
+                layoutDirection: Qt.RightToLeft
+                spacing: MichiTheme.spacing.sm
 
                 NowPlayingVolume {
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.alignment: Qt.AlignVCenter
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
-                    enabled: true; opacity: 1.0
                     onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
                     onMuteClicked: { if (root.ps) root.ps.toggleMute() }
+                }
+
+                MichiIconButton {
+                    iconText: "⋯"
+                    tooltipText: "Reproducción"
+                    btnSize: 22
+                    Layout.alignment: Qt.AlignVCenter
+                    onClicked: {
+                        if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
+                    }
                 }
             }
         }
