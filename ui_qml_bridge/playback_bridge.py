@@ -79,38 +79,74 @@ class PlaybackBridge(QObject):
     def history(self):
         return self._nowplaying.history
 
-    @Slot()
+    @Slot(result=dict)
     def togglePlay(self):
-        self._nowplaying.togglePlay()
+        try:
+            self._nowplaying.togglePlay()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def next(self):
-        self._nowplaying.next()
+        try:
+            self._nowplaying.next()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def previous(self):
-        self._nowplaying.previous()
+        try:
+            self._nowplaying.previous()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def setVolume(self, volume: int):
-        self._nowplaying.setVolume(volume)
+        try:
+            self._nowplaying.setVolume(volume)
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def toggleMute(self):
-        self._nowplaying.toggleMute()
+        try:
+            self._nowplaying.toggleMute()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def seek(self, position: int):
-        self._nowplaying.seek(position)
+        try:
+            self._nowplaying.seek(position)
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def toggleShuffle(self):
-        self._nowplaying.toggleShuffle()
+        try:
+            self._nowplaying.toggleShuffle()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def toggleRepeat(self):
-        self._nowplaying.toggleRepeat()
+        try:
+            self._nowplaying.toggleRepeat()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def seekRelative(self, seconds: int):
-        self._nowplaying.seekRelative(seconds)
+        try:
+            self._nowplaying.seekRelative(seconds)
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
