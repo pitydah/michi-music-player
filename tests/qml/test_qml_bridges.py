@@ -163,7 +163,7 @@ def test_sidebar_contains_reproduccion_label():
 
 
 def test_sidebar_has_no_ajustes():
-    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    (QML_DIR / "shell" / "Sidebar.qml").read_text()
     # Settings is now a delivery core route, "Ajustes" label is acceptable in delivery model
 
 
@@ -176,7 +176,7 @@ def test_page_stack_has_explicit_radio_playlists():
 
 
 def test_sidebar_no_settings_ajustes():
-    sidebar = (QML_DIR / "shell" / "Sidebar.qml").read_text()
+    (QML_DIR / "shell" / "Sidebar.qml").read_text()
     # Settings is now a delivery core route
 
 

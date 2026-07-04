@@ -8,7 +8,6 @@ Item {
 
     property int volume: 80
     property bool muted: false
-    property bool enabled: true
 
     signal volumeAdjusted(int vol)
     signal muteClicked()

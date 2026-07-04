@@ -119,9 +119,9 @@ class PlaylistsBridge(QObject):
     def addTrackToPlaylist(self, pid: int, filepath: str = "", track_id: str = ""):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
-            if not filepath and not track_id and self._sel_ctx:
-                filepath = self._sel_ctx.selectedFilepath
-                track_id = self._sel_ctx.selectedTrackId
+        if not filepath and not track_id and self._sel_ctx:
+            filepath = self._sel_ctx.selectedFilepath
+            track_id = self._sel_ctx.selectedTrackId
         try:
             if not filepath and not track_id:
                 return {"ok": False, "error": "NO_SELECTION"}
@@ -169,10 +169,10 @@ class PlaylistsBridge(QObject):
                 fps = [t["filepath"] for t in tracks if t.get("filepath")]
                 if not fps:
                     return {"ok": False, "error": "NO_TRACKS"}
-                from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
-                np = NowPlayingBridge()
-                result = np.enqueueSong(fps[0])
-                return result
+                if self._player and hasattr(self._player, 'enqueue'):
+                    self._player.enqueue(fps, play_now=False)
+                    return {"ok": True, "count": len(fps)}
+                return {"ok": False, "error": "UNSUPPORTED"}
             return {"ok": False, "error": "NO_TRACKS"}
         except Exception as e:
             return {"ok": False, "error": str(e)}

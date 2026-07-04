@@ -710,18 +710,18 @@ class TestNowPlayingBarMigration:
         assert '"NO"' not in content, "NowPlayingBar still has NO placeholder"
         assert '"Sin reproducción"' in content, "NowPlayingBar missing empty state text"
 
-    def test_nowplaying_controls_has_enabled_property(self):
+    def test_nowplaying_controls_has_enabled_support(self):
         content = (QML_DIR / "components" / "NowPlayingControls.qml").read_text()
-        assert "property bool enabled" in content, "NowPlayingControls missing enabled property"
         assert "opacity:" in content, "NowPlayingControls missing opacity for disabled state"
+        assert "enabled" in content, "NowPlayingControls missing enabled usage"
 
-    def test_nowplaying_seek_has_enabled_property(self):
+    def test_nowplaying_seek_has_enabled_support(self):
         content = (QML_DIR / "components" / "NowPlayingSeekBar.qml").read_text()
-        assert "property bool enabled" in content, "NowPlayingSeekBar missing enabled property"
+        assert "root.enabled" in content, "NowPlayingSeekBar missing enabled usage"
 
-    def test_nowplaying_volume_has_enabled_property(self):
+    def test_nowplaying_volume_has_enabled_support(self):
         content = (QML_DIR / "components" / "NowPlayingVolume.qml").read_text()
-        assert "property bool enabled" in content, "NowPlayingVolume missing enabled property"
+        assert "root.enabled" in content, "NowPlayingVolume missing enabled usage"
 
     def test_nowplaying_bar_no_full_border(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
@@ -874,6 +874,27 @@ class TestNowPlayingBarMigration:
     def test_page_header_exists(self):
         p = QML_DIR / "components" / "PageHeader.qml"
         assert p.exists(), "Missing PageHeader.qml"
+
+    def test_filter_chip_implicit_width(self):
+        content = (QML_DIR / "components" / "FilterChip.qml").read_text()
+        assert "implicitWidth" in content, "FilterChip missing implicitWidth"
+
+    def test_no_enabled_property_shadowing(self):
+        for name in ("MichiSlider.qml", "NowPlayingControls.qml", "NowPlayingSeekBar.qml", "NowPlayingVolume.qml"):
+            content = (QML_DIR / "components" / name).read_text()
+            assert "property bool enabled" not in content, f"{name} still declares enabled property"
+
+    def test_appshell_no_palette_shadowing(self):
+        content = (QML_DIR / "shell" / "AppShell.qml").read_text()
+        assert "palette:" not in content, "AppShell still shadows palette"
+
+    def test_shortcut_layer_no_palette_shadowing(self):
+        content = (QML_DIR / "shell" / "ShortcutLayer.qml").read_text()
+        assert "palette:" not in content, "ShortcutLayer still shadows palette"
+
+    def test_home_audio_bridge_registered(self):
+        content = (QML_DIR / ".." / "ui_qml_bridge" / "qml_main.py").read_text()
+        assert "homeAudioBridge" in content, "HomeAudioBridge not registered in qml_main.py"
 
 
 class TestActionButtonNotPresent:

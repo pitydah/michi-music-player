@@ -53,6 +53,7 @@ Item {
                     spacing: MichiTheme.spacing.md
 
                     NowPlayingCover {
+                        id: coverArt
                         anchors.verticalCenter: parent.verticalCenter
                         coverKey: root.ps ? root.ps.coverPath : ""
                         placeholderMode: !root._hasTrack
@@ -62,6 +63,7 @@ Item {
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 3
+                        width: Math.max(120, parent.width - coverArt.width - statusBadge.width - MichiTheme.spacing.md * 2)
 
                         Text {
                             text: root._hasTrack && root.ps ? root.ps.trackTitle : root._emptyLabel
@@ -69,7 +71,7 @@ Item {
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
                             elide: Text.ElideRight
-                            width: parent.width - 60
+                            width: parent.width
                         }
 
                         Text {
@@ -79,12 +81,14 @@ Item {
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
                             elide: Text.ElideRight
-                            width: parent.width - 60
+                            width: parent.width
                         }
                     }
 
                     Column {
+                        id: statusBadge
                         anchors.verticalCenter: parent.verticalCenter
+                        width: visible ? implicitWidth : 0
                         spacing: 2
                         visible: !root._canPlay
                         StatusBadge { text: "Safe mode"; kind: "experimental" }
