@@ -548,6 +548,29 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(str, result=dict)
+    def addMedia(self, path: str):
+        if not path:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        p = Path(path)
+        if not p.exists():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
+        try:
+            from core.file_actions import FileActions
+            from core.paths import database_path
+            db_path = database_path()
+            actions = FileActions(db_path=db_path)
+            if p.is_dir():
+                actions.scan_path(path)
+                self.refresh()
+                return {"ok": True, "type": "folder", "path": path}
+            parent = str(p.parent)
+            actions.scan_path(parent)
+            self.refresh()
+            return {"ok": True, "type": "file", "path": path, "parent": parent}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     # ── Internal ──
 
     def _song_to_dict(self, s):

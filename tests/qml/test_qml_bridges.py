@@ -389,6 +389,18 @@ class TestLibraryBridge:
         assert result.get("ok") is False
         assert result.get("error") == "DIR_NOT_FOUND"
 
+    def test_add_media_empty(self):
+        bridge = LibraryBridge()
+        result = bridge.addMedia("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_PATH"
+
+    def test_add_media_not_found(self):
+        bridge = LibraryBridge()
+        result = bridge.addMedia("/nonexistent/file.mp3")
+        assert result.get("ok") is False
+        assert result.get("error") == "FILE_NOT_FOUND"
+
 
 class TestMichiAIBridge:
     def test_instantiate(self):
