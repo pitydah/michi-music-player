@@ -47,21 +47,27 @@ Item {
             }
         }
 
-        Rectangle {
-            height: 4; radius: 2
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+        Item {
+            height: 4
             anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left; anchors.leftMargin: 28
+            anchors.left: muteIcon.right; anchors.leftMargin: MichiTheme.spacing.xs
             anchors.right: parent.right
-            clip: true
 
             Rectangle {
-                width: parent.width * Math.min(1.0, root.volume / 100.0)
-                height: parent.height; radius: 2
-                color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
+                anchors.fill: parent
+                radius: 2
+                color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                clip: true
+
+                Rectangle {
+                    width: parent.width * Math.min(1.0, root.volume / 100.0)
+                    height: parent.height; radius: 2
+                    color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
+                }
             }
 
             MouseArea {
+                id: volumeMouse
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
@@ -71,4 +77,6 @@ Item {
             }
         }
     }
+
+    Item { id: muteIcon; width: 24; height: 24; visible: false }
 }

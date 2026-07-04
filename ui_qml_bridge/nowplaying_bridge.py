@@ -445,49 +445,74 @@ class NowPlayingBridge(QObject):
         self._emit_state()
         return {"ok": True}
 
-    @Slot()
+    @Slot(result=dict)
     def togglePlay(self):
         self._last_command = "togglePlay"
-        if self._player:
-            if self._is_playing:
-                call = self._player_call("pause")
-            else:
-                call = self._player_call("play_or_resume", "resume", "toggle")
-            if call:
-                call()
-                self._last_command_ok = True
-                self._playback_status = "playing" if not self._is_playing else "paused"
-                self._error_message = ""
-                self._emit_state()
-                return
-        if not self._backend_available:
+        if not self._player:
             self._last_command_ok = False
-            self._error_message = "Playback no disponible"
+            self._error_message = "No player service"
             self._emit_state()
-            return
+            return {"ok": False, "error": "NO_PLAYER"}
+        try:
+            if self._is_playing:
+                if hasattr(self._player, 'pause'):
+                    self._player.pause()
+                elif hasattr(self._player, 'pause'):
+                    self._player.pause()
+            else:
+                if hasattr(self._player, 'play_or_resume'):
+                    self._player.play_or_resume()
+                elif hasattr(self._player, 'resume'):
+                    self._player.resume()
+            self._playback_status = "paused" if self._is_playing else "playing"
+            self._last_command_ok = True
+            self._error_message = ""
+            self._emit_state()
+            return {"ok": True, "playing": not self._is_playing}
+        except Exception as e:
+            logger.warning("togglePlay failed: %s", e)
+            self._last_command_ok = False
+            self._error_message = str(e)
+            self._emit_state()
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def next(self):
         self._last_command = "next"
-        call = self._player_call("play_next", "next")
-        if call:
-            call()
+        if not self._player:
+            return {"ok": False, "error": "NO_PLAYER"}
+        try:
+            if hasattr(self._player, 'play_next'):
+                self._player.play_next()
+            elif hasattr(self._player, 'next'):
+                self._player.next()
             self._last_command_ok = True
-        else:
+            self._emit_state()
+            return {"ok": True}
+        except Exception as e:
+            logger.warning("next failed: %s", e)
             self._last_command_ok = False
-            self._error_message = "No se puede avanzar — backend no disponible"
-        self._emit_state()
+            self._emit_state()
+            return {"ok": False, "error": str(e)}
 
-    @Slot()
+    @Slot(result=dict)
     def previous(self):
         self._last_command = "previous"
-        call = self._player_call("play_prev", "previous")
-        if call:
-            call()
+        if not self._player:
+            return {"ok": False, "error": "NO_PLAYER"}
+        try:
+            if hasattr(self._player, 'play_prev'):
+                self._player.play_prev()
+            elif hasattr(self._player, 'previous'):
+                self._player.previous()
             self._last_command_ok = True
-        else:
+            self._emit_state()
+            return {"ok": True}
+        except Exception as e:
+            logger.warning("previous failed: %s", e)
             self._last_command_ok = False
-            self._error_message = "No se puede retroceder — backend no disponible"
+            self._emit_state()
+            return {"ok": False, "error": str(e)}
         self._emit_state()
 
     @Slot(int, result=dict)
