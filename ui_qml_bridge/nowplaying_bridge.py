@@ -147,27 +147,15 @@ class NowPlayingBridge(QObject):
     def _update_quality_info(self, filepath: str = ""):
         if not filepath:
             return
-        from pathlib import Path
-        ext = Path(filepath).suffix.lower().lstrip(".")
-        self._format_label = ext.upper() if ext else ""
-        try:
-            from mutagen import File
-            audio = File(filepath, easy=True)
-            if audio and hasattr(audio, 'info'):
-                info = audio.info
-                if hasattr(info, 'sample_rate') and info.sample_rate:
-                    self._sample_rate = f"{info.sample_rate} Hz"
-                if hasattr(info, 'bitrate') and info.bitrate:
-                    self._bitrate = f"{info.bitrate // 1000} kbps"
-                if hasattr(info, 'channels') and info.channels:
-                    self._channels = f"{info.channels}ch"
-                if hasattr(info, 'bits_per_sample') and info.bits_per_sample:
-                    self._bit_depth = f"{info.bits_per_sample} bit"
-        except Exception:
-            self._sample_rate = ""
-            self._bitrate = ""
-            self._channels = ""
-            self._bit_depth = ""
+        from ui_qml_bridge.audio_quality_adapter import probe as quality_probe
+        result = quality_probe(filepath)
+        if result.get("ok"):
+            self._format_label = result.get("format_label", "")
+            self._sample_rate = result.get("sample_rate", "")
+            self._bit_depth = result.get("bit_depth", "")
+            self._channels = result.get("channels", "")
+            self._bitrate = result.get("bitrate", "")
+            self._quality_label = result.get("quality_label", "")
 
     def _on_track(self, title: str = "", artist: str = "", album: str = ""):
         # Push current track to history if it's not a duplicate
@@ -382,15 +370,23 @@ class NowPlayingBridge(QObject):
 
     @Property(bool, notify=stateChanged)
     def seekSupported(self):
-        return self._player is not None
+        return self._player is not None and (self._duration > 0 or self._player is not None)
 
     @Property(bool, notify=stateChanged)
     def volumeSupported(self):
-        return self._player is not None
+        return self._player is not None and hasattr(self._player, 'set_volume')
+
+    @Property(bool, notify=stateChanged)
+    def nextSupported(self):
+        return self._player is not None and hasattr(self._player, 'play_next')
+
+    @Property(bool, notify=stateChanged)
+    def previousSupported(self):
+        return self._player is not None and hasattr(self._player, 'play_prev')
 
     @Property(bool, notify=stateChanged)
     def queueSupported(self):
-        return self._player is not None
+        return self._player is not None and hasattr(self._player, 'enqueue')
 
     @Property(bool, notify=stateChanged)
     def qualityInfoAvailable(self):

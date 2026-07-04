@@ -442,7 +442,7 @@ class TestLibraryBridgeContract:
 
         playback = FakePlayback()
         bridge = LibraryBridge(playback_ctrl=playback)
-        bridge._songs = [
+        bridge._base_songs = [
             SimpleNamespace(
                 filepath="http://example.com/song.flac",
                 title="Song Title",
