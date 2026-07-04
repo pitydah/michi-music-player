@@ -14,6 +14,9 @@ from audio.mpd.mpd_service_manager import MpdServiceManager
 from audio.mpd.mpd_config_builder import build_mpd_config
 from audio.mpd.mpd_errors import MpdConnectionError
 from core.settings_manager import get
+import logging
+
+logger = logging.getLogger("michi.service")
 
 
 class PlayerService(QObject):
@@ -65,6 +68,8 @@ class PlayerService(QObject):
     def _on_error(self, msg):
         if self._retry_url:
             self._retry_timer.start(2000)
+        elif msg and "GStreamer" in msg:
+            logger.debug("Engine error (suppressed): %s", msg)
         else:
             self.error_occurred.emit(msg)
 

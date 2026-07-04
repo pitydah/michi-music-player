@@ -665,9 +665,17 @@ class GStreamerEngine(QObject):
             self._on_media_finished_eos()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
-            logging.getLogger("michi.player").warning(
-                "GStreamer error: %s | %s", err, debug)
-            self.error_occurred.emit(f"GStreamer: {err}")
+            err_msg = str(err) if err else "Unknown"
+            log = logging.getLogger("michi.player")
+            # Stream errors (radio, network) are not fatal — log and clean up
+            is_stream_error = "SoupHTTPSrc" in debug or "streaming stopped" in debug
+            if is_stream_error:
+                log.warning("Stream error (non-fatal): %s", err_msg)
+                self._state = PlaybackState.STOPPED
+                self.state_changed.emit(self._state)
+            else:
+                log.warning("GStreamer error: %s | %s", err, debug)
+                self.error_occurred.emit(f"GStreamer: {err}")
             self._dff_running = False
             pipeline = self._pipeline
             bus_id = self._bus_id
@@ -682,8 +690,9 @@ class GStreamerEngine(QObject):
                         bus = pipeline.get_bus()
                         bus.disconnect(bus_id)
                         bus.remove_signal_watch()
-            self._state = PlaybackState.STOPPED
-            self.state_changed.emit(self._state)
+            if not is_stream_error:
+                self._state = PlaybackState.STOPPED
+                self.state_changed.emit(self._state)
             if self._file_handle:
                 with contextlib.suppress(Exception):
                     self._file_handle.close()
