@@ -193,7 +193,7 @@ def main():
     )
     selection_context_bridge = SelectionContextBridge()
     devices_bridge = DevicesBridge(sync_manager=sync_mgr)
-    playlists_bridge = PlaylistsBridge(db=db, selection_context=selection_context_bridge)
+    playlists_bridge = PlaylistsBridge(db=db, selection_context=selection_context_bridge, player_service=player_service)
     audio_lab_bridge = AudioLabBridge(db_conn=db_conn)
     settings_bridge = SettingsBridge()
     radio_bridge = RadioBridge(radio_manager=radio_mgr, player_service=player_service)

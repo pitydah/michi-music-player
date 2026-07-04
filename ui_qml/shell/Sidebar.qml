@@ -9,94 +9,43 @@ Item {
 
     property string currentRoute: "home"
     property bool collapsed: false
+    property bool deliveryMode: typeof appStateBridge !== "undefined" && appStateBridge ? appStateBridge.safeMode : false
     signal routeRequested(string route)
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
-
     Behavior on width { NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic } }
 
     SidebarMaterial {
         anchors.fill: parent
 
         Column {
-            anchors.fill: parent
-            spacing: 0
+            anchors.fill: parent; spacing: 0
 
             Column {
-                width: parent.width
-                anchors.topMargin: MichiTheme.spacing.xl
-                spacing: MichiTheme.spacing.xs
-                topPadding: MichiTheme.spacing.xl
-                bottomPadding: MichiTheme.spacing.sm
+                width: parent.width; anchors.topMargin: MichiTheme.spacing.xl
+                spacing: MichiTheme.spacing.xs; topPadding: MichiTheme.spacing.xl; bottomPadding: MichiTheme.spacing.sm
 
-                Row {
-                    anchors.left: parent.left
-                    anchors.leftMargin: MichiTheme.spacing.md
-                    spacing: MichiTheme.spacing.xs
-
-                    Text {
-                        text: "M"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.pageTitleSize
-                        font.weight: MichiTheme.typography.weightBold
-                        height: 36
-                    }
-
-                    Text {
-                        text: "P"
-                        color: MichiTheme.colors.accentBlue
-                        font.pixelSize: MichiTheme.typography.pageTitleSize
-                        font.weight: MichiTheme.typography.weightBold
-                        height: 36
-                    }
+                Row { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.xs
+                    Text { text: "M"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightBold; height: 36 }
+                    Text { text: "P"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightBold; height: 36 }
                 }
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: MichiTheme.spacing.lg
-                    text: "Music Player"
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    height: 18
-                    visible: !root.collapsed
-                }
+                Text { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.lg; text: "Music Player"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; height: 18; visible: !root.collapsed }
             }
 
-            Rectangle {
-                width: collapsed ? parent.width * 0.4 : parent.width - MichiTheme.spacing.xl * 2
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
+            Rectangle { width: collapsed ? parent.width * 0.4 : parent.width - MichiTheme.spacing.xl * 2; height: 1; color: MichiTheme.colors.borderSubtle; anchors.horizontalCenter: parent.horizontalCenter }
 
             Flickable {
-                width: parent.width
-                height: Math.min(contentHeight, parent.height - 180)
-                contentHeight: navColumn.height + MichiTheme.spacing.lg
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                interactive: contentHeight > height
+                width: parent.width; height: Math.min(contentHeight, parent.height - 180)
+                contentHeight: navColumn.height + MichiTheme.spacing.lg; clip: true
+                boundsBehavior: Flickable.StopAtBounds; interactive: contentHeight > height
 
                 Column {
                     id: navColumn
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    topPadding: MichiTheme.spacing.sm
-                    spacing: 2
+                    anchors.left: parent.left; anchors.right: parent.right
+                    topPadding: MichiTheme.spacing.sm; spacing: 2
 
                     Repeater {
-                        model: ListModel {
-                            ListElement { route: "home"; iconSource: "icons/sidebar_home.svg";         glyph: "IN"; label: "Inicio" }
-                            ListElement { route: "library"; iconSource: "icons/sidebar_library.svg";     glyph: "BL"; label: "Biblioteca" }
-                            ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg";            glyph: "MX"; label: "Mix" }
-                            ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg";     glyph: "RP"; label: "Reproducción" }
-                            ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; glyph: "SV"; label: "Conexiones" }
-                            ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg";        glyph: "RD"; label: "Radio" }
-                            ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; glyph: "PL"; label: "Playlists" }
-                            ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; glyph: "HA"; label: "Home Audio" }
-                            ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; glyph: "AI"; label: "Michi AI" }
-                            ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; glyph: "AL"; label: "Audio Lab" }
-                        }
+                        model: root.deliveryMode ? deliveryModel : fullModel
 
                         SidebarItem {
                             iconSource: Qt.resolvedUrl("../../" + model.iconSource)
@@ -119,33 +68,37 @@ Item {
                 kind: "experimental"
             }
 
-            Item {
-                width: parent.width
-                height: 40
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 28; height: 28; radius: MichiTheme.radiusPill
+            Item { width: parent.width; height: 40
+                Rectangle { anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
                     color: collapseBtn.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.collapsed ? ">" : "<"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: 14
-                        font.weight: MichiTheme.typography.weightBold
-                    }
-
-                    MouseArea {
-                        id: collapseBtn
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.collapsed = !root.collapsed
-                    }
+                    Text { anchors.centerIn: parent; text: root.collapsed ? ">" : "<"; color: MichiTheme.colors.textMuted; font.pixelSize: 14; font.weight: MichiTheme.typography.weightBold }
+                    MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
                 }
             }
         }
+    }
+
+    ListModel { id: fullModel
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; glyph: "IN"; label: "Inicio" }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; glyph: "BL"; label: "Biblioteca" }
+        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; glyph: "MX"; label: "Mix" }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; glyph: "RP"; label: "Reproducción" }
+        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; glyph: "SV"; label: "Conexiones" }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; glyph: "RD"; label: "Radio" }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; glyph: "PL"; label: "Playlists" }
+        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; glyph: "HA"; label: "Home Audio" }
+        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; glyph: "AI"; label: "Michi AI" }
+        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; glyph: "AL"; label: "Audio Lab" }
+    }
+
+    ListModel { id: deliveryModel
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; glyph: "IN"; label: "Inicio" }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; glyph: "BL"; label: "Biblioteca" }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; glyph: "RP"; label: "Reproducción" }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; glyph: "PL"; label: "Playlists" }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; glyph: "RD"; label: "Radio" }
+        ListElement { route: "settings"; iconSource: "icons/sidebar_servers.svg"; glyph: "SV"; label: "Ajustes" }
+        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_home_audio.svg"; glyph: "DG"; label: "Diagnóstico" }
     }
 }

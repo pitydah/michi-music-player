@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
@@ -99,5 +100,5 @@ class AppStateBridge(QObject):
         self._player_available = player_ok
         self._db_available = db_ok
         self._audio_status = audio_status if audio_status else ("available" if player_ok else "unavailable")
-        self._safe_mode = not player_ok
+        self._safe_mode = os.environ.get("MICHI_QML_DELIVERY_MODE") == "1" or not player_ok
         self.stateChanged.emit()
