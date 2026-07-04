@@ -62,8 +62,8 @@ class LibraryBridge(QObject):
         if self._filter_album:
             items = [s for s in items if (getattr(s, 'album_key', '') or getattr(s, 'album', '') or '') == self._filter_album]
         if self._filter_format:
-            fmt = self._filter_format.lower()
-            items = [s for s in items if (getattr(s, 'format', '') or '').lower() == fmt]
+            fmt = "." + self._filter_format.lower()
+            items = [s for s in items if (getattr(s, 'ext', '') or '').lower() == fmt]
         if self._filter_missing_artist:
             items = [s for s in items if not (getattr(s, 'artist', '') or '')]
         if self._filter_missing_album:
@@ -559,6 +559,32 @@ class LibraryBridge(QObject):
             import logging as _lg
             _lg.getLogger("michi.qml.addfolder").error("addFolder failed: %s", e, exc_info=True)
             return {"ok": False, "error": str(e)}
+
+    @Slot(result=str)
+    def getMusicFolder(self):
+        try:
+            from core.settings_manager import get as sg
+            return sg("general/music_folder") or os.path.expanduser("~/Música")
+        except Exception:
+            return os.path.expanduser("~/Música")
+
+    @Slot(str, result=dict)
+    def setMusicFolder(self, folder_path: str):
+        if not folder_path or not Path(folder_path).is_dir():
+            return {"ok": False, "error": "DIR_NOT_FOUND"}
+        try:
+            from core.settings_manager import set_ as ss
+            ss("general/music_folder", folder_path)
+            return {"ok": True, "path": folder_path}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=dict)
+    def scanMusicFolder(self):
+        folder = self.getMusicFolder()
+        if folder and Path(folder).is_dir():
+            return self.addFolder(folder)
+        return {"ok": False, "error": "MUSIC_FOLDER_NOT_FOUND"}
 
     @Slot(str, result=dict)
     def addMedia(self, path: str):

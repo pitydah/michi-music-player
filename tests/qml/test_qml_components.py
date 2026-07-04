@@ -757,14 +757,15 @@ class TestNowPlayingBarMigration:
         component = _load_qml(engine, "components/ExpandedNowPlayingPanel.qml")
         assert component.isReady()
 
-    def test_nowplaying_bar_has_expanded_panel(self):
+    def test_nowplaying_bar_has_controls(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
-        assert "ExpandedNowPlayingPanel" in content, "NowPlayingBar missing ExpandedNowPlayingPanel"
-        assert "_panelExpanded" in content, "NowPlayingBar missing panel toggle"
+        assert "NowPlayingControls" in content, "NowPlayingBar missing controls"
+        assert "NowPlayingVolume" in content, "NowPlayingBar missing volume"
+        assert "NowPlayingSeekBar" in content, "NowPlayingBar missing seek bar"
 
-    def test_nowplaying_bar_expanded_height(self):
+    def test_nowplaying_bar_has_navigation_button(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
-        assert "280" in content, "NowPlayingBar missing expanded panel height"
+        assert "navigationBridge.navigate" in content, "NowPlayingBar missing navigation"
 
     def test_song_row_has_play_button(self):
         content = (QML_DIR / "pages" / "library" / "SongRow.qml").read_text()

@@ -13,125 +13,109 @@ Item {
     property bool _canPlay: root.ps ? root.ps.backendAvailable : false
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property string _emptyLabel: "Sin reproducción"
-    property bool _panelExpanded: false
 
-    height: MichiTheme.nowPlayingHeight + (_panelExpanded ? 280 : 0)
+    height: MichiTheme.nowPlayingHeight
     visible: true
 
-    Behavior on height { NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic } }
-
-    Column {
+    Rectangle {
         anchors.fill: parent
-        spacing: 0
+        color: MichiTheme.colors.surfaceNowPlaying
 
         Rectangle {
-            width: parent.width
-            height: MichiTheme.nowPlayingHeight
-            color: MichiTheme.colors.surfaceNowPlaying
+            anchors.top: parent.top
+            width: parent.width; height: 1
+            color: MichiTheme.colors.surfaceNowPlayingBorder
+        }
 
-            Rectangle {
-                anchors.top: parent.top
-                width: parent.width; height: 1
-                color: MichiTheme.colors.surfaceNowPlayingBorder
-            }
+        Row {
+            anchors.fill: parent
+            anchors.leftMargin: MichiTheme.spacing.md
+            anchors.rightMargin: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.md
 
-            Rectangle {
-                anchors.top: parent.top
-                width: 40; height: 2
-                anchors.horizontalCenter: parent.horizontalCenter
-                radius: 1; color: MichiTheme.colors.accentBlue; opacity: 0.4
-            }
-
+            // Cover + info
             Row {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md
-                anchors.rightMargin: MichiTheme.spacing.md
+                width: parent.width * 0.25; height: parent.height
                 spacing: MichiTheme.spacing.md
 
-                Row {
-                    width: parent.width * 0.28; height: parent.height
-                    spacing: MichiTheme.spacing.md
-
-                    NowPlayingCover {
-                        id: coverArt
-                        anchors.verticalCenter: parent.verticalCenter
-                        coverKey: root.ps ? root.ps.coverPath : ""
-                        placeholderMode: !root._hasTrack
-                        opacity: root._hasTrack ? 1.0 : 0.5
-                    }
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 3
-                        width: Math.max(120, parent.width - coverArt.width - statusBadge.width - MichiTheme.spacing.md * 2)
-
-                        Text {
-                            text: root._hasTrack && root.ps ? root.ps.trackTitle : root._emptyLabel
-                            color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-
-                        Text {
-                            text: root._hasTrack && root.ps && root.ps.trackArtist
-                                  ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
-                                  : root._canPlay ? "Selecciona una canción desde Biblioteca" : "Playback no disponible"
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-                    }
-
-                    Column {
-                        id: statusBadge
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: visible ? implicitWidth : 0
-                        spacing: 2
-                        visible: !root._canPlay
-                        StatusBadge { text: "Safe mode"; kind: "experimental" }
-                    }
+                NowPlayingCover {
+                    id: coverArt
+                    anchors.verticalCenter: parent.verticalCenter
+                    coverKey: root.ps ? root.ps.coverPath : ""
+                    placeholderMode: !root._hasTrack
+                    opacity: root._hasTrack ? 1.0 : 0.5
                 }
 
                 Column {
-                    width: parent.width * 0.44; height: parent.height; spacing: 2
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 3
+                    width: parent.width - coverArt.width - MichiTheme.spacing.md
 
-                    NowPlayingControls {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        isPlaying: root.ps ? root.ps.isPlaying : false
-                        shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
-                        repeatMode: root.ps ? root.ps.repeatMode : "none"
-                        enabled: root._canPlay && root._hasTrack
-                        opacity: root._canPlay && root._hasTrack ? 1.0 : 0.45
-                        onPlayClicked: {
-                            if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
-                            if (root.ps) root.ps.togglePlay()
-                        }
-                        onPrevClicked: { if (root.ps) root.ps.previous() }
-                        onNextClicked: { if (root.ps) root.ps.next() }
-                        onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
-                        onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                    Text {
+                        text: root._hasTrack && root.ps ? root.ps.trackTitle : root._emptyLabel
+                        color: root._hasTrack ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                        elide: Text.ElideRight
+                        width: parent.width
                     }
 
-                    NowPlayingSeekBar {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        position: root.ps ? root.ps.position : 0
-                        duration: root.ps ? root.ps.duration : 0
-                        enabled: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false)
-                        opacity: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false) ? 1.0 : 0.45
-                        onSeekRequested: function(pos) {
-                            if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
-                            if (root.ps) root.ps.seek(pos)
-                        }
+                    Text {
+                        text: root._hasTrack && root.ps && root.ps.trackArtist
+                              ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
+                              : root._canPlay ? "Selecciona una canción desde Biblioteca" : "Playback no disponible"
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        elide: Text.ElideRight
+                        width: parent.width
                     }
                 }
+            }
+
+            // Controls + seek
+            Column {
+                width: parent.width * 0.45; height: parent.height
+                spacing: 2
+                anchors.verticalCenter: parent.verticalCenter
+
+                NowPlayingControls {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    isPlaying: root.ps ? root.ps.isPlaying : false
+                    shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
+                    repeatMode: root.ps ? root.ps.repeatMode : "none"
+                    enabled: root._canPlay && root._hasTrack
+                    opacity: root._canPlay && root._hasTrack ? 1.0 : 0.45
+                    onPlayClicked: {
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.togglePlay()
+                    }
+                    onPrevClicked: { if (root.ps) root.ps.previous() }
+                    onNextClicked: { if (root.ps) root.ps.next() }
+                    onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
+                    onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                }
+
+                NowPlayingSeekBar {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    position: root.ps ? root.ps.position : 0
+                    duration: root.ps ? root.ps.duration : 0
+                    enabled: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false)
+                    opacity: root._canPlay && root._hasTrack && (root.ps ? root.ps.duration > 0 : false) ? 1.0 : 0.45
+                    onSeekRequested: function(pos) {
+                        if (!root._canPlay) { if (root.notif) root.notif.showMessage("Playback no disponible", "warning"); return }
+                        if (root.ps) root.ps.seek(pos)
+                    }
+                }
+            }
+
+            // Volume
+            Row {
+                width: parent.width * 0.20; height: parent.height
+                layoutDirection: Qt.RightToLeft
+                spacing: MichiTheme.spacing.sm
 
                 NowPlayingVolume {
-                    anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.rightMargin: MichiTheme.spacing.md
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
                     enabled: root._canPlay && root._hasTrack
@@ -145,21 +129,27 @@ Item {
                         if (root.ps) root.ps.toggleMute()
                     }
                 }
-            }
 
-            MouseArea {
-                anchors.left: parent.left; width: parent.width * 0.28
-                anchors.top: parent.top; height: parent.height
-                cursorShape: root._canPlay && root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: { if (root._canPlay && root._hasTrack) root._panelExpanded = !root._panelExpanded }
+                MichiIconButton {
+                    iconText: "＋"
+                    tooltipText: "Cola"
+                    btnSize: 22
+                    anchors.verticalCenter: parent.verticalCenter
+                    onClicked: {
+                        if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
+                    }
+                }
             }
         }
 
-        ExpandedNowPlayingPanel {
-            width: parent.width
-            ps: root.ps
-            expanded: root._panelExpanded
-            onClosePanel: root._panelExpanded = false
+        MouseArea {
+            anchors.left: parent.left; width: parent.width * 0.25
+            anchors.top: parent.top; height: parent.height
+            cursorShape: root._canPlay && root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: {
+                if (root._canPlay && root._hasTrack && typeof navigationBridge !== "undefined")
+                    navigationBridge.navigate("playback")
+            }
         }
     }
 }
