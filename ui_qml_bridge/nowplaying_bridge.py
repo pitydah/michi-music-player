@@ -457,8 +457,6 @@ class NowPlayingBridge(QObject):
             if self._is_playing:
                 if hasattr(self._player, 'pause'):
                     self._player.pause()
-                elif hasattr(self._player, 'pause'):
-                    self._player.pause()
             else:
                 if hasattr(self._player, 'play_or_resume'):
                     self._player.play_or_resume()

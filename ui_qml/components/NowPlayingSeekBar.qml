@@ -11,10 +11,9 @@ Item {
     signal seekRequested(int pos)
 
     implicitHeight: 24
-    opacity: root.enabled ? 1.0 : 0.35
 
     Row {
-        anchors.centerIn: parent
+        anchors.fill: parent
         spacing: MichiTheme.spacing.sm
 
         Text {
@@ -25,9 +24,11 @@ Item {
         }
 
         Rectangle {
-            width: 180; height: 4; radius: 2
+            height: 4; radius: 2
             color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
             anchors.verticalCenter: parent.verticalCenter
+            anchors.left: timeLeft.right; anchors.leftMargin: MichiTheme.spacing.sm
+            anchors.right: timeRight.left; anchors.rightMargin: MichiTheme.spacing.sm
 
             Rectangle {
                 width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
@@ -48,12 +49,15 @@ Item {
         }
 
         Text {
+            id: timeRight
             text: formatTime(root.duration)
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             anchors.verticalCenter: parent.verticalCenter
         }
     }
+
+    Text { id: timeLeft; visible: false }
 
     function formatTime(secs) {
         if (secs <= 0) return "0:00"

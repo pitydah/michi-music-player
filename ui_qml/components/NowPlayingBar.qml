@@ -29,7 +29,7 @@ Item {
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.md
 
-            // Cover + info (25%)
+            // Cover + info (25%) — click navega a reproduccion
             RowLayout {
                 Layout.preferredWidth: parent.width * 0.22
                 Layout.fillHeight: true
@@ -64,6 +64,15 @@ Item {
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
+                    }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: {
+                        if (root._hasTrack && typeof navigationBridge !== "undefined")
+                            navigationBridge.navigate("playback")
                     }
                 }
             }
@@ -110,6 +119,7 @@ Item {
 
                 NowPlayingVolume {
                     Layout.alignment: Qt.AlignVCenter
+                    Layout.fillWidth: true
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
                     onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
@@ -125,15 +135,6 @@ Item {
                         if (typeof navigationBridge !== "undefined") navigationBridge.navigate("playback")
                     }
                 }
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            z: 5
-            onClicked: {
-                if (root._hasTrack && typeof navigationBridge !== "undefined")
-                    navigationBridge.navigate("playback")
             }
         }
     }
