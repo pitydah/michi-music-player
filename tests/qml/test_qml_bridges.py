@@ -348,26 +348,19 @@ class TestHomeAudioBridge:
     def test_default_state(self):
         bridge = HomeAudioBridge()
         assert bridge.homeAssistantState == "not_configured"
-        assert bridge.streamState == "concept"
+        assert bridge.snapcastState == "unavailable"
         assert len(bridge.devices) == 0
 
-    def test_configure_home_assistant(self):
+    def test_configure_home_assistant_returns_dict(self):
         bridge = HomeAudioBridge()
-        bridge.configureHomeAssistant()
+        result = bridge.configureHomeAssistant("host", 8123, "token")
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
 
     def test_open_diagnostics(self):
         bridge = HomeAudioBridge()
-        bridge.openDiagnostics()
-
-    def test_open_stream_concept(self):
-        bridge = HomeAudioBridge()
-        bridge.openStreamConcept()
-
-    def test_slots_exist(self):
-        bridge = HomeAudioBridge()
-        assert hasattr(bridge, 'configureHomeAssistant')
-        assert hasattr(bridge, 'openDiagnostics')
-        assert hasattr(bridge, 'openStreamConcept')
+        result = bridge.openDiagnostics()
+        assert result.get("ok") is True
 
 
 class TestLibraryBridge:
@@ -1329,9 +1322,47 @@ class TestLyricsBridge:
 class TestHomeAudioV2Bridge:
     def test_home_audio_bridge_refresh(self):
         bridge = HomeAudioBridge()
-        bridge.refresh()
+        result = bridge.refresh()
+        assert result.get("ok") is True
         assert bridge.homeAssistantState == "not_configured"
 
     def test_home_audio_bridge_devices(self):
         bridge = HomeAudioBridge()
         assert len(bridge.devices) == 0
+
+    def test_home_audio_capabilities_no_controller(self):
+        bridge = HomeAudioBridge()
+        assert bridge.homeAssistantAvailable is False
+        assert bridge.snapcastAvailable is False
+        assert bridge.receiversAvailable is False
+        assert bridge.zonesSupported is False
+        assert bridge.groupingSupported is False
+        assert bridge.volumeSupported is False
+
+    def test_home_audio_configure_unsupported_without_ha(self):
+        bridge = HomeAudioBridge()
+        result = bridge.configureHomeAssistant("192.168.1.100", 8123, "token")
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_home_audio_discover_receivers_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.discoverReceivers()
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_home_audio_set_zone_volume_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.setZoneVolume("zone1", 0.5)
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_home_audio_test_ha_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.testHomeAssistant()
+        assert result.get("ok") is False
+
+    def test_home_audio_assign_stream_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.assignStream("stream1")
+        assert result.get("ok") is False
