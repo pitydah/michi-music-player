@@ -113,6 +113,7 @@ Item {
             // Volume + extra (22%)
             RowLayout {
                 Layout.preferredWidth: parent.width * 0.20
+                Layout.maximumWidth: 160
                 Layout.fillHeight: true
                 layoutDirection: Qt.RightToLeft
                 spacing: MichiTheme.spacing.sm
@@ -120,6 +121,7 @@ Item {
                 NowPlayingVolume {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.fillWidth: true
+                    Layout.maximumWidth: 120
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
                     onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }

@@ -7,6 +7,7 @@ Item {
 
     property int position: 0
     property int duration: 0
+    property bool _enabled: root.enabled
 
     signal seekRequested(int pos)
 
@@ -17,30 +18,37 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Text {
+            id: timeLeft
             text: formatTime(root.position)
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             anchors.verticalCenter: parent.verticalCenter
         }
 
-        Rectangle {
-            height: 4; radius: 2
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+        Item {
+            height: 4
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: timeLeft.right; anchors.leftMargin: MichiTheme.spacing.sm
             anchors.right: timeRight.left; anchors.rightMargin: MichiTheme.spacing.sm
 
             Rectangle {
-                width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
-                height: parent.height; radius: 2
-                color: root.enabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
+                anchors.fill: parent
+                radius: 2
+                color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                clip: true
+
+                Rectangle {
+                    width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
+                    height: parent.height; radius: 2
+                    color: MichiTheme.colors.accentBlue
+                }
             }
 
             MouseArea {
                 anchors.fill: parent
-                cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    if (root.enabled && root.duration > 0) {
+                    if (root.duration > 0) {
                         var pct = mouse.x / width
                         root.seekRequested(Math.round(pct * root.duration))
                     }
@@ -56,8 +64,6 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
         }
     }
-
-    Text { id: timeLeft; visible: false }
 
     function formatTime(secs) {
         if (secs <= 0) return "0:00"
