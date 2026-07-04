@@ -646,6 +646,66 @@ class TestSprintNewPages:
         assert result.get("ok") is False  # No DB
 
 
+class TestNowPlayingBarMigration:
+    def test_nowplaying_bridge_has_backend_status(self):
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        bridge = NowPlayingBridge()
+        assert bridge.backendAvailable is False
+        assert bridge.playbackStatus == "unavailable"
+        assert bridge.safeMode is True
+        assert bridge.errorMessage == ""
+
+    def test_nowplaying_bridge_commands_recorded(self):
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        bridge = NowPlayingBridge()
+        bridge.togglePlay()
+        assert bridge.lastCommand == "togglePlay"
+        bridge.next()
+        assert bridge.lastCommand == "next"
+        bridge.previous()
+        assert bridge.lastCommand == "previous"
+        bridge.seek(30)
+        assert bridge.lastCommand == "seek"
+
+    def test_nowplaying_bridge_seek_no_duration(self):
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        bridge = NowPlayingBridge()
+        bridge.seek(30)
+        assert not bridge.lastCommandOk
+
+    def test_nowplaying_bridge_volume_clamped(self):
+        from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        bridge = NowPlayingBridge(player_service=object())
+        bridge.setVolume(-10)
+        assert bridge.volume == 0
+        bridge.setVolume(150)
+        assert bridge.volume == 100
+
+    def test_nowplaying_bar_has_queue_panel(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "notificationBridge" in content  # notification integrated
+
+    def test_nowplaying_queue_panel_exists(self):
+        p = QML_DIR / "components" / "NowPlayingQueuePanel.qml"
+        assert p.exists(), "Missing NowPlayingQueuePanel.qml"
+
+    def test_nowplaying_queue_panel_instantiate(self, engine):
+        component = _load_qml(engine, "components/NowPlayingQueuePanel.qml")
+        assert component.isReady()
+
+    def test_nowplaying_bar_has_notification_bridge(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "notificationBridge" in content, "NowPlayingBar missing notificationBridge"
+
+    def test_nowplaying_bar_has_backend_status(self):
+        content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
+        assert "backendAvailable" in content, "NowPlayingBar missing backend status"
+
+    def test_nowplaying_info_has_backend_param(self):
+        content = (QML_DIR / "components" / "NowPlayingInfo.qml").read_text()
+        assert "backendAvailable" in content, "NowPlayingInfo missing backendAvailable"
+
+
 class TestActionButtonNotPresent:
     def test_action_button_not_in_components(self):
         qmldir = QML_DIR / "components" / "qmldir"

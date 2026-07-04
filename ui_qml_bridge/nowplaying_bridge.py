@@ -70,6 +70,16 @@ class NowPlayingBridge(QObject):
         self._shuffle_enabled = False
         self._queue: list[dict[str, Any]] = []
         self._history: list[dict[str, Any]] = []
+        self._backend_available = False
+        self._playback_status = "unavailable"
+        self._error_message = ""
+        self._last_command = ""
+        self._last_command_ok = False
+        self._safe_mode = False
+
+        self._backend_available = self._player is not None
+        self._playback_status = "idle" if self._backend_available else "unavailable"
+        self._safe_mode = not self._backend_available
 
         self._connect_player()
         self.refresh()
@@ -154,6 +164,14 @@ class NowPlayingBridge(QObject):
     def _on_state(self, state):
         normalized = str(state).lower()
         self._is_playing = normalized in {"playing", "resumed"}
+        if normalized == "playing":
+            self._playback_status = "playing"
+        elif normalized in ("paused", "pause"):
+            self._playback_status = "paused"
+        elif normalized in ("stopped", "stop"):
+            self._playback_status = "stopped"
+        elif normalized in ("error", "failed"):
+            self._playback_status = "error"
         self._emit_state()
 
     def _on_position(self, seconds: float):
@@ -280,8 +298,33 @@ class NowPlayingBridge(QObject):
     def history(self):
         return self._history
 
+    @Property(bool, notify=stateChanged)
+    def backendAvailable(self):
+        return self._backend_available
+
+    @Property(str, notify=stateChanged)
+    def playbackStatus(self):
+        return self._playback_status
+
+    @Property(str, notify=stateChanged)
+    def errorMessage(self):
+        return self._error_message
+
+    @Property(str, notify=stateChanged)
+    def lastCommand(self):
+        return self._last_command
+
+    @Property(bool, notify=stateChanged)
+    def lastCommandOk(self):
+        return self._last_command_ok
+
+    @Property(bool, notify=stateChanged)
+    def safeMode(self):
+        return self._safe_mode
+
     @Slot()
     def togglePlay(self):
+        self._last_command = "togglePlay"
         if self._player:
             if self._is_playing:
                 call = self._player_call("pause")
@@ -289,47 +332,81 @@ class NowPlayingBridge(QObject):
                 call = self._player_call("play_or_resume", "resume", "toggle")
             if call:
                 call()
+                self._last_command_ok = True
+                self._playback_status = "playing" if not self._is_playing else "paused"
+                self._error_message = ""
+                self._emit_state()
                 return
         self._is_playing = not self._is_playing
+        self._last_command_ok = not self._backend_available
+        self._error_message = "Playback no disponible" if not self._backend_available else ""
         self._emit_state()
 
     @Slot()
     def next(self):
+        self._last_command = "next"
         call = self._player_call("play_next", "next")
         if call:
             call()
+            self._last_command_ok = True
+        else:
+            self._last_command_ok = False
+            self._error_message = "No se puede avanzar — backend no disponible"
         self._emit_state()
 
     @Slot()
     def previous(self):
+        self._last_command = "previous"
         call = self._player_call("play_prev", "previous")
         if call:
             call()
+            self._last_command_ok = True
+        else:
+            self._last_command_ok = False
+            self._error_message = "No se puede retroceder — backend no disponible"
         self._emit_state()
 
     @Slot(int)
     def setVolume(self, volume: int):
+        self._last_command = "setVolume"
         self._volume = max(0, min(100, int(volume)))
         self._muted = self._volume == 0
         call = self._player_call("set_volume")
         if call:
             call(self._volume)
+            self._last_command_ok = True
+        else:
+            self._last_command_ok = False
         self._emit_state()
 
     @Slot()
     def toggleMute(self):
+        self._last_command = "toggleMute"
         self._muted = not self._muted
         call = self._player_call("set_volume")
         if call:
             call(0 if self._muted else self._volume)
+            self._last_command_ok = True
+        else:
+            self._last_command_ok = False
         self._emit_state()
 
     @Slot(int)
     def seek(self, position: int):
-        self._position = max(0, min(int(position), self._duration or int(position)))
+        self._last_command = "seek"
+        if self._duration <= 0:
+            self._last_command_ok = False
+            self._error_message = "No se puede buscar — duración desconocida"
+            self._emit_state()
+            return
+        self._position = max(0, min(int(position), self._duration))
         call = self._player_call("seek")
         if call:
             call(self._position)
+            self._last_command_ok = True
+            self._error_message = ""
+        else:
+            self._last_command_ok = False
         self._emit_state()
 
     @Slot(int)
