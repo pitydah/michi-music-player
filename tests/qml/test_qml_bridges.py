@@ -752,6 +752,108 @@ class TestMixComponents:
         assert "MixBridge" in content, "qml_main missing MixBridge import"
         assert "mixBridge" in content, "qml_main missing mixBridge context property"
 
+    def test_mix_favorites_uses_fav_db(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        db.get_favorites.return_value = ["/path/fav1.mp3", "/path/fav2.mp3"]
+        item1 = MagicMock(spec=MediaItem, filepath="/path/fav1.mp3", title="Fav1", artist="A1",
+                          album="Al1", duration=100, id=1, play_count=0, last_played=0)
+        item2 = MagicMock(spec=MediaItem, filepath="/path/fav2.mp3", title="Fav2", artist="A2",
+                          album="Al2", duration=200, id=2, play_count=0, last_played=0)
+        item3 = MagicMock(spec=MediaItem, filepath="/path/other.mp3", title="Other", artist="O",
+                          album="O", duration=300, id=3, play_count=0, last_played=0)
+        db.fetch_all.return_value = [item1, item2, item3]
+        bridge = MixBridge(db=db)
+        bridge.loadMix("favorites")
+        assert len(bridge.currentSongs) == 2, "Expected 2 favorites"
+        fps = [s["filepath"] for s in bridge.currentSongs]
+        assert "/path/fav1.mp3" in fps
+        assert "/path/other.mp3" not in fps
+
+    def test_mix_recent_uses_last_played(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        item1 = MagicMock(spec=MediaItem, filepath="/old.mp3", title="Old", artist="A",
+                          album="Al", duration=100, id=1, play_count=5, last_played=100.0)
+        item2 = MagicMock(spec=MediaItem, filepath="/new.mp3", title="New", artist="B",
+                          album="Bl", duration=200, id=2, play_count=1, last_played=200.0)
+        item3 = MagicMock(spec=MediaItem, filepath="/never.mp3", title="Never", artist="C",
+                          album="Cl", duration=300, id=3, play_count=0, last_played=0)
+        db.fetch_all.return_value = [item1, item2, item3]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("recent")
+        assert len(bridge.currentSongs) == 2, "Expected 2 recent tracks"
+        assert bridge.currentSongs[0]["filepath"] == "/new.mp3", "Most recent first"
+
+    def test_mix_unplayed_excludes_played(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        db.fetch_all.return_value = [
+            MagicMock(spec=MediaItem, filepath="/a.mp3", title="A", artist="X",
+                      album="Y", duration=100, id=1, play_count=0, last_played=0),
+            MagicMock(spec=MediaItem, filepath="/b.mp3", title="B", artist="X",
+                      album="Y", duration=200, id=2, play_count=5, last_played=100.0),
+        ]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("unplayed")
+        assert len(bridge.currentSongs) == 1
+        assert bridge.currentSongs[0]["filepath"] == "/a.mp3"
+
+    def test_mix_most_played_orders_by_play_count(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        db.fetch_all.return_value = [
+            MagicMock(spec=MediaItem, filepath="/a.mp3", title="A", artist="X",
+                      album="Y", duration=100, id=1, play_count=1, last_played=100.0),
+            MagicMock(spec=MediaItem, filepath="/b.mp3", title="B", artist="X",
+                      album="Y", duration=200, id=2, play_count=10, last_played=200.0),
+            MagicMock(spec=MediaItem, filepath="/c.mp3", title="C", artist="X",
+                      album="Y", duration=300, id=3, play_count=0, last_played=0),
+        ]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("most_played")
+        assert len(bridge.currentSongs) == 2
+        assert bridge.currentSongs[0]["filepath"] == "/b.mp3", "Highest play count first"
+
+    def test_mix_daily_fallback_not_first_25(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        items = []
+        for i in range(50):
+            items.append(MagicMock(spec=MediaItem,
+                                   filepath=f"/track_{i}.mp3", title=f"T{i}",
+                                   artist="X", album="Y", duration=100, id=i,
+                                   play_count=0, last_played=0, created_at=float(i),
+                                   genre="", _fields={}))
+        db.fetch_all.return_value = items
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("daily_mix")
+        # Should have max 25 items
+        assert len(bridge.currentSongs) <= 25
+        # Verify not hardcoded to first indices — since no recent plays,
+        # fallback sorts by created_at DESC, newest first
+        if len(bridge.currentSongs) > 0:
+            assert bridge.currentSongs[0]["filepath"] == "/track_49.mp3", "Should start from newest"
+
+    def test_mix_ai_requires_enabled(self):
+        from ui_qml_bridge.mix_bridge import MixBridge
+        bridge = MixBridge()
+        assert "ai_recommended" not in [c["id"] for c in bridge.categories]
+
 
 class TestPlaybackComponents:
     def test_playback_bridge_importable(self):
@@ -1152,7 +1254,6 @@ class TestLyricsBridge:
         assert synced[0]["time"] == 0
 
     def test_lyrics_cache_hit(self):
-        from unittest.mock import MagicMock
         from ui_qml_bridge.lyrics_bridge import LyricsBridge
         bridge = LyricsBridge()
         bridge._cache["test||artist||album||0"] = {

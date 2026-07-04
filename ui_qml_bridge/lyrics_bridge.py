@@ -91,10 +91,9 @@ class LyricsBridge(QObject):
         self._timeout_timer.timeout.connect(self._on_timeout)
 
         if self._np_bridge:
-            try:
+            from contextlib import suppress
+            with suppress(Exception):
                 self._np_bridge.trackChanged.connect(self._on_track_changed)
-            except Exception:
-                pass
 
     # ── Properties ──
 
@@ -187,8 +186,6 @@ class LyricsBridge(QObject):
         if self._np_bridge:
             title = getattr(self._np_bridge, 'trackTitle', '') or ''
             artist = getattr(self._np_bridge, 'trackArtist', '') or ''
-            album = getattr(self._np_bridge, 'trackAlbum', '') or ''
-            duration = getattr(self._np_bridge, 'trackDuration', 0) or 0
             if title and artist and (title != self._current_title or artist != self._current_artist):
                 self.searchCurrentTrack()
 
