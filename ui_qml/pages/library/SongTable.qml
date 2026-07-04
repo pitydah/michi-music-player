@@ -85,8 +85,34 @@ Item {
                     }
                 }
                 onQueueClicked: { visible = false }
-                onAddToPlaylistClicked: { visible = false }
-                onEditMetadataClicked: { visible = false }
+                onAddToPlaylistClicked: {
+                    visible = false
+                    if (typeof selectionContextBridge !== "undefined" && selectionContextBridge) {
+                        selectionContextBridge.setSelected({
+                            "id": modelData.id || "",
+                            "title": modelData.title || "",
+                            "artist": modelData.artist || "",
+                            "album": modelData.album || "",
+                            "filepath": modelData.filepath || ""
+                        })
+                    }
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.navigate("playlists")
+                }
+                onEditMetadataClicked: {
+                    visible = false
+                    if (typeof selectionContextBridge !== "undefined" && selectionContextBridge) {
+                        selectionContextBridge.setSelected({
+                            "id": modelData.id || "",
+                            "title": modelData.title || "",
+                            "artist": modelData.artist || "",
+                            "album": modelData.album || "",
+                            "filepath": modelData.filepath || ""
+                        })
+                    }
+                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                        navigationBridge.navigate("metadata_inspector")
+                }
                 onShowInLibraryClicked: { visible = false }
             }
 

@@ -38,6 +38,7 @@ from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
 from ui_qml_bridge.eq_bridge import EqBridge
 from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
 from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
 
 logger = logging.getLogger("michi.qml")
 
@@ -190,6 +191,7 @@ def main():
     smart_tagging_bridge = SmartTaggingBridge()
     library_doctor_bridge = LibraryDoctorBridge(db=db)
     disc_lab_bridge = DiscLabBridge()
+    selection_context_bridge = SelectionContextBridge()
     try:
         from ui.audio_lab.services.smart_tagging_service import SmartTaggingService
         smart_tagging_bridge.set_service(SmartTaggingService())
@@ -216,6 +218,7 @@ def main():
     engine.rootContext().setContextProperty("smartTaggingBridge", smart_tagging_bridge)
     engine.rootContext().setContextProperty("libraryDoctorBridge", library_doctor_bridge)
     engine.rootContext().setContextProperty("discLabBridge", disc_lab_bridge)
+    engine.rootContext().setContextProperty("selectionContextBridge", selection_context_bridge)
     if eq_bridge:
         engine.rootContext().setContextProperty("eqBridge", eq_bridge)
 

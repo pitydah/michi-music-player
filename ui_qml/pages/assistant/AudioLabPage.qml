@@ -107,6 +107,7 @@ Item {
                     title: "Smart Tagging"; subtitle: "Sugerencias de metadatos"
                     variant: "accent"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("smart_tagging") }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
                 }
 
                 GlassCard {
@@ -114,6 +115,7 @@ Item {
                     title: "Ecualizador"; subtitle: "Ajuste de frecuencias"
                     variant: "base"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("eq") }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
                 }
 
                 GlassCard {
@@ -121,6 +123,7 @@ Item {
                     title: "Library Doctor"; subtitle: "Diagnóstico de biblioteca"
                     variant: "base"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("library_doctor") }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
                 }
 
                 GlassCard {
@@ -128,6 +131,15 @@ Item {
                     title: "Disc Lab"; subtitle: "Laboratorio de discos"
                     variant: "base"
                     onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("disc_lab") }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Experimental"; kind: "experimental" }
+                }
+
+                GlassCard {
+                    width: (parent.width - MichiTheme.spacing.md) / 2; height: 80
+                    title: "Inspector metadata"; subtitle: "Edición de campos"
+                    variant: "accent"
+                    onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("metadata_inspector") }
+                    StatusBadge { anchors.top: parent.top; anchors.right: parent.right; anchors.margins: MichiTheme.spacing.sm; text: "Funcional"; kind: "success" }
                 }
             }
 

@@ -17,10 +17,15 @@ class EqBridge(QObject):
         self._presets = []
         self._current_preset = "Plano"
         self._preamp = 0.0
+        self._backend_available = False
 
     @Property(bool, notify=stateChanged)
     def bypass(self):
         return self._bypass
+
+    @Property(bool, notify=stateChanged)
+    def backendAvailable(self):
+        return self._backend_available
 
     @Property("QVariantList", notify=stateChanged)
     def presets(self):
@@ -44,8 +49,9 @@ class EqBridge(QObject):
         except Exception:
             logger.debug("EQ refresh failed", exc_info=True)
             self._presets = [{"name": "Plano", "bands": [0.0] * 10}]
+        self._backend_available = bool(self._player and hasattr(self._player, 'get_eq_state'))
         try:
-            if self._player and hasattr(self._player, 'get_eq_state'):
+            if self._backend_available:
                 state = self._player.get_eq_state()
                 if state:
                     self._bypass = state.get("bypass", False)
