@@ -345,15 +345,7 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self, limit: int = 0):
-        if self._db:
-            if limit > 0 and hasattr(self._db, 'get_all'):
-                self._base_songs = self._db.get_all()[:limit] if not hasattr(self._db, 'get_all_paginated') else self._db.get_all_paginated(limit=limit)
-            elif hasattr(self._db, 'fetch_all'):
-                self._base_songs = self._db.fetch_all() or []
-            elif hasattr(self._db, 'get_all'):
-                self._base_songs = self._db.get_all() or []
-        self._invalidate_view()
-        self._refresh_albums_artists()
+        # Always refresh track model (paginated via QueryService)
         if self._track_model:
             self._track_model.refresh(
                 search=self._search_query,
@@ -363,11 +355,34 @@ class LibraryBridge(QObject):
                 sort=self._sort_key,
                 asc=self._sort_asc,
             )
+        # Legacy full load only when no paginated model is active
+        if not self._query_svc and self._db:
+            if hasattr(self._db, 'fetch_all'):
+                self._base_songs = self._db.fetch_all() or []
+            elif hasattr(self._db, 'get_all'):
+                self._base_songs = self._db.get_all() or []
+        self._invalidate_view()
+        self._refresh_albums_artists()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "count": len(self._base_songs)}
 
     # ── Playback actions (single) ──
+
+    @Slot(int, result=dict)
+    def playTrackById(self, track_id: int):
+        if not track_id or not self._db:
+            return {"ok": False, "error": "NOT_FOUND"}
+        try:
+            if hasattr(self._db, 'conn'):
+                row = self._db.conn.execute(
+                    "SELECT filepath FROM media_items WHERE id=? AND deleted_at IS NULL", (track_id,)
+                ).fetchone()
+                if row and row[0]:
+                    return self.play_song(row[0])
+            return {"ok": False, "error": "NOT_FOUND"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
     def play_song(self, filepath: str):

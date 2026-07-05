@@ -123,9 +123,27 @@ class LibraryQueryService:
         clauses = []
         params: list = []
         if search:
-            clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ?)")
-            p = f"%{search}%"
-            params.extend([p, p, p])
+            # Try FTS5 first
+            if hasattr(self._db, 'conn'):
+                try:
+                    fts_test = self._db.conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
+                    ).fetchone()
+                    if fts_test:
+                        clauses.append("(rowid IN (SELECT rowid FROM media_fts WHERE media_fts MATCH ?))")
+                        params.append(f"*{search}*")
+                    else:
+                        clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? COLLATE NOCASE)")
+                        p = f"%{search}%"
+                        params.extend([p, p, p])
+                except Exception:
+                    clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? COLLATE NOCASE)")
+                    p = f"%{search}%"
+                    params.extend([p, p, p])
+            else:
+                clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? COLLATE NOCASE)")
+                p = f"%{search}%"
+                params.extend([p, p, p])
         if artist:
             clauses.append("(COALESCE(NULLIF(albumartist,''), artist, '') = ? OR artist = ?)")
             params.extend([artist, artist])
@@ -141,19 +159,52 @@ class LibraryQueryService:
         where = "AND " + " AND ".join(clauses) if clauses else ""
         return where, params
 
-    def _sort_column(self, sort: str) -> str:
-        mapping = {
-            "title": "LOWER(COALESCE(title, ''))",
-            "artist": "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))",
-            "album": "LOWER(COALESCE(album, ''))",
-            "year": "COALESCE(year, 0)",
-            "duration": "COALESCE(duration, 0)",
-            "format": "LOWER(COALESCE(ext, ''))",
-            "name": "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))",
-            "added": "COALESCE(created_at, 0)",
-            "play_count": "COALESCE(play_count, 0)",
-        }
-        return mapping.get(sort, "LOWER(COALESCE(title, ''))")
+    _TRACK_SORT_COLUMNS = {
+        "title": "LOWER(COALESCE(title, ''))",
+        "artist": "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))",
+        "album": "LOWER(COALESCE(album, ''))",
+        "year": "COALESCE(year, 0)",
+        "duration": "COALESCE(duration, 0)",
+        "format": "LOWER(COALESCE(ext, ''))",
+        "name": "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))",
+        "added": "COALESCE(created_at, 0)",
+        "play_count": "COALESCE(play_count, 0)",
+    }
+
+    _ALBUM_SORT_COLUMNS = {
+        "year": "MIN(year)",
+        "title": "LOWER(COALESCE(MIN(album), ''))",
+        "artist": "LOWER(COALESCE(MIN(NULLIF(albumartist,'')), MIN(artist), ''))",
+        "duration": "SUM(COALESCE(duration, 0))",
+        "track_count": "COUNT(*)",
+    }
+
+    _ARTIST_SORT_COLUMNS = {
+        "name": "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))",
+        "track_count": "COUNT(*)",
+        "album_count": "COUNT(DISTINCT COALESCE(album, ''))",
+    }
+
+    def _sort_column(self, sort: str, table: str = "tracks") -> str:
+        if table == "albums":
+            return self._ALBUM_SORT_COLUMNS.get(sort, "MIN(year)")
+        if table == "artists":
+            return self._ARTIST_SORT_COLUMNS.get(sort, "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))")
+        return self._TRACK_SORT_COLUMNS.get(sort, "LOWER(COALESCE(title, ''))")
+
+    @property
+    def search_backend(self) -> str:
+        if not self._db:
+            return "none"
+        try:
+            if hasattr(self._db, 'conn'):
+                row = self._db.conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
+                ).fetchone()
+                return "fts5" if row else "like"
+        except Exception:
+            pass
+        return "none"
 
     def _row_to_dict(self, r) -> dict:
         return {
