@@ -220,6 +220,35 @@ def main():
     except Exception as e:
         logger.debug("GlobalSearchBridge init failed: %s", e)
 
+    # Register ActionRegistry and CommandPaletteBridge
+    try:
+        from ui_qml_bridge.action_registry import ActionRegistry
+        from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
+        _actions = ActionRegistry()
+        registrar.register("actionRegistry", _actions)
+        cp_bridge = CommandPaletteBridge(
+            action_registry=_actions,
+            navigation_bridge=all_bridges.get("navigation"),
+            nowplaying_bridge=all_bridges.get("nowplaying"),
+        )
+        registrar.register("commandPaletteBridge", cp_bridge)
+    except Exception as e:
+        logger.debug("ActionRegistry/CommandPalette init failed: %s", e)
+
+    # Register CoverProviderBridge
+    try:
+        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+        registrar.register("coverProviderBridge", CoverProviderBridge(db=services.db))
+    except Exception as e:
+        logger.debug("CoverProviderBridge init failed: %s", e)
+
+    # Register JobBridge
+    try:
+        from ui_qml_bridge.job_bridge import JobBridge
+        registrar.register("jobBridge", JobBridge(worker_manager=services.worker_manager))
+    except Exception as e:
+        logger.debug("JobBridge init failed: %s", e)
+
     # Set service availability on app state bridge
     app_state = factory.get("app_state")
     if app_state:
