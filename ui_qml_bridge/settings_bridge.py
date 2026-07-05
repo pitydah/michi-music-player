@@ -26,6 +26,7 @@ class SettingsBridge(QObject):
             {"id": "library", "title": "Biblioteca", "desc": "Carpetas, escaneo, organización"},
             {"id": "playback", "title": "Reproducción", "desc": "Salida de audio, volumen, crossfade"},
             {"id": "audio", "title": "Audio avanzado", "desc": "Hybrid Engine, MPD, DSP, EQ"},
+            {"id": "output", "title": "Salida", "desc": "Perfiles de salida, dispositivo, backend"},
             {"id": "michi_link", "title": "Michi Link", "desc": "Micro Server, Sync, red"},
             {"id": "privacy", "title": "Privacidad", "desc": "Recognition, datos, red local"},
             {"id": "experimental", "title": "Experimental", "desc": "Funciones en desarrollo"},
@@ -37,13 +38,9 @@ class SettingsBridge(QObject):
             from audio.output_profiles import PROFILES
             return [
                 {
-                    "key": p.key,
-                    "name": p.name,
-                    "description": p.description,
-                    "allows_eq": p.allows_eq,
-                    "allows_replaygain": p.allows_replaygain,
-                    "bitperfect": p.bitperfect,
-                    "preferred_backend": p.preferred_backend,
+                    "key": p.key, "name": p.name, "description": p.description,
+                    "allows_eq": p.allows_eq, "allows_replaygain": p.allows_replaygain,
+                    "bitperfect": p.bitperfect, "preferred_backend": p.preferred_backend,
                 }
                 for p in PROFILES.values()
             ]
@@ -59,14 +56,16 @@ class SettingsBridge(QObject):
         except Exception:
             return "standard"
 
-    @Slot(str)
+    @Slot(str, result=dict)
     def setActiveProfile(self, key: str):
         try:
             from core.settings_manager import set_ as settings_set
             settings_set("audio/profile", key)
             self.settingsChanged.emit()
-        except Exception:
+            return {"ok": True}
+        except Exception as e:
             logger.debug("Failed to set profile %s", key, exc_info=True)
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=str)
     def get(self, key: str):
@@ -74,14 +73,38 @@ class SettingsBridge(QObject):
             from core.settings_manager import get as settings_get
             return str(settings_get(key) or "")
         except Exception:
-            logger.debug("Settings get failed for %s", key, exc_info=True)
             return ""
 
-    @Slot(str, str)
+    @Slot(str, str, result=dict)
     def set(self, key: str, value: str):
         try:
             from core.settings_manager import set_ as settings_set
             settings_set(key, value)
             self.settingsChanged.emit()
-        except Exception:
+            return {"ok": True}
+        except Exception as e:
             logger.debug("Settings set failed for %s", key, exc_info=True)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=dict)
+    def getDSPState(self):
+        try:
+            from core.settings_manager import get as settings_get
+            return {
+                "ok": True,
+                "crossfade": settings_get("playback/crossfade") or 0,
+                "replaygain": settings_get("audio/replaygain") or "disabled",
+                "eq_enabled": settings_get("audio/eq_enabled") or False,
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, str, result=dict)
+    def setDSP(self, key: str, value: str):
+        try:
+            from core.settings_manager import set_ as settings_set
+            settings_set(f"audio/{key}", value)
+            self.settingsChanged.emit()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}

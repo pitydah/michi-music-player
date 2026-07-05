@@ -212,6 +212,14 @@ def main():
     if eq_bridge:
         registrar.register("eqBridge", eq_bridge)
 
+    # Register JobBridge
+    try:
+        from ui_qml_bridge.job_bridge import JobBridge
+        jb = JobBridge(worker_manager=services.worker_manager)
+        registrar.register("jobBridge", jb)
+    except Exception as e:
+        logger.debug("JobBridge init failed: %s", e)
+
     # Register GlobalSearchBridge
     try:
         from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
