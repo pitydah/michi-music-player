@@ -9,13 +9,16 @@ Item {
 
     property int volume: 80
     property bool muted: false
-    property bool _enabled: root.enabled
+    property bool _enabled_proxy: root.enabled
 
     signal volumeAdjusted(int vol)
     signal muteClicked()
 
     implicitHeight: 24
     implicitWidth: 100
+
+    Accessible.name: "Volumen"
+    Accessible.description: "Control de volumen de reproducción"
 
     RowLayout {
         anchors.fill: parent
@@ -24,6 +27,8 @@ Item {
         Item {
             Layout.preferredWidth: 22
             Layout.preferredHeight: 22
+            Accessible.name: "Silenciar"
+            Accessible.description: "Activar o desactivar el silencio"
             GlassMaterial {
                 anchors.fill: parent; radius: 11
                 variant: "status"

@@ -91,6 +91,11 @@ Item {
                     isPlaying: root.ps ? root.ps.isPlaying : false
                     shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
                     repeatMode: root.ps ? root.ps.repeatMode : "none"
+                    playPauseSupported: root.ps ? root.ps.playPauseSupported : false
+                    previousSupported: root.ps ? root.ps.previousSupported : false
+                    nextSupported: root.ps ? root.ps.nextSupported : false
+                    shuffleSupported: root.ps ? root.ps.shuffleSupported : false
+                    repeatSupported: root.ps ? root.ps.repeatSupported : false
                     onPlayClicked: { if (root.ps) root.ps.togglePlay() }
                     onPrevClicked: { if (root.ps) root.ps.previous() }
                     onNextClicked: { if (root.ps) root.ps.next() }
@@ -103,6 +108,7 @@ Item {
                     Layout.alignment: Qt.AlignHCenter
                     position: root.ps ? root.ps.position : 0
                     duration: root.ps ? root.ps.duration : 0
+                    enabled: root.ps ? root.ps.seekSupported : false
                     onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
                 }
             }

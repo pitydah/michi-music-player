@@ -10,6 +10,12 @@ Item {
     property bool shuffleEnabled: false
     property string repeatMode: "none"
 
+    property bool playPauseSupported: true
+    property bool previousSupported: true
+    property bool nextSupported: true
+    property bool shuffleSupported: true
+    property bool repeatSupported: true
+
     signal playClicked()
     signal prevClicked()
     signal nextClicked()
@@ -17,7 +23,6 @@ Item {
     signal repeatClicked()
 
     implicitHeight: 40
-    opacity: root.enabled ? 1.0 : 0.35
 
     Row {
         anchors.centerIn: parent
@@ -25,21 +30,23 @@ Item {
 
         MichiIconButton {
             iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
-            iconText: "S"
-            tooltipText: "Aleatorio"
+            iconText: ""
+            tooltipText: root.shuffleSupported ? "Aleatorio" : "No soportado por el backend actual"
             selected: root.shuffleEnabled
             btnSize: 34
-            enabled: root.enabled
-            onClicked: root.shuffleClicked()
+            enabled: root.shuffleSupported
+            opacity: root.shuffleSupported ? 1.0 : 0.35
+            onClicked: { if (root.shuffleSupported) root.shuffleClicked() }
         }
 
         MichiIconButton {
             iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
-            iconText: "<<"
-            tooltipText: "Anterior"
+            iconText: ""
+            tooltipText: root.previousSupported ? "Anterior" : "No soportado por el backend actual"
             btnSize: 34
-            enabled: root.enabled
-            onClicked: root.prevClicked()
+            enabled: root.previousSupported
+            opacity: root.previousSupported ? 1.0 : 0.35
+            onClicked: { if (root.previousSupported) root.prevClicked() }
         }
 
         Item {
@@ -49,7 +56,8 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: MichiTheme.radiusPill
-                color: root.enabled && maPlay.containsMouse ? Qt.rgba(1,1,1,0.12) : root.enabled ? MichiTheme.colors.accentBlue : Qt.rgba(0.561, 0.718, 1.0, 0.25)
+                color: root.playPauseSupported && maPlay.containsMouse ? MichiTheme.colors.accentBlue : root.playPauseSupported ? MichiTheme.colors.accentBlue : Qt.rgba(0.561, 0.718, 1.0, 0.25)
+                opacity: root.playPauseSupported ? 1.0 : 0.35
                 Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
                 Image {
@@ -66,29 +74,31 @@ Item {
             MouseArea {
                 id: maPlay
                 anchors.fill: parent
-                hoverEnabled: root.enabled
-                cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: { if (root.enabled) root.playClicked() }
+                hoverEnabled: root.playPauseSupported
+                cursorShape: root.playPauseSupported ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: { if (root.playPauseSupported) root.playClicked() }
             }
         }
 
         MichiIconButton {
             iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
-            iconText: ">>"
-            tooltipText: "Siguiente"
+            iconText: ""
+            tooltipText: root.nextSupported ? "Siguiente" : "No soportado por el backend actual"
             btnSize: 34
-            enabled: root.enabled
-            onClicked: root.nextClicked()
+            enabled: root.nextSupported
+            opacity: root.nextSupported ? 1.0 : 0.35
+            onClicked: { if (root.nextSupported) root.nextClicked() }
         }
 
         MichiIconButton {
             iconSource: "../../icons/nowplaying_clean/warm_repeat_32.png"
-            iconText: root.repeatMode === "one" ? "1" : "R"
-            tooltipText: "Repetir"
+            iconText: root.repeatMode === "one" ? "1" : ""
+            tooltipText: root.repeatSupported ? "Repetir" : "No soportado por el backend actual"
             selected: root.repeatMode !== "none"
             btnSize: 34
-            enabled: root.enabled
-            onClicked: root.repeatClicked()
+            enabled: root.repeatSupported
+            opacity: root.repeatSupported ? 1.0 : 0.35
+            onClicked: { if (root.repeatSupported) root.repeatClicked() }
         }
     }
 }

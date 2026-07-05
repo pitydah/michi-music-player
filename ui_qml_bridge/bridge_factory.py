@@ -88,9 +88,11 @@ class BridgeFactory(QObject):
 
     def create_nowplaying_bridge(self):
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+        from ui_qml_bridge.audio_quality_adapter import probe as quality_probe
         if "nowplaying" not in self._bridges:
             self._bridges["nowplaying"] = NowPlayingBridge(
                 player_service=self._services.player_service,
+                audio_quality_adapter=quality_probe,
             )
         self._register_capability("nowplaying", "player_service")
         return self._bridges["nowplaying"]

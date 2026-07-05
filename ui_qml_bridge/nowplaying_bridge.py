@@ -95,9 +95,10 @@ class NowPlayingBridge(QObject):
     stateChanged = Signal()
     coverChanged = Signal()
 
-    def __init__(self, player_service=None, parent=None):
+    def __init__(self, player_service=None, audio_quality_adapter=None, parent=None):
         super().__init__(parent)
         self._player = player_service
+        self._quality_adapter = audio_quality_adapter
         self._track_title = "—"
         self._track_artist = ""
         self._track_album = ""
@@ -110,6 +111,14 @@ class NowPlayingBridge(QObject):
         self._muted = False
         self._source_type = "local_file"
         self._quality_label = ""
+        self._format_label = ""
+        self._sample_rate = ""
+        self._bit_depth = ""
+        self._channels = ""
+        self._bitrate = ""
+        self._quality_info_available = False
+        self._quality_loading = False
+        self._quality_error = ""
         self._repeat_mode = "none"
         self._shuffle_enabled = False
         self._queue: list[dict[str, Any]] = []
@@ -257,6 +266,9 @@ class NowPlayingBridge(QObject):
         self._track_album = album or ""
         self._set_cover_from_current_path()
         self._add_to_history(self._track_title, self._track_artist, self._track_album)
+        fp = self._current_path()
+        self._source_type = self._detect_source_type(fp)
+        self._probe_quality(fp)
         self._emit_state()
 
     def _on_state(self, state: str):
@@ -378,20 +390,93 @@ class NowPlayingBridge(QObject):
         return self._muted
 
     @Property(str, notify=stateChanged)
-    def sourceType(self):
-        return self._source_type
-
-    @Property(str, notify=stateChanged)
-    def qualityLabel(self):
-        return self._quality_label
-
-    @Property(str, notify=stateChanged)
     def repeatMode(self):
         return self._repeat_mode
 
     @Property(bool, notify=stateChanged)
     def shuffleEnabled(self):
         return self._shuffle_enabled
+
+    # ── Quality / Source info ──
+
+    def _detect_source_type(self, filepath: str) -> str:
+        if not filepath:
+            return "unknown"
+        if filepath.startswith(("http://", "https://")):
+            return "stream"
+        if filepath.startswith("radio://"):
+            return "radio"
+        return "local_file"
+
+    def _probe_quality(self, filepath: str):
+        if not filepath or not self._quality_adapter:
+            self._quality_info_available = False
+            self._quality_loading = False
+            return
+        self._quality_loading = True
+        self._emit_state()
+        try:
+            result = self._quality_adapter.probe(filepath)
+            if result and result.get("ok"):
+                self._format_label = result.get("format_label", "")
+                self._sample_rate = result.get("sample_rate", "")
+                self._bit_depth = result.get("bit_depth", "")
+                self._channels = result.get("channels", "")
+                self._bitrate = result.get("bitrate", "")
+                self._quality_label = result.get("quality_label", "")
+                self._source_type = result.get("source_type", self._detect_source_type(filepath))
+                self._quality_info_available = True
+                self._quality_error = ""
+            else:
+                self._quality_info_available = False
+                self._quality_error = result.get("error", "")
+                self._source_type = self._detect_source_type(filepath)
+        except Exception as e:
+            logger.debug("Quality probe error: %s", e)
+            self._quality_info_available = False
+            self._quality_error = str(e)
+        self._quality_loading = False
+        self._emit_state()
+
+    @Property(str, notify=stateChanged)
+    def sourceType(self):
+        return self._source_type
+
+    @Property(str, notify=stateChanged)
+    def formatLabel(self):
+        return self._format_label
+
+    @Property(str, notify=stateChanged)
+    def qualityLabel(self):
+        return self._quality_label
+
+    @Property(str, notify=stateChanged)
+    def sampleRate(self):
+        return self._sample_rate
+
+    @Property(str, notify=stateChanged)
+    def bitDepth(self):
+        return self._bit_depth
+
+    @Property(str, notify=stateChanged)
+    def channels(self):
+        return self._channels
+
+    @Property(str, notify=stateChanged)
+    def bitrate(self):
+        return self._bitrate
+
+    @Property(bool, notify=stateChanged)
+    def qualityInfoAvailable(self):
+        return self._quality_info_available
+
+    @Property(bool, notify=stateChanged)
+    def qualityLoading(self):
+        return self._quality_loading
+
+    @Property(str, notify=stateChanged)
+    def qualityError(self):
+        return self._quality_error
 
     @Property("QVariantList", notify=stateChanged)
     def queue(self):
