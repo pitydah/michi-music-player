@@ -40,8 +40,10 @@ class LibraryBridge(QObject):
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
         from ui_qml_bridge.library_query_service import LibraryQueryService
+        from ui_qml_bridge.query_executor import QueryExecutor
         self._query_svc = LibraryQueryService(self._db) if self._db else None
-        self._track_model = TrackListModel(query_service=self._query_svc, parent=self)
+        self._qe = QueryExecutor(worker_manager=None, parent=self)
+        self._track_model = TrackListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         self._album_model = AlbumListModel(parent=self)
 
     # ── Internal pipeline ──
