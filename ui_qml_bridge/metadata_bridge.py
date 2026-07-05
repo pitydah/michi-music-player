@@ -177,9 +177,10 @@ class MetadataBridge(QObject):
         try:
             from metadata.tag_writer import write_tags
             from metadata.tag_model import TrackTags
-            tags = TrackTags()
+            tags = TrackTags(filepath=self._current_filepath)
             for k, v in self._all_fields.items():
-                setattr(tags, k, v)
+                if hasattr(tags, k):
+                    setattr(tags, k, v)
             tags.dirty = True
             ok = write_tags(tags)
             if ok:
@@ -200,10 +201,12 @@ class MetadataBridge(QObject):
     def replaceArtwork(self, image_path: str):
         if not image_path or not Path(image_path).is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
+        if not self._current_filepath:
+            return {"ok": False, "error": "NO_FILE_SELECTED"}
         try:
             from metadata.tag_writer import write_tags
             from metadata.tag_model import TrackTags
-            tags = TrackTags()
+            tags = TrackTags(filepath=self._current_filepath)
             tags.artwork_dirty = True
             with open(image_path, "rb") as f:
                 tags.artwork_data = f.read()
@@ -219,10 +222,12 @@ class MetadataBridge(QObject):
 
     @Slot(result=dict)
     def removeArtwork(self):
+        if not self._current_filepath:
+            return {"ok": False, "error": "NO_FILE_SELECTED"}
         try:
             from metadata.tag_writer import write_tags
             from metadata.tag_model import TrackTags
-            tags = TrackTags()
+            tags = TrackTags(filepath=self._current_filepath)
             tags.artwork_dirty = True
             tags.artwork_data = b""
             ok = write_tags(tags)

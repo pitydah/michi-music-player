@@ -103,14 +103,13 @@ class PlaylistsBridge(QObject):
             items = self._db.get_playlist_items(pid)
             tracks = []
             for item in items:
-                tracks.append({
-                    "track_id": getattr(item, 'id', 0),
-                    "title": getattr(item, 'title', '') or '',
-                    "artist": getattr(item, 'artist', '') or '',
-                    "album": getattr(item, 'album', '') or '',
-                    "duration": getattr(item, 'duration', 0) or 0,
-                    "filepath": getattr(item, 'filepath', '') or '',
-                })
+                    tracks.append({
+                        "track_id": getattr(item, 'id', 0),
+                        "title": getattr(item, 'title', '') or '',
+                        "artist": getattr(item, 'artist', '') or '',
+                        "album": getattr(item, 'album', '') or '',
+                        "duration": getattr(item, 'duration', 0) or 0,
+                    })
             return {"ok": True, "tracks": tracks, "count": len(tracks)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
