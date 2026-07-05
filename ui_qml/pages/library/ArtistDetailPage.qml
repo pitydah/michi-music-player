@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -9,100 +10,77 @@ Item {
 
     property string artistName: ""
     property var bridge: null
+    property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property var np: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
     property var artistAlbums: []
 
     signal backRequested()
 
     function loadArtist(name) {
         artistName = name
-        if (root.bridge && typeof root.bridge.filterByArtist !== "undefined") {
-            root.bridge.filterByArtist(name)
+        if (root.lib && root.lib.trackModel) {
+            root.lib.trackModel.refresh(artist: name, sort: "year", asc: true)
         }
-        if (root.bridge && typeof root.bridge.albums !== "undefined") {
-            var all = root.bridge.albums || []
-            var filtered = []
-            for (var i = 0; i < all.length; i++) {
-                if (all[i].artist === name) {
-                    filtered.push(all[i])
-                }
-            }
-            artistAlbums = filtered
+        if (root.lib && root.lib.albumModel) {
+            root.lib.albumModel.refresh(search: name)
         }
     }
 
     Flickable {
-        anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
+        clip: true; boundsBehavior: Flickable.StopAtBounds
 
         Column {
-            id: column
-            width: parent.width
-            spacing: MichiTheme.spacing.lg
+            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
-            Row {
-                spacing: MichiTheme.spacing.sm
-
-                MichiButton {
-                    text: "Volver"
-                    variant: "ghost"
-                    onClicked: root.backRequested()
-                }
-
-                Text {
-                    text: root.artistName
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.heroTitleSize
-                    font.weight: MichiTheme.typography.weightBold
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+            RowLayout { spacing: MichiTheme.spacing.sm
+                MichiButton { text: "← Volver"; variant: "ghost"; onClicked: root.backRequested() }
+                Text { text: root.artistName; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: FontWeight.Bold; Layout.fillWidth: true; elide: Text.ElideRight }
             }
 
-            CoverImage {
-                width: 120
-                height: 120
-                coverRadius: MichiTheme.radiusPill
-                coverKey: root.artistName || "ARTIST"
-                anchors.horizontalCenter: parent.horizontalCenter
+            RowLayout { spacing: MichiTheme.spacing.sm
+                MichiButton { text: "Reproducir todo"; variant: "primary" }
+                MichiButton { text: "Mezclar"; variant: "ghost" }
             }
 
-            SectionHeader {
-                text: "Álbumes"
-                width: parent.width
-            }
+            SectionHeader { text: "Álbumes"; width: parent.width }
 
-            GridView {
-                width: parent.width
-                height: Math.min(300, (Math.ceil(artistAlbums.length / 3) * 260))
-                model: artistAlbums
-                cellWidth: 190
-                cellHeight: 240
-                clip: true
-                interactive: false
+            ListView {
+                width: parent.width; height: 300; clip: true; boundsBehavior: Flickable.StopAtBounds
+                model: root.lib ? root.lib.albumModel : []
 
-                delegate: AlbumCard {
-                    width: 180
-                    height: 220
-                    albumTitle: modelData.title || ""
-                    albumArtist: modelData.artist || ""
-                    trackCount: modelData.track_count || 0
-                    coverId: modelData.cover_key || ""
+                delegate: Item {
+                    width: parent.width; height: 48
+                    RowLayout { anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.md
+                        CoverImage { width: 40; height: 40; coverRadius: 4; coverKey: albumKey || "" }
+                        Column { Layout.fillWidth: true
+                            Text { text: title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; elide: Text.ElideRight; width: parent.width }
+                            Text { text: (year > 0 ? year + " · " : "") + (trackCount || 0) + " temas"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                        }
+                    }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor }
                 }
             }
 
-            SectionHeader {
-                text: "Canciones"
-                width: parent.width
-            }
+            SectionHeader { text: "Canciones"; width: parent.width }
 
-            SongTable {
-                width: parent.width
-                height: 300
-                songs: root.bridge ? root.bridge.songs : []
-                bridge: root.bridge
+            ListView {
+                width: parent.width; height: 400; clip: true; boundsBehavior: Flickable.StopAtBounds
+                model: root.lib ? root.lib.trackModel : []
+
+                delegate: Item {
+                    width: parent.width; height: 36
+                    RowLayout { anchors.fill: parent; anchors.leftMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+                        Text { text: title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; Layout.fillWidth: true; elide: Text.ElideRight }
+                        Text { text: album || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; Layout.preferredWidth: 150; elide: Text.ElideRight }
+                        Text { text: duration ? formatDuration(duration) : ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
+                    }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { if (root.lib && root.lib.playTrackById) root.lib.playTrackById(trackId || 0) } }
+                }
             }
         }
     }
+
+    function formatDuration(secs) { var m = Math.floor(secs / 60); var s = Math.floor(secs % 60); return m + ":" + (s < 10 ? "0" : "") + s }
 }

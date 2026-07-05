@@ -249,6 +249,20 @@ def main():
     except Exception as e:
         logger.debug("JobBridge init failed: %s", e)
 
+    # Register DesktopBridge
+    try:
+        from ui_qml_bridge.desktop_bridge import DesktopBridge
+        registrar.register("desktopBridge", DesktopBridge())
+    except Exception as e:
+        logger.debug("DesktopBridge init failed: %s", e)
+
+    # Register PageStateStore
+    try:
+        from ui_qml_bridge.page_state_store import PageStateStore
+        registrar.register("pageStateStore", PageStateStore())
+    except Exception as e:
+        logger.debug("PageStateStore init failed: %s", e)
+
     # Set service availability on app state bridge
     app_state = factory.get("app_state")
     if app_state:
