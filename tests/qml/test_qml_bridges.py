@@ -390,6 +390,26 @@ class TestHomeAudioBridge:
         assert bridge.snapcastAvailable is False
         assert bridge.volumeSupported is False
 
+
+class TestSmartTaggingBridge:
+    def test_smart_tagging_importable(self):
+        from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        bridge = SmartTaggingBridge()
+        assert bridge is not None
+        assert bridge.status == "idle"
+
+    def test_smart_tagging_scan_no_service(self):
+        from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        bridge = SmartTaggingBridge()
+        bridge.scanTrack("/test/file.flac")
+        assert bridge.status == "unavailable"
+
+    def test_smart_tagging_apply_no_suggestions(self):
+        from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        bridge = SmartTaggingBridge()
+        result = bridge.applySuggestions()
+        assert result.get("ok") is False
+
     def test_refresh_returns_dict(self):
         bridge = HomeAudioBridge()
         result = bridge.refresh()

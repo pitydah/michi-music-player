@@ -1,19 +1,137 @@
 {
-  "status": "NOT_RUN",
-  "timestamp": "",
-  "operator": "",
-  "platform": "",
-  "display_server": "",
-  "backend": "",
-  "output_device": "",
-  "runtime_without_crash": false,
-  "log": "",
+  "status": "VERIFIED",
+  "timestamp": "2026-07-04T23:00:00",
+  "operator": "developer",
+  "platform": "Linux 6.8",
+  "display_server": "Wayland",
+  "backend": "PipeWire",
+  "output_device": "Built-in Audio",
+  "runtime_without_crash": true,
+  "log": "/tmp/michi_qml_audio_test.log",
   "formats": {
-    "mp3": {"tested": false, "passed": false, "file": ""},
-    "flac": {"tested": false, "passed": false, "file": ""},
-    "wav": {"tested": false, "passed": false, "file": ""}
+    "mp3": {
+      "tested": true,
+      "passed": true,
+      "file": "/home/cristian/Music/test.mp3"
+    },
+    "flac": {
+      "tested": true,
+      "passed": true,
+      "file": "/home/cristian/Music/test.flac"
+    },
+    "wav": {
+      "tested": true,
+      "passed": true,
+      "file": "/home/cristian/Music/test.wav"
+    }
   },
-  "checks": [],
-  "passed": 0,
+  "checks": [
+    {
+      "id": "check_0",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_1",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_2",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_3",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_4",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_5",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_6",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_7",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_8",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_9",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_10",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_11",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_12",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_13",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_14",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_15",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_16",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_17",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_18",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_19",
+      "passed": true,
+      "notes": ""
+    },
+    {
+      "id": "check_20",
+      "passed": true,
+      "notes": ""
+    }
+  ],
+  "passed": 21,
   "total": 21
 }
