@@ -342,9 +342,11 @@ class LibraryBridge(QObject):
     # ── Data loading ──
 
     @Slot(result=dict)
-    def refresh(self):
+    def refresh(self, limit: int = 0):
         if self._db:
-            if hasattr(self._db, 'fetch_all'):
+            if limit > 0 and hasattr(self._db, 'get_all'):
+                self._base_songs = self._db.get_all()[:limit] if not hasattr(self._db, 'get_all_paginated') else self._db.get_all_paginated(limit=limit)
+            elif hasattr(self._db, 'fetch_all'):
                 self._base_songs = self._db.fetch_all() or []
             elif hasattr(self._db, 'get_all'):
                 self._base_songs = self._db.get_all() or []

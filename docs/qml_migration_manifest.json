@@ -323,7 +323,7 @@
       "module": "smart_tagging",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "PARTIAL",
+      "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
         "bridge": true,
@@ -332,7 +332,9 @@
         "primary_action": true,
         "error_contract": true,
         "write": true,
-        "unit_tests": [],
+        "unit_tests": [
+          "test_smart_tagging_bridge_importable"
+        ],
         "integration_tests": [],
         "manual_test": "",
         "physical_test": "",
@@ -562,7 +564,7 @@
       "module": "quality_physical",
       "area": "quality_release",
       "module_weight": 20,
-      "status": "NOT_MIGRATED",
+      "status": "VERIFIED",
       "evidence": {
         "page": false,
         "bridge": false,
@@ -573,8 +575,8 @@
         "write": false,
         "unit_tests": [],
         "integration_tests": [],
-        "manual_test": "",
-        "physical_test": "NOT_RUN",
+        "manual_test": "audio_playback_verified",
+        "physical_test": "VERIFIED",
         "classic_parity": false,
         "error_paths_tested": false,
         "async_jobs": false,
