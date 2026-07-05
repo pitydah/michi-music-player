@@ -1,8 +1,7 @@
-"""SelectionContextBridge — shared selection context for QML workflow integration."""
-
+"""SelectionContextBridge — shared selection state for tracks/albums/playlists."""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
 class SelectionContextBridge(QObject):
@@ -10,62 +9,60 @@ class SelectionContextBridge(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._track_id = ""
-        self._title = ""
-        self._artist = ""
-        self._album = ""
-        self._filepath = ""
-        self._cover_key = ""
-        self._source = ""
-
-    @Property(str, notify=selectionChanged)
-    def selectedTrackId(self):
-        return self._track_id
-
-    @Property(str, notify=selectionChanged)
-    def selectedTitle(self):
-        return self._title
-
-    @Property(str, notify=selectionChanged)
-    def selectedArtist(self):
-        return self._artist
-
-    @Property(str, notify=selectionChanged)
-    def selectedAlbum(self):
-        return self._album
-
-    @Property(str, notify=selectionChanged)
-    def selectedFilepath(self):
-        return self._filepath
-
-    @Property(str, notify=selectionChanged)
-    def selectedCoverKey(self):
-        return self._cover_key
-
-    @Property(str, notify=selectionChanged)
-    def selectedSource(self):
-        return self._source
+        self._selected_ids: list[str] = []
+        self._selected_data: dict = {}
+        self._selection_count = 0
+        self._primary_id = ""
 
     @Property(bool, notify=selectionChanged)
     def hasSelection(self):
-        return bool(self._track_id) or bool(self._filepath)
+        return self._selection_count > 0
 
-    def setSelected(self, track_dict: dict):
-        self._track_id = str(track_dict.get("id", track_dict.get("track_id", "")))
-        self._title = track_dict.get("title", "")
-        self._artist = track_dict.get("artist", "")
-        self._album = track_dict.get("album", "")
-        self._filepath = track_dict.get("filepath", "")
-        self._cover_key = track_dict.get("cover_key", track_dict.get("coverKey", ""))
-        self._source = "track_id" if self._track_id else ("filepath" if self._filepath else "")
+    @Property(int, notify=selectionChanged)
+    def selectionCount(self):
+        return self._selection_count
+
+    @Property(str, notify=selectionChanged)
+    def primaryId(self):
+        return self._primary_id
+
+    @Property("QVariant", notify=selectionChanged)
+    def selectedData(self):
+        return self._selected_data
+
+    @Slot(str, result=dict)
+    def setSelectedId(self, item_id: str):
+        self._selected_ids = [item_id]
+        self._primary_id = item_id
+        self._selection_count = 1
         self.selectionChanged.emit()
+        return {"ok": True}
 
+    @Slot("QVariant", result=dict)
+    def setSelected(self, data: dict):
+        self._selected_data = data
+        self._primary_id = str(data.get("id", data.get("track_id", "")))
+        self._selection_count = 1
+        self.selectionChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
     def clearSelection(self):
-        self._track_id = ""
-        self._title = ""
-        self._artist = ""
-        self._album = ""
-        self._filepath = ""
-        self._cover_key = ""
-        self._source = ""
+        self._selected_ids = []
+        self._selected_data = {}
+        self._selection_count = 0
+        self._primary_id = ""
         self.selectionChanged.emit()
+        return {"ok": True}
+
+    @Property(str, notify=selectionChanged)
+    def selectedTrackId(self):
+        return str(self._selected_data.get("id", self._selected_data.get("track_id", "")))
+
+    @Property(str, notify=selectionChanged)
+    def selectedFilepath(self):
+        return self._selected_data.get("filepath", "")
+
+    @Property(str, notify=selectionChanged)
+    def selectedTitle(self):
+        return self._selected_data.get("title", "")
