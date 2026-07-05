@@ -84,6 +84,62 @@ class PlaybackBridge(QObject):
     def backendAvailable(self):
         return self._nowplaying.backendAvailable
 
+    @Property(bool, notify=stateChanged)
+    def playPauseSupported(self):
+        return self._nowplaying.playPauseSupported
+
+    @Property(bool, notify=stateChanged)
+    def seekSupported(self):
+        return self._nowplaying.seekSupported
+
+    @Property(bool, notify=stateChanged)
+    def volumeSupported(self):
+        return self._nowplaying.volumeSupported
+
+    @Property(bool, notify=stateChanged)
+    def muteSupported(self):
+        return self._nowplaying.muteSupported
+
+    @Property(bool, notify=stateChanged)
+    def nextSupported(self):
+        return self._nowplaying.nextSupported
+
+    @Property(bool, notify=stateChanged)
+    def previousSupported(self):
+        return self._nowplaying.previousSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueSupported(self):
+        return self._nowplaying.queueSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueRemoveSupported(self):
+        return self._nowplaying.queueRemoveSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueClearSupported(self):
+        return self._nowplaying.queueClearSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueMoveSupported(self):
+        return self._nowplaying.queueMoveSupported
+
+    @Property(bool, notify=stateChanged)
+    def queuePlayItemSupported(self):
+        return self._nowplaying.queuePlayItemSupported
+
+    @Property(bool, notify=stateChanged)
+    def shuffleSupported(self):
+        return self._nowplaying.shuffleSupported
+
+    @Property(bool, notify=stateChanged)
+    def repeatSupported(self):
+        return self._nowplaying.repeatSupported
+
+    @Property(bool, notify=stateChanged)
+    def historySupported(self):
+        return self._nowplaying.historySupported
+
     # ── Playback commands — propagate real results ──
 
     @Slot(result=dict)
