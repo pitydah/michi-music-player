@@ -26,13 +26,14 @@ def _make_cache_key(title: str, artist: str, album: str = "", duration: int = 0)
 
 def _search_impl(title: str, artist: str, album: str = "", duration: int = 0) -> dict:
     """Actual LRCLIB search — runs in worker thread."""
-    from lyrics.lrclib_client import search_lyrics
-    result = search_lyrics(title, artist, album, duration)
+    from lyrics.lrclib_client import LrclibClient
+    client = LrclibClient()
+    result = client.get_lyrics(title, artist, album, float(duration))
     if not result:
         return {"ok": False, "error": "NOT_FOUND"}
-    plain = result.get("plainLyrics", result.get("lyrics", "")) or ""
-    synced = result.get("syncedLyrics", "") or ""
-    source = result.get("source", "LRCLIB")
+    plain = getattr(result, 'plain_lyrics', '') or result.get("plainLyrics", "") if isinstance(result, dict) else ""
+    synced = getattr(result, 'synced_lyrics', '') or result.get("syncedLyrics", "") if isinstance(result, dict) else ""
+    source = "LRCLIB"
     return {
         "ok": True,
         "lyrics": plain,
