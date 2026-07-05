@@ -68,10 +68,12 @@ class PlayerService(QObject):
     def _on_error(self, msg):
         if self._retry_url:
             self._retry_timer.start(2000)
-        elif msg and "GStreamer" in msg:
-            logger.debug("Engine error (suppressed): %s", msg)
-        else:
-            self.error_occurred.emit(msg)
+            return
+        is_stream_recoverable = msg and "STREAM_NETWORK_ERROR" in str(msg)
+        if is_stream_recoverable and self._retry_url:
+            self._retry_timer.start(2000)
+            return
+        self.error_occurred.emit(msg)
 
     def _do_retry(self):
         url = self._retry_url

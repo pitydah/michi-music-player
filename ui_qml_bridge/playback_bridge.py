@@ -1,5 +1,4 @@
-"""PlaybackBridge — command-compatible facade for QML playback pages."""
-
+"""PlaybackBridge — delegates to NowPlayingBridge, propagates real results."""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
@@ -8,8 +7,6 @@ from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
 
 class PlaybackBridge(QObject):
-    """Compatibility layer that delegates playback state to NowPlayingBridge."""
-
     stateChanged = Signal()
 
     def __init__(self, player_service=None, playback_ctrl=None, nowplaying_bridge=None, parent=None):
@@ -79,74 +76,68 @@ class PlaybackBridge(QObject):
     def history(self):
         return self._nowplaying.history
 
+    @Property(bool, notify=stateChanged)
+    def hasTrack(self):
+        return self._nowplaying.hasTrack
+
+    @Property(bool, notify=stateChanged)
+    def backendAvailable(self):
+        return self._nowplaying.backendAvailable
+
+    # ── Playback commands — propagate real results ──
+
     @Slot(result=dict)
     def togglePlay(self):
-        try:
-            self._nowplaying.togglePlay()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.togglePlay()
 
     @Slot(result=dict)
     def next(self):
-        try:
-            self._nowplaying.next()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.next()
 
     @Slot(result=dict)
     def previous(self):
-        try:
-            self._nowplaying.previous()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.previous()
 
     @Slot(int, result=dict)
     def setVolume(self, volume: int):
-        try:
-            self._nowplaying.setVolume(volume)
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.setVolume(volume)
 
     @Slot(result=dict)
     def toggleMute(self):
-        try:
-            self._nowplaying.toggleMute()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.toggleMute()
 
     @Slot(int, result=dict)
     def seek(self, position: int):
-        try:
-            self._nowplaying.seek(position)
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.seek(position)
 
     @Slot(result=dict)
     def toggleShuffle(self):
-        try:
-            self._nowplaying.toggleShuffle()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.toggleShuffle()
 
     @Slot(result=dict)
     def toggleRepeat(self):
-        try:
-            self._nowplaying.toggleRepeat()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.toggleRepeat()
 
     @Slot(int, result=dict)
     def seekRelative(self, seconds: int):
-        try:
-            self._nowplaying.seekRelative(seconds)
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return self._nowplaying.seekRelative(seconds)
+
+    @Slot(str, result=dict)
+    def enqueueSong(self, filepath: str):
+        return self._nowplaying.enqueueSong(filepath)
+
+    @Slot(int, result=dict)
+    def removeFromQueue(self, index: int):
+        return self._nowplaying.removeFromQueue(index)
+
+    @Slot(result=dict)
+    def clearQueue(self):
+        return self._nowplaying.clearQueue()
+
+    @Slot(int, int, result=dict)
+    def moveQueueItem(self, from_index: int, to_index: int):
+        return self._nowplaying.moveQueueItem(from_index, to_index)
+
+    @Slot(int, result=dict)
+    def playQueueItem(self, index: int):
+        return self._nowplaying.playQueueItem(index)

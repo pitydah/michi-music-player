@@ -1,0 +1,242 @@
+{
+  "modules": [
+    {
+      "module": "navigation",
+      "area": "shell_nav",
+      "weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_navigation_bridge"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "library",
+      "area": "library_playback",
+      "weight": 25,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_library_bridge", "test_library_bridge_contract"],
+        "integration_tests": [],
+        "manual_test": "folder_add_drag_drop_verified",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "playback",
+      "area": "library_playback",
+      "weight": 0,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_nowplaying_bridge_commands_call_player_service"],
+        "integration_tests": [],
+        "manual_test": "play_pause_seek_volume_verified",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "lyrics",
+      "area": "workflows_core",
+      "weight": 20,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": false, "error_contract": true,
+        "unit_tests": ["test_lyrics_bridge"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "mix",
+      "area": "workflows_core",
+      "weight": 0,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": false, "error_contract": true,
+        "unit_tests": ["test_mix_components"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "radio",
+      "area": "workflows_core",
+      "weight": 0,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_radio_components", "test_radio_bridge_integration"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "playlists",
+      "area": "workflows_core",
+      "weight": 0,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "eq",
+      "area": "advanced_tools",
+      "weight": 20,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "metadata",
+      "area": "advanced_tools",
+      "weight": 0,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": false,
+        "read": true, "write": false, "error_contract": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "smart_tagging",
+      "area": "advanced_tools",
+      "weight": 0,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": false,
+        "read": true, "write": false, "error_contract": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "audio_lab",
+      "area": "advanced_tools",
+      "weight": 0,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": false, "error_contract": true,
+        "unit_tests": ["test_audio_lab_integration"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "doctor",
+      "area": "advanced_tools",
+      "weight": 0,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": false, "error_contract": true,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "disc_lab",
+      "area": "advanced_tools",
+      "weight": 0,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": false, "error_contract": true,
+        "unit_tests": ["test_disc_lab_bridge"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "connections",
+      "area": "ecosystem_network",
+      "weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_connections_bridge", "test_connections_v2_bridge"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "home_audio",
+      "area": "ecosystem_network",
+      "weight": 0,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_home_audio_bridge", "test_home_audio_v2_bridge"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "devices",
+      "area": "ecosystem_network",
+      "weight": 0,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true, "bridge": true, "service": true,
+        "read": true, "write": true, "error_contract": true,
+        "unit_tests": ["test_devices_components"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": ""
+      }
+    },
+    {
+      "module": "quality",
+      "area": "quality_release",
+      "weight": 15,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": false, "bridge": false, "service": false,
+        "read": false, "write": false, "error_contract": false,
+        "unit_tests": ["test_qml_bridges", "test_qml_components"],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "NOT_RUN"
+      }
+    }
+  ]
+}

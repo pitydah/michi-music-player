@@ -637,6 +637,10 @@ class GStreamerEngine(QObject):
             playbin.set_property("uri", next_uri)
             self._gapless_active = True
 
+    def _classify_and_emit(self, classification: str, details: str):
+        self._error_message = f"{classification}: {details}"
+        self.error_occurred.emit(self._error_message)
+
     def _on_media_finished_eos(self):
         """Handle track end — gapless-aware."""
         if self._gapless_active:
@@ -665,17 +669,32 @@ class GStreamerEngine(QObject):
             self._on_media_finished_eos()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
-            err_msg = str(err) if err else "Unknown"
+            debug_text = debug or ""
+            err_text = str(err) if err else "Unknown"
             log = logging.getLogger("michi.player")
-            # Stream errors (radio, network) are not fatal — log and clean up
-            is_stream_error = "SoupHTTPSrc" in debug or "streaming stopped" in debug
-            if is_stream_error:
-                log.warning("Stream error (non-fatal): %s", err_msg)
-                self._state = PlaybackState.STOPPED
-                self.state_changed.emit(self._state)
+
+            # Classify error
+            is_stream = "SoupHTTPSrc" in debug_text or "streaming stopped" in debug_text
+            is_local_media = any(x in debug_text for x in ["No such file", "not found", "Permission denied"])
+            is_decoder = "flacparse" in debug_text or "No valid frames" in debug_text
+            is_output = "audiosink" in debug_text or "audio output" in debug_text
+
+            if is_stream:
+                log.warning("Stream error: %s", err_text)
+                self._classify_and_emit("STREAM_NETWORK_ERROR", err_text)
+            elif is_local_media:
+                log.warning("Local media error: %s", err_text)
+                self._classify_and_emit("LOCAL_MEDIA_ERROR", err_text)
+            elif is_decoder:
+                log.warning("Decoder error: %s", err_text)
+                self._classify_and_emit("DECODER_ERROR", err_text)
+            elif is_output:
+                log.warning("Audio output error: %s", err_text)
+                self._classify_and_emit("AUDIO_OUTPUT_ERROR", err_text)
             else:
-                log.warning("GStreamer error: %s | %s", err, debug)
-                self.error_occurred.emit(f"GStreamer: {err}")
+                log.warning("GStreamer error: %s | %s", err_text, debug_text)
+                self._classify_and_emit("UNKNOWN_GSTREAMER_ERROR", err_text)
+
             self._dff_running = False
             pipeline = self._pipeline
             bus_id = self._bus_id
@@ -690,9 +709,8 @@ class GStreamerEngine(QObject):
                         bus = pipeline.get_bus()
                         bus.disconnect(bus_id)
                         bus.remove_signal_watch()
-            if not is_stream_error:
-                self._state = PlaybackState.STOPPED
-                self.state_changed.emit(self._state)
+            self._state = PlaybackState.STOPPED
+            self.state_changed.emit(self._state)
             if self._file_handle:
                 with contextlib.suppress(Exception):
                     self._file_handle.close()

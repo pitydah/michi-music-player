@@ -1,5 +1,8 @@
-"""NowPlayingBridge — QML-facing playback state backed by PlayerService."""
+"""NowPlayingBridge — QML-facing playback state backed by PlayerService.
 
+All commands return dict with structured errors.
+State is only updated after backend confirmation.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -11,12 +14,22 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 logger = logging.getLogger("michi.nowplaying")
 
+# ── Error codes ──
+NO_PLAYER_SERVICE = "NO_PLAYER_SERVICE"
+BACKEND_UNAVAILABLE = "BACKEND_UNAVAILABLE"
+UNSUPPORTED = "UNSUPPORTED"
+INVALID_POSITION = "INVALID_POSITION"
+INVALID_INDEX = "INVALID_INDEX"
+UNKNOWN_DURATION = "UNKNOWN_DURATION"
+PLAYBACK_ERROR = "PLAYBACK_ERROR"
+QUEUE_UNAVAILABLE = "QUEUE_UNAVAILABLE"
+INTERNAL_ERROR = "INTERNAL_ERROR"
+
 
 def _cover_key_for_path(filepath: str) -> str:
     if not filepath:
         return ""
-    digest = hashlib.md5(filepath.encode()).hexdigest()[:12]
-    return f"track_{digest}"
+    return f"track_{hashlib.md5(filepath.encode()).hexdigest()[:12]}"
 
 
 def _field(source, *names: str) -> str:
@@ -44,14 +57,18 @@ def _player_field(player, *names: str) -> str:
     return _field(player, *names)
 
 
+def _err(error_code: str, message: str = "") -> dict:
+    return {"ok": False, "error_code": error_code, "message": message or error_code}
+
+
+def _ok(data: dict | None = None) -> dict:
+    result: dict = {"ok": True}
+    if data:
+        result.update(data)
+    return result
+
+
 class NowPlayingBridge(QObject):
-    """Expose current playback state and commands to QML.
-
-    PlayerService remains the single command facade. This bridge mirrors its
-    signals into stable QML properties and keeps an offline fallback so QML can
-    still load in safe/test mode.
-    """
-
     stateChanged = Signal()
     coverChanged = Signal()
 
@@ -66,6 +83,7 @@ class NowPlayingBridge(QObject):
         self._position = 0
         self._duration = 0
         self._volume = 80
+        self._previous_volume = 80
         self._muted = False
         self._source_type = "local_file"
         self._quality_label = ""
@@ -73,37 +91,29 @@ class NowPlayingBridge(QObject):
         self._shuffle_enabled = False
         self._queue: list[dict[str, Any]] = []
         self._history: list[dict[str, Any]] = []
-        self._backend_available = False
-        self._playback_status = "unavailable"
+        self._backend_available = self._player is not None
+        self._playback_status = "idle" if self._backend_available else "unavailable"
         self._error_message = ""
         self._last_command = ""
         self._last_command_ok = False
-        self._safe_mode = False
-        self._format_label = ""
-        self._sample_rate = ""
-        self._bit_depth = ""
-        self._channels = ""
-        self._bitrate = ""
-
-        self._backend_available = self._player is not None
-        self._playback_status = "idle" if self._backend_available else "unavailable"
         self._safe_mode = not self._backend_available
 
         self._connect_player()
         self.refresh()
 
+    # ── Signal wiring ──
+
     def _connect_player(self):
         if not self._player:
             return
-        connections = (
+        for signal_name, slot in (
             ("track_changed", self._on_track),
             ("state_changed", self._on_state),
             ("position_changed", self._on_position),
             ("duration_changed", self._on_duration),
             ("volume_changed", self._on_volume),
             ("queue_changed", self._on_queue),
-        )
-        for signal_name, slot in connections:
+        ):
             signal = getattr(self._player, signal_name, None)
             if signal is None:
                 continue
@@ -147,129 +157,43 @@ class NowPlayingBridge(QObject):
                 return method
         return fallback
 
-    def _update_quality_info(self, filepath: str = ""):
-        if not filepath:
-            return
-        from ui_qml_bridge.audio_quality_adapter import probe as quality_probe
-        result = quality_probe(filepath)
-        if result.get("ok"):
-            self._format_label = result.get("format_label", "")
-            self._sample_rate = result.get("sample_rate", "")
-            self._bit_depth = result.get("bit_depth", "")
-            self._channels = result.get("channels", "")
-            self._bitrate = result.get("bitrate", "")
-            self._quality_label = result.get("quality_label", "")
+    # ── Signal handlers (update state from backend) ──
 
-    def _on_track(self, title: str = "", artist: str = "", album: str = ""):
-        # Push current track to history if it's not a duplicate
-        if self._track_title and self._track_title != "—":
-            last = self._history[-1] if self._history else {}
-            if last.get("title") != self._track_title:
-                self._history.append({
-                    "title": self._track_title,
-                    "artist": self._track_artist,
-                    "album": self._track_album,
-                })
-                if len(self._history) > 50:
-                    self._history.pop(0)
-        current = getattr(self._player, "current", None) if self._player else None
-        self._track_title = (
-            title
-            or _player_field(self._player, "current_title", "title")
-            or _field(current, "title", "name")
-            or "—"
-        )
-        self._track_artist = (
-            artist
-            or _player_field(self._player, "current_artist", "artist")
-            or _field(current, "artist", "albumartist")
-        )
-        self._track_album = (
-            album
-            or _player_field(self._player, "current_album", "album")
-            or _field(current, "album")
-            or self._track_album
-        )
-        if self._player and hasattr(self._player, 'current'):
-            current = self._player.current
-            if current:
-                fmt = getattr(current, 'format', '') or getattr(current, 'filepath', '').split('.')[-1] if '.' in getattr(current, 'filepath', '') else ''
-                if fmt:
-                    self._quality_label = fmt.upper()
-                self._source_type = "radio" if getattr(current, 'source_type', '') == 'radio' else "local_file"
-        fp = self._current_path()
-        self._set_cover_from_current_path()
-        self._update_quality_info(fp)
-        self._emit_state()
-
-    def _on_state(self, state):
-        normalized = str(state).lower()
-        self._is_playing = normalized in {"playing", "resumed"}
-        if normalized == "playing":
-            self._playback_status = "playing"
-        elif normalized in ("paused", "pause"):
-            self._playback_status = "paused"
-        elif normalized in ("stopped", "stop"):
-            self._playback_status = "stopped"
-        elif normalized in ("error", "failed"):
-            self._playback_status = "error"
-        self._emit_state()
-
-    def _on_position(self, seconds: float):
-        self._position = max(0, int(seconds or 0))
-        self._emit_state()
-
-    def _on_duration(self, seconds: float):
-        self._duration = max(0, int(seconds or 0))
-        self._emit_state()
-
-    def _on_volume(self, volume: int):
-        self._volume = max(0, min(100, int(volume)))
-        self._muted = self._volume == 0
-        self._emit_state()
-
-    def _on_queue(self, queue):
-        self._queue = list(queue or [])
-        self._emit_state()
-
-    @Slot()
-    def refresh(self):
-        if not self._player:
-            self._emit_state()
-            return
-        state = getattr(self._player, "state", None)
-        if state is not None:
-            self._on_state(state)
-        duration = getattr(self._player, "duration", None)
-        if duration is not None:
-            self._duration = max(0, int(duration or 0))
-        get_queue = getattr(self._player, "get_queue", None)
-        if callable(get_queue):
-            try:
-                self._queue = list(get_queue() or [])
-            except Exception:
-                self._queue = []
-        current = getattr(self._player, "current", None)
-        title = (
-            _player_field(self._player, "current_title", "title")
-            or _field(current, "title", "name")
-        )
-        artist = (
-            _player_field(self._player, "current_artist", "artist")
-            or _field(current, "artist", "albumartist")
-        )
-        album = (
-            _player_field(self._player, "current_album", "album")
-            or _field(current, "album")
-        )
-        if title:
-            self._track_title = title
-        if artist:
-            self._track_artist = artist
-        if album:
-            self._track_album = album
+    def _on_track(self, title="", artist="", album=""):
+        self._track_title = title or ""
+        self._track_artist = artist or ""
+        self._track_album = album or ""
         self._set_cover_from_current_path()
         self._emit_state()
+
+    def _on_state(self, state: str):
+        self._is_playing = state == "playing"
+        self._playback_status = state
+        self._error_message = ""
+        self._emit_state()
+
+    def _on_position(self, pos: float):
+        self._position = int(pos)
+        self._emit_state()
+
+    def _on_duration(self, dur: float):
+        self._duration = int(dur)
+        self._emit_state()
+
+    def _on_volume(self, vol: int):
+        self._volume = vol
+        self._muted = vol == 0
+        self._emit_state()
+
+    def _on_queue(self, q: list):
+        self._queue = list(q) if q else []
+        self._emit_state()
+
+    def _on_error(self, msg: str):
+        self._error_message = msg
+        self._emit_state()
+
+    # ── Properties ──
 
     @Property(str, notify=stateChanged)
     def trackTitle(self):
@@ -284,16 +208,8 @@ class NowPlayingBridge(QObject):
         return self._track_album
 
     @Property(str, notify=coverChanged)
-    def coverKey(self):
-        return self._cover_key
-
-    @Property(str, notify=coverChanged)
     def coverPath(self):
         return self._cover_key
-
-    @Property(bool, notify=stateChanged)
-    def hasTrack(self):
-        return self._track_title != "—" or bool(self._current_path())
 
     @Property(bool, notify=stateChanged)
     def isPlaying(self):
@@ -333,279 +249,309 @@ class NowPlayingBridge(QObject):
 
     @Property("QVariantList", notify=stateChanged)
     def queue(self):
-        return self._queue
+        return list(self._queue)
 
     @Property("QVariantList", notify=stateChanged)
     def history(self):
-        return self._history
+        return list(self._history)
+
+    @Property(bool, notify=stateChanged)
+    def hasTrack(self):
+        return self._track_title != "—" or bool(self._current_path())
 
     @Property(bool, notify=stateChanged)
     def backendAvailable(self):
         return self._backend_available
 
     @Property(str, notify=stateChanged)
-    def playbackStatus(self):
-        return self._playback_status
-
-    @Property(str, notify=stateChanged)
     def errorMessage(self):
         return self._error_message
 
-    @Property(str, notify=stateChanged)
-    def lastCommand(self):
-        return self._last_command
-
-    @Property(bool, notify=stateChanged)
-    def lastCommandOk(self):
-        return self._last_command_ok
-
-    @Property(bool, notify=stateChanged)
-    def safeMode(self):
-        return self._safe_mode
-
-    @Property(bool, notify=stateChanged)
-    def shuffleSupported(self):
-        return self._player is not None and hasattr(self._player, 'toggle_shuffle')
-
-    @Property(bool, notify=stateChanged)
-    def repeatSupported(self):
-        return self._player is not None and hasattr(self._player, 'toggle_repeat')
-
-    @Property(bool, notify=stateChanged)
-    def seekSupported(self):
-        return self._player is not None and (self._duration > 0 or self._player is not None)
-
-    @Property(bool, notify=stateChanged)
-    def volumeSupported(self):
-        return self._player is not None and hasattr(self._player, 'set_volume')
-
-    @Property(bool, notify=stateChanged)
-    def nextSupported(self):
-        return self._player is not None and hasattr(self._player, 'play_next')
-
-    @Property(bool, notify=stateChanged)
-    def previousSupported(self):
-        return self._player is not None and hasattr(self._player, 'play_prev')
-
-    @Property(bool, notify=stateChanged)
-    def queueSupported(self):
-        return self._player is not None and hasattr(self._player, 'enqueue')
-
-    @Property(bool, notify=stateChanged)
-    def qualityInfoAvailable(self):
-        return bool(self._format_label)
-
-    @Property(str, notify=stateChanged)
-    def formatLabel(self):
-        return self._format_label
-
-    @Property(str, notify=stateChanged)
-    def sampleRate(self):
-        return self._sample_rate
-
-    @Property(str, notify=stateChanged)
-    def bitDepth(self):
-        return self._bit_depth
-
-    @Property(str, notify=stateChanged)
-    def channels(self):
-        return self._channels
-
-    @Property(str, notify=stateChanged)
-    def bitrate(self):
-        return self._bitrate
-
-    @Slot(str, result=dict)
-    def enqueueSong(self, filepath: str):
-        self._last_command = "enqueueSong"
-        if not self._player:
-            return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        if hasattr(self._player, 'enqueue'):
-            try:
-                self._player.enqueue([filepath], play_now=False)
-                self._last_command_ok = True
-                return {"ok": True}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "UNSUPPORTED"}
-
-    @Slot(int, result=dict)
-    def removeFromQueue(self, index: int):
-        self._last_command = "removeFromQueue"
-        if 0 <= index < len(self._queue):
-            self._queue.pop(index)
-            self._emit_state()
-            return {"ok": True}
-        return {"ok": False, "error": "INVALID_INDEX"}
+    # ── Data loading ──
 
     @Slot(result=dict)
-    def clearQueue(self):
-        self._last_command = "clearQueue"
-        self._queue.clear()
-        self._emit_state()
-        return {"ok": True}
+    def refresh(self):
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        try:
+            if hasattr(self._player, 'current'):
+                current = self._player.current
+                if current:
+                    self._track_title = _field(current, "title", "name") or self._track_title
+                    self._track_artist = _field(current, "artist") or self._track_artist
+                    self._track_album = _field(current, "album") or self._track_album
+                    self._set_cover_from_current_path()
+            if hasattr(self._player, 'get_queue'):
+                q = self._player.get_queue()
+                if q is not None:
+                    self._queue = list(q)
+            if hasattr(self._player, 'state'):
+                st = self._player.state
+                if st:
+                    self._is_playing = st == "playing"
+                    self._playback_status = st
+            if hasattr(self._player, 'duration'):
+                d = self._player.duration
+                if d:
+                    self._duration = int(d)
+            self._emit_state()
+            return _ok()
+        except Exception as e:
+            logger.debug("refresh failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
+
+    # ── Playback commands ──
 
     @Slot(result=dict)
     def togglePlay(self):
         self._last_command = "togglePlay"
         if not self._player:
-            self._last_command_ok = False
-            self._error_message = "No player service"
-            self._emit_state()
-            return {"ok": False, "error": "NO_PLAYER"}
+            return _err(NO_PLAYER_SERVICE)
         try:
             if self._is_playing:
                 if hasattr(self._player, 'pause'):
                     self._player.pause()
-            else:
-                if hasattr(self._player, 'play_or_resume'):
-                    self._player.play_or_resume()
-                elif hasattr(self._player, 'resume'):
-                    self._player.resume()
-            self._playback_status = "paused" if self._is_playing else "playing"
-            self._last_command_ok = True
-            self._error_message = ""
-            self._emit_state()
-            return {"ok": True, "playing": not self._is_playing}
+                    return _ok({"playing": False})
+                return _err(UNSUPPORTED, "pause not available")
+            if hasattr(self._player, 'play_or_resume'):
+                self._player.play_or_resume()
+                return _ok({"playing": True})
+            if hasattr(self._player, 'resume'):
+                self._player.resume()
+                return _ok({"playing": True})
+            return _err(UNSUPPORTED, "play/resume not available")
         except Exception as e:
             logger.warning("togglePlay failed: %s", e)
-            self._last_command_ok = False
-            self._error_message = str(e)
-            self._emit_state()
-            return {"ok": False, "error": str(e)}
+            return _err(PLAYBACK_ERROR, str(e))
 
     @Slot(result=dict)
     def next(self):
         self._last_command = "next"
         if not self._player:
-            return {"ok": False, "error": "NO_PLAYER"}
+            return _err(NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'play_next'):
                 self._player.play_next()
-            elif hasattr(self._player, 'next'):
+                return _ok()
+            if hasattr(self._player, 'next'):
                 self._player.next()
-            self._last_command_ok = True
-            self._emit_state()
-            return {"ok": True}
+                return _ok()
+            return _err(UNSUPPORTED, "next not available")
         except Exception as e:
             logger.warning("next failed: %s", e)
-            self._last_command_ok = False
-            self._emit_state()
-            return {"ok": False, "error": str(e)}
+            return _err(PLAYBACK_ERROR, str(e))
 
     @Slot(result=dict)
     def previous(self):
         self._last_command = "previous"
         if not self._player:
-            return {"ok": False, "error": "NO_PLAYER"}
+            return _err(NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'play_prev'):
                 self._player.play_prev()
-            elif hasattr(self._player, 'previous'):
+                return _ok()
+            if hasattr(self._player, 'previous'):
                 self._player.previous()
-            self._last_command_ok = True
-            self._emit_state()
-            return {"ok": True}
+                return _ok()
+            return _err(UNSUPPORTED, "previous not available")
         except Exception as e:
             logger.warning("previous failed: %s", e)
-            self._last_command_ok = False
-            self._emit_state()
-            return {"ok": False, "error": str(e)}
-        self._emit_state()
+            return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(int, result=dict)
+    def seek(self, position: int):
+        self._last_command = "seek"
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        if self._duration <= 0:
+            return _err(UNKNOWN_DURATION)
+        pos = max(0, min(int(position), self._duration))
+        try:
+            if hasattr(self._player, 'seek'):
+                self._player.seek(pos)
+                self._position = pos
+                self._emit_state()
+                return _ok({"position": pos})
+            return _err(UNSUPPORTED, "seek not available")
+        except Exception as e:
+            logger.warning("seek failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(int, result=dict)
+    def seekRelative(self, seconds: int):
+        return self.seek(self._position + int(seconds))
 
     @Slot(int, result=dict)
     def setVolume(self, volume: int):
         self._last_command = "setVolume"
-        self._volume = max(0, min(100, int(volume)))
-        self._muted = self._volume == 0
-        call = self._player_call("set_volume")
-        if call:
-            try:
-                call(self._volume)
-                self._last_command_ok = True
-                logger.debug("Volume set to %d", self._volume)
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        vol = max(0, min(100, int(volume)))
+        try:
+            if hasattr(self._player, 'set_volume'):
+                self._player.set_volume(vol)
+                self._volume = vol
+                self._muted = vol == 0
                 self._emit_state()
-                return {"ok": True, "volume": self._volume}
-            except Exception as e:
-                logger.warning("Volume set failed: %s", e)
-                self._last_command_ok = False
-                self._emit_state()
-                return {"ok": False, "error": str(e)}
-        else:
-            self._last_command_ok = False
-            self._emit_state()
-            return {"ok": False, "error": "NO_PLAYER"}
+                return _ok({"volume": vol, "muted": self._muted})
+            return _err(UNSUPPORTED, "volume not available")
+        except Exception as e:
+            logger.warning("setVolume failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
 
-    @Slot()
+    @Slot(result=dict)
     def toggleMute(self):
         self._last_command = "toggleMute"
-        self._muted = not self._muted
-        call = self._player_call("set_volume")
-        if call:
-            call(0 if self._muted else self._volume)
-            self._last_command_ok = True
-        else:
-            self._last_command_ok = False
-        self._emit_state()
-
-    @Slot(int)
-    def seek(self, position: int):
-        self._last_command = "seek"
-        if self._duration <= 0:
-            self._last_command_ok = False
-            self._error_message = "No se puede buscar — duración desconocida"
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        try:
+            if not hasattr(self._player, 'set_volume'):
+                return _err(UNSUPPORTED, "volume not available")
+            target = 0 if self._volume > 0 else (self._previous_volume or 80)
+            self._player.set_volume(target)
+            self._previous_volume = self._volume if self._volume > 0 else self._previous_volume
+            self._volume = target
+            self._muted = target == 0
             self._emit_state()
-            return
-        self._position = max(0, min(int(position), self._duration))
-        call = self._player_call("seek")
-        if call:
-            call(self._position)
-            self._last_command_ok = True
-            self._error_message = ""
-        else:
-            self._last_command_ok = False
-        self._emit_state()
+            return _ok({"volume": target, "muted": self._muted})
+        except Exception as e:
+            logger.warning("toggleMute failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
 
-    @Slot(int)
-    def seekRelative(self, seconds: int):
-        self.seek(self._position + int(seconds))
-
-    @Slot()
+    @Slot(result=dict)
     def toggleShuffle(self):
         self._last_command = "toggleShuffle"
-        call = self._player_call("toggle_shuffle")
-        if call:
-            result = call()
-            if result is not None:
-                self._shuffle_enabled = bool(result)
-            else:
-                self._shuffle_enabled = not self._shuffle_enabled
-            self._last_command_ok = True
-        else:
-            self._last_command_ok = False
-            self._error_message = "Aleatorio no soportado por el backend"
-        self._emit_state()
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        try:
+            call = self._player_call("toggle_shuffle")
+            if call:
+                result = call()
+                if result is not None:
+                    self._shuffle_enabled = bool(result)
+                    self._emit_state()
+                    return _ok({"shuffle": self._shuffle_enabled, "state_confirmed": True})
+                return _ok({"state_confirmed": False})
+            return _err(UNSUPPORTED, "shuffle not available")
+        except Exception as e:
+            logger.warning("toggleShuffle failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
 
-    @Slot()
+    @Slot(result=dict)
     def toggleRepeat(self):
         self._last_command = "toggleRepeat"
-        call = self._player_call("toggle_repeat")
-        if call:
-            mode = call()
-            if mode:
-                self._repeat_mode = str(mode)
-            else:
-                self._cycle_repeat_mode()
-            self._last_command_ok = True
-        else:
-            self._last_command_ok = False
-            self._error_message = "Repetición no soportada por el backend"
-        self._emit_state()
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        try:
+            call = self._player_call("toggle_repeat")
+            if call:
+                mode = call()
+                if mode:
+                    self._repeat_mode = str(mode)
+                    self._emit_state()
+                    return _ok({"repeat": self._repeat_mode, "state_confirmed": True})
+                return _ok({"state_confirmed": False})
+            return _err(UNSUPPORTED, "repeat not available")
+        except Exception as e:
+            logger.warning("toggleRepeat failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
 
-    def _cycle_repeat_mode(self):
-        modes = ["none", "all", "one"]
-        idx = modes.index(self._repeat_mode) if self._repeat_mode in modes else 0
-        self._repeat_mode = modes[(idx + 1) % len(modes)]
+    # ── Queue commands ──
+
+    @Slot(str, result=dict)
+    def enqueueSong(self, filepath: str):
+        self._last_command = "enqueueSong"
+        if not filepath:
+            return _err(INVALID_POSITION, "empty filepath")
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        try:
+            if hasattr(self._player, 'enqueue'):
+                self._player.enqueue([filepath], play_now=False)
+                return _ok({"filepath": filepath})
+            if hasattr(self._player, 'add_to_queue'):
+                self._player.add_to_queue(filepath)
+                return _ok({"filepath": filepath})
+            return _err(UNSUPPORTED, "queue not available")
+        except Exception as e:
+            logger.warning("enqueueSong failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(int, result=dict)
+    def removeFromQueue(self, index: int):
+        self._last_command = "removeFromQueue"
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        if index < 0 or index >= len(self._queue):
+            return _err(INVALID_INDEX, f"index {index} out of range")
+        try:
+            if hasattr(self._player, 'remove_queue_item'):
+                self._player.remove_queue_item(index)
+                return _ok({"index": index})
+            if hasattr(self._player, 'remove_from_queue'):
+                self._player.remove_from_queue(index)
+                return _ok({"index": index})
+            return _err(UNSUPPORTED, "remove from queue not available")
+        except Exception as e:
+            logger.warning("removeFromQueue failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(result=dict)
+    def clearQueue(self):
+        self._last_command = "clearQueue"
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        try:
+            if hasattr(self._player, 'clear_queue'):
+                self._player.clear_queue()
+                return _ok()
+            if hasattr(self._player, 'stop'):
+                self._player.stop()
+                return _ok()
+            return _err(UNSUPPORTED, "clear queue not available")
+        except Exception as e:
+            logger.warning("clearQueue failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(int, int, result=dict)
+    def moveQueueItem(self, from_index: int, to_index: int):
+        self._last_command = "moveQueueItem"
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        if from_index < 0 or from_index >= len(self._queue):
+            return _err(INVALID_INDEX, f"from_index {from_index} out of range")
+        if to_index < 0 or to_index >= len(self._queue):
+            return _err(INVALID_INDEX, f"to_index {to_index} out of range")
+        try:
+            if hasattr(self._player, 'move_queue_item'):
+                self._player.move_queue_item(from_index, to_index)
+                return _ok({"from": from_index, "to": to_index})
+            return _err(UNSUPPORTED, "move queue item not available")
+        except Exception as e:
+            logger.warning("moveQueueItem failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(int, result=dict)
+    def playQueueItem(self, index: int):
+        self._last_command = "playQueueItem"
+        if not self._player:
+            return _err(NO_PLAYER_SERVICE)
+        if index < 0 or index >= len(self._queue):
+            return _err(INVALID_INDEX, f"index {index} out of range")
+        try:
+            if hasattr(self._player, 'play_queue_item'):
+                self._player.play_queue_item(index)
+                return _ok({"index": index})
+            if hasattr(self._player, 'play'):
+                item = self._queue[index]
+                fp = item.get("filepath", "") if isinstance(item, dict) else ""
+                if fp:
+                    self._player.play(fp)
+                    return _ok({"index": index, "filepath": fp})
+            return _err(UNSUPPORTED, "play queue item not available")
+        except Exception as e:
+            logger.warning("playQueueItem failed: %s", e)
+            return _err(PLAYBACK_ERROR, str(e))
 
     def set_cover_from_path(self, filepath: str):
         self._cover_key = _cover_key_for_path(filepath)
