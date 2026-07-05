@@ -212,6 +212,14 @@ def main():
     if eq_bridge:
         registrar.register("eqBridge", eq_bridge)
 
+    # Register GlobalSearchBridge
+    try:
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        gsb = GlobalSearchBridge(db=services.db, search_engine=services.search_engine)
+        registrar.register("globalSearchBridge", gsb)
+    except Exception as e:
+        logger.debug("GlobalSearchBridge init failed: %s", e)
+
     # Set service availability on app state bridge
     app_state = factory.get("app_state")
     if app_state:
