@@ -14,6 +14,31 @@ Item {
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
 
+    property string _lastShownError: ""
+
+    Connections {
+        target: root.ps
+        function onErrorMessageChanged() {
+            if (root.ps && root.ps.errorMessage && root.ps.errorMessage !== root._lastShownError && root.notif) {
+                root._lastShownError = root.ps.errorMessage
+                root.notif.showMessage(root.ps.errorMessage, "error")
+            }
+        }
+        function onLastCommandErrorChanged() {
+            if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage && root.notif)
+                root.notif.showMessage(root.ps.lastCommandMessage, "warning")
+        }
+        function onCommandPendingChanged() {
+            if (root.ps && root.ps.commandPending && root.notif)
+                root.notif.showMessage("En ejecución...", "info")
+        }
+        function onLastCommandOkChanged() {
+            if (root.ps && root.ps.lastCommandOk && root._lastShownError) {
+                root._lastShownError = ""
+            }
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.surfaceNowPlaying

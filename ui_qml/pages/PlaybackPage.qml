@@ -1,125 +1,328 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 import "../components"
 
 Item {
     id: root
 
-    property var pb: typeof playbackBridge !== "undefined" ? playbackBridge : null
-    property var np: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null
-    property var ps: root.np || root.pb
+    property var ps: typeof playbackBridge !== "undefined" ? playbackBridge
+                   : (typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null)
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
+    property bool _hasTrack: root.ps ? root.ps.hasTrack : false
+    property bool _showError: false
+    property string _errorText: ""
+
+    function routeEnter(route) {
+        if (root.ps && typeof root.ps.refresh !== "undefined")
+            root.ps.refresh()
+    }
 
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
-        contentHeight: column.height + MichiTheme.spacing.xxl
+        contentHeight: contentColumn.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
-            id: column
+            id: contentColumn
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-            Text {
-                text: "Reproducción"
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-            }
-
-            GlassPanel {
+            // Error banner
+            Rectangle {
                 width: parent.width
-                height: 160
+                height: _showError ? 36 : 0
+                radius: MichiTheme.radiusSm
+                visible: _showError
+                color: MichiTheme.colors.error
+                clip: true
 
-                Column {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-                    width: parent.width * 0.80
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.ps ? root.ps.trackTitle : "Sin reproducción"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                        elide: Text.ElideRight
-                    }
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: MichiTheme.spacing.md
+                    anchors.rightMargin: MichiTheme.spacing.sm
+                    spacing: MichiTheme.spacing.sm
 
                     Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.ps ? root.ps.trackArtist : ""
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        visible: text !== ""
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.ps ? root.ps.trackAlbum : ""
-                        color: MichiTheme.colors.textMuted
+                        Layout.fillWidth: true
+                        text: _errorText
+                        color: "white"
                         font.pixelSize: MichiTheme.typography.metaSize
-                        visible: text !== ""
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
                     }
 
-                    StatusBadge {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.ps && root.ps.isPlaying ? "Reproduciendo" : "Pausado"
-                        kind: root.ps && root.ps.isPlaying ? "success" : "info"
+                    Text {
+                        text: "[X]"
+                        color: "white"
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: _showError = false
+                        }
                     }
                 }
             }
 
-            SectionHeader { text: "Cola"; width: parent.width }
-
-            GlassPanel {
+            // Main content
+            GridLayout {
                 width: parent.width
-                height: Math.min(300, 24 * Math.max(1, (root.ps ? root.ps.queue.length : 0)) + 40)
+                columns: parent.width > 700 ? 2 : 1
+                rowSpacing: MichiTheme.spacing.lg
+                columnSpacing: MichiTheme.spacing.xl
 
-                Column {
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.lg
-                    spacing: MichiTheme.spacing.sm
+                // Left column: cover + info + controls
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: MichiTheme.spacing.md
 
-                    Repeater {
-                        model: root.ps ? root.ps.queue.slice(0, 10) : []
+                    // Cover
+                    NowPlayingCover {
+                        id: coverArt
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: Math.min(200, parent.width * 0.5)
+                        Layout.preferredHeight: Layout.preferredWidth
+                        coverKey: root.ps ? root.ps.coverPath : ""
+                        placeholderMode: !root._hasTrack
+                    }
 
-                        Row {
-                            width: parent.width; height: 24; spacing: MichiTheme.spacing.sm
-                            Text {
-                                text: modelData.title || "—"
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.metaSize
-                                elide: Text.ElideRight; width: parent.width * 0.5
+                    // Title, artist, album
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root.ps && root.ps.trackArtist ? root.ps.trackArtist : ""
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        visible: text !== ""
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root.ps && root.ps.trackAlbum ? root.ps.trackAlbum : ""
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        visible: text !== ""
+                    }
+
+                    // Quality badges
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: MichiTheme.spacing.xs
+                        visible: root.ps && root.ps.qualityInfoAvailable
+
+                        StatusBadge { text: root.ps ? root.ps.formatLabel : ""; kind: "info"; visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.sampleRate : ""; kind: "info"; visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.bitDepth : ""; kind: "info"; visible: text !== "" }
+                        StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: "info"; visible: text !== "" }
+                    }
+
+                    // State
+                    StatusBadge {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: root.ps && root.ps.isPlaying ? "Reproduciendo" : root.ps && root.ps.backendAvailable ? "Pausado" : "No disponible"
+                        kind: root.ps && root.ps.isPlaying ? "success" : root.ps && root.ps.backendAvailable ? "info" : "disconnected"
+                    }
+
+                    // Controls
+                    NowPlayingControls {
+                        Layout.alignment: Qt.AlignHCenter
+                        isPlaying: root.ps ? root.ps.isPlaying : false
+                        shuffleEnabled: root.ps ? root.ps.shuffleEnabled : false
+                        repeatMode: root.ps ? root.ps.repeatMode : "none"
+                        playPauseSupported: root.ps ? root.ps.playPauseSupported : false
+                        previousSupported: root.ps ? root.ps.previousSupported : false
+                        nextSupported: root.ps ? root.ps.nextSupported : false
+                        shuffleSupported: root.ps ? root.ps.shuffleSupported : false
+                        repeatSupported: root.ps ? root.ps.repeatSupported : false
+                        onPlayClicked: { if (root.ps) root.ps.togglePlay() }
+                        onPrevClicked: { if (root.ps) root.ps.previous() }
+                        onNextClicked: { if (root.ps) root.ps.next() }
+                        onShuffleClicked: { if (root.ps) root.ps.toggleShuffle() }
+                        onRepeatClicked: { if (root.ps) root.ps.toggleRepeat() }
+                    }
+
+                    // Seek bar
+                    NowPlayingSeekBar {
+                        Layout.fillWidth: true
+                        position: root.ps ? root.ps.position : 0
+                        duration: root.ps ? root.ps.duration : 0
+                        enabled: root.ps ? root.ps.seekSupported : false
+                        onSeekRequested: function(pos) { if (root.ps) root.ps.seek(pos) }
+                    }
+
+                    // Volume
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 200
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: MichiTheme.spacing.sm
+
+                        Text {
+                            text: "Vol."
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                        }
+
+                        NowPlayingVolume {
+                            Layout.fillWidth: true
+                            volume: root.ps ? root.ps.volume : 80
+                            muted: root.ps ? root.ps.muted : false
+                            onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
+                            onMuteClicked: { if (root.ps) root.ps.toggleMute() }
+                        }
+                    }
+
+                    // Navigation links
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: MichiTheme.spacing.sm
+                        visible: root._hasTrack
+
+                        MichiButton { text: "Letra"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("lyrics") } }
+                        MichiButton { text: "Metadata"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("metadata_inspector") } }
+                    }
+                }
+
+                // Right column: queue + history
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: parent.width > 700 ? parent.width * 0.35 : parent.width
+                    spacing: MichiTheme.spacing.md
+                    visible: parent.width > 700 || parent.columns === 2
+
+                    // Queue
+                    Text {
+                        text: "Cola"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        height: Math.min(200, (root.ps ? root.ps.queue.length : 0) * 28 + 10)
+
+                        ListView {
+                            id: queueView
+                            anchors.fill: parent
+                            model: root.ps ? root.ps.queue : []
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            delegate: Row {
+                                width: queueView.width; height: 24; spacing: MichiTheme.spacing.sm
+                                Text {
+                                    text: modelData.title || "—"
+                                    color: modelData.is_current ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.metaSize
+                                    elide: Text.ElideRight; width: parent.width * 0.6
+                                }
+                                Text {
+                                    text: modelData.artist || ""
+                                    color: MichiTheme.colors.textSecondary
+                                    font.pixelSize: MichiTheme.typography.metaSize
+                                    elide: Text.ElideRight; width: parent.width * 0.35
+                                }
                             }
-                            Text {
-                                text: modelData.artist || ""
-                                color: MichiTheme.colors.textSecondary
-                                font.pixelSize: MichiTheme.typography.metaSize
-                                elide: Text.ElideRight; width: parent.width * 0.4
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: root.ps && root.ps.queue.length === 0 ? "Cola vacía" : ""
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            visible: text !== ""
+                        }
+                    }
+
+                    // History
+                    Text {
+                        text: "Historial"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        visible: root.ps && root.ps.history && root.ps.history.length > 0
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        height: Math.min(150, (root.ps ? root.ps.history.length : 0) * 24 + 10)
+                        visible: root.ps && root.ps.history && root.ps.history.length > 0
+
+                        ListView {
+                            anchors.fill: parent
+                            model: root.ps ? root.ps.history.slice(0, 10) : []
+                            clip: true
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            delegate: Row {
+                                width: parent.width; height: 24; spacing: MichiTheme.spacing.sm
+                                Text {
+                                    text: modelData.title || "—"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.metaSize
+                                    elide: Text.ElideRight; width: parent.width * 0.6
+                                }
+                                Text {
+                                    text: modelData.artist || ""
+                                    color: MichiTheme.colors.textSecondary
+                                    font.pixelSize: MichiTheme.typography.metaSize
+                                    elide: Text.ElideRight; width: parent.width * 0.3
+                                }
                             }
                         }
                     }
 
                     Text {
-                        text: root.ps && root.ps.queue.length === 0 ? "Cola vacía" : ""
+                        text: root.ps && root.ps.history && root.ps.history.length > 0
+                              ? root.ps.history.length + " canciones"
+                              : "Sin historial"
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
-                        visible: text !== ""
                     }
                 }
             }
+        }
+    }
 
-            SectionHeader { text: "Historial"; width: parent.width }
-
-            Text {
-                text: root.ps && root.ps.history.length > 0
-                      ? root.ps.history.length + " canciones"
-                      : "Sin historial"
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
+    // Track errors via Connections
+    Connections {
+        target: root.ps
+        function onErrorMessageChanged() {
+            if (root.ps && root.ps.errorMessage) {
+                _errorText = root.ps.errorMessage
+                _showError = true
             }
+        }
+        function onLastCommandErrorChanged() {
+            if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage) {
+                _errorText = root.ps.lastCommandMessage
+                _showError = true
+            }
+        }
+        function onLastCommandOkChanged() {
+            if (root.ps && root.ps.lastCommandOk)
+                _showError = false
         }
     }
 }
