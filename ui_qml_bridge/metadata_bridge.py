@@ -173,25 +173,40 @@ class MetadataBridge(QObject):
     @Slot(result=dict)
     def saveChanges(self):
         if not self._current_filepath:
-            return {"ok": False, "error": "NO_FILE_SELECTED"}
-        try:
-            from metadata.tag_writer import write_tags
-            from metadata.tag_model import TrackTags
-            tags = TrackTags(filepath=self._current_filepath)
-            for k, v in self._all_fields.items():
-                if hasattr(tags, k):
-                    setattr(tags, k, v)
-            tags.dirty = True
-            ok = write_tags(tags)
-            if ok:
-                self._error_message = ""
-                self._quality_summary = "Metadatos guardados"
-                self.dataChanged.emit()
-                return {"ok": True}
-            return {"ok": False, "error": "WRITE_FAILED"}
-        except Exception as e:
-            logger.debug("saveChanges failed: %s", e)
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error_code": "NO_FILE_SELECTED", "message": "No hay archivo seleccionado"}
+        from ui_qml_bridge.metadata_tag_adapter import (
+            load_tags, apply_patch, create_backup, write_tags_safe,
+            verify_changes, rollback,
+        )
+        base_tags = load_tags(self._current_filepath)
+        if base_tags is None:
+            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
+        changes = {}
+        for k, v in self._all_fields.items():
+            if k in ("has_artwork", "format", "bitrate", "sample_rate", "bit_depth", "channels", "duration"):
+                continue
+            if k in ("title", "artist", "album", "album_artist", "genre", "year",
+                     "track_number", "track_total", "disc_number", "disc_total",
+                     "composer", "comment", "bpm", "copyright"):
+                changes[k] = v
+        tags = apply_patch(base_tags, changes)
+        if not tags.dirty:
+            return {"ok": False, "error_code": "NO_CHANGES", "message": "Sin cambios"}
+        backup = create_backup(self._current_filepath)
+        result = write_tags_safe(tags, backup)
+        if not result.get("ok"):
+            if backup:
+                rollback(backup, self._current_filepath)
+            return result
+        verify = verify_changes(self._current_filepath, changes)
+        if not verify.get("ok"):
+            if backup:
+                rollback(backup, self._current_filepath)
+            return verify
+        self._error_message = ""
+        self._quality_summary = "Metadatos guardados"
+        self.dataChanged.emit()
+        return {"ok": True}
 
     @Slot(result=dict)
     def hasArtwork(self):
@@ -200,45 +215,55 @@ class MetadataBridge(QObject):
     @Slot(str, result=dict)
     def replaceArtwork(self, image_path: str):
         if not image_path or not Path(image_path).is_file():
-            return {"ok": False, "error": "FILE_NOT_FOUND"}
+            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
         if not self._current_filepath:
-            return {"ok": False, "error": "NO_FILE_SELECTED"}
-        try:
-            from metadata.tag_writer import write_tags
-            from metadata.tag_model import TrackTags
-            tags = TrackTags(filepath=self._current_filepath)
-            tags.artwork_dirty = True
-            with open(image_path, "rb") as f:
-                tags.artwork_data = f.read()
-            ok = write_tags(tags)
-            if ok:
-                self._artwork_status = "Carátula actualizada"
-                self.dataChanged.emit()
-                return {"ok": True}
-            return {"ok": False, "error": "WRITE_FAILED"}
-        except Exception as e:
-            logger.debug("replaceArtwork failed: %s", e)
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error_code": "NO_FILE_SELECTED", "message": "No hay archivo"}
+        from ui_qml_bridge.metadata_tag_adapter import load_tags, create_backup, write_tags_safe, rollback
+        tags = load_tags(self._current_filepath)
+        if tags is None:
+            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
+        mime = self._detect_mime(image_path)
+        tags.has_artwork = True
+        with open(image_path, "rb") as f:
+            tags.artwork_data = f.read()
+        tags.artwork_mime = mime
+        tags.artwork_dirty = True
+        backup = create_backup(self._current_filepath)
+        result = write_tags_safe(tags, backup)
+        if not result.get("ok"):
+            if backup:
+                rollback(backup, self._current_filepath)
+            return result
+        self._artwork_status = "Carátula actualizada"
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    def _detect_mime(self, path: str) -> str:
+        ext = Path(path).suffix.lower()
+        return {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "webp": "image/webp"}.get(ext.lstrip("."), "image/jpeg")
 
     @Slot(result=dict)
     def removeArtwork(self):
         if not self._current_filepath:
-            return {"ok": False, "error": "NO_FILE_SELECTED"}
-        try:
-            from metadata.tag_writer import write_tags
-            from metadata.tag_model import TrackTags
-            tags = TrackTags(filepath=self._current_filepath)
-            tags.artwork_dirty = True
-            tags.artwork_data = b""
-            ok = write_tags(tags)
-            if ok:
-                self._artwork_status = "Carátula eliminada"
-                self.dataChanged.emit()
-                return {"ok": True}
-            return {"ok": False, "error": "WRITE_FAILED"}
-        except Exception as e:
-            logger.debug("removeArtwork failed: %s", e)
-            return {"ok": False, "error": str(e)}
+            return {"ok": False, "error_code": "NO_FILE_SELECTED", "message": "No hay archivo"}
+        from ui_qml_bridge.metadata_tag_adapter import load_tags, create_backup, write_tags_safe, rollback
+        tags = load_tags(self._current_filepath)
+        if tags is None:
+            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
+        tags.has_artwork = False
+        tags.artwork_data = b""
+        tags.artwork_mime = ""
+        tags.artwork_dirty = True
+        backup = create_backup(self._current_filepath)
+        result = write_tags_safe(tags, backup)
+        if not result.get("ok"):
+            if backup:
+                rollback(backup, self._current_filepath)
+            return result
+        self._artwork_status = "Carátula eliminada"
+        self.dataChanged.emit()
+        return {"ok": True}
 
     @Slot()
     def clear(self):

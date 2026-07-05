@@ -95,24 +95,50 @@ class PlaylistsBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    @Slot(int, result=dict)
-    def getPlaylistDetail(self, pid: int):
+    def _get_playlist_items_internal(self, pid: int) -> list[dict]:
+        """Internal: returns items with filepath for backend operations."""
         if not self._can():
-            return {"ok": False, "error": "NO_DB"}
+            return []
         try:
             items = self._db.get_playlist_items(pid)
-            tracks = []
-            for item in items:
-                    tracks.append({
-                        "track_id": getattr(item, 'id', 0),
-                        "title": getattr(item, 'title', '') or '',
-                        "artist": getattr(item, 'artist', '') or '',
-                        "album": getattr(item, 'album', '') or '',
-                        "duration": getattr(item, 'duration', 0) or 0,
-                    })
-            return {"ok": True, "tracks": tracks, "count": len(tracks)}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+            return [
+                {
+                    "track_id": getattr(item, 'id', 0),
+                    "track_uid": getattr(item, 'track_uid', '') or '',
+                    "filepath": getattr(item, 'filepath', '') or '',
+                    "title": getattr(item, 'title', '') or '',
+                    "artist": getattr(item, 'artist', '') or '',
+                    "album": getattr(item, 'album', '') or '',
+                    "duration": getattr(item, 'duration', 0) or 0,
+                    "position": idx,
+                }
+                for idx, item in enumerate(items)
+            ]
+        except Exception:
+            return []
+
+    def _playlist_item_to_public(self, item: dict) -> dict:
+        return {
+            "track_id": item.get("track_id", 0),
+            "track_uid": item.get("track_uid", ""),
+            "public_ref": f"track_{item.get('track_id', 0)}",
+            "title": item.get("title", ""),
+            "artist": item.get("artist", ""),
+            "album": item.get("album", ""),
+            "duration": item.get("duration", 0),
+            "cover_key": item.get("album_key", "") or item.get("album", ""),
+            "missing": not bool(item.get("filepath")),
+        }
+
+    @Slot(int, result=dict)
+    def getPlaylistDetail(self, pid: int):
+        internal = self._get_playlist_items_internal(pid)
+        if not internal and self._can():
+            return {"ok": True, "tracks": [], "count": 0}
+        if not internal:
+            return {"ok": False, "error": "NO_DB"}
+        tracks = [self._playlist_item_to_public(t) for t in internal]
+        return {"ok": True, "tracks": tracks, "count": len(tracks)}
 
     @Slot(int, str, str, result=dict)
     def addTrackToPlaylist(self, pid: int, filepath: str = "", track_id: str = ""):
@@ -162,8 +188,8 @@ class PlaylistsBridge(QObject):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
-            detail = self.getPlaylistDetail(pid)
-            if not detail.get("ok"):
+            internal = self._get_playlist_items_internal(pid)
+            if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
             orig_name = ""
             for p in self._playlists:
@@ -172,8 +198,7 @@ class PlaylistsBridge(QObject):
                     break
             new_name = f"{orig_name} (copia)" if orig_name else "Copia"
             new_pid = self._db.create_playlist(new_name)
-            tracks = detail.get("tracks", [])
-            for t in tracks:
+            for t in internal:
                 fp = t.get("filepath", "")
                 if fp:
                     self._db.add_track_to_playlist(new_pid, filepath=fp)
