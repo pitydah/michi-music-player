@@ -26,6 +26,7 @@ class BridgeFactory(QObject):
         self._nav = navigation_bridge
         self._bridges: dict[str, QObject] = {}
         self._capabilities: dict[str, bool] = {}
+        self._action_registry = None
 
     @property
     def bridges(self) -> dict[str, QObject]:
@@ -271,11 +272,22 @@ class BridgeFactory(QObject):
         self._register_capability("diagnostics", "db")
         return self._bridges["diagnostics"]
 
+    def get_action_registry(self):
+        if self._action_registry is None:
+            from ui_qml_bridge.action_registry import ActionRegistry
+            self._action_registry = ActionRegistry()
+        return self._action_registry
+
+    def create_action_registry_bridge(self):
+        registry = self.get_action_registry()
+        if "action_registry" not in self._bridges:
+            self._bridges["action_registry"] = registry
+        return registry
+
     def create_command_palette_bridge(self):
         if "command_palette" not in self._bridges:
             from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
-            from ui_qml_bridge.action_registry import ActionRegistry
-            registry = ActionRegistry()
+            registry = self.get_action_registry()
             self._bridges["command_palette"] = CommandPaletteBridge(
                 action_registry=registry,
                 navigation_bridge=self._nav or self.get("navigation"),
@@ -310,6 +322,7 @@ class BridgeFactory(QObject):
         self.create_route_registry_bridge()
         self.create_app_state_bridge()
         self.create_diagnostics_bridge()
+        self.create_action_registry_bridge()
         self.create_command_palette_bridge()
         return self._bridges
 

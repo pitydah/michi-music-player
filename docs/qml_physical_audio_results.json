@@ -1,137 +1,136 @@
 {
-  "status": "VERIFIED",
-  "timestamp": "2026-07-04T23:00:00",
-  "operator": "developer",
-  "platform": "Linux 6.8",
-  "display_server": "Wayland",
-  "backend": "PipeWire",
-  "output_device": "Built-in Audio",
-  "runtime_without_crash": true,
-  "log": "/tmp/michi_qml_audio_test.log",
+  "status": "FAILED",
+  "timestamp": "2026-07-05T15:28:50",
+  "operator": "",
+  "platform": "n",
+  "display_server": "wayland",
+  "backend": "",
+  "output_device": "",
   "formats": {
     "mp3": {
-      "tested": true,
-      "passed": true,
-      "file": "/home/cristian/Music/test.mp3"
+      "tested": false,
+      "passed": false,
+      "file": ""
     },
     "flac": {
-      "tested": true,
-      "passed": true,
-      "file": "/home/cristian/Music/test.flac"
+      "tested": false,
+      "passed": false,
+      "file": ""
     },
     "wav": {
-      "tested": true,
-      "passed": true,
-      "file": "/home/cristian/Music/test.wav"
+      "tested": false,
+      "passed": false,
+      "file": ""
     }
   },
   "checks": [
     {
-      "id": "check_0",
-      "passed": true,
+      "id": "play_mp3",
+      "passed": false,
+      "notes": "no aparece biblioteca"
+    },
+    {
+      "id": "play_flac",
+      "passed": false,
+      "notes": "no aparece biblioteca"
+    },
+    {
+      "id": "play_wav",
+      "passed": false,
+      "notes": "no aparece biblioteca"
+    },
+    {
+      "id": "cover_art",
+      "passed": false,
+      "notes": "no aparece biblioteca"
+    },
+    {
+      "id": "placeholder",
+      "passed": false,
+      "notes": "no aparece bilioteca"
+    },
+    {
+      "id": "pause",
+      "passed": false,
+      "notes": "no se puede reproducir no aparece biblioteca"
+    },
+    {
+      "id": "seek",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_1",
-      "passed": true,
+      "id": "volume",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_2",
-      "passed": true,
+      "id": "mute",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_3",
-      "passed": true,
+      "id": "next",
+      "passed": false,
+      "notes": "n"
+    },
+    {
+      "id": "previous",
+      "passed": false,
+      "notes": "n"
+    },
+    {
+      "id": "shuffle",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_4",
-      "passed": true,
+      "id": "repeat",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_5",
-      "passed": true,
+      "id": "queue",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_6",
-      "passed": true,
+      "id": "queue_play",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_7",
-      "passed": true,
+      "id": "lyrics",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_8",
-      "passed": true,
+      "id": "radio",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_9",
-      "passed": true,
+      "id": "radio_play",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_10",
-      "passed": true,
+      "id": "eq",
+      "passed": false,
+      "notes": "n"
+    },
+    {
+      "id": "settings",
+      "passed": false,
       "notes": ""
     },
     {
-      "id": "check_11",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_12",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_13",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_14",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_15",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_16",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_17",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_18",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_19",
-      "passed": true,
-      "notes": ""
-    },
-    {
-      "id": "check_20",
-      "passed": true,
+      "id": "resize",
+      "passed": false,
       "notes": ""
     }
   ],
-  "passed": 21,
-  "total": 21
+  "passed": 0,
+  "total": 21,
+  "log": ""
 }
