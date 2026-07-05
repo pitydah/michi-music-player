@@ -197,3 +197,11 @@ class PlaybackBridge(QObject):
     @Slot(int, result=dict)
     def playQueueItem(self, index: int):
         return self._nowplaying.playQueueItem(index)
+
+    @Slot(result=dict)
+    def clearHistory(self):
+        return self._nowplaying.clearHistory()
+
+    @Slot(int, result=dict)
+    def playHistoryItem(self, index: int):
+        return self._nowplaying.playHistoryItem(index)

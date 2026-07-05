@@ -88,7 +88,9 @@ class NowPlayingBridge(QObject):
         self._repeat_mode = "none"
         self._shuffle_enabled = False
         self._queue: list[dict[str, Any]] = []
+        self._queue_internal_refs: dict[int, dict[str, Any]] = {}
         self._history: list[dict[str, Any]] = []
+        self._history_max = 50
         self._backend_available = self._player is not None
         self._playback_status = "idle" if self._backend_available else "unavailable"
         self._error_message = ""
@@ -172,11 +174,33 @@ class NowPlayingBridge(QObject):
 
     # ── Signal handlers (update state from backend) ──
 
+    def _add_to_history(self, title: str, artist: str, album: str):
+        if not title or title == "—":
+            return
+        if self._history and self._history[0].get("title") == title and self._history[0].get("artist") == artist:
+            return
+        entry = {
+            "history_id": f"h{len(self._history)}",
+            "track_id": "",
+            "track_uid": "",
+            "title": title,
+            "artist": artist,
+            "album": album,
+            "cover_key": self._cover_key,
+            "duration": self._duration,
+            "source_type": self._source_type,
+            "played_at": __import__("time").time(),
+        }
+        self._history.insert(0, entry)
+        if len(self._history) > self._history_max:
+            self._history.pop()
+
     def _on_track(self, title="", artist="", album=""):
         self._track_title = title or ""
         self._track_artist = artist or ""
         self._track_album = album or ""
         self._set_cover_from_current_path()
+        self._add_to_history(self._track_title, self._track_artist, self._track_album)
         self._emit_state()
 
     def _on_state(self, state: str):
@@ -198,8 +222,57 @@ class NowPlayingBridge(QObject):
         self._muted = vol == 0
         self._emit_state()
 
+    def _normalize_queue_item(self, item: Any, index: int) -> dict:
+        if isinstance(item, dict):
+            title = str(item.get("title", item.get("name", "")) or "")
+            artist = str(item.get("artist", "") or "")
+            album = str(item.get("album", "") or "")
+            duration = int(item.get("duration", 0) or 0)
+            track_id = str(item.get("track_id", item.get("id", "")) or "")
+            track_uid = str(item.get("track_uid", "") or "")
+            source = str(item.get("source_type", "local_file") or "local_file")
+            raw_fp = item.get("filepath", item.get("path", item.get("url", "")) or "")
+        else:
+            title = getattr(item, "title", getattr(item, "name", "")) or ""
+            artist = getattr(item, "artist", "") or ""
+            album = getattr(item, "album", "") or ""
+            duration = int(getattr(item, "duration", 0) or 0)
+            track_id = str(getattr(item, "track_id", getattr(item, "id", "")) or "")
+            track_uid = str(getattr(item, "track_uid", "") or "")
+            source = "local_file"
+            raw_fp = getattr(item, "filepath", getattr(item, "path", getattr(item, "url", ""))) or ""
+
+        self._queue_internal_refs[index] = {
+            "filepath": raw_fp,
+            "backend_id": track_id,
+        }
+
+        cover_key = ""
+        if raw_fp:
+            cover_key = _cover_key_for_path(raw_fp)
+
+        return {
+            "queue_index": index,
+            "track_id": track_id,
+            "track_uid": track_uid,
+            "title": title,
+            "artist": artist,
+            "album": album,
+            "duration": duration,
+            "cover_key": cover_key,
+            "source_type": source,
+            "is_current": index == 0,
+        }
+
+    def _normalize_queue(self, items: list) -> list[dict]:
+        self._queue_internal_refs.clear()
+        result = []
+        for i, item in enumerate(items or []):
+            result.append(self._normalize_queue_item(item, i))
+        return result
+
     def _on_queue(self, q: list):
-        self._queue = list(q) if q else []
+        self._queue = self._normalize_queue(q) if q else []
         self._emit_state()
 
     def _on_error(self, msg: str):
@@ -376,7 +449,7 @@ class NowPlayingBridge(QObject):
             if hasattr(self._player, 'get_queue'):
                 q = self._player.get_queue()
                 if q is not None:
-                    self._queue = list(q)
+                    self._queue = self._normalize_queue(q)
             if hasattr(self._player, 'state'):
                 st = self._player.state
                 if st:
@@ -702,6 +775,29 @@ class NowPlayingBridge(QObject):
             logger.warning("playQueueItem failed: %s", e)
             self._set_command_failure(op, PLAYBACK_ERROR, str(e))
             return _err(PLAYBACK_ERROR, str(e))
+
+    @Slot(result=dict)
+    def clearHistory(self):
+        op = "clearHistory"
+        self._history.clear()
+        self._set_command_success(op)
+        self._emit_state()
+        return _ok(op)
+
+    @Slot(int, result=dict)
+    def playHistoryItem(self, index: int):
+        op = "playHistoryItem"
+        if index < 0 or index >= len(self._history):
+            self._set_command_failure(op, INVALID_INDEX)
+            return _err(INVALID_INDEX)
+        entry = self._history[index]
+        tid = entry.get("track_id", "")
+        if tid and self._player and hasattr(self._player, 'play'):
+            self._player.play(tid)
+            self._set_command_success(op)
+            return _ok(op, {"history_id": entry.get("history_id", "")})
+        self._set_command_failure(op, UNSUPPORTED, "play history item not available")
+        return _err(UNSUPPORTED, "play history item not available")
 
     def set_cover_from_path(self, filepath: str):
         self._cover_key = _cover_key_for_path(filepath)
