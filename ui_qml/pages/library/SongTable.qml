@@ -49,9 +49,7 @@ Item {
                             font.weight: root.bridge && root.bridge.activeSortKey === modelData.k ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightMedium
                         }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: {
-                            if (root.trackModel) {
-                                root.trackModel.refresh(root.bridge ? root.bridge.searchQuery : "", "", "", "", modelData.k, true)
-                            } else if (root.bridge && typeof root.bridge.sortBy !== "undefined") {
+                            if (root.bridge && typeof root.bridge.sortBy !== "undefined") {
                                 root.bridge.sortBy(modelData.k)
                             }
                         } }

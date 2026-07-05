@@ -181,10 +181,14 @@ Item {
 
             ArtistList {
                 id: artistView; artists: root.lib ? root.lib.artists : []; bridge: root.lib
+                artistModel: root.lib ? root.lib.artistModel : null
                 onArtistSelected: function(name) { root.showArtistDetail(name) }
             }
 
-            FolderBrowser { id: folderView; folders: root.lib ? root.lib.folders : []; bridge: root.lib }
+            FolderBrowser {
+                id: folderView; folders: root.lib ? root.lib.folders : []; bridge: root.lib
+                folderModel: root.lib ? root.lib.folderModel : null
+            }
 
             ArtistDetailPage { id: artistDetail; visible: tabBar.currentIndex === 4; bridge: root.lib; onBackRequested: root.backFromDetail() }
             AlbumDetailPage { id: albumDetail; visible: tabBar.currentIndex === 5; bridge: root.lib; onBackRequested: root.backFromDetail() }
