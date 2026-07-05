@@ -58,12 +58,37 @@ def _player_field(player, *names: str) -> str:
     return _field(player, *names)
 
 
-def _err(error_code: str, message: str = "") -> dict:
-    return {"ok": False, "error_code": error_code, "message": message or error_code, "operation": "", "data": {}}
+_SAFE_MESSAGES = {
+    "NO_PLAYER_SERVICE": "Reproductor no disponible",
+    "BACKEND_UNAVAILABLE": "Backend de audio no disponible",
+    "UNSUPPORTED": "Operación no soportada por el backend actual",
+    "INVALID_POSITION": "Posición inválida",
+    "INVALID_INDEX": "Índice inválido",
+    "UNKNOWN_DURATION": "No se conoce la duración de la pista",
+    "PLAYBACK_ERROR": "No se pudo ejecutar la operación de reproducción",
+    "QUEUE_UNAVAILABLE": "La cola no está disponible en el backend actual",
+    "INTERNAL_ERROR": "Error interno de reproducción",
+    "EMPTY_FILEPATH": "No se recibió una pista válida",
+    "NOT_FOUND": "Elemento no encontrado",
+}
+
+
+def _safe_message(error_code: str) -> str:
+    return _SAFE_MESSAGES.get(error_code, error_code)
+
+
+def _err(operation: str, error_code: str, message: str = "", data: dict | None = None) -> dict:
+    return {
+        "ok": False,
+        "operation": operation or "",
+        "data": data or {},
+        "error_code": error_code or "INTERNAL_ERROR",
+        "message": message or _safe_message(error_code),
+    }
 
 
 def _ok(operation: str = "", data: dict | None = None) -> dict:
-    return {"ok": True, "operation": operation, "data": data or {}, "error_code": "", "message": ""}
+    return {"ok": True, "operation": operation or "", "data": data or {}, "error_code": "", "message": ""}
 
 
 class NowPlayingBridge(QObject):
@@ -90,13 +115,18 @@ class NowPlayingBridge(QObject):
         self._queue: list[dict[str, Any]] = []
         self._queue_internal_refs: dict[int, dict[str, Any]] = {}
         self._history: list[dict[str, Any]] = []
+        self._history_internal_refs: dict[str, dict[str, Any]] = {}
         self._history_max = 50
+        self._history_counter = 0
         self._backend_available = self._player is not None
         self._playback_status = "idle" if self._backend_available else "unavailable"
         self._error_message = ""
         self._last_command = ""
         self._last_command_ok = False
         self._last_command_error = ""
+        self._last_command_message = ""
+        self._last_command_timestamp = 0.0
+        self._command_pending = False
         self._safe_mode = not self._backend_available
 
         self._connect_player()
@@ -122,17 +152,31 @@ class NowPlayingBridge(QObject):
             with contextlib.suppress(Exception):
                 signal.connect(slot)
 
+    def _begin_command(self, operation: str):
+        self._last_command = operation
+        self._last_command_ok = False
+        self._last_command_error = ""
+        self._last_command_message = "En ejecución..."
+        self._last_command_timestamp = __import__("time").time()
+        self._command_pending = True
+        self._emit_state()
+
     def _set_command_success(self, operation: str, data: dict | None = None):
         self._last_command = operation
         self._last_command_ok = True
         self._last_command_error = ""
+        self._last_command_message = ""
+        self._last_command_timestamp = __import__("time").time()
+        self._command_pending = False
         self._emit_state()
 
     def _set_command_failure(self, operation: str, error_code: str, message: str = ""):
         self._last_command = operation
         self._last_command_ok = False
-        self._last_command_error = error_code
-        self._error_message = message or error_code
+        self._last_command_error = error_code or "INTERNAL_ERROR"
+        self._last_command_message = message or _safe_message(error_code)
+        self._last_command_timestamp = __import__("time").time()
+        self._command_pending = False
         self._emit_state()
 
     def _emit_state(self):
@@ -177,12 +221,22 @@ class NowPlayingBridge(QObject):
     def _add_to_history(self, title: str, artist: str, album: str):
         if not title or title == "—":
             return
-        if self._history and self._history[0].get("title") == title and self._history[0].get("artist") == artist:
+        if self._history and self._history[0].get("title") == title and self._history[0].get("artist") == artist and self._history[0].get("album") == album:
             return
+        self._history_counter += 1
+        hid = f"h{self._history_counter}_{__import__('time').time():.0f}"
+        fp = self._current_path()
+        track_id = ""
+        track_uid = ""
+        if hasattr(self._player, 'current'):
+            c = self._player.current
+            if c:
+                track_id = str(getattr(c, 'id', getattr(c, 'track_id', '')) or '')
+                track_uid = str(getattr(c, 'track_uid', '') or '')
         entry = {
-            "history_id": f"h{len(self._history)}",
-            "track_id": "",
-            "track_uid": "",
+            "history_id": hid,
+            "track_id": track_id,
+            "track_uid": track_uid,
             "title": title,
             "artist": artist,
             "album": album,
@@ -191,9 +245,11 @@ class NowPlayingBridge(QObject):
             "source_type": self._source_type,
             "played_at": __import__("time").time(),
         }
+        self._history_internal_refs[hid] = {"filepath": fp, "track_id": track_id}
         self._history.insert(0, entry)
         if len(self._history) > self._history_max:
-            self._history.pop()
+            removed = self._history.pop()
+            self._history_internal_refs.pop(removed.get("history_id", ""), None)
 
     def _on_track(self, title="", artist="", album=""):
         self._track_title = title or ""
@@ -369,6 +425,18 @@ class NowPlayingBridge(QObject):
     def lastCommandError(self):
         return self._last_command_error
 
+    @Property(str, notify=stateChanged)
+    def lastCommandMessage(self):
+        return self._last_command_message
+
+    @Property(float, notify=stateChanged)
+    def lastCommandTimestamp(self):
+        return self._last_command_timestamp
+
+    @Property(bool, notify=stateChanged)
+    def commandPending(self):
+        return self._command_pending
+
     # ── Capabilities ──
 
     def _has_player_method(self, *names: str) -> bool:
@@ -437,7 +505,7 @@ class NowPlayingBridge(QObject):
     @Slot(result=dict)
     def refresh(self):
         if not self._player:
-            return _err(NO_PLAYER_SERVICE)
+            return _err("refresh", NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'current'):
                 current = self._player.current
@@ -460,48 +528,50 @@ class NowPlayingBridge(QObject):
                 if d:
                     self._duration = int(d)
             self._emit_state()
-            return _ok()
+            return _ok("refresh")
         except Exception as e:
             logger.debug("refresh failed: %s", e)
-            return _err(PLAYBACK_ERROR, str(e))
+            return _err("refresh", PLAYBACK_ERROR, str(e))
 
     # ── Playback commands ──
 
     @Slot(result=dict)
     def togglePlay(self):
         op = "togglePlay"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             if self._is_playing:
                 if hasattr(self._player, 'pause'):
                     self._player.pause()
                     self._set_command_success(op)
-                    return _ok(op, {"playing": False})
-                self._set_command_failure(op, UNSUPPORTED, "pause not available")
-                return _err(UNSUPPORTED, "pause not available")
+                    return _ok(op, {"playing": False, "state_confirmed": False})
+                self._set_command_failure(op, UNSUPPORTED)
+                return _err(op, UNSUPPORTED)
             if hasattr(self._player, 'play_or_resume'):
                 self._player.play_or_resume()
                 self._set_command_success(op)
-                return _ok(op, {"playing": True})
+                return _ok(op, {"playing": True, "state_confirmed": False})
             if hasattr(self._player, 'resume'):
                 self._player.resume()
                 self._set_command_success(op)
-                return _ok(op, {"playing": True})
-            self._set_command_failure(op, UNSUPPORTED, "play/resume not available")
-            return _err(UNSUPPORTED, "play/resume not available")
+                return _ok(op, {"playing": True, "state_confirmed": False})
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("togglePlay failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def next(self):
         op = "next"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'play_next'):
                 self._player.play_next()
@@ -511,19 +581,20 @@ class NowPlayingBridge(QObject):
                 self._player.next()
                 self._set_command_success(op)
                 return _ok(op)
-            self._set_command_failure(op, UNSUPPORTED, "next not available")
-            return _err(UNSUPPORTED, "next not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("next failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def previous(self):
         op = "previous"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'play_prev'):
                 self._player.play_prev()
@@ -533,22 +604,23 @@ class NowPlayingBridge(QObject):
                 self._player.previous()
                 self._set_command_success(op)
                 return _ok(op)
-            self._set_command_failure(op, UNSUPPORTED, "previous not available")
-            return _err(UNSUPPORTED, "previous not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("previous failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(int, result=dict)
     def seek(self, position: int):
         op = "seek"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         if self._duration <= 0:
             self._set_command_failure(op, UNKNOWN_DURATION)
-            return _err(UNKNOWN_DURATION)
+            return _err(op, UNKNOWN_DURATION)
         pos = max(0, min(int(position), self._duration))
         try:
             if hasattr(self._player, 'seek'):
@@ -556,13 +628,13 @@ class NowPlayingBridge(QObject):
                 self._position = pos
                 self._set_command_success(op)
                 self._emit_state()
-                return _ok(op, {"position": pos})
-            self._set_command_failure(op, UNSUPPORTED, "seek not available")
-            return _err(UNSUPPORTED, "seek not available")
+                return _ok(op, {"requested_position": pos, "state_confirmed": False})
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("seek failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(int, result=dict)
     def seekRelative(self, seconds: int):
@@ -571,9 +643,10 @@ class NowPlayingBridge(QObject):
     @Slot(int, result=dict)
     def setVolume(self, volume: int):
         op = "setVolume"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         vol = max(0, min(100, int(volume)))
         try:
             if hasattr(self._player, 'set_volume'):
@@ -582,24 +655,25 @@ class NowPlayingBridge(QObject):
                 self._muted = vol == 0
                 self._set_command_success(op)
                 self._emit_state()
-                return _ok(op, {"volume": vol, "muted": self._muted})
-            self._set_command_failure(op, UNSUPPORTED, "volume not available")
-            return _err(UNSUPPORTED, "volume not available")
+                return _ok(op, {"volume": vol, "muted": self._muted, "state_confirmed": False})
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("setVolume failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def toggleMute(self):
         op = "toggleMute"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             if not hasattr(self._player, 'set_volume'):
-                self._set_command_failure(op, UNSUPPORTED, "volume not available")
-                return _err(UNSUPPORTED, "volume not available")
+                self._set_command_failure(op, UNSUPPORTED)
+                return _err(op, UNSUPPORTED)
             target = 0 if self._volume > 0 else (self._previous_volume or 80)
             self._player.set_volume(target)
             self._previous_volume = self._volume if self._volume > 0 else self._previous_volume
@@ -607,18 +681,19 @@ class NowPlayingBridge(QObject):
             self._muted = target == 0
             self._set_command_success(op)
             self._emit_state()
-            return _ok(op, {"volume": target, "muted": self._muted})
+            return _ok(op, {"volume": target, "muted": self._muted, "state_confirmed": False})
         except Exception as e:
             logger.warning("toggleMute failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def toggleShuffle(self):
         op = "toggleShuffle"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             call = self._player_call("toggle_shuffle")
             if call:
@@ -630,19 +705,20 @@ class NowPlayingBridge(QObject):
                     return _ok(op, {"shuffle": self._shuffle_enabled, "state_confirmed": True})
                 self._set_command_success(op)
                 return _ok(op, {"state_confirmed": False})
-            self._set_command_failure(op, UNSUPPORTED, "shuffle not available")
-            return _err(UNSUPPORTED, "shuffle not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("toggleShuffle failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def toggleRepeat(self):
         op = "toggleRepeat"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             call = self._player_call("toggle_repeat")
             if call:
@@ -654,24 +730,25 @@ class NowPlayingBridge(QObject):
                     return _ok(op, {"repeat": self._repeat_mode, "state_confirmed": True})
                 self._set_command_success(op)
                 return _ok(op, {"state_confirmed": False})
-            self._set_command_failure(op, UNSUPPORTED, "repeat not available")
-            return _err(UNSUPPORTED, "repeat not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("toggleRepeat failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     # ── Queue commands ──
 
     @Slot(str, result=dict)
     def enqueueSong(self, filepath: str):
         op = "enqueueSong"
+        self._begin_command(op)
         if not filepath:
             self._set_command_failure(op, EMPTY_FILEPATH)
-            return _err(EMPTY_FILEPATH, "empty filepath")
+            return _err(op, EMPTY_FILEPATH)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'enqueue'):
                 self._player.enqueue([filepath], play_now=False)
@@ -681,22 +758,23 @@ class NowPlayingBridge(QObject):
                 self._player.add_to_queue(filepath)
                 self._set_command_success(op)
                 return _ok(op, {"queued": True})
-            self._set_command_failure(op, UNSUPPORTED, "queue not available")
-            return _err(UNSUPPORTED, "queue not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("enqueueSong failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(int, result=dict)
     def removeFromQueue(self, index: int):
         op = "removeFromQueue"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         if index < 0 or index >= len(self._queue):
-            self._set_command_failure(op, INVALID_INDEX, f"index {index} out of range")
-            return _err(INVALID_INDEX, f"index {index} out of range")
+            self._set_command_failure(op, INVALID_INDEX)
+            return _err(op, INVALID_INDEX)
         try:
             if hasattr(self._player, 'remove_queue_item'):
                 self._player.remove_queue_item(index)
@@ -706,79 +784,83 @@ class NowPlayingBridge(QObject):
                 self._player.remove_from_queue(index)
                 self._set_command_success(op)
                 return _ok(op, {"index": index})
-            self._set_command_failure(op, UNSUPPORTED, "remove from queue not available")
-            return _err(UNSUPPORTED, "remove from queue not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("removeFromQueue failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def clearQueue(self):
         op = "clearQueue"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         try:
             if hasattr(self._player, 'clear_queue'):
                 self._player.clear_queue()
                 self._set_command_success(op)
                 return _ok(op)
-            self._set_command_failure(op, UNSUPPORTED, "clear queue not available")
-            return _err(UNSUPPORTED, "clear queue not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("clearQueue failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(int, int, result=dict)
     def moveQueueItem(self, from_index: int, to_index: int):
         op = "moveQueueItem"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         if from_index < 0 or from_index >= len(self._queue):
-            self._set_command_failure(op, INVALID_INDEX, f"from_index {from_index} out of range")
-            return _err(INVALID_INDEX, f"from_index {from_index} out of range")
+            self._set_command_failure(op, INVALID_INDEX)
+            return _err(op, INVALID_INDEX)
         if to_index < 0 or to_index >= len(self._queue):
-            self._set_command_failure(op, INVALID_INDEX, f"to_index {to_index} out of range")
-            return _err(INVALID_INDEX, f"to_index {to_index} out of range")
+            self._set_command_failure(op, INVALID_INDEX)
+            return _err(op, INVALID_INDEX)
         try:
             if hasattr(self._player, 'move_queue_item'):
                 self._player.move_queue_item(from_index, to_index)
                 self._set_command_success(op)
                 return _ok(op, {"from": from_index, "to": to_index})
-            self._set_command_failure(op, UNSUPPORTED, "move queue item not available")
-            return _err(UNSUPPORTED, "move queue item not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("moveQueueItem failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(int, result=dict)
     def playQueueItem(self, index: int):
         op = "playQueueItem"
+        self._begin_command(op)
         if not self._player:
             self._set_command_failure(op, NO_PLAYER_SERVICE)
-            return _err(NO_PLAYER_SERVICE)
+            return _err(op, NO_PLAYER_SERVICE)
         if index < 0 or index >= len(self._queue):
-            self._set_command_failure(op, INVALID_INDEX, f"index {index} out of range")
-            return _err(INVALID_INDEX, f"index {index} out of range")
+            self._set_command_failure(op, INVALID_INDEX)
+            return _err(op, INVALID_INDEX)
         try:
             if hasattr(self._player, 'play_queue_item'):
                 self._player.play_queue_item(index)
                 self._set_command_success(op)
                 return _ok(op, {"index": index})
-            self._set_command_failure(op, UNSUPPORTED, "play queue item not available")
-            return _err(UNSUPPORTED, "play queue item not available")
+            self._set_command_failure(op, UNSUPPORTED)
+            return _err(op, UNSUPPORTED)
         except Exception as e:
             logger.warning("playQueueItem failed: %s", e)
-            self._set_command_failure(op, PLAYBACK_ERROR, str(e))
-            return _err(PLAYBACK_ERROR, str(e))
+            self._set_command_failure(op, PLAYBACK_ERROR)
+            return _err(op, PLAYBACK_ERROR)
 
     @Slot(result=dict)
     def clearHistory(self):
         op = "clearHistory"
+        self._begin_command(op)
         self._history.clear()
         self._set_command_success(op)
         self._emit_state()
@@ -787,17 +869,20 @@ class NowPlayingBridge(QObject):
     @Slot(int, result=dict)
     def playHistoryItem(self, index: int):
         op = "playHistoryItem"
+        self._begin_command(op)
         if index < 0 or index >= len(self._history):
             self._set_command_failure(op, INVALID_INDEX)
-            return _err(INVALID_INDEX)
+            return _err(op, INVALID_INDEX)
         entry = self._history[index]
-        tid = entry.get("track_id", "")
-        if tid and self._player and hasattr(self._player, 'play'):
-            self._player.play(tid)
+        internal_key = entry.get("history_id", "")
+        ref = self._history_internal_refs.get(internal_key, {})
+        fp = ref.get("filepath", "")
+        if fp and self._player and hasattr(self._player, 'play'):
+            self._player.play(fp)
             self._set_command_success(op)
-            return _ok(op, {"history_id": entry.get("history_id", "")})
-        self._set_command_failure(op, UNSUPPORTED, "play history item not available")
-        return _err(UNSUPPORTED, "play history item not available")
+            return _ok(op, {"history_id": internal_key})
+        self._set_command_failure(op, UNSUPPORTED)
+        return _err(op, UNSUPPORTED)
 
     def set_cover_from_path(self, filepath: str):
         self._cover_key = _cover_key_for_path(filepath)
