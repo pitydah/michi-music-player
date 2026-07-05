@@ -1,21 +1,22 @@
-"""ArtistListModel — QAbstractListModel for scalable artist display."""
-
+"""ArtistListModel — BasePagedListModel backed by LibraryQueryService."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QAbstractListModel, QModelIndex, Property, Signal
+from typing import Any
+
+from PySide6.QtCore import Qt
+
+from ui_qml.models.BasePagedListModel import BasePagedListModel
 
 
-class ArtistListModel(QAbstractListModel):
-    dataChanged = Signal()
-
+class ArtistListModel(BasePagedListModel):
     NameRole = Qt.UserRole + 1
     TrackCountRole = Qt.UserRole + 2
     AlbumCountRole = Qt.UserRole + 3
     CoverKeyRole = Qt.UserRole + 4
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._artists: list[dict] = []
+    def __init__(self, query_service=None, parent=None):
+        super().__init__(page_size=100, parent=parent)
+        self._qs = query_service
 
     def roleNames(self):
         return {
@@ -25,13 +26,10 @@ class ArtistListModel(QAbstractListModel):
             self.CoverKeyRole: b"coverKey",
         }
 
-    def rowCount(self, parent=QModelIndex()):
-        return len(self._artists)
-
     def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid() or index.row() >= len(self._artists):
+        if not index.isValid() or index.row() >= len(self._items):
             return None
-        item = self._artists[index.row()]
+        item = self._items[index.row()]
         mapping = {
             self.NameRole: "name",
             self.TrackCountRole: "track_count",
@@ -45,35 +43,15 @@ class ArtistListModel(QAbstractListModel):
             return item.get("name", "")
         return None
 
-    @Property(int, notify=dataChanged)
-    def count(self):
-        return len(self._artists)
+    def _fetch_count(self, **kwargs) -> int:
+        if not self._qs:
+            return 0
+        return self._qs.count_artists(search=kwargs.get("search", ""))
 
-    def resetFromArtists(self, artists: list[dict]):
-        self.beginResetModel()
-        self._artists = artists
-        self.endResetModel()
-        self.dataChanged.emit()
-
-    def buildFromSongs(self, songs: list) -> list[dict]:
-        seen: dict[str, dict] = {}
-        for s in songs:
-            name = getattr(s, 'albumartist', '') or getattr(s, 'artist', '') or ''
-            if not name:
-                continue
-            if name not in seen:
-                seen[name] = {"name": name, "track_count": 0, "album_count": 0, "cover_key": ""}
-                seen_albums: set = set()
-            entry = seen[name]
-            entry["track_count"] += 1
-            album = getattr(s, 'album', '') or ''
-            if album and album not in seen_albums:
-                seen_albums.add(album)
-                entry["album_count"] += 1
-            if not entry["cover_key"]:
-                entry["cover_key"] = getattr(s, 'album_key', '') or ''
-        return sorted(seen.values(), key=lambda x: x.get("name", "").lower())
-
-    def resetFromSongs(self, songs: list):
-        artists = self.buildFromSongs(songs)
-        self.resetFromArtists(artists)
+    def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
+        if not self._qs:
+            return []
+        return self._qs.fetch_artists(offset=offset, limit=limit,
+                                      search=kwargs.get("search", ""),
+                                      sort=kwargs.get("sort", "name"),
+                                      ascending=kwargs.get("asc", True))

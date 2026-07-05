@@ -44,7 +44,7 @@ class LibraryBridge(QObject):
         self._query_svc = LibraryQueryService(self._db) if self._db else None
         self._qe = QueryExecutor(worker_manager=None, parent=self)
         self._track_model = TrackListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
-        self._album_model = AlbumListModel(parent=self)
+        self._album_model = AlbumListModel(query_service=self._query_svc, parent=self)
 
     # ── Internal pipeline ──
 
