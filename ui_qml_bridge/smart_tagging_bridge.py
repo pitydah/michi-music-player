@@ -57,6 +57,32 @@ class SmartTaggingBridge(QObject):
             self._status = "unavailable"
         self.dataChanged.emit()
 
+    @Slot(result=dict)
+    def applySuggestions(self):
+        if not self._suggestions:
+            return {"ok": False, "error": "NO_SUGGESTIONS"}
+        if not self._current_filepath:
+            return {"ok": False, "error": "NO_FILE"}
+        try:
+            from metadata.tag_writer import write_tags
+            from metadata.tag_model import TrackTags
+            tags = TrackTags()
+            for s in self._suggestions:
+                field = s.get("field", "")
+                suggested = s.get("suggested", "")
+                if field and suggested:
+                    setattr(tags, field, suggested)
+            tags.dirty = True
+            ok = write_tags(tags)
+            if ok:
+                self._status = "applied"
+                self.dataChanged.emit()
+                return {"ok": True, "applied": len(self._suggestions)}
+            return {"ok": False, "error": "WRITE_FAILED"}
+        except Exception as e:
+            logger.debug("applySuggestions failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
     @Slot()
     def refresh(self):
         self.dataChanged.emit()

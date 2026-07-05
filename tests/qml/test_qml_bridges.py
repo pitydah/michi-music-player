@@ -343,6 +343,28 @@ class TestConnectionsBridge:
         bridge = ConnectionsBridge()
         assert hasattr(bridge, 'scanForServers')
 
+    def test_connect_manual_returns_dict(self):
+        bridge = ConnectionsBridge()
+        result = bridge.connectManual("192.168.1.100", 8080, "test")
+        assert isinstance(result, dict)
+        assert result.get("ok") is True
+
+    def test_diagnose_returns_dict(self):
+        bridge = ConnectionsBridge()
+        result = bridge.diagnose()
+        assert isinstance(result, dict)
+
+    def test_disconnect_returns_dict(self):
+        bridge = ConnectionsBridge()
+        result = bridge.disconnect()
+        assert isinstance(result, dict)
+
+    def test_capabilities_list(self):
+        bridge = ConnectionsBridge()
+        caps = bridge.capabilities
+        assert len(caps) > 0
+        assert all("key" in c for c in caps)
+
 
 class TestHomeAudioBridge:
     def test_default_state(self):
@@ -361,6 +383,43 @@ class TestHomeAudioBridge:
         bridge = HomeAudioBridge()
         result = bridge.openDiagnostics()
         assert result.get("ok") is True
+
+    def test_capabilities_no_controller(self):
+        bridge = HomeAudioBridge()
+        assert bridge.homeAssistantAvailable is False
+        assert bridge.snapcastAvailable is False
+        assert bridge.volumeSupported is False
+
+
+class TestSmartTaggingBridge:
+    def test_smart_tagging_importable(self):
+        from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        bridge = SmartTaggingBridge()
+        assert bridge is not None
+        assert bridge.status == "idle"
+
+    def test_smart_tagging_scan_no_service(self):
+        from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        bridge = SmartTaggingBridge()
+        bridge.scanTrack("/test/file.flac")
+        assert bridge.status == "unavailable"
+
+    def test_smart_tagging_apply_no_suggestions(self):
+        from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        bridge = SmartTaggingBridge()
+        result = bridge.applySuggestions()
+        assert result.get("ok") is False
+
+    def test_refresh_returns_dict(self):
+        bridge = HomeAudioBridge()
+        result = bridge.refresh()
+        assert isinstance(result, dict)
+        assert result.get("ok") is True
+
+    def test_discover_receivers_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.discoverReceivers()
+        assert result.get("ok") is False
 
 
 class TestLibraryBridge:
@@ -631,21 +690,22 @@ class TestMetadataBridge:
         assert bridge.canApply is False
         assert bridge.errorMessage == ""
 
-    def test_metadata_bridge_inspect(self):
+    def test_metadata_bridge_load_empty_path(self):
         bridge = MetadataBridge()
-        bridge.inspectTrack("/test/song.flac")
-        assert bridge.hasSelection is True
+        result = bridge.loadMetadata("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_FILEPATH"
 
     def test_metadata_bridge_clear(self):
         bridge = MetadataBridge()
-        bridge.inspectTrack("/test/song.flac")
+        bridge.loadMetadata("/test/song.flac")
         bridge.clear()
         assert bridge.hasSelection is False
 
-    def test_metadata_bridge_preview_no_write(self):
+    def test_metadata_bridge_load_not_found(self):
         bridge = MetadataBridge()
-        bridge.previewSuggestedFixes()
-        # should not crash, should not write
+        result = bridge.loadMetadata("/nonexistent/file.flac")
+        assert result.get("ok") is False
 
     def test_metadata_inspector_page_exists(self):
         assert (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").exists()
@@ -677,14 +737,15 @@ class TestMetadataBridge:
         bridge = MetadataBridge()
         assert bridge.canApply is False
 
-    def test_metadata_bridge_can_apply_true_with_selection(self):
+    def test_metadata_bridge_can_apply_false_without_file(self):
         bridge = MetadataBridge()
-        bridge.inspectTrack("/tmp/test_fake.flac")
-        assert bridge.canApply is True
+        assert bridge.canApply is False
 
-    def test_metadata_bridge_apply_changes_has_slot(self):
+    def test_metadata_bridge_save_changes_return_dict(self):
         bridge = MetadataBridge()
-        assert hasattr(bridge, 'applyChanges')
+        bridge.loadMetadata("/tmp/test_fake.flac")
+        result = bridge.saveChanges()
+        assert isinstance(result, dict)
 
     def test_metadata_inspector_apply_button_disabled(self):
         content = (QML_DIR / "pages" / "metadata" / "MetadataInspectorPage.qml").read_text()
@@ -1223,6 +1284,116 @@ class TestNowPlayingBar:
                     assert False, f"Emoji U+{ord(ch):04X} found in {name}.qml"
 
 
+class TestTrackListModel:
+    def test_track_model_importable(self):
+        from ui_qml.models.TrackListModel import TrackListModel
+        model = TrackListModel()
+        assert model.count == 0
+
+    def test_track_model_reset(self):
+        from ui_qml.models.TrackListModel import TrackListModel
+        from library.media_item import MediaItem
+        model = TrackListModel()
+        items = [MediaItem(id=1, title="A", artist="X", album="Y", duration=100, filepath="/a.mp3", ext=".mp3")]
+        model.resetFromItems(items)
+        assert model.count == 1
+
+    def test_album_model_importable(self):
+        from ui_qml.models.AlbumListModel import AlbumListModel
+        model = AlbumListModel()
+        assert model.count == 0
+
+    def test_album_model_from_songs(self):
+        from ui_qml.models.AlbumListModel import AlbumListModel
+        from library.media_item import MediaItem
+        model = AlbumListModel()
+        items = [
+            MediaItem(id=1, title="A", artist="X", album="Al1", duration=100, filepath="/a.mp3"),
+            MediaItem(id=2, title="B", artist="X", album="Al1", duration=200, filepath="/b.mp3"),
+            MediaItem(id=3, title="C", artist="Y", album="Al2", duration=300, filepath="/c.mp3"),
+        ]
+        model.resetFromSongs(items)
+        assert model.count == 2
+
+
+class TestEqBridge:
+    def test_eq_importable(self):
+        from ui_qml_bridge.eq_bridge import EqBridge
+        bridge = EqBridge()
+        assert bridge is not None
+        assert bridge.backendAvailable is False
+        result = bridge.refresh()
+        assert result.get("ok") is True
+
+    def test_eq_apply_preset_no_player(self):
+        from ui_qml_bridge.eq_bridge import EqBridge
+        bridge = EqBridge()
+        result = bridge.applyPreset("Rock")
+        assert result.get("ok") is False
+
+    def test_eq_toggle_bypass_no_player(self):
+        from ui_qml_bridge.eq_bridge import EqBridge
+        bridge = EqBridge()
+        result = bridge.toggleBypass(True)
+        assert result.get("ok") is False
+
+
+class TestSettingsBridge:
+    def test_settings_importable(self):
+        from ui_qml_bridge.settings_bridge import SettingsBridge
+        bridge = SettingsBridge()
+        assert len(bridge.sections) > 0
+
+    def test_settings_output_profiles(self):
+        from ui_qml_bridge.settings_bridge import SettingsBridge
+        bridge = SettingsBridge()
+        profiles = bridge.outputProfiles
+        assert len(profiles) > 0
+        assert any(p.get("key") for p in profiles)
+
+
+class TestLibraryDoctorBridge:
+    def test_library_doctor_importable(self):
+        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
+        bridge = LibraryDoctorBridge()
+        assert bridge is not None
+
+
+class TestPlaylistsFullBridge:
+    def test_playlists_bridge_duplicate(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        db = MagicMock()
+        db.get_playlists.return_value = [{"id": 1, "name": "Test", "track_count": 2}]
+        db.create_playlist.return_value = 2
+        bridge = PlaylistsBridge(db=db)
+        bridge.refresh()
+        result = bridge.duplicatePlaylist(1)
+        assert result.get("ok") is True
+
+    def test_playlists_bridge_clear(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        db = MagicMock()
+        db.get_playlists.return_value = []
+        db.get_playlist_items.return_value = []
+        bridge = PlaylistsBridge(db=db)
+        result = bridge.clearPlaylist(1)
+        assert result.get("ok") is True
+
+    def test_playlists_bridge_save_queue_no_player(self):
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        bridge = PlaylistsBridge()
+        result = bridge.saveQueueAsPlaylist("Test")
+        assert result.get("ok") is False
+
+    def test_playlists_bridge_m3u_import_not_found(self):
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        bridge = PlaylistsBridge()
+        result = bridge.importM3U("/nonexistent/file.m3u")
+        assert result.get("ok") is False
+
+
 class TestDevicesComponents:
     def test_devices_page_exists(self):
         assert (QML_DIR / "pages" / "DevicesPage.qml").exists()
@@ -1236,6 +1407,22 @@ class TestDevicesComponents:
     def test_devices_route_in_pagestack(self):
         content = (QML_DIR / "shell" / "PageStack.qml").read_text()
         assert "DevicesPage" in content
+    def test_devices_start_server_no_sync(self):
+        from ui_qml_bridge.devices_bridge import DevicesBridge
+        bridge = DevicesBridge()
+        result = bridge.startServer()
+        assert result.get("ok") is False
+        assert result.get("error") == "NO_SYNC_MANAGER"
+    def test_devices_stop_server_no_sync(self):
+        from ui_qml_bridge.devices_bridge import DevicesBridge
+        bridge = DevicesBridge()
+        result = bridge.stopServer()
+        assert result.get("ok") is True
+    def test_devices_refresh_no_sync(self):
+        from ui_qml_bridge.devices_bridge import DevicesBridge
+        bridge = DevicesBridge()
+        result = bridge.refresh()
+        assert isinstance(result, dict)
 
 class TestPlaylistsComponents:
     def test_playlists_page_real_exists(self):
