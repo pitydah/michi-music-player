@@ -39,12 +39,16 @@ class LibraryBridge(QObject):
         self._view_dirty = True
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
+        from ui_qml.models.ArtistListModel import ArtistListModel
+        from ui_qml.models.FolderTreeModel import FolderTreeModel
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml_bridge.query_executor import QueryExecutor
         self._query_svc = LibraryQueryService(self._db) if self._db else None
         self._qe = QueryExecutor(worker_manager=None, parent=self)
         self._track_model = TrackListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         self._album_model = AlbumListModel(query_service=self._query_svc, parent=self)
+        self._artist_model = ArtistListModel(query_service=self._query_svc, parent=self)
+        self._folder_model = FolderTreeModel(db=self._db, parent=self)
 
     # ── Internal pipeline ──
 
@@ -127,19 +131,25 @@ class LibraryBridge(QObject):
 
     @Property(int, notify=dataChanged)
     def songCount(self):
+        if self._track_model:
+            return self._track_model.totalCount
         return len(self._base_songs)
 
     @Property(int, notify=dataChanged)
     def albumCount(self):
+        if self._album_model:
+            return self._album_model.totalCount
         return len(self._albums)
 
     @Property(int, notify=dataChanged)
     def artistCount(self):
+        if self._artist_model:
+            return self._artist_model.count
         return len(self._artists)
 
     @Property(int, notify=dataChanged)
     def totalSongs(self):
-        return len(self._base_songs)
+        return self.songCount
 
     @Property(int, notify=dataChanged)
     def visibleCount(self):
@@ -175,6 +185,14 @@ class LibraryBridge(QObject):
     @Property("QVariant", notify=dataChanged)
     def albumModel(self):
         return self._album_model
+
+    @Property("QVariant", notify=dataChanged)
+    def artistModel(self):
+        return self._artist_model
+
+    @Property("QVariant", notify=dataChanged)
+    def folderModel(self):
+        return self._folder_model
 
     @Property("QVariantList", notify=dataChanged)
     def artists(self):
@@ -246,11 +264,24 @@ class LibraryBridge(QObject):
         self.dataChanged.emit()
         return {"ok": True}
 
+    def _refresh_track_query(self):
+        """Central method to refresh TrackListModel after search/filter/sort changes."""
+        if self._track_model and hasattr(self._track_model, 'refresh'):
+            self._track_model.refresh(
+                search=self._search_query,
+                artist=self._filter_artist,
+                album=self._filter_album,
+                fmt=self._filter_format,
+                sort=self._sort_key,
+                asc=self._sort_asc,
+            )
+
     # ── Search ──
 
     @Slot(str, result=dict)
     def setSearchQuery(self, query: str):
         self._search_query = query
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -259,6 +290,7 @@ class LibraryBridge(QObject):
     @Slot(result=dict)
     def clearSearch(self):
         self._search_query = ""
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -273,6 +305,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFormatFilter(self, fmt: str):
         self._filter_format = fmt
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -282,6 +315,7 @@ class LibraryBridge(QObject):
     def filterByArtist(self, artist: str):
         self._filter_artist = artist
         self._filter_album = ""
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -294,6 +328,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def filterByAlbum(self, album_key: str):
         self._filter_album = album_key
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -310,6 +345,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFolderFilter(self, folder_path: str):
         self._filter_folder = folder_path
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -323,6 +359,7 @@ class LibraryBridge(QObject):
         self._filter_folder = ""
         self._filter_missing_artist = False
         self._filter_missing_album = False
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self._error_message = ""
@@ -338,6 +375,7 @@ class LibraryBridge(QObject):
         else:
             self._sort_key = key
             self._sort_asc = True
+        self._refresh_track_query()
         self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()

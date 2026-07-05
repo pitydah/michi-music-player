@@ -196,6 +196,7 @@ def main():
         "appStateBridge": "app_state",
         "diagnosticsBridge": "diagnostics",
         "commandPaletteBridge": "command_palette",
+        "actionRegistry": "action_registry",
     }
 
     for qml_name, bridge_key in bridge_names.items():
@@ -220,20 +221,12 @@ def main():
     except Exception as e:
         logger.debug("GlobalSearchBridge init failed: %s", e)
 
-    # Register ActionRegistry and CommandPaletteBridge
-    try:
-        from ui_qml_bridge.action_registry import ActionRegistry
-        from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
-        _actions = ActionRegistry()
-        registrar.register("actionRegistry", _actions)
-        cp_bridge = CommandPaletteBridge(
-            action_registry=_actions,
-            navigation_bridge=all_bridges.get("navigation"),
-            nowplaying_bridge=all_bridges.get("nowplaying"),
-        )
-        registrar.register("commandPaletteBridge", cp_bridge)
-    except Exception as e:
-        logger.debug("ActionRegistry/CommandPalette init failed: %s", e)
+    # Register ActionRegistry (from factory singleton)
+    actions = factory.get("action_registry")
+    if actions:
+        registrar.register("actionRegistry", actions)
+    else:
+        logger.debug("ActionRegistry not found in factory")
 
     # Register CoverProviderBridge
     try:

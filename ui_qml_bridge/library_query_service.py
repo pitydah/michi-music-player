@@ -71,13 +71,14 @@ class LibraryQueryService:
         try:
             where, params = self._build_where(search)
             order = "ASC" if ascending else "DESC"
+            sort_col = self._sort_column(sort, "albums")
             sql = (
                 f"SELECT album_key, album, COALESCE(NULLIF(albumartist,''), artist, '') as album_artist, "
                 f"MIN(year) as year, COUNT(*) as track_count, SUM(duration) as duration, "
                 f"MAX(genre) as genre "
                 f"FROM media_items WHERE deleted_at IS NULL AND COALESCE(album, '') != '' {where} "
-                f"GROUP BY COALESCE(album_key, album, '') "
-                f"ORDER BY {sort} {order} LIMIT ? OFFSET ?"
+                f"GROUP BY COALESCE(NULLIF(album_key,''), album, '') "
+                f"ORDER BY {sort_col} {order} LIMIT ? OFFSET ?"
             )
             params.extend([limit, offset])
             rows = self._db.conn.execute(sql, params).fetchall()
@@ -130,8 +131,10 @@ class LibraryQueryService:
                         "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
                     ).fetchone()
                     if fts_test:
-                        clauses.append("(rowid IN (SELECT rowid FROM media_fts WHERE media_fts MATCH ?))")
-                        params.append(f"*{search}*")
+                        safe = " ".join(f"{t}*" for t in search.split() if t)
+                        if safe:
+                            clauses.append("(rowid IN (SELECT rowid FROM media_fts WHERE media_fts MATCH ?))")
+                            params.append(safe)
                     else:
                         clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? COLLATE NOCASE)")
                         p = f"%{search}%"
@@ -191,6 +194,75 @@ class LibraryQueryService:
         if table == "artists":
             return self._ARTIST_SORT_COLUMNS.get(sort, "LOWER(COALESCE(NULLIF(albumartist,''), artist, ''))")
         return self._TRACK_SORT_COLUMNS.get(sort, "LOWER(COALESCE(title, ''))")
+
+    def fetch_track_internal(self, track_id: int) -> dict | None:
+        """Return internal track data including filepath. For use within Python only."""
+        if not self._db:
+            return None
+        try:
+            row = self._db.conn.execute(
+                "SELECT id, filepath, title, artist, album, duration, track_uid, "
+                "album_key FROM media_items WHERE id=? AND deleted_at IS NULL",
+                (track_id,)
+            ).fetchone()
+            if row:
+                return {"track_id": row[0], "filepath": row[1], "title": row[2] or "",
+                        "artist": row[3] or "", "album": row[4] or "", "duration": row[5] or 0,
+                        "track_uid": row[6] or "", "album_key": row[7] or ""}
+            return None
+        except Exception:
+            return None
+
+    def fetch_album_tracks(self, album_key: str, offset: int = 0, limit: int = 500) -> list[dict]:
+        if not self._db or not album_key:
+            return []
+        try:
+            rows = self._db.conn.execute(
+                "SELECT id, filepath, title, artist, duration, track_number, track_uid "
+                "FROM media_items WHERE deleted_at IS NULL AND "
+                "COALESCE(NULLIF(album_key,''), album, '')=? "
+                "ORDER BY COALESCE(track_number, 999), title LIMIT ? OFFSET ?",
+                (album_key, limit, offset)
+            ).fetchall()
+            return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "",
+                     "artist": r[3] or "", "duration": r[4] or 0,
+                     "track_number": r[5] or 0, "track_uid": r[6] or ""} for r in rows]
+        except Exception:
+            return []
+
+    def fetch_artist_tracks(self, artist_name: str, offset: int = 0, limit: int = 500) -> list[dict]:
+        if not self._db or not artist_name:
+            return []
+        try:
+            rows = self._db.conn.execute(
+                "SELECT id, filepath, title, album, duration, track_number, track_uid, album_key "
+                "FROM media_items WHERE deleted_at IS NULL AND "
+                "(COALESCE(NULLIF(albumartist,''), artist, '')=? OR artist=?) "
+                "ORDER BY COALESCE(album, ''), COALESCE(track_number, 999), title LIMIT ? OFFSET ?",
+                (artist_name, artist_name, limit, offset)
+            ).fetchall()
+            return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "",
+                     "album": r[3] or "", "duration": r[4] or 0,
+                     "track_number": r[5] or 0, "track_uid": r[6] or "",
+                     "album_key": r[7] or ""} for r in rows]
+        except Exception:
+            return []
+
+    def fetch_folder_tracks(self, folder_path: str, offset: int = 0, limit: int = 500) -> list[dict]:
+        if not self._db or not folder_path:
+            return []
+        try:
+            rows = self._db.conn.execute(
+                "SELECT id, filepath, title, artist, album, duration, track_uid "
+                "FROM media_items WHERE deleted_at IS NULL AND directory LIKE ? "
+                "ORDER BY title LIMIT ? OFFSET ?",
+                (f"{folder_path}%", limit, offset)
+            ).fetchall()
+            return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "",
+                     "artist": r[3] or "", "album": r[4] or "", "duration": r[5] or 0,
+                     "track_uid": r[6] or ""} for r in rows]
+        except Exception:
+            return []
 
     @property
     def search_backend(self) -> str:
