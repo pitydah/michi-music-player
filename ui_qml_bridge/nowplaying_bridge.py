@@ -92,8 +92,22 @@ def _ok(operation: str = "", data: dict | None = None) -> dict:
 
 
 class NowPlayingBridge(QObject):
+    # Legacy signal (kept for compatibility)
     stateChanged = Signal()
     coverChanged = Signal()
+
+    # Specific signals for QML Connections
+    trackChanged = Signal()
+    playbackStateChanged = Signal()
+    positionChanged = Signal()
+    durationChanged = Signal()
+    volumeChanged = Signal()
+    queueChanged = Signal()
+    historyChanged = Signal()
+    errorChanged = Signal()
+    commandStateChanged = Signal()
+    qualityChanged = Signal()
+    capabilitiesChanged = Signal()
 
     def __init__(self, player_service=None, audio_quality_adapter=None, parent=None):
         super().__init__(parent)
@@ -168,7 +182,7 @@ class NowPlayingBridge(QObject):
         self._last_command_message = "En ejecución..."
         self._last_command_timestamp = __import__("time").time()
         self._command_pending = True
-        self._emit_state()
+        self._emit_command()
 
     def _set_command_success(self, operation: str, data: dict | None = None):
         self._last_command = operation
@@ -177,7 +191,7 @@ class NowPlayingBridge(QObject):
         self._last_command_message = ""
         self._last_command_timestamp = __import__("time").time()
         self._command_pending = False
-        self._emit_state()
+        self._emit_command()
 
     def _set_command_failure(self, operation: str, error_code: str, message: str = ""):
         self._last_command = operation
@@ -186,9 +200,51 @@ class NowPlayingBridge(QObject):
         self._last_command_message = message or _safe_message(error_code)
         self._last_command_timestamp = __import__("time").time()
         self._command_pending = False
-        self._emit_state()
+        self._emit_command()
 
     def _emit_state(self):
+        self.stateChanged.emit()
+
+    def _emit_track(self):
+        self.trackChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_playback(self):
+        self.playbackStateChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_position(self):
+        self.positionChanged.emit()
+
+    def _emit_duration(self):
+        self.durationChanged.emit()
+
+    def _emit_volume(self):
+        self.volumeChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_queue(self):
+        self.queueChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_history(self):
+        self.historyChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_error(self):
+        self.errorChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_command(self):
+        self.commandStateChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_quality(self):
+        self.qualityChanged.emit()
+        self.stateChanged.emit()
+
+    def _emit_capabilities(self):
+        self.capabilitiesChanged.emit()
         self.stateChanged.emit()
 
     def _set_cover_from_current_path(self):
@@ -269,26 +325,26 @@ class NowPlayingBridge(QObject):
         fp = self._current_path()
         self._source_type = self._detect_source_type(fp)
         self._probe_quality(fp)
-        self._emit_state()
+        self._emit_track()
 
     def _on_state(self, state: str):
         self._is_playing = state == "playing"
         self._playback_status = state
         self._error_message = ""
-        self._emit_state()
+        self._emit_playback()
 
     def _on_position(self, pos: float):
         self._position = int(pos)
-        self._emit_state()
+        self._emit_position()
 
     def _on_duration(self, dur: float):
         self._duration = int(dur)
-        self._emit_state()
+        self._emit_duration()
 
     def _on_volume(self, vol: int):
         self._volume = vol
         self._muted = vol == 0
-        self._emit_state()
+        self._emit_volume()
 
     def _normalize_queue_item(self, item: Any, index: int) -> dict:
         if isinstance(item, dict):
@@ -341,15 +397,18 @@ class NowPlayingBridge(QObject):
 
     def _on_queue(self, q: list):
         self._queue = self._normalize_queue(q) if q else []
-        self._emit_state()
+        self._emit_queue()
 
     def _on_error(self, msg: str):
         safe_msg = str(msg) if msg else "Unknown error"
-        self._error_message = safe_msg
+        self._error_message = _safe_message(safe_msg)
         if self._last_command:
             self._last_command_ok = False
-            self._last_command_error = safe_msg
-        self._emit_state()
+            self._last_command_error = "PLAYBACK_ERROR"
+            self._last_command_message = self._error_message
+            self._command_pending = False
+            self._emit_command()
+        self._emit_error()
 
     # ── Properties ──
 
@@ -402,11 +461,33 @@ class NowPlayingBridge(QObject):
     def _detect_source_type(self, filepath: str) -> str:
         if not filepath:
             return "unknown"
-        if filepath.startswith(("http://", "https://")):
-            return "stream"
         if filepath.startswith("radio://"):
             return "radio"
+        if filepath.startswith(("http://", "https://")):
+            return "remote"
+        if filepath.startswith("michi://"):
+            return "michi_server"
+        if filepath.startswith("smb://"):
+            return "network_share"
+        if filepath.startswith("nfs://"):
+            return "network_share"
+        if filepath.startswith("/dev/"):
+            return "disc"
         return "local_file"
+
+    @Property(bool, notify=stateChanged)
+    def liveSource(self):
+        st = self._source_type
+        return st in ("radio", "stream", "remote")
+
+    @Property(bool, notify=stateChanged)
+    def remoteSource(self):
+        st = self._source_type
+        return st in ("remote", "michi_server", "network_share")
+
+    @Property(bool, notify=stateChanged)
+    def seekableSource(self):
+        return not self.liveSource and not self.remoteSource
 
     def _probe_quality(self, filepath: str):
         if not filepath or not self._quality_adapter:
@@ -414,7 +495,7 @@ class NowPlayingBridge(QObject):
             self._quality_loading = False
             return
         self._quality_loading = True
-        self._emit_state()
+        self._emit_quality()
         try:
             result = self._quality_adapter.probe(filepath)
             if result and result.get("ok"):
@@ -436,7 +517,7 @@ class NowPlayingBridge(QObject):
             self._quality_info_available = False
             self._quality_error = str(e)
         self._quality_loading = False
-        self._emit_state()
+        self._emit_quality()
 
     @Property(str, notify=stateChanged)
     def sourceType(self):
@@ -535,7 +616,7 @@ class NowPlayingBridge(QObject):
 
     @Property(bool, notify=stateChanged)
     def seekSupported(self):
-        return self._has_player_method("seek") and self._duration > 0
+        return self._has_player_method("seek") and self._duration > 0 and self.seekableSource
 
     @Property(bool, notify=stateChanged)
     def volumeSupported(self):

@@ -57,9 +57,9 @@ Item {
                     }
 
                     Text {
-                        text: "[X]"
-                        color: "white"
-                        font.pixelSize: MichiTheme.typography.bodySize
+                        text: "Cerrar"
+                        color: MichiTheme.colors.onError
+                        font.pixelSize: MichiTheme.typography.metaSize
                         MouseArea {
                             anchors.fill: parent
                             onClicked: _showError = false
@@ -71,7 +71,7 @@ Item {
             // Main content
             GridLayout {
                 width: parent.width
-                columns: parent.width > 700 ? 2 : 1
+                columns: parent.width > 800 ? 2 : 1
                 rowSpacing: MichiTheme.spacing.lg
                 columnSpacing: MichiTheme.spacing.xl
 
@@ -208,7 +208,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredWidth: parent.width > 700 ? parent.width * 0.35 : parent.width
                     spacing: MichiTheme.spacing.md
-                    visible: parent.width > 700 || parent.columns === 2
+                    visible: true
 
                     // Queue
                     Text {

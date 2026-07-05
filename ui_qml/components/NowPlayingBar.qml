@@ -155,12 +155,15 @@ Item {
                     Layout.maximumWidth: 120
                     volume: root.ps ? root.ps.volume : 80
                     muted: root.ps ? root.ps.muted : false
+                    volumeSupported: root.ps ? root.ps.volumeSupported : false
+                    muteSupported: root.ps ? root.ps.muteSupported : false
                     onVolumeAdjusted: function(vol) { if (root.ps) root.ps.setVolume(vol) }
                     onMuteClicked: { if (root.ps) root.ps.toggleMute() }
                 }
 
                 MichiIconButton {
-                    iconText: "⋯"
+                    iconText: ""
+                    iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
                     tooltipText: "Reproducción"
                     btnSize: 22
                     Layout.alignment: Qt.AlignVCenter

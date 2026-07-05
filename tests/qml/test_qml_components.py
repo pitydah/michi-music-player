@@ -723,9 +723,9 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingSeekBar.qml").read_text()
         assert "root.enabled" in content, "NowPlayingSeekBar missing enabled usage"
 
-    def test_nowplaying_volume_has_enabled_support(self):
+    def test_nowplaying_volume_has_capabilities(self):
         content = (QML_DIR / "components" / "NowPlayingVolume.qml").read_text()
-        assert "root.enabled" in content, "NowPlayingVolume missing enabled usage"
+        assert "volumeSupported" in content, "NowPlayingVolume missing volume capability"
 
     def test_nowplaying_bar_no_full_border(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()

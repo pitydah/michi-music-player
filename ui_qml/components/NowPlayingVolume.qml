@@ -9,7 +9,8 @@ Item {
 
     property int volume: 80
     property bool muted: false
-    property bool _enabled_proxy: root.enabled
+    property bool volumeSupported: true
+    property bool muteSupported: true
 
     signal volumeAdjusted(int vol)
     signal muteClicked()
