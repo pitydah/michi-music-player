@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 import "../components"
 import "."
@@ -17,18 +18,19 @@ Item {
         }
     }
 
-    Column {
+    ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        Row {
-            width: parent.width
-            height: parent.height - nowPlayingBar.height
+        RowLayout {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
             spacing: 0
 
             Sidebar {
                 id: sidebar
-                height: parent.height
+                Layout.fillHeight: true
+                Layout.preferredWidth: 250
                 currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
                 onRouteRequested: function(route) {
@@ -42,21 +44,22 @@ Item {
                 }
             }
 
-            Column {
-                width: parent.width - sidebar.width
-                height: parent.height
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 spacing: 0
 
                 HeaderBar {
                     id: header
-                    width: parent.width
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 56
                     pageTitle: "Inicio"
                 }
 
                 PageStack {
                     id: pageStack
-                    width: parent.width
-                    height: parent.height - header.height
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                     currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
                 }
             }
@@ -64,7 +67,11 @@ Item {
 
         NowPlayingBar {
             id: nowPlayingBar
-            width: parent.width
+            Layout.fillWidth: true
+            Layout.preferredHeight: MichiTheme.nowPlayingHeight
+            Layout.maximumHeight: MichiTheme.nowPlayingHeight
+            Layout.minimumHeight: MichiTheme.nowPlayingHeight
+            z: 10
         }
     }
 
@@ -96,6 +103,30 @@ Item {
             updateHeaderTitle(initial)
         } else {
             pageStack.loadRoute("home")
+        }
+    }
+
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onDropped: function(drop) {
+            if (drop.hasUrls) {
+                var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
+                var notif = typeof notificationBridge !== "undefined" ? notificationBridge : null
+                for (var i = 0; i < drop.urls.length; i++) {
+                    var droppedPath = drop.urls[i].toLocalFile()
+                    if (!droppedPath) continue
+                    if (lib && typeof lib.addMedia !== "undefined") {
+                        var result = lib.addMedia(droppedPath)
+                        if (notif) {
+                            var ok = result && result.ok
+                            var msg = ok ? "Añadido: " + droppedPath.split("/").pop() : "Error: " + (result ? result.error : "desconocido")
+                            notif.showMessage(msg, ok ? "info" : "error")
+                        }
+                    }
+                }
+                drop.accept()
+            }
         }
     }
 }

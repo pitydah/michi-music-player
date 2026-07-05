@@ -14,6 +14,9 @@ from audio.mpd.mpd_service_manager import MpdServiceManager
 from audio.mpd.mpd_config_builder import build_mpd_config
 from audio.mpd.mpd_errors import MpdConnectionError
 from core.settings_manager import get
+import logging
+
+logger = logging.getLogger("michi.service")
 
 
 class PlayerService(QObject):
@@ -65,8 +68,12 @@ class PlayerService(QObject):
     def _on_error(self, msg):
         if self._retry_url:
             self._retry_timer.start(2000)
-        else:
-            self.error_occurred.emit(msg)
+            return
+        is_stream_recoverable = msg and "STREAM_NETWORK_ERROR" in str(msg)
+        if is_stream_recoverable and self._retry_url:
+            self._retry_timer.start(2000)
+            return
+        self.error_occurred.emit(msg)
 
     def _do_retry(self):
         url = self._retry_url

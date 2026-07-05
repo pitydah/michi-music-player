@@ -652,35 +652,38 @@ class TestNowPlayingBarMigration:
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
         bridge = NowPlayingBridge()
         assert bridge.backendAvailable is False
-        assert bridge.playbackStatus == "unavailable"
-        assert bridge.safeMode is True
         assert bridge.errorMessage == ""
 
-    def test_nowplaying_bridge_commands_recorded(self):
+    def test_nowplaying_bridge_commands_return_dict(self):
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
         bridge = NowPlayingBridge()
-        bridge.togglePlay()
-        assert bridge.lastCommand == "togglePlay"
-        bridge.next()
-        assert bridge.lastCommand == "next"
-        bridge.previous()
-        assert bridge.lastCommand == "previous"
-        bridge.seek(30)
-        assert bridge.lastCommand == "seek"
+        result = bridge.togglePlay()
+        assert isinstance(result, dict)
+        assert result.get("ok") is False
+        assert "error_code" in result
 
     def test_nowplaying_bridge_seek_no_duration(self):
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
-        bridge = NowPlayingBridge()
-        bridge.seek(30)
-        assert not bridge.lastCommandOk
+        bridge = NowPlayingBridge(player_service=object())
+        result = bridge.seek(30)
+        assert result.get("ok") is False
+        assert result.get("error_code") == "UNKNOWN_DURATION"
 
     def test_nowplaying_bridge_volume_clamped(self):
+        from unittest.mock import MagicMock
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
-        bridge = NowPlayingBridge(player_service=object())
+        player = MagicMock()
+        player.set_volume = MagicMock()
+        bridge = NowPlayingBridge(player_service=player)
+        bridge._backend_available = True
         bridge.setVolume(-10)
-        assert bridge.volume == 0
+        # set_volume should be called with 0
+        assert player.set_volume.called
+        call_args = player.set_volume.call_args[0][0]
+        assert call_args == 0, f"Expected 0 got {call_args}"
         bridge.setVolume(150)
-        assert bridge.volume == 100
+        call_args = player.set_volume.call_args[0][0]
+        assert call_args == 100, f"Expected 100 got {call_args}"
 
     def test_nowplaying_bar_has_queue_panel(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
@@ -720,9 +723,9 @@ class TestNowPlayingBarMigration:
         content = (QML_DIR / "components" / "NowPlayingSeekBar.qml").read_text()
         assert "root.enabled" in content, "NowPlayingSeekBar missing enabled usage"
 
-    def test_nowplaying_volume_has_enabled_support(self):
+    def test_nowplaying_volume_has_capabilities(self):
         content = (QML_DIR / "components" / "NowPlayingVolume.qml").read_text()
-        assert "root.enabled" in content, "NowPlayingVolume missing enabled usage"
+        assert "volumeSupported" in content, "NowPlayingVolume missing volume capability"
 
     def test_nowplaying_bar_no_full_border(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
@@ -757,14 +760,15 @@ class TestNowPlayingBarMigration:
         component = _load_qml(engine, "components/ExpandedNowPlayingPanel.qml")
         assert component.isReady()
 
-    def test_nowplaying_bar_has_expanded_panel(self):
+    def test_nowplaying_bar_has_controls(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
-        assert "ExpandedNowPlayingPanel" in content, "NowPlayingBar missing ExpandedNowPlayingPanel"
-        assert "_panelExpanded" in content, "NowPlayingBar missing panel toggle"
+        assert "NowPlayingControls" in content, "NowPlayingBar missing controls"
+        assert "NowPlayingVolume" in content, "NowPlayingBar missing volume"
+        assert "NowPlayingSeekBar" in content, "NowPlayingBar missing seek bar"
 
-    def test_nowplaying_bar_expanded_height(self):
+    def test_nowplaying_bar_has_navigation_button(self):
         content = (QML_DIR / "components" / "NowPlayingBar.qml").read_text()
-        assert "280" in content, "NowPlayingBar missing expanded panel height"
+        assert "navigationBridge.navigate" in content, "NowPlayingBar missing navigation"
 
     def test_song_row_has_play_button(self):
         content = (QML_DIR / "pages" / "library" / "SongRow.qml").read_text()
@@ -799,10 +803,9 @@ class TestNowPlayingBarMigration:
     def test_nowplaying_bridge_no_toggle_without_player(self):
         from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
         bridge = NowPlayingBridge()
-        bridge.togglePlay()
-        assert not bridge.lastCommandOk
+        result = bridge.togglePlay()
+        assert result.get("ok") is False
         assert not bridge.isPlaying
-        assert bridge.playbackStatus == "unavailable"
 
     def test_route_registry_exists(self):
         from ui_qml_bridge.route_registry import ROUTES

@@ -1,4 +1,7 @@
-"""EqBridge — connects QML EQ page to real EQ backend."""
+"""EqBridge — connects QML EQ page to real EQ backend.
+
+All actions return dict ok/error.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -39,7 +42,7 @@ class EqBridge(QObject):
     def preamp(self):
         return self._preamp
 
-    @Slot()
+    @Slot(result=dict)
     def refresh(self):
         try:
             from audio.eq_presets import get_preset_names, load_graphic_preset
@@ -59,9 +62,12 @@ class EqBridge(QObject):
         except Exception:
             logger.debug("EQ state read failed", exc_info=True)
         self.stateChanged.emit()
+        return {"ok": True}
 
-    @Slot(str)
+    @Slot(str, result=dict)
     def applyPreset(self, name: str):
+        if not name:
+            return {"ok": False, "error": "EMPTY_NAME"}
         try:
             from audio.eq_presets import load_graphic_preset
             bands = load_graphic_preset(name)
@@ -69,25 +75,36 @@ class EqBridge(QObject):
                 self._player.set_eq_graphic(bands)
                 self._current_preset = name
                 self.stateChanged.emit()
-        except Exception:
+                return {"ok": True}
+            return {"ok": False, "error": "FAILED_TO_APPLY"}
+        except Exception as e:
             logger.debug("EQ apply preset failed", exc_info=True)
+            return {"ok": False, "error": str(e)}
 
-    @Slot(bool)
+    @Slot(bool, result=dict)
     def toggleBypass(self, enabled: bool):
         self._bypass = enabled
         try:
             if self._player and hasattr(self._player, 'set_eq_bypass'):
                 self._player.set_eq_bypass(enabled)
-        except Exception:
+                self.stateChanged.emit()
+                return {"ok": True}
+            return {"ok": False, "error": "NO_PLAYER"}
+        except Exception as e:
             logger.debug("EQ bypass toggle failed", exc_info=True)
-        self.stateChanged.emit()
+            self.stateChanged.emit()
+            return {"ok": False, "error": str(e)}
 
-    @Slot(float)
+    @Slot(float, result=dict)
     def setPreamp(self, value: float):
         self._preamp = value
         try:
             if self._player and hasattr(self._player, 'set_eq_preamp'):
                 self._player.set_eq_preamp(value)
-        except Exception:
+                self.stateChanged.emit()
+                return {"ok": True}
+            return {"ok": False, "error": "NO_PLAYER"}
+        except Exception as e:
             logger.debug("EQ preamp set failed", exc_info=True)
-        self.stateChanged.emit()
+            self.stateChanged.emit()
+            return {"ok": False, "error": str(e)}

@@ -1,0 +1,611 @@
+{
+  "version": "1.0",
+  "generated_at": "",
+  "modules": [
+    {
+      "module": "navigation",
+      "area": "shell_nav",
+      "module_weight": 100,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_navigation_bridge"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "library",
+      "area": "library_playback",
+      "module_weight": 40,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_library_bridge",
+          "test_library_bridge_contract"
+        ],
+        "integration_tests": [],
+        "manual_test": "folder_add_drag_drop_verified",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "playback",
+      "area": "library_playback",
+      "module_weight": 35,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_nowplaying_bridge_commands_call_player_service"
+        ],
+        "integration_tests": [],
+        "manual_test": "play_pause_seek_volume_verified",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "queue_history",
+      "area": "library_playback",
+      "module_weight": 25,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "playlists",
+      "area": "workflows_core",
+      "module_weight": 20,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": false,
+        "write": true,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "lyrics",
+      "area": "workflows_core",
+      "module_weight": 25,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_lyrics_bridge"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": true,
+        "cancel_supported": true,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "mix",
+      "area": "workflows_core",
+      "module_weight": 20,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_mix_components"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "radio",
+      "area": "workflows_core",
+      "module_weight": 25,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_radio_components",
+          "test_radio_bridge_integration"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "metadata_basic",
+      "area": "workflows_core",
+      "module_weight": 10,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "eq",
+      "area": "advanced_tools",
+      "module_weight": 20,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "settings",
+      "area": "advanced_tools",
+      "module_weight": 15,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "metadata",
+      "area": "advanced_tools",
+      "module_weight": 15,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "smart_tagging",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "audio_lab",
+      "area": "advanced_tools",
+      "module_weight": 15,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_audio_lab_integration"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "library_doctor",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "disc_lab",
+      "area": "advanced_tools",
+      "module_weight": 15,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_disc_lab_bridge"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "connections",
+      "area": "ecosystem_network",
+      "module_weight": 40,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_connections_bridge",
+          "test_connections_v2_bridge"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "home_audio",
+      "area": "ecosystem_network",
+      "module_weight": 30,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_home_audio_bridge",
+          "test_home_audio_v2_bridge"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "devices",
+      "area": "ecosystem_network",
+      "module_weight": 30,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_devices_components"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "quality_ci",
+      "area": "quality_release",
+      "module_weight": 20,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [
+          "test_qml_bridges",
+          "test_qml_components"
+        ],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "quality_runtime",
+      "area": "quality_release",
+      "module_weight": 25,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "smoke_startup_smoke_ui_routes_verified",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "quality_physical",
+      "area": "quality_release",
+      "module_weight": 20,
+      "status": "NOT_MIGRATED",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "NOT_RUN",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "quality_performance",
+      "area": "quality_release",
+      "module_weight": 20,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "quality_accessibility",
+      "area": "quality_release",
+      "module_weight": 15,
+      "status": "PARTIAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": false,
+        "read": false,
+        "primary_action": false,
+        "error_contract": false,
+        "write": false,
+        "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    }
+  ]
+}

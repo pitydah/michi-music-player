@@ -1,5 +1,4 @@
-"""PlaybackBridge — command-compatible facade for QML playback pages."""
-
+"""PlaybackBridge — delegates to NowPlayingBridge, propagates real results."""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
@@ -8,8 +7,6 @@ from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 
 
 class PlaybackBridge(QObject):
-    """Compatibility layer that delegates playback state to NowPlayingBridge."""
-
     stateChanged = Signal()
 
     def __init__(self, player_service=None, playback_ctrl=None, nowplaying_bridge=None, parent=None):
@@ -79,38 +76,132 @@ class PlaybackBridge(QObject):
     def history(self):
         return self._nowplaying.history
 
-    @Slot()
+    @Property(bool, notify=stateChanged)
+    def hasTrack(self):
+        return self._nowplaying.hasTrack
+
+    @Property(bool, notify=stateChanged)
+    def backendAvailable(self):
+        return self._nowplaying.backendAvailable
+
+    @Property(bool, notify=stateChanged)
+    def playPauseSupported(self):
+        return self._nowplaying.playPauseSupported
+
+    @Property(bool, notify=stateChanged)
+    def seekSupported(self):
+        return self._nowplaying.seekSupported
+
+    @Property(bool, notify=stateChanged)
+    def volumeSupported(self):
+        return self._nowplaying.volumeSupported
+
+    @Property(bool, notify=stateChanged)
+    def muteSupported(self):
+        return self._nowplaying.muteSupported
+
+    @Property(bool, notify=stateChanged)
+    def nextSupported(self):
+        return self._nowplaying.nextSupported
+
+    @Property(bool, notify=stateChanged)
+    def previousSupported(self):
+        return self._nowplaying.previousSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueSupported(self):
+        return self._nowplaying.queueSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueRemoveSupported(self):
+        return self._nowplaying.queueRemoveSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueClearSupported(self):
+        return self._nowplaying.queueClearSupported
+
+    @Property(bool, notify=stateChanged)
+    def queueMoveSupported(self):
+        return self._nowplaying.queueMoveSupported
+
+    @Property(bool, notify=stateChanged)
+    def queuePlayItemSupported(self):
+        return self._nowplaying.queuePlayItemSupported
+
+    @Property(bool, notify=stateChanged)
+    def shuffleSupported(self):
+        return self._nowplaying.shuffleSupported
+
+    @Property(bool, notify=stateChanged)
+    def repeatSupported(self):
+        return self._nowplaying.repeatSupported
+
+    @Property(bool, notify=stateChanged)
+    def historySupported(self):
+        return self._nowplaying.historySupported
+
+    # ── Playback commands — propagate real results ──
+
+    @Slot(result=dict)
     def togglePlay(self):
-        self._nowplaying.togglePlay()
+        return self._nowplaying.togglePlay()
 
-    @Slot()
+    @Slot(result=dict)
     def next(self):
-        self._nowplaying.next()
+        return self._nowplaying.next()
 
-    @Slot()
+    @Slot(result=dict)
     def previous(self):
-        self._nowplaying.previous()
+        return self._nowplaying.previous()
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def setVolume(self, volume: int):
-        self._nowplaying.setVolume(volume)
+        return self._nowplaying.setVolume(volume)
 
-    @Slot()
+    @Slot(result=dict)
     def toggleMute(self):
-        self._nowplaying.toggleMute()
+        return self._nowplaying.toggleMute()
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def seek(self, position: int):
-        self._nowplaying.seek(position)
+        return self._nowplaying.seek(position)
 
-    @Slot()
+    @Slot(result=dict)
     def toggleShuffle(self):
-        self._nowplaying.toggleShuffle()
+        return self._nowplaying.toggleShuffle()
 
-    @Slot()
+    @Slot(result=dict)
     def toggleRepeat(self):
-        self._nowplaying.toggleRepeat()
+        return self._nowplaying.toggleRepeat()
 
-    @Slot(int)
+    @Slot(int, result=dict)
     def seekRelative(self, seconds: int):
-        self._nowplaying.seekRelative(seconds)
+        return self._nowplaying.seekRelative(seconds)
+
+    @Slot(str, result=dict)
+    def enqueueSong(self, filepath: str):
+        return self._nowplaying.enqueueSong(filepath)
+
+    @Slot(int, result=dict)
+    def removeFromQueue(self, index: int):
+        return self._nowplaying.removeFromQueue(index)
+
+    @Slot(result=dict)
+    def clearQueue(self):
+        return self._nowplaying.clearQueue()
+
+    @Slot(int, int, result=dict)
+    def moveQueueItem(self, from_index: int, to_index: int):
+        return self._nowplaying.moveQueueItem(from_index, to_index)
+
+    @Slot(int, result=dict)
+    def playQueueItem(self, index: int):
+        return self._nowplaying.playQueueItem(index)
+
+    @Slot(result=dict)
+    def clearHistory(self):
+        return self._nowplaying.clearHistory()
+
+    @Slot(int, result=dict)
+    def playHistoryItem(self, index: int):
+        return self._nowplaying.playHistoryItem(index)

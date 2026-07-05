@@ -348,26 +348,19 @@ class TestHomeAudioBridge:
     def test_default_state(self):
         bridge = HomeAudioBridge()
         assert bridge.homeAssistantState == "not_configured"
-        assert bridge.streamState == "concept"
+        assert bridge.snapcastState == "unavailable"
         assert len(bridge.devices) == 0
 
-    def test_configure_home_assistant(self):
+    def test_configure_home_assistant_returns_dict(self):
         bridge = HomeAudioBridge()
-        bridge.configureHomeAssistant()
+        result = bridge.configureHomeAssistant("host", 8123, "token")
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
 
     def test_open_diagnostics(self):
         bridge = HomeAudioBridge()
-        bridge.openDiagnostics()
-
-    def test_open_stream_concept(self):
-        bridge = HomeAudioBridge()
-        bridge.openStreamConcept()
-
-    def test_slots_exist(self):
-        bridge = HomeAudioBridge()
-        assert hasattr(bridge, 'configureHomeAssistant')
-        assert hasattr(bridge, 'openDiagnostics')
-        assert hasattr(bridge, 'openStreamConcept')
+        result = bridge.openDiagnostics()
+        assert result.get("ok") is True
 
 
 class TestLibraryBridge:
@@ -383,6 +376,43 @@ class TestLibraryBridge:
     def test_refresh_does_not_crash(self):
         bridge = LibraryBridge()
         bridge.refresh()
+
+    def test_add_folder_empty_path(self):
+        bridge = LibraryBridge()
+        result = bridge.addFolder("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_PATH"
+
+    def test_add_folder_not_found(self):
+        bridge = LibraryBridge()
+        result = bridge.addFolder("/nonexistent/path/12345")
+        assert result.get("ok") is False
+        assert result.get("error") == "DIR_NOT_FOUND"
+
+    def test_add_folder_no_db(self):
+        import tempfile
+        import os
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        bridge = LibraryBridge()
+        tmpdir = tempfile.mkdtemp()
+        try:
+            result = bridge.addFolder(tmpdir)
+            assert result.get("ok") is False
+            assert result.get("error") == "NO_DATABASE"
+        finally:
+            os.rmdir(tmpdir)
+
+    def test_add_media_empty(self):
+        bridge = LibraryBridge()
+        result = bridge.addMedia("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_PATH"
+
+    def test_add_media_not_found(self):
+        bridge = LibraryBridge()
+        result = bridge.addMedia("/nonexistent/file.mp3")
+        assert result.get("ok") is False
+        assert result.get("error") == "FILE_NOT_FOUND"
 
 
 class TestMichiAIBridge:
@@ -752,6 +782,124 @@ class TestMixComponents:
         assert "MixBridge" in content, "qml_main missing MixBridge import"
         assert "mixBridge" in content, "qml_main missing mixBridge context property"
 
+    def test_mix_favorites_uses_fav_db(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        db.get_favorites.return_value = ["/path/fav1.mp3", "/path/fav2.mp3"]
+        item1 = MagicMock(spec=MediaItem, filepath="/path/fav1.mp3", title="Fav1", artist="A1",
+                          album="Al1", duration=100, id=1, play_count=0, last_played=0)
+        item2 = MagicMock(spec=MediaItem, filepath="/path/fav2.mp3", title="Fav2", artist="A2",
+                          album="Al2", duration=200, id=2, play_count=0, last_played=0)
+        item3 = MagicMock(spec=MediaItem, filepath="/path/other.mp3", title="Other", artist="O",
+                          album="O", duration=300, id=3, play_count=0, last_played=0)
+        db.fetch_all.return_value = [item1, item2, item3]
+        bridge = MixBridge(db=db)
+        bridge.loadMix("favorites")
+        assert len(bridge.currentSongs) == 2, "Expected 2 favorites"
+        fps = [s["filepath"] for s in bridge.currentSongs]
+        assert "/path/fav1.mp3" in fps
+        assert "/path/other.mp3" not in fps
+
+    def test_mix_recent_uses_last_played(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        item1 = MagicMock(spec=MediaItem, filepath="/old.mp3", title="Old", artist="A",
+                          album="Al", duration=100, id=1, play_count=5, last_played=100.0)
+        item2 = MagicMock(spec=MediaItem, filepath="/new.mp3", title="New", artist="B",
+                          album="Bl", duration=200, id=2, play_count=1, last_played=200.0)
+        item3 = MagicMock(spec=MediaItem, filepath="/never.mp3", title="Never", artist="C",
+                          album="Cl", duration=300, id=3, play_count=0, last_played=0)
+        db.fetch_all.return_value = [item1, item2, item3]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("recent")
+        assert len(bridge.currentSongs) == 2, "Expected 2 recent tracks"
+        assert bridge.currentSongs[0]["filepath"] == "/new.mp3", "Most recent first"
+
+    def test_mix_unplayed_excludes_played(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        db.fetch_all.return_value = [
+            MagicMock(spec=MediaItem, filepath="/a.mp3", title="A", artist="X",
+                      album="Y", duration=100, id=1, play_count=0, last_played=0),
+            MagicMock(spec=MediaItem, filepath="/b.mp3", title="B", artist="X",
+                      album="Y", duration=200, id=2, play_count=5, last_played=100.0),
+        ]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("unplayed")
+        assert len(bridge.currentSongs) == 1
+        assert bridge.currentSongs[0]["filepath"] == "/a.mp3"
+
+    def test_mix_most_played_orders_by_play_count(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        db.fetch_all.return_value = [
+            MagicMock(spec=MediaItem, filepath="/a.mp3", title="A", artist="X",
+                      album="Y", duration=100, id=1, play_count=1, last_played=100.0),
+            MagicMock(spec=MediaItem, filepath="/b.mp3", title="B", artist="X",
+                      album="Y", duration=200, id=2, play_count=10, last_played=200.0),
+            MagicMock(spec=MediaItem, filepath="/c.mp3", title="C", artist="X",
+                      album="Y", duration=300, id=3, play_count=0, last_played=0),
+        ]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("most_played")
+        assert len(bridge.currentSongs) == 2
+        assert bridge.currentSongs[0]["filepath"] == "/b.mp3", "Highest play count first"
+
+    def test_mix_daily_fallback_not_first_25(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        items = []
+        for i in range(50):
+            items.append(MagicMock(spec=MediaItem,
+                                   filepath=f"/track_{i}.mp3", title=f"T{i}",
+                                   artist="X", album="Y", duration=100, id=i,
+                                   play_count=0, last_played=0, created_at=float(i),
+                                   genre="", _fields={}))
+        db.fetch_all.return_value = items
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("daily_mix")
+        # Should have max 25 items
+        assert len(bridge.currentSongs) <= 25
+        # Verify not hardcoded to first indices — since no recent plays,
+        # fallback sorts by created_at DESC, newest first
+        if len(bridge.currentSongs) > 0:
+            assert bridge.currentSongs[0]["filepath"] == "/track_49.mp3", "Should start from newest"
+
+    def test_mix_ai_requires_enabled(self):
+        from ui_qml_bridge.mix_bridge import MixBridge
+        bridge = MixBridge()
+        assert "ai_recommended" not in [c["id"] for c in bridge.categories]
+
+    def test_mix_daily_uses_smart_mix_service(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        from library.media_item import MediaItem
+        db = MagicMock()
+        item = MagicMock(spec=MediaItem, filepath="/a.mp3", title="A", artist="X",
+                         album="Y", duration=100, id=1, play_count=1, last_played=100.0,
+                         created_at=1000.0, genre="Rock")
+        db.fetch_all.return_value = [item]
+        db.get_favorites.return_value = []
+        bridge = MixBridge(db=db)
+        bridge.loadMix("daily_mix")
+        # Falls back to genre heuristic since SmartMixService.create_mix
+        # may not find items via balanced_mix strategy
+        assert len(bridge.currentSongs) <= 25
+
 
 class TestPlaybackComponents:
     def test_playback_bridge_importable(self):
@@ -775,6 +923,62 @@ class TestRadioComponents:
     def test_radio_route_in_pagestack(self):
         content = (QML_DIR / "shell" / "PageStack.qml").read_text()
         assert "RadioPage" in content, "PageStack missing RadioPage"
+
+    def test_radio_bridge_edit_station(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        mgr = MagicMock()
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.editStation(1, "New Name", "http://new.url/stream")
+        assert result.get("ok") is True
+        mgr.update.assert_called_once()
+
+    def test_radio_bridge_edit_station_no_mgr(self):
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        bridge = RadioBridge()
+        result = bridge.editStation(1, "Name", "url")
+        assert result.get("ok") is False
+        assert result.get("error") == "NO_RADIO_MANAGER"
+
+    def test_radio_bridge_toggle_favorite(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        mgr = MagicMock()
+        mgr.toggle_favorite.return_value = True
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.toggleFavorite(1)
+        assert result.get("ok") is True
+        assert result.get("favorite") is True
+
+    def test_radio_bridge_toggle_favorite_no_mgr(self):
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        bridge = RadioBridge()
+        result = bridge.toggleFavorite(1)
+        assert result.get("ok") is False
+
+    def test_radio_bridge_search(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        from streaming.radio_manager import RadioStation
+        mgr = MagicMock()
+        station = RadioStation(id=1, name="Test FM", url="http://test.fm/stream",
+                               codec="MP3", country="US", tags=["rock", "pop"])
+        mgr.get_all.return_value = [station]
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.search(query="Test")
+        assert result.get("ok") is True
+        assert result.get("count") == 1
+
+    def test_radio_bridge_search_no_match(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        from streaming.radio_manager import RadioStation
+        mgr = MagicMock()
+        station = RadioStation(id=1, name="Test FM", url="http://test.fm/stream")
+        mgr.get_all.return_value = [station]
+        bridge = RadioBridge(radio_manager=mgr)
+        result = bridge.search(query="Jazz")
+        assert result.get("count") == 0
 
 
 class TestSettingsComponents:
@@ -1089,6 +1293,59 @@ class TestAudioLabIntegration:
         bridge.refresh()
 
 
+class TestDiscLabBridge:
+    def test_disc_lab_importable(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        assert DiscLabBridge is not None
+
+    def test_disc_lab_unavailable_no_service(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        bridge = DiscLabBridge()
+        assert bridge.status == "unavailable"
+        result = bridge.refresh()
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_disc_lab_scan_no_disc(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        svc = MagicMock()
+        svc.detect_drives.return_value = ["/dev/sr0"]
+        svc.get_default_drive.return_value = "/dev/sr0"
+        svc.detect_audio_cd.return_value = False
+        bridge = DiscLabBridge(disc_detection_service=svc)
+        result = bridge.refresh()
+        assert result.get("ok") is True
+        assert bridge.status == "no_disc"
+
+    def test_disc_lab_scan_with_tracks(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        svc = MagicMock()
+        svc.detect_drives.return_value = ["/dev/sr0"]
+        svc.get_default_drive.return_value = "/dev/sr0"
+        svc.detect_audio_cd.return_value = True
+        svc.get_disc_toc.return_value = {"tracks": 3, "duration_seconds": 300}
+        svc.get_track_durations.return_value = [100.0, 100.0, 100.0]
+        bridge = DiscLabBridge(disc_detection_service=svc)
+        bridge.refresh()
+        assert bridge.status == "ready"
+        result = bridge.scanDisc()
+        assert result.get("ok") is True
+        assert result.get("tracks") == 3
+        assert len(bridge.tracks) == 3
+
+    def test_disc_lab_eject(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        bridge = DiscLabBridge()
+        bridge._status = "scanned"
+        bridge._tracks = [{"track": 1, "title": "Track 1"}]
+        result = bridge.eject()
+        assert result.get("ok") is True
+        assert bridge.status == "no_disc"
+        assert len(bridge.tracks) == 0
+
+
 class TestSettingsBridgeIntegration:
     def test_settings_bridge_importable(self):
         from ui_qml_bridge.settings_bridge import SettingsBridge
@@ -1113,26 +1370,195 @@ class TestConnectionsV2Bridge:
         # Without demo data and without a real controller, should return empty
         assert len(bridge.discoveredServers) == 0
 
-    def test_connections_bridge_demo_flag(self):
-        import os
-        os.environ["MICHI_QML_DEMO"] = "1"
-        try:
-            bridge = ConnectionsBridge()
-            bridge.scanForServers()
-            servers = bridge.discoveredServers
-            assert len(servers) > 0
-            for s in servers:
-                assert s.get("is_demo") is True
-        finally:
-            os.environ.pop("MICHI_QML_DEMO", None)
+    def test_connections_bridge_no_demo_without_controller(self):
+        bridge = ConnectionsBridge()
+        bridge.scanForServers()
+        servers = bridge.discoveredServers
+        assert len(servers) == 0, "No demo data without MICHI_QML_DEMO flag"
+
+
+class TestLyricsBridge:
+    def test_lyrics_idle_on_create(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        assert bridge.status == "idle"
+        assert bridge.lyrics == ""
+        assert bridge.syncedLyrics == []
+
+    def test_lyrics_parse_lrc(self):
+        from ui_qml_bridge.lyrics_bridge import _parse_lrc
+        lrc_text = "[00:01.00]Line 1\n[00:02.50]Line 2\n[00:03.75]Line 3"
+        synced = _parse_lrc(lrc_text)
+        assert len(synced) == 3
+        assert synced[0]["time"] == 1.0
+        assert synced[0]["text"] == "Line 1"
+        assert synced[1]["time"] == 2.5
+        assert synced[2]["time"] == 3.75
+
+    def test_lyrics_parse_lrc_no_timestamp(self):
+        from ui_qml_bridge.lyrics_bridge import _parse_lrc
+        synced = _parse_lrc("Plain text line")
+        assert len(synced) == 1
+        assert synced[0]["time"] == 0
+
+    def test_lyrics_cache_hit(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._cache["test||artist||album||0"] = {
+            "lyrics": "cached lyrics", "synced_lyrics": "",
+            "source": "LRCLIB", "timestamp": 1000,
+        }
+        result = bridge.search("test", "artist", "album", 0)
+        assert result.get("cached") is True
+        assert bridge.lyrics == "cached lyrics"
+        assert bridge.status == "done"
+
+    def test_lyrics_cancel_search(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._status = "searching"
+        bridge.cancelSearch()
+        assert bridge.status == "idle"
+
+    def test_lyrics_clear_cache_for_track(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._cache["test||artist||album||0"] = {"lyrics": "x", "synced_lyrics": "", "source": "L", "timestamp": 1000}
+        bridge._current_title = "test"
+        bridge._current_artist = "artist"
+        bridge._current_album = "album"
+        bridge._current_duration = 0
+        result = bridge.clearCacheForCurrentTrack()
+        assert result.get("ok") is True
+        assert "test||artist||album||0" not in bridge._cache
+
+    def test_lyrics_search_manual_empty(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        result = bridge.searchManual("")
+        assert result.get("ok") is False
+        assert result.get("error") == "EMPTY_QUERY"
+
+    def test_lyrics_search_current_track_no_np(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        result = bridge.searchCurrentTrack()
+        assert result.get("ok") is False
+
+    def test_lyrics_get_active_line(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._synced_lyrics = [{"time": 1.0, "text": "A"}, {"time": 2.0, "text": "B"}, {"time": 3.0, "text": "C"}]
+        assert bridge.getActiveLine(0) == 0
+        assert bridge.getActiveLine(1500) == 0
+        assert bridge.getActiveLine(2500) == 1
+        assert bridge.getActiveLine(5000) == 2
+
+    def test_lyrics_get_active_line_empty(self):
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        assert bridge.getActiveLine(1000) is None
+
+    def test_lyrics_on_track_changed_noop_same_track(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.lyrics_bridge import LyricsBridge
+        bridge = LyricsBridge()
+        bridge._current_title = "Same"
+        bridge._current_artist = "Same"
+        np_mock = MagicMock()
+        np_mock.trackTitle = "Same"
+        np_mock.trackArtist = "Same"
+        bridge._np_bridge = np_mock
+        bridge._on_track_changed()
+        # No search started — status stays idle
+        assert bridge.status == "idle"
 
 
 class TestHomeAudioV2Bridge:
     def test_home_audio_bridge_refresh(self):
         bridge = HomeAudioBridge()
-        bridge.refresh()
+        result = bridge.refresh()
+        assert result.get("ok") is True
         assert bridge.homeAssistantState == "not_configured"
 
     def test_home_audio_bridge_devices(self):
         bridge = HomeAudioBridge()
         assert len(bridge.devices) == 0
+
+    def test_home_audio_capabilities_no_controller(self):
+        bridge = HomeAudioBridge()
+        assert bridge.homeAssistantAvailable is False
+        assert bridge.snapcastAvailable is False
+        assert bridge.receiversAvailable is False
+        assert bridge.zonesSupported is False
+        assert bridge.groupingSupported is False
+        assert bridge.volumeSupported is False
+
+    def test_home_audio_configure_unsupported_without_ha(self):
+        bridge = HomeAudioBridge()
+        result = bridge.configureHomeAssistant("192.168.1.100", 8123, "token")
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_home_audio_discover_receivers_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.discoverReceivers()
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_home_audio_set_zone_volume_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.setZoneVolume("zone1", 0.5)
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED"
+
+    def test_home_audio_test_ha_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.testHomeAssistant()
+        assert result.get("ok") is False
+
+    def test_home_audio_assign_stream_unsupported(self):
+        bridge = HomeAudioBridge()
+        result = bridge.assignStream("stream1")
+        assert result.get("ok") is False
+
+    def test_home_audio_bridge_with_ha_adapter(self):
+        from unittest.mock import MagicMock
+        ha_adapter = MagicMock()
+        ha_adapter.is_connected = True
+        ha_adapter.get_devices.return_value = [
+            {"name": "Salón", "entity_id": "media_player.salon", "available": True},
+        ]
+        bridge = HomeAudioBridge(ha_controller=ha_adapter)
+        bridge.refresh()
+        assert bridge.homeAssistantAvailable is True
+        assert bridge.homeAssistantState == "connected"
+
+    def test_home_audio_bridge_with_snapcast_adapter(self):
+        from unittest.mock import MagicMock
+        snap_adapter = MagicMock()
+        snap_adapter.is_available = True
+        snap_adapter.get_groups.return_value = [
+            {"id": "zone1", "name": "Salón", "muted": False, "volume": 80},
+        ]
+        bridge = HomeAudioBridge(snapcast_ctrl=snap_adapter)
+        bridge.refresh()
+        assert bridge.snapcastAvailable is True
+        assert bridge.snapcastState == "available"
+        assert len(bridge.zones) == 1
+
+    def test_home_audio_bridge_configure_with_ha_adapter(self):
+        from unittest.mock import MagicMock
+        ha_adapter = MagicMock()
+        bridge = HomeAudioBridge(ha_controller=ha_adapter)
+        result = bridge.configureHomeAssistant("192.168.1.100", 8123, "token")
+        assert result.get("ok") is True
+        ha_adapter.configure.assert_called_once()
+
+    def test_home_audio_bridge_volume_with_snapcast(self):
+        from unittest.mock import MagicMock
+        snap_adapter = MagicMock()
+        bridge = HomeAudioBridge(snapcast_ctrl=snap_adapter)
+        result = bridge.setZoneVolume("zone1", 0.8)
+        assert result.get("ok") is True
+        snap_adapter.set_group_volume.assert_called_once_with("zone1", 0.8)

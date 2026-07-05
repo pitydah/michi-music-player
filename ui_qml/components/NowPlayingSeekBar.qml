@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 
 Item {
@@ -10,29 +11,34 @@ Item {
 
     signal seekRequested(int pos)
 
-    implicitHeight: 24
-    opacity: root.enabled ? 1.0 : 0.35
+    implicitHeight: 28
 
-    Row {
-        anchors.centerIn: parent
-        spacing: MichiTheme.spacing.sm
+    RowLayout {
+        anchors.fill: parent
+        spacing: MichiTheme.spacing.xs
 
         Text {
             text: formatTime(root.position)
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
-            anchors.verticalCenter: parent.verticalCenter
         }
 
-        Rectangle {
-            width: 180; height: 4; radius: 2
-            color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
-            anchors.verticalCenter: parent.verticalCenter
+        Item {
+            Layout.fillWidth: true
+            height: 5
 
             Rectangle {
-                width: root.duration > 0 ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
-                height: parent.height; radius: 2
-                color: root.enabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
+                anchors.fill: parent
+                radius: 2
+                color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                clip: true
+
+                Rectangle {
+                    height: parent.height
+                    width: root.duration > 0 && root.enabled ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
+                    radius: 2
+                    color: MichiTheme.colors.accentBlue
+                }
             }
 
             MouseArea {
@@ -51,7 +57,6 @@ Item {
             text: formatTime(root.duration)
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
-            anchors.verticalCenter: parent.verticalCenter
         }
     }
 

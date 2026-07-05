@@ -1,4 +1,5 @@
 """AudioLabBridge — connects Audio Lab QML to real diagnostics and health services."""
+from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
@@ -9,9 +10,10 @@ logger = logging.getLogger("michi.audio_lab.bridge")
 class AudioLabBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db_conn=None, parent=None):
+    def __init__(self, db_conn=None, navigation_bridge=None, parent=None):
         super().__init__(parent)
         self._conn = db_conn
+        self._nav = navigation_bridge
         self._health = {}
         self._stats = {}
 
@@ -38,11 +40,11 @@ class AudioLabBridge(QObject):
              "status": "experimental"},
         ]
 
-    @Slot()
+    @Slot(result=dict)
     def refresh(self):
         if not self._conn:
             self.dataChanged.emit()
-            return
+            return {"ok": True, "stats": {}}
         try:
             from core.audio_lab.library_health import compute_health
             health = compute_health(self._conn)
@@ -60,9 +62,12 @@ class AudioLabBridge(QObject):
                 "missing_covers": health.get("missing_covers", 0),
                 "total_size_mb": health.get("total_size_mb", 0),
             }
-        except Exception:
+            self.dataChanged.emit()
+            return {"ok": True, "stats": self._stats}
+        except Exception as e:
             logger.debug("AudioLab health refresh failed", exc_info=True)
-        self.dataChanged.emit()
+            self.dataChanged.emit()
+            return {"ok": False, "error": str(e)}
 
     @Property(int, notify=dataChanged)
     def totalTracks(self):
@@ -76,6 +81,16 @@ class AudioLabBridge(QObject):
     def missingCovers(self):
         return self._stats.get("missing_covers", 0)
 
-    @Slot(str)
+    @Slot(str, result=dict)
     def navigateTo(self, module_id: str):
-        pass
+        if self._nav and hasattr(self._nav, 'navigate'):
+            route_map = {
+                "diagnostics": "diagnostics",
+                "health": "library_doctor",
+                "metadata_doctor": "metadata_inspector",
+            }
+            route = route_map.get(module_id, "")
+            if route:
+                self._nav.navigate(route)
+                return {"ok": True, "route": route}
+        return {"ok": False, "error": "UNSUPPORTED"}

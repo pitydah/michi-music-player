@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -109,8 +110,25 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
+                MichiButton { text: "Añadir carpeta"; variant: "ghost"; onClicked: folderDialog.open() }
                 MichiButton { text: "Limpiar filtros"; variant: "ghost"; Layout.preferredWidth: 120; Layout.minimumWidth: 110; onClicked: root.clearFilters() }
                 MichiButton { text: "Refrescar"; variant: "ghost"; Layout.preferredWidth: 92; Layout.minimumWidth: 84; onClicked: root.refreshData() }
+            }
+        }
+
+        FolderDialog {
+            id: folderDialog
+            title: "Seleccionar carpeta de música"
+            currentFolder: "file://" + (typeof StandardPaths !== "undefined" ? StandardPaths.writableLocation(StandardPaths.MusicLocation) : "")
+            onAccepted: {
+                var folderPath = selectedFolder.toLocalFile()
+                if (root.lib && typeof root.lib.addFolder !== "undefined") {
+                    var result = root.lib.addFolder(folderPath)
+                    if (root.notif) {
+                        root.notif.showMessage(result.ok ? "Escaneando: " + folderPath : "Error: " + result.error,
+                                              result.ok ? "info" : "error")
+                    }
+                }
             }
         }
 

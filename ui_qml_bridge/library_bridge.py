@@ -34,6 +34,9 @@ class LibraryBridge(QObject):
         self._error_message = ""
         self._last_operation = ""
         self._last_op_ok = False
+        self._cached_view: list | None = None
+        self._cached_visible_count: int = 0
+        self._view_dirty = True
 
     # ── Internal pipeline ──
 
@@ -59,8 +62,8 @@ class LibraryBridge(QObject):
         if self._filter_album:
             items = [s for s in items if (getattr(s, 'album_key', '') or getattr(s, 'album', '') or '') == self._filter_album]
         if self._filter_format:
-            fmt = self._filter_format.lower()
-            items = [s for s in items if (getattr(s, 'format', '') or '').lower() == fmt]
+            fmt = "." + self._filter_format.lower()
+            items = [s for s in items if (getattr(s, 'ext', '') or '').lower() == fmt]
         if self._filter_missing_artist:
             items = [s for s in items if not (getattr(s, 'artist', '') or '')]
         if self._filter_missing_album:
@@ -92,16 +95,24 @@ class LibraryBridge(QObject):
             return sorted(items, key=lambda x: getattr(x, 'format', '') or '', reverse=reverse)
         return items
 
+    def _invalidate_view(self):
+        self._view_dirty = True
+        self._cached_view = None
+
     def _rebuild_view(self):
+        if not self._view_dirty and self._cached_view is not None:
+            return self._cached_view
         items = self._base_songs[:]
         items = self._apply_search(items)
         items = self._apply_filters(items)
         items = self._apply_sort(items)
+        self._cached_view = items
+        self._cached_visible_count = len(items)
+        self._view_dirty = False
         return items
 
     @property
     def _filtered_view(self):
-        # cached per cycle — recalculation happens on demand
         return self._rebuild_view()
 
     # ── Properties ──
@@ -124,7 +135,8 @@ class LibraryBridge(QObject):
 
     @Property(int, notify=dataChanged)
     def visibleCount(self):
-        return len(self._rebuild_view())
+        self._rebuild_view()
+        return self._cached_visible_count
 
     @Property(int, notify=dataChanged)
     def loadedCount(self):
@@ -223,6 +235,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setSearchQuery(self, query: str):
         self._search_query = query
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -230,6 +243,7 @@ class LibraryBridge(QObject):
     @Slot(result=dict)
     def clearSearch(self):
         self._search_query = ""
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -243,6 +257,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFormatFilter(self, fmt: str):
         self._filter_format = fmt
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -251,6 +266,7 @@ class LibraryBridge(QObject):
     def filterByArtist(self, artist: str):
         self._filter_artist = artist
         self._filter_album = ""
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -262,6 +278,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def filterByAlbum(self, album_key: str):
         self._filter_album = album_key
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -277,6 +294,7 @@ class LibraryBridge(QObject):
     @Slot(str, result=dict)
     def setFolderFilter(self, folder_path: str):
         self._filter_folder = folder_path
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -289,6 +307,7 @@ class LibraryBridge(QObject):
         self._filter_folder = ""
         self._filter_missing_artist = False
         self._filter_missing_album = False
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self._error_message = ""
         self.dataChanged.emit()
@@ -303,19 +322,25 @@ class LibraryBridge(QObject):
         else:
             self._sort_key = key
             self._sort_asc = True
+        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "key": key, "asc": self._sort_asc}
 
     # ── Data loading ──
 
-    @Slot()
+    @Slot(result=dict)
     def refresh(self):
-        if self._db and hasattr(self._db, 'fetch_all'):
-            self._base_songs = self._db.fetch_all() or []
+        if self._db:
+            if hasattr(self._db, 'fetch_all'):
+                self._base_songs = self._db.fetch_all() or []
+            elif hasattr(self._db, 'get_all'):
+                self._base_songs = self._db.get_all() or []
+        self._invalidate_view()
         self._refresh_albums_artists()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
+        return {"ok": True, "count": len(self._base_songs)}
 
     # ── Playback actions (single) ──
 
@@ -325,9 +350,8 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "EMPTY_FILEPATH"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        if not filepath.startswith(("http://", "https://", "radio://", "stream://")):
-            if not Path(filepath).is_file():
-                return {"ok": False, "error": "FILE_NOT_FOUND"}
+        if not filepath.startswith(("http://", "https://", "radio://", "stream://")) and not Path(filepath).is_file():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
         track = self._track_for_filepath(filepath)
         title = getattr(track, "title", "") if track else ""
         artist = getattr(track, "artist", "") if track else ""
@@ -507,6 +531,83 @@ class LibraryBridge(QObject):
             else:
                 subprocess.Popen(["xdg-open", folder_path])
             return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def addFolder(self, folder_path: str):
+        if not folder_path:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        if not Path(folder_path).is_dir():
+            return {"ok": False, "error": "DIR_NOT_FOUND"}
+        try:
+            from library.indexer import Indexer
+            if not self._db:
+                return {"ok": False, "error": "NO_DATABASE"}
+            import logging as _lg
+            _log = _lg.getLogger("michi.qml.addfolder")
+            _log.info("Indexing: %s", folder_path)
+            worker = Indexer(self._db, folder_path)
+            worker.run()
+            _log.info("Indexer done, committing...")
+            if hasattr(self._db, 'conn') and self._db.conn:
+                self._db.conn.commit()
+            self.refresh()
+            _log.info("Refresh done, total=%d, visible=%d",
+                      len(self._base_songs), self._cached_visible_count)
+            return {"ok": True, "path": folder_path, "count": len(self._base_songs)}
+        except Exception as e:
+            import logging as _lg
+            _lg.getLogger("michi.qml.addfolder").error(
+                "addFolder failed: %s", e, exc_info=True)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=str)
+    def getMusicFolder(self):
+        try:
+            from core.settings_manager import get as sg
+            return sg("general/music_folder") or os.path.expanduser("~/Música")
+        except Exception:
+            return os.path.expanduser("~/Música")
+
+    @Slot(str, result=dict)
+    def setMusicFolder(self, folder_path: str):
+        if not folder_path or not Path(folder_path).is_dir():
+            return {"ok": False, "error": "DIR_NOT_FOUND"}
+        try:
+            from core.settings_manager import set_ as ss
+            ss("general/music_folder", folder_path)
+            return {"ok": True, "path": folder_path}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=dict)
+    def scanMusicFolder(self):
+        folder = self.getMusicFolder()
+        if folder and Path(folder).is_dir():
+            return self.addFolder(folder)
+        return {"ok": False, "error": "MUSIC_FOLDER_NOT_FOUND"}
+
+    @Slot(str, result=dict)
+    def addMedia(self, path: str):
+        if not path:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        p = Path(path)
+        if not p.exists():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
+        try:
+            from core.file_actions import FileActions
+            from core.paths import database_path
+            db_path = database_path()
+            actions = FileActions(db_path=db_path)
+            if p.is_dir():
+                actions.scan_path(path)
+                self.refresh()
+                return {"ok": True, "type": "folder", "path": path}
+            parent = str(p.parent)
+            actions.scan_path(parent)
+            self.refresh()
+            return {"ok": True, "type": "file", "path": path, "parent": parent}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
