@@ -1,17 +1,17 @@
-"""TrackListModel — QAbstractListModel for scalable track display in QML."""
-
+"""TrackListModel — QAbstractListModel backed by LibraryQueryService (paginated)."""
 from __future__ import annotations
 
 from typing import Any
 
 from PySide6.QtCore import Qt, QAbstractListModel, QModelIndex, Property, Signal
-from pathlib import Path
 
 
 class TrackListModel(QAbstractListModel):
-    dataChanged = Signal()
+    countChanged = Signal()
+    loadingChanged = Signal()
+    errorChanged = Signal()
+    hasMoreChanged = Signal()
 
-    # Custom roles beyond DisplayRole
     TrackIdRole = Qt.UserRole + 1
     TrackUidRole = Qt.UserRole + 2
     TitleRole = Qt.UserRole + 3
@@ -25,10 +25,20 @@ class TrackListModel(QAbstractListModel):
     TrackNumberRole = Qt.UserRole + 11
     CoverKeyRole = Qt.UserRole + 12
 
-    def __init__(self, parent=None):
+    def __init__(self, query_service=None, parent=None):
         super().__init__(parent)
+        self._qs = query_service
         self._items: list[dict[str, Any]] = []
-        self._all_items: list = []
+        self._total_count = 0
+        self._page_size = 250
+        self._search = ""
+        self._artist_filter = ""
+        self._album_filter = ""
+        self._fmt_filter = ""
+        self._sort = "title"
+        self._asc = True
+        self._loading = False
+        self._error = ""
 
     def roleNames(self):
         return {
@@ -49,6 +59,28 @@ class TrackListModel(QAbstractListModel):
     def rowCount(self, parent=QModelIndex()):
         return len(self._items)
 
+    def canFetchMore(self, parent=QModelIndex()):
+        if parent.isValid():
+            return False
+        return len(self._items) < self._total_count
+
+    def fetchMore(self, parent=QModelIndex()):
+        if parent.isValid() or not self._qs:
+            return
+        offset = len(self._items)
+        new_items = self._qs.fetch_tracks(
+            offset=offset, limit=self._page_size,
+            search=self._search, artist=self._artist_filter,
+            album=self._album_filter, fmt=self._fmt_filter,
+            sort=self._sort, ascending=self._asc,
+        )
+        if new_items:
+            self.beginInsertRows(QModelIndex(), offset, offset + len(new_items) - 1)
+            self._items.extend(new_items)
+            self.endInsertRows()
+            self.countChanged.emit()
+            self.hasMoreChanged.emit()
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
             return None
@@ -61,7 +93,7 @@ class TrackListModel(QAbstractListModel):
             self.AlbumRole: "album",
             self.AlbumKeyRole: "album_key",
             self.DurationRole: "duration",
-            self.FormatRole: "format",
+            self.FormatRole: "ext",
             self.YearRole: "year",
             self.GenreRole: "genre",
             self.TrackNumberRole: "track_number",
@@ -74,57 +106,55 @@ class TrackListModel(QAbstractListModel):
             return item.get("title", "")
         return None
 
-    @Property(int, notify=dataChanged)
+    @Property(int, notify=countChanged)
     def count(self):
         return len(self._items)
 
-    def resetFromItems(self, items: list):
-        self.beginResetModel()
-        self._all_items = items
-        self._items = [self._item_to_dict(s) for s in items]
-        self.endResetModel()
-        self.dataChanged.emit()
+    @Property(int, notify=countChanged)
+    def totalCount(self):
+        return self._total_count
 
-    def setItems(self, items: list[dict]):
-        self.beginResetModel()
-        self._items = items
-        self.endResetModel()
-        self.dataChanged.emit()
+    @Property(bool, notify=loadingChanged)
+    def loading(self):
+        return self._loading
 
-    def appendItems(self, items: list[dict]):
-        if not items:
-            return
-        self.beginInsertRows(QModelIndex(), len(self._items), len(self._items) + len(items) - 1)
-        self._items.extend(items)
-        self.endInsertRows()
-        self.dataChanged.emit()
+    @Property(str, notify=errorChanged)
+    def error(self):
+        return self._error
 
-    def updateItem(self, index: int, data: dict):
-        if 0 <= index < len(self._items):
-            self._items[index].update(data)
-            self.dataChanged.emit()
+    @Property(bool, notify=hasMoreChanged)
+    def hasMore(self):
+        return len(self._items) < self._total_count
 
-    def removeItem(self, index: int):
-        if 0 <= index < len(self._items):
-            self.beginRemoveRows(QModelIndex(), index, index)
-            self._items.pop(index)
-            self.endRemoveRows()
-            self.dataChanged.emit()
-
-    def _item_to_dict(self, s) -> dict:
-        fp = getattr(s, 'filepath', '') or ''
-        album_key = getattr(s, 'album_key', None) or getattr(s, 'album', '') or ''
-        return {
-            "track_id": getattr(s, 'id', 0) or 0,
-            "track_uid": getattr(s, 'track_uid', '') or '',
-            "title": getattr(s, 'title', None) or Path(fp).stem or '',
-            "artist": getattr(s, 'artist', '') or '',
-            "album": getattr(s, 'album', '') or '',
-            "album_key": album_key,
-            "duration": getattr(s, 'duration', 0) or 0,
-            "format": (getattr(s, 'ext', '') or '').lstrip("."),
-            "year": getattr(s, 'year', 0) or 0,
-            "genre": getattr(s, 'genre', '') or '',
-            "track_number": getattr(s, 'track_number', 0) or 0,
-            "cover_key": album_key,
-        }
+    def refresh(self, search: str = "", artist: str = "", album: str = "",
+                fmt: str = "", sort: str = "title", asc: bool = True):
+        self._search = search
+        self._artist_filter = artist
+        self._album_filter = album
+        self._fmt_filter = fmt
+        self._sort = sort
+        self._asc = asc
+        self._loading = True
+        self.loadingChanged.emit()
+        if self._qs:
+            self._total_count = self._qs.count_tracks(
+                search=search, artist=artist, album=album, fmt=fmt)
+            self.beginResetModel()
+            self._items = self._qs.fetch_tracks(
+                offset=0, limit=self._page_size,
+                search=search, artist=artist, album=album, fmt=fmt,
+                sort=sort, ascending=asc,
+            )
+            self.endResetModel()
+            self._error = ""
+        else:
+            self.beginResetModel()
+            self._items = []
+            self._total_count = 0
+            self.endResetModel()
+            self._error = "Query service not available"
+        self._loading = False
+        self.loadingChanged.emit()
+        self.countChanged.emit()
+        self.hasMoreChanged.emit()
+        self.errorChanged.emit()

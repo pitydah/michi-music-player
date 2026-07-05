@@ -79,6 +79,8 @@ def main():
         # Skip non-bridge utility files
         if f.name in {"__init__.py", "route_registry.py", "qml_main.py", "audio_quality_adapter.py", "command_bus.py", "service_bundle.py", "service_capabilities.py", "bridge_factory.py", "context_registrar.py"}:
             continue
+        if f.name in {"library_query_service.py"}:
+            continue
         check_file(f)
 
     print("# QML Bridge Contract Audit")

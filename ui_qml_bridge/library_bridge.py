@@ -39,8 +39,10 @@ class LibraryBridge(QObject):
         self._view_dirty = True
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
-        self._track_model = TrackListModel(self)
-        self._album_model = AlbumListModel(self)
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        self._query_svc = LibraryQueryService(self._db) if self._db else None
+        self._track_model = TrackListModel(query_service=self._query_svc, parent=self)
+        self._album_model = AlbumListModel(parent=self)
 
     # ── Internal pipeline ──
 
@@ -352,8 +354,15 @@ class LibraryBridge(QObject):
                 self._base_songs = self._db.get_all() or []
         self._invalidate_view()
         self._refresh_albums_artists()
-        self._track_model.resetFromItems(self._base_songs)
-        self._album_model.resetFromSongs(self._base_songs)
+        if self._track_model:
+            self._track_model.refresh(
+                search=self._search_query,
+                artist=self._filter_artist,
+                album=self._filter_album,
+                fmt=self._filter_format,
+                sort=self._sort_key,
+                asc=self._sort_asc,
+            )
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "count": len(self._base_songs)}
