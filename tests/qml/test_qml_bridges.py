@@ -1358,6 +1358,39 @@ class TestLibraryDoctorBridge:
         bridge = LibraryDoctorBridge()
         assert bridge is not None
 
+    def test_library_doctor_has_refresh(self):
+        from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
+        bridge = LibraryDoctorBridge()
+        assert hasattr(bridge, 'refresh')
+
+
+class TestDiscLabIntegration:
+    def test_disc_lab_scan_with_tracks_mock(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        svc = MagicMock()
+        svc.detect_drives.return_value = ["/dev/sr0"]
+        svc.get_default_drive.return_value = "/dev/sr0"
+        svc.detect_audio_cd.return_value = True
+        svc.get_disc_toc.return_value = {"tracks": 2, "duration_seconds": 200}
+        svc.get_track_durations.return_value = [100.0, 100.0]
+        bridge = DiscLabBridge(disc_detection_service=svc)
+        bridge.refresh()
+        assert bridge.status == "ready"
+        result = bridge.scanDisc()
+        assert result.get("ok") is True
+        assert len(bridge.tracks) == 2
+
+    def test_disc_lab_eject_clears_tracks(self):
+        from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
+        bridge = DiscLabBridge()
+        bridge._status = "scanned"
+        bridge._tracks = [{"track": 1, "title": "T1"}]
+        result = bridge.eject()
+        assert result.get("ok") is True
+        assert bridge.status == "no_disc"
+        assert len(bridge.tracks) == 0
+
 
 class TestPlaylistsFullBridge:
     def test_playlists_bridge_duplicate(self):

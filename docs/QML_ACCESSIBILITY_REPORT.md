@@ -1,6 +1,6 @@
 # QML Accessibility Report
 
-**Date:** 2026-07-04
+**Date:** 2026-07-05 (updated)
 **Status:** AUDITED — gaps identified
 
 ## Resoluciones probadas
@@ -44,3 +44,16 @@
 4. Usar `Layout.fillHeight: true` en componentes que actualmente usan altura fija
 5. Añadir `Keys.onEscapePressed` en todas las páginas para navegación atrás
 6. Soporte `reduced motion`: consultar `MichiTheme.motion.reduced` y deshabilitar animaciones
+
+
+## Improvements applied in Wave III/IV
+- NowPlayingVolume: Accessible.name y Accessible.description agregados
+- NowPlayingVolume: iconText vacio cuando hay iconSource (no Unicode de control)
+- NowPlayingControls: iconText vacio para shuffle/prev/next/repeat (usa iconos)
+- NowPlayingControls: tooltips contextuales segun capability
+- PlaybackPage: color 'white' reemplazado por MichiTheme.colors.onError
+- PlaybackPage: 'X' reemplazado por texto 'Cerrar'
+- NowPlayingBar: '...' (unicode) reemplazado por icono real warm_next
+- PlaybackActionHandler: mensajes seguros sin traceback
+- No hardcoded hex fuera del theme
+- No Qt.rgba fuera del theme (excepto slider tracks documentados)

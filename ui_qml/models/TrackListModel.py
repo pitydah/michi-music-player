@@ -11,7 +11,6 @@ from pathlib import Path
 class TrackListModel(QAbstractListModel):
     dataChanged = Signal()
 
-    # Custom roles beyond DisplayRole
     TrackIdRole = Qt.UserRole + 1
     TrackUidRole = Qt.UserRole + 2
     TitleRole = Qt.UserRole + 3
@@ -29,6 +28,9 @@ class TrackListModel(QAbstractListModel):
         super().__init__(parent)
         self._items: list[dict[str, Any]] = []
         self._all_items: list = []
+        self._page_size = 500
+        self._loaded_count = 0
+        self._total_count = 0
 
     def roleNames(self):
         return {
@@ -48,6 +50,27 @@ class TrackListModel(QAbstractListModel):
 
     def rowCount(self, parent=QModelIndex()):
         return len(self._items)
+
+    def canFetchMore(self, parent=QModelIndex()):
+        if parent.isValid():
+            return False
+        return self._loaded_count < self._total_count
+
+    def fetchMore(self, parent=QModelIndex()):
+        if parent.isValid():
+            return
+        remaining = self._total_count - self._loaded_count
+        count = min(self._page_size, remaining)
+        if count <= 0:
+            return
+        start = self._loaded_count
+        end = min(start + count, len(self._all_items))
+        new_items = [self._item_to_dict(s) for s in self._all_items[start:end]]
+        self.beginInsertRows(QModelIndex(), len(self._items), len(self._items) + len(new_items) - 1)
+        self._items.extend(new_items)
+        self._loaded_count = end
+        self.endInsertRows()
+        self.dataChanged.emit()
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
@@ -81,13 +104,18 @@ class TrackListModel(QAbstractListModel):
     def resetFromItems(self, items: list):
         self.beginResetModel()
         self._all_items = items
-        self._items = [self._item_to_dict(s) for s in items]
+        self._total_count = len(items)
+        self._loaded_count = 0
+        self._items = []
         self.endResetModel()
         self.dataChanged.emit()
+        self.fetchMore()
 
     def setItems(self, items: list[dict]):
         self.beginResetModel()
         self._items = items
+        self._loaded_count = len(items)
+        self._total_count = len(items)
         self.endResetModel()
         self.dataChanged.emit()
 
@@ -96,6 +124,7 @@ class TrackListModel(QAbstractListModel):
             return
         self.beginInsertRows(QModelIndex(), len(self._items), len(self._items) + len(items) - 1)
         self._items.extend(items)
+        self._loaded_count = len(self._items)
         self.endInsertRows()
         self.dataChanged.emit()
 
