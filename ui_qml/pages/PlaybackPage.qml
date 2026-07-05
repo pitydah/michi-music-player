@@ -11,6 +11,7 @@ Item {
                    : (typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null)
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
+    property var act: typeof actionRegistry !== "undefined" ? actionRegistry : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _showError: false
     property string _errorText: ""

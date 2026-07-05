@@ -43,7 +43,10 @@
         "write": true,
         "unit_tests": [
           "test_library_bridge",
-          "test_library_bridge_contract"
+          "test_library_bridge_contract",
+          "test_library_query_service",
+          "test_track_model_has_correct_signals",
+          "test_library_refresh_does_not_load_full_table"
         ],
         "integration_tests": [],
         "manual_test": "folder_add_drag_drop_verified",
@@ -69,7 +72,8 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
-          "test_nowplaying_bridge_commands_call_player_service"
+          "test_nowplaying_bridge_commands_call_player_service",
+          "test_playback_bridge_has_nowplaying_props"
         ],
         "integration_tests": [],
         "manual_test": "play_pause_seek_volume_verified",
@@ -333,7 +337,8 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
-          "test_smart_tagging_bridge_importable"
+          "test_smart_tagging_importable",
+          "test_smart_tagging_scan_no_service"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -385,7 +390,8 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
-          "test_library_doctor_importable"
+          "test_library_doctor_importable",
+          "test_library_doctor_has_refresh"
         ],
         "integration_tests": [],
         "manual_test": "",

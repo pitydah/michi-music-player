@@ -245,7 +245,11 @@ def main():
     # Register JobBridge
     try:
         from ui_qml_bridge.job_bridge import JobBridge
-        registrar.register("jobBridge", JobBridge(worker_manager=services.worker_manager))
+        registrar.register("jobBridge", JobBridge(
+            worker_manager=services.worker_manager,
+            db=services.db,
+            library_bridge=all_bridges.get("library"),
+        ))
     except Exception as e:
         logger.debug("JobBridge init failed: %s", e)
 

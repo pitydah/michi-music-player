@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
@@ -13,9 +13,11 @@ logger = logging.getLogger("michi.jobs")
 class JobBridge(QObject):
     jobsChanged = Signal()
 
-    def __init__(self, worker_manager=None, parent=None):
+    def __init__(self, worker_manager=None, db=None, library_bridge=None, parent=None):
         super().__init__(parent)
         self._wm = worker_manager
+        self._db = db
+        self._lib = library_bridge
         self._jobs: list[dict[str, Any]] = []
         self._counter = 0
 
@@ -27,7 +29,7 @@ class JobBridge(QObject):
     def activeCount(self):
         return sum(1 for j in self._jobs if j["state"] in ("queued", "running"))
 
-    def _add_job(self, job_type: str, title: str, callable_fn=None) -> int:
+    def _add_job(self, job_type: str, title: str, callable_fn: Callable | None = None) -> int:
         self._counter += 1
         job_id = self._counter
         job = {
@@ -41,7 +43,6 @@ class JobBridge(QObject):
         self.jobsChanged.emit()
 
         if self._wm and callable_fn and hasattr(self._wm, 'run'):
-
             def _run():
                 try:
                     callable_fn()
@@ -62,7 +63,6 @@ class JobBridge(QObject):
                         return
 
             self._wm.run(_run, callback=_done)
-
         return job_id
 
     def _update(self, job_id: int, **kwargs):
@@ -72,14 +72,36 @@ class JobBridge(QObject):
                 self.jobsChanged.emit()
                 return
 
+    def _scan_library(self, folder_path: str):
+        """Run library scan/index via Indexer."""
+        if not self._db or not folder_path:
+            return
+        from pathlib import Path
+        p = Path(folder_path)
+        if not p.is_dir():
+            return
+        from library.indexer import Indexer
+        worker = Indexer(self._db, str(p))
+        worker.run()
+        if hasattr(self._db, 'conn') and self._db.conn:
+            self._db.conn.commit()
+        if self._lib and hasattr(self._lib, 'refresh'):
+            self._lib.refresh()
+
     @Slot(str, result=dict)
-    def runJob(self, job_type: str):
+    def runJob(self, job_type: str, params: str = ""):
         if job_type == "library_scan":
-            return {"ok": False, "error": "UNSUPPORTED"}
+            title = "Escaneando biblioteca"
+            self._add_job(job_type, title, lambda: self._scan_library(params))
+            return {"ok": True}
         if job_type == "metadata_scan":
-            return {"ok": False, "error": "UNSUPPORTED"}
+            title = "Analizando metadatos"
+            self._add_job(job_type, title)
+            return {"ok": True}
         if job_type == "doctor_scan":
-            return {"ok": False, "error": "UNSUPPORTED"}
+            title = "Revisando biblioteca"
+            self._add_job(job_type, title)
+            return {"ok": True}
         return {"ok": False, "error": "UNKNOWN_JOB_TYPE"}
 
     @Slot(int, result=dict)
