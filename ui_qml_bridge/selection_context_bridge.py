@@ -61,7 +61,7 @@ class SelectionContextBridge(QObject):
 
     @Property(str, notify=selectionChanged)
     def selectedFilepath(self):
-        return self._selected_data.get("filepath", "")
+        return ""  # filepath no longer exposed publicly
 
     @Property(str, notify=selectionChanged)
     def selectedTitle(self):
