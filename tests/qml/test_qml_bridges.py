@@ -398,17 +398,19 @@ class TestSmartTaggingBridge:
         assert bridge is not None
         assert bridge.status == "idle"
 
-    def test_smart_tagging_scan_no_service(self):
+    def test_smart_tagging_scan_by_id_no_service(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge()
-        bridge.scanTrack("/test/file.flac")
-        assert bridge.status == "unavailable"
+        result = bridge.scanTrackById(1)
+        assert result.get("ok") is False
+        assert result.get("error_code") == "UNSUPPORTED"
 
     def test_smart_tagging_apply_no_suggestions(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge()
-        result = bridge.applySuggestions()
+        result = bridge.applySelected()
         assert result.get("ok") is False
+        assert result.get("error_code") == "NO_SUGGESTIONS"
 
     def test_refresh_returns_dict(self):
         bridge = HomeAudioBridge()
@@ -1391,6 +1393,11 @@ class TestPlaylistsFullBridge:
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         db = MagicMock()
         db.get_playlists.return_value = [{"id": 1, "name": "Test", "track_count": 2}]
+        db.get_playlist_items.return_value = [
+            type("Item", (), {"id": 1, "title": "A", "artist": "X", "album": "Y",
+                              "duration": 100, "filepath": "/tmp/test.mp3", "track_uid": "u1",
+                              "position": 0})(),
+        ]
         db.create_playlist.return_value = 2
         bridge = PlaylistsBridge(db=db)
         bridge.refresh()
