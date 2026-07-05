@@ -1,0 +1,19 @@
+{
+  "status": "NOT_RUN",
+  "timestamp": "",
+  "operator": "",
+  "platform": "",
+  "display_server": "",
+  "backend": "",
+  "output_device": "",
+  "runtime_without_crash": false,
+  "log": "",
+  "formats": {
+    "mp3": {"tested": false, "passed": false, "file": ""},
+    "flac": {"tested": false, "passed": false, "file": ""},
+    "wav": {"tested": false, "passed": false, "file": ""}
+  },
+  "checks": [],
+  "passed": 0,
+  "total": 21
+}
