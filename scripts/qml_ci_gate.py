@@ -14,6 +14,7 @@ STEPS = [
     ("compileall", [sys.executable, "-m", "compileall", "-q", "-x", r"\.venv/|\.tmpl\."]),
     ("smoke_startup", [sys.executable, "scripts/smoke_startup.py"]),
     ("smoke_ui_routes", [sys.executable, "scripts/smoke_ui_routes.py"]),
+    ("qml_runtime_smoke", [sys.executable, "scripts/qml_full_runtime_smoke.py"]),
     ("check_runtime", [sys.executable, "scripts/check_runtime.py"]),
     ("pytest_qml", [sys.executable, "-m", "pytest", "tests/qml/", "-q"]),
     ("test_schema", [sys.executable, "-m", "pytest", "tests/test_schema.py", "-q"]),
