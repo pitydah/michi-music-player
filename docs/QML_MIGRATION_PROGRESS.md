@@ -1,11 +1,11 @@
 # QML Migration Progress
 
-**Overall: 55.3%**
+**Overall: 52.8%**
 
 | Area | Weight | Score | State |
 |---|---:|---:|---|
 | advanced_tools | 20% | 40% | PARTIAL |
-| ecosystem_network | 10% | 65% | FUNCTIONAL |
+| ecosystem_network | 10% | 40% | PARTIAL |
 | library_playback | 25% | 65% | FUNCTIONAL |
 | quality_release | 15% | 43% | SCORE_43 |
 | shell_nav | 10% | 65% | FUNCTIONAL |

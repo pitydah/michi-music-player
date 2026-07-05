@@ -82,7 +82,15 @@ def validate_manifest(data: dict) -> list[str]:
             ev = m.get("evidence", {})
             if m["area"] == "quality_release":
                 continue
-            if m["module"] == "queue_history":
+            if m["module"] in ("queue_history",):
+                if not ev.get("bridge"):
+                    errors.append(f"{m['module']}: FUNCTIONAL requires bridge=true")
+                if not ev.get("service"):
+                    errors.append(f"{m['module']}: FUNCTIONAL requires service=true")
+                if not ev.get("primary_action"):
+                    errors.append(f"{m['module']}: FUNCTIONAL requires primary_action=true")
+                if not ev.get("error_contract"):
+                    errors.append(f"{m['module']}: FUNCTIONAL requires error_contract=true")
                 continue
             if not ev.get("page"):
                 errors.append(f"{m['module']}: FUNCTIONAL requires page=true")

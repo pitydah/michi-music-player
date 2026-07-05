@@ -143,7 +143,7 @@ def main():
         f"- Mute: {'✅' if any(r['id'] == 'mute' and r['passed'] for r in results) else '❌'}",
         f"- Next/Previous: {'✅' if any(r['id'] == 'next' and r['passed'] for r in results) else '❌'}",
         f"- Queue: {'✅' if any(r['id'] == 'queue' and r['passed'] for r in results) else '❌'}",
-        "- Runtime without crash: ✅",
+        f"- Runtime without crash: {'✅' if data.get('runtime_without_crash') else '❌'}",
         "",
     ])
 
