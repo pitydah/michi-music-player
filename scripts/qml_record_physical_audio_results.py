@@ -42,7 +42,7 @@ CHECKS = [
 def _ask_bool(prompt: str) -> bool:
     while True:
         ans = input(f"{prompt} [y/n] ").strip().lower()
-        if ans in ("y", "yes"):
+        if ans in ("y", "yes", "s", "si", "sí"):
             return True
         if ans in ("n", "no"):
             return False
