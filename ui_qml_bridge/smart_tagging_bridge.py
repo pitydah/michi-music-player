@@ -66,7 +66,7 @@ class SmartTaggingBridge(QObject):
         try:
             from metadata.tag_writer import write_tags
             from metadata.tag_model import TrackTags
-            tags = TrackTags()
+            tags = TrackTags(filepath=self._current_filepath)
             for s in self._suggestions:
                 field = s.get("field", "")
                 suggested = s.get("suggested", "")

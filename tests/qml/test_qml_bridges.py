@@ -1284,19 +1284,51 @@ class TestNowPlayingBar:
                     assert False, f"Emoji U+{ord(ch):04X} found in {name}.qml"
 
 
+class TestLibraryQueryService:
+    def test_query_service_sort_whitelist(self):
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        svc = LibraryQueryService(db=None)
+        assert svc._sort_column("title") == "LOWER(COALESCE(title, ''))"
+        assert svc._sort_column("invalid") == "LOWER(COALESCE(title, ''))"
+        assert "artist" in svc._TRACK_SORT_COLUMNS
+
+    def test_query_service_empty_db(self):
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        svc = LibraryQueryService(db=None)
+        assert svc.count_tracks() == 0
+        assert svc.fetch_tracks() == []
+        assert svc.count_albums() == 0
+        assert svc.count_artists() == 0
+        assert svc.search_backend == "none"
+
+    def test_query_service_search_backend_detection(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        db = MagicMock()
+        db.conn.execute.return_value.fetchone.return_value = ["media_fts"]
+        svc = LibraryQueryService(db=db)
+        assert svc.search_backend == "fts5"
+
+    def test_track_model_has_correct_signals(self):
+        from ui_qml.models.TrackListModel import TrackListModel
+        model = TrackListModel()
+        assert hasattr(model, 'countChanged')
+        assert hasattr(model, 'loadingChanged')
+        assert hasattr(model, 'errorChanged')
+        assert hasattr(model, 'hasMoreChanged')
+
+
 class TestTrackListModel:
     def test_track_model_importable(self):
         from ui_qml.models.TrackListModel import TrackListModel
         model = TrackListModel()
         assert model.count == 0
 
-    def test_track_model_reset(self):
+    def test_track_model_basic(self):
         from ui_qml.models.TrackListModel import TrackListModel
-        from library.media_item import MediaItem
         model = TrackListModel()
-        items = [MediaItem(id=1, title="A", artist="X", album="Y", duration=100, filepath="/a.mp3", ext=".mp3")]
-        model.resetFromItems(items)
-        assert model.count == 1
+        assert model.count == 0
+        assert model.loading is False
 
     def test_album_model_importable(self):
         from ui_qml.models.AlbumListModel import AlbumListModel

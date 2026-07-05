@@ -148,7 +148,7 @@ Item {
             height: parent.height - tabBar.height - 40 - 30
             currentIndex: tabBar.currentIndex
 
-            SongTable { id: songsView; songs: root.lib ? root.lib.songs : []; bridge: root.lib }
+            SongTable { id: songsView; songs: root.lib ? root.lib.songs : []; bridge: root.lib; trackModel: root.lib ? root.lib.trackModel : null }
 
             Item {
                 id: albumContainer

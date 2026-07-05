@@ -39,8 +39,10 @@ class LibraryBridge(QObject):
         self._view_dirty = True
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
-        self._track_model = TrackListModel(self)
-        self._album_model = AlbumListModel(self)
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        self._query_svc = LibraryQueryService(self._db) if self._db else None
+        self._track_model = TrackListModel(query_service=self._query_svc, parent=self)
+        self._album_model = AlbumListModel(parent=self)
 
     # ── Internal pipeline ──
 
@@ -343,22 +345,44 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self, limit: int = 0):
-        if self._db:
-            if limit > 0 and hasattr(self._db, 'get_all'):
-                self._base_songs = self._db.get_all()[:limit] if not hasattr(self._db, 'get_all_paginated') else self._db.get_all_paginated(limit=limit)
-            elif hasattr(self._db, 'fetch_all'):
+        # Always refresh track model (paginated via QueryService)
+        if self._track_model:
+            self._track_model.refresh(
+                search=self._search_query,
+                artist=self._filter_artist,
+                album=self._filter_album,
+                fmt=self._filter_format,
+                sort=self._sort_key,
+                asc=self._sort_asc,
+            )
+        # Legacy full load only when no paginated model is active
+        if not self._query_svc and self._db:
+            if hasattr(self._db, 'fetch_all'):
                 self._base_songs = self._db.fetch_all() or []
             elif hasattr(self._db, 'get_all'):
                 self._base_songs = self._db.get_all() or []
         self._invalidate_view()
         self._refresh_albums_artists()
-        self._track_model.resetFromItems(self._base_songs)
-        self._album_model.resetFromSongs(self._base_songs)
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "count": len(self._base_songs)}
 
     # ── Playback actions (single) ──
+
+    @Slot(int, result=dict)
+    def playTrackById(self, track_id: int):
+        if not track_id or not self._db:
+            return {"ok": False, "error": "NOT_FOUND"}
+        try:
+            if hasattr(self._db, 'conn'):
+                row = self._db.conn.execute(
+                    "SELECT filepath FROM media_items WHERE id=? AND deleted_at IS NULL", (track_id,)
+                ).fetchone()
+                if row and row[0]:
+                    return self.play_song(row[0])
+            return {"ok": False, "error": "NOT_FOUND"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
     def play_song(self, filepath: str):

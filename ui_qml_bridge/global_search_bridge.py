@@ -1,4 +1,4 @@
-"""GlobalSearchBridge — cross-domain search for QML."""
+"""GlobalSearchBridge — cross-domain search for QML using FTS5 search engine."""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -40,22 +40,28 @@ class GlobalSearchBridge(QObject):
             return {"ok": True, "count": 0}
         results = []
         try:
-            if self._db and hasattr(self._db, 'get_all'):
-                items = self._db.get_all() or []
-                for item in items:
-                    title = (getattr(item, 'title', '') or '').lower()
-                    artist = (getattr(item, 'artist', '') or '').lower()
-                    album = (getattr(item, 'album', '') or '').lower()
-                    if query in title or query in artist or query in album:
-                        results.append({
-                            "type": "track",
-                            "id": getattr(item, 'id', 0),
-                            "title": getattr(item, 'title', '') or '',
-                            "subtitle": f"{getattr(item, 'artist', '') or ''} · {getattr(item, 'album', '') or ''}",
-                            "album_key": getattr(item, 'album_key', '') or getattr(item, 'album', '') or '',
-                        })
-                        if len(results) >= 30:
-                            break
+            if self._search_engine and hasattr(self._search_engine, 'search'):
+                items = self._search_engine.search(query) or []
+                for item in items[:30]:
+                    results.append({
+                        "type": "track",
+                        "id": getattr(item, 'id', 0),
+                        "title": getattr(item, 'title', '') or '',
+                        "subtitle": f"{getattr(item, 'artist', '') or ''} · {getattr(item, 'album', '') or ''}",
+                        "album_key": getattr(item, 'album_key', '') or getattr(item, 'album', '') or '',
+                    })
+            elif self._db and hasattr(self._db, 'conn'):
+                sql = "SELECT id, title, artist, album, album_key FROM media_items WHERE deleted_at IS NULL AND (title LIKE ? OR artist LIKE ? OR album LIKE ?) LIMIT 30"
+                p = f"%{query}%"
+                rows = self._db.conn.execute(sql, (p, p, p)).fetchall()
+                for r in rows:
+                    results.append({
+                        "type": "track",
+                        "id": r[0],
+                        "title": r[1] or "",
+                        "subtitle": f"{r[2] or ''} · {r[3] or ''}",
+                        "album_key": r[4] or r[3] or "",
+                    })
         except Exception:
             pass
         self._results = results
