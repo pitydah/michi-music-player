@@ -150,9 +150,33 @@ Item {
 
             SongTable { id: songsView; songs: root.lib ? root.lib.songs : []; bridge: root.lib }
 
-            AlbumGrid {
-                id: albumView; albums: root.lib ? root.lib.albums : []; bridge: root.lib
-                onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+            Item {
+                id: albumContainer
+                anchors.fill: parent
+                visible: tabBar.currentIndex === 1
+
+                ColumnLayout {
+                    anchors.fill: parent; spacing: 0
+
+                    AlbumViewSelector {
+                        id: viewSelector
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 32
+                        currentView: 0
+                        onViewChanged: function(idx) { albumHost.currentView = idx }
+                    }
+
+                    AlbumViewHost {
+                        id: albumHost
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        albumModel: root.lib ? root.lib.albumModel : null
+                        bridge: root.lib
+                        onAlbumClicked: function(key, title, artist, year) {
+                            root.showAlbumDetail(key, title, artist, year)
+                        }
+                    }
+                }
             }
 
             ArtistList {

@@ -159,22 +159,161 @@ class PlaylistsBridge(QObject):
         return self.addTrackToPlaylist(pid)
 
     @Slot(int, result=dict)
-    def enqueuePlaylist(self, pid: int):
+    def duplicatePlaylist(self, pid: int):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
             detail = self.getPlaylistDetail(pid)
+            if not detail.get("ok"):
+                return {"ok": False, "error": "NO_TRACKS"}
+            orig_name = ""
+            for p in self._playlists:
+                if p.get("id") == pid:
+                    orig_name = p.get("title", "")
+                    break
+            new_name = f"{orig_name} (copia)" if orig_name else "Copia"
+            new_pid = self._db.create_playlist(new_name)
+            tracks = detail.get("tracks", [])
+            for t in tracks:
+                fp = t.get("filepath", "")
+                if fp:
+                    self._db.add_track_to_playlist(new_pid, filepath=fp)
+            self.refresh()
+            return {"ok": True, "id": new_pid, "name": new_name}
+        except Exception as e:
+            logger.debug("duplicatePlaylist failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, result=dict)
+    def clearPlaylist(self, pid: int):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            if hasattr(self._db, 'clear_playlist'):
+                self._db.clear_playlist(pid)
+                self.refresh()
+                return {"ok": True}
+            detail = self.getPlaylistDetail(pid)
             if detail.get("ok"):
-                tracks = detail.get("tracks", [])
-                fps = [t["filepath"] for t in tracks if t.get("filepath")]
-                if not fps:
-                    return {"ok": False, "error": "NO_TRACKS"}
-                if self._player and hasattr(self._player, 'enqueue'):
-                    self._player.enqueue(fps, play_now=False)
-                    return {"ok": True, "count": len(fps)}
-                return {"ok": False, "error": "UNSUPPORTED"}
+                for t in detail.get("tracks", []):
+                    self._db.remove_track_from_playlist(pid, t.get("track_id", 0))
+                self.refresh()
+                return {"ok": True}
             return {"ok": False, "error": "NO_TRACKS"}
         except Exception as e:
+            logger.debug("clearPlaylist failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, int, int, result=dict)
+    def reorderTrack(self, pid: int, from_index: int, to_index: int):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            if hasattr(self._db, 'reorder_playlist_track'):
+                self._db.reorder_playlist_track(pid, from_index, to_index)
+                return {"ok": True}
+            return {"ok": False, "error": "UNSUPPORTED"}
+        except Exception as e:
+            logger.debug("reorderTrack failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, int, result=dict)
+    def playPlaylistFromIndex(self, pid: int, index: int = 0):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            detail = self.getPlaylistDetail(pid)
+            if not detail.get("ok"):
+                return {"ok": False, "error": "NO_TRACKS"}
+            tracks = detail.get("tracks", [])
+            fps = [t["filepath"] for t in tracks[index:] if t.get("filepath")]
+            if not fps:
+                return {"ok": False, "error": "NO_TRACKS"}
+            if self._player and hasattr(self._player, 'enqueue'):
+                self._player.enqueue(fps, play_now=True)
+                return {"ok": True, "count": len(fps)}
+            return {"ok": False, "error": "UNSUPPORTED"}
+        except Exception as e:
+            logger.debug("playPlaylistFromIndex failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def saveQueueAsPlaylist(self, name: str):
+        if not name:
+            return {"ok": False, "error": "EMPTY_NAME"}
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            fps = []
+            if self._player and hasattr(self._player, 'get_queue'):
+                q = self._player.get_queue()
+                for item in (q or []):
+                    fp = getattr(item, 'filepath', None) if not isinstance(item, dict) else item.get("filepath", "")
+                    if fp:
+                        fps.append(fp)
+            if not fps and self._player and hasattr(self._player, 'current'):
+                cur = self._player.current
+                if cur:
+                    fp = getattr(cur, 'filepath', '') if not isinstance(cur, dict) else cur.get("filepath", "")
+                    if fp:
+                        fps.append(fp)
+            if not fps:
+                return {"ok": False, "error": "NO_TRACKS"}
+            pid = self._db.create_playlist(name)
+            for fp in fps:
+                self._db.add_track_to_playlist(pid, filepath=fp)
+            self.refresh()
+            return {"ok": True, "id": pid}
+        except Exception as e:
+            logger.debug("saveQueueAsPlaylist failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def importM3U(self, filepath: str):
+        if not filepath or not Path(filepath).is_file():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            from ui.playlist_io import parse_playlist_entries
+            entries = parse_playlist_entries(filepath)
+            name = Path(filepath).stem
+            pid = self._db.create_playlist(name)
+            count = 0
+            for entry in entries:
+                if entry.filepath and Path(entry.filepath).is_file():
+                    self._db.add_track_to_playlist(pid, filepath=entry.filepath)
+                    count += 1
+            self.refresh()
+            return {"ok": True, "id": pid, "count": count}
+        except Exception as e:
+            logger.debug("importM3U failed: %s", e)
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def exportM3U(self, filepath: str):
+        if not filepath:
+            return {"ok": False, "error": "EMPTY_PATH"}
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            from ui.playlist_io import export_m3u
+            pid = int(Path(filepath).stem.split("_")[-1]) if "_" in Path(filepath).stem else 0
+            if not pid:
+                for p in self._playlists:
+                    if p.get("title", "").lower() in Path(filepath).stem.lower():
+                        pid = p.get("id", 0)
+                        break
+            if not pid:
+                return {"ok": False, "error": "NO_PLAYLIST_ID"}
+            detail = self.getPlaylistDetail(pid)
+            if not detail.get("ok"):
+                return {"ok": False, "error": "NO_TRACKS"}
+            fps = [t["filepath"] for t in detail.get("tracks", []) if t.get("filepath")]
+            export_m3u(filepath, fps)
+            return {"ok": True, "count": len(fps)}
+        except Exception as e:
+            logger.debug("exportM3U failed: %s", e)
             return {"ok": False, "error": str(e)}
 
     @Slot(int, result=dict)
