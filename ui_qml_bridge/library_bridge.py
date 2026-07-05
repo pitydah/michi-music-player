@@ -164,11 +164,11 @@ class LibraryBridge(QObject):
             result.append({"title": getattr(a, 'album', '') or key, "artist": getattr(a, 'artist', '') or '', "album_key": key, "year": getattr(a, 'year', 0) or 0, "track_count": getattr(a, 'track_count', 0) or 0, "cover_key": key})
         return result
 
-    @Property("QVariant", notify=dataChanged)
+    @Property("QObject*", notify=dataChanged)
     def trackModel(self):
         return self._track_model
 
-    @Property("QVariant", notify=dataChanged)
+    @Property("QObject*", notify=dataChanged)
     def albumModel(self):
         return self._album_model
 

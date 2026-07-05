@@ -18,24 +18,15 @@ Item {
 
     Connections {
         target: root.ps
-        function onErrorMessageChanged() {
+        function onErrorChanged() {
             if (root.ps && root.ps.errorMessage && root.ps.errorMessage !== root._lastShownError && root.notif) {
                 root._lastShownError = root.ps.errorMessage
                 root.notif.showMessage(root.ps.errorMessage, "error")
             }
         }
-        function onLastCommandErrorChanged() {
+        function onCommandStateChanged() {
             if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage && root.notif)
                 root.notif.showMessage(root.ps.lastCommandMessage, "warning")
-        }
-        function onCommandPendingChanged() {
-            if (root.ps && root.ps.commandPending && root.notif)
-                root.notif.showMessage("En ejecución...", "info")
-        }
-        function onLastCommandOkChanged() {
-            if (root.ps && root.ps.lastCommandOk && root._lastShownError) {
-                root._lastShownError = ""
-            }
         }
     }
 
