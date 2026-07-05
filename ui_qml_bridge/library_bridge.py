@@ -37,10 +37,6 @@ class LibraryBridge(QObject):
         self._cached_view: list | None = None
         self._cached_visible_count: int = 0
         self._view_dirty = True
-        from ui_qml.models.TrackListModel import TrackListModel
-        from ui_qml.models.AlbumListModel import AlbumListModel
-        self._track_model = TrackListModel(self)
-        self._album_model = AlbumListModel(self)
 
     # ── Internal pipeline ──
 
@@ -163,14 +159,6 @@ class LibraryBridge(QObject):
             key = getattr(a, 'album_key', None) or getattr(a, 'album', '') or ''
             result.append({"title": getattr(a, 'album', '') or key, "artist": getattr(a, 'artist', '') or '', "album_key": key, "year": getattr(a, 'year', 0) or 0, "track_count": getattr(a, 'track_count', 0) or 0, "cover_key": key})
         return result
-
-    @Property("QObject*", notify=dataChanged)
-    def trackModel(self):
-        return self._track_model
-
-    @Property("QObject*", notify=dataChanged)
-    def albumModel(self):
-        return self._album_model
 
     @Property("QVariantList", notify=dataChanged)
     def artists(self):
@@ -352,8 +340,6 @@ class LibraryBridge(QObject):
                 self._base_songs = self._db.get_all() or []
         self._invalidate_view()
         self._refresh_albums_artists()
-        self._track_model.resetFromItems(self._base_songs)
-        self._album_model.resetFromSongs(self._base_songs)
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "count": len(self._base_songs)}
