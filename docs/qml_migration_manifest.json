@@ -31,7 +31,7 @@
     {
       "module": "library",
       "area": "library_playback",
-      "module_weight": 40,
+      "module_weight": 30,
       "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
@@ -58,7 +58,7 @@
     {
       "module": "playback",
       "area": "library_playback",
-      "module_weight": 35,
+      "module_weight": 25,
       "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
@@ -84,7 +84,7 @@
     {
       "module": "queue_history",
       "area": "library_playback",
-      "module_weight": 25,
+      "module_weight": 20,
       "status": "FUNCTIONAL",
       "evidence": {
         "page": false,
@@ -108,7 +108,7 @@
     {
       "module": "playlists",
       "area": "workflows_core",
-      "module_weight": 20,
+      "module_weight": 10,
       "status": "PARTIAL",
       "evidence": {
         "page": true,
@@ -132,7 +132,7 @@
     {
       "module": "lyrics",
       "area": "workflows_core",
-      "module_weight": 25,
+      "module_weight": 15,
       "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
@@ -158,7 +158,7 @@
     {
       "module": "mix",
       "area": "workflows_core",
-      "module_weight": 20,
+      "module_weight": 15,
       "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
@@ -184,7 +184,7 @@
     {
       "module": "radio",
       "area": "workflows_core",
-      "module_weight": 25,
+      "module_weight": 15,
       "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
@@ -211,7 +211,7 @@
     {
       "module": "metadata_basic",
       "area": "workflows_core",
-      "module_weight": 10,
+      "module_weight": 15,
       "status": "PARTIAL",
       "evidence": {
         "page": true,
@@ -597,6 +597,64 @@
         "error_contract": false,
         "write": false,
         "unit_tests": [],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "album_views",
+      "area": "library_playback",
+      "module_weight": 25,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_track_model_importable",
+          "test_track_model_reset",
+          "test_album_model_importable",
+          "test_album_model_from_songs"
+        ],
+        "integration_tests": [],
+        "manual_test": "",
+        "physical_test": "",
+        "classic_parity": false,
+        "error_paths_tested": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "runtime_test": ""
+      }
+    },
+    {
+      "module": "playlists_full",
+      "area": "workflows_core",
+      "module_weight": 30,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "unit_tests": [
+          "test_playlists_bridge_duplicate",
+          "test_playlists_bridge_clear",
+          "test_playlists_bridge_save_queue_no_player",
+          "test_playlists_bridge_m3u_import_not_found"
+        ],
         "integration_tests": [],
         "manual_test": "",
         "physical_test": "",

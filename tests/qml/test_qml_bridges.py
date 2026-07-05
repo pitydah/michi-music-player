@@ -1223,6 +1223,73 @@ class TestNowPlayingBar:
                     assert False, f"Emoji U+{ord(ch):04X} found in {name}.qml"
 
 
+class TestTrackListModel:
+    def test_track_model_importable(self):
+        from ui_qml.models.TrackListModel import TrackListModel
+        model = TrackListModel()
+        assert model.count == 0
+
+    def test_track_model_reset(self):
+        from ui_qml.models.TrackListModel import TrackListModel
+        from library.media_item import MediaItem
+        model = TrackListModel()
+        items = [MediaItem(id=1, title="A", artist="X", album="Y", duration=100, filepath="/a.mp3", ext=".mp3")]
+        model.resetFromItems(items)
+        assert model.count == 1
+
+    def test_album_model_importable(self):
+        from ui_qml.models.AlbumListModel import AlbumListModel
+        model = AlbumListModel()
+        assert model.count == 0
+
+    def test_album_model_from_songs(self):
+        from ui_qml.models.AlbumListModel import AlbumListModel
+        from library.media_item import MediaItem
+        model = AlbumListModel()
+        items = [
+            MediaItem(id=1, title="A", artist="X", album="Al1", duration=100, filepath="/a.mp3"),
+            MediaItem(id=2, title="B", artist="X", album="Al1", duration=200, filepath="/b.mp3"),
+            MediaItem(id=3, title="C", artist="Y", album="Al2", duration=300, filepath="/c.mp3"),
+        ]
+        model.resetFromSongs(items)
+        assert model.count == 2
+
+
+class TestPlaylistsFullBridge:
+    def test_playlists_bridge_duplicate(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        db = MagicMock()
+        db.get_playlists.return_value = [{"id": 1, "name": "Test", "track_count": 2}]
+        db.create_playlist.return_value = 2
+        bridge = PlaylistsBridge(db=db)
+        bridge.refresh()
+        result = bridge.duplicatePlaylist(1)
+        assert result.get("ok") is True
+
+    def test_playlists_bridge_clear(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        db = MagicMock()
+        db.get_playlists.return_value = []
+        db.get_playlist_items.return_value = []
+        bridge = PlaylistsBridge(db=db)
+        result = bridge.clearPlaylist(1)
+        assert result.get("ok") is True
+
+    def test_playlists_bridge_save_queue_no_player(self):
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        bridge = PlaylistsBridge()
+        result = bridge.saveQueueAsPlaylist("Test")
+        assert result.get("ok") is False
+
+    def test_playlists_bridge_m3u_import_not_found(self):
+        from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+        bridge = PlaylistsBridge()
+        result = bridge.importM3U("/nonexistent/file.m3u")
+        assert result.get("ok") is False
+
+
 class TestDevicesComponents:
     def test_devices_page_exists(self):
         assert (QML_DIR / "pages" / "DevicesPage.qml").exists()
