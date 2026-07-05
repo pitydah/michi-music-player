@@ -272,11 +272,13 @@ class BridgeFactory(QObject):
         return self._bridges["diagnostics"]
 
     def create_command_palette_bridge(self):
-        from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
         if "command_palette" not in self._bridges:
+            from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
+            from ui_qml_bridge.action_registry import ActionRegistry
+            registry = ActionRegistry()
             self._bridges["command_palette"] = CommandPaletteBridge(
+                action_registry=registry,
                 navigation_bridge=self._nav or self.get("navigation"),
-                library_bridge=self.get("library"),
                 nowplaying_bridge=self.get("nowplaying"),
             )
         return self._bridges["command_palette"]
