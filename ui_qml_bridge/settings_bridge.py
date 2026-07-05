@@ -59,14 +59,16 @@ class SettingsBridge(QObject):
         except Exception:
             return "standard"
 
-    @Slot(str)
+    @Slot(str, result=dict)
     def setActiveProfile(self, key: str):
         try:
             from core.settings_manager import set_ as settings_set
             settings_set("audio/profile", key)
             self.settingsChanged.emit()
-        except Exception:
+            return {"ok": True, "profile": key}
+        except Exception as e:
             logger.debug("Failed to set profile %s", key, exc_info=True)
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=str)
     def get(self, key: str):
