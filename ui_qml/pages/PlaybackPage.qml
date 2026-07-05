@@ -308,21 +308,19 @@ Item {
     // Track errors via Connections
     Connections {
         target: root.ps
-        function onErrorMessageChanged() {
+        function onErrorChanged() {
             if (root.ps && root.ps.errorMessage) {
                 _errorText = root.ps.errorMessage
                 _showError = true
             }
         }
-        function onLastCommandErrorChanged() {
+        function onCommandStateChanged() {
             if (root.ps && root.ps.lastCommandError && root.ps.lastCommandMessage) {
                 _errorText = root.ps.lastCommandMessage
                 _showError = true
-            }
-        }
-        function onLastCommandOkChanged() {
-            if (root.ps && root.ps.lastCommandOk)
+            } else if (root.ps && root.ps.lastCommandOk) {
                 _showError = false
+            }
         }
     }
 }
