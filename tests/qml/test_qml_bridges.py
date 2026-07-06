@@ -408,6 +408,7 @@ class TestSmartTaggingBridge:
     def test_smart_tagging_apply_no_suggestions(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge()
+        bridge._status = "review"
         result = bridge.applySelected()
         assert result.get("ok") is False
         assert result.get("error_code") == "NO_SUGGESTIONS"
