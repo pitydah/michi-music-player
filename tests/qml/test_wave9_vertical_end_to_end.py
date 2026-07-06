@@ -663,7 +663,7 @@ class TestWave10RealVerticalFlow:
         for fp in player.enqueued:
             assert "/music/" in fp
 
-    @pytest.mark.xfail(reason="Wave IX: playPlaylist usa formato público sin filepath (Fase 7)")
+    @pytest.mark.xfail(reason="FakeDB JOIN no retorna filepath real; arreglar FakeDB")
     def test_real_flow_playlist_create_play(self, library_db, tmp_path):
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         self._populate(library_db)
@@ -684,7 +684,7 @@ class TestWave10RealVerticalFlow:
         pid = result["id"]
         rows = db.conn.execute("SELECT id, filepath FROM media_items LIMIT 5").fetchall()
         for row in rows:
-            bridge.addTrackToPlaylist(pid, filepath=row[1])
+            bridge.addTrackToPlaylist(pid, track_id=str(row[0]))
         play_result = bridge.playPlaylist(pid)
         assert play_result.get("ok") is True
         assert len(player.enqueued) == 5

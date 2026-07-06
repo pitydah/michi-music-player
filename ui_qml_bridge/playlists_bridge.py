@@ -183,6 +183,19 @@ class PlaylistsBridge(QObject):
     def addSelectedTrackToPlaylist(self, pid: int):
         return self.addTrackToPlaylist(pid)
 
+    @Slot(int, "QVariantList", result=dict)
+    def batchAddTracks(self, pid: int, tracks: list):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        count = 0
+        for t in tracks:
+            fp = t.get("filepath", "") if isinstance(t, dict) else ""
+            if fp:
+                self._db.add_track_to_playlist(pid, filepath=fp)
+                count += 1
+        self.refresh()
+        return {"ok": True, "count": count}
+
     @Slot(int, result=dict)
     def duplicatePlaylist(self, pid: int):
         if not self._can():
@@ -246,11 +259,10 @@ class PlaylistsBridge(QObject):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
-            detail = self.getPlaylistDetail(pid)
-            if not detail.get("ok"):
+            internal = self._get_playlist_items_internal(pid)
+            if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
-            tracks = detail.get("tracks", [])
-            fps = [t["filepath"] for t in tracks[index:] if t.get("filepath")]
+            fps = [t["filepath"] for t in internal[index:] if t.get("filepath")]
             if not fps:
                 return {"ok": False, "error": "NO_TRACKS"}
             if self._player and hasattr(self._player, 'enqueue'):
@@ -305,8 +317,9 @@ class PlaylistsBridge(QObject):
             pid = self._db.create_playlist(name)
             count = 0
             for entry in entries:
-                if entry.filepath and Path(entry.filepath).is_file():
-                    self._db.add_track_to_playlist(pid, filepath=entry.filepath)
+                fp = getattr(entry, 'filepath', entry) if not isinstance(entry, str) else entry
+                if isinstance(fp, str) and Path(fp).is_file():
+                    self._db.add_track_to_playlist(pid, filepath=fp)
                     count += 1
             self.refresh()
             return {"ok": True, "id": pid, "count": count}
@@ -315,26 +328,23 @@ class PlaylistsBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
-    def exportM3U(self, filepath: str):
-        if not filepath:
+    def importM3U8(self, filepath: str):
+        """Import UTF-8 M3U playlist (same logic as M3U for now)."""
+        return self.importM3U(filepath)
+
+    @Slot(int, str, result=dict)
+    def exportM3U(self, playlist_id: int, destination_path: str):
+        if not destination_path:
             return {"ok": False, "error": "EMPTY_PATH"}
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
             from ui.playlist_io import export_m3u
-            pid = int(Path(filepath).stem.split("_")[-1]) if "_" in Path(filepath).stem else 0
-            if not pid:
-                for p in self._playlists:
-                    if p.get("title", "").lower() in Path(filepath).stem.lower():
-                        pid = p.get("id", 0)
-                        break
-            if not pid:
-                return {"ok": False, "error": "NO_PLAYLIST_ID"}
-            detail = self.getPlaylistDetail(pid)
-            if not detail.get("ok"):
+            internal = self._get_playlist_items_internal(playlist_id)
+            if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
-            fps = [t["filepath"] for t in detail.get("tracks", []) if t.get("filepath")]
-            export_m3u(filepath, fps)
+            fps = [t["filepath"] for t in internal if t.get("filepath")]
+            export_m3u(destination_path, fps)
             return {"ok": True, "count": len(fps)}
         except Exception as e:
             logger.debug("exportM3U failed: %s", e)
@@ -345,17 +355,16 @@ class PlaylistsBridge(QObject):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
-            detail = self.getPlaylistDetail(pid)
-            if detail.get("ok"):
-                tracks = detail.get("tracks", [])
-                fps = [t["filepath"] for t in tracks if t.get("filepath")]
-                if not fps:
-                    return {"ok": False, "error": "NO_TRACKS"}
-                if self._player and hasattr(self._player, 'enqueue'):
-                    self._player.enqueue(fps, play_now=True)
-                    return {"ok": True, "count": len(fps)}
-                return {"ok": False, "error": "UNSUPPORTED"}
-            return {"ok": False, "error": "NO_TRACKS"}
+            internal = self._get_playlist_items_internal(pid)
+            if not internal:
+                return {"ok": False, "error": "NO_TRACKS"}
+            fps = [t["filepath"] for t in internal if t.get("filepath")]
+            if not fps:
+                return {"ok": False, "error": "NO_TRACKS"}
+            if self._player and hasattr(self._player, 'enqueue'):
+                self._player.enqueue(fps, play_now=True)
+                return {"ok": True, "count": len(fps)}
+            return {"ok": False, "error": "UNSUPPORTED"}
         except Exception as e:
             logger.debug("Play playlist failed", exc_info=True)
             return {"ok": False, "error": str(e)}
