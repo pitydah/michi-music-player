@@ -80,6 +80,4 @@ class TrackListModel(BasePagedListModel):
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
         if not self._qs:
             return []
-        kw = dict(kwargs)
-        asc = kw.pop("asc", True)
-        return self._qs.fetch_tracks(offset=offset, limit=limit, ascending=asc, **kw)
+        return self._qs.fetch_tracks(offset=offset, limit=limit, **kwargs)

@@ -149,9 +149,9 @@ class LibraryQueryService:
     def fetch_tracks(self, offset: int = 0, limit: int = 100, **kwargs) -> list[dict[str, Any]]:
         self._check_db()
         try:
+            sort = _sort_col(kwargs.pop("sort", "title"), "tracks")
+            order = "ASC" if kwargs.pop("asc", True) else "DESC"
             where, params = self._build_where(**kwargs)
-            sort = _sort_col(kwargs.get("sort", "title"), "tracks")
-            order = "ASC" if kwargs.get("asc", True) else "DESC"
             sql = (
                 f"SELECT id, filepath, filename, ext, duration, title, artist, album, "
                 f"albumartist, year, genre, track_number, track_total, disc_number, disc_total, "
@@ -185,9 +185,9 @@ class LibraryQueryService:
     def fetch_albums(self, offset: int = 0, limit: int = 100, **kwargs) -> list[dict[str, Any]]:
         self._check_db()
         try:
+            sort = _sort_col(kwargs.pop("sort", "year"), "albums")
+            order = "ASC" if kwargs.pop("asc", False) else "DESC"
             where, params = self._build_where(**kwargs)
-            sort = _sort_col(kwargs.get("sort", "year"), "albums")
-            order = "ASC" if kwargs.get("asc", False) else "DESC"
             sql = (
                 f"SELECT {_album_key_sql()} as album_key, album, "
                 f"COALESCE(NULLIF(albumartist,''), artist, '') as album_artist, "
@@ -222,9 +222,9 @@ class LibraryQueryService:
     def fetch_artists(self, offset: int = 0, limit: int = 100, **kwargs) -> list[dict[str, Any]]:
         self._check_db()
         try:
+            sort = _sort_col(kwargs.pop("sort", "name"), "artists")
+            order = "ASC" if kwargs.pop("asc", True) else "DESC"
             where, params = self._build_where(**kwargs)
-            sort = _sort_col(kwargs.get("sort", "name"), "artists")
-            order = "ASC" if kwargs.get("asc", True) else "DESC"
             sql = (
                 f"SELECT {_artist_key_sql()} as artist_name, "
                 f"COUNT(*) as track_count, COUNT(DISTINCT COALESCE(album, '')) as album_count, "
