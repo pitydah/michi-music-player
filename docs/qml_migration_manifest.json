@@ -355,8 +355,8 @@
         "physical_test": "",
         "classic_parity": false,
         "error_paths_tested": false,
-        "async_jobs": false,
-        "cancel_supported": false,
+        "async_jobs": true,
+        "cancel_supported": true,
         "runtime_test": ""
       }
     },
