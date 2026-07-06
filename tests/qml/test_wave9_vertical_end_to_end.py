@@ -140,8 +140,8 @@ class TestWave9PagedModels:
         model = QueueListModel()
         names = model.roleNames()
         assert b"title" in names.values()
-        assert b"filepath" in names.values()
         assert b"duration" in names.values()
+        assert b"filepath" not in names.values()
 
     def test_history_model_roles(self):
         from ui_qml.models.HistoryListModel import HistoryListModel
@@ -149,7 +149,7 @@ class TestWave9PagedModels:
         names = model.roleNames()
         assert b"title" in names.values()
         assert b"playedAt" in names.values()
-        assert b"filepath" in names.values()
+        assert b"filepath" not in names.values()
 
     def test_base_model_signals(self):
         from ui_qml.models.BasePagedListModel import BasePagedListModel
