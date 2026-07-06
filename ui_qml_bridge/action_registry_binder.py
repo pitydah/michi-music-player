@@ -7,13 +7,16 @@ from __future__ import annotations
 
 import logging
 
-from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
+from PySide6.QtCore import QObject, Signal
+from ui_qml_bridge.action_registry import ActionRegistry
 
 logger = logging.getLogger("michi.action_binder")
 
 
-class ActionRegistryBinder:
-    def __init__(self, registry: ActionRegistry, bridges: dict[str, object]):
+class ActionRegistryBinder(QObject):
+    dataChanged = Signal()
+    def __init__(self, registry: ActionRegistry, bridges: dict[str, object], parent=None):
+        super().__init__(parent)
         self._registry = registry
         self._bridges = bridges
 
@@ -80,7 +83,7 @@ class ActionRegistryBinder:
             "playback_seek_forward": ("seekForward", False),
             "playback_seek_back": ("seekBackward", False),
         }
-        for action_id, (method, destructive) in actions_map.items():
+        for action_id, (method, _destructive) in actions_map.items():
             action = self._registry.get(action_id)
             if action and hasattr(pb, method):
                 fn = getattr(pb, method)
@@ -94,7 +97,7 @@ class ActionRegistryBinder:
             "library_refresh": ("refresh", False),
             "library_add_folder": ("scanMusicFolder", False),
         }
-        for action_id, (method, destructive) in actions_map.items():
+        for action_id, (method, _destructive) in actions_map.items():
             action = self._registry.get(action_id)
             if action and hasattr(lib, method):
                 fn = getattr(lib, method)
@@ -120,3 +123,6 @@ class ActionRegistryBinder:
         if action:
             import sys
             action.handler = lambda: sys.exit(0) or {"ok": True}
+
+    def refresh(self):
+        self.dataChanged.emit()
