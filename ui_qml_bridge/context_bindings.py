@@ -34,4 +34,5 @@ QML_CONTEXT_BINDINGS = {
     "pageStateStore": "page_state",
     "queueBridge": "queue",
     "historyBridge": "history",
+    "homeBridge": "home",
 }

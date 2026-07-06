@@ -357,6 +357,12 @@ class BridgeFactory(QObject):
             )
         return self._bridges["history"]
 
+    def create_home_bridge(self):
+        from ui_qml_bridge.home_bridge import HomeBridge
+        if "home" not in self._bridges:
+            self._bridges["home"] = HomeBridge()
+        return self._bridges["home"]
+
     def create_all(self) -> dict[str, QObject]:
         """Create all bridges and return dict of name->bridge."""
         self.create_navigation_bridge()
@@ -393,6 +399,7 @@ class BridgeFactory(QObject):
         self.create_page_state_store()
         self.create_queue_bridge()
         self.create_history_bridge()
+        self.create_home_bridge()
         return self._bridges
 
     def __repr__(self) -> str:
