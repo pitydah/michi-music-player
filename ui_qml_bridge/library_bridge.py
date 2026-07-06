@@ -1,4 +1,4 @@
-"""LibraryBridge — connects QML Library page to LibraryDB with pagination, filters, sort."""
+"""LibraryBridge — connects QML Library page to QueryService with pagination, filters, sort."""
 from __future__ import annotations
 
 import subprocess
@@ -17,10 +17,8 @@ class LibraryBridge(QObject):
         self._db = db
         self._search_engine = search_engine
         self._playback_ctrl = playback_ctrl
-        self._base_songs = []
-        self._albums = []
-        self._artists = []
-        self._folders = []
+        self._query_svc = query_service
+        self._qe = query_executor
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -35,125 +33,34 @@ class LibraryBridge(QObject):
         self._error_message = ""
         self._last_operation = ""
         self._last_op_ok = False
-        self._cached_view: list | None = None
-        self._cached_visible_count: int = 0
-        self._view_dirty = True
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
         from ui_qml.models.ArtistListModel import ArtistListModel
         from ui_qml.models.FolderTreeModel import FolderTreeModel
-        self._query_svc = query_service
-        self._qe = query_executor
         self._track_model = TrackListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
-        self._album_model = AlbumListModel(query_service=self._query_svc, parent=self)
-        self._artist_model = ArtistListModel(query_service=self._query_svc, parent=self)
+        self._album_model = AlbumListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
+        self._artist_model = ArtistListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         self._folder_model = FolderTreeModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         from ui_qml_bridge.library_refresh_coordinator import LibraryRefreshCoordinator
         self._refresh_coordinator = LibraryRefreshCoordinator(
-            track_model=self._track_model,
-            album_model=self._album_model,
-            artist_model=self._artist_model,
-            folder_model=self._folder_model,
-            library_bridge=self,
-            parent=self,
+            track_model=self._track_model, album_model=self._album_model,
+            artist_model=self._artist_model, folder_model=self._folder_model,
+            library_bridge=self, parent=self,
         )
-
-    # ── Internal pipeline ──
-
-    def _apply_search(self, items):
-        q = self._search_query.lower().strip()
-        if not q:
-            return items
-        result = []
-        for s in items:
-            title = (getattr(s, 'title', '') or '').lower()
-            artist = (getattr(s, 'artist', '') or '').lower()
-            album = (getattr(s, 'album', '') or '').lower()
-            genre = (getattr(s, 'genre', '') or '').lower()
-            fmt = (getattr(s, 'format', '') or '').lower()
-            fp = (getattr(s, 'filepath', '') or '').lower()
-            if q in title or q in artist or q in album or q in genre or q in fmt or q in fp:
-                result.append(s)
-        return result
-
-    def _apply_filters(self, items):
-        if self._filter_artist:
-            items = [s for s in items if (getattr(s, 'artist', '') or '') == self._filter_artist]
-        if self._filter_album:
-            items = [s for s in items if (getattr(s, 'album_key', '') or getattr(s, 'album', '') or '') == self._filter_album]
-        if self._filter_format:
-            fmt = "." + self._filter_format.lower()
-            items = [s for s in items if (getattr(s, 'ext', '') or '').lower() == fmt]
-        if self._filter_missing_artist:
-            items = [s for s in items if not (getattr(s, 'artist', '') or '')]
-        if self._filter_missing_album:
-            items = [s for s in items if not (getattr(s, 'album', '') or '')]
-        if self._filter_folder:
-            items = [s for s in items if self._path_matches(s, self._filter_folder)]
-        return items
-
-    def _path_matches(self, s, folder_path):
-        fp = getattr(s, 'filepath', '') or ''
-        norm_fp = Path(fp).as_posix().lower()
-        norm_dir = Path(folder_path).as_posix().lower().rstrip("/") + "/"
-        return norm_fp.startswith(norm_dir)
-
-    def _apply_sort(self, items):
-        reverse = not self._sort_asc
-        k = self._sort_key
-        if k == 'title':
-            return sorted(items, key=lambda x: (getattr(x, 'title', '') or '').lower(), reverse=reverse)
-        elif k == 'artist':
-            return sorted(items, key=lambda x: (getattr(x, 'artist', '') or '').lower(), reverse=reverse)
-        elif k == 'album':
-            return sorted(items, key=lambda x: (getattr(x, 'album', '') or '').lower(), reverse=reverse)
-        elif k == 'year':
-            return sorted(items, key=lambda x: getattr(x, 'year', 0) or 0, reverse=reverse)
-        elif k == 'duration':
-            return sorted(items, key=lambda x: getattr(x, 'duration', 0) or 0, reverse=reverse)
-        elif k == 'format':
-            return sorted(items, key=lambda x: getattr(x, 'format', '') or '', reverse=reverse)
-        return items
-
-    def _invalidate_view(self):
-        self._view_dirty = True
-        self._cached_view = None
-
-    def _rebuild_view(self):
-        if not self._view_dirty and self._cached_view is not None:
-            return self._cached_view
-        items = self._base_songs[:]
-        items = self._apply_search(items)
-        items = self._apply_filters(items)
-        items = self._apply_sort(items)
-        self._cached_view = items
-        self._cached_visible_count = len(items)
-        self._view_dirty = False
-        return items
-
-    @property
-    def _filtered_view(self):
-        return self._rebuild_view()
 
     # ── Properties ──
 
     @Property(int, notify=dataChanged)
     def songCount(self):
-        if self._track_model:
-            return self._track_model.totalCount
-        return len(self._base_songs)
+        return self._track_model.totalCount if self._track_model else 0
 
     @Property(int, notify=dataChanged)
     def albumCount(self):
-        if self._album_model:
-            return self._album_model.totalCount
-        return len(self._albums)
+        return self._album_model.totalCount if self._album_model else 0
 
     @Property(int, notify=dataChanged)
     def artistCount(self):
-        if self._artist_model:
-            return self._artist_model.count
-        return len(self._artists)
+        return self._artist_model.count if self._artist_model else 0
 
     @Property(int, notify=dataChanged)
     def totalSongs(self):
@@ -161,8 +68,7 @@ class LibraryBridge(QObject):
 
     @Property(int, notify=dataChanged)
     def visibleCount(self):
-        self._rebuild_view()
-        return self._cached_visible_count
+        return self._track_model.totalCount if self._track_model else 0
 
     @Property(int, notify=dataChanged)
     def loadedCount(self):
@@ -170,21 +76,29 @@ class LibraryBridge(QObject):
 
     @Property(bool, notify=dataChanged)
     def hasMoreSongs(self):
-        return self._loaded_count < self.visibleCount
+        return self._track_model.hasMore if self._track_model else False
 
     @Property("QVariantList", notify=dataChanged)
     def songs(self):
-        view = self._rebuild_view()
-        page = view[:self._loaded_count]
-        return [self._song_to_dict(s) for s in page]
+        return self.getSongsPage(0, 200)
 
     @Property("QVariantList", notify=dataChanged)
     def albums(self):
-        result = []
-        for a in self._albums[:200]:
-            key = getattr(a, 'album_key', None) or getattr(a, 'album', '') or ''
-            result.append({"title": getattr(a, 'album', '') or key, "artist": getattr(a, 'artist', '') or '', "album_key": key, "year": getattr(a, 'year', 0) or 0, "track_count": getattr(a, 'track_count', 0) or 0, "cover_key": key})
-        return result
+        if self._album_model:
+            return [self._album_model.data(self._album_model.index(i)) for i in range(min(self._album_model.count, 200))]
+        return []
+
+    @Property("QVariantList", notify=dataChanged)
+    def artists(self):
+        if self._artist_model:
+            return [self._artist_model.data(self._artist_model.index(i)) for i in range(min(self._artist_model.count, 200))]
+        return []
+
+    @Property("QVariantList", notify=dataChanged)
+    def folders(self):
+        if self._folder_model:
+            return [self._folder_model.data(self._folder_model.index(i)) for i in range(min(self._folder_model.count, 200))]
+        return []
 
     @Property("QVariant", notify=dataChanged)
     def trackModel(self):
@@ -201,25 +115,6 @@ class LibraryBridge(QObject):
     @Property("QVariant", notify=dataChanged)
     def folderModel(self):
         return self._folder_model
-
-    @Property("QVariantList", notify=dataChanged)
-    def artists(self):
-        result = []
-        for a in self._artists[:200]:
-            name = getattr(a, 'artist', '') or getattr(a, 'album_artist', '') or ''
-            if not name:
-                continue
-            result.append({"name": name, "track_count": getattr(a, 'track_count', 0) or 0, "album_count": getattr(a, 'album_count', 0) or 0, "cover_key": getattr(a, 'album_key', '') or ''})
-        return sorted(result, key=lambda x: x["name"].lower())
-
-    @Property("QVariantList", notify=dataChanged)
-    def folders(self):
-        result = []
-        for f in self._folders[:200]:
-            raw_path = getattr(f, "path", None) or str(f) if not isinstance(f, str) else f
-            path = raw_path if raw_path else ""
-            result.append({"path": path, "name": Path(path).name if path else (getattr(f, "name", "")), "track_count": getattr(f, "track_count", 0) or 0})
-        return sorted(result, key=lambda x: x["name"].lower())
 
     @Property(int, notify=dataChanged)
     def pageSize(self):
@@ -249,9 +144,20 @@ class LibraryBridge(QObject):
 
     @Slot(int, int, result="QVariantList")
     def getSongsPage(self, page: int, pageSize: int):
-        view = self._rebuild_view()
-        start = page * pageSize
-        return [self._song_to_dict(s) for s in view[start:start + pageSize]]
+        if not self._query_svc:
+            return []
+        try:
+            offset = page * pageSize
+            items = self._query_svc.fetch_tracks(
+                offset=offset, limit=pageSize,
+                search=self._search_query, artist=self._filter_artist,
+                album=self._filter_album, fmt=self._filter_format,
+                folder=self._filter_folder,
+                sort=self._sort_key, asc=self._sort_asc,
+            )
+            return [self._dict_to_qml(t) for t in items]
+        except Exception:
+            return []
 
     @Slot(result=dict)
     def loadNextPage(self):
@@ -284,7 +190,6 @@ class LibraryBridge(QObject):
     def setSearchQuery(self, query: str):
         self._search_query = query
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -293,7 +198,6 @@ class LibraryBridge(QObject):
     def clearSearch(self):
         self._search_query = ""
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -308,7 +212,6 @@ class LibraryBridge(QObject):
     def setFormatFilter(self, fmt: str):
         self._filter_format = fmt
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -318,7 +221,6 @@ class LibraryBridge(QObject):
         self._filter_artist = artist
         self._filter_album = ""
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -331,7 +233,6 @@ class LibraryBridge(QObject):
     def filterByAlbum(self, album_key: str):
         self._filter_album = album_key
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -348,7 +249,6 @@ class LibraryBridge(QObject):
     def setFolderFilter(self, folder_path: str):
         self._filter_folder = folder_path
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True}
@@ -362,7 +262,6 @@ class LibraryBridge(QObject):
         self._filter_missing_artist = False
         self._filter_missing_album = False
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self._error_message = ""
         self.dataChanged.emit()
@@ -378,7 +277,6 @@ class LibraryBridge(QObject):
             self._sort_key = key
             self._sort_asc = True
         self._refresh_track_query()
-        self._invalidate_view()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "key": key, "asc": self._sort_asc}
@@ -389,31 +287,20 @@ class LibraryBridge(QObject):
     def refresh(self, limit: int = 0):
         if self._refresh_coordinator:
             self._refresh_coordinator.refresh_all()
-        # Legacy full load only when no paginated model is active
-        if not self._query_svc and self._db:
-            if hasattr(self._db, 'fetch_all'):
-                self._base_songs = self._db.fetch_all() or []
-            elif hasattr(self._db, 'get_all'):
-                self._base_songs = self._db.get_all() or []
-        self._invalidate_view()
-        self._refresh_albums_artists()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": True, "count": len(self._base_songs)}
+        return {"ok": True, "count": self.visibleCount}
 
     # ── Playback actions (single) ──
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):
-        if not track_id or not self._db:
+        if not track_id or not self._query_svc:
             return {"ok": False, "error": "NOT_FOUND"}
         try:
-            if hasattr(self._db, 'conn'):
-                row = self._db.conn.execute(
-                    "SELECT filepath FROM media_items WHERE id=? AND deleted_at IS NULL", (track_id,)
-                ).fetchone()
-                if row and row[0]:
-                    return self.play_song(row[0])
+            track = self._query_svc.fetch_track_internal(track_id)
+            if track and track.get("filepath"):
+                return self.play_song(track["filepath"])
             return {"ok": False, "error": "NOT_FOUND"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -426,10 +313,21 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
         if not filepath.startswith(("http://", "https://", "radio://", "stream://")) and not Path(filepath).is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
-        track = self._track_for_filepath(filepath)
-        title = getattr(track, "title", "") if track else ""
-        artist = getattr(track, "artist", "") if track else ""
-        album = getattr(track, "album", "") if track else ""
+        title = ""
+        artist = ""
+        album = ""
+        if self._query_svc:
+            try:
+                row = self._query_svc._db.conn.execute(
+                    "SELECT title, artist, album FROM media_items WHERE filepath=? AND deleted_at IS NULL",
+                    (filepath,)
+                ).fetchone()
+                if row:
+                    title = row[0] or ""
+                    artist = row[1] or ""
+                    album = row[2] or ""
+            except Exception:
+                pass
         try:
             if hasattr(self._playback_ctrl, 'play_file'):
                 self._playback_ctrl.play_file(filepath)
@@ -475,18 +373,25 @@ class LibraryBridge(QObject):
 
     @Slot(str, result=dict)
     def getAlbumDetail(self, album_key: str):
-        tracks = [s for s in self._base_songs if (getattr(s, 'album_key', '') or '') == album_key]
-        if not tracks:
-            return {"ok": False, "error": "NOT_FOUND"}
-        first = tracks[0]
-        return {"ok": True, "title": getattr(first, 'album', '') or album_key,
-                "artist": getattr(first, 'artist', '') or '',
-                "year": getattr(first, 'year', 0) or 0,
-                "track_count": len(tracks), "cover_key": album_key}
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        try:
+            detail = self._query_svc.fetch_album_detail(album_key)
+            if not detail:
+                return {"ok": False, "error": "NOT_FOUND"}
+            return {"ok": True, **detail}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result="QVariantList")
     def getAlbumTracks(self, album_key: str):
-        return [self._song_to_dict(s) for s in self._base_songs if (getattr(s, 'album_key', '') or '') == album_key]
+        if not self._query_svc:
+            return []
+        try:
+            tracks = self._query_svc.fetch_album_tracks_internal(album_key)
+            return [self._dict_to_qml(t) for t in tracks]
+        except Exception:
+            return []
 
     @Slot(str, result=dict)
     def playAlbum(self, album_key: str):
@@ -526,22 +431,40 @@ class LibraryBridge(QObject):
 
     @Slot(str, result=dict)
     def getArtistDetail(self, artist_name: str):
-        return {"ok": True, "name": artist_name, "track_count": len([s for s in self._base_songs if (getattr(s, 'artist', '') or '') == artist_name])}
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        try:
+            detail = self._query_svc.fetch_artist_detail(artist_name)
+            if not detail:
+                return {"ok": False, "error": "NOT_FOUND"}
+            return {"ok": True, **detail}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result="QVariantList")
     def getArtistTracks(self, artist_name: str):
-        return [self._song_to_dict(s) for s in self._base_songs if (getattr(s, 'artist', '') or '') == artist_name]
+        if not self._query_svc:
+            return []
+        try:
+            tracks = self._query_svc.fetch_artist_tracks_internal(artist_name)
+            return [self._dict_to_qml(t) for t in tracks]
+        except Exception:
+            return []
 
     @Slot(str, result="QVariantList")
     def getArtistAlbums(self, artist_name: str):
-        seen = {}
-        for s in self._base_songs:
-            if (getattr(s, 'artist', '') or '') != artist_name:
-                continue
-            key = getattr(s, 'album_key', '') or ''
-            if key and key not in seen:
-                seen[key] = True
-        return [{"album_key": k, "title": k} for k in seen]
+        if not self._query_svc:
+            return []
+        try:
+            tracks = self._query_svc.fetch_artist_tracks_internal(artist_name)
+            seen = {}
+            for t in tracks:
+                key = t.get("album_key", "")
+                if key and key not in seen:
+                    seen[key] = True
+            return [{"album_key": k, "title": k} for k in seen]
+        except Exception:
+            return []
 
     @Slot(str, result=dict)
     def playArtist(self, artist_name: str):
@@ -565,13 +488,13 @@ class LibraryBridge(QObject):
 
     @Slot(str, result="QVariantList")
     def getFolderTracks(self, folder_path: str):
-        norm_folder = Path(folder_path).as_posix().lower().rstrip("/") + "/"
-        result = []
-        for s in self._base_songs:
-            fp = Path(getattr(s, 'filepath', '') or '').as_posix().lower()
-            if fp.startswith(norm_folder):
-                result.append(self._song_to_dict(s))
-        return result
+        if not self._query_svc:
+            return []
+        try:
+            tracks = self._query_svc.fetch_folder_tracks_internal(folder_path)
+            return [self._dict_to_qml(t) for t in tracks]
+        except Exception:
+            return []
 
     @Slot(str, result=dict)
     def filterByFolder(self, folder_path: str):
@@ -623,17 +546,13 @@ class LibraryBridge(QObject):
             _log.info("Indexing: %s", folder_path)
             worker = Indexer(self._db, folder_path)
             worker.run()
-            _log.info("Indexer done, committing...")
             if hasattr(self._db, 'conn') and self._db.conn:
                 self._db.conn.commit()
             self.refresh()
-            _log.info("Refresh done, total=%d, visible=%d",
-                      len(self._base_songs), self._cached_visible_count)
-            return {"ok": True, "path": folder_path, "count": len(self._base_songs)}
+            return {"ok": True, "path": folder_path}
         except Exception as e:
             import logging as _lg
-            _lg.getLogger("michi.qml.addfolder").error(
-                "addFolder failed: %s", e, exc_info=True)
+            _lg.getLogger("michi.qml.addfolder").error("addFolder failed: %s", e, exc_info=True)
             return {"ok": False, "error": str(e)}
 
     @Slot(result=str)
@@ -687,41 +606,19 @@ class LibraryBridge(QObject):
 
     # ── Internal ──
 
-    def _song_to_dict(self, s):
+    def _dict_to_qml(self, item: dict) -> dict:
         return {
-            "id": getattr(s, 'id', 0) or 0,
-            "track_id": getattr(s, 'id', 0) or 0,
-            "track_uid": getattr(s, 'track_uid', '') or '',
-            "title": getattr(s, 'title', None) or Path(getattr(s, 'filepath', '')).stem or '',
-            "artist": getattr(s, 'artist', '') or '',
-            "album": getattr(s, 'album', '') or '',
-            "album_key": getattr(s, 'album_key', '') or '',
-            "duration": getattr(s, 'duration', 0) or 0,
-            "filepath": getattr(s, 'filepath', '') or '',
-            "format": getattr(s, 'format', '') or '',
-            "cover_key": getattr(s, 'album_key', '') or getattr(s, 'filepath', '') or '',
-            "year": getattr(s, 'year', 0) or 0,
-            "track_number": getattr(s, 'track_number', 0) or 0,
-            "genre": getattr(s, 'genre', '') or '',
+            "track_id": item.get("track_id", 0),
+            "track_uid": item.get("track_uid", ""),
+            "title": item.get("title", "") or Path(item.get("filepath", "")).stem,
+            "artist": item.get("artist", ""),
+            "album": item.get("album", ""),
+            "album_key": item.get("album_key", ""),
+            "duration": item.get("duration", 0),
+            "filepath": item.get("filepath", ""),
+            "format": item.get("format", ""),
+            "cover_key": item.get("album_key", "") or item.get("filepath", ""),
+            "year": item.get("year", 0),
+            "track_number": item.get("track_number", 0),
+            "genre": item.get("genre", ""),
         }
-
-    def _track_for_filepath(self, filepath: str):
-        for song in self._base_songs:
-            if getattr(song, "filepath", "") == filepath:
-                return song
-        return None
-
-    def _refresh_albums_artists(self):
-        seen_albums = {}
-        seen_artists = {}
-        self._albums = []
-        self._artists = []
-        for s in self._base_songs:
-            key = getattr(s, 'album_key', None) or getattr(s, 'album', '') or ''
-            if key and key not in seen_albums:
-                seen_albums[key] = True
-                self._albums.append(s)
-            artist_name = getattr(s, 'artist', '') or getattr(s, 'album_artist', '') or ''
-            if artist_name and artist_name not in seen_artists:
-                seen_artists[artist_name] = True
-                self._artists.append(s)

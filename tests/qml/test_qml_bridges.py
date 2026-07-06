@@ -520,7 +520,7 @@ class TestLibraryBridgeContract:
         bridge.refresh()
 
     def test_play_song_delegates_to_player_service_with_metadata(self):
-        from types import SimpleNamespace
+        from unittest.mock import MagicMock
 
         class FakePlayback:
             def __init__(self):
@@ -530,18 +530,14 @@ class TestLibraryBridgeContract:
                 self.calls.append((filepath, title, artist, album))
 
         playback = FakePlayback()
-        bridge = LibraryBridge(playback_ctrl=playback)
-        bridge._base_songs = [
-            SimpleNamespace(
-                filepath="http://example.com/song.flac",
-                title="Song Title",
-                artist="Song Artist",
-                album="Song Album",
-            )
-        ]
+        db = MagicMock()
+        db.conn.execute.return_value.fetchone.return_value = ["Song Title", "Song Artist", "Song Album"]
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        qs = LibraryQueryService(db=db)
+        bridge = LibraryBridge(playback_ctrl=playback, query_service=qs)
 
-        bridge.play_song("http://example.com/song.flac")
-
+        result = bridge.play_song("http://example.com/song.flac")
+        assert result["ok"] is True
         assert playback.calls == [
             ("http://example.com/song.flac", "Song Title", "Song Artist", "Song Album")
         ]
