@@ -1,11 +1,19 @@
-"""LibraryQueryService — paginated DB queries with full role set and typed errors."""
+"""LibraryQueryService — paginated DB queries with full role set and typed errors.
 
+Thread safety: each public method opens its own read-only connection.
+No shared connection across threads.
+"""
 from __future__ import annotations
 
 import logging
+import sqlite3
+import threading
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("michi.library_query")
+
+_local_conn = threading.local()
 
 
 class LibraryQueryError(Exception):
@@ -55,12 +63,34 @@ def _artist_key_sql() -> str:
     return "COALESCE(NULLIF(albumartist, ''), artist, '')"
 
 
+def _lib_sources() -> list[str]:
+    try:
+        from core.settings_manager import get
+        folder = get("general/music_folder")
+        if folder and Path(folder).is_dir():
+            return [folder]
+    except Exception:
+        pass
+    return []
+
+
 class LibraryQueryService:
-    def __init__(self, db):
+    def __init__(self, db=None, db_path: str = ""):
         self._db = db
+        self._db_path = db_path
+
+    def _get_conn(self):
+        if self._db_path:
+            if not hasattr(_local_conn, "conn") or _local_conn.conn is None:
+                _local_conn.conn = sqlite3.connect(self._db_path, uri=True)
+                _local_conn.conn.execute("PRAGMA query_only = 1")
+            return _local_conn.conn
+        if self._db and hasattr(self._db, 'conn'):
+            return self._db.conn
+        raise LibraryQueryError("NO_DB", "query", "Base de datos no disponible")
 
     def _check_db(self):
-        if not self._db:
+        if not self._db and not self._db_path:
             raise LibraryQueryError("NO_DB", "query", "Base de datos no disponible")
 
     def _build_where(self, search: str = "", artist: str = "", album: str = "",
@@ -99,11 +129,15 @@ class LibraryQueryService:
         where = "AND " + " AND ".join(clauses) if clauses else ""
         return where, params
 
+    def _exec(self, sql: str, params: list = None):
+        conn = self._get_conn()
+        return conn.execute(sql, params or [])
+
     def count_tracks(self, **kwargs) -> int:
         self._check_db()
         try:
             where, params = self._build_where(**kwargs)
-            row = self._db.conn.execute(
+            row = self._exec(
                 f"SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL {where}", params
             ).fetchone()
             return row[0] if row else 0
@@ -115,9 +149,9 @@ class LibraryQueryService:
     def fetch_tracks(self, offset: int = 0, limit: int = 100, **kwargs) -> list[dict[str, Any]]:
         self._check_db()
         try:
+            sort = _sort_col(kwargs.pop("sort", "title"), "tracks")
+            order = "ASC" if kwargs.pop("asc", True) else "DESC"
             where, params = self._build_where(**kwargs)
-            sort = _sort_col(kwargs.get("sort", "title"), "tracks")
-            order = "ASC" if kwargs.get("asc", True) else "DESC"
             sql = (
                 f"SELECT id, filepath, filename, ext, duration, title, artist, album, "
                 f"albumartist, year, genre, track_number, track_total, disc_number, disc_total, "
@@ -127,7 +161,7 @@ class LibraryQueryService:
                 f"ORDER BY {sort} {order} LIMIT ? OFFSET ?"
             )
             params.extend([limit, offset])
-            rows = self._db.conn.execute(sql, params).fetchall()
+            rows = self._exec(sql, params).fetchall()
             return [self._row_to_public(r) for r in rows]
         except LibraryQueryError:
             raise
@@ -138,7 +172,7 @@ class LibraryQueryService:
         self._check_db()
         try:
             where, params = self._build_where(**kwargs)
-            row = self._db.conn.execute(
+            row = self._exec(
                 f"SELECT COUNT(DISTINCT {_album_key_sql()}) FROM media_items WHERE deleted_at IS NULL "
                 f"AND COALESCE(album, '') != '' {where}", params
             ).fetchone()
@@ -151,9 +185,9 @@ class LibraryQueryService:
     def fetch_albums(self, offset: int = 0, limit: int = 100, **kwargs) -> list[dict[str, Any]]:
         self._check_db()
         try:
+            sort = _sort_col(kwargs.pop("sort", "year"), "albums")
+            order = "ASC" if kwargs.pop("asc", False) else "DESC"
             where, params = self._build_where(**kwargs)
-            sort = _sort_col(kwargs.get("sort", "year"), "albums")
-            order = "ASC" if kwargs.get("asc", False) else "DESC"
             sql = (
                 f"SELECT {_album_key_sql()} as album_key, album, "
                 f"COALESCE(NULLIF(albumartist,''), artist, '') as album_artist, "
@@ -164,7 +198,7 @@ class LibraryQueryService:
                 f"ORDER BY {sort} {order} LIMIT ? OFFSET ?"
             )
             params.extend([limit, offset])
-            rows = self._db.conn.execute(sql, params).fetchall()
+            rows = self._exec(sql, params).fetchall()
             return [self._album_row_to_dict(r) for r in rows]
         except LibraryQueryError:
             raise
@@ -175,7 +209,7 @@ class LibraryQueryService:
         self._check_db()
         try:
             where, params = self._build_where(**kwargs)
-            row = self._db.conn.execute(
+            row = self._exec(
                 f"SELECT COUNT(DISTINCT {_artist_key_sql()}) FROM media_items WHERE deleted_at IS NULL "
                 f"AND COALESCE(artist, '') != '' {where}", params
             ).fetchone()
@@ -188,9 +222,9 @@ class LibraryQueryService:
     def fetch_artists(self, offset: int = 0, limit: int = 100, **kwargs) -> list[dict[str, Any]]:
         self._check_db()
         try:
+            sort = _sort_col(kwargs.pop("sort", "name"), "artists")
+            order = "ASC" if kwargs.pop("asc", True) else "DESC"
             where, params = self._build_where(**kwargs)
-            sort = _sort_col(kwargs.get("sort", "name"), "artists")
-            order = "ASC" if kwargs.get("asc", True) else "DESC"
             sql = (
                 f"SELECT {_artist_key_sql()} as artist_name, "
                 f"COUNT(*) as track_count, COUNT(DISTINCT COALESCE(album, '')) as album_count, "
@@ -199,7 +233,7 @@ class LibraryQueryService:
                 f"GROUP BY artist_name ORDER BY {sort} {order} LIMIT ? OFFSET ?"
             )
             params.extend([limit, offset])
-            rows = self._db.conn.execute(sql, params).fetchall()
+            rows = self._exec(sql, params).fetchall()
             return [self._artist_row_to_dict(r) for r in rows]
         except LibraryQueryError:
             raise
@@ -210,15 +244,21 @@ class LibraryQueryService:
 
     def count_folders(self, parent_path: str = "") -> int:
         self._check_db()
+        roots = _lib_sources()
         try:
             if parent_path:
                 like = f"{parent_path}/%"
                 where = "directory LIKE ? AND directory NOT LIKE ?"
                 params = [like, f"{parent_path}/%/%"]
+            elif roots:
+                clauses = " OR ".join(["directory LIKE ?" for _ in roots])
+                wheres = [f"({clauses})"]
+                params = [f"{r}/%" for r in roots]
+                where = " AND ".join(wheres) if wheres else ""
             else:
-                where = "directory IS NOT NULL AND directory != '' AND directory NOT LIKE '%/%'"
+                where = "directory IS NOT NULL AND directory != ''"
                 params = []
-            row = self._db.conn.execute(
+            row = self._exec(
                 f"SELECT COUNT(DISTINCT directory) FROM media_items "
                 f"WHERE deleted_at IS NULL AND {where}", params
             ).fetchone()
@@ -231,13 +271,19 @@ class LibraryQueryService:
     def fetch_folders(self, parent_path: str = "", offset: int = 0,
                       limit: int = 100) -> list[dict[str, Any]]:
         self._check_db()
+        roots = _lib_sources()
         try:
             if parent_path:
                 like = f"{parent_path}/%"
                 where = "directory LIKE ? AND directory NOT LIKE ?"
                 params = [like, f"{parent_path}/%/%"]
+            elif roots:
+                clauses = " OR ".join(["directory LIKE ?" for _ in roots])
+                wheres = [f"({clauses})"]
+                params = [f"{r}/%" for r in roots]
+                where = " AND ".join(wheres) if wheres else ""
             else:
-                where = "directory IS NOT NULL AND directory != '' AND directory NOT LIKE '%/%'"
+                where = "directory IS NOT NULL AND directory != ''"
                 params = []
             sql = (
                 f"SELECT directory, COUNT(*) as cnt FROM media_items "
@@ -245,8 +291,8 @@ class LibraryQueryService:
                 f"GROUP BY directory ORDER BY directory LIMIT ? OFFSET ?"
             )
             params.extend([limit, offset])
-            rows = self._db.conn.execute(sql, params).fetchall()
-            return [{"path": r[0] or "", "name": r[0].rsplit("/", 1)[-1] if "/" in (r[0] or "") else r[0] or "",
+            rows = self._exec(sql, params).fetchall()
+            return [{"path": r[0] or "", "name": (r[0] or "").rsplit("/", 1)[-1] if "/" in (r[0] or "") else r[0] or "",
                      "track_count": r[1], "is_expandable": True, "expanded": False}
                     for r in rows]
         except LibraryQueryError:
@@ -259,7 +305,7 @@ class LibraryQueryService:
     def fetch_track_internal(self, track_id: int) -> dict | None:
         self._check_db()
         try:
-            row = self._db.conn.execute(
+            row = self._exec(
                 "SELECT id, filepath, title, artist, album, duration, track_uid, album_key "
                 "FROM media_items WHERE id=? AND deleted_at IS NULL", (track_id,)
             ).fetchone()
@@ -274,7 +320,7 @@ class LibraryQueryService:
     def fetch_album_tracks_internal(self, album_key: str) -> list[dict]:
         self._check_db()
         try:
-            rows = self._db.conn.execute(
+            rows = self._exec(
                 "SELECT id, filepath, title, artist, duration, track_number, track_uid "
                 f"FROM media_items WHERE deleted_at IS NULL AND {_album_key_sql()}=? "
                 "ORDER BY COALESCE(track_number, 999), title", (album_key,)
@@ -288,7 +334,7 @@ class LibraryQueryService:
     def fetch_artist_tracks_internal(self, artist_name: str) -> list[dict]:
         self._check_db()
         try:
-            rows = self._db.conn.execute(
+            rows = self._exec(
                 "SELECT id, filepath, title, album, duration, track_number, track_uid, album_key "
                 f"FROM media_items WHERE deleted_at IS NULL AND "
                 f"({_artist_key_sql()}=? OR artist=?) "
@@ -304,7 +350,7 @@ class LibraryQueryService:
     def fetch_folder_tracks_internal(self, folder_path: str) -> list[dict]:
         self._check_db()
         try:
-            rows = self._db.conn.execute(
+            rows = self._exec(
                 "SELECT id, filepath, title, artist, album, duration, track_uid "
                 "FROM media_items WHERE deleted_at IS NULL AND directory LIKE ? "
                 "ORDER BY title", (f"{folder_path}%",)
@@ -377,12 +423,30 @@ class LibraryQueryService:
 
     @property
     def search_backend(self) -> str:
-        if not self._db:
+        if not self._db and not self._db_path:
             return "none"
         try:
-            row = self._db.conn.execute(
+            row = self._exec(
                 "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
             ).fetchone()
             return "fts5" if row else "like"
         except Exception:
             return "none"
+
+    def search_fts(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
+        if self.search_backend != "fts5":
+            raise LibraryQueryError("NO_FTS5", "search_fts", "FTS5 no disponible")
+        try:
+            fts_query = " OR ".join(f"{w}*" for w in query.split() if w)
+            sql = (
+                "SELECT m.id, m.filepath, m.title, m.artist, m.album, m.duration, m.album_key, m.track_uid "
+                "FROM media_items m JOIN media_fts fts ON m.id = fts.rowid "
+                "WHERE media_fts MATCH ? AND m.deleted_at IS NULL "
+                "ORDER BY rank LIMIT ?"
+            )
+            rows = self._exec(sql, (fts_query, limit)).fetchall()
+            return [{"track_id": r[0], "filepath": r[1], "title": r[2] or "",
+                     "artist": r[3] or "", "album": r[4] or "", "duration": r[5] or 0,
+                     "album_key": r[6] or "", "track_uid": r[7] or ""} for r in rows]
+        except Exception as e:
+            raise LibraryQueryError("FTS5_FAILED", "search_fts", str(e)) from e

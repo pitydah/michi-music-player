@@ -19,6 +19,9 @@ class FolderTreeModel(BasePagedListModel):
         super().__init__(page_size=200, query_executor=query_executor, parent=parent)
         self._qs = query_service
 
+    def _owner(self) -> str:
+        return "folders"
+
     def roleNames(self):
         return {self.PathRole: b"folderPath", self.NameRole: b"folderName",
                 self.TrackCountRole: b"trackCount",
@@ -43,11 +46,10 @@ class FolderTreeModel(BasePagedListModel):
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
             return 0
-        parent_path = kwargs.get("parent_path", "")
-        return self._qs.count_folders(parent_path=parent_path)
+        return self._qs.count_folders(parent_path=kwargs.get("parent_path", ""))
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
         if not self._qs:
             return []
-        parent_path = kwargs.get("parent_path", "")
-        return self._qs.fetch_folders(parent_path=parent_path, offset=offset, limit=limit)
+        return self._qs.fetch_folders(parent_path=kwargs.get("parent_path", ""),
+                                      offset=offset, limit=limit)

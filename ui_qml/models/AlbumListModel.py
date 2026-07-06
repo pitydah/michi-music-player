@@ -21,6 +21,9 @@ class AlbumListModel(BasePagedListModel):
         super().__init__(page_size=100, query_executor=query_executor, parent=parent)
         self._qs = query_service
 
+    def _owner(self) -> str:
+        return "albums"
+
     def roleNames(self):
         return {self.AlbumKeyRole: b"albumKey", self.TitleRole: b"title",
                 self.ArtistRole: b"artist", self.YearRole: b"year",
@@ -53,4 +56,4 @@ class AlbumListModel(BasePagedListModel):
         return self._qs.fetch_albums(offset=offset, limit=limit,
                                      search=kwargs.get("search", ""),
                                      sort=kwargs.get("sort", "year"),
-                                     ascending=kwargs.get("asc", False))
+                                     asc=kwargs.get("asc", False))

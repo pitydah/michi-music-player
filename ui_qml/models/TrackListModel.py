@@ -1,4 +1,4 @@
-"""TrackListModel — BasePagedListModel with 12+ roles via QueryService."""
+"""TrackListModel — BasePagedListModel with 12 roles via QueryService."""
 from __future__ import annotations
 
 from typing import Any
@@ -32,28 +32,27 @@ class TrackListModel(BasePagedListModel):
         self._sort = "title"
         self._asc = True
 
+    def _owner(self) -> str:
+        return "tracks"
+
     def roleNames(self):
-        return {
-            self.TrackIdRole: b"trackId", self.TrackUidRole: b"trackUid",
-            self.TitleRole: b"title", self.ArtistRole: b"artist",
-            self.AlbumRole: b"album", self.AlbumKeyRole: b"albumKey",
-            self.DurationRole: b"duration", self.FormatRole: b"format",
-            self.YearRole: b"year", self.GenreRole: b"genre",
-            self.TrackNumberRole: b"trackNumber", self.CoverKeyRole: b"coverKey",
-        }
+        return {self.TrackIdRole: b"trackId", self.TrackUidRole: b"trackUid",
+                self.TitleRole: b"title", self.ArtistRole: b"artist",
+                self.AlbumRole: b"album", self.AlbumKeyRole: b"albumKey",
+                self.DurationRole: b"duration", self.FormatRole: b"format",
+                self.YearRole: b"year", self.GenreRole: b"genre",
+                self.TrackNumberRole: b"trackNumber", self.CoverKeyRole: b"coverKey"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
             return None
         item = self._items[index.row()]
-        mapping = {
-            self.TrackIdRole: "track_id", self.TrackUidRole: "track_uid",
-            self.TitleRole: "title", self.ArtistRole: "artist",
-            self.AlbumRole: "album", self.AlbumKeyRole: "album_key",
-            self.DurationRole: "duration", self.FormatRole: "format",
-            self.YearRole: "year", self.GenreRole: "genre",
-            self.TrackNumberRole: "track_number", self.CoverKeyRole: "cover_key",
-        }
+        mapping = {self.TrackIdRole: "track_id", self.TrackUidRole: "track_uid",
+                   self.TitleRole: "title", self.ArtistRole: "artist",
+                   self.AlbumRole: "album", self.AlbumKeyRole: "album_key",
+                   self.DurationRole: "duration", self.FormatRole: "format",
+                   self.YearRole: "year", self.GenreRole: "genre",
+                   self.TrackNumberRole: "track_number", self.CoverKeyRole: "cover_key"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")
@@ -75,11 +74,10 @@ class TrackListModel(BasePagedListModel):
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
             return 0
-        return self._qs.count_tracks(**kwargs)
+        kw = {k: v for k, v in kwargs.items() if k != "sort" and k != "asc"}
+        return self._qs.count_tracks(**kw)
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
         if not self._qs:
             return []
-        kw = dict(kwargs)
-        asc = kw.pop("asc", True)
-        return self._qs.fetch_tracks(offset=offset, limit=limit, ascending=asc, **kw)
+        return self._qs.fetch_tracks(offset=offset, limit=limit, **kwargs)

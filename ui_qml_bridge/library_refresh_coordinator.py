@@ -62,6 +62,16 @@ class LibraryRefreshCoordinator(QObject):
     def refresh_after_playlist_change(self):
         self.refresh_tracks()
 
+    def refresh_after_relink(self):
+        self.refresh_tracks()
+        self.refresh_albums()
+
+    def refresh_after_file_delete(self):
+        self.refresh_all()
+
+    def refresh_after_import(self, summary: dict | None = None):
+        self.refresh_all()
+
     def _get_search(self):
         return getattr(self._lib, '_search_query', '')
 
@@ -78,19 +88,19 @@ class LibraryRefreshCoordinator(QObject):
         return getattr(self._lib, '_sort_key', 'title')
 
     def activate_songs(self):
-        if self._track and self._track.count == 0:
+        if self._track and self._track.count == 0 and not self._track.loading:
             self.refresh_tracks()
 
     def activate_albums(self):
-        if self._album and self._album.count == 0:
+        if self._album and self._album.count == 0 and not self._album.loading:
             self.refresh_albums()
 
     def activate_artists(self):
-        if self._artist and self._artist.count == 0:
+        if self._artist and self._artist.count == 0 and not self._artist.loading:
             self.refresh_artists()
 
     def activate_folders(self):
-        if self._folder and self._folder.count == 0:
+        if self._folder and self._folder.count == 0 and not self._folder.loading:
             self.refresh_folders()
 
     def _get_asc(self):

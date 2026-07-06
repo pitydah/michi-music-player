@@ -18,24 +18,19 @@ class ArtistListModel(BasePagedListModel):
         super().__init__(page_size=100, query_executor=query_executor, parent=parent)
         self._qs = query_service
 
+    def _owner(self) -> str:
+        return "artists"
+
     def roleNames(self):
-        return {
-            self.NameRole: b"name",
-            self.TrackCountRole: b"trackCount",
-            self.AlbumCountRole: b"albumCount",
-            self.CoverKeyRole: b"coverKey",
-        }
+        return {self.NameRole: b"name", self.TrackCountRole: b"trackCount",
+                self.AlbumCountRole: b"albumCount", self.CoverKeyRole: b"coverKey"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
             return None
         item = self._items[index.row()]
-        mapping = {
-            self.NameRole: "name",
-            self.TrackCountRole: "track_count",
-            self.AlbumCountRole: "album_count",
-            self.CoverKeyRole: "cover_key",
-        }
+        mapping = {self.NameRole: "name", self.TrackCountRole: "track_count",
+                   self.AlbumCountRole: "album_count", self.CoverKeyRole: "cover_key"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")
@@ -54,4 +49,4 @@ class ArtistListModel(BasePagedListModel):
         return self._qs.fetch_artists(offset=offset, limit=limit,
                                       search=kwargs.get("search", ""),
                                       sort=kwargs.get("sort", "name"),
-                                      ascending=kwargs.get("asc", True))
+                                      asc=kwargs.get("asc", True))
