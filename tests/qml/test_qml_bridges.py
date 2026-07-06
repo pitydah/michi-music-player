@@ -1836,3 +1836,110 @@ class TestHomeAudioV2Bridge:
         result = bridge.setZoneVolume("zone1", 0.8)
         assert result.get("ok") is True
         snap_adapter.set_group_volume.assert_called_once_with("zone1", 0.8)
+
+
+class TestActionRegistry:
+    def test_action_registry_importable(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        assert len(registry.actions) > 0
+
+    def test_action_registry_contains_navigation(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        actions = registry.actions
+        ids = [a["id"] for a in actions]
+        assert "navigate_home" in ids
+        assert "navigate_library" in ids
+        assert "playback_playpause" in ids
+        assert "library_refresh" in ids
+
+    def test_action_registry_execute_no_handler(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        result = registry.execute("navigate_home")
+        assert result.get("ok") is False
+        assert result.get("error") == "NO_HANDLER"
+
+    def test_action_registry_execute_not_found(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        result = registry.execute("nonexistent")
+        assert result.get("ok") is False
+        assert result.get("error") == "NOT_FOUND"
+
+    def test_action_registry_register(self):
+        from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
+        registry = ActionRegistry()
+        registry.register(ActionDescriptor("test_action", "Test", "test"))
+        action = registry.get("test_action")
+        assert action is not None
+        assert action.title == "Test"
+
+
+class TestGlobalSearchBridge:
+    def test_global_search_importable(self):
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        bridge = GlobalSearchBridge()
+        assert bridge.results == []
+
+    def test_global_search_empty_query(self):
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        bridge = GlobalSearchBridge()
+        result = bridge.search("")
+        assert result.get("ok") is True
+        assert result.get("count") == 0
+
+    def test_global_search_no_db_returns_empty(self):
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        bridge = GlobalSearchBridge()
+        result = bridge.search("test")
+        assert result.get("ok") is True
+        assert result.get("count") <= 50
+
+
+class TestJobBridge:
+    def test_job_bridge_importable(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        assert bridge.jobs == []
+        assert bridge.activeCount == 0
+
+    def test_job_bridge_unknown_job(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        result = bridge.runJob("unknown_job")
+        assert result.get("ok") is False
+        assert result.get("error") == "UNKNOWN_JOB_TYPE"
+
+    def test_job_bridge_run_scan(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        result = bridge.runJob("library_scan", "/tmp")
+        assert result.get("ok") is True
+        assert len(bridge.jobs) == 1
+        assert bridge.activeCount == 1
+
+    def test_job_bridge_cancel(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        bridge.runJob("library_scan", "/tmp")
+        job_id = bridge.jobs[0]["job_id"]
+        result = bridge.cancelJob(job_id)
+        assert result.get("ok") is True
+        assert bridge.activeCount == 0
+
+    def test_job_bridge_cancel_not_found(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        result = bridge.cancelJob(999)
+        assert result.get("ok") is False
+
+    def test_job_bridge_clear_completed(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        bridge.runJob("library_scan", "/tmp")
+        bridge.cancelJob(bridge.jobs[0]["job_id"])
+        bridge.clearCompleted()
+        assert bridge.activeCount == 0
+        assert len(bridge.jobs) == 0
