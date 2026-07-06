@@ -843,7 +843,8 @@ class TestMixComponents:
     def test_qml_main_registers_mix_bridge(self):
         content = (QML_DIR.parent / "ui_qml_bridge" / "qml_main.py").read_text()
         assert "MixBridge" in content, "qml_main missing MixBridge import"
-        assert "mixBridge" in content, "qml_main missing mixBridge context property"
+        bindings = (QML_DIR.parent / "ui_qml_bridge" / "context_bindings.py").read_text()
+        assert "mixBridge" in bindings, "context_bindings missing mixBridge"
 
     def test_mix_favorites_uses_fav_db(self):
         from unittest.mock import MagicMock

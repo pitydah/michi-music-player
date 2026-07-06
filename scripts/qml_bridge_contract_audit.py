@@ -77,7 +77,7 @@ def check_file(path: Path):
 def main():
     for f in sorted(BRIDGE_DIR.glob("*.py")):
         # Skip non-bridge utility files
-        if f.name in {"__init__.py", "route_registry.py", "qml_main.py", "audio_quality_adapter.py", "command_bus.py", "service_bundle.py", "service_capabilities.py", "bridge_factory.py", "context_registrar.py", "library_query_service.py", "error_catalog.py", "action_registry.py", "query_executor.py", "page_state_store.py", "desktop_bridge.py", "cover_provider_bridge.py", "job_bridge.py", "metadata_tag_adapter.py", "library_refresh_coordinator.py", "global_search_bridge.py"}:
+        if f.name in {"__init__.py", "route_registry.py", "qml_main.py", "audio_quality_adapter.py", "command_bus.py", "service_bundle.py", "service_capabilities.py", "bridge_factory.py", "context_registrar.py", "library_query_service.py", "error_catalog.py", "action_registry.py", "query_executor.py", "page_state_store.py", "desktop_bridge.py", "cover_provider_bridge.py", "job_bridge.py", "metadata_tag_adapter.py", "library_refresh_coordinator.py", "global_search_bridge.py", "context_bindings.py"}:
             continue
         if f.name in {"library_query_service.py"}:
             continue

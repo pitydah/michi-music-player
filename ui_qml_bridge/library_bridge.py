@@ -11,7 +11,8 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 class LibraryBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, search_engine=None, playback_ctrl=None, parent=None):
+    def __init__(self, db=None, search_engine=None, playback_ctrl=None,
+                 query_service=None, query_executor=None, worker_manager=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._search_engine = search_engine
@@ -41,14 +42,21 @@ class LibraryBridge(QObject):
         from ui_qml.models.AlbumListModel import AlbumListModel
         from ui_qml.models.ArtistListModel import ArtistListModel
         from ui_qml.models.FolderTreeModel import FolderTreeModel
-        from ui_qml_bridge.library_query_service import LibraryQueryService
-        from ui_qml_bridge.query_executor import QueryExecutor
-        self._query_svc = LibraryQueryService(self._db) if self._db else None
-        self._qe = QueryExecutor(worker_manager=None, parent=self)
+        self._query_svc = query_service
+        self._qe = query_executor
         self._track_model = TrackListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         self._album_model = AlbumListModel(query_service=self._query_svc, parent=self)
         self._artist_model = ArtistListModel(query_service=self._query_svc, parent=self)
         self._folder_model = FolderTreeModel(db=self._db, parent=self)
+        from ui_qml_bridge.library_refresh_coordinator import LibraryRefreshCoordinator
+        self._refresh_coordinator = LibraryRefreshCoordinator(
+            track_model=self._track_model,
+            album_model=self._album_model,
+            artist_model=self._artist_model,
+            folder_model=self._folder_model,
+            library_bridge=self,
+            parent=self,
+        )
 
     # ── Internal pipeline ──
 
@@ -265,16 +273,10 @@ class LibraryBridge(QObject):
         return {"ok": True}
 
     def _refresh_track_query(self):
-        """Central method to refresh TrackListModel after search/filter/sort changes."""
-        if self._track_model and hasattr(self._track_model, 'refresh'):
-            self._track_model.refresh(
-                search=self._search_query,
-                artist=self._filter_artist,
-                album=self._filter_album,
-                fmt=self._filter_format,
-                sort=self._sort_key,
-                asc=self._sort_asc,
-            )
+        if self._refresh_coordinator:
+            self._refresh_coordinator.refresh_tracks()
+            self._refresh_coordinator.refresh_albums()
+            self._refresh_coordinator.refresh_artists()
 
     # ── Search ──
 
@@ -385,16 +387,8 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self, limit: int = 0):
-        # Always refresh track model (paginated via QueryService)
-        if self._track_model:
-            self._track_model.refresh(
-                search=self._search_query,
-                artist=self._filter_artist,
-                album=self._filter_album,
-                fmt=self._filter_format,
-                sort=self._sort_key,
-                asc=self._sort_asc,
-            )
+        if self._refresh_coordinator:
+            self._refresh_coordinator.refresh_all()
         # Legacy full load only when no paginated model is active
         if not self._query_svc and self._db:
             if hasattr(self._db, 'fetch_all'):
