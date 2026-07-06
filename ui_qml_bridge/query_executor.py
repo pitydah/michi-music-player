@@ -16,6 +16,7 @@ import threading
 from typing import Callable
 
 from PySide6.QtCore import QObject, Signal
+import contextlib
 
 logger = logging.getLogger("michi.query_executor")
 
@@ -124,8 +125,18 @@ class QueryExecutor(QObject):
                 except Exception:
                     logger.exception("QueryExecutor on_success failed")
 
-        if self._wm and hasattr(self._wm, 'run_task'):
-            self._wm.run_task(f"qe_{request_id}", _run, on_done=_done)
+        if self._wm and hasattr(self._wm, 'run_task') and hasattr(self._wm, 'task_done'):
+            from PySide6.QtCore import Qt
+            task_id = f"qe_{request_id}"
+
+            def _on_task_done(tid, result):
+                if tid == task_id:
+                    with contextlib.suppress(TypeError):
+                        self._wm.task_done.disconnect(_on_task_done)
+                    _done(result)
+
+            self._wm.task_done.connect(_on_task_done, type=Qt.ConnectionType.QueuedConnection)
+            self._wm.run_task(task_id, _run)
         else:
             result = _run()
             _done(result)
