@@ -46,15 +46,23 @@
           "test_library_bridge_contract",
           "test_library_query_service",
           "test_track_model_has_correct_signals",
-          "test_library_refresh_does_not_load_full_table"
+          "test_library_refresh_does_not_load_full_table",
+          "test_query_service_sort_whitelist",
+          "test_query_service_empty_db",
+          "test_query_service_folder_methods",
+          "test_query_service_internal_methods",
+          "test_query_service_public_details",
+          "test_query_service_filters",
+          "test_wave9_e2e_models",
+          "test_wave9_e2e_bridges"
         ],
         "integration_tests": [],
         "manual_test": "folder_add_drag_drop_verified",
         "physical_test": "",
         "classic_parity": false,
-        "error_paths_tested": false,
-        "async_jobs": false,
-        "cancel_supported": false,
+        "error_paths_tested": true,
+        "async_jobs": true,
+        "cancel_supported": true,
         "runtime_test": ""
       }
     },
@@ -311,13 +319,15 @@
           "test_metadata_bridge_load_empty_path",
           "test_metadata_bridge_clear",
           "test_metadata_bridge_can_apply_false_without_selection",
-          "test_metadata_bridge_save_changes_return_dict"
+          "test_metadata_bridge_save_changes_return_dict",
+          "test_backup_verify_rollback_cycle",
+          "test_error_catalog"
         ],
         "integration_tests": [],
         "manual_test": "",
         "physical_test": "",
         "classic_parity": false,
-        "error_paths_tested": false,
+        "error_paths_tested": true,
         "async_jobs": false,
         "cancel_supported": false,
         "runtime_test": ""
