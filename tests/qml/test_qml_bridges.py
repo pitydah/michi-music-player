@@ -307,7 +307,7 @@ class TestHomeBridge:
         assert bridge.libraryAlbums == 0
         assert bridge.libraryArtists == 0
         assert bridge.libraryTracks == 0
-        assert bridge.microServerState == "not_configured"
+        assert bridge.hasPlayback is False
 
     def test_set_library_stats(self):
         bridge = HomeBridge()

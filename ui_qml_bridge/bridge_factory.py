@@ -369,7 +369,17 @@ class BridgeFactory(QObject):
     def create_home_bridge(self):
         from ui_qml_bridge.home_bridge import HomeBridge
         if "home" not in self._bridges:
-            self._bridges["home"] = HomeBridge()
+            src_svc = None
+            lb = self._bridges.get("library_sources")
+            if lb and hasattr(lb, '_svc'):
+                src_svc = lb._svc
+            self._bridges["home"] = HomeBridge(
+                db=self._services.db,
+                player_service=self._services.player_service,
+                library_bridge=self._bridges.get("library"),
+                library_sources_service=src_svc,
+            )
+        self._register_capability("home", "db")
         return self._bridges["home"]
 
     def create_library_sources_bridge(self):
