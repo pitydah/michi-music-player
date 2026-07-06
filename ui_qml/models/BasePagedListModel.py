@@ -1,4 +1,4 @@
-"""BasePagedListModel — shared paginated QAbstractListModel infrastructure."""
+"""BasePagedListModel — async paginated QAbstractListModel via QueryExecutor."""
 from __future__ import annotations
 
 from typing import Any
@@ -7,28 +7,21 @@ from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Signal
 
 
 class BasePagedListModel(QAbstractListModel):
-    """Base class for paginated list models with async loading.
-
-    Subclasses must define:
-        roleNames()
-        data()
-        _fetch_count() -> int
-        _fetch_page(offset, limit) -> list[dict]
-    """
-
     countChanged = Signal()
     loadingChanged = Signal()
     errorChanged = Signal()
     hasMoreChanged = Signal()
+    loadingMoreChanged = Signal()
 
-    def __init__(self, page_size: int = 250, parent=None):
+    def __init__(self, page_size: int = 250, query_executor=None, parent=None):
         super().__init__(parent)
         self._items: list[dict[str, Any]] = []
         self._total_count = 0
         self._page_size = page_size
         self._loading = False
+        self._loading_more = False
         self._error = ""
-        self._query_executor = None
+        self._qe = query_executor
         self._owner_id = ""
         self._request_gen = 0
 
@@ -44,6 +37,10 @@ class BasePagedListModel(QAbstractListModel):
     def loading(self):
         return self._loading
 
+    @Property(bool, notify=loadingMoreChanged)
+    def loadingMore(self):
+        return self._loading_more
+
     @Property(str, notify=errorChanged)
     def error(self):
         return self._error
@@ -58,52 +55,76 @@ class BasePagedListModel(QAbstractListModel):
     def canFetchMore(self, parent=QModelIndex()):
         if parent.isValid():
             return False
-        return len(self._items) < self._total_count
+        return len(self._items) < self._total_count and not self._loading
 
     def fetchMore(self, parent=QModelIndex()):
-        if parent.isValid() or self._loading:
+        if parent.isValid() or self._loading or self._loading_more:
             return
-        self._load_page(len(self._items))
+        self._loading_more = True
+        self.loadingMoreChanged.emit()
+        gen = self._request_gen
+        offset = len(self._items)
+
+        def _task():
+            return self._fetch_page(offset, self._page_size)
+
+        def _done(result):
+            if gen != self._request_gen or not result:
+                self._loading_more = False
+                self.loadingMoreChanged.emit()
+                return
+            self.beginInsertRows(QModelIndex(), offset, offset + len(result) - 1)
+            self._items.extend(result)
+            self.endInsertRows()
+            self._loading_more = False
+            self.loadingMoreChanged.emit()
+            self.countChanged.emit()
+            self.hasMoreChanged.emit()
+
+        if self._qe and hasattr(self._qe, 'submit'):
+            self._qe.submit(self._owner_id, _task, callback=_done)
+        else:
+            result = _task()
+            _done(result)
 
     def refresh(self, **kwargs):
-        """Refresh the model with new query parameters. Override in subclass."""
         self._request_gen += 1
         self._error = ""
         self._loading = True
         self.loadingChanged.emit()
-        self._load_count(**kwargs)
-        self._load_page(0, **kwargs)
+        gen = self._request_gen
 
-    def _load_count(self, **kwargs):
-        try:
-            self._total_count = self._fetch_count(**kwargs)
-        except Exception as e:
-            self._total_count = 0
-            self._error = str(e)
-        self.countChanged.emit()
-        self.hasMoreChanged.emit()
+        def _count_task():
+            return self._fetch_count(**kwargs)
 
-    def _load_page(self, offset: int, **kwargs):
-        self._loading = True
-        self.loadingChanged.emit()
-        try:
-            items = self._fetch_page(offset, self._page_size, **kwargs)
-            if offset == 0:
-                self.beginResetModel()
-                self._items = items
-                self.endResetModel()
-            else:
-                self.beginInsertRows(QModelIndex(), offset, offset + len(items) - 1)
-                self._items.extend(items)
-                self.endInsertRows()
+        def _page_task():
+            return self._fetch_page(0, self._page_size, **kwargs)
+
+        def _all_done(results):
+            if gen != self._request_gen:
+                self._loading = False
+                self.loadingChanged.emit()
+                return
+            count, items = results if isinstance(results, tuple) and len(results) == 2 else (0, [])
+            if count is not None:
+                self._total_count = count
+            self.beginResetModel()
+            self._items = items if items else []
+            self.endResetModel()
             self._error = ""
-        except Exception as e:
-            self._error = str(e)
+            self._loading = False
+            self.loadingChanged.emit()
+            self.countChanged.emit()
+            self.hasMoreChanged.emit()
             self.errorChanged.emit()
-        self._loading = False
-        self.loadingChanged.emit()
-        self.countChanged.emit()
-        self.hasMoreChanged.emit()
+
+        if self._qe and hasattr(self._qe, 'submit'):
+            self._qe.submit(self._owner_id, _count_task, callback=lambda c: None)
+            self._qe.submit(self._owner_id, _page_task, callback=lambda p: _all_done((p, p)))
+        else:
+            count = _count_task()
+            items = _page_task()
+            _all_done((count, items))
 
     def _fetch_count(self, **kwargs) -> int:
         raise NotImplementedError

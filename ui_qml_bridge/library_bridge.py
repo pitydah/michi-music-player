@@ -47,7 +47,7 @@ class LibraryBridge(QObject):
         self._track_model = TrackListModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         self._album_model = AlbumListModel(query_service=self._query_svc, parent=self)
         self._artist_model = ArtistListModel(query_service=self._query_svc, parent=self)
-        self._folder_model = FolderTreeModel(db=self._db, parent=self)
+        self._folder_model = FolderTreeModel(query_service=self._query_svc, query_executor=self._qe, parent=self)
         from ui_qml_bridge.library_refresh_coordinator import LibraryRefreshCoordinator
         self._refresh_coordinator = LibraryRefreshCoordinator(
             track_model=self._track_model,

@@ -1,4 +1,4 @@
-"""AlbumListModel — BasePagedListModel backed by LibraryQueryService."""
+"""AlbumListModel — BasePagedListModel with 7 roles via QueryService."""
 from __future__ import annotations
 
 from typing import Any
@@ -17,34 +17,24 @@ class AlbumListModel(BasePagedListModel):
     DurationRole = Qt.UserRole + 6
     CoverKeyRole = Qt.UserRole + 7
 
-    def __init__(self, query_service=None, parent=None):
-        super().__init__(page_size=100, parent=parent)
+    def __init__(self, query_service=None, query_executor=None, parent=None):
+        super().__init__(page_size=100, query_executor=query_executor, parent=parent)
         self._qs = query_service
 
     def roleNames(self):
-        return {
-            self.AlbumKeyRole: b"albumKey",
-            self.TitleRole: b"title",
-            self.ArtistRole: b"artist",
-            self.YearRole: b"year",
-            self.TrackCountRole: b"trackCount",
-            self.DurationRole: b"duration",
-            self.CoverKeyRole: b"coverKey",
-        }
+        return {self.AlbumKeyRole: b"albumKey", self.TitleRole: b"title",
+                self.ArtistRole: b"artist", self.YearRole: b"year",
+                self.TrackCountRole: b"trackCount", self.DurationRole: b"duration",
+                self.CoverKeyRole: b"coverKey"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
             return None
         item = self._items[index.row()]
-        mapping = {
-            self.AlbumKeyRole: "album_key",
-            self.TitleRole: "title",
-            self.ArtistRole: "artist",
-            self.YearRole: "year",
-            self.TrackCountRole: "track_count",
-            self.DurationRole: "duration",
-            self.CoverKeyRole: "cover_key",
-        }
+        mapping = {self.AlbumKeyRole: "album_key", self.TitleRole: "title",
+                   self.ArtistRole: "artist", self.YearRole: "year",
+                   self.TrackCountRole: "track_count", self.DurationRole: "duration",
+                   self.CoverKeyRole: "cover_key"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")

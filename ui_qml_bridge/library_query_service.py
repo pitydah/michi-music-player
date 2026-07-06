@@ -206,6 +206,54 @@ class LibraryQueryService:
         except Exception as e:
             raise LibraryQueryError("QUERY_FAILED", "fetch_artists", str(e)) from e
 
+    # ── Folder methods ──
+
+    def count_folders(self, parent_path: str = "") -> int:
+        self._check_db()
+        try:
+            if parent_path:
+                like = f"{parent_path}/%"
+                where = "directory LIKE ? AND directory NOT LIKE ?"
+                params = [like, f"{parent_path}/%/%"]
+            else:
+                where = "directory IS NOT NULL AND directory != '' AND directory NOT LIKE '%/%'"
+                params = []
+            row = self._db.conn.execute(
+                f"SELECT COUNT(DISTINCT directory) FROM media_items "
+                f"WHERE deleted_at IS NULL AND {where}", params
+            ).fetchone()
+            return row[0] if row else 0
+        except LibraryQueryError:
+            raise
+        except Exception as e:
+            raise LibraryQueryError("QUERY_FAILED", "count_folders", str(e)) from e
+
+    def fetch_folders(self, parent_path: str = "", offset: int = 0,
+                      limit: int = 100) -> list[dict[str, Any]]:
+        self._check_db()
+        try:
+            if parent_path:
+                like = f"{parent_path}/%"
+                where = "directory LIKE ? AND directory NOT LIKE ?"
+                params = [like, f"{parent_path}/%/%"]
+            else:
+                where = "directory IS NOT NULL AND directory != '' AND directory NOT LIKE '%/%'"
+                params = []
+            sql = (
+                f"SELECT directory, COUNT(*) as cnt FROM media_items "
+                f"WHERE deleted_at IS NULL AND {where} "
+                f"GROUP BY directory ORDER BY directory LIMIT ? OFFSET ?"
+            )
+            params.extend([limit, offset])
+            rows = self._db.conn.execute(sql, params).fetchall()
+            return [{"path": r[0] or "", "name": r[0].rsplit("/", 1)[-1] if "/" in (r[0] or "") else r[0] or "",
+                     "track_count": r[1], "is_expandable": True, "expanded": False}
+                    for r in rows]
+        except LibraryQueryError:
+            raise
+        except Exception as e:
+            raise LibraryQueryError("QUERY_FAILED", "fetch_folders", str(e)) from e
+
     # ── Internal methods (return filepath) ──
 
     def fetch_track_internal(self, track_id: int) -> dict | None:

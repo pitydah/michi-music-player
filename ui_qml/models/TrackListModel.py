@@ -23,9 +23,8 @@ class TrackListModel(BasePagedListModel):
     CoverKeyRole = Qt.UserRole + 12
 
     def __init__(self, query_service=None, query_executor=None, parent=None):
-        super().__init__(page_size=250, parent=parent)
+        super().__init__(page_size=250, query_executor=query_executor, parent=parent)
         self._qs = query_service
-        self._qe = query_executor
         self._search = ""
         self._artist_filter = ""
         self._album_filter = ""
