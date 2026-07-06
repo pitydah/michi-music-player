@@ -295,6 +295,43 @@ class BridgeFactory(QObject):
             )
         return self._bridges["command_palette"]
 
+    def create_global_search_bridge(self):
+        if "global_search" not in self._bridges:
+            from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+            self._bridges["global_search"] = GlobalSearchBridge(
+                db=self._services.db,
+                search_engine=self._services.search_engine,
+            )
+        return self._bridges["global_search"]
+
+    def create_cover_provider_bridge(self):
+        if "cover_provider" not in self._bridges:
+            from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
+            self._bridges["cover_provider"] = CoverProviderBridge(db=self._services.db)
+        return self._bridges["cover_provider"]
+
+    def create_job_bridge(self):
+        if "job_bridge" not in self._bridges:
+            from ui_qml_bridge.job_bridge import JobBridge
+            self._bridges["job_bridge"] = JobBridge(
+                worker_manager=self._services.worker_manager,
+                db=self._services.db,
+                library_bridge=self.get("library"),
+            )
+        return self._bridges["job_bridge"]
+
+    def create_desktop_bridge(self):
+        if "desktop" not in self._bridges:
+            from ui_qml_bridge.desktop_bridge import DesktopBridge
+            self._bridges["desktop"] = DesktopBridge()
+        return self._bridges["desktop"]
+
+    def create_page_state_store(self):
+        if "page_state" not in self._bridges:
+            from ui_qml_bridge.page_state_store import PageStateStore
+            self._bridges["page_state"] = PageStateStore()
+        return self._bridges["page_state"]
+
     def create_all(self) -> dict[str, QObject]:
         """Create all bridges and return dict of name->bridge."""
         self.create_navigation_bridge()
@@ -324,6 +361,11 @@ class BridgeFactory(QObject):
         self.create_diagnostics_bridge()
         self.create_action_registry_bridge()
         self.create_command_palette_bridge()
+        self.create_global_search_bridge()
+        self.create_cover_provider_bridge()
+        self.create_job_bridge()
+        self.create_desktop_bridge()
+        self.create_page_state_store()
         return self._bridges
 
     def __repr__(self) -> str:

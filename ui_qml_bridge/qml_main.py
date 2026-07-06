@@ -197,6 +197,11 @@ def main():
         "diagnosticsBridge": "diagnostics",
         "commandPaletteBridge": "command_palette",
         "actionRegistry": "action_registry",
+        "globalSearchBridge": "global_search",
+        "coverProviderBridge": "cover_provider",
+        "jobBridge": "job_bridge",
+        "desktopBridge": "desktop",
+        "pageStateStore": "page_state",
     }
 
     for qml_name, bridge_key in bridge_names.items():
@@ -213,52 +218,21 @@ def main():
     if eq_bridge:
         registrar.register("eqBridge", eq_bridge)
 
-    # Register GlobalSearchBridge
-    try:
-        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
-        gsb = GlobalSearchBridge(db=services.db, search_engine=services.search_engine)
-        registrar.register("globalSearchBridge", gsb)
-    except Exception as e:
-        logger.debug("GlobalSearchBridge init failed: %s", e)
-
-    # Register ActionRegistry (from factory singleton)
-    actions = factory.get("action_registry")
-    if actions:
-        registrar.register("actionRegistry", actions)
-    else:
-        logger.debug("ActionRegistry not found in factory")
-
-    # Register CoverProviderBridge
-    try:
-        from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
-        registrar.register("coverProviderBridge", CoverProviderBridge(db=services.db))
-    except Exception as e:
-        logger.debug("CoverProviderBridge init failed: %s", e)
-
-    # Register JobBridge
-    try:
-        from ui_qml_bridge.job_bridge import JobBridge
-        registrar.register("jobBridge", JobBridge(
-            worker_manager=services.worker_manager,
-            db=services.db,
-            library_bridge=all_bridges.get("library"),
-        ))
-    except Exception as e:
-        logger.debug("JobBridge init failed: %s", e)
-
-    # Register DesktopBridge
-    try:
-        from ui_qml_bridge.desktop_bridge import DesktopBridge
-        registrar.register("desktopBridge", DesktopBridge())
-    except Exception as e:
-        logger.debug("DesktopBridge init failed: %s", e)
-
-    # Register PageStateStore
-    try:
-        from ui_qml_bridge.page_state_store import PageStateStore
-        registrar.register("pageStateStore", PageStateStore())
-    except Exception as e:
-        logger.debug("PageStateStore init failed: %s", e)
+    # Register bridges that are created in factory
+    extra_bridges = {
+        "actionRegistry": "action_registry",
+        "coverProviderBridge": "cover_provider",
+        "jobBridge": "job_bridge",
+        "desktopBridge": "desktop",
+        "pageStateStore": "page_state",
+        "globalSearchBridge": "global_search",
+    }
+    for qml_name, bridge_key in extra_bridges.items():
+        b = all_bridges.get(bridge_key)
+        if b:
+            registrar.register(qml_name, b)
+        else:
+            logger.debug("QML: Skipping '%s' (not in factory)", qml_name)
 
     # Set service availability on app state bridge
     app_state = factory.get("app_state")
