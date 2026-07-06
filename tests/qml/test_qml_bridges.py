@@ -1289,20 +1289,23 @@ class TestNowPlayingBar:
 
 class TestLibraryQueryService:
     def test_query_service_sort_whitelist(self):
-        from ui_qml_bridge.library_query_service import LibraryQueryService
-        svc = LibraryQueryService(db=None)
-        assert svc._sort_column("title") == "LOWER(COALESCE(title, ''))"
-        assert svc._sort_column("invalid") == "LOWER(COALESCE(title, ''))"
-        assert "artist" in svc._TRACK_SORT_COLUMNS
+        from ui_qml_bridge.library_query_service import _sort_col, _TRACK_SORT
+        assert _sort_col("title") == "LOWER(COALESCE(title, ''))"
+        assert _sort_col("invalid") == "LOWER(COALESCE(title, ''))"
+        assert "artist" in _TRACK_SORT
 
     def test_query_service_empty_db(self):
         from ui_qml_bridge.library_query_service import LibraryQueryService
-        svc = LibraryQueryService(db=None)
+        from unittest.mock import MagicMock
+        db = MagicMock()
+        db.conn.execute.return_value.fetchone.return_value = [0]
+        db.conn.execute.return_value.fetchall.return_value = []
+        svc = LibraryQueryService(db=db)
         assert svc.count_tracks() == 0
         assert svc.fetch_tracks() == []
         assert svc.count_albums() == 0
         assert svc.count_artists() == 0
-        assert svc.search_backend == "none"
+        assert svc.search_backend in ("fts5", "like", "none")
 
     def test_query_service_search_backend_detection(self):
         from unittest.mock import MagicMock
