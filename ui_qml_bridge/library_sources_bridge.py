@@ -5,7 +5,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
-from ui_qml_bridge.library_sources_service import LibrarySourcesService
+from core.library_sources_service import LibrarySourcesService
 
 logger = logging.getLogger("michi.library_sources_bridge")
 

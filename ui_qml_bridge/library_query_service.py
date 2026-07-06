@@ -65,7 +65,7 @@ def _artist_key_sql() -> str:
 
 def _lib_sources() -> list[str]:
     try:
-        from ui_qml_bridge.library_sources_service import LibrarySourcesService
+        from core.library_sources_service import LibrarySourcesService
         svc = LibrarySourcesService()
         return svc.root_paths()
     except Exception:

@@ -384,7 +384,7 @@ class BridgeFactory(QObject):
 
     def create_library_sources_bridge(self):
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
-        from ui_qml_bridge.library_sources_service import LibrarySourcesService
+        from core.library_sources_service import LibrarySourcesService
         if "library_sources" not in self._bridges:
             svc = LibrarySourcesService()
             self._bridges["library_sources"] = LibrarySourcesBridge(service=svc)
