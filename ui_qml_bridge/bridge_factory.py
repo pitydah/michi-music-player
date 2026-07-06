@@ -70,7 +70,10 @@ class BridgeFactory(QObject):
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml_bridge.query_executor import QueryExecutor
         if "library" not in self._bridges:
-            qs = LibraryQueryService(self._services.db) if self._services.db else None
+            db_path = ""
+            if self._services.db and hasattr(self._services.db, 'db_path'):
+                db_path = self._services.db.db_path
+            qs = LibraryQueryService(self._services.db, db_path=db_path) if self._services.db or db_path else None
             qe = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
             self._bridges["library"] = LibraryBridge(
                 db=self._services.db,
