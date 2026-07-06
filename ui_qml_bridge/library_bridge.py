@@ -318,7 +318,8 @@ class LibraryBridge(QObject):
         album = ""
         if self._query_svc:
             try:
-                row = self._query_svc._db.conn.execute(
+                conn = self._query_svc._get_conn()
+                row = conn.execute(
                     "SELECT title, artist, album FROM media_items WHERE filepath=? AND deleted_at IS NULL",
                     (filepath,)
                 ).fetchone()
@@ -337,7 +338,7 @@ class LibraryBridge(QObject):
                 self._playback_ctrl.enqueue([filepath], play_now=True)
             else:
                 return {"ok": False, "error": "NO_PLAY_METHOD"}
-            return {"ok": True, "filepath": filepath, "title": title, "artist": artist, "album": album}
+            return {"ok": True, "title": title, "artist": artist, "album": album}
         except Exception as e:
             return {"ok": False, "error": f"PLAYBACK_ERROR: {e}"}
 
@@ -395,37 +396,41 @@ class LibraryBridge(QObject):
 
     @Slot(str, result=dict)
     def playAlbum(self, album_key: str):
-        tracks = self.getAlbumTracks(album_key)
-        if not tracks:
-            return {"ok": False, "error": "NO_TRACKS"}
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        fps = [t["filepath"] for t in tracks if t.get("filepath")]
-        if not fps:
-            return {"ok": False, "error": "NO_VALID_TRACKS"}
-        if hasattr(self._playback_ctrl, 'enqueue'):
-            try:
+        try:
+            internal = self._query_svc.fetch_album_tracks_internal(album_key)
+            if not internal:
+                return {"ok": False, "error": "NO_TRACKS"}
+            fps = [t["filepath"] for t in internal if t.get("filepath")]
+            if not fps:
+                return {"ok": False, "error": "NO_VALID_TRACKS"}
+            if hasattr(self._playback_ctrl, 'enqueue'):
                 self._playback_ctrl.enqueue(fps, play_now=True)
                 return {"ok": True, "count": len(fps)}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return self.play_song(fps[0])
+            return self.play_song(fps[0])
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
     def enqueueAlbum(self, album_key: str):
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        tracks = self.getAlbumTracks(album_key)
-        if not tracks:
-            return {"ok": False, "error": "NO_TRACKS"}
-        if hasattr(self._playback_ctrl, 'enqueue'):
-            try:
-                fps = [t["filepath"] for t in tracks if t.get("filepath")]
+        try:
+            internal = self._query_svc.fetch_album_tracks_internal(album_key)
+            if not internal:
+                return {"ok": False, "error": "NO_TRACKS"}
+            if hasattr(self._playback_ctrl, 'enqueue'):
+                fps = [t["filepath"] for t in internal if t.get("filepath")]
                 self._playback_ctrl.enqueue(fps, play_now=False)
                 return {"ok": True, "count": len(fps)}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "UNSUPPORTED"}
+            return {"ok": False, "error": "UNSUPPORTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     # ── Artist actions ──
 
@@ -468,21 +473,23 @@ class LibraryBridge(QObject):
 
     @Slot(str, result=dict)
     def playArtist(self, artist_name: str):
-        tracks = self.getArtistTracks(artist_name)
-        if not tracks:
-            return {"ok": False, "error": "NO_TRACKS"}
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        fps = [t["filepath"] for t in tracks if t.get("filepath")]
-        if not fps:
-            return {"ok": False, "error": "NO_VALID_TRACKS"}
-        if hasattr(self._playback_ctrl, 'enqueue'):
-            try:
+        try:
+            internal = self._query_svc.fetch_artist_tracks_internal(artist_name)
+            if not internal:
+                return {"ok": False, "error": "NO_TRACKS"}
+            fps = [t["filepath"] for t in internal if t.get("filepath")]
+            if not fps:
+                return {"ok": False, "error": "NO_VALID_TRACKS"}
+            if hasattr(self._playback_ctrl, 'enqueue'):
                 self._playback_ctrl.enqueue(fps, play_now=True)
                 return {"ok": True, "count": len(fps)}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return self.play_song(fps[0])
+            return self.play_song(fps[0])
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     # ── Folder actions ──
 
@@ -502,21 +509,23 @@ class LibraryBridge(QObject):
 
     @Slot(str, result=dict)
     def playFolder(self, folder_path: str):
-        tracks = self.getFolderTracks(folder_path)
-        if not tracks:
-            return {"ok": False, "error": "NO_TRACKS"}
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
         if not self._playback_ctrl:
             return {"ok": False, "error": "NO_PLAYER_SERVICE"}
-        fps = [t["filepath"] for t in tracks if t.get("filepath")]
-        if not fps:
-            return {"ok": False, "error": "NO_VALID_TRACKS"}
-        if hasattr(self._playback_ctrl, 'enqueue'):
-            try:
+        try:
+            internal = self._query_svc.fetch_folder_tracks_internal(folder_path)
+            if not internal:
+                return {"ok": False, "error": "NO_TRACKS"}
+            fps = [t["filepath"] for t in internal if t.get("filepath")]
+            if not fps:
+                return {"ok": False, "error": "NO_VALID_TRACKS"}
+            if hasattr(self._playback_ctrl, 'enqueue'):
                 self._playback_ctrl.enqueue(fps, play_now=True)
                 return {"ok": True, "count": len(fps)}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return self.play_song(fps[0])
+            return self.play_song(fps[0])
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
     def openFolder(self, folder_path: str):
@@ -610,14 +619,14 @@ class LibraryBridge(QObject):
         return {
             "track_id": item.get("track_id", 0),
             "track_uid": item.get("track_uid", ""),
-            "title": item.get("title", "") or Path(item.get("filepath", "")).stem,
+            "public_ref": f"track_{item.get('track_id', 0)}",
+            "title": item.get("title", "") or "",
             "artist": item.get("artist", ""),
             "album": item.get("album", ""),
             "album_key": item.get("album_key", ""),
             "duration": item.get("duration", 0),
-            "filepath": item.get("filepath", ""),
             "format": item.get("format", ""),
-            "cover_key": item.get("album_key", "") or item.get("filepath", ""),
+            "cover_key": item.get("album_key", "") or item.get("cover_key", ""),
             "year": item.get("year", 0),
             "track_number": item.get("track_number", 0),
             "genre": item.get("genre", ""),
