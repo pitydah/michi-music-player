@@ -307,7 +307,7 @@ class TestHomeBridge:
         assert bridge.libraryAlbums == 0
         assert bridge.libraryArtists == 0
         assert bridge.libraryTracks == 0
-        assert bridge.microServerState == "not_configured"
+        assert bridge.hasPlayback is False
 
     def test_set_library_stats(self):
         bridge = HomeBridge()
@@ -1944,3 +1944,98 @@ class TestJobBridge:
         bridge.clearCompleted()
         assert bridge.activeCount == 0
         assert len(bridge.jobs) == 0
+
+
+class TestLibrarySourcesBridge:
+    def test_library_sources_service_importable(self):
+        from core.library_sources_service import LibrarySourcesService
+        svc = LibrarySourcesService()
+        sources = svc.list()
+        assert isinstance(sources, list)
+
+    def test_library_sources_service_add_remove(self):
+        import tempfile
+        from core.library_sources_service import LibrarySourcesService
+        svc = LibrarySourcesService()
+        with tempfile.TemporaryDirectory() as tmp:
+            result = svc.add(tmp)
+            assert result.get("ok") is True
+            sources = svc.list()
+            assert any(s["path"] == tmp for s in sources)
+            result = svc.remove(tmp)
+            assert result.get("ok") is True
+            sources = svc.list()
+            assert not any(s["path"] == tmp for s in sources)
+
+    def test_library_sources_service_add_nonexistent(self):
+        from core.library_sources_service import LibrarySourcesService
+        svc = LibrarySourcesService()
+        result = svc.add("/nonexistent/path")
+        assert result.get("ok") is False
+
+    def test_library_sources_service_duplicate(self):
+        import tempfile
+        from core.library_sources_service import LibrarySourcesService
+        svc = LibrarySourcesService()
+        with tempfile.TemporaryDirectory() as tmp:
+            svc.add(tmp)
+            result = svc.add(tmp)
+            assert result.get("ok") is False
+            assert result.get("error") == "ALREADY_EXISTS"
+
+    def test_library_sources_bridge_importable(self):
+        from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
+        bridge = LibrarySourcesBridge()
+        assert bridge.status == "ready"
+        assert isinstance(bridge.sources, list)
+
+    def test_library_sources_bridge_add_source(self):
+        import tempfile
+        from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
+        bridge = LibrarySourcesBridge()
+        with tempfile.TemporaryDirectory() as tmp:
+            result = bridge.addSource(tmp)
+            assert result.get("ok") is True
+
+    def test_library_sources_bridge_remove_missing(self):
+        from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
+        bridge = LibrarySourcesBridge()
+        result = bridge.removeSource("/nonexistent")
+        assert result.get("ok") is False
+
+    def test_library_sources_bridge_refresh(self):
+        from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
+        bridge = LibrarySourcesBridge()
+        result = bridge.refresh()
+        assert result.get("ok") is True
+
+
+class TestRadioBridgeWithService:
+    def test_radio_bridge_with_manager(self):
+        from unittest.mock import MagicMock
+        from types import SimpleNamespace
+        from ui_qml_bridge.radio_bridge import RadioBridge
+        mgr = MagicMock()
+        station = SimpleNamespace(
+            id=1, name="Station 1", url="http://example.com/stream",
+            codec="MP3", country="US", tags=["Rock"],
+            favorite=False, image_path=""
+        )
+        mgr.get_all.return_value = [station]
+        bridge = RadioBridge(radio_manager=mgr)
+        bridge.refresh()
+        assert len(bridge.stations) >= 1
+
+
+class TestMixBridgeWithService:
+    def test_mix_bridge_with_db(self):
+        from unittest.mock import MagicMock
+        from ui_qml_bridge.mix_bridge import MixBridge
+        db = MagicMock()
+        db.fetch_all.return_value = []
+        db.conn.execute.return_value.fetchall.return_value = []
+        bridge = MixBridge(db=db)
+        assert len(bridge.categories) > 0
+        result = bridge.loadMix("favorites")
+        assert result.get("ok") is True
+        assert isinstance(result.get("count"), int)

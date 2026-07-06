@@ -35,4 +35,5 @@ QML_CONTEXT_BINDINGS = {
     "queueBridge": "queue",
     "historyBridge": "history",
     "homeBridge": "home",
+    "librarySourcesBridge": "library_sources",
 }

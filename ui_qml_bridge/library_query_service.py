@@ -65,6 +65,12 @@ def _artist_key_sql() -> str:
 
 def _lib_sources() -> list[str]:
     try:
+        from core.library_sources_service import LibrarySourcesService
+        svc = LibrarySourcesService()
+        return svc.root_paths()
+    except Exception:
+        pass
+    try:
         from core.settings_manager import get
         folder = get("general/music_folder")
         if folder and Path(folder).is_dir():

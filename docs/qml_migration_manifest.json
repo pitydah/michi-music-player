@@ -54,7 +54,9 @@
           "test_query_service_public_details",
           "test_query_service_filters",
           "test_wave9_e2e_models",
-          "test_wave9_e2e_bridges"
+          "test_wave9_e2e_bridges",
+          "test_library_sources_service",
+          "test_library_sources_bridge"
         ],
         "integration_tests": [],
         "manual_test": "folder_add_drag_drop_verified",
@@ -208,7 +210,8 @@
         "write": true,
         "unit_tests": [
           "test_radio_components",
-          "test_radio_bridge_integration"
+          "test_radio_bridge_integration",
+          "test_radio_bridge_with_manager"
         ],
         "integration_tests": [],
         "manual_test": "",

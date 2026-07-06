@@ -369,8 +369,26 @@ class BridgeFactory(QObject):
     def create_home_bridge(self):
         from ui_qml_bridge.home_bridge import HomeBridge
         if "home" not in self._bridges:
-            self._bridges["home"] = HomeBridge()
+            src_svc = None
+            lb = self._bridges.get("library_sources")
+            if lb and hasattr(lb, '_svc'):
+                src_svc = lb._svc
+            self._bridges["home"] = HomeBridge(
+                db=self._services.db,
+                player_service=self._services.player_service,
+                library_bridge=self._bridges.get("library"),
+                library_sources_service=src_svc,
+            )
+        self._register_capability("home", "db")
         return self._bridges["home"]
+
+    def create_library_sources_bridge(self):
+        from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
+        from core.library_sources_service import LibrarySourcesService
+        if "library_sources" not in self._bridges:
+            svc = LibrarySourcesService()
+            self._bridges["library_sources"] = LibrarySourcesBridge(service=svc)
+        return self._bridges["library_sources"]
 
     def create_all(self) -> dict[str, QObject]:
         """Create all bridges and return dict of name->bridge."""
@@ -409,6 +427,7 @@ class BridgeFactory(QObject):
         self.create_queue_bridge()
         self.create_history_bridge()
         self.create_home_bridge()
+        self.create_library_sources_bridge()
         self.bind_action_handlers()
         return self._bridges
 

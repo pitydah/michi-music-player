@@ -92,11 +92,25 @@ class JobBridge(QObject):
             self._add_job(job_type, "Escaneando biblioteca",
                           lambda: self._scan_library(params))
             return {"ok": True}
+        if job_type == "library_scan_all":
+            title = "Escaneando todas las fuentes"
+            self._add_job(job_type, title, lambda: self._scan_all_sources())
+            return {"ok": True}
         if job_type == "metadata_scan":
             return {"ok": False, "error": "UNSUPPORTED"}
         if job_type == "doctor_scan":
             return {"ok": False, "error": "UNSUPPORTED"}
         return {"ok": False, "error": "UNKNOWN_JOB_TYPE"}
+
+    def _scan_all_sources(self):
+        try:
+            from core.library_sources_service import LibrarySourcesService
+            svc = LibrarySourcesService()
+            for source in svc.list():
+                if source.get("enabled") and source.get("available"):
+                    self._scan_library(source["path"])
+        except Exception:
+            pass
 
     @Slot(int, result=dict)
     def cancelJob(self, job_id: int):
