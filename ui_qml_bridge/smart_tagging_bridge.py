@@ -16,10 +16,11 @@ class SmartTaggingBridge(QObject):
     dataChanged = Signal()
     scanCompleted = Signal(int)  # suggestion_count
 
-    def __init__(self, service=None, worker_manager=None, parent=None):
+    def __init__(self, service=None, worker_manager=None, query_service=None, parent=None):
         super().__init__(parent)
         self._service = service
         self._wm = worker_manager
+        self._qs = query_service
         self._suggestions: list[dict] = []
         self._current_filepath = ""
         self._status = "idle"
@@ -45,14 +46,24 @@ class SmartTaggingBridge(QObject):
             self._status = "unavailable"
             self.dataChanged.emit()
             return {"ok": False, "error_code": "UNSUPPORTED", "message": "Servicio no disponible"}
-        from ui_qml_bridge.library_query_service import LibraryQueryService
-        LibraryQueryService(None)
         self._status = "scanning"
         self._scan_counter += 1
         self.dataChanged.emit()
         try:
+            track = None
+            if self._qs:
+                try:
+                    track = self._qs.fetch_track_internal(track_id)
+                except Exception:
+                    track = None
+            if not track:
+                self._status = "error"
+                self.dataChanged.emit()
+                return {"ok": False, "error_code": "TRACK_NOT_FOUND", "message": "Track no encontrado"}
+            self._current_filepath = track.get("filepath", "")
             from library.media_item import TrackMetadata
-            meta = TrackMetadata(filepath=f"track_{track_id}")
+            meta = TrackMetadata(filepath=track["filepath"], title=track.get("title", ""),
+                                 artist=track.get("artist", ""), album=track.get("album", ""))
             if hasattr(self._service, 'suggest_for_track'):
                 results = self._service.suggest_for_track(meta)
                 self._suggestions = [
