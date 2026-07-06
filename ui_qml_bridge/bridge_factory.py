@@ -296,6 +296,12 @@ class BridgeFactory(QObject):
             self._bridges["action_registry"] = registry
         return registry
 
+    def bind_action_handlers(self):
+        registry = self.get_action_registry()
+        from ui_qml_bridge.action_registry_binder import ActionRegistryBinder
+        binder = ActionRegistryBinder(registry, self._bridges)
+        binder.bind_all()
+
     def create_command_palette_bridge(self):
         if "command_palette" not in self._bridges:
             from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
@@ -403,6 +409,7 @@ class BridgeFactory(QObject):
         self.create_queue_bridge()
         self.create_history_bridge()
         self.create_home_bridge()
+        self.bind_action_handlers()
         return self._bridges
 
     def __repr__(self) -> str:
