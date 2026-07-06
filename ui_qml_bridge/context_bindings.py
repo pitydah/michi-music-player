@@ -32,4 +32,6 @@ QML_CONTEXT_BINDINGS = {
     "jobBridge": "job_bridge",
     "desktopBridge": "desktop",
     "pageStateStore": "page_state",
+    "queueBridge": "queue",
+    "historyBridge": "history",
 }

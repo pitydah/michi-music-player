@@ -1344,6 +1344,60 @@ class TestTrackListModel:
         assert model.loading is False
 
 
+class TestQueueListModel:
+    def test_queue_model_importable(self):
+        from ui_qml.models.QueueListModel import QueueListModel
+        model = QueueListModel()
+        assert model.count == 0
+
+    def test_queue_model_counts_empty(self):
+        from ui_qml.models.QueueListModel import QueueListModel
+        model = QueueListModel()
+        assert model.totalCount == 0
+        assert model.hasMore is False
+
+    def test_queue_bridge_importable(self):
+        from ui_qml_bridge.queue_bridge import QueueBridge
+        bridge = QueueBridge()
+        assert bridge.queueCount == 0
+
+    def test_queue_bridge_refresh(self):
+        from ui_qml_bridge.queue_bridge import QueueBridge
+        bridge = QueueBridge()
+        result = bridge.refresh()
+        assert result.get("ok") is True
+
+
+class TestHistoryListModel:
+    def test_history_model_importable(self):
+        from ui_qml.models.HistoryListModel import HistoryListModel
+        model = HistoryListModel()
+        assert model.count == 0
+
+    def test_history_model_basic(self):
+        from ui_qml.models.HistoryListModel import HistoryListModel
+        model = HistoryListModel()
+        assert model.loading is False
+        assert model.totalCount == 0
+
+    def test_history_bridge_importable(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        bridge = HistoryBridge()
+        assert bridge.historyCount == 0
+
+    def test_history_bridge_refresh(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        bridge = HistoryBridge()
+        result = bridge.refresh()
+        assert result.get("ok") is True
+
+    def test_history_bridge_clear_no_db(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        bridge = HistoryBridge()
+        result = bridge.clearHistory()
+        assert result.get("ok") is False
+
+
 class TestEqBridge:
     def test_eq_importable(self):
         from ui_qml_bridge.eq_bridge import EqBridge
