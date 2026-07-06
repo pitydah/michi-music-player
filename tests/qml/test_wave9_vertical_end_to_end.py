@@ -450,13 +450,18 @@ class TestWave10RealVerticalFlow:
                 s.conn.execute("DELETE FROM playlists WHERE id=?", (pid,))
                 s.conn.commit()
             def get_playlist_items(s, pid):
+                from types import SimpleNamespace
                 rows = s.conn.execute(
-                    "SELECT pi.filepath, pi.track_id, pi.position, m.id, m.title, m.artist, m.album, m.duration, m.track_uid "
+                    "SELECT "
+                    "CASE WHEN pi.filepath != '' THEN pi.filepath ELSE COALESCE(m.filepath, '') END, "
+                    "pi.track_id, pi.position, "
+                    "m.id, COALESCE(m.title, ''), COALESCE(m.artist, ''), "
+                    "COALESCE(m.album, ''), COALESCE(m.duration, 0), COALESCE(m.track_uid, '') "
                     "FROM playlist_items pi LEFT JOIN media_items m ON pi.track_id = m.id OR pi.filepath = m.filepath "
                     "WHERE pi.playlist_id=? ORDER BY pi.position", (pid,)
                 ).fetchall()
-                return [{"filepath": r[0], "id": r[3], "title": r[4], "artist": r[5],
-                         "album": r[6], "duration": r[7], "track_uid": r[8]} for r in rows]
+                return [SimpleNamespace(filepath=r[0], id=r[3], title=r[4], artist=r[5],
+                                        album=r[6], duration=r[7], track_uid=r[8]) for r in rows]
             def get_play_history(s, device="desktop"):
                 rows = s.conn.execute(
                     "SELECT track_id, played_at FROM play_history ORDER BY played_at DESC LIMIT 100"
@@ -663,7 +668,6 @@ class TestWave10RealVerticalFlow:
         for fp in player.enqueued:
             assert "/music/" in fp
 
-    @pytest.mark.xfail(reason="FakeDB JOIN no retorna filepath real; arreglar FakeDB")
     def test_real_flow_playlist_create_play(self, library_db, tmp_path):
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         self._populate(library_db)

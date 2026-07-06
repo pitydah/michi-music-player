@@ -119,6 +119,17 @@ jobs:
           MICHI_TEST_CONFIG_DIR=${{ runner.temp }}/michi-smoke-config \
           python3 scripts/smoke_ui_routes.py
 
+      - name: Full QML runtime smoke
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen \
+          PYTHONUNBUFFERED=1 \
+          MICHI_SAFE_MODE=1 \
+          MICHI_TEST_DATA_DIR=${{ runner.temp }}/michi-smoke-data \
+          MICHI_TEST_CACHE_DIR=${{ runner.temp }}/michi-smoke-cache \
+          MICHI_TEST_CONFIG_DIR=${{ runner.temp }}/michi-smoke-config \
+          python3 scripts/qml_full_runtime_smoke.py
+
       - name: Verify icons and data
         run: |
           python3 -c "

@@ -1,7 +1,7 @@
 """WorkerManager — QThreadPool for offloading slow operations from the main thread."""
 import logging
 
-from PySide6.QtCore import QObject, QRunnable, Signal, QThreadPool, Slot
+from PySide6.QtCore import QObject, QRunnable, Signal, QThreadPool, Slot, Qt
 
 
 class _WorkerSignals(QObject):
@@ -54,24 +54,25 @@ class _IdentifyWorker(QRunnable):
 
 
 class _TaskWorker(QRunnable):
-    """Run an arbitrary function in background."""
+    """Run an arbitrary function in background. No QObject children (thread-safe)."""
 
-    def __init__(self, fn, *args, **kwargs):
+    def __init__(self, fn, done_callback=None, error_callback=None, *args, **kwargs):
         super().__init__()
-        self._signals = _WorkerSignals()
         self._fn = fn
         self._args = args
         self._kwargs = kwargs
+        self._done_cb = done_callback
+        self._error_cb = error_callback
+        self.setAutoDelete(True)
 
     def run(self):
-        import contextlib
         try:
             result = self._fn(*self._args, **self._kwargs)
-            with contextlib.suppress(RuntimeError):
-                self._signals.done.emit(result)
+            if self._done_cb:
+                self._done_cb(result)
         except Exception as e:
-            with contextlib.suppress(RuntimeError):
-                self._signals.error.emit(str(e))
+            if self._error_cb:
+                self._error_cb(str(e))
 
 
 class WorkerManager(QObject):
@@ -99,7 +100,7 @@ class WorkerManager(QObject):
     def load_covers(self, items, cover_size):
         """Load album covers in background. Emits covers_ready."""
         worker = _CoverLoaderWorker(items, cover_size)
-        worker._signals.done.connect(self._on_covers_done)
+        worker._signals.done.connect(self._on_covers_done, type=Qt.ConnectionType.QueuedConnection)
         worker._signals.error.connect(lambda e: self._log.warning("Cover load failed: %s", e))
         self._pool.start(worker)
 
@@ -113,8 +114,8 @@ class WorkerManager(QObject):
     def identify(self, capture_service, recognizer):
         """Run capture + identify in background thread."""
         worker = _IdentifyWorker(capture_service, recognizer)
-        worker._signals.done.connect(self._on_identify_done)
-        worker._signals.error.connect(self.identify_error.emit)
+        worker._signals.done.connect(self._on_identify_done, type=Qt.ConnectionType.QueuedConnection)
+        worker._signals.error.connect(self.identify_error.emit, type=Qt.ConnectionType.QueuedConnection)
         self._pool.start(worker)
 
     @Slot(object)
@@ -122,16 +123,23 @@ class WorkerManager(QObject):
         self.identify_done.emit(result)
 
     def run_task(self, task_id: str, fn, *args, on_done=None, on_error=None, **kwargs):
-        """Run an arbitrary function in background. Connects optional on_done/on_error callbacks."""
-        worker = _TaskWorker(fn, *args, **kwargs)
-        cb_done = on_done
-        cb_err = on_error
-        worker._signals.done.connect(
-            lambda r, tid=task_id, cb=cb_done:
-                (self.task_done.emit(tid, r), cb(r) if cb else None))
-        worker._signals.error.connect(
-            lambda e, tid=task_id, cb=cb_err:
-                (self.task_error.emit(tid, e), cb(e) if cb else None))
+        """Run fn in background thread. Callbacks invoked on main thread via QTimer."""
+        from PySide6.QtCore import QTimer
+
+        def _done_wrapper(result):
+            self.task_done.emit(task_id, result)
+            if on_done:
+                QTimer.singleShot(0, lambda: on_done(result))
+
+        def _error_wrapper(error):
+            self.task_error.emit(task_id, error)
+            if on_error:
+                QTimer.singleShot(0, lambda: on_error(error))
+
+        worker = _TaskWorker(fn, done_callback=_done_wrapper,
+                             error_callback=_error_wrapper)
+        worker._args = args
+        worker._kwargs = kwargs
         self._pool.start(worker)
 
     def pending(self) -> int:
