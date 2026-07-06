@@ -167,72 +167,21 @@ def main():
     # Create all bridges
     all_bridges = factory.create_all()
 
-    # Register context properties
-    bridge_names = {
-        "appBridge": "app",
-        "navigationBridge": "navigation",
-        "commandBus": None,
-        "themeBridge": "theme",
-        "libraryBridge": "library",
-        "michiAiBridge": "michi_ai",
-        "metadataBridge": "metadata",
-        "mixBridge": "mix",
-        "playbackBridge": "playback",
-        "nowplayingBridge": "nowplaying",
-        "devicesBridge": "devices",
-        "playlistsBridge": "playlists",
-        "audioLabBridge": "audio_lab",
-        "settingsBridge": "settings",
-        "radioBridge": "radio",
-        "connectionsBridge": "connections",
-        "smartTaggingBridge": "smart_tagging",
-        "libraryDoctorBridge": "library_doctor",
-        "discLabBridge": "disc_lab",
-        "selectionContextBridge": "selection_context",
-        "homeAudioBridge": "home_audio",
-        "lyricsBridge": "lyrics",
-        "notificationBridge": "notification",
-        "routeRegistryBridge": "route_registry",
-        "appStateBridge": "app_state",
-        "diagnosticsBridge": "diagnostics",
-        "commandPaletteBridge": "command_palette",
-        "actionRegistry": "action_registry",
-        "globalSearchBridge": "global_search",
-        "coverProviderBridge": "cover_provider",
-        "jobBridge": "job_bridge",
-        "desktopBridge": "desktop",
-        "pageStateStore": "page_state",
-    }
+    from ui_qml_bridge.context_bindings import QML_CONTEXT_BINDINGS
 
-    for qml_name, bridge_key in bridge_names.items():
-        bridge = all_bridges.get(bridge_key) if bridge_key else None
+    for qml_name, bridge_key in QML_CONTEXT_BINDINGS.items():
+        bridge = all_bridges.get(bridge_key)
         if bridge_key == "eq":
             bridge = factory.get("eq")
         if bridge is not None:
             registrar.register(qml_name, bridge)
         else:
-            logger.debug("QML: Skipping context property '%s' (bridge not created)", qml_name)
+            logger.debug("QML: Skipping '%s' (bridge not created)", qml_name)
 
-    # eqBridge is optional
+    # eqBridge is optional (not in canonical bindings because it may be None)
     eq_bridge = factory.get("eq")
     if eq_bridge:
         registrar.register("eqBridge", eq_bridge)
-
-    # Register bridges that are created in factory
-    extra_bridges = {
-        "actionRegistry": "action_registry",
-        "coverProviderBridge": "cover_provider",
-        "jobBridge": "job_bridge",
-        "desktopBridge": "desktop",
-        "pageStateStore": "page_state",
-        "globalSearchBridge": "global_search",
-    }
-    for qml_name, bridge_key in extra_bridges.items():
-        b = all_bridges.get(bridge_key)
-        if b:
-            registrar.register(qml_name, b)
-        else:
-            logger.debug("QML: Skipping '%s' (not in factory)", qml_name)
 
     # Set service availability on app state bridge
     app_state = factory.get("app_state")

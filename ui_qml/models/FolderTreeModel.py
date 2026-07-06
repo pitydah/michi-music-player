@@ -1,85 +1,53 @@
-"""FolderTreeModel — lazy-loaded folder tree from LibraryDB."""
+"""FolderTreeModel — BasePagedListModel for folder browsing via QueryService."""
 from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Qt, QAbstractListModel, QModelIndex, Property, Signal
+from PySide6.QtCore import Qt
+
+from ui_qml.models.BasePagedListModel import BasePagedListModel
 
 
-class FolderTreeModel(QAbstractListModel):
-    dataChanged = Signal()
-    loadingChanged = Signal()
-
+class FolderTreeModel(BasePagedListModel):
     PathRole = Qt.UserRole + 1
     NameRole = Qt.UserRole + 2
     TrackCountRole = Qt.UserRole + 3
     IsExpandableRole = Qt.UserRole + 4
     ExpandedRole = Qt.UserRole + 5
 
-    def __init__(self, db=None, parent=None):
-        super().__init__(parent)
-        self._db = db
-        self._folders: list[dict[str, Any]] = []
-        self._loading = False
+    def __init__(self, query_service=None, query_executor=None, parent=None):
+        super().__init__(page_size=200, query_executor=query_executor, parent=parent)
+        self._qs = query_service
 
     def roleNames(self):
-        return {
-            self.PathRole: b"folderPath",
-            self.NameRole: b"folderName",
-            self.TrackCountRole: b"trackCount",
-            self.IsExpandableRole: b"isExpandable",
-            self.ExpandedRole: b"expanded",
-        }
-
-    def rowCount(self, parent=QModelIndex()):
-        return len(self._folders)
+        return {self.PathRole: b"folderPath", self.NameRole: b"folderName",
+                self.TrackCountRole: b"trackCount",
+                self.IsExpandableRole: b"isExpandable", self.ExpandedRole: b"expanded"}
 
     def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid() or index.row() >= len(self._folders):
+        if not index.isValid() or index.row() >= len(self._items):
             return None
-        item = self._folders[index.row()]
-        mapping = {
-            self.PathRole: "path",
-            self.NameRole: "name",
-            self.TrackCountRole: "track_count",
-            self.IsExpandableRole: "is_expandable",
-            self.ExpandedRole: "expanded",
-        }
+        item = self._items[index.row()]
+        mapping = {self.PathRole: "path", self.NameRole: "name",
+                   self.TrackCountRole: "track_count",
+                   self.IsExpandableRole: "is_expandable", self.ExpandedRole: "expanded"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")
         return None
 
-    @Property(int, notify=dataChanged)
-    def count(self):
-        return len(self._folders)
+    def refresh(self, parent_path: str = ""):
+        self._parent_path = parent_path
+        super().refresh(parent_path=parent_path)
 
-    @Property(bool, notify=loadingChanged)
-    def loading(self):
-        return self._loading
+    def _fetch_count(self, **kwargs) -> int:
+        if not self._qs:
+            return 0
+        parent_path = kwargs.get("parent_path", "")
+        return self._qs.count_folders(parent_path=parent_path)
 
-    def refresh(self):
-        self._loading = True
-        self.loadingChanged.emit()
-        folders = []
-        if self._db and hasattr(self._db, 'conn'):
-            try:
-                rows = self._db.conn.execute(
-                    "SELECT DISTINCT COALESCE(directory, ''), COUNT(*) as cnt "
-                    "FROM media_items WHERE deleted_at IS NULL AND COALESCE(directory, '') != '' "
-                    "GROUP BY directory ORDER BY directory LIMIT 500"
-                ).fetchall()
-                for r in rows:
-                    path = r[0]
-                    folders.append({
-                        "path": path, "name": path.rsplit("/", 1)[-1] if "/" in path else path,
-                        "track_count": r[1], "is_expandable": True, "expanded": False,
-                    })
-            except Exception:
-                pass
-        self.beginResetModel()
-        self._folders = folders
-        self.endResetModel()
-        self._loading = False
-        self.loadingChanged.emit()
-        self.dataChanged.emit()
+    def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
+        if not self._qs:
+            return []
+        parent_path = kwargs.get("parent_path", "")
+        return self._qs.fetch_folders(parent_path=parent_path, offset=offset, limit=limit)

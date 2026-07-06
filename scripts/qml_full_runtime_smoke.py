@@ -50,58 +50,23 @@ def main():
     check("BridgeFactory.create_all()", True)
 
     # Check for duplicates
-    check("No duplicate action_registry",
-          len([b for b in all_bridges.values() if hasattr(b, '_actions')]) <= 1)
+    duplicate_actions = len([b for b in all_bridges.values() if hasattr(b, '_actions')])
+    check("No duplicate action_registry", duplicate_actions <= 1,
+          f"found {duplicate_actions}")
 
-    # Register context properties
-    bridge_names = {
-        "appBridge": "app", "navigationBridge": "navigation",
-        "themeBridge": "theme", "libraryBridge": "library",
-        "playbackBridge": "playback", "nowplayingBridge": "nowplaying",
-        "mixBridge": "mix", "lyricsBridge": "lyrics",
-        "connectionsBridge": "connections", "homeAudioBridge": "home_audio",
-        "devicesBridge": "devices", "radioBridge": "radio",
-        "playlistsBridge": "playlists", "settingsBridge": "settings",
-        "eqBridge": "eq", "audioLabBridge": "audio_lab",
-        "metadataBridge": "metadata", "smartTaggingBridge": "smart_tagging",
-        "discLabBridge": "disc_lab", "libraryDoctorBridge": "library_doctor",
-        "michiAiBridge": "michi_ai", "notificationBridge": "notification",
-        "routeRegistryBridge": "route_registry", "appStateBridge": "app_state",
-        "diagnosticsBridge": "diagnostics",
-        "commandPaletteBridge": "command_palette",
-        "actionRegistry": "action_registry",
-    }
-    for qml_name, bridge_key in bridge_names.items():
+    # Register context properties from canonical bindings
+    from ui_qml_bridge.context_bindings import QML_CONTEXT_BINDINGS
+    for qml_name, bridge_key in QML_CONTEXT_BINDINGS.items():
         bridge = all_bridges.get(bridge_key)
         if bridge is not None:
             registrar.register(qml_name, bridge)
         else:
             print(f"  [WARN] Bridge '{bridge_key}' not created")
 
-    # Register extras
+    # eqBridge is optional
     eq_bridge = factory.get("eq")
     if eq_bridge:
         registrar.register("eqBridge", eq_bridge)
-
-    from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
-    gsb = GlobalSearchBridge(db=services.db, search_engine=services.search_engine)
-    registrar.register("globalSearchBridge", gsb)
-
-    from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
-    registrar.register("coverProviderBridge", CoverProviderBridge(db=services.db))
-
-    from ui_qml_bridge.job_bridge import JobBridge
-    registrar.register("jobBridge", JobBridge(
-        worker_manager=services.worker_manager,
-        db=services.db,
-        library_bridge=all_bridges.get("library"),
-    ))
-
-    from ui_qml_bridge.desktop_bridge import DesktopBridge
-    registrar.register("desktopBridge", DesktopBridge())
-
-    from ui_qml_bridge.page_state_store import PageStateStore
-    registrar.register("pageStateStore", PageStateStore())
 
     # Set service availability
     app_state = all_bridges.get("app_state")

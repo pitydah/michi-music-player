@@ -1,4 +1,4 @@
-"""TrackListModel — QAbstractListModel backed by LibraryQueryService via QueryExecutor."""
+"""TrackListModel — BasePagedListModel with 12+ roles via QueryService."""
 from __future__ import annotations
 
 from typing import Any
@@ -23,9 +23,8 @@ class TrackListModel(BasePagedListModel):
     CoverKeyRole = Qt.UserRole + 12
 
     def __init__(self, query_service=None, query_executor=None, parent=None):
-        super().__init__(page_size=250, parent=parent)
+        super().__init__(page_size=250, query_executor=query_executor, parent=parent)
         self._qs = query_service
-        self._qe = query_executor
         self._search = ""
         self._artist_filter = ""
         self._album_filter = ""
@@ -35,18 +34,12 @@ class TrackListModel(BasePagedListModel):
 
     def roleNames(self):
         return {
-            self.TrackIdRole: b"trackId",
-            self.TrackUidRole: b"trackUid",
-            self.TitleRole: b"title",
-            self.ArtistRole: b"artist",
-            self.AlbumRole: b"album",
-            self.AlbumKeyRole: b"albumKey",
-            self.DurationRole: b"duration",
-            self.FormatRole: b"format",
-            self.YearRole: b"year",
-            self.GenreRole: b"genre",
-            self.TrackNumberRole: b"trackNumber",
-            self.CoverKeyRole: b"coverKey",
+            self.TrackIdRole: b"trackId", self.TrackUidRole: b"trackUid",
+            self.TitleRole: b"title", self.ArtistRole: b"artist",
+            self.AlbumRole: b"album", self.AlbumKeyRole: b"albumKey",
+            self.DurationRole: b"duration", self.FormatRole: b"format",
+            self.YearRole: b"year", self.GenreRole: b"genre",
+            self.TrackNumberRole: b"trackNumber", self.CoverKeyRole: b"coverKey",
         }
 
     def data(self, index, role=Qt.DisplayRole):
@@ -54,18 +47,12 @@ class TrackListModel(BasePagedListModel):
             return None
         item = self._items[index.row()]
         mapping = {
-            self.TrackIdRole: "track_id",
-            self.TrackUidRole: "track_uid",
-            self.TitleRole: "title",
-            self.ArtistRole: "artist",
-            self.AlbumRole: "album",
-            self.AlbumKeyRole: "album_key",
-            self.DurationRole: "duration",
-            self.FormatRole: "ext",
-            self.YearRole: "year",
-            self.GenreRole: "genre",
-            self.TrackNumberRole: "track_number",
-            self.CoverKeyRole: "cover_key",
+            self.TrackIdRole: "track_id", self.TrackUidRole: "track_uid",
+            self.TitleRole: "title", self.ArtistRole: "artist",
+            self.AlbumRole: "album", self.AlbumKeyRole: "album_key",
+            self.DurationRole: "duration", self.FormatRole: "format",
+            self.YearRole: "year", self.GenreRole: "genre",
+            self.TrackNumberRole: "track_number", self.CoverKeyRole: "cover_key",
         }
         key = mapping.get(role, "")
         if key:
@@ -82,9 +69,8 @@ class TrackListModel(BasePagedListModel):
         self._fmt_filter = fmt
         self._sort = sort
         self._asc = asc
-        params = dict(search=search, artist=artist, album=album, fmt=fmt,
-                      sort=sort, asc=asc)
-        super().refresh(**params)
+        kw = dict(search=search, artist=artist, album=album, fmt=fmt, sort=sort, asc=asc)
+        super().refresh(**kw)
 
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
@@ -95,6 +81,5 @@ class TrackListModel(BasePagedListModel):
         if not self._qs:
             return []
         kw = dict(kwargs)
-        kw.pop("asc", None)
-        asc = kwargs.get("asc", True)
+        asc = kw.pop("asc", True)
         return self._qs.fetch_tracks(offset=offset, limit=limit, ascending=asc, **kw)

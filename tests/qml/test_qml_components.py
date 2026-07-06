@@ -897,8 +897,8 @@ class TestNowPlayingBarMigration:
         assert "palette:" not in content, "ShortcutLayer still shadows palette"
 
     def test_home_audio_bridge_registered(self):
-        content = (QML_DIR / ".." / "ui_qml_bridge" / "qml_main.py").read_text()
-        assert "homeAudioBridge" in content, "HomeAudioBridge not registered in qml_main.py"
+        bindings = (QML_DIR.parent / "ui_qml_bridge" / "context_bindings.py").read_text()
+        assert "homeAudioBridge" in bindings, "HomeAudioBridge not registered in context_bindings"
 
 
 class TestActionButtonNotPresent:

@@ -67,11 +67,18 @@ class BridgeFactory(QObject):
 
     def create_library_bridge(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        from ui_qml_bridge.query_executor import QueryExecutor
         if "library" not in self._bridges:
+            qs = LibraryQueryService(self._services.db) if self._services.db else None
+            qe = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
             self._bridges["library"] = LibraryBridge(
                 db=self._services.db,
                 search_engine=self._services.search_engine,
                 playback_ctrl=self._services.player_service,
+                query_service=qs,
+                query_executor=qe,
+                worker_manager=self._services.worker_manager,
             )
         self._register_capability("library", "db")
         return self._bridges["library"]
@@ -206,8 +213,10 @@ class BridgeFactory(QObject):
 
     def create_smart_tagging_bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
+        from ui_qml_bridge.library_query_service import LibraryQueryService
         if "smart_tagging" not in self._bridges:
-            br = SmartTaggingBridge()
+            qs = LibraryQueryService(self._services.db) if self._services.db else None
+            br = SmartTaggingBridge(query_service=qs)
             if self._services.smart_tagging_service:
                 br.set_service(self._services.smart_tagging_service)
             self._bridges["smart_tagging"] = br
@@ -332,6 +341,28 @@ class BridgeFactory(QObject):
             self._bridges["page_state"] = PageStateStore()
         return self._bridges["page_state"]
 
+    def create_queue_bridge(self):
+        from ui_qml_bridge.queue_bridge import QueueBridge
+        if "queue" not in self._bridges:
+            self._bridges["queue"] = QueueBridge(
+                player_service=self._services.player_service,
+            )
+        return self._bridges["queue"]
+
+    def create_history_bridge(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        if "history" not in self._bridges:
+            self._bridges["history"] = HistoryBridge(
+                db=self._services.db,
+            )
+        return self._bridges["history"]
+
+    def create_home_bridge(self):
+        from ui_qml_bridge.home_bridge import HomeBridge
+        if "home" not in self._bridges:
+            self._bridges["home"] = HomeBridge()
+        return self._bridges["home"]
+
     def create_all(self) -> dict[str, QObject]:
         """Create all bridges and return dict of name->bridge."""
         self.create_navigation_bridge()
@@ -366,6 +397,9 @@ class BridgeFactory(QObject):
         self.create_job_bridge()
         self.create_desktop_bridge()
         self.create_page_state_store()
+        self.create_queue_bridge()
+        self.create_history_bridge()
+        self.create_home_bridge()
         return self._bridges
 
     def __repr__(self) -> str:

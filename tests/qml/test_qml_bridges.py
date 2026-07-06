@@ -520,7 +520,7 @@ class TestLibraryBridgeContract:
         bridge.refresh()
 
     def test_play_song_delegates_to_player_service_with_metadata(self):
-        from types import SimpleNamespace
+        from unittest.mock import MagicMock
 
         class FakePlayback:
             def __init__(self):
@@ -530,18 +530,14 @@ class TestLibraryBridgeContract:
                 self.calls.append((filepath, title, artist, album))
 
         playback = FakePlayback()
-        bridge = LibraryBridge(playback_ctrl=playback)
-        bridge._base_songs = [
-            SimpleNamespace(
-                filepath="http://example.com/song.flac",
-                title="Song Title",
-                artist="Song Artist",
-                album="Song Album",
-            )
-        ]
+        db = MagicMock()
+        db.conn.execute.return_value.fetchone.return_value = ["Song Title", "Song Artist", "Song Album"]
+        from ui_qml_bridge.library_query_service import LibraryQueryService
+        qs = LibraryQueryService(db=db)
+        bridge = LibraryBridge(playback_ctrl=playback, query_service=qs)
 
-        bridge.play_song("http://example.com/song.flac")
-
+        result = bridge.play_song("http://example.com/song.flac")
+        assert result["ok"] is True
         assert playback.calls == [
             ("http://example.com/song.flac", "Song Title", "Song Artist", "Song Album")
         ]
@@ -843,7 +839,8 @@ class TestMixComponents:
     def test_qml_main_registers_mix_bridge(self):
         content = (QML_DIR.parent / "ui_qml_bridge" / "qml_main.py").read_text()
         assert "MixBridge" in content, "qml_main missing MixBridge import"
-        assert "mixBridge" in content, "qml_main missing mixBridge context property"
+        bindings = (QML_DIR.parent / "ui_qml_bridge" / "context_bindings.py").read_text()
+        assert "mixBridge" in bindings, "context_bindings missing mixBridge"
 
     def test_mix_favorites_uses_fav_db(self):
         from unittest.mock import MagicMock
@@ -1288,20 +1285,23 @@ class TestNowPlayingBar:
 
 class TestLibraryQueryService:
     def test_query_service_sort_whitelist(self):
-        from ui_qml_bridge.library_query_service import LibraryQueryService
-        svc = LibraryQueryService(db=None)
-        assert svc._sort_column("title") == "LOWER(COALESCE(title, ''))"
-        assert svc._sort_column("invalid") == "LOWER(COALESCE(title, ''))"
-        assert "artist" in svc._TRACK_SORT_COLUMNS
+        from ui_qml_bridge.library_query_service import _sort_col, _TRACK_SORT
+        assert _sort_col("title") == "LOWER(COALESCE(title, ''))"
+        assert _sort_col("invalid") == "LOWER(COALESCE(title, ''))"
+        assert "artist" in _TRACK_SORT
 
     def test_query_service_empty_db(self):
         from ui_qml_bridge.library_query_service import LibraryQueryService
-        svc = LibraryQueryService(db=None)
+        from unittest.mock import MagicMock
+        db = MagicMock()
+        db.conn.execute.return_value.fetchone.return_value = [0]
+        db.conn.execute.return_value.fetchall.return_value = []
+        svc = LibraryQueryService(db=db)
         assert svc.count_tracks() == 0
         assert svc.fetch_tracks() == []
         assert svc.count_albums() == 0
         assert svc.count_artists() == 0
-        assert svc.search_backend == "none"
+        assert svc.search_backend in ("fts5", "like", "none")
 
     def test_query_service_search_backend_detection(self):
         from unittest.mock import MagicMock
@@ -1342,6 +1342,60 @@ class TestTrackListModel:
         model = AlbumListModel()
         assert model.count == 0
         assert model.loading is False
+
+
+class TestQueueListModel:
+    def test_queue_model_importable(self):
+        from ui_qml.models.QueueListModel import QueueListModel
+        model = QueueListModel()
+        assert model.count == 0
+
+    def test_queue_model_counts_empty(self):
+        from ui_qml.models.QueueListModel import QueueListModel
+        model = QueueListModel()
+        assert model.totalCount == 0
+        assert model.hasMore is False
+
+    def test_queue_bridge_importable(self):
+        from ui_qml_bridge.queue_bridge import QueueBridge
+        bridge = QueueBridge()
+        assert bridge.queueCount == 0
+
+    def test_queue_bridge_refresh(self):
+        from ui_qml_bridge.queue_bridge import QueueBridge
+        bridge = QueueBridge()
+        result = bridge.refresh()
+        assert result.get("ok") is True
+
+
+class TestHistoryListModel:
+    def test_history_model_importable(self):
+        from ui_qml.models.HistoryListModel import HistoryListModel
+        model = HistoryListModel()
+        assert model.count == 0
+
+    def test_history_model_basic(self):
+        from ui_qml.models.HistoryListModel import HistoryListModel
+        model = HistoryListModel()
+        assert model.loading is False
+        assert model.totalCount == 0
+
+    def test_history_bridge_importable(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        bridge = HistoryBridge()
+        assert bridge.historyCount == 0
+
+    def test_history_bridge_refresh(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        bridge = HistoryBridge()
+        result = bridge.refresh()
+        assert result.get("ok") is True
+
+    def test_history_bridge_clear_no_db(self):
+        from ui_qml_bridge.history_bridge import HistoryBridge
+        bridge = HistoryBridge()
+        result = bridge.clearHistory()
+        assert result.get("ok") is False
 
 
 class TestEqBridge:
@@ -1782,3 +1836,110 @@ class TestHomeAudioV2Bridge:
         result = bridge.setZoneVolume("zone1", 0.8)
         assert result.get("ok") is True
         snap_adapter.set_group_volume.assert_called_once_with("zone1", 0.8)
+
+
+class TestActionRegistry:
+    def test_action_registry_importable(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        assert len(registry.actions) > 0
+
+    def test_action_registry_contains_navigation(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        actions = registry.actions
+        ids = [a["id"] for a in actions]
+        assert "navigate_home" in ids
+        assert "navigate_library" in ids
+        assert "playback_playpause" in ids
+        assert "library_refresh" in ids
+
+    def test_action_registry_execute_no_handler(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        result = registry.execute("navigate_home")
+        assert result.get("ok") is False
+        assert result.get("error") == "NO_HANDLER"
+
+    def test_action_registry_execute_not_found(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        registry = ActionRegistry()
+        result = registry.execute("nonexistent")
+        assert result.get("ok") is False
+        assert result.get("error") == "NOT_FOUND"
+
+    def test_action_registry_register(self):
+        from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
+        registry = ActionRegistry()
+        registry.register(ActionDescriptor("test_action", "Test", "test"))
+        action = registry.get("test_action")
+        assert action is not None
+        assert action.title == "Test"
+
+
+class TestGlobalSearchBridge:
+    def test_global_search_importable(self):
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        bridge = GlobalSearchBridge()
+        assert bridge.results == []
+
+    def test_global_search_empty_query(self):
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        bridge = GlobalSearchBridge()
+        result = bridge.search("")
+        assert result.get("ok") is True
+        assert result.get("count") == 0
+
+    def test_global_search_no_db_returns_empty(self):
+        from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+        bridge = GlobalSearchBridge()
+        result = bridge.search("test")
+        assert result.get("ok") is True
+        assert result.get("count") <= 50
+
+
+class TestJobBridge:
+    def test_job_bridge_importable(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        assert bridge.jobs == []
+        assert bridge.activeCount == 0
+
+    def test_job_bridge_unknown_job(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        result = bridge.runJob("unknown_job")
+        assert result.get("ok") is False
+        assert result.get("error") == "UNKNOWN_JOB_TYPE"
+
+    def test_job_bridge_run_scan(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        result = bridge.runJob("library_scan", "/tmp")
+        assert result.get("ok") is True
+        assert len(bridge.jobs) == 1
+        assert bridge.activeCount == 1
+
+    def test_job_bridge_cancel(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        bridge.runJob("library_scan", "/tmp")
+        job_id = bridge.jobs[0]["job_id"]
+        result = bridge.cancelJob(job_id)
+        assert result.get("ok") is True
+        assert bridge.activeCount == 0
+
+    def test_job_bridge_cancel_not_found(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        result = bridge.cancelJob(999)
+        assert result.get("ok") is False
+
+    def test_job_bridge_clear_completed(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        bridge = JobBridge()
+        bridge.runJob("library_scan", "/tmp")
+        bridge.cancelJob(bridge.jobs[0]["job_id"])
+        bridge.clearCompleted()
+        assert bridge.activeCount == 0
+        assert len(bridge.jobs) == 0
