@@ -80,7 +80,7 @@ def _populate(conn, count=5000):
     return total
 
 
-def _process_events_until(condition, timeout=15):
+def _process_events_until(condition, timeout=8):
     deadline = time.time() + timeout
     while time.time() < deadline:
         QCoreApplication.processEvents()
@@ -90,6 +90,7 @@ def _process_events_until(condition, timeout=15):
     return False
 
 
+@pytest.mark.timeout(30)
 class TestWave12AsyncProductionFlow:
     """Real async flow with WorkerManager, QueryExecutor, 5000 tracks."""
 
