@@ -12,13 +12,15 @@ class LibraryBridge(QObject):
     dataChanged = Signal()
 
     def __init__(self, db=None, search_engine=None, playback_ctrl=None,
-                 query_service=None, query_executor=None, worker_manager=None, parent=None):
+                 query_service=None, query_executor=None, worker_manager=None,
+                 job_bridge=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._search_engine = search_engine
         self._playback_ctrl = playback_ctrl
         self._query_svc = query_service
         self._qe = query_executor
+        self._job_bridge = job_bridge
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -628,19 +630,15 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "EMPTY_PATH"}
         if not Path(folder_path).is_dir():
             return {"ok": False, "error": "DIR_NOT_FOUND"}
-        try:
-            from ui_qml_bridge.job_bridge import JobBridge
-            jb = JobBridge(db=self._db, library_bridge=self)
-            result = jb.runJob("library_scan", folder_path)
-            if result.get("ok"):
-                from core.library_sources_service import LibrarySourcesService
-                src_svc = LibrarySourcesService(db=self._db)
-                src_svc.add(folder_path)
-            return {"ok": True, "path": folder_path, "job": True}
-        except Exception as e:
-            import logging as _lg
-            _lg.getLogger("michi.qml.addfolder").error("addFolder failed: %s", e, exc_info=True)
-            return {"ok": False, "error": str(e)}
+        jb = self._job_bridge
+        if not jb:
+            return {"ok": False, "error": "NO_JOB_SERVICE"}
+        result = jb.runJob("library_scan", folder_path)
+        if result.get("ok") and self._db:
+            from core.library_sources_service import LibrarySourcesService
+            src_svc = LibrarySourcesService(db=self._db)
+            src_svc.add(folder_path)
+        return {"ok": True, "path": folder_path, "job": True}
 
     @Slot(result=str)
     def getMusicFolder(self):

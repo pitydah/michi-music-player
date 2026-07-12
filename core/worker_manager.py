@@ -68,6 +68,14 @@ class TaskContext:
             self._progress_cb(percent, message)
 
 
+_execution_counter = 0
+
+def _next_execution_id() -> int:
+    global _execution_counter
+    _execution_counter += 1
+    return _execution_counter
+
+
 class TaskHandle:
     TASK_QUEUED = "queued"
     TASK_RUNNING = "running"
@@ -78,6 +86,7 @@ class TaskHandle:
 
     def __init__(self, task_id: str, owner: str = ""):
         self.task_id = task_id
+        self.execution_id = _next_execution_id()
         self.owner = owner
         self.state = self.TASK_QUEUED
         self.token = CancellationToken()
@@ -243,11 +252,16 @@ class WorkerManager(QObject):
         with self._lock:
             if task_id in self._handles:
                 old = self._handles[task_id]
-                if old.state in (TaskHandle.TASK_QUEUED, TaskHandle.TASK_RUNNING):
-                    old.cancel()
+                if old.state in (TaskHandle.TASK_QUEUED, TaskHandle.TASK_RUNNING,
+                                 TaskHandle.TASK_CANCEL_REQUESTED):
+                    handle.state = TaskHandle.TASK_FAILED
+                    handle.error_code = ERR_DUPLICATE
+                    handle.finished_at = time.time()
+                    return handle
             self._handles[task_id] = handle
             self._prune_locked()
 
+        self.taskCancelled.connect(self._on_cancelled_signal, type=Qt.ConnectionType.QueuedConnection)
         self.taskQueued.emit(task_id)
         self.taskStateChanged.emit(task_id, TaskHandle.TASK_QUEUED)
 
@@ -267,10 +281,15 @@ class WorkerManager(QObject):
                 h = self._handles.get(task_id)
                 if not h or h.state == TaskHandle.TASK_CANCELLED:
                     return
+                if h.execution_id != handle.execution_id:
+                    return
                 h.state = TaskHandle.TASK_COMPLETED
                 h.finished_at = time.time()
                 h.result = result
-            self.task_done.disconnect(_on_task_done)
+            with contextlib.suppress(TypeError):
+                self.task_done.disconnect(_on_task_done)
+            with contextlib.suppress(TypeError):
+                self.task_error.disconnect(_on_task_error)
             self.taskCompleted.emit(task_id, result)
             self.taskStateChanged.emit(task_id, TaskHandle.TASK_COMPLETED)
             self._prune()
@@ -284,37 +303,21 @@ class WorkerManager(QObject):
                 h = self._handles.get(task_id)
                 if not h or h.state == TaskHandle.TASK_CANCELLED:
                     return
+                if h.execution_id != handle.execution_id:
+                    return
                 h.state = TaskHandle.TASK_FAILED
                 h.finished_at = time.time()
                 h.error_code = code
                 h.message = error
-            self.task_error.disconnect(_on_task_error)
+            with contextlib.suppress(TypeError):
+                self.task_done.disconnect(_on_task_done)
+            with contextlib.suppress(TypeError):
+                self.task_error.disconnect(_on_task_error)
             self.taskFailed.emit(task_id, code, error)
             self.taskStateChanged.emit(task_id, TaskHandle.TASK_FAILED)
             self._prune()
             if on_error:
                 on_error(code, error)
-
-        def _on_task_cancelled(tid):
-            if tid != task_id:
-                return
-            with self._lock:
-                h = self._handles.get(task_id)
-                if not h:
-                    return
-                h.state = TaskHandle.TASK_CANCELLED
-                h.finished_at = time.time()
-                h.error_code = ERR_CANCELLED
-            if hasattr(self, 'task_done'):
-                with contextlib.suppress(TypeError):
-                    self.task_done.disconnect(_on_task_done)
-                with contextlib.suppress(TypeError):
-                    self.task_error.disconnect(_on_task_error)
-            self.taskCancelled.emit(task_id)
-            self.taskStateChanged.emit(task_id, TaskHandle.TASK_CANCELLED)
-            self._prune()
-            if on_cancelled:
-                on_cancelled()
 
         self.task_done.connect(_on_task_done, type=Qt.ConnectionType.QueuedConnection)
         self.task_error.connect(_on_task_error, type=Qt.ConnectionType.QueuedConnection)
@@ -325,17 +328,16 @@ class WorkerManager(QObject):
         def _error_wrapper(error, code=ERR_FAILED):
             self.task_error.emit(task_id, error, code)
 
-        def _cancelled_wrapper():
-            _on_task_cancelled(task_id)
-
         worker = _TaskWorker(
             _run_fn, token=token,
             done_cb=_done_wrapper,
             error_cb=_error_wrapper,
-            cancelled_cb=_cancelled_wrapper,
+            cancelled_cb=lambda: self.taskCancelled.emit(task_id),
         )
         handle.state = TaskHandle.TASK_RUNNING
         handle.started_at = time.time()
+        if on_cancelled:
+            handle._on_cancelled_cb = [on_cancelled]
         self.taskStarted.emit(task_id)
         self.taskStateChanged.emit(task_id, TaskHandle.TASK_RUNNING)
         self._pool.start(worker)
@@ -404,6 +406,27 @@ class WorkerManager(QObject):
                               self._pool.activeThreadCount(), timeout_ms)
         with self._lock:
             self._handles.clear()
+
+    @Slot(str)
+    def _on_cancelled_signal(self, task_id: str):
+        with self._lock:
+            h = self._handles.get(task_id)
+            if not h or h.state == TaskHandle.TASK_CANCELLED:
+                return
+            h.state = TaskHandle.TASK_CANCELLED
+            h.finished_at = time.time()
+            h.error_code = ERR_CANCELLED
+        self.taskStateChanged.emit(task_id, TaskHandle.TASK_CANCELLED)
+        self._prune()
+        handle = self.get_task(task_id)
+        if handle:
+            callbacks = getattr(handle, '_on_cancelled_cb', None)
+            if callbacks:
+                for cb in callbacks:
+                    try:
+                        cb()
+                    except Exception:
+                        logger.exception("on_cancelled callback failed")
 
     def _on_progress(self, task_id: str, percent: float, msg: str, cb: Callable):
         self.taskProgress.emit(task_id, percent, msg)

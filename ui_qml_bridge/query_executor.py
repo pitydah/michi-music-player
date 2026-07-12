@@ -1,7 +1,6 @@
 """QueryExecutor — async DB query runner using WorkerManager TaskHandle.
 
-No deadlocks: all signal emission and callbacks happen outside self._lock.
-State is copied under lock, emitted outside.
+No deadlocks. Terminal cancellation semantics. Does not own WorkerManager.
 """
 from __future__ import annotations
 
@@ -33,8 +32,6 @@ ERR_SQLITE_BUSY = "SQLITE_BUSY"
 ERR_SQLITE_LOCKED = "SQLITE_LOCKED"
 ERR_SQLITE_READONLY = "SQLITE_READONLY"
 ERR_SQLITE_CORRUPT = "SQLITE_CORRUPT"
-ERR_SQLITE_IO = "SQLITE_IO_ERROR"
-ERR_SQLITE_THREAD = "SQLITE_THREAD_ERROR"
 ERR_DATABASE_UNAVAILABLE = "DATABASE_UNAVAILABLE"
 ERR_SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
 ERR_INVALID_QUERY = "INVALID_QUERY"
@@ -49,15 +46,20 @@ def _next_id() -> int:
         return _request_counter
 
 
+def _terminal_failure(request_id: int, code: str) -> dict:
+    return {"request_id": request_id, "ok": False, "error": code, "message": ""}
+
+
 class QueryExecutor(QObject):
     success = Signal(int, object)
     failure = Signal(int, str, str)
     requestStateChanged = Signal(int, str)
     requestFinished = Signal(int)
 
-    def __init__(self, worker_manager=None, parent=None):
+    def __init__(self, worker_manager=None, parent=None, owns_worker_manager=False):
         super().__init__(parent)
         self._wm = worker_manager
+        self._owns_wm = owns_worker_manager
         self._requests: dict[int, dict] = {}
         self._generations: dict[str, int] = {}
         self._lock = threading.Lock()
@@ -76,7 +78,22 @@ class QueryExecutor(QObject):
 
         with self._lock:
             if self._shutdown:
-                return 0
+                req = {
+                    "request_id": request_id, "owner": owner,
+                    "generation": 0, "state": STATE_SHUTDOWN,
+                    "context": request_context or {},
+                }
+                self._requests[request_id] = req
+                self._prune_locked()
+        if self._shutdown:
+            self.failure.emit(request_id, ERR_QUERY_SHUTDOWN, "QueryExecutor en shutdown")
+            self.requestStateChanged.emit(request_id, STATE_SHUTDOWN)
+            self.requestFinished.emit(request_id)
+            if on_error:
+                on_error(ERR_QUERY_SHUTDOWN, "QueryExecutor en shutdown")
+            return request_id
+
+        with self._lock:
             gen = self._generations.get(owner, 0) + 1
             self._generations[owner] = gen
             if supersede:
@@ -85,7 +102,7 @@ class QueryExecutor(QObject):
                          and r["state"] in (STATE_QUEUED, STATE_RUNNING)]
                 for rid in stale:
                     r = self._requests[rid]
-                    r["state"] = STATE_CANCELLED
+                    r["state"] = STATE_CANCEL_REQUESTED
                     if self._wm and hasattr(self._wm, 'cancel_task'):
                         self._wm.cancel_task(f"qe_{rid}")
             self._requests[request_id] = {
@@ -101,7 +118,7 @@ class QueryExecutor(QObject):
         def _run():
             with self._lock:
                 req = self._requests.get(request_id)
-                if not req or req["state"] in (STATE_CANCELLED, STATE_SHUTDOWN):
+                if not req or req["state"] in (STATE_CANCELLED, STATE_CANCEL_REQUESTED, STATE_SHUTDOWN):
                     return {"ok": False, "error": ERR_QUERY_CANCELLED}
                 req["state"] = STATE_RUNNING
             try:
@@ -115,6 +132,7 @@ class QueryExecutor(QObject):
         def _on_done(task_result):
             if self._shutdown:
                 return
+            req = None
             state = STATE_COMPLETED
             code = ""
             msg = ""
@@ -132,7 +150,7 @@ class QueryExecutor(QObject):
                     msg = "Resultado obsoleto"
                 elif not task_result or not task_result.get("ok"):
                     code = task_result.get("error", ERR_QUERY_FAILED) if task_result else ERR_QUERY_CANCELLED
-                    msg = task_result.get("message", "Error de consulta") if task_result else "Cancelado"
+                    msg = task_result.get("message", "") if task_result else "Cancelado"
                     req["state"] = STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED
                 else:
                     req["state"] = STATE_COMPLETED
@@ -148,8 +166,8 @@ class QueryExecutor(QObject):
                 return
             if not task_result or not task_result.get("ok"):
                 self.failure.emit(request_id, code, msg)
-                self.requestStateChanged.emit(request_id,
-                                              STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED)
+                final_state = STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED
+                self.requestStateChanged.emit(request_id, final_state)
                 self.requestFinished.emit(request_id)
                 if code == ERR_QUERY_CANCELLED and on_cancelled:
                     on_cancelled()
@@ -172,6 +190,7 @@ class QueryExecutor(QObject):
             self._wm.run_task(
                 f"qe_{request_id}", _run,
                 on_done=_on_done,
+                on_cancelled=on_cancelled,
                 cancellable=cancellable,
                 owner=owner,
             )
@@ -226,7 +245,7 @@ class QueryExecutor(QObject):
         with self._lock:
             return [rid for rid, r in self._requests.items()
                     if (not owner or r.get("owner") == owner)
-                    and r["state"] in (STATE_QUEUED, STATE_RUNNING)]
+                    and r["state"] in (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED)]
 
     def completed_requests(self, owner: str = "") -> list[int]:
         with self._lock:
@@ -238,10 +257,10 @@ class QueryExecutor(QObject):
         self._shutdown = True
         with self._lock:
             targets = [rid for rid, r in self._requests.items()
-                       if r["state"] in (STATE_QUEUED, STATE_RUNNING)]
+                       if r["state"] in (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED)]
         for rid in targets:
             self.cancel(rid)
-        if self._wm and hasattr(self._wm, 'shutdown'):
+        if self._owns_wm and self._wm and hasattr(self._wm, 'shutdown'):
             self._wm.shutdown(timeout_ms)
 
     def prune_completed(self):
@@ -254,7 +273,7 @@ class QueryExecutor(QObject):
         while time.time() < deadline:
             with self._lock:
                 active = [r for r in self._requests.values()
-                          if r["state"] in (STATE_QUEUED, STATE_RUNNING)]
+                          if r["state"] in (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED)]
                 if not active:
                     return True
             time.sleep(0.05)
@@ -270,7 +289,7 @@ class QueryExecutor(QObject):
         if len(self._requests) > _MAX_REQUESTS:
             completed = [(rid, r) for rid, r in self._requests.items()
                          if r["state"] in (STATE_COMPLETED, STATE_CANCELLED,
-                                           STATE_FAILED, STATE_STALE)]
+                                           STATE_FAILED, STATE_STALE, STATE_SHUTDOWN)]
             to_remove = len(completed) - _MAX_REQUESTS // 2
             for rid, _ in completed[:to_remove]:
                 del self._requests[rid]
