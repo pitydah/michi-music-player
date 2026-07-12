@@ -218,10 +218,10 @@ class BridgeFactory(QObject):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         from ui_qml_bridge.library_query_service import LibraryQueryService
         if "smart_tagging" not in self._bridges:
-            qs = LibraryQueryService(self._services.db) if self._services.db else None
-            br = SmartTaggingBridge(query_service=qs)
-            if self._services.smart_tagging_service:
-                br.set_service(self._services.smart_tagging_service)
+            qs = LibraryQueryService(self._services.db, db_path=getattr(self._services.db, 'db_path', '')) if self._services.db else None
+            br = SmartTaggingBridge(service=self._services.smart_tagging_service,
+                                    worker_manager=self._services.worker_manager,
+                                    query_service=qs)
             self._bridges["smart_tagging"] = br
         return self._bridges["smart_tagging"]
 

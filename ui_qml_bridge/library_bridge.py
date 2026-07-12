@@ -629,18 +629,14 @@ class LibraryBridge(QObject):
         if not Path(folder_path).is_dir():
             return {"ok": False, "error": "DIR_NOT_FOUND"}
         try:
-            from library.indexer import Indexer
-            if not self._db:
-                return {"ok": False, "error": "NO_DATABASE"}
-            import logging as _lg
-            _log = _lg.getLogger("michi.qml.addfolder")
-            _log.info("Indexing: %s", folder_path)
-            worker = Indexer(self._db, folder_path)
-            worker.run()
-            if hasattr(self._db, 'conn') and self._db.conn:
-                self._db.conn.commit()
-            self.refresh()
-            return {"ok": True, "path": folder_path}
+            from ui_qml_bridge.job_bridge import JobBridge
+            jb = JobBridge(db=self._db, library_bridge=self)
+            result = jb.runJob("library_scan", folder_path)
+            if result.get("ok"):
+                from core.library_sources_service import LibrarySourcesService
+                src_svc = LibrarySourcesService(db=self._db)
+                src_svc.add(folder_path)
+            return {"ok": True, "path": folder_path, "job": True}
         except Exception as e:
             import logging as _lg
             _lg.getLogger("michi.qml.addfolder").error("addFolder failed: %s", e, exc_info=True)
@@ -680,18 +676,11 @@ class LibraryBridge(QObject):
         if not p.exists():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         try:
-            from core.file_actions import FileActions
-            from core.paths import database_path
-            db_path = database_path()
-            actions = FileActions(db_path=db_path)
-            if p.is_dir():
-                actions.scan_path(path)
-                self.refresh()
-                return {"ok": True, "type": "folder", "path": path}
-            parent = str(p.parent)
-            actions.scan_path(parent)
-            self.refresh()
-            return {"ok": True, "type": "file", "path": path, "parent": parent}
+            from ui_qml_bridge.job_bridge import JobBridge
+            jb = JobBridge(db=self._db, library_bridge=self)
+            scan_path = path if p.is_dir() else str(p.parent)
+            jb.runJob("library_scan", scan_path)
+            return {"ok": True, "type": "folder" if p.is_dir() else "file", "path": path, "job": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

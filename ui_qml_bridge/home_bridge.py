@@ -12,12 +12,13 @@ class HomeBridge(QObject):
     snapshotChanged = Signal()
 
     def __init__(self, db=None, player_service=None, library_bridge=None,
-                 library_sources_service=None, parent=None):
+                 library_sources_service=None, job_bridge=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._player = player_service
         self._lib = library_bridge
         self._src_svc = library_sources_service
+        self._job_bridge = job_bridge
         self._albums = 0
         self._artists = 0
         self._tracks = 0
@@ -129,9 +130,8 @@ class HomeBridge(QObject):
 
     def _load_jobs(self):
         try:
-            jb = self._bridges.get("job_bridge") if hasattr(self, '_bridges') else None
-            if jb:
-                self._active_jobs = getattr(jb, 'activeCount', 0)
+            if self._job_bridge:
+                self._active_jobs = getattr(self._job_bridge, 'activeCount', 0)
                 return
         except Exception:
             pass
