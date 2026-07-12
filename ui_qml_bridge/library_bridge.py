@@ -81,7 +81,7 @@ class LibraryBridge(QObject):
     @Property("QVariantList", notify=dataChanged)
     def songs(self):
         """DEPRECATED: QML should use trackModel directly."""
-        return self.getSongsPage(0, 200)
+        return []
 
     @Property("QVariantList", notify=dataChanged)
     def albums(self):
@@ -339,6 +339,90 @@ class LibraryBridge(QObject):
             return {"ok": True, "title": title, "artist": artist, "album": album}
         except Exception as e:
             return {"ok": False, "error": f"PLAYBACK_ERROR: {e}"}
+
+    @Slot(int, result=dict)
+    def enqueueTrackById(self, track_id: int):
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        try:
+            track = self._query_svc.fetch_track_internal(track_id)
+            if not track or not track.get("filepath"):
+                return {"ok": False, "error": "NOT_FOUND"}
+            return self.enqueueSong(track["filepath"])
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, result=dict)
+    def playNextTrackById(self, track_id: int):
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        try:
+            track = self._query_svc.fetch_track_internal(track_id)
+            if not track or not track.get("filepath"):
+                return {"ok": False, "error": "NOT_FOUND"}
+            if not self._playback_ctrl or not hasattr(self._playback_ctrl, 'enqueue_next'):
+                return {"ok": False, "error": "UNSUPPORTED"}
+            self._playback_ctrl.enqueue_next(track["filepath"])
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, int, result=dict)
+    def addTrackToPlaylistById(self, track_id: int, playlist_id: int):
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        try:
+            track = self._query_svc.fetch_track_internal(track_id)
+            if not track or not track.get("filepath"):
+                return {"ok": False, "error": "NOT_FOUND"}
+            from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+            pb = PlaylistsBridge(db=self._db)
+            return pb.addTrackToPlaylist(playlist_id, filepath=track["filepath"])
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, result=dict)
+    def revealTrackById(self, track_id: int):
+        if not self._query_svc:
+            return {"ok": False, "error": "NO_QUERY_SERVICE"}
+        try:
+            track = self._query_svc.fetch_track_internal(track_id)
+            if not track or not track.get("filepath"):
+                return {"ok": False, "error": "NOT_FOUND"}
+            parent = str(Path(track["filepath"]).parent)
+            import subprocess
+            import os
+            if os.name == "nt":
+                subprocess.Popen(["explorer", parent])
+            else:
+                subprocess.Popen(["xdg-open", parent])
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(int, result=dict)
+    def toggleFavoriteById(self, track_id: int):
+        if not self._query_svc or not self._db:
+            return {"ok": False, "error": "NO_DB"}
+        try:
+            track = self._query_svc.fetch_track_internal(track_id)
+            if not track or not track.get("filepath"):
+                return {"ok": False, "error": "NOT_FOUND"}
+            fp = track["filepath"]
+            row = self._db.conn.execute(
+                "SELECT 1 FROM favorites WHERE track_id=?", (fp,)
+            ).fetchone()
+            if row:
+                self._db.conn.execute("DELETE FROM favorites WHERE track_id=?", (fp,))
+                fav = False
+            else:
+                self._db.conn.execute(
+                    "INSERT OR IGNORE INTO favorites (track_id) VALUES (?)", (fp,))
+                fav = True
+            self._db.conn.commit()
+            return {"ok": True, "favorite": fav}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
     def enqueueSong(self, filepath: str):

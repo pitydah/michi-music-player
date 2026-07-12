@@ -1,5 +1,4 @@
 """RouteRegistry — single source of truth for QML routes."""
-
 ROUTES: dict[str, dict] = {
     "home": {"title": "Inicio", "source": "../pages/home/HomePage.qml", "category": "core", "status": "functional"},
     "library": {"title": "Biblioteca", "source": "../pages/library/LibraryPage.qml", "category": "core", "status": "functional"},
@@ -25,5 +24,9 @@ ROUTES: dict[str, dict] = {
     "lyrics": {"title": "Letra", "source": "../pages/LyricsPage.qml", "category": "tools", "status": "functional"},
     "album_detail": {"title": "Álbum", "source": "../pages/library/AlbumDetailPage.qml", "category": "detail", "status": "experimental"},
     "artist_detail": {"title": "Artista", "source": "../pages/library/ArtistDetailPage.qml", "category": "detail", "status": "experimental"},
+    "queue": {"title": "Cola", "source": "../pages/queue/QueuePage.qml", "category": "core", "status": "new"},
+    "history": {"title": "Historial", "source": "../pages/history/HistoryPage.qml", "category": "core", "status": "new"},
+    "jobs": {"title": "Trabajos", "source": "../pages/jobs/JobsPage.qml", "category": "core", "status": "new"},
+    "library_sources": {"title": "Fuentes de biblioteca", "source": "../pages/settings/LibrarySourcesPage.qml", "category": "settings", "status": "functional"},
     "placeholder": {"title": "Sección en migración", "source": "../pages/PlaceholderPage.qml", "category": "system", "status": "placeholder"},
 }
