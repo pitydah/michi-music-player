@@ -53,11 +53,13 @@
           "test_library_query_service",
           "test_library_refresh_coordinator",
           "test_library_refresh_does_not_load_full_table",
+          "test_library_sources_add_remove",
           "test_library_sources_bridge",
           "test_library_sources_bridge_add_source",
           "test_library_sources_bridge_importable",
           "test_library_sources_bridge_refresh",
           "test_library_sources_bridge_remove_missing",
+          "test_library_sources_list",
           "test_library_sources_service",
           "test_library_sources_service_add_nonexistent",
           "test_library_sources_service_add_remove",
@@ -139,7 +141,11 @@
         "primary_action": true,
         "error_contract": true,
         "write": true,
-        "unit_tests": [],
+        "unit_tests": [
+          "test_queue_bridge_default",
+          "test_queue_save_as_playlist",
+          "test_track_action_enqueue_by_id"
+        ],
         "integration_tests": [],
         "manual_test": "",
         "physical_test": "",
@@ -303,7 +309,9 @@
         "unit_tests": [
           "test_eq_apply_preset_no_player",
           "test_eq_importable",
-          "test_eq_toggle_bypass_no_player"
+          "test_eq_toggle_bypass_no_player",
+          "test_paged_active_request_resets",
+          "test_real_flow_cancel_and_requery"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -388,8 +396,10 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
+          "test_smart_tagging_bridge_default",
           "test_smart_tagging_importable",
-          "test_smart_tagging_scan_no_service"
+          "test_smart_tagging_scan_no_service",
+          "test_smart_tagging_scan_track"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -441,8 +451,14 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
+          "test_library_bridge_default_state",
+          "test_library_bridge_setsort",
           "test_library_doctor_has_refresh",
-          "test_library_doctor_importable"
+          "test_library_doctor_importable",
+          "test_library_sources_add_remove",
+          "test_library_sources_bridge_add_source",
+          "test_library_sources_list",
+          "test_library_sources_service_importable"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -522,7 +538,9 @@
         "write": true,
         "unit_tests": [
           "test_home_audio_bridge",
-          "test_home_audio_v2_bridge"
+          "test_home_audio_v2_bridge",
+          "test_home_bridge_default",
+          "test_home_bridge_refresh"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -735,6 +753,7 @@
         "write": true,
         "unit_tests": [
           "test_playlists_bridge_clear",
+          "test_playlists_bridge_default",
           "test_playlists_bridge_duplicate",
           "test_playlists_bridge_m3u_import_not_found",
           "test_playlists_bridge_save_queue_no_player"
@@ -747,6 +766,77 @@
         "async_jobs": false,
         "cancel_supported": false,
         "runtime_test": ""
+      }
+    },
+    {
+      "module": "worker_manager",
+      "area": "workflows_core",
+      "module_weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_duplicate_task_id_rejected",
+          "test_worker_callback_main_thread",
+          "test_worker_cancel_during_task",
+          "test_worker_task_completes"
+        ],
+        "async_jobs": true,
+        "cancel_supported": true,
+        "error_paths_tested": true
+      }
+    },
+    {
+      "module": "query_executor",
+      "area": "workflows_core",
+      "module_weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_query_executor_cancel_calls_cancelled",
+          "test_query_executor_cancel_resets_state",
+          "test_query_executor_shutdown_no_shared_wm",
+          "test_query_executor_success_async",
+          "test_real_flow_cancel_and_requery"
+        ],
+        "async_jobs": true,
+        "cancel_supported": true,
+        "error_paths_tested": true
+      }
+    },
+    {
+      "module": "capability",
+      "area": "shell_nav",
+      "module_weight": 5,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": true,
+        "service": false,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": false,
+        "unit_tests": [
+          "test_capability_bridge_has_fts5",
+          "test_capability_bridge_importable"
+        ],
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true
       }
     }
   ]
