@@ -126,10 +126,24 @@ class JobBridge(QObject):
                           lambda: self._scan_all_sources())
             return {"ok": True}
         if job_type == "metadata_scan":
-            return {"ok": False, "error": "UNSUPPORTED"}
+            self._add_job(job_type, "Analizando metadatos",
+                          lambda: self._run_metadata_scan())
+            return {"ok": True}
         if job_type == "doctor_scan":
-            return {"ok": False, "error": "UNSUPPORTED"}
+            self._add_job(job_type, "Revisando biblioteca",
+                          lambda: self._run_doctor_scan())
+            return {"ok": True}
         return {"ok": False, "error": "UNKNOWN_JOB_TYPE"}
+
+    def _run_metadata_scan(self):
+        from core.metadata_batch_adapter import MetadataBatchAdapter
+        adapter = MetadataBatchAdapter(db=self._db)
+        return adapter.scan_missing()
+
+    def _run_doctor_scan(self):
+        from core.metadata_batch_adapter import LibraryDoctorAdapter
+        adapter = LibraryDoctorAdapter(db=self._db)
+        return adapter.scan()
 
     def _scan_all_sources(self):
         try:
