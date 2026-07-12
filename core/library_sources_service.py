@@ -1,88 +1,94 @@
-"""LibrarySourcesService — agnóstico de UI, gestiona carpetas de biblioteca.
-
-Lee desde settings_manager. No crea otra base de datos.
-"""
+"""LibrarySourcesService — canonico, persistente via LibraryDB.library_roots."""
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 logger = logging.getLogger("michi.library_sources")
 
 
-class LibrarySource:
-    def __init__(self, path: str, enabled: bool = True,
-                 network: bool = False, removable: bool = False):
-        self.path = path
-        self.enabled = enabled
-        self.network = network
-        self.removable = removable
-        self.last_scan: float = 0.0
-        self.available: bool = Path(path).is_dir() if path else False
-
-    def to_dict(self) -> dict:
-        return {
-            "path": self.path,
-            "enabled": self.enabled,
-            "network": self.network,
-            "removable": self.removable,
-            "available": self.available,
-            "last_scan": self.last_scan,
-        }
-
-
 class LibrarySourcesService:
-    def __init__(self):
-        self._sources: list[LibrarySource] = []
-        self._load()
-
-    def _load(self):
-        try:
-            from core.settings_manager import get
-            folder = get("general/music_folder")
-            if folder and folder not in [s.path for s in self._sources]:
-                self._sources.append(LibrarySource(path=folder))
-        except Exception:
-            default = str(Path.home() / "Música")
-            if default not in [s.path for s in self._sources]:
-                self._sources.append(LibrarySource(path=default))
+    def __init__(self, db=None):
+        self._db = db
 
     def list(self) -> list[dict]:
-        return [s.to_dict() for s in self._sources]
+        if not self._db or not hasattr(self._db, 'get_library_roots'):
+            return []
+        try:
+            rows = self._db.conn.execute(
+                "SELECT path, enabled, created_at, updated_at, last_scan,"
+                "       file_count, added_count, updated_count, missing_count, error_code "
+                "FROM library_roots ORDER BY path"
+            ).fetchall()
+            return [
+                {
+                    "path": r[0], "enabled": bool(r[1]),
+                    "available": Path(r[0]).is_dir() if r[0] else False,
+                    "created_at": r[2] or 0, "updated_at": r[3] or 0,
+                    "last_scan": r[4] or 0,
+                    "file_count": r[5] or 0, "added_count": r[6] or 0,
+                    "updated_count": r[7] or 0, "missing_count": r[8] or 0,
+                    "error_code": r[9] or "",
+                }
+                for r in rows
+            ]
+        except Exception:
+            return []
 
     def add(self, path: str) -> dict:
-        p = Path(path)
-        if not p.is_dir():
+        if not path or not Path(path).is_dir():
             return {"ok": False, "error": "DIR_NOT_FOUND"}
-        if any(s.path == path for s in self._sources):
-            return {"ok": False, "error": "ALREADY_EXISTS"}
-        self._sources.append(LibrarySource(path=path))
-        self._save()
-        return {"ok": True}
+        if not self._db or not hasattr(self._db, 'add_library_root'):
+            return {"ok": False, "error": "NO_DB"}
+        if self._db.add_library_root(path):
+            return {"ok": True}
+        return {"ok": False, "error": "ALREADY_EXISTS"}
 
     def remove(self, path: str) -> dict:
-        before = len(self._sources)
-        self._sources = [s for s in self._sources if s.path != path]
-        if len(self._sources) == before:
-            return {"ok": False, "error": "NOT_FOUND"}
-        self._save()
-        return {"ok": True}
-
-    def enable(self, path: str, enabled: bool) -> dict:
-        for s in self._sources:
-            if s.path == path:
-                s.enabled = enabled
-                self._save()
-                return {"ok": True}
+        if not self._db or not hasattr(self._db, 'remove_library_root'):
+            return {"ok": False, "error": "NO_DB"}
+        if self._db.remove_library_root(path):
+            return {"ok": True}
         return {"ok": False, "error": "NOT_FOUND"}
 
-    def root_paths(self) -> list[str]:
-        return [s.path for s in self._sources if s.enabled and s.available]
-
-    def _save(self):
+    def enable(self, path: str, enabled: bool) -> dict:
+        if not self._db or not hasattr(self._db, 'conn'):
+            return {"ok": False, "error": "NO_DB"}
         try:
-            from core.settings_manager import set_
-            paths = [s.path for s in self._sources]
-            set_("library/source_paths", paths)
+            self._db.conn.execute(
+                "UPDATE library_roots SET enabled=? WHERE path=?",
+                (int(enabled), path)
+            )
+            self._db.conn.commit()
+            return {"ok": True}
+        except Exception:
+            return {"ok": False, "error": "UPDATE_FAILED"}
+
+    def root_paths(self) -> list[str]:
+        if not self._db or not hasattr(self._db, 'get_library_roots'):
+            try:
+                from core.settings_manager import get
+                folder = get("general/music_folder")
+                if folder and Path(folder).is_dir():
+                    return [folder]
+            except Exception:
+                pass
+            return []
+        return [s["path"] for s in self.list() if s["enabled"] and s["available"]]
+
+    def update_scan_stats(self, path: str, stats: dict):
+        if not self._db or not hasattr(self._db, 'conn'):
+            return
+        try:
+            now = time.time()
+            self._db.conn.execute(
+                "UPDATE library_roots SET last_scan=?, file_count=?, added_count=?,"
+                " updated_count=?, missing_count=?, error_code=?, updated_at=? WHERE path=?",
+                (now, stats.get("file_count", 0), stats.get("added", 0),
+                 stats.get("updated", 0), stats.get("missing", 0),
+                 stats.get("error_code", ""), now, path)
+            )
+            self._db.conn.commit()
         except Exception:
             pass
