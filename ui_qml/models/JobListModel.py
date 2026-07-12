@@ -22,6 +22,8 @@ class JobListModel(QAbstractListModel):
         super().__init__(parent)
         self._bridge = job_bridge
         self._items: list[dict] = []
+        if self._bridge and hasattr(self._bridge, 'jobsChanged'):
+            self._bridge.jobsChanged.connect(self.refresh)
 
     def _owner(self) -> str:
         return "jobs"

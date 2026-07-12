@@ -8,8 +8,6 @@ Item {
     id: root
     property var bridge: typeof jobBridge !== "undefined" ? jobBridge : null
 
-    function refresh() { if (root.bridge) root.bridge.jobsChanged }
-
     ColumnLayout {
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.md
         RowLayout {
