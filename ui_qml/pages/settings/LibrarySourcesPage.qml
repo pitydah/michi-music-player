@@ -72,23 +72,14 @@ Item {
         }
     }
 
-    Dialog {
+    FolderDialog {
         id: addDialog
-        title: "Añadir fuente"
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        x: (parent.width - width) / 2; y: (parent.height - height) / 3
-        width: 400
-        modal: true
-
-        TextField {
-            id: pathField
-            width: parent.width
-            placeholderText: "/ruta/a/musica"
-        }
-
+        title: "Seleccionar carpeta"
+        currentFolder: "file://" + (typeof StandardPaths !== "undefined" ? StandardPaths.writableLocation(StandardPaths.MusicLocation) : "")
         onAccepted: {
-            if (root.bridge && pathField.text) {
-                var result = root.bridge.addSource(pathField.text)
+            var folderPath = selectedFolder.toLocalFile()
+            if (root.bridge && folderPath) {
+                var result = root.bridge.addSource(folderPath)
                 if (root.notif) root.notif.showMessage(result.ok ? "Fuente agregada" : "Error: " + (result.error || ""), result.ok ? "info" : "error")
                 if (result.ok) root.refresh()
             }
