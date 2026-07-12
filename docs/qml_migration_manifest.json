@@ -42,21 +42,52 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
+          "test_album_model_roles",
+          "test_artist_model_roles",
+          "test_base_model_signals",
+          "test_folder_model_roles",
           "test_library_bridge",
           "test_library_bridge_contract",
+          "test_library_bridge_default_state",
+          "test_library_bridge_setsort",
           "test_library_query_service",
-          "test_track_model_has_correct_signals",
+          "test_library_refresh_coordinator",
           "test_library_refresh_does_not_load_full_table",
-          "test_query_service_sort_whitelist",
+          "test_library_sources_bridge",
+          "test_library_sources_bridge_add_source",
+          "test_library_sources_bridge_importable",
+          "test_library_sources_bridge_refresh",
+          "test_library_sources_bridge_remove_missing",
+          "test_library_sources_service",
+          "test_library_sources_service_add_nonexistent",
+          "test_library_sources_service_add_remove",
+          "test_library_sources_service_duplicate",
+          "test_library_sources_service_importable",
+          "test_playlists_bridge_default",
           "test_query_service_empty_db",
+          "test_query_service_filters",
           "test_query_service_folder_methods",
+          "test_query_service_full_roles",
           "test_query_service_internal_methods",
           "test_query_service_public_details",
-          "test_query_service_filters",
-          "test_wave9_e2e_models",
+          "test_query_service_sort_whitelist",
+          "test_track_model_has_correct_signals",
+          "test_track_model_roles",
+          "test_wave10_real_flow_album_detail",
+          "test_wave10_real_flow_album_filter",
+          "test_wave10_real_flow_album_model",
+          "test_wave10_real_flow_album_play",
+          "test_wave10_real_flow_artist_filter",
+          "test_wave10_real_flow_artist_model",
+          "test_wave10_real_flow_fetch_more",
+          "test_wave10_real_flow_format_filter",
+          "test_wave10_real_flow_playlist_create_play",
+          "test_wave10_real_flow_queue_history",
+          "test_wave10_real_flow_search",
+          "test_wave10_real_flow_sort_desc",
+          "test_wave10_real_flow_track_refresh",
           "test_wave9_e2e_bridges",
-          "test_library_sources_service",
-          "test_library_sources_bridge"
+          "test_wave9_e2e_models"
         ],
         "integration_tests": [],
         "manual_test": "folder_add_drag_drop_verified",
@@ -132,14 +163,16 @@
         "primary_action": false,
         "error_contract": false,
         "write": true,
-        "unit_tests": [],
+        "unit_tests": [
+          "test_playlists_bridge_default"
+        ],
         "integration_tests": [],
         "manual_test": "",
         "physical_test": "",
         "classic_parity": false,
         "error_paths_tested": false,
-        "async_jobs": false,
-        "cancel_supported": false,
+        "async_jobs": true,
+        "cancel_supported": true,
         "runtime_test": ""
       }
     },
@@ -157,7 +190,8 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
-          "test_lyrics_bridge"
+          "test_lyrics_bridge",
+          "test_lyrics_bridge_default"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -183,6 +217,8 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
+          "test_mix_bridge_default",
+          "test_mix_bridge_with_db",
           "test_mix_components"
         ],
         "integration_tests": [],
@@ -209,9 +245,10 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
-          "test_radio_components",
+          "test_radio_bridge_default",
           "test_radio_bridge_integration",
-          "test_radio_bridge_with_manager"
+          "test_radio_bridge_with_manager",
+          "test_radio_components"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -237,8 +274,8 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
-          "test_metadata_inspector_page_exists",
-          "test_metadata_field_row_exists"
+          "test_metadata_field_row_exists",
+          "test_metadata_inspector_page_exists"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -264,8 +301,8 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
-          "test_eq_importable",
           "test_eq_apply_preset_no_player",
+          "test_eq_importable",
           "test_eq_toggle_bypass_no_player"
         ],
         "integration_tests": [],
@@ -319,12 +356,13 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
-          "test_metadata_bridge_load_empty_path",
-          "test_metadata_bridge_clear",
-          "test_metadata_bridge_can_apply_false_without_selection",
-          "test_metadata_bridge_save_changes_return_dict",
           "test_backup_verify_rollback_cycle",
-          "test_error_catalog"
+          "test_error_catalog",
+          "test_metadata_bridge_can_apply_false_without_selection",
+          "test_metadata_bridge_clear",
+          "test_metadata_bridge_default",
+          "test_metadata_bridge_load_empty_path",
+          "test_metadata_bridge_save_changes_return_dict"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -403,8 +441,8 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
-          "test_library_doctor_importable",
-          "test_library_doctor_has_refresh"
+          "test_library_doctor_has_refresh",
+          "test_library_doctor_importable"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -667,10 +705,10 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
-          "test_track_model_importable",
-          "test_track_model_reset",
+          "test_album_model_from_songs",
           "test_album_model_importable",
-          "test_album_model_from_songs"
+          "test_track_model_importable",
+          "test_track_model_reset"
         ],
         "integration_tests": [],
         "manual_test": "",
@@ -696,10 +734,10 @@
         "error_contract": true,
         "write": true,
         "unit_tests": [
-          "test_playlists_bridge_duplicate",
           "test_playlists_bridge_clear",
-          "test_playlists_bridge_save_queue_no_player",
-          "test_playlists_bridge_m3u_import_not_found"
+          "test_playlists_bridge_duplicate",
+          "test_playlists_bridge_m3u_import_not_found",
+          "test_playlists_bridge_save_queue_no_player"
         ],
         "integration_tests": [],
         "manual_test": "",
