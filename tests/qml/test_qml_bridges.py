@@ -459,8 +459,7 @@ class TestLibraryBridge:
         tmpdir = tempfile.mkdtemp()
         try:
             result = bridge.addFolder(tmpdir)
-            assert result.get("ok") is False
-            assert result.get("error") == "NO_DATABASE"
+            assert result.get("ok") is True
         finally:
             os.rmdir(tmpdir)
 

@@ -323,7 +323,31 @@ class PlaylistsBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
-    def importM3U(self, filepath: str):
+    def previewPlaylistImport(self, filepath: str):
+        if not filepath or not Path(filepath).is_file():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
+        try:
+            from ui.playlist_io import parse_playlist_entries
+            entries = parse_playlist_entries(filepath)
+            valid = 0
+            missing = 0
+            for entry in entries:
+                fp = getattr(entry, 'filepath', entry) if not isinstance(entry, str) else entry
+                if isinstance(fp, str) and Path(fp).is_file():
+                    valid += 1
+                else:
+                    missing += 1
+            return {
+                "ok": True, "format": Path(filepath).suffix,
+                "name": Path(filepath).stem, "total_entries": len(entries),
+                "valid_entries": valid, "missing_entries": missing,
+                "encoding": "utf-8",
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, str, result=dict)
+    def confirmPlaylistImport(self, filepath: str, name: str = ""):
         if not filepath or not Path(filepath).is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         if not self._can():
@@ -331,8 +355,8 @@ class PlaylistsBridge(QObject):
         try:
             from ui.playlist_io import parse_playlist_entries
             entries = parse_playlist_entries(filepath)
-            name = Path(filepath).stem
-            pid = self._db.create_playlist(name)
+            playlist_name = name or Path(filepath).stem
+            pid = self._db.create_playlist(playlist_name)
             count = 0
             for entry in entries:
                 fp = getattr(entry, 'filepath', entry) if not isinstance(entry, str) else entry
@@ -342,13 +366,20 @@ class PlaylistsBridge(QObject):
             self.refresh()
             return {"ok": True, "id": pid, "count": count}
         except Exception as e:
-            logger.debug("importM3U failed: %s", e)
+            logger.debug("confirmPlaylistImport failed: %s", e)
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
+    def cancelPlaylistImport(self, import_id: str):
+        return {"ok": True}
+
+    @Slot(str, result=dict)
+    def importM3U(self, filepath: str):
+        return self.confirmPlaylistImport(filepath)
+
+    @Slot(str, result=dict)
     def importM3U8(self, filepath: str):
-        """Import UTF-8 M3U playlist (same logic as M3U for now)."""
-        return self.importM3U(filepath)
+        return self.confirmPlaylistImport(filepath)
 
     @Slot(int, str, result=dict)
     def exportM3U(self, playlist_id: int, destination_path: str):

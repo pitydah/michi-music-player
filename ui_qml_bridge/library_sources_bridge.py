@@ -49,5 +49,19 @@ class LibrarySourcesBridge(QObject):
         self.dataChanged.emit()
         return result
 
+    @Slot(str, result=dict)
+    def scanSource(self, path: str):
+        from ui_qml_bridge.job_bridge import JobBridge
+        jb = JobBridge(db=self._svc._db if hasattr(self._svc, '_db') else None)
+        result = jb.runJob("library_scan", path)
+        return result
+
+    @Slot(result=dict)
+    def scanAllSources(self):
+        from ui_qml_bridge.job_bridge import JobBridge
+        jb = JobBridge(db=self._svc._db if hasattr(self._svc, '_db') else None)
+        result = jb.runJob("library_scan_all")
+        return result
+
     def root_paths(self) -> list[str]:
         return self._svc.root_paths()
