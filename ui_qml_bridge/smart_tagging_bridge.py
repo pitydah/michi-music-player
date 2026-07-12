@@ -61,7 +61,7 @@ class SmartTaggingBridge(QObject):
         self._scan_counter += 1
         gen = self._scan_counter
         self._progress = 0.1
-        self.progressChanged.emit()
+        self.progressChanged.emit(self._progress)
         self.dataChanged.emit()
 
         def _task():
