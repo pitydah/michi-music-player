@@ -6,7 +6,6 @@ No shared connection across threads.
 from __future__ import annotations
 
 import logging
-import sqlite3
 import threading
 from pathlib import Path
 from typing import Any
@@ -88,8 +87,9 @@ class LibraryQueryService:
     def _get_conn(self):
         if self._db_path:
             if not hasattr(_local_conn, "conn") or _local_conn.conn is None:
-                _local_conn.conn = sqlite3.connect(self._db_path, uri=True)
-                _local_conn.conn.execute("PRAGMA query_only = 1")
+                from core.connection_factory import LibraryConnectionFactory
+                factory = LibraryConnectionFactory(self._db_path)
+                _local_conn.conn = factory.get_connection()
             return _local_conn.conn
         if self._db and hasattr(self._db, 'conn'):
             return self._db.conn
@@ -103,10 +103,15 @@ class LibraryQueryService:
                      genre: str = "", fmt: str = "", folder: str = "",
                      year: str = "", quality: str = "",
                      missing_artist: bool = False, missing_album: bool = False,
-                     missing_file: bool = False) -> tuple[str, list]:
+                     missing_file: bool = False,
+                     _use_fts: bool = False) -> tuple[str, list]:
         clauses = []
         params: list = []
-        if search:
+        if search and _use_fts and self.search_backend == "fts5":
+            fts_query = " OR ".join(f"{w}*" for w in search.split() if w)
+            clauses.append("id IN (SELECT rowid FROM media_fts WHERE media_fts MATCH ?)")
+            params.append(fts_query)
+        elif search:
             clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ? COLLATE NOCASE)")
             p = f"%{search}%"
             params.extend([p, p, p])
@@ -142,6 +147,8 @@ class LibraryQueryService:
     def count_tracks(self, **kwargs) -> int:
         self._check_db()
         try:
+            use_fts = bool(kwargs.get("search")) and self.search_backend == "fts5"
+            kwargs["_use_fts"] = use_fts
             where, params = self._build_where(**kwargs)
             row = self._exec(
                 f"SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL {where}", params
@@ -157,6 +164,8 @@ class LibraryQueryService:
         try:
             sort = _sort_col(kwargs.pop("sort", "title"), "tracks")
             order = "ASC" if kwargs.pop("asc", True) else "DESC"
+            use_fts = bool(kwargs.get("search")) and self.search_backend == "fts5"
+            kwargs["_use_fts"] = use_fts
             where, params = self._build_where(**kwargs)
             sql = (
                 f"SELECT id, filepath, filename, ext, duration, title, artist, album, "
