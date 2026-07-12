@@ -382,6 +382,14 @@ class BridgeFactory(QObject):
         self._register_capability("home", "db")
         return self._bridges["home"]
 
+    def create_capability_bridge(self):
+        from ui_qml_bridge.capability_bridge import CapabilityBridge
+        if "capability" not in self._bridges:
+            cb = CapabilityBridge(factory=self)
+            cb.refresh()
+            self._bridges["capability"] = cb
+        return self._bridges["capability"]
+
     def create_library_sources_bridge(self):
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         from core.library_sources_service import LibrarySourcesService
@@ -428,6 +436,7 @@ class BridgeFactory(QObject):
         self.create_history_bridge()
         self.create_home_bridge()
         self.create_library_sources_bridge()
+        self.create_capability_bridge()
         self.bind_action_handlers()
         return self._bridges
 
