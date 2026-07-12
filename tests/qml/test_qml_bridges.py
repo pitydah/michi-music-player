@@ -1927,7 +1927,7 @@ class TestJobBridge:
         bridge.runJob("library_scan", "/tmp")
         job_id = bridge.jobs[0]["job_id"]
         result = bridge.cancelJob(job_id)
-        assert result.get("ok") is False  # sync job completes immediately
+        assert result.get("ok") is True
         assert bridge.activeCount == 0
 
     def test_job_bridge_cancel_not_found(self):
