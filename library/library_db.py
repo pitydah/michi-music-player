@@ -32,6 +32,7 @@ DB_PATH = _default_db_path()
 
 class LibraryDB:
     def __init__(self, db_path: str = DB_PATH):
+        self._db_path = db_path
         dir_name = os.path.dirname(db_path)
         if dir_name:
             os.makedirs(dir_name, exist_ok=True)
@@ -44,6 +45,10 @@ class LibraryDB:
     @property
     def conn(self):
         return self._conn
+
+    @property
+    def db_path(self) -> str:
+        return self._db_path
 
     def get_album_art_cache(self, album_hash: str):
         """Return (mime, data) from album_art_cache, or None."""

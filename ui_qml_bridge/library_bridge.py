@@ -80,24 +80,22 @@ class LibraryBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def songs(self):
+        """DEPRECATED: QML should use trackModel directly."""
         return self.getSongsPage(0, 200)
 
     @Property("QVariantList", notify=dataChanged)
     def albums(self):
-        if self._album_model:
-            return [self._album_model.data(self._album_model.index(i)) for i in range(min(self._album_model.count, 200))]
+        """DEPRECATED: QML should use albumModel directly."""
         return []
 
     @Property("QVariantList", notify=dataChanged)
     def artists(self):
-        if self._artist_model:
-            return [self._artist_model.data(self._artist_model.index(i)) for i in range(min(self._artist_model.count, 200))]
+        """DEPRECATED: QML should use artistModel directly."""
         return []
 
     @Property("QVariantList", notify=dataChanged)
     def folders(self):
-        if self._folder_model:
-            return [self._folder_model.data(self._folder_model.index(i)) for i in range(min(self._folder_model.count, 200))]
+        """DEPRECATED: QML should use folderModel directly."""
         return []
 
     @Property("QVariant", notify=dataChanged)
