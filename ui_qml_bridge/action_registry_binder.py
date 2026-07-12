@@ -120,11 +120,15 @@ class ActionRegistryBinder(QObject):
             action.handler = lambda: pl.createPlaylist("Nueva lista")
 
     def _bind_metadata(self):
-        sb = self._bridges.get("smart_tagging")
-        if sb and hasattr(sb, 'cancelScan'):
+        nav = self._nav()
+        self._bridges.get("smart_tagging")
+        if nav:
             action = self._registry.get("metadata_smart_tagging")
             if action:
-                action.handler = lambda: {"ok": True, "message": "Usar SmartTaggingBridge directamente"}
+                action.handler = lambda: nav.navigate("smart_tagging")
+        action = self._registry.get("metadata_edit")
+        if action and nav:
+            action.handler = lambda: nav.navigate("metadata_inspector")
 
     def _bind_system(self):
         action = self._registry.get("app_quit")

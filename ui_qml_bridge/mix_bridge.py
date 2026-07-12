@@ -95,7 +95,8 @@ class MixBridge(QObject):
     def _get_all_items(self) -> list:
         if not self._db or not hasattr(self._db, 'fetch_all'):
             return []
-        return self._db.fetch_all() or []
+        items = self._db.fetch_all() or []
+        return items[:10000]
 
     def _load_mix_items(self, mix_id: str) -> list[dict]:
         items = self._get_all_items()
