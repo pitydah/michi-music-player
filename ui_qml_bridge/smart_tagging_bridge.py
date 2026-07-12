@@ -49,7 +49,6 @@ class SmartTaggingBridge(QObject):
     def scanTrackById(self, track_id: int):
         if self._status in ("scanning", "applying"):
             return {"ok": False, "error_code": "BUSY", "message": "Ya hay un escaneo en curso"}
-        self._cancel_requested = False
         self._progress = 0.0
         self._status = "queued"
         self.dataChanged.emit()
@@ -64,28 +63,31 @@ class SmartTaggingBridge(QObject):
         self.progressChanged.emit(self._progress)
         self.dataChanged.emit()
 
-        def _task():
-            if self._cancel_requested:
-                return {"cancelled": True}
+        qs = self._qs
+        service = self._service
+
+        def _task(ctx):
+            ctx.token.raise_if_cancelled()
             track = None
-            if self._qs:
+            if qs:
                 try:
-                    track = self._qs.fetch_track_internal(track_id)
+                    track = qs.fetch_track_internal(track_id)
                 except Exception:
                     track = None
             if gen != self._scan_counter:
                 return {"stale": True}
             if not track:
                 return {"error": "TRACK_NOT_FOUND"}
-            self._current_filepath = track.get("filepath", "")
+            ctx.token.raise_if_cancelled()
             from library.media_item import TrackMetadata
             meta = TrackMetadata(filepath=track["filepath"],
                                  title=track.get("title", ""),
                                  artist=track.get("artist", ""),
                                  album=track.get("album", ""))
-            if hasattr(self._service, 'suggest_for_track'):
-                results = self._service.suggest_for_track(meta)
-                return {"results": results or []}
+            if hasattr(service, 'suggest_for_track'):
+                results = service.suggest_for_track(meta)
+                ctx.token.raise_if_cancelled()
+                return {"results": results or [], "filepath": track.get("filepath", "")}
             return {"error": "NO_SUGGEST_SERVICE"}
 
         def _done(res):
@@ -93,14 +95,11 @@ class SmartTaggingBridge(QObject):
                 self._status = "stale"
                 self.dataChanged.emit()
                 return
-            if res.get("cancelled"):
-                self._status = "cancelled"
-                self.dataChanged.emit()
-                return
             if res.get("error"):
                 self._status = "error"
                 self.dataChanged.emit()
                 return
+            self._current_filepath = res.get("filepath", "")
             results = res.get("results", [])
             self._suggestions = [
                 {"id": i, "field": getattr(s, 'field', ''),
@@ -114,15 +113,15 @@ class SmartTaggingBridge(QObject):
             self._selected_ids.clear()
             self._status = "review"
             self._progress = 1.0
-            self.progressChanged.emit()
+            self.progressChanged.emit(self._progress)
             self.dataChanged.emit()
             self.scanCompleted.emit(len(self._suggestions))
 
         if self._wm and hasattr(self._wm, 'run_task'):
             self._wm.run_task(f"st_{track_id}", _task, on_done=_done,
-                              cancellable=True, owner="smart_tagging")
+                              pass_context=True, cancellable=True, owner="smart_tagging")
         else:
-            _done(_task())
+            _done(_task(None))
         return {"ok": True, "queued": True}
 
     @Slot(int, bool, result=dict)
