@@ -36,4 +36,5 @@ QML_CONTEXT_BINDINGS = {
     "historyBridge": "history",
     "homeBridge": "home",
     "librarySourcesBridge": "library_sources",
+    "capabilityBridge": "capability",
 }
