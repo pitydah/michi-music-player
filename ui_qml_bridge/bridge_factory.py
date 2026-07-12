@@ -81,6 +81,13 @@ class BridgeFactory(QObject):
         if "library" not in self._bridges:
             qs = self._get_library_query_service()
             qe = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
+            from core.track_action_service import TrackActionService
+            tas = TrackActionService(
+                query_service=qs,
+                player_service=self._services.player_service,
+                playlist_bridge=self._bridges.get("playlists"),
+                db=self._services.db,
+            )
             self._bridges["library"] = LibraryBridge(
                 db=self._services.db,
                 search_engine=self._services.search_engine,
@@ -89,6 +96,7 @@ class BridgeFactory(QObject):
                 query_executor=qe,
                 worker_manager=self._services.worker_manager,
                 job_bridge=self._bridges.get("job_bridge"),
+                track_action_service=tas,
             )
         self._register_capability("library", "db")
         return self._bridges["library"]

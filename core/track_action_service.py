@@ -9,11 +9,12 @@ logger = logging.getLogger("michi.track_actions")
 
 class TrackActionService:
     def __init__(self, query_service=None, player_service=None,
-                 library_bridge=None, playlist_bridge=None):
+                 library_bridge=None, playlist_bridge=None, db=None):
         self._qs = query_service
         self._player = player_service
         self._lib = library_bridge
         self._pl = playlist_bridge
+        self._db = db
 
     def play_track(self, track_id: int) -> dict:
         if not self._qs:
@@ -85,27 +86,26 @@ class TrackActionService:
             return {"ok": False, "error": str(e)}
 
     def toggle_favorite(self, track_id: int) -> dict:
-        if not self._qs or not self._qs._db:
+        if not self._db:
             return {"ok": False, "error": "NO_DB"}
         try:
-            track = self._qs.fetch_track_internal(track_id)
+            track = self._qs.fetch_track_internal(track_id) if self._qs else None
             if not track:
                 return {"ok": False, "error": "NOT_FOUND"}
             fp = track.get("filepath", "")
             if not fp:
                 return {"ok": False, "error": "NO_FILEPATH"}
-            db = self._qs._db
-            row = db.conn.execute(
+            row = self._db.conn.execute(
                 "SELECT 1 FROM favorites WHERE track_id=?", (fp,)
             ).fetchone()
             if row:
-                db.conn.execute("DELETE FROM favorites WHERE track_id=?", (fp,))
+                self._db.conn.execute("DELETE FROM favorites WHERE track_id=?", (fp,))
                 fav = False
             else:
-                db.conn.execute(
+                self._db.conn.execute(
                     "INSERT OR IGNORE INTO favorites (track_id) VALUES (?)", (fp,))
                 fav = True
-            db.conn.commit()
+            self._db.conn.commit()
             return {"ok": True, "favorite": fav}
         except Exception as e:
             return {"ok": False, "error": str(e)}

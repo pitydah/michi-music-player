@@ -13,7 +13,7 @@ class LibraryBridge(QObject):
 
     def __init__(self, db=None, search_engine=None, playback_ctrl=None,
                  query_service=None, query_executor=None, worker_manager=None,
-                 job_bridge=None, parent=None):
+                 job_bridge=None, track_action_service=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._search_engine = search_engine
@@ -21,6 +21,7 @@ class LibraryBridge(QObject):
         self._query_svc = query_service
         self._qe = query_executor
         self._job_bridge = job_bridge
+        self._tas = track_action_service
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -295,6 +296,8 @@ class LibraryBridge(QObject):
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):
+        if self._tas:
+            return self._tas.play_track(track_id)
         if not track_id or not self._query_svc:
             return {"ok": False, "error": "NOT_FOUND"}
         try:
@@ -674,10 +677,10 @@ class LibraryBridge(QObject):
         if not p.exists():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         try:
-            from ui_qml_bridge.job_bridge import JobBridge
-            jb = JobBridge(db=self._db, library_bridge=self)
+            if not self._job_bridge:
+                return {"ok": False, "error": "NO_JOB_SERVICE"}
             scan_path = path if p.is_dir() else str(p.parent)
-            jb.runJob("library_scan", scan_path)
+            self._job_bridge.runJob("library_scan", scan_path)
             return {"ok": True, "type": "folder" if p.is_dir() else "file", "path": path, "job": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
