@@ -129,11 +129,10 @@ class HomeBridge(QObject):
 
     def _load_jobs(self):
         try:
-            from ui_qml_bridge.job_bridge import JobBridge
-            for obj in QObject.children(self):
-                if isinstance(obj, JobBridge):
-                    self._active_jobs = obj.activeCount
-                    return
+            jb = self._bridges.get("job_bridge") if hasattr(self, '_bridges') else None
+            if jb:
+                self._active_jobs = getattr(jb, 'activeCount', 0)
+                return
         except Exception:
             pass
 

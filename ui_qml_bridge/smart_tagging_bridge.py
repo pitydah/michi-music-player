@@ -63,11 +63,10 @@ class SmartTaggingBridge(QObject):
         self._progress = 0.1
         self.progressChanged.emit()
         self.dataChanged.emit()
-        try:
+
+        def _task():
             if self._cancel_requested:
-                self._status = "cancelled"
-                self.dataChanged.emit()
-                return {"ok": False, "error_code": "CANCELLED", "message": "Escaneo cancelado"}
+                return {"cancelled": True}
             track = None
             if self._qs:
                 try:
@@ -75,48 +74,56 @@ class SmartTaggingBridge(QObject):
                 except Exception:
                     track = None
             if gen != self._scan_counter:
-                self._status = "stale"
-                self.dataChanged.emit()
-                return {"ok": False, "error_code": "STALE", "message": "Resultado obsoleto"}
+                return {"stale": True}
             if not track:
-                self._status = "error"
-                self.dataChanged.emit()
-                return {"ok": False, "error_code": "TRACK_NOT_FOUND", "message": "Track no encontrado"}
+                return {"error": "TRACK_NOT_FOUND"}
             self._current_filepath = track.get("filepath", "")
             from library.media_item import TrackMetadata
-            meta = TrackMetadata(filepath=track["filepath"], title=track.get("title", ""),
-                                 artist=track.get("artist", ""), album=track.get("album", ""))
-            self._progress = 0.5
-            self.progressChanged.emit()
+            meta = TrackMetadata(filepath=track["filepath"],
+                                 title=track.get("title", ""),
+                                 artist=track.get("artist", ""),
+                                 album=track.get("album", ""))
             if hasattr(self._service, 'suggest_for_track'):
                 results = self._service.suggest_for_track(meta)
-                if gen != self._scan_counter:
-                    self._status = "stale"
-                    self.dataChanged.emit()
-                    return {"ok": False, "error_code": "STALE", "message": "Resultado obsoleto"}
-                self._suggestions = [
-                    {"id": i, "field": getattr(s, 'field', ''), "current": getattr(s, 'current', '') or "",
-                     "suggested": getattr(s, 'suggested', '') or "",
-                     "confidence": getattr(s, 'confidence', 0.0) or 0.0,
-                     "source": getattr(s, 'source', '') or "", "selected": False,
-                     "warning": getattr(s, 'warning', '') or ""}
-                    for i, s in enumerate(results or [])
-                ]
-                self._selected_ids.clear()
-                self._status = "review"
-                self._progress = 1.0
-                self.progressChanged.emit()
+                return {"results": results or []}
+            return {"error": "NO_SUGGEST_SERVICE"}
+
+        def _done(res):
+            if gen != self._scan_counter:
+                self._status = "stale"
                 self.dataChanged.emit()
-                self.scanCompleted.emit(len(self._suggestions))
-                return {"ok": True, "count": len(self._suggestions)}
-        except Exception as scan_e:
-            logger.debug("scanTrackById failed: %s", scan_e)
-            self._status = "error"
+                return
+            if res.get("cancelled"):
+                self._status = "cancelled"
+                self.dataChanged.emit()
+                return
+            if res.get("error"):
+                self._status = "error"
+                self.dataChanged.emit()
+                return
+            results = res.get("results", [])
+            self._suggestions = [
+                {"id": i, "field": getattr(s, 'field', ''),
+                 "current": getattr(s, 'current', '') or "",
+                 "suggested": getattr(s, 'suggested', '') or "",
+                 "confidence": getattr(s, 'confidence', 0.0) or 0.0,
+                 "source": getattr(s, 'source', '') or "", "selected": False,
+                 "warning": getattr(s, 'warning', '') or ""}
+                for i, s in enumerate(results)
+            ]
+            self._selected_ids.clear()
+            self._status = "review"
+            self._progress = 1.0
+            self.progressChanged.emit()
             self.dataChanged.emit()
-            return {"ok": False, "error_code": "INTERNAL_ERROR", "message": str(scan_e)}
-        self._status = "error"
-        self.dataChanged.emit()
-        return {"ok": False, "error_code": "INTERNAL_ERROR", "message": "Scan failed"}
+            self.scanCompleted.emit(len(self._suggestions))
+
+        if self._wm and hasattr(self._wm, 'run_task'):
+            self._wm.run_task(f"st_{track_id}", _task, on_done=_done,
+                              cancellable=True, owner="smart_tagging")
+        else:
+            _done(_task())
+        return {"ok": True, "queued": True}
 
     @Slot(int, bool, result=dict)
     def setSuggestionSelected(self, suggestion_id: int, selected: bool):
