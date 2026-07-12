@@ -43,6 +43,7 @@ class ActionRegistry(QObject):
             ("navigate_lyrics", "Ir a Letra", "navigation", "lyrics"),
             ("navigate_settings", "Ir a Ajustes", "navigation", "settings"),
             ("navigate_eq", "Abrir EQ", "navigation", "eq"),
+            ("navigate_library_sources", "Fuentes de biblioteca", "navigation", "folder_add"),
             ("playback_playpause", "Reproducir / Pausar", "playback", "play"),
             ("playback_next", "Siguiente pista", "playback", "next"),
             ("playback_prev", "Pista anterior", "playback", "prev"),

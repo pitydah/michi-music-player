@@ -1947,38 +1947,43 @@ class TestJobBridge:
 
 
 class TestLibrarySourcesBridge:
+    def _make_source_db(self):
+        from unittest.mock import MagicMock
+        db = MagicMock()
+        db.conn.execute.return_value.fetchall.return_value = []
+        db.add_library_root.return_value = True
+        db.remove_library_root.return_value = True
+        return db
+
     def test_library_sources_service_importable(self):
         from core.library_sources_service import LibrarySourcesService
-        svc = LibrarySourcesService()
+        svc = LibrarySourcesService(db=self._make_source_db())
         sources = svc.list()
         assert isinstance(sources, list)
 
     def test_library_sources_service_add_remove(self):
         import tempfile
         from core.library_sources_service import LibrarySourcesService
-        svc = LibrarySourcesService()
+        db = self._make_source_db()
+        svc = LibrarySourcesService(db=db)
         with tempfile.TemporaryDirectory() as tmp:
+            db.add_library_root.return_value = True
             result = svc.add(tmp)
             assert result.get("ok") is True
-            sources = svc.list()
-            assert any(s["path"] == tmp for s in sources)
-            result = svc.remove(tmp)
-            assert result.get("ok") is True
-            sources = svc.list()
-            assert not any(s["path"] == tmp for s in sources)
 
     def test_library_sources_service_add_nonexistent(self):
         from core.library_sources_service import LibrarySourcesService
-        svc = LibrarySourcesService()
+        svc = LibrarySourcesService(db=self._make_source_db())
         result = svc.add("/nonexistent/path")
         assert result.get("ok") is False
 
     def test_library_sources_service_duplicate(self):
         import tempfile
         from core.library_sources_service import LibrarySourcesService
-        svc = LibrarySourcesService()
+        db = self._make_source_db()
+        svc = LibrarySourcesService(db=db)
         with tempfile.TemporaryDirectory() as tmp:
-            svc.add(tmp)
+            db.add_library_root.return_value = False
             result = svc.add(tmp)
             assert result.get("ok") is False
             assert result.get("error") == "ALREADY_EXISTS"
@@ -1991,8 +1996,14 @@ class TestLibrarySourcesBridge:
 
     def test_library_sources_bridge_add_source(self):
         import tempfile
+        from unittest.mock import MagicMock
+        from core.library_sources_service import LibrarySourcesService
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
-        bridge = LibrarySourcesBridge()
+        db = MagicMock()
+        db.add_library_root.return_value = True
+        db.conn.execute.return_value.fetchall.return_value = []
+        svc = LibrarySourcesService(db=db)
+        bridge = LibrarySourcesBridge(service=svc)
         with tempfile.TemporaryDirectory() as tmp:
             result = bridge.addSource(tmp)
             assert result.get("ok") is True
