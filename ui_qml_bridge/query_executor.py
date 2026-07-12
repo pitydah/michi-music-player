@@ -1,11 +1,7 @@
 """QueryExecutor — async DB query runner using WorkerManager TaskHandle.
 
-Contract:
-    submit(owner, fn, on_success=None, on_error=None) -> request_id
-    cancel(request_id)
-    invalidate(owner)
-    is_stale(request_id, owner) -> bool
-    shutdown()
+No deadlocks: all signal emission and callbacks happen outside self._lock.
+State is copied under lock, emitted outside.
 """
 from __future__ import annotations
 
@@ -27,15 +23,21 @@ STATE_CANCEL_REQUESTED = "cancel_requested"
 STATE_CANCELLED = "cancelled"
 STATE_FAILED = "failed"
 STATE_STALE = "stale"
+STATE_SHUTDOWN = "shutdown"
 
 ERR_QUERY_FAILED = "QUERY_FAILED"
 ERR_QUERY_CANCELLED = "QUERY_CANCELLED"
 ERR_QUERY_STALE = "QUERY_STALE"
+ERR_QUERY_SHUTDOWN = "QUERY_SHUTDOWN"
 ERR_SQLITE_BUSY = "SQLITE_BUSY"
 ERR_SQLITE_LOCKED = "SQLITE_LOCKED"
+ERR_SQLITE_READONLY = "SQLITE_READONLY"
+ERR_SQLITE_CORRUPT = "SQLITE_CORRUPT"
+ERR_SQLITE_IO = "SQLITE_IO_ERROR"
 ERR_SQLITE_THREAD = "SQLITE_THREAD_ERROR"
+ERR_DATABASE_UNAVAILABLE = "DATABASE_UNAVAILABLE"
 ERR_SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
-ERR_SHUTDOWN = "SHUTDOWN"
+ERR_INVALID_QUERY = "INVALID_QUERY"
 
 _MAX_REQUESTS = 200
 
@@ -61,9 +63,12 @@ class QueryExecutor(QObject):
         self._lock = threading.Lock()
         self._shutdown = False
 
+    # ── Public API ──
+
     def submit(self, owner: str, callable_fn: Callable,
                on_success: Callable | None = None,
                on_error: Callable | None = None,
+               on_cancelled: Callable | None = None,
                request_context: dict | None = None,
                supersede: bool = True,
                cancellable: bool = True) -> int:
@@ -76,9 +81,13 @@ class QueryExecutor(QObject):
             self._generations[owner] = gen
             if supersede:
                 stale = [rid for rid, r in self._requests.items()
-                         if r.get("owner") == owner and r["state"] in (STATE_QUEUED, STATE_RUNNING)]
+                         if r.get("owner") == owner
+                         and r["state"] in (STATE_QUEUED, STATE_RUNNING)]
                 for rid in stale:
-                    self._requests[rid]["state"] = STATE_CANCELLED
+                    r = self._requests[rid]
+                    r["state"] = STATE_CANCELLED
+                    if self._wm and hasattr(self._wm, 'cancel_task'):
+                        self._wm.cancel_task(f"qe_{rid}")
             self._requests[request_id] = {
                 "request_id": request_id, "owner": owner,
                 "generation": gen, "state": STATE_QUEUED,
@@ -92,37 +101,63 @@ class QueryExecutor(QObject):
         def _run():
             with self._lock:
                 req = self._requests.get(request_id)
-                if not req or req["state"] == STATE_CANCELLED:
+                if not req or req["state"] in (STATE_CANCELLED, STATE_SHUTDOWN):
                     return {"ok": False, "error": ERR_QUERY_CANCELLED}
                 req["state"] = STATE_RUNNING
-            self.requestStateChanged.emit(request_id, STATE_RUNNING)
             try:
                 result = callable_fn()
                 return {"ok": True, "result": result}
             except Exception as e:
                 logger.error("QueryExecutor: %s failed: %s", owner, e)
-                return {"ok": False, "error": str(e)}
+                code = self._map_sqlite_error(e)
+                return {"ok": False, "error": code, "message": str(e)}
 
         def _on_done(task_result):
             if self._shutdown:
                 return
+            state = STATE_COMPLETED
+            code = ""
+            msg = ""
+            result = None
+
             with self._lock:
                 req = self._requests.get(request_id)
                 if not req:
                     return
                 if req["generation"] != self._generations.get(owner):
                     req["state"] = STATE_STALE
-                    self._emit_failure(request_id, ERR_QUERY_STALE, "Resultado obsoleto", on_error)
-                    self._finish(request_id)
-                    return
-                if not task_result or not task_result.get("ok"):
+                    self._prune_locked()
+                    state = STATE_STALE
+                    code = ERR_QUERY_STALE
+                    msg = "Resultado obsoleto"
+                elif not task_result or not task_result.get("ok"):
                     code = task_result.get("error", ERR_QUERY_FAILED) if task_result else ERR_QUERY_CANCELLED
-                    req["state"] = STATE_FAILED if code != ERR_QUERY_CANCELLED else STATE_CANCELLED
-                    self._emit_failure(request_id, code, "Error de consulta", on_error)
-                    self._finish(request_id)
-                    return
-                req["state"] = STATE_COMPLETED
-            result = task_result["result"]
+                    msg = task_result.get("message", "Error de consulta") if task_result else "Cancelado"
+                    req["state"] = STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED
+                else:
+                    req["state"] = STATE_COMPLETED
+                    result = task_result["result"]
+                    self._requests[request_id]["state"] = STATE_COMPLETED
+
+            if state == STATE_STALE:
+                self.failure.emit(request_id, code, msg)
+                self.requestStateChanged.emit(request_id, STATE_STALE)
+                self.requestFinished.emit(request_id)
+                if on_error:
+                    on_error(code, msg)
+                return
+            if not task_result or not task_result.get("ok"):
+                self.failure.emit(request_id, code, msg)
+                self.requestStateChanged.emit(request_id,
+                                              STATE_CANCELLED if code == ERR_QUERY_CANCELLED else STATE_FAILED)
+                self.requestFinished.emit(request_id)
+                if code == ERR_QUERY_CANCELLED and on_cancelled:
+                    on_cancelled()
+                elif on_error:
+                    on_error(code, msg)
+                self._prune()
+                return
+
             self.success.emit(request_id, result)
             self.requestStateChanged.emit(request_id, STATE_COMPLETED)
             self.requestFinished.emit(request_id)
@@ -151,9 +186,9 @@ class QueryExecutor(QObject):
             req = self._requests.get(request_id)
             if req and req["state"] in (STATE_QUEUED, STATE_RUNNING):
                 req["state"] = STATE_CANCEL_REQUESTED
-                self.requestStateChanged.emit(request_id, STATE_CANCEL_REQUESTED)
                 if self._wm and hasattr(self._wm, 'cancel_task'):
                     self._wm.cancel_task(f"qe_{request_id}")
+        self.requestStateChanged.emit(request_id, STATE_CANCEL_REQUESTED)
 
     def cancel_owner(self, owner: str):
         with self._lock:
@@ -161,7 +196,9 @@ class QueryExecutor(QObject):
                        if r.get("owner") == owner
                        and r["state"] in (STATE_QUEUED, STATE_RUNNING)]
         for rid in targets:
-            self.cancel(rid)
+            if self._wm and hasattr(self._wm, 'cancel_task'):
+                self._wm.cancel_task(f"qe_{rid}")
+                self.requestStateChanged.emit(rid, STATE_CANCEL_REQUESTED)
 
     def invalidate(self, owner: str):
         with self._lock:
@@ -180,36 +217,50 @@ class QueryExecutor(QObject):
             req = self._requests.get(request_id)
             return req["state"] if req else ""
 
+    def request_context(self, request_id: int) -> dict:
+        with self._lock:
+            req = self._requests.get(request_id)
+            return dict(req.get("context", {})) if req else {}
+
     def active_requests(self, owner: str = "") -> list[int]:
         with self._lock:
             return [rid for rid, r in self._requests.items()
                     if (not owner or r.get("owner") == owner)
                     and r["state"] in (STATE_QUEUED, STATE_RUNNING)]
 
-    def shutdown(self):
+    def completed_requests(self, owner: str = "") -> list[int]:
+        with self._lock:
+            return [rid for rid, r in self._requests.items()
+                    if r["state"] == STATE_COMPLETED
+                    and (not owner or r.get("owner") == owner)]
+
+    def shutdown(self, timeout_ms: int = 2000):
         self._shutdown = True
         with self._lock:
             targets = [rid for rid, r in self._requests.items()
                        if r["state"] in (STATE_QUEUED, STATE_RUNNING)]
         for rid in targets:
             self.cancel(rid)
+        if self._wm and hasattr(self._wm, 'shutdown'):
+            self._wm.shutdown(timeout_ms)
 
     def prune_completed(self):
         with self._lock:
             self._prune_locked()
 
-    def _finish(self, request_id: int):
-        self.requestFinished.emit(request_id)
-        self._prune()
+    def wait_for_idle(self, timeout_ms: int = 5000):
+        import time
+        deadline = time.time() + timeout_ms / 1000
+        while time.time() < deadline:
+            with self._lock:
+                active = [r for r in self._requests.values()
+                          if r["state"] in (STATE_QUEUED, STATE_RUNNING)]
+                if not active:
+                    return True
+            time.sleep(0.05)
+        return False
 
-    def _emit_failure(self, request_id: int, code: str, msg: str, on_error: Callable | None):
-        self.failure.emit(request_id, code, msg)
-        self.requestStateChanged.emit(request_id, STATE_FAILED)
-        if on_error:
-            try:
-                on_error(code, msg)
-            except Exception:
-                logger.exception("QueryExecutor on_error failed")
+    # ── Internal ──
 
     def _prune(self):
         with self._lock:
@@ -218,7 +269,32 @@ class QueryExecutor(QObject):
     def _prune_locked(self):
         if len(self._requests) > _MAX_REQUESTS:
             completed = [(rid, r) for rid, r in self._requests.items()
-                         if r["state"] in (STATE_COMPLETED, STATE_CANCELLED, STATE_FAILED, STATE_STALE)]
+                         if r["state"] in (STATE_COMPLETED, STATE_CANCELLED,
+                                           STATE_FAILED, STATE_STALE)]
             to_remove = len(completed) - _MAX_REQUESTS // 2
             for rid, _ in completed[:to_remove]:
                 del self._requests[rid]
+
+    def _map_sqlite_error(self, exc: Exception) -> str:
+        msg = str(exc)
+        if isinstance(exc, self._sqlite_error_types()):
+            if "busy" in msg.lower():
+                return ERR_SQLITE_BUSY
+            if "locked" in msg.lower():
+                return ERR_SQLITE_LOCKED
+            if "readonly" in msg.lower():
+                return ERR_SQLITE_READONLY
+            if "corrupt" in msg.lower():
+                return ERR_SQLITE_CORRUPT
+            if "no such table" in msg.lower() or "no such column" in msg.lower():
+                return ERR_INVALID_QUERY
+            return ERR_QUERY_FAILED
+        return ERR_QUERY_FAILED
+
+    @staticmethod
+    def _sqlite_error_types():
+        try:
+            import sqlite3
+            return (sqlite3.DatabaseError,)
+        except ImportError:
+            return (Exception,)

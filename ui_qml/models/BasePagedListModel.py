@@ -1,18 +1,12 @@
 """BasePagedListModel — async paginated QAbstractListModel via QueryExecutor.
 
-Subclasses define:
-    _owner() -> str
-    _fetch_count(**query) -> int
-    _fetch_page(offset, limit, **query) -> list[dict]
-
-refresh() siempre actualiza query_args y cancela request previo.
-fetchMore() preserva filtros. Stale results ignorados.
+Full lifecycle: cancel, dispose, cancelled state, proper signals.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Signal
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Signal, Qt
 
 
 class BasePagedListModel(QAbstractListModel):
@@ -21,10 +15,14 @@ class BasePagedListModel(QAbstractListModel):
     loadingChanged = Signal()
     loadingMoreChanged = Signal()
     refreshingChanged = Signal()
+    cancelledChanged = Signal()
     errorChanged = Signal()
     hasMoreChanged = Signal()
     activeRequestChanged = Signal()
     activeQueryChanged = Signal()
+    generationChanged = Signal()
+    initializedChanged = Signal()
+    canRetryChanged = Signal()
 
     def __init__(self, page_size: int = 250, query_executor=None, parent=None):
         super().__init__(parent)
@@ -33,12 +31,16 @@ class BasePagedListModel(QAbstractListModel):
         self._page_size = page_size
         self._loading = False
         self._loading_more = False
+        self._cancelled = False
+        self._initialized = False
         self._error_code = ""
         self._error_message = ""
         self._qe = query_executor
         self._query_args: dict = {}
         self._active_request_id: int = 0
         self._refresh_gen = 0
+        self._disposed = False
+        self.destroyed.connect(self._on_destroyed, Qt.ConnectionType.DirectConnection)
 
     # ── Properties ──
 
@@ -61,6 +63,10 @@ class BasePagedListModel(QAbstractListModel):
     @Property(bool, notify=refreshingChanged)
     def refreshing(self):
         return self._loading and not self._loading_more
+
+    @Property(bool, notify=cancelledChanged)
+    def cancelled(self):
+        return self._cancelled
 
     @Property(str, notify=errorChanged)
     def errorCode(self):
@@ -86,9 +92,13 @@ class BasePagedListModel(QAbstractListModel):
     def empty(self):
         return self._total_count == 0
 
-    @Property(bool, notify=errorChanged)
+    @Property(bool, notify=initializedChanged)
+    def initialized(self):
+        return self._initialized
+
+    @Property(bool, notify=canRetryChanged)
     def canRetry(self):
-        return bool(self._query_args) and not self._loading
+        return bool(self._query_args is not None) and not self._loading
 
     # ── QAbstractListModel ──
 
@@ -99,10 +109,10 @@ class BasePagedListModel(QAbstractListModel):
         if parent.isValid():
             return False
         return (len(self._items) < self._total_count
-                and not self._loading and not self._loading_more)
+                and not self._loading and not self._loading_more and not self._disposed)
 
     def fetchMore(self, parent=QModelIndex()):
-        if parent.isValid() or self._loading or self._loading_more:
+        if parent.isValid() or self._loading or self._loading_more or self._disposed:
             return
         if not self._qe or not len(self._items) < self._total_count:
             return
@@ -117,7 +127,7 @@ class BasePagedListModel(QAbstractListModel):
             return self._fetch_page(offset, page_size, **query)
 
         def _on_success(items):
-            if gen != self._refresh_gen:
+            if self._disposed or gen != self._refresh_gen:
                 self._reset_loading_more()
                 return
             if not items:
@@ -132,7 +142,7 @@ class BasePagedListModel(QAbstractListModel):
             self.hasMoreChanged.emit()
 
         def _on_error(code, msg):
-            if gen != self._refresh_gen:
+            if self._disposed or gen != self._refresh_gen:
                 self._reset_loading_more()
                 return
             self._error_code = code
@@ -153,16 +163,21 @@ class BasePagedListModel(QAbstractListModel):
     # ── Refresh API ──
 
     def refresh(self, **kwargs):
+        if self._disposed:
+            return
         self._invalidate_active()
         self._refresh_gen += 1
         self._query_args = dict(kwargs)
         self._error_code = ""
         self._error_message = ""
+        self._cancelled = False
         self._loading = True
         self._loading_more = False
         self.loadingChanged.emit()
         self.loadingMoreChanged.emit()
+        self.cancelledChanged.emit()
         self.activeQueryChanged.emit()
+        self.canRetryChanged.emit()
         gen = self._refresh_gen
         query = dict(kwargs)
         page_size = self._page_size
@@ -173,6 +188,8 @@ class BasePagedListModel(QAbstractListModel):
             return (count, items)
 
         def _on_success(result):
+            if self._disposed:
+                return
             if gen != self._refresh_gen:
                 return
             count, items = result if isinstance(result, tuple) and len(result) == 2 else (0, [])
@@ -183,24 +200,47 @@ class BasePagedListModel(QAbstractListModel):
             self._error_code = ""
             self._error_message = ""
             self._loading = False
+            self._initialized = True
+            self._active_request_id = 0
             self.loadingChanged.emit()
             self.totalCountChanged.emit()
             self.countChanged.emit()
             self.hasMoreChanged.emit()
+            self.initializedChanged.emit()
+            self.activeRequestChanged.emit()
+            self.canRetryChanged.emit()
 
         def _on_error(code, msg):
+            if self._disposed:
+                return
             if gen != self._refresh_gen:
                 return
             self._error_code = code
             self._error_message = msg
             self._loading = False
+            self._active_request_id = 0
             self.loadingChanged.emit()
             self.errorChanged.emit()
+            self.activeRequestChanged.emit()
+            self.canRetryChanged.emit()
+
+        def _on_cancelled():
+            if self._disposed:
+                return
+            if gen != self._refresh_gen:
+                return
+            self._cancelled = True
+            self._loading = False
+            self._active_request_id = 0
+            self.loadingChanged.emit()
+            self.cancelledChanged.emit()
+            self.activeRequestChanged.emit()
+            self.canRetryChanged.emit()
 
         if self._qe is not None:
             self._active_request_id = self._qe.submit(
                 self._owner(), _task, on_success=_on_success, on_error=_on_error,
-                supersede=True,
+                on_cancelled=_on_cancelled, supersede=True,
             )
             self.activeRequestChanged.emit()
         else:
@@ -208,14 +248,21 @@ class BasePagedListModel(QAbstractListModel):
             _on_success(result)
 
     def cancel(self):
+        if self._disposed:
+            return
         self._invalidate_active()
+        self._cancelled = True
         self._loading = False
         self._loading_more = False
+        self._active_request_id = 0
         self.loadingChanged.emit()
         self.loadingMoreChanged.emit()
+        self.cancelledChanged.emit()
+        self.activeRequestChanged.emit()
+        self.canRetryChanged.emit()
 
     def retry(self):
-        if self._query_args:
+        if self._query_args is not None:
             self.refresh(**self._query_args)
 
     def reset(self):
@@ -228,14 +275,30 @@ class BasePagedListModel(QAbstractListModel):
         self._error_message = ""
         self._loading = False
         self._loading_more = False
+        self._cancelled = False
+        self._initialized = False
+        self._active_request_id = 0
         self.endResetModel()
         self.countChanged.emit()
         self.totalCountChanged.emit()
         self.loadingChanged.emit()
         self.loadingMoreChanged.emit()
+        self.cancelledChanged.emit()
         self.hasMoreChanged.emit()
+        self.initializedChanged.emit()
+        self.activeRequestChanged.emit()
+        self.canRetryChanged.emit()
+
+    def dispose(self):
+        self._disposed = True
+        self._invalidate_active()
+        self._items = []
+        self._total_count = 0
 
     # ── Internal ──
+
+    def _on_destroyed(self):
+        self.dispose()
 
     def _invalidate_active(self):
         if self._qe and self._active_request_id:

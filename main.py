@@ -62,7 +62,7 @@ def main():
         # Conectar errores de workers al reporter
         if hasattr(window, '_workers'):
             window._workers.task_error.connect(
-                lambda tid, err: reporter.log_worker_error(tid, err))
+                lambda tid, err, code="": reporter.log_worker_error(tid, err, code))
         if hasattr(window, '_crash_reporter'):
             pass  # ya se instalo arriba
     except Exception as e:

@@ -129,12 +129,13 @@ class CrashReporter(QObject):
         if self._original_qt_handler:
             self._original_qt_handler(msg_type, context, message)
 
-    def _on_worker_error(self, task_id: str, error: str):
-        self._worker_errors.append({"task_id": task_id, "error": error, "timestamp": datetime.datetime.now().isoformat()})
-        self._log.error("Worker task '%s' failed: %s", task_id, error)
+    def _on_worker_error(self, task_id: str, error: str, code: str = ""):
+        self._worker_errors.append({"task_id": task_id, "error": error, "code": code,
+                                    "timestamp": datetime.datetime.now().isoformat()})
+        self._log.error("Worker task '%s' failed [%s]: %s", task_id, code, error)
 
-    def log_worker_error(self, task_id: str, error: str):
-        self._on_worker_error(task_id, error)
+    def log_worker_error(self, task_id: str, error: str, code: str = ""):
+        self._on_worker_error(task_id, error, code)
 
     def _build_report(self, *, exc_type="", exc_value="", traceback="", thread_name="main", signal="") -> dict:
         cwd_raw = os.getcwd()
