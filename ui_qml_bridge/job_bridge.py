@@ -1,8 +1,4 @@
-"""JobBridge — QML-facing background job manager.
-
-Runs tasks synchronously by default. WorkerManager integration deferred
-(QRunnable signal ownership issue in Wave IX).
-"""
+"""JobBridge — QML-facing async job manager via WorkerManager TaskHandle."""
 from __future__ import annotations
 
 import logging
@@ -10,6 +6,8 @@ import time
 from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+from core.worker_manager import WorkerManager
 
 logger = logging.getLogger("michi.jobs")
 
@@ -19,12 +17,16 @@ STATE_COMPLETED = "completed"
 STATE_COMPLETED_WITH_ERRORS = "completed_with_errors"
 STATE_CANCELLED = "cancelled"
 STATE_FAILED = "failed"
+STATE_CANCEL_REQUESTED = "cancel_requested"
+
+_MAX_JOBS = 200
 
 
 class JobBridge(QObject):
     jobsChanged = Signal()
 
-    def __init__(self, worker_manager=None, db=None, library_bridge=None, parent=None):
+    def __init__(self, worker_manager: WorkerManager | None = None,
+                 db=None, library_bridge=None, parent=None):
         super().__init__(parent)
         self._wm = worker_manager
         self._db = db
@@ -38,9 +40,11 @@ class JobBridge(QObject):
 
     @Property(int, notify=jobsChanged)
     def activeCount(self):
-        return sum(1 for j in self._jobs if j["state"] in (STATE_QUEUED, STATE_RUNNING))
+        return sum(1 for j in self._jobs if j["state"] in
+                   (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED))
 
-    def _add_job(self, job_type: str, title: str, callable_fn: Callable | None = None) -> int:
+    def _add_job(self, job_type: str, title: str,
+                 callable_fn: Callable | None = None) -> int:
         self._counter += 1
         job_id = self._counter
         now = time.time()
@@ -54,7 +58,30 @@ class JobBridge(QObject):
         self._jobs.insert(0, job)
         self.jobsChanged.emit()
 
-        if callable_fn:
+        if callable_fn and self._wm and hasattr(self._wm, 'run_task'):
+            task_id = f"job_{job_id}"
+
+            def _run():
+                try:
+                    callable_fn()
+                    return {"ok": True}
+                except Exception as e:
+                    return {"ok": False, "error": str(e)}
+
+            def _done(result):
+                self._update_job(job_id, state=STATE_COMPLETED if result.get("ok")
+                                 else STATE_FAILED,
+                                 finished_at=time.time(),
+                                 error_code="" if result.get("ok") else "EXECUTION_FAILED",
+                                 message=result.get("error", ""))
+
+            handle = self._wm.run_task(task_id, _run, on_done=_done,
+                                       cancellable=True, owner="jobs")
+            job["_handle"] = handle
+            job["_task_id"] = task_id
+            job["state"] = STATE_RUNNING
+            self.jobsChanged.emit()
+        elif callable_fn:
             job["state"] = STATE_RUNNING
             self.jobsChanged.emit()
             try:
@@ -69,7 +96,19 @@ class JobBridge(QObject):
             job["duration"] = job["finished_at"] - job["started_at"]
             self.jobsChanged.emit()
 
+        self._prune()
         return job_id
+
+    def _update_job(self, job_id: int, **kwargs):
+        for j in self._jobs:
+            if j["job_id"] == job_id:
+                for k, v in kwargs.items():
+                    if k != "_handle" and k != "_task_id":
+                        j[k] = v
+                if "finished_at" in kwargs and kwargs["finished_at"]:
+                    j["duration"] = kwargs["finished_at"] - j["started_at"]
+                self.jobsChanged.emit()
+                return
 
     def _scan_library(self, folder_path: str):
         if not self._db or not folder_path:
@@ -93,8 +132,8 @@ class JobBridge(QObject):
                           lambda: self._scan_library(params))
             return {"ok": True}
         if job_type == "library_scan_all":
-            title = "Escaneando todas las fuentes"
-            self._add_job(job_type, title, lambda: self._scan_all_sources())
+            self._add_job(job_type, "Escaneando todas las fuentes",
+                          lambda: self._scan_all_sources())
             return {"ok": True}
         if job_type == "metadata_scan":
             return {"ok": False, "error": "UNSUPPORTED"}
@@ -105,7 +144,7 @@ class JobBridge(QObject):
     def _scan_all_sources(self):
         try:
             from core.library_sources_service import LibrarySourcesService
-            svc = LibrarySourcesService()
+            svc = LibrarySourcesService(db=self._db)
             for source in svc.list():
                 if source.get("enabled") and source.get("available"):
                     self._scan_library(source["path"])
@@ -115,7 +154,10 @@ class JobBridge(QObject):
     @Slot(int, result=dict)
     def cancelJob(self, job_id: int):
         for j in self._jobs:
-            if j["job_id"] == job_id and j["state"] in (STATE_QUEUED, STATE_RUNNING):
+            if j["job_id"] == job_id:
+                handle = j.get("_handle")
+                if handle and hasattr(handle, 'cancel'):
+                    handle.cancel()
                 j["state"] = STATE_CANCELLED
                 j["finished_at"] = time.time()
                 j["duration"] = j["finished_at"] - j["started_at"]
@@ -123,8 +165,36 @@ class JobBridge(QObject):
                 return {"ok": True}
         return {"ok": False, "error": "NOT_FOUND"}
 
+    @Slot(int, result=dict)
+    def retryJob(self, job_id: int):
+        for j in self._jobs:
+            if j["job_id"] == job_id and j["state"] in (STATE_FAILED, STATE_CANCELLED):
+                fn = j.get("_fn")
+                if fn:
+                    return self.runJob(j["type"])
+                return {"ok": False, "error": "NO_CALLABLE"}
+        return {"ok": False, "error": "NOT_FOUND"}
+
     @Slot(result=dict)
     def clearCompleted(self):
-        self._jobs = [j for j in self._jobs if j["state"] in (STATE_QUEUED, STATE_RUNNING)]
+        self._jobs = [j for j in self._jobs if j["state"]
+                      in (STATE_QUEUED, STATE_RUNNING, STATE_CANCEL_REQUESTED)]
         self.jobsChanged.emit()
         return {"ok": True}
+
+    @Slot(result=dict)
+    def clearFailed(self):
+        self._jobs = [j for j in self._jobs if j["state"]
+                      not in (STATE_FAILED, STATE_COMPLETED, STATE_COMPLETED_WITH_ERRORS)]
+        self.jobsChanged.emit()
+        return {"ok": True}
+
+    def _prune(self):
+        if len(self._jobs) > _MAX_JOBS:
+            completed = [(i, j) for i, j in enumerate(self._jobs)
+                         if j["state"] in (STATE_COMPLETED, STATE_FAILED,
+                                           STATE_COMPLETED_WITH_ERRORS, STATE_CANCELLED)]
+            to_remove = len(completed) - _MAX_JOBS // 2
+            for idx, _ in sorted(completed[:to_remove], key=lambda x: -x[0]):
+                if idx < len(self._jobs):
+                    self._jobs.pop(idx)
