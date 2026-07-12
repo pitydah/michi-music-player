@@ -459,7 +459,8 @@ class TestLibraryBridge:
         tmpdir = tempfile.mkdtemp()
         try:
             result = bridge.addFolder(tmpdir)
-            assert result.get("ok") is True
+            assert result.get("ok") is False
+            assert result.get("error") == "NO_JOB_SERVICE"
         finally:
             os.rmdir(tmpdir)
 

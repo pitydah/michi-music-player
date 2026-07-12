@@ -7,9 +7,10 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 class QueueBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, player_service=None, parent=None):
+    def __init__(self, player_service=None, playlists_bridge=None, parent=None):
         super().__init__(parent)
         self._player = player_service
+        self._pb = playlists_bridge
         from ui_qml.models.QueueListModel import QueueListModel
         self._model = QueueListModel(player_service=player_service, parent=self)
 
@@ -69,12 +70,12 @@ class QueueBridge(QObject):
     def saveAsPlaylist(self, name: str):
         if not name:
             return {"ok": False, "error": "EMPTY_NAME"}
+        if not self._pb:
+            return {"ok": False, "error": "NO_PLAYLIST_BRIDGE"}
         if not self._player or not hasattr(self._player, 'get_queue'):
             return {"ok": False, "error": "NO_PLAYER"}
         try:
-            from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-            pb = PlaylistsBridge()
-            return pb.saveQueueAsPlaylist(name)
+            return self._pb.saveQueueAsPlaylist(name)
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

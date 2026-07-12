@@ -27,6 +27,7 @@ class BridgeFactory(QObject):
         self._bridges: dict[str, QObject] = {}
         self._capabilities: dict[str, bool] = {}
         self._action_registry = None
+        self._qs_cache = None
 
     @property
     def bridges(self) -> dict[str, QObject]:
@@ -65,15 +66,20 @@ class BridgeFactory(QObject):
             self._bridges["theme"] = ThemeBridge()
         return self._bridges["theme"]
 
-    def create_library_bridge(self):
-        from ui_qml_bridge.library_bridge import LibraryBridge
+    def _get_library_query_service(self):
         from ui_qml_bridge.library_query_service import LibraryQueryService
-        from ui_qml_bridge.query_executor import QueryExecutor
-        if "library" not in self._bridges:
+        if not hasattr(self, '_qs_cache') or self._qs_cache is None:
             db_path = ""
             if self._services.db and hasattr(self._services.db, 'db_path'):
                 db_path = self._services.db.db_path
-            qs = LibraryQueryService(self._services.db, db_path=db_path) if self._services.db or db_path else None
+            self._qs_cache = LibraryQueryService(self._services.db, db_path=db_path) if self._services.db or db_path else None
+        return self._qs_cache
+
+    def create_library_bridge(self):
+        from ui_qml_bridge.library_bridge import LibraryBridge
+        from ui_qml_bridge.query_executor import QueryExecutor
+        if "library" not in self._bridges:
+            qs = self._get_library_query_service()
             qe = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
             self._bridges["library"] = LibraryBridge(
                 db=self._services.db,
@@ -82,6 +88,7 @@ class BridgeFactory(QObject):
                 query_service=qs,
                 query_executor=qe,
                 worker_manager=self._services.worker_manager,
+                job_bridge=self._bridges.get("job_bridge"),
             )
         self._register_capability("library", "db")
         return self._bridges["library"]
@@ -216,9 +223,8 @@ class BridgeFactory(QObject):
 
     def create_smart_tagging_bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        from ui_qml_bridge.library_query_service import LibraryQueryService
         if "smart_tagging" not in self._bridges:
-            qs = LibraryQueryService(self._services.db, db_path=getattr(self._services.db, 'db_path', '')) if self._services.db else None
+            qs = self._get_library_query_service()
             br = SmartTaggingBridge(service=self._services.smart_tagging_service,
                                     worker_manager=self._services.worker_manager,
                                     query_service=qs)
@@ -355,6 +361,7 @@ class BridgeFactory(QObject):
         if "queue" not in self._bridges:
             self._bridges["queue"] = QueueBridge(
                 player_service=self._services.player_service,
+                playlists_bridge=self.get("playlists"),
             )
         return self._bridges["queue"]
 
@@ -368,16 +375,14 @@ class BridgeFactory(QObject):
 
     def create_home_bridge(self):
         from ui_qml_bridge.home_bridge import HomeBridge
+        from core.library_sources_service import LibrarySourcesService
         if "home" not in self._bridges:
-            src_svc = None
-            lb = self._bridges.get("library_sources")
-            if lb and hasattr(lb, '_svc'):
-                src_svc = lb._svc
             self._bridges["home"] = HomeBridge(
                 db=self._services.db,
                 player_service=self._services.player_service,
                 library_bridge=self._bridges.get("library"),
-                library_sources_service=src_svc,
+                library_sources_service=LibrarySourcesService(db=self._services.db),
+                job_bridge=self._bridges.get("job_bridge"),
             )
         self._register_capability("home", "db")
         return self._bridges["home"]
@@ -412,7 +417,6 @@ class BridgeFactory(QObject):
         self.create_home_audio_bridge()
         self.create_devices_bridge()
         self.create_radio_bridge()
-        self.create_playlists_bridge()
         self.create_settings_bridge()
         self.create_eq_bridge()
         self.create_audio_lab_bridge()
@@ -430,6 +434,7 @@ class BridgeFactory(QObject):
         self.create_global_search_bridge()
         self.create_cover_provider_bridge()
         self.create_job_bridge()
+        self.create_playlists_bridge()
         self.create_desktop_bridge()
         self.create_page_state_store()
         self.create_queue_bridge()
