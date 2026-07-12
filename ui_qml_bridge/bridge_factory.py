@@ -395,6 +395,14 @@ class BridgeFactory(QObject):
         self._register_capability("home", "db")
         return self._bridges["home"]
 
+    def create_output_profiles_bridge(self):
+        from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
+        if "output_profiles" not in self._bridges:
+            self._bridges["output_profiles"] = OutputProfilesBridge(
+                player_service=self._services.player_service,
+            )
+        return self._bridges["output_profiles"]
+
     def create_capability_bridge(self):
         from ui_qml_bridge.capability_bridge import CapabilityBridge
         if "capability" not in self._bridges:
@@ -449,6 +457,7 @@ class BridgeFactory(QObject):
         self.create_history_bridge()
         self.create_home_bridge()
         self.create_library_sources_bridge()
+        self.create_output_profiles_bridge()
         self.create_capability_bridge()
         self.bind_action_handlers()
         return self._bridges

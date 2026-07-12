@@ -1,7 +1,7 @@
 # QML Release Readiness
 
 **Date:** 2026-07-12
-**Status:** NOT READY for default UI
+**Status:** NOT READY for default UI (~70%)
 
 ## Criteria
 

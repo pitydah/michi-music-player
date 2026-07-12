@@ -1,7 +1,7 @@
 # QML Migration Progress
 
 **Updated:** 2026-07-12
-**Overall score:** 65.8% (FUNCTIONAL)
+**Overall score:** 66.0% (FUNCTIONAL)
 
 ## Module status
 
@@ -40,6 +40,8 @@
 | track_action_service | FUNCTIONAL | — | — | — | ✓ |
 | scanner_job_adapter | FUNCTIONAL | — | ✓ | ✓ | — |
 | metadata_batch | FUNCTIONAL | — | — | — | — |
+| capability | FUNCTIONAL | 1 | — | — | ✓ |
+| output_profiles | FUNCTIONAL | — | — | — | — |
 
 ## Key
 
