@@ -111,19 +111,9 @@ class JobBridge(QObject):
                 return
 
     def _scan_library(self, folder_path: str):
-        if not self._db or not folder_path:
-            return
-        from pathlib import Path
-        p = Path(folder_path)
-        if not p.is_dir():
-            return
-        from library.indexer import Indexer
-        worker = Indexer(self._db, str(p))
-        worker.run()
-        if hasattr(self._db, 'conn') and self._db.conn:
-            self._db.conn.commit()
-        if self._lib and hasattr(self._lib, 'refresh'):
-            self._lib.refresh()
+        from core.scanner_job_adapter import ScannerJobAdapter
+        adapter = ScannerJobAdapter(self._db, self._lib)
+        return adapter.scan(folder_path)
 
     @Slot(str, result=dict)
     def runJob(self, job_type: str, params: str = ""):

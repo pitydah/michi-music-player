@@ -190,9 +190,27 @@ class PlaylistsBridge(QObject):
         count = 0
         for t in tracks:
             fp = t.get("filepath", "") if isinstance(t, dict) else ""
-            if fp:
+            tid = t.get("track_id", 0) if isinstance(t, dict) else 0
+            if tid:
+                self._db.add_track_to_playlist(pid, track_id=int(tid))
+                count += 1
+            elif fp:
                 self._db.add_track_to_playlist(pid, filepath=fp)
                 count += 1
+        self.refresh()
+        return {"ok": True, "count": count}
+
+    @Slot(int, "QVariantList", result=dict)
+    def batchAddTrackIds(self, playlist_id: int, track_ids: list):
+        if not self._can():
+            return {"ok": False, "error": "NO_DB"}
+        count = 0
+        for tid in track_ids:
+            try:
+                self._db.add_track_to_playlist(playlist_id, track_id=int(tid))
+                count += 1
+            except (ValueError, TypeError):
+                continue
         self.refresh()
         return {"ok": True, "count": count}
 

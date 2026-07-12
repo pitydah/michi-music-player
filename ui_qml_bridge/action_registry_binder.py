@@ -63,6 +63,14 @@ class ActionRegistryBinder(QObject):
             "navigate_audio_lab": "audio_lab",
             "navigate_devices": "devices",
             "navigate_connections": "connections",
+            "navigate_home_audio": "home_audio",
+            "navigate_jobs": "jobs",
+            "navigate_queue": "queue",
+            "navigate_history": "history",
+            "navigate_library_sources": "library_sources",
+            "navigate_diagnostics": "diagnostics",
+            "navigate_library_doctor": "library_doctor",
+            "navigate_mix": "mix",
         }
         for action_id, route in routes.items():
             action = self._registry.get(action_id)

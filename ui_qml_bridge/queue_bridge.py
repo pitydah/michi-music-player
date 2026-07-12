@@ -54,6 +54,30 @@ class QueueBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(int, int, result=dict)
+    def moveItem(self, from_index: int, to_index: int):
+        if not self._player or not hasattr(self._player, 'move_in_queue'):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            self._player.move_in_queue(from_index, to_index)
+            self.refresh()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def saveAsPlaylist(self, name: str):
+        if not name:
+            return {"ok": False, "error": "EMPTY_NAME"}
+        if not self._player or not hasattr(self._player, 'get_queue'):
+            return {"ok": False, "error": "NO_PLAYER"}
+        try:
+            from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+            pb = PlaylistsBridge()
+            return pb.saveQueueAsPlaylist(name)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     @Slot(result=dict)
     def clearQueue(self):
         if not self._player or not hasattr(self._player, 'clear_queue'):
