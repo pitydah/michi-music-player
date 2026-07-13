@@ -19,6 +19,12 @@ class HomeBridge(QObject):
         self._lib = library_bridge
         self._src_svc = library_sources_service
         self._job_bridge = job_bridge
+        if self._player and hasattr(self._player, 'track_changed'):
+            self._player.track_changed.connect(self._on_playback_changed)
+        if self._player and hasattr(self._player, 'state_changed'):
+            self._player.state_changed.connect(self._on_playback_changed)
+        if self._job_bridge and hasattr(self._job_bridge, 'jobsChanged'):
+            self._job_bridge.jobsChanged.connect(self._load_jobs)
         self._albums = 0
         self._artists = 0
         self._tracks = 0
@@ -135,6 +141,11 @@ class HomeBridge(QObject):
                 return
         except Exception:
             pass
+
+    def _on_playback_changed(self):
+        self._load_playback()
+        self._load_audio()
+        self.snapshotChanged.emit()
 
     def _load_audio(self):
         if not self._player:

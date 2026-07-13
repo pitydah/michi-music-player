@@ -420,7 +420,8 @@ class BridgeFactory(QObject):
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         if "library_sources" not in self._bridges:
             svc = self._get_library_sources_service()
-            self._bridges["library_sources"] = LibrarySourcesBridge(service=svc)
+            self._bridges["library_sources"] = LibrarySourcesBridge(
+                service=svc, job_bridge=self._bridges.get("job_bridge"))
         return self._bridges["library_sources"]
 
     def create_all(self) -> dict[str, QObject]:

@@ -393,11 +393,17 @@ class PlaylistsBridge(QObject):
             if not internal:
                 return {"ok": False, "error": "NO_TRACKS"}
             fps = [t["filepath"] for t in internal if t.get("filepath")]
+            if not fps:
+                return {"ok": False, "error": "NO_VALID_TRACKS"}
             export_m3u(destination_path, fps)
             return {"ok": True, "count": len(fps)}
         except Exception as e:
             logger.debug("exportM3U failed: %s", e)
             return {"ok": False, "error": str(e)}
+
+    @Slot(int, str, result=dict)
+    def exportM3U8(self, playlist_id: int, destination_path: str):
+        return self.exportM3U(playlist_id, destination_path)
 
     @Slot(int, result=dict)
     def playPlaylist(self, pid: int):
