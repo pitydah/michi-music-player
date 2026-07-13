@@ -241,7 +241,9 @@ class BridgeFactory(QObject):
     def create_metadata_bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
         if "metadata" not in self._bridges:
-            self._bridges["metadata"] = MetadataBridge()
+            self._bridges["metadata"] = MetadataBridge(
+                worker_manager=self._services.worker_manager,
+            )
         return self._bridges["metadata"]
 
     def create_smart_tagging_bridge(self):
@@ -268,6 +270,7 @@ class BridgeFactory(QObject):
         if "library_doctor" not in self._bridges:
             self._bridges["library_doctor"] = LibraryDoctorBridge(
                 db=self._services.db,
+                worker_manager=self._services.worker_manager,
             )
         self._register_capability("library_doctor", "db")
         return self._bridges["library_doctor"]

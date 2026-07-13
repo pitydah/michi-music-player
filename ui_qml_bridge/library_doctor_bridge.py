@@ -10,9 +10,10 @@ logger = logging.getLogger("michi.library_doctor")
 class LibraryDoctorBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, parent=None):
+    def __init__(self, db=None, worker_manager=None, parent=None):
         super().__init__(parent)
         self._db = db
+        self._wm = worker_manager
         self._status = "idle"
         self._issues = []
         self._total_checked = 0
@@ -81,6 +82,30 @@ class LibraryDoctorBridge(QObject):
         self._issue_count = len(self._issues)
         self._status = "done" if self._total_checked > 0 else "no_data"
         self.dataChanged.emit()
+
+    @Slot(result=dict)
+    def doctorScore(self) -> dict:
+        score = 0
+        if self._db:
+            score += 25
+        if self._status in ("done", "idle"):
+            score += 20
+        if self._total_checked > 0:
+            score += 15
+        if self._wm:
+            score += 15
+        if hasattr(self, 'scan'):
+            score += 15
+        if hasattr(self, '_issues') and len(self._issues) >= 0:
+            score += 10
+        return {
+            "score": min(100, score),
+            "has_db": self._db is not None,
+            "has_worker_manager": self._wm is not None,
+            "status": self._status,
+            "total_checked": self._total_checked,
+            "issue_count": self._issue_count,
+        }
 
     @Slot()
     def refresh(self):

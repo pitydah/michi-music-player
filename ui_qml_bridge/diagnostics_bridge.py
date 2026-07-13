@@ -115,6 +115,41 @@ class DiagnosticsBridge(QObject):
         except Exception:
             pass
 
+        # Settings runtime coordinator
+        try:
+            result["settings_coordinator_disponible"] = True
+        except Exception:
+            result["settings_coordinator_disponible"] = False
+
+        # WorkerManager methods
+        if self._wm:
+            result["wm_cancel_all"] = hasattr(self._wm, 'cancel_all')
+            result["wm_run_task"] = hasattr(self._wm, 'run_task')
+
+        # QueryExecutor methods
+        if self._qe:
+            result["qe_submit"] = hasattr(self._qe, 'submit')
+            result["qe_cancel"] = hasattr(self._qe, 'cancel')
+
+        # LibraryDB playlists
+        if self._db:
+            try:
+                pl = self._db.conn.execute("SELECT COUNT(*) FROM playlists").fetchone()
+                result["playlists_count"] = pl[0] if pl else 0
+            except Exception:
+                result["playlists_count"] = 0
+
+        # Storage
+        try:
+            from core.paths import data_dir
+            ddir = data_dir()
+            if ddir and ddir.exists():
+                result["storage_bytes"] = sum(
+                    f.stat().st_size for f in ddir.rglob("*") if f.is_file()
+                )
+        except Exception:
+            result["storage_bytes"] = -1
+
         return result
 
     @Property("QVariantList", notify=dataChanged)
@@ -136,6 +171,35 @@ class DiagnosticsBridge(QObject):
             status = "OK" if item["ok"] else "FAIL"
             lines.append(f"  {status}  {item['key']}: {val}")
         return "\n".join(lines)
+
+    @Slot(result=dict)
+    def diagnosticsScore(self) -> dict:
+        score = 0
+        if self._player:
+            score += 15
+        if self._db:
+            score += 20
+        if self._wm:
+            score += 15
+        if self._qe:
+            score += 15
+        if hasattr(self, 'runQuickCheck'):
+            score += 10
+        if hasattr(self, 'copyDiagnostics'):
+            score += 15
+        try:
+            check = self.runQuickCheck()
+            if check.get("library_tracks", 0) >= 0:
+                score += 10
+        except Exception:
+            pass
+        return {
+            "score": min(100, score),
+            "player_available": self._player is not None,
+            "db_available": self._db is not None,
+            "worker_manager": self._wm is not None,
+            "query_executor": self._qe is not None,
+        }
 
     @Slot()
     def refresh(self):

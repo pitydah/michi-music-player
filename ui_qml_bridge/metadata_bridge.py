@@ -68,9 +68,11 @@ def _read_full_metadata(filepath: str) -> dict:
 class MetadataBridge(QObject):
     dataChanged = Signal()
     selectionChanged = Signal()
+    batchProgress = Signal(int, int)  # done, total
 
-    def __init__(self, parent=None):
+    def __init__(self, worker_manager=None, parent=None):
         super().__init__(parent)
+        self._wm = worker_manager
         self._current_filepath = ""
         self._has_selection = False
         self._is_loading = False
@@ -307,6 +309,26 @@ class MetadataBridge(QObject):
                 results["errors"] += 1
                 results["details"].append({"filepath": fp, "error": str(e)})
         return results
+
+    @Slot("QVariantList", str, "QVariant", result=dict)
+    def batchSetFieldAsync(self, filepaths: list, key: str, value):
+        if not self._wm:
+            return self.batchSetField(filepaths, key, str(value))
+        import json
+        payload = json.dumps({"filepaths": filepaths, "key": key, "value": str(value)})
+        try:
+            self._wm.run_task(
+                "metadata_batch",
+                {"payload": payload, "operation": "set_field"},
+                callback=lambda r: self._on_batch_done(r),
+            )
+            return {"ok": True, "async": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _on_batch_done(self, result: dict):
+        if result.get("ok"):
+            self.dataChanged.emit()
 
     @Slot()
     def refresh(self):
