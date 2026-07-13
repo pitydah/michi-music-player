@@ -8,10 +8,10 @@ REPO = Path(__file__).resolve().parent.parent
 MANIFEST = REPO / "docs" / "qml_migration_manifest_v2.json"
 
 DIM_WEIGHTS = {
-    "page": 10, "bridge": 10, "service": 15, "read": 8,
-    "primary_action": 12, "write": 8, "errors": 7,
-    "async": 5, "cancel": 5, "unit_tests": 5,
-    "integration_tests": 7, "runtime_test": 5, "physical": 8,
+    "page": 8, "bridge": 8, "service": 12, "read": 5,
+    "primary_action": 10, "write": 5, "errors": 5,
+    "async": 5, "cancel": 5, "score_method": 12,
+    "unit_tests": 8, "integration_tests": 7, "runtime_test": 5, "physical": 5,
 }
 
 DIM_MAX = sum(DIM_WEIGHTS.values())  # 100

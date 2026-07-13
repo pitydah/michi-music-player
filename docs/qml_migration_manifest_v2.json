@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "generated_at": "2026-07-13T19:03:33",
+  "generated_at": "2026-07-13T19:10:10",
   "area_weights": {
     "shell_nav": 12,
     "library_playback": 28,
@@ -10,19 +10,20 @@
     "quality_release": 8
   },
   "dimension_weights": {
-    "page": 10,
-    "bridge": 10,
-    "service": 15,
-    "read": 8,
-    "primary_action": 12,
-    "write": 8,
-    "errors": 7,
+    "page": 8,
+    "bridge": 8,
+    "service": 12,
+    "read": 6,
+    "primary_action": 10,
+    "write": 6,
+    "errors": 5,
     "async": 5,
     "cancel": 5,
+    "score_method": 10,
     "unit_tests": 5,
-    "integration_tests": 7,
+    "integration_tests": 5,
     "runtime_test": 5,
-    "physical": 8
+    "physical": 5
   },
   "modules": [
     {
@@ -41,6 +42,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_action_registry_contains_navigation",
           "test_mix_detail_route_in_navigation",
@@ -73,6 +75,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -95,6 +98,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_theme_files",
           "test_theme_qmldir_exists"
@@ -120,6 +124,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_nowplaying_bar_has_notification_bridge"
         ],
@@ -144,6 +149,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -166,6 +172,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_configure_home_assistant_returns_dict",
           "test_home_audio_access_instantiate",
@@ -210,6 +217,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": true,
         "unit_tests": [
           "test_all_library_files_exist",
           "test_home_library_card_height_fixed",
@@ -263,6 +271,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": true,
@@ -285,6 +294,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [
           "test_playback_bridge_advanced_slots",
           "test_playback_bridge_has_nowplaying_props",
@@ -313,6 +323,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_appshell_has_nowplaying",
           "test_expanded_nowplaying_panel_exists",
@@ -378,6 +389,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_nowplaying_bar_has_queue_panel",
           "test_nowplaying_queue_panel_exists",
@@ -416,6 +428,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [
           "test_history_bridge_clear_no_db",
           "test_history_bridge_default",
@@ -448,6 +461,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_navigate_playlists_works",
           "test_page_stack_has_explicit_radio_playlists",
@@ -486,6 +500,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [
           "test_mix_ai_requires_enabled",
           "test_mix_bridge_default",
@@ -526,6 +541,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": false,
         "unit_tests": [
           "test_lyrics_bridge_default",
           "test_lyrics_cache_hit",
@@ -561,6 +577,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [
           "test_navigate_radio_works",
           "test_page_stack_has_explicit_radio_playlists",
@@ -600,6 +617,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": false,
         "unit_tests": [
           "test_global_search_bridge_default",
           "test_global_search_empty_query",
@@ -627,6 +645,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -649,6 +668,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -671,6 +691,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": false,
         "unit_tests": [
           "test_job_bridge_cancel",
           "test_job_bridge_cancel_not_found",
@@ -701,6 +722,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": true,
@@ -723,6 +745,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_audio_lab_has_metadata_card",
           "test_metadata_artwork_preview_exists",
@@ -764,6 +787,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": false,
         "unit_tests": [
           "test_smart_tagging_apply_no_suggestions",
           "test_smart_tagging_bridge_default",
@@ -795,6 +819,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_audio_lab_bridge_importable",
           "test_audio_lab_bridge_modules",
@@ -823,6 +848,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_library_doctor_bridge_importable",
           "test_library_doctor_importable",
@@ -850,6 +876,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_disc_lab_bridge_importable",
           "test_disc_lab_eject",
@@ -881,6 +908,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_diagnostics_bridge_importable",
           "test_diagnostics_page_exists",
@@ -907,6 +935,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
+        "score_method": true,
         "unit_tests": [
           "test_navigate_michi_ai_falls_to_placeholder",
           "test_sidebar_uses_michi_ai_label"
@@ -932,6 +961,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [
           "test_connections_bridge_no_demo_without_controller",
           "test_connections_bridge_refresh",
@@ -958,6 +988,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_home_audio_access_instantiate",
           "test_home_audio_assign_stream_unsupported",
@@ -996,6 +1027,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": true,
@@ -1018,6 +1050,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_capabilities_list",
           "test_capabilities_no_controller",
@@ -1045,6 +1078,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_navigate_settings_falls_to_placeholder",
           "test_settings_bridge_importable",
@@ -1078,6 +1112,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -1100,6 +1135,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -1122,6 +1158,7 @@
         "errors": true,
         "async": true,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [
           "test_output_profiles_instantiate",
           "test_settings_output_profiles"
@@ -1147,6 +1184,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -1169,6 +1207,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": true,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
@@ -1191,6 +1230,7 @@
         "errors": true,
         "async": false,
         "cancel": false,
+        "score_method": false,
         "unit_tests": [],
         "integration_tests": [],
         "runtime_test": false,
