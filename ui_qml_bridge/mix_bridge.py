@@ -47,6 +47,8 @@ class MixBridge(QObject):
         self._current_songs: list[dict] = []
         self._error_message = ""
         self._ai_enabled = False
+        from core.mix_query_service import MixQueryService
+        self._mqs = MixQueryService(db=db) if db else None
 
     @Property("QVariantList", notify=dataChanged)
     def categories(self):
@@ -83,123 +85,62 @@ class MixBridge(QObject):
         self.dataChanged.emit()
         return {"ok": True, "count": len(self._current_songs)}
 
-    def _get_favorite_track_ids(self) -> set[str]:
-        if not self._db or not hasattr(self._db, 'get_favorites'):
-            return set()
-        try:
-            favs = self._db.get_favorites()
-            return set(str(f) for f in (favs or []))
-        except Exception:
-            return set()
-
-    def _get_all_items(self) -> list:
-        if not self._db or not hasattr(self._db, 'fetch_all'):
-            return []
-        items = self._db.fetch_all() or []
-        return items[:10000]
-
     def _load_mix_items(self, mix_id: str) -> list[dict]:
-        items = self._get_all_items()
-        if not items:
+        if not self._mqs:
             return []
 
         if mix_id == "favorites":
-            fav_ids = self._get_favorite_track_ids()
-            matched = [s for s in items if getattr(s, 'filepath', '') in fav_ids]
-            matched.sort(key=lambda x: getattr(x, 'title', '') or '')
-            return [_to_dict(s, "Favorito") for s in matched[:50]]
+            return [{"title": t["title"], "artist": t["artist"], "album": t["album"],
+                     "duration": t["duration"], "track_id": t["track_id"],
+                     "reason": "Favorito"}
+                    for t in self._mqs.favorites(50)]
 
         elif mix_id == "recent":
-            played = [s for s in items if getattr(s, 'last_played', 0) or 0 > 0]
-            played.sort(key=lambda x: getattr(x, 'last_played', 0) or 0, reverse=True)
-            return [_to_dict(s, "Reproducida recientemente") for s in played[:30]]
+            return [{"title": t["title"], "artist": t["artist"], "album": t["album"],
+                     "duration": t["duration"], "track_id": t["track_id"],
+                     "reason": "Reproducida recientemente"}
+                    for t in self._mqs.recent(30)]
 
         elif mix_id == "most_played":
-            played = [s for s in items if getattr(s, 'play_count', 0) or 0 > 0]
-            played.sort(key=lambda x: getattr(x, 'play_count', 0) or 0, reverse=True)
-            return [_to_dict(s, f"{getattr(s, 'play_count', 0)} reproducciones") for s in played[:30]]
+            return [{"title": t["title"], "artist": t["artist"], "album": t["album"],
+                     "duration": t["duration"], "track_id": t["track_id"],
+                     "reason": "Más escuchada"}
+                    for t in self._mqs.most_played(30)]
 
         elif mix_id == "unplayed":
-            unplayed = [s for s in items if (getattr(s, 'play_count', 0) or 0) == 0]
-            return [_to_dict(s, "No escuchada aún") for s in unplayed[:30]]
+            return [{"title": t["title"], "artist": t["artist"], "album": t["album"],
+                     "duration": t["duration"], "track_id": t["track_id"],
+                     "reason": "No escuchada aún"}
+                    for t in self._mqs.unplayed(30)]
 
         elif mix_id == "daily_mix":
-            return self._build_daily_mix(items)
+            return self._build_daily_mix()
 
         elif mix_id == "ai_recommended":
-            if not self._ai_enabled:
-                return []
-            return self._build_ai_mix(items)
+            return self._build_ai_mix()
 
-        return [_to_dict(s) for s in items[:25]]
+        return [{"title": f"Mix {mix_id}", "track_id": 0}]
 
-    def _smart_mix_to_dict(self, track) -> dict:
-        """Convert RecommendationResult to dict."""
-        return {
-            "title": getattr(track, 'title', '') or '',
-            "artist": getattr(track, 'artist', '') or '',
-            "album": getattr(track, 'album', '') or '',
-            "duration": getattr(track, 'duration', 0) or 0,
-            "track_id": getattr(track, 'track_id', 0) or 0,
-            "reason": "Recomendado",
-        }
-
-    def _build_daily_mix(self, items: list) -> list[dict]:
+    def _build_daily_mix(self) -> list[dict]:
+        if not self._mqs:
+            return []
         try:
-            from recommendation.smart_mix_service import SmartMixService
-            if self._db:
-                svc = SmartMixService(self._db)
-                mix = svc.create_mix(strategy="balanced_mix", limit=25)
-                tracks = getattr(mix, 'tracks', []) or []
-                if tracks:
-                    return [self._smart_mix_to_dict(t) for t in tracks[:25]]
+            recent = self._mqs.recent(50)
+            unplayed = self._mqs.unplayed(50)
+            recent_ids = {r["track_id"] for r in recent}
+            combined = recent[:15]
+            for t in unplayed:
+                if t["track_id"] not in recent_ids and len(combined) < 25:
+                    t["reason"] = "Mix diario"
+                    combined.append(t)
+            for t in combined:
+                t["reason"] = "Mix diario"
+            return combined[:25]
         except Exception as e:
-            logger.debug("SmartMix daily_mix failed: %s", e)
+            logger.debug("daily_mix failed: %s", e)
+            return []
 
-        # Fallback: genre mix from recent tracks
-        recent_with_play = [s for s in items if getattr(s, 'last_played', 0) or 0 > 0]
-        recent_with_play.sort(key=lambda x: getattr(x, 'last_played', 0) or 0, reverse=True)
-        recent_artists = set()
-        recent_genres = set()
-        for s in recent_with_play[:10]:
-            artist = getattr(s, 'artist', '') or ''
-            genre = getattr(s, 'genre', '') or ''
-            if artist:
-                recent_artists.add(artist.lower())
-            if genre:
-                recent_genres.add(genre.lower())
-
-        scored = []
-        for s in items:
-            score = 0
-            artist = (getattr(s, 'artist', '') or '').lower()
-            genre = (getattr(s, 'genre', '') or '').lower()
-            if artist in recent_artists:
-                score += 3
-            if genre in recent_genres:
-                score += 1
-            if score > 0:
-                scored.append((score, s))
-
-        scored.sort(key=lambda x: (-x[0], getattr(x[1], 'title', '') or ''))
-        seen = set()
-        result = []
-        for _, s in scored:
-            fp = getattr(s, 'filepath', '')
-            if fp not in seen:
-                seen.add(fp)
-                result.append(_to_dict(s, "Mix diario"))
-                if len(result) >= 25:
-                    break
-
-        if result:
-            return result
-
-        # Ultimate fallback: newest additions
-        sorted_items = sorted(items, key=lambda x: getattr(x, 'created_at', 0) or 0, reverse=True)
-        return [_to_dict(s, "Mix diario") for s in sorted_items[:25]]
-
-    def _build_ai_mix(self, items: list) -> list[dict]:
+    def _build_ai_mix(self) -> list[dict]:
         return []
 
     @Slot(result=dict)

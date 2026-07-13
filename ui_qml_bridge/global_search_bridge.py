@@ -37,7 +37,7 @@ class GlobalSearchBridge(QObject):
         return self._is_searching
 
     def _search_tracks(self, query: str, gen: int) -> list[dict]:
-        if gen != self._search_gen:
+        if gen != self._search_gen or not self._db:
             return []
         results = []
         try:
@@ -50,12 +50,12 @@ class GlobalSearchBridge(QObject):
                     "subtitle": f"{r[2] or ''} · {r[3] or ''}",
                     "section": "Canciones", "score": 1.0,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Search tracks failed: %s", e)
         return results
 
     def _search_albums(self, query: str, gen: int) -> list[dict]:
-        if gen != self._search_gen:
+        if gen != self._search_gen or not self._db:
             return []
         results = []
         try:
@@ -66,12 +66,12 @@ class GlobalSearchBridge(QObject):
                     "type": "album", "id": r[0] or "", "title": r[1] or "",
                     "subtitle": r[2] or "", "section": "Álbumes", "score": 0.9,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Search albums failed: %s", e)
         return results
 
     def _search_artists(self, query: str, gen: int) -> list[dict]:
-        if gen != self._search_gen:
+        if gen != self._search_gen or not self._db:
             return []
         results = []
         try:
@@ -82,8 +82,8 @@ class GlobalSearchBridge(QObject):
                     "type": "artist", "id": r[0] or "", "title": r[0] or "",
                     "subtitle": "Artista", "section": "Artistas", "score": 0.8,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Search artists failed: %s", e)
         return results
 
     @Slot(str, result=dict)
