@@ -1,4 +1,4 @@
-"""GlobalSearchBridge — multidomain async search using FTS5 + LIKE fallback."""
+"""GlobalSearchBridge — multidomain async search via QueryExecutor."""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -23,6 +23,8 @@ class GlobalSearchBridge(QObject):
         self._results = []
         self._is_searching = False
         self._search_gen = 0
+        self._error_code = ""
+        self._error_message = ""
 
     @Property(str, notify=resultsChanged)
     def query(self):
@@ -36,54 +38,35 @@ class GlobalSearchBridge(QObject):
     def isSearching(self):
         return self._is_searching
 
-    def _search_tracks(self, query: str, gen: int) -> list[dict]:
-        if gen != self._search_gen or not self._db:
-            return []
+    @Property(str, notify=resultsChanged)
+    def errorCode(self):
+        return self._error_code
+
+    @Property(str, notify=resultsChanged)
+    def errorMessage(self):
+        return self._error_message
+
+    def _do_search(self, query: str, gen: int) -> list[dict]:
         results = []
+        if not self._db:
+            return results
         try:
             sql = "SELECT id, title, artist, album, album_key FROM media_items WHERE deleted_at IS NULL AND (title LIKE ? OR artist LIKE ? OR album LIKE ?) LIMIT ?"
             p = f"%{query}%"
-            rows = self._db.conn.execute(sql, (p, p, p, _MAX_PER_DOMAIN)).fetchall()
-            for r in rows:
-                results.append({
-                    "type": "track", "id": r[0], "title": r[1] or "",
-                    "subtitle": f"{r[2] or ''} · {r[3] or ''}",
-                    "section": "Canciones", "score": 1.0,
-                })
-        except Exception as e:
-            logger.debug("Search tracks failed: %s", e)
-        return results
-
-    def _search_albums(self, query: str, gen: int) -> list[dict]:
-        if gen != self._search_gen or not self._db:
-            return []
-        results = []
-        try:
+            for r in self._db.conn.execute(sql, (p, p, p, _MAX_PER_DOMAIN)).fetchall():
+                results.append({"type": "track", "id": r[0], "title": r[1] or "",
+                                "subtitle": f"{r[2] or ''} · {r[3] or ''}",
+                                "section": "Canciones", "score": 1.0})
             sql = "SELECT DISTINCT album_key, album, COALESCE(NULLIF(albumartist,''), artist, ''), year FROM media_items WHERE deleted_at IS NULL AND album LIKE ? AND COALESCE(album, '') != '' LIMIT ?"
-            rows = self._db.conn.execute(sql, (f"%{query}%", _MAX_PER_DOMAIN)).fetchall()
-            for r in rows:
-                results.append({
-                    "type": "album", "id": r[0] or "", "title": r[1] or "",
-                    "subtitle": r[2] or "", "section": "Álbumes", "score": 0.9,
-                })
-        except Exception as e:
-            logger.debug("Search albums failed: %s", e)
-        return results
-
-    def _search_artists(self, query: str, gen: int) -> list[dict]:
-        if gen != self._search_gen or not self._db:
-            return []
-        results = []
-        try:
+            for r in self._db.conn.execute(sql, (f"%{query}%", _MAX_PER_DOMAIN)).fetchall():
+                results.append({"type": "album", "id": r[0] or "", "title": r[1] or "",
+                                "subtitle": r[2] or "", "section": "Álbumes", "score": 0.9})
             sql = "SELECT DISTINCT COALESCE(NULLIF(albumartist,''), artist, '') FROM media_items WHERE deleted_at IS NULL AND COALESCE(NULLIF(albumartist,''), artist, '') LIKE ? AND COALESCE(artist, '') != '' LIMIT ?"
-            rows = self._db.conn.execute(sql, (f"%{query}%", _MAX_PER_DOMAIN)).fetchall()
-            for r in rows:
-                results.append({
-                    "type": "artist", "id": r[0] or "", "title": r[0] or "",
-                    "subtitle": "Artista", "section": "Artistas", "score": 0.8,
-                })
+            for r in self._db.conn.execute(sql, (f"%{query}%", _MAX_PER_DOMAIN)).fetchall():
+                results.append({"type": "artist", "id": r[0] or "", "title": r[0] or "",
+                                "subtitle": "Artista", "section": "Artistas", "score": 0.8})
         except Exception as e:
-            logger.debug("Search artists failed: %s", e)
+            logger.debug("Search failed: %s", e)
         return results
 
     @Slot(str, result=dict)
@@ -91,30 +74,40 @@ class GlobalSearchBridge(QObject):
         self._query = query
         self._search_gen += 1
         gen = self._search_gen
-        query = query.strip().lower()
-        if not query:
+        q = query.strip().lower()
+        if not q:
             self._results = []
             self._is_searching = False
+            self._error_code = ""
+            self._error_message = ""
             self.resultsChanged.emit()
+            self.searchingChanged.emit()
             return {"ok": True, "count": 0}
+
         self._is_searching = True
+        self._error_code = ""
+        self._error_message = ""
         self.searchingChanged.emit()
-        results = []
-        try:
-            results.extend(self._search_tracks(query, gen))
-            results.extend(self._search_albums(query, gen))
-            results.extend(self._search_artists(query, gen))
-        except Exception as e:
-            logger.debug("Global search failed: %s", e)
-            self._results = []
+
+        def _task():
+            return self._do_search(q, gen)
+
+        def _on_done(results):
+            if gen != self._search_gen:
+                return
+            self._results = results[:_MAX_TOTAL]
             self._is_searching = False
             self.searchingChanged.emit()
             self.resultsChanged.emit()
-            return {"ok": False, "error_code": "SEARCH_FAILED", "message": "Error al buscar"}
-        if gen != self._search_gen:
-            return {"ok": True, "count": 0, "stale": True}
-        self._results = results[:_MAX_TOTAL]
-        self._is_searching = False
-        self.searchingChanged.emit()
-        self.resultsChanged.emit()
-        return {"ok": True, "count": len(results)}
+
+        if self._qe and hasattr(self._qe, 'submit'):
+            self._qe.submit("global_search", _task, on_success=_on_done,
+                            on_error=lambda c, m: (_on_done([]),
+                                                    setattr(self, '_error_code', c) or
+                                                    setattr(self, '_error_message', m)),
+                            supersede=True, cancellable=True)
+            return {"ok": True, "queued": True}
+        else:
+            results = _task()
+            _on_done(results)
+            return {"ok": True, "count": len(results)}
