@@ -11,6 +11,9 @@ logger = logging.getLogger("michi.settings_service")
 
 
 class SettingsService:
+    def __init__(self, coordinator=None):
+        self._coordinator = coordinator
+
     def categories(self) -> list[dict]:
         return [
             {
@@ -52,15 +55,32 @@ class SettingsService:
             return {"ok": False, "error_code": "INVALID_VALUE", "message": msg}
         SETTINGS.setValue(key, value)
         SETTINGS.sync()
-        return {"ok": True, "key": key, "value": value}
+        result = {"ok": True, "key": key, "value": value}
+        if self._coordinator:
+            apply = self._coordinator.apply(key, value)
+            result.update({
+                "applied": apply.applied,
+                "requires_restart": apply.requires_restart,
+                "message": apply.message,
+            })
+        return result
 
     def reset(self, key: str) -> dict:
         entry = get_entry(key)
         if not entry:
             return {"ok": False, "error_code": "UNKNOWN_KEY", "message": "Clave desconocida"}
-        SETTINGS.setValue(key, entry.default)
+        default = entry.default
+        SETTINGS.setValue(key, default)
         SETTINGS.sync()
-        return {"ok": True, "key": key, "value": entry.default}
+        result = {"ok": True, "key": key, "value": default}
+        if self._coordinator:
+            apply = self._coordinator.apply(key, default)
+            result.update({
+                "applied": apply.applied if apply.ok else False,
+                "requires_restart": apply.requires_restart,
+                "message": apply.message,
+            })
+        return result
 
     def get_all(self) -> dict[str, Any]:
         result = {}

@@ -73,7 +73,9 @@ class BridgeFactory(QObject):
     def create_theme_bridge(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         if "theme" not in self._bridges:
-            self._bridges["theme"] = ThemeBridge()
+            self._bridges["theme"] = ThemeBridge(
+                coordinator=self._get_settings_runtime_coordinator(),
+            )
         return self._bridges["theme"]
 
     def _get_library_query_service(self):
@@ -407,7 +409,9 @@ class BridgeFactory(QObject):
     def _get_settings_service(self):
         if self._settings_service_cache is None:
             from core.settings_service import SettingsService
-            self._settings_service_cache = SettingsService()
+            self._settings_service_cache = SettingsService(
+                coordinator=self._get_settings_runtime_coordinator(),
+            )
         return self._settings_service_cache
 
     def _get_history_query_service(self):

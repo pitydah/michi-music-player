@@ -125,9 +125,26 @@ class AppBridge(QObject):
     def quit(self):
         self._shutting_down = True
         self.statusChanged.emit("shutting_down")
-        if self._qe and hasattr(self._qe, 'shutdown'):
-            self._qe.shutdown(1000)
+        if self._wm and hasattr(self._wm, 'cancel_all'):
+            self._wm.cancel_all()
         if self._wm and hasattr(self._wm, 'shutdown'):
             self._wm.shutdown(2000)
+        if self._qe and hasattr(self._qe, 'shutdown'):
+            self._qe.shutdown(1000)
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.quit()
+
+    @Slot()
+    def cancelAllTasks(self):
+        if self._wm and hasattr(self._wm, 'cancel_all'):
+            self._wm.cancel_all()
+
+    def notifyRestartRequired(self):
+        self._restart_required = True
+        self.statusChanged.emit("restart_required")
+
+    def getWorkerManager(self):
+        return self._wm
+
+    def getQueryExecutor(self):
+        return self._qe
