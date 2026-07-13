@@ -139,19 +139,20 @@ class MixBridge(QObject):
         return {"ok": True}
 
     def __init__(self, db=None, playback_ctrl=None, player_service=None,
-                 track_action_service=None, playlist_bridge=None, parent=None):
+                 track_action_service=None, playlist_bridge=None,
+                 query_service=None, query_executor=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._player = playback_ctrl or player_service
         self._tas = track_action_service
         self._pb = playlist_bridge
+        self._qe = query_executor
         self._current_mix_id = ""
         self._current_mix_title = ""
         self._current_songs: list[dict] = []
         self._error_message = ""
         self._ai_enabled = False
-        from core.mix_query_service import MixQueryService
-        self._mqs = MixQueryService(db=db) if db else None
+        self._mqs = query_service
 
     @Slot(result=dict)
     def playMix(self):

@@ -39,4 +39,7 @@ QML_CONTEXT_BINDINGS = {
     "capabilityBridge": "capability",
     "outputProfilesBridge": "output_profiles",
     "settingsBridgeV2": "settings_v2",
+    "accessibilityBridge": "accessibility",
+    "runtimeQualityBridge": "runtime_quality",
+    "physicalAudioBridge": "physical_audio",
 }
