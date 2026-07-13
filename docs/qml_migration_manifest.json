@@ -815,6 +815,7 @@
         "error_contract": true,
         "write": false,
         "unit_tests": [
+          "test_query_cancel_terminal_once",
           "test_query_executor_cancel_calls_cancelled",
           "test_query_executor_cancel_resets_state",
           "test_query_executor_shutdown_no_shared_wm",
@@ -847,6 +848,130 @@
         "async_jobs": false,
         "cancel_supported": false,
         "error_paths_tested": true
+      }
+    },
+    {
+      "module": "settings_schema",
+      "area": "quality_release",
+      "module_weight": 15,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": true,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true,
+        "unit_tests": [
+          "test_settings_schema_loaded",
+          "test_settings_validation"
+        ]
+      }
+    },
+    {
+      "module": "settings_service",
+      "area": "quality_release",
+      "module_weight": 15,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": true,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true,
+        "unit_tests": [
+          "test_settings_service_get_set",
+          "test_settings_service_reset"
+        ]
+      }
+    },
+    {
+      "module": "settings_bridge_v2",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": true,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true,
+        "unit_tests": [
+          "test_settings_bridge_v2"
+        ]
+      }
+    },
+    {
+      "module": "diagnostics_bridge",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": true,
+        "bridge": true,
+        "service": true,
+        "read": true,
+        "primary_action": true,
+        "error_contract": true,
+        "write": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true,
+        "unit_tests": [
+          "test_diagnostics_bridge_importable"
+        ]
+      }
+    },
+    {
+      "module": "history_query_service",
+      "area": "workflows_core",
+      "module_weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": true,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true,
+        "unit_tests": []
+      }
+    },
+    {
+      "module": "mix_query_service",
+      "area": "workflows_core",
+      "module_weight": 10,
+      "status": "FUNCTIONAL",
+      "evidence": {
+        "page": false,
+        "bridge": false,
+        "service": true,
+        "read": true,
+        "primary_action": false,
+        "error_contract": true,
+        "write": false,
+        "async_jobs": false,
+        "cancel_supported": false,
+        "error_paths_tested": true,
+        "unit_tests": []
       }
     }
   ]
