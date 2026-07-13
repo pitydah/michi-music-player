@@ -10,12 +10,18 @@ logger = logging.getLogger("michi.ai.bridge")
 class MichiAIBridge(QObject):
     contextChanged = Signal()
     responseReceived = Signal(str)
+    statusChanged = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._suggestions = []
         self._chat_history = []
         self._controller = None
+        self._status = "idle"
+
+    @Property(str, notify=statusChanged)
+    def status(self):
+        return self._status
 
     def set_controller(self, controller):
         self._controller = controller
@@ -52,14 +58,23 @@ class MichiAIBridge(QObject):
             ]
         self.contextChanged.emit()
 
+    @Slot()
+    def cancel(self):
+        self._status = "idle"
+        self.statusChanged.emit("idle")
+
     @Slot(str)
     def sendMessage(self, text: str):
+        self._status = "thinking"
+        self.statusChanged.emit("thinking")
         msg = text.strip().lower()
         response = self._try_plan(msg, text)
         if not response:
             response = self._fallback_response(msg)
         self._chat_history.append({"role": "user", "text": text})
         self._chat_history.append({"role": "assistant", "text": response})
+        self._status = "idle"
+        self.statusChanged.emit("idle")
         self.responseReceived.emit(response)
 
     def _try_plan(self, msg: str, original: str) -> str:
