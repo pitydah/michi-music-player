@@ -26,8 +26,8 @@ def _make_cache_key(title: str, artist: str, album: str = "", duration: int = 0)
 
 def _search_impl(title: str, artist: str, album: str = "", duration: int = 0) -> dict:
     """Actual LRCLIB search — runs in worker thread."""
-    from lyrics.lrclib_client import LrclibClient
-    client = LrclibClient()
+    from lyrics.lrclib_client import LrcLibClient
+    client = LrcLibClient()
     result = client.get_lyrics(title, artist, album, float(duration))
     if not result:
         return {"ok": False, "error": "NOT_FOUND"}
