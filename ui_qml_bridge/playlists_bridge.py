@@ -12,18 +12,20 @@ logger = logging.getLogger("michi.playlists")
 class PlaylistsBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, selection_context=None, player_service=None, parent=None):
+    def __init__(self, db=None, selection_context=None, player_service=None,
+                 playlist_service=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._sel_ctx = selection_context
         self._player = player_service
         self._playlists = []
+        self._svc = playlist_service
 
     def setSelectionContext(self, ctx):
         self._sel_ctx = ctx
 
     def _can(self) -> bool:
-        return self._db is not None and hasattr(self._db, 'get_playlists')
+        return self._svc is not None or (self._db is not None and hasattr(self._db, 'get_playlists'))
 
     @Property("QVariantList", notify=dataChanged)
     def playlists(self):
@@ -64,6 +66,11 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, result=dict)
     def createPlaylist(self, name: str):
+        if self._svc:
+            result = self._svc.create(name)
+            if result.get("ok"):
+                self.refresh()
+            return result
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
@@ -75,6 +82,11 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, result=dict)
     def deletePlaylist(self, pid: int):
+        if self._svc:
+            result = self._svc.delete(pid)
+            if result.get("ok"):
+                self.refresh()
+            return result
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
@@ -86,6 +98,11 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, str, result=dict)
     def renamePlaylist(self, pid: int, name: str):
+        if self._svc:
+            result = self._svc.rename(pid, name)
+            if result.get("ok"):
+                self.refresh()
+            return result
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
@@ -216,6 +233,11 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, result=dict)
     def duplicatePlaylist(self, pid: int):
+        if self._svc:
+            result = self._svc.duplicate(pid)
+            if result.get("ok"):
+                self.refresh()
+            return result
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
         try:
@@ -319,6 +341,11 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, result=dict)
     def saveQueueAsPlaylist(self, name: str):
+        if self._svc:
+            result = self._svc.save_queue(self._player, name)
+            if result.get("ok"):
+                self.refresh()
+            return result
         if not name:
             return {"ok": False, "error": "EMPTY_NAME"}
         if not self._can():
@@ -350,6 +377,8 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, result=dict)
     def previewPlaylistImport(self, filepath: str):
+        if self._svc:
+            return self._svc.import_preview(filepath)
         if not filepath or not Path(filepath).is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         try:
@@ -374,6 +403,11 @@ class PlaylistsBridge(QObject):
 
     @Slot(str, str, result=dict)
     def confirmPlaylistImport(self, filepath: str, name: str = ""):
+        if self._svc:
+            result = self._svc.import_confirm(filepath, name)
+            if result.get("ok"):
+                self.refresh()
+            return result
         if not filepath or not Path(filepath).is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         if not self._can():
@@ -409,6 +443,8 @@ class PlaylistsBridge(QObject):
 
     @Slot(int, str, result=dict)
     def exportM3U(self, playlist_id: int, destination_path: str):
+        if self._svc:
+            return self._svc.export(playlist_id, destination_path)
         if not destination_path:
             return {"ok": False, "error": "EMPTY_PATH"}
         if not self._can():

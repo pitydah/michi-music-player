@@ -46,6 +46,10 @@ class GlobalSearchBridge(QObject):
     def errorMessage(self):
         return self._error_message
 
+    @property
+    def query_executor(self):
+        return self._qe
+
     def _do_search(self, query: str, gen: int) -> list[dict]:
         results = []
         if not self._db:

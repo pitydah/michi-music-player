@@ -132,6 +132,23 @@ class DiagnosticsBridge(QObject):
             result["qe_submit"] = hasattr(self._qe, 'submit')
             result["qe_cancel"] = hasattr(self._qe, 'cancel')
 
+        # Bridge health
+        try:
+            import ui_qml_bridge.accessibility_bridge as _ab
+            result["accessibility_bridge_available"] = bool(_ab)
+        except Exception:
+            result["accessibility_bridge_available"] = False
+        try:
+            import ui_qml_bridge.runtime_quality_bridge as _rq
+            result["runtime_quality_bridge_available"] = bool(_rq)
+        except Exception:
+            result["runtime_quality_bridge_available"] = False
+        try:
+            import ui_qml_bridge.physical_audio_bridge as _pa
+            result["physical_audio_bridge_available"] = bool(_pa)
+        except Exception:
+            result["physical_audio_bridge_available"] = False
+
         # LibraryDB playlists
         if self._db:
             try:
@@ -244,3 +261,7 @@ class DiagnosticsBridge(QObject):
     @Slot()
     def refresh(self):
         self.dataChanged.emit()
+
+    @property
+    def query_executor(self):
+        return self._qe

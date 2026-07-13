@@ -18,7 +18,17 @@ def get_app_version() -> str:
 class AppBridge(QObject):
     statusChanged = Signal(str)
 
-    def __init__(self, worker_manager=None, query_executor=None, parent=None):
+    PHASE_INITIALIZING = "initializing"
+    PHASE_LOADING_SERVICES = "loading_services"
+    PHASE_LOADING_QML = "loading_qml"
+    PHASE_READY = "ready"
+    PHASE_SHUTTING_DOWN = "shutting_down"
+    PHASE_FAILED = "failed"
+
+    def __init__(self, worker_manager=None, query_executor=None,
+                 player_service=None, queue_bridge=None,
+                 sync_manager=None, home_audio_controller=None,
+                 radio_manager=None, discovery=None, db=None, parent=None):
         super().__init__(parent)
         self._app_name = "Michi Music Player"
         self._version = get_app_version()
@@ -29,7 +39,16 @@ class AppBridge(QObject):
         self._restart_required = False
         self._wm = worker_manager
         self._qe = query_executor
+        self._player_service = player_service
+        self._queue_bridge = queue_bridge
+        self._sync_manager = sync_manager
+        self._home_audio = home_audio_controller
+        self._radio_manager = radio_manager
+        self._discovery = discovery
+        self._db = db
         self._ui_mode = "qml"
+        self._phase = self.PHASE_INITIALIZING
+        self._accepting_new = True
 
     @Property(str, constant=True)
     def appName(self):
@@ -62,6 +81,10 @@ class AppBridge(QObject):
     @Property(str, constant=True)
     def uiMode(self):
         return self._ui_mode
+
+    @Property(str, notify=statusChanged)
+    def phase(self):
+        return self._phase
 
     @Property(str, constant=True)
     def dataPath(self):
@@ -98,7 +121,12 @@ class AppBridge(QObject):
     @Slot()
     def setReady(self):
         self._ready = True
+        self._phase = self.PHASE_READY
         self.statusChanged.emit("ready")
+
+    def setPhase(self, phase: str):
+        self._phase = phase
+        self.statusChanged.emit(phase)
 
     @Slot(result=dict)
     def requestRestart(self):
@@ -124,13 +152,66 @@ class AppBridge(QObject):
     @Slot()
     def quit(self):
         self._shutting_down = True
+        self._phase = self.PHASE_SHUTTING_DOWN
+        self._accepting_new = False
         self.statusChanged.emit("shutting_down")
-        if self._wm and hasattr(self._wm, 'cancel_all'):
-            self._wm.cancel_all()
-        if self._wm and hasattr(self._wm, 'shutdown'):
-            self._wm.shutdown(2000)
-        if self._qe and hasattr(self._qe, 'shutdown'):
-            self._qe.shutdown(1000)
+
+        import contextlib
+
+        # b. Cancel QueryExecutor
+        with contextlib.suppress(Exception):
+            if self._qe and hasattr(self._qe, 'shutdown'):
+                self._qe.shutdown(2000)
+
+        # c. Cancel WorkerManager
+        with contextlib.suppress(Exception):
+            if self._wm and hasattr(self._wm, 'cancel_all'):
+                self._wm.cancel_all()
+            if self._wm and hasattr(self._wm, 'shutdown'):
+                self._wm.shutdown(3000)
+
+        # d. Stop SyncManager
+        with contextlib.suppress(Exception):
+            if self._sync_manager and hasattr(self._sync_manager, 'stop'):
+                self._sync_manager.stop()
+
+        # e. Stop discovery
+        with contextlib.suppress(Exception):
+            if self._discovery and hasattr(self._discovery, 'stop'):
+                self._discovery.stop()
+
+        # f. Stop Home Audio polling
+        with contextlib.suppress(Exception):
+            if self._home_audio:
+                if hasattr(self._home_audio, 'stop'):
+                    self._home_audio.stop()
+                elif hasattr(self._home_audio, 'shutdown'):
+                    self._home_audio.shutdown()
+
+        # g. Stop radio
+        with contextlib.suppress(Exception):
+            if self._radio_manager:
+                if hasattr(self._radio_manager, 'stop'):
+                    self._radio_manager.stop()
+                elif hasattr(self._radio_manager, 'shutdown'):
+                    self._radio_manager.shutdown()
+
+        # h. Stop audio
+        with contextlib.suppress(Exception):
+            if self._player_service and hasattr(self._player_service, 'stop'):
+                self._player_service.stop()
+
+        # i. Persist queue and session
+        with contextlib.suppress(Exception):
+            if self._queue_bridge:
+                self._queue_bridge.saveState()
+
+        # j. Close DB
+        with contextlib.suppress(Exception):
+            if self._db and hasattr(self._db, 'close'):
+                self._db.close()
+
+        # k. Quit Qt
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.quit()
 

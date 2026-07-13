@@ -192,6 +192,11 @@ def main():
             "available" if services.player_service else "unavailable",
         )
 
+    # Phase: loading_qml
+    app_bridge = factory.get("app")
+    if app_bridge:
+        app_bridge.setPhase(app_bridge.__class__.PHASE_LOADING_QML)
+
     qmlRegisterType(CoverBridge, "MichiCover", 1, 0, "CoverBridge")
 
     qml_dir = Path(__file__).resolve().parent.parent / "ui_qml"
@@ -207,6 +212,10 @@ def main():
     if not engine.rootObjects():
         print("[QML] ERROR: Failed to load QML root objects", file=sys.stderr)
         sys.exit(1)
+
+    # Mark ready after successful rootObjects
+    if app_bridge:
+        app_bridge.setReady()
 
     # Audit
     audit = registrar.audit()

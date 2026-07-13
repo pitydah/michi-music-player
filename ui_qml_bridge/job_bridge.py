@@ -33,6 +33,10 @@ class JobBridge(QObject):
         self._lib = library_bridge
         self._jobs: list[dict[str, Any]] = []
         self._counter = 0
+        self._library_coordinator = None
+
+    def attach_library_coordinator(self, coordinator: object):
+        self._library_coordinator = coordinator
 
     @Property("QVariantList", notify=jobsChanged)
     def jobs(self):
