@@ -38,4 +38,5 @@ QML_CONTEXT_BINDINGS = {
     "librarySourcesBridge": "library_sources",
     "capabilityBridge": "capability",
     "outputProfilesBridge": "output_profiles",
+    "settingsBridgeV2": "settings_v2",
 }
