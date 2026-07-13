@@ -490,6 +490,26 @@ class BridgeFactory(QObject):
             self._bridges["capability"] = cb
         return self._bridges["capability"]
 
+    def create_accessibility_bridge(self):
+        from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
+        if "accessibility" not in self._bridges:
+            self._bridges["accessibility"] = AccessibilityBridge()
+        return self._bridges["accessibility"]
+
+    def create_runtime_quality_bridge(self):
+        from ui_qml_bridge.runtime_quality_bridge import RuntimeQualityBridge
+        if "runtime_quality" not in self._bridges:
+            self._bridges["runtime_quality"] = RuntimeQualityBridge()
+        return self._bridges["runtime_quality"]
+
+    def create_physical_audio_bridge(self):
+        from ui_qml_bridge.physical_audio_bridge import PhysicalAudioBridge
+        if "physical_audio" not in self._bridges:
+            self._bridges["physical_audio"] = PhysicalAudioBridge(
+                player_service=self._services.player_service,
+            )
+        return self._bridges["physical_audio"]
+
     def create_library_sources_bridge(self):
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         if "library_sources" not in self._bridges:
@@ -511,6 +531,7 @@ class BridgeFactory(QObject):
         self.create_app_bridge()
         self.create_theme_bridge()
         self.create_notification_bridge()
+        self.create_accessibility_bridge()
         self.create_app_state_bridge()
         self.create_route_registry_bridge()
         self.create_action_registry_bridge()
@@ -547,6 +568,8 @@ class BridgeFactory(QObject):
         self.create_library_doctor_bridge()
         self.create_michi_ai_bridge()
         self.create_diagnostics_bridge()
+        self.create_runtime_quality_bridge()
+        self.create_physical_audio_bridge()
         self.create_command_palette_bridge()
         self.create_cover_provider_bridge()
         self.create_desktop_bridge()

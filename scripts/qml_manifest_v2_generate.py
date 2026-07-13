@@ -70,7 +70,7 @@ def _module_meta(mod_id: str) -> tuple:
         "app_bridge": ("AppBridge", False, True, True, False, False, True),
         "theme": ("Tema", False, True, True, True, False, True),
         "notification": ("Notificaciones", False, True, True, False, False, True),
-        "accessibility": ("Accesibilidad", False, False, False, False, False, False),
+        "accessibility": ("Accesibilidad", False, True, False, False, False, True),
         "home": ("Inicio", True, True, False, False, False, True),
         "library": ("Biblioteca", True, True, True, True, True, True),
         "album_views": ("Álbumes", True, False, False, False, False, False),
@@ -102,9 +102,9 @@ def _module_meta(mod_id: str) -> tuple:
         "home_audio": ("Home Audio", True, True, True, True, False, True),
         "devices_sync": ("Dispositivos", True, False, True, True, False, True),
         "capabilities": ("Capacidades", False, True, True, False, False, True),
-        "physical_audio": ("Audio físico", False, False, False, False, False, False),
+        "physical_audio": ("Audio físico", False, True, False, False, False, True),
         "performance": ("Rendimiento", False, False, False, False, False, True),
-        "runtime_quality": ("Calidad runtime", False, False, False, False, False, False),
+        "runtime_quality": ("Calidad runtime", False, True, False, False, False, True),
     }
     return meta.get(mod_id, (mod_id, False, False, False, False, False, False))
 
