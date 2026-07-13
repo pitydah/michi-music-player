@@ -61,7 +61,6 @@ def _make_db(count, tmp_path):
 
 @pytest.mark.parametrize("track_count", [10_000])
 class TestLibraryScaling:
-    @pytest.mark.xfail(reason="tmp_path colision entre tests parametrizados")
     def test_startup_and_first_page(self, track_count, tmp_path):
         db_path = _make_db(track_count, tmp_path)
         from ui_qml_bridge.library_query_service import LibraryQueryService
@@ -84,7 +83,6 @@ class TestLibraryScaling:
         t1 = time.time()
         print(f"  {track_count:>6} tracks: search={t1-t0:.3f}s")
 
-    @pytest.mark.xfail(reason="tmp_path colision entre tests parametrizados")
     def test_fetch_more_pages(self, track_count, tmp_path):
         db_path = _make_db(track_count, tmp_path)
         from ui_qml_bridge.library_query_service import LibraryQueryService

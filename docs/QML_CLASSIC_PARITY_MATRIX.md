@@ -57,9 +57,20 @@
 
 | Metric | Count | % |
 |---|---|---|
-| Full parity (✅) | 24/27 | 89% |
-| Partial (⚠️) | 3/27 | 11% |
-| Missing (❌) | 1/27 | 4% |
-| Total modules | 27 | 100% |
+| Full parity (✅) | 25/28 | 89% |
+| Partial (⚠️) | 2/28 | 7% |
+| Missing (❌) | 1/28 | 4% |
+| Total modules | 28 | 100% |
 
-**QML default readiness:** ~70% (requires Output Profiles + Settings completeness)
+**QML default readiness:** ~75% (requires Settings completeness + physical audio gate)
+
+## Latest benchmarks (10k tracks)
+
+| Scenario | Result | Threshold | Status |
+|---|---:|---:|---|
+| count query | ~2ms | < 500ms | ✅ |
+| first page (250 items) | ~3ms | < 500ms | ✅ |
+| search (LIKE) | ~2ms | < 250ms | ✅ |
+| 5 pages sequential | ~14ms | < 500ms | ✅ |
+| album detail | ~1ms | < 100ms | ✅ |
+| artist detail | ~1ms | < 100ms | ✅ |
