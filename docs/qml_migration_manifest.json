@@ -338,16 +338,21 @@
         "read": true,
         "primary_action": true,
         "error_contract": true,
-        "write": false,
+        "write": true,
         "unit_tests": [
+          "test_settings_bridge_v2",
           "test_settings_importable",
-          "test_settings_output_profiles"
+          "test_settings_output_profiles",
+          "test_settings_schema_loaded",
+          "test_settings_service_get_set",
+          "test_settings_service_reset",
+          "test_settings_validation"
         ],
         "integration_tests": [],
         "manual_test": "",
         "physical_test": "",
         "classic_parity": false,
-        "error_paths_tested": false,
+        "error_paths_tested": true,
         "async_jobs": false,
         "cancel_supported": false,
         "runtime_test": ""
