@@ -148,3 +148,28 @@ class AppBridge(QObject):
 
     def getQueryExecutor(self):
         return self._qe
+
+    @Slot(result=dict)
+    def appScore(self) -> dict:
+        score = 0
+        if self._wm:
+            score += 25
+        if self._qe:
+            score += 20
+        if self._ready:
+            score += 15
+        if not self._safe_mode and self._ready:
+            score += 15
+        if self._wm and hasattr(self._wm, 'cancel_all'):
+            score += 15
+        if self._wm and hasattr(self._wm, 'shutdown'):
+            score += 10
+        return {
+            "score": min(100, score),
+            "has_worker_manager": self._wm is not None,
+            "has_query_executor": self._qe is not None,
+            "ready": self._ready,
+            "safe_mode": self._safe_mode,
+            "shutting_down": self._shutting_down,
+            "restart_required": self._restart_required,
+        }

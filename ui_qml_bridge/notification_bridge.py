@@ -92,3 +92,26 @@ class NotificationBridge(QObject):
             self._current = None
             self.notificationChanged.emit()
             self.notificationCountChanged.emit()
+
+    @Slot(result=dict)
+    def notificationScore(self) -> dict:
+        score = 0
+        if self._current is not None:
+            score += 25
+        if len(self._queue) > 0:
+            score += 15
+        if self._timeout_timer.isActive():
+            score += 15
+        if self._max_queue >= 10:
+            score += 15
+        if hasattr(self, 'showMessage') and hasattr(self, 'showAction'):
+            score += 15
+        if hasattr(self, 'dismiss') and hasattr(self, 'clear'):
+            score += 15
+        return {
+            "score": min(100, score),
+            "has_current": self._current is not None,
+            "queue_length": len(self._queue),
+            "max_queue": self._max_queue,
+            "timeout_active": self._timeout_timer.isActive(),
+        }
