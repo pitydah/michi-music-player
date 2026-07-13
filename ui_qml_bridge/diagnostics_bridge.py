@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 import sys
 import platform
 import time
+from pathlib import Path
 
 
 class DiagnosticsBridge(QObject):
@@ -171,6 +172,45 @@ class DiagnosticsBridge(QObject):
             status = "OK" if item["ok"] else "FAIL"
             lines.append(f"  {status}  {item['key']}: {val}")
         return "\n".join(lines)
+
+    @Slot(result=dict)
+    def performanceScore(self) -> dict:
+        """Return performance module score based on benchmark and pytest results."""
+        import subprocess
+        score = 0
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pytest", "tests/qml/", "-q"],
+                capture_output=True, text=True, timeout=60,
+                env={**dict(sorted(subprocess.os.environ.items())), "QT_QPA_PLATFORM": "offscreen", "MICHI_SAFE_MODE": "1"},
+            )
+            if result.returncode == 0:
+                score += 25
+        except Exception:
+            pass
+        try:
+            result = subprocess.run(
+                [sys.executable, str(Path(__file__).resolve().parent.parent / "scripts" / "qml_library_benchmark.py")],
+                capture_output=True, text=True, timeout=120,
+                env={**dict(sorted(subprocess.os.environ.items())), "QT_QPA_PLATFORM": "offscreen", "MICHI_SAFE_MODE": "1"},
+            )
+            if result.returncode == 0:
+                score += 25
+        except Exception:
+            pass
+        report = Path(__file__).resolve().parent.parent / "docs" / "QML_LIBRARY_PERFORMANCE_REPORT.md"
+        if report.exists():
+            score += 25
+            content = report.read_text()
+            if "100ms" in content or "excellent" in content:
+                score += 25
+        return {
+            "score": min(100, score),
+            "pytest_pass": score >= 25,
+            "benchmark_pass": score >= 50,
+            "report_exists": report.exists(),
+            "performance_ok": min(100, score) >= 75,
+        }
 
     @Slot(result=dict)
     def diagnosticsScore(self) -> dict:

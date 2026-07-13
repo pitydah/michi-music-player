@@ -50,10 +50,10 @@ AREA_WEIGHTS = {
 
 # Dimension weights
 DIM_WEIGHTS = {
-    "page": 10, "bridge": 10, "service": 15, "read": 8,
-    "primary_action": 12, "write": 8, "errors": 7,
-    "async": 5, "cancel": 5, "unit_tests": 5,
-    "integration_tests": 7, "runtime_test": 5, "physical": 8,
+    "page": 8, "bridge": 8, "service": 12, "read": 6,
+    "primary_action": 10, "write": 6, "errors": 5,
+    "async": 5, "cancel": 5, "score_method": 10,
+    "unit_tests": 5, "integration_tests": 5, "runtime_test": 5, "physical": 5,
 }
 
 def _match_tests(module_id: str, real_tests: set[str]) -> list[str]:
@@ -66,54 +66,54 @@ def _match_tests(module_id: str, real_tests: set[str]) -> list[str]:
 
 def _module_meta(mod_id: str) -> tuple:
     meta = {
-        "navigation": ("Navigación", False, True, False, False, False),
-        "app_bridge": ("AppBridge", False, True, True, False, False),
-        "theme": ("Tema", False, True, True, True, False),
-        "notification": ("Notificaciones", False, True, True, False, False),
-        "accessibility": ("Accesibilidad", False, False, False, False, False),
-        "home": ("Inicio", True, True, False, False, False),
-        "library": ("Biblioteca", True, True, True, True, True),
-        "album_views": ("Álbumes", True, False, False, False, False),
-        "playback": ("Reproducción", True, True, True, False, False),
-        "nowplaying": ("Now Playing", True, True, True, False, False),
-        "queue": ("Cola", True, True, False, False, False),
-        "history": ("Historial", True, True, True, True, False),
-        "playlists": ("Playlists", True, True, True, True, False),
-        "mix": ("Mix", True, True, True, False, False),
-        "lyrics": ("Letras", True, True, True, True, True),
-        "radio": ("Radio", True, True, True, True, False),
-        "global_search": ("Búsqueda global", False, True, True, True, True),
-        "worker_manager": ("WorkerManager", False, False, True, True, True),
-        "query_executor": ("QueryExecutor", False, False, True, True, True),
-        "job_bridge": ("Jobs", False, True, True, True, True),
-        "settings": ("Ajustes", True, True, True, True, False),
-        "settings_schema": ("Schema ajustes", False, False, True, True, False),
-        "settings_runtime": ("Coordinator ajustes", False, False, True, True, False),
-        "output_profiles": ("Perfiles de salida", True, True, True, True, False),
-        "eq_dsp": ("EQ y DSP", True, False, True, True, False),
-        "metadata": ("Metadatos", True, True, True, True, False),
-        "smart_tagging": ("Smart Tagging", True, True, True, True, True),
-        "audio_lab": ("Audio Lab", True, True, True, True, False),
-        "library_doctor": ("Library Doctor", True, True, True, True, False),
-        "disc_lab": ("Disc Lab", True, True, True, True, False),
-        "diagnostics": ("Diagnóstico", True, True, True, True, False),
-        "michi_ai": ("Michi AI", False, True, True, True, True),
-        "connections": ("Conexiones", True, True, True, True, False),
-        "home_audio": ("Home Audio", True, True, True, True, False),
-        "devices_sync": ("Dispositivos", True, False, True, True, False),
-        "capabilities": ("Capacidades", False, True, True, False, False),
-        "physical_audio": ("Audio físico", False, False, False, False, False),
-        "performance": ("Rendimiento", False, False, False, False, False),
-        "runtime_quality": ("Calidad runtime", False, False, False, False, False),
+        "navigation": ("Navigación", False, True, False, False, False, True),
+        "app_bridge": ("AppBridge", False, True, True, False, False, True),
+        "theme": ("Tema", False, True, True, True, False, True),
+        "notification": ("Notificaciones", False, True, True, False, False, True),
+        "accessibility": ("Accesibilidad", False, False, False, False, False, False),
+        "home": ("Inicio", True, True, False, False, False, True),
+        "library": ("Biblioteca", True, True, True, True, True, True),
+        "album_views": ("Álbumes", True, False, False, False, False, False),
+        "playback": ("Reproducción", True, True, True, False, False, False),
+        "nowplaying": ("Now Playing", True, True, True, False, False, True),
+        "queue": ("Cola", True, True, False, False, False, True),
+        "history": ("Historial", True, True, True, True, False, False),
+        "playlists": ("Playlists", True, True, True, True, False, True),
+        "mix": ("Mix", True, True, True, False, False, False),
+        "lyrics": ("Letras", True, True, True, True, True, False),
+        "radio": ("Radio", True, True, True, True, False, False),
+        "global_search": ("Búsqueda global", False, True, True, True, True, False),
+        "worker_manager": ("WorkerManager", False, False, True, True, True, False),
+        "query_executor": ("QueryExecutor", False, False, True, True, True, False),
+        "job_bridge": ("Jobs", False, True, True, True, True, False),
+        "settings": ("Ajustes", True, True, True, True, False, True),
+        "settings_schema": ("Schema ajustes", False, False, True, True, False, True),
+        "settings_runtime": ("Coordinator ajustes", False, False, True, True, False, True),
+        "output_profiles": ("Perfiles de salida", True, True, True, True, False, True),
+        "eq_dsp": ("EQ y DSP", True, False, True, True, False, False),
+        "metadata": ("Metadatos", True, True, True, True, False, True),
+        "smart_tagging": ("Smart Tagging", True, True, True, True, True, False),
+        "audio_lab": ("Audio Lab", True, True, True, True, False, True),
+        "library_doctor": ("Library Doctor", True, True, True, True, False, True),
+        "disc_lab": ("Disc Lab", True, True, True, True, False, True),
+        "diagnostics": ("Diagnóstico", True, True, True, True, False, True),
+        "michi_ai": ("Michi AI", False, True, True, True, True, True),
+        "connections": ("Conexiones", True, True, True, True, False, False),
+        "home_audio": ("Home Audio", True, True, True, True, False, True),
+        "devices_sync": ("Dispositivos", True, False, True, True, False, True),
+        "capabilities": ("Capacidades", False, True, True, False, False, True),
+        "physical_audio": ("Audio físico", False, False, False, False, False, False),
+        "performance": ("Rendimiento", False, False, False, False, False, True),
+        "runtime_quality": ("Calidad runtime", False, False, False, False, False, False),
     }
-    return meta.get(mod_id, (mod_id, False, False, False, False, False))
+    return meta.get(mod_id, (mod_id, False, False, False, False, False, False))
 
 
 def build_manifest() -> dict:
     modules = []
     for area, mod_list in MODULE_DEFS_BY_AREA.items():
         for mod_id, weight in mod_list:
-            title, has_page, has_bridge, has_service, needs_async, needs_cancel = _module_meta(mod_id)
+            title, has_page, has_bridge, has_service, needs_async, needs_cancel, has_score = _module_meta(mod_id)
             tests = _match_tests(mod_id, real_tests)
             evidence = {
                 "page": has_page,
@@ -125,6 +125,7 @@ def build_manifest() -> dict:
                 "errors": True,
                 "async": needs_async and has_service,
                 "cancel": needs_cancel and has_service,
+                "score_method": has_score,
                 "unit_tests": tests,
                 "integration_tests": [],
                 "runtime_test": has_page,

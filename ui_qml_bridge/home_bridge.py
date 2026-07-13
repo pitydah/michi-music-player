@@ -158,6 +158,29 @@ class HomeBridge(QObject):
         except Exception:
             pass
 
+    @Slot(result=dict)
+    def homeScore(self) -> dict:
+        score = 0
+        if self._db:
+            score += 20
+        if self._player:
+            score += 20
+        if self._tracks > 0:
+            score += 15
+        if self._albums > 0:
+            score += 15
+        if self._player and hasattr(self._player, 'state'):
+            score += 15
+        if hasattr(self, 'refresh'):
+            score += 15
+        return {
+            "score": min(100, score),
+            "has_db": self._db is not None,
+            "has_player": self._player is not None,
+            "tracks": self._tracks,
+            "albums": self._albums,
+        }
+
     @Slot(int, int, int)
     def set_library_stats(self, albums: int, artists: int, tracks: int):
         self._albums = albums

@@ -22,6 +22,7 @@ STEPS = [
     ("test_playback_ctrl", [sys.executable, "-m", "pytest", "tests/test_playback_controller.py", "-q"]),
     ("route_registry_audit", [sys.executable, "scripts/qml_route_registry_audit.py"]),
     ("bridge_contract_audit", [sys.executable, "scripts/qml_bridge_contract_audit.py"]),
+    ("library_benchmark", [sys.executable, "scripts/qml_library_benchmark.py"]),
 ]
 
 ENV = {**dict(sorted(subprocess.os.environ.items())), "QT_QPA_PLATFORM": "offscreen", "MICHI_SAFE_MODE": "1"}
