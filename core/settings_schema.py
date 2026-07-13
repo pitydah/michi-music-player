@@ -179,10 +179,243 @@ GSTREAMER = SettingsCategory("gstreamer", "GStreamer", "gstreamer", sections=[
     ]),
 ])
 
+BUFFER = SettingsCategory("buffer", "Buffer", "buffer", sections=[
+    SettingsSection("general", "General", entries=[
+        SettingsEntry("buffer/ms", "Buffer (ms)", ENTRY_INT, 100,
+                       min_value=20, max_value=5000, hint="Tamaño del buffer de audio"),
+        SettingsEntry("buffer/prebuffer", "Pre-buffer (ms)", ENTRY_INT, 50,
+                       min_value=0, max_value=2000),
+        SettingsEntry("buffer/stream", "Buffer streaming (ms)", ENTRY_INT, 200,
+                       min_value=50, max_value=10000),
+    ]),
+])
+
+GAPLESS = SettingsCategory("gapless", "Sin pausa", "gapless", sections=[
+    SettingsSection("behavior", "Comportamiento", entries=[
+        SettingsEntry("gapless/enabled", "Reproducción sin pausa", ENTRY_BOOL, True),
+        SettingsEntry("gapless/crossfade_duration", "Duración crossfade (ms)", ENTRY_INT, 0,
+                       min_value=0, max_value=10000, hint="0 = desactivado"),
+        SettingsEntry("gapless/fade_style", "Estilo de fade", ENTRY_SELECT, "equal_power",
+                       options=[{"value": "equal_power", "label": "Equal power"},
+                                {"value": "equal_gain", "label": "Equal gain"},
+                                {"value": "linear", "label": "Lineal"}]),
+    ]),
+])
+
+REPLAYGAIN = SettingsCategory("replaygain", "ReplayGain", "replaygain", sections=[
+    SettingsSection("mode", "Modo", entries=[
+        SettingsEntry("replaygain/mode", "Modo ReplayGain", ENTRY_SELECT, "disabled",
+                       options=[{"value": "disabled", "label": "Desactivado"},
+                                {"value": "track", "label": "Por pista"},
+                                {"value": "album", "label": "Por álbum"}]),
+        SettingsEntry("replaygain/preamp", "Pre-amplificación (dB)", ENTRY_INT, 0,
+                       min_value=-15, max_value=15),
+        SettingsEntry("replaygain/fallback_gain", "Ganancia por defecto (dB)", ENTRY_INT, -6,
+                       min_value=-20, max_value=0),
+        SettingsEntry("replaygain/prevent_clipping", "Prevenir recorte", ENTRY_BOOL, True),
+    ]),
+])
+
+EQ_DSP = SettingsCategory("eq_dsp", "EQ y DSP", "eq", sections=[
+    SettingsSection("eq", "Ecualizador", entries=[
+        SettingsEntry("eq/enabled", "EQ activado", ENTRY_BOOL, False),
+        SettingsEntry("eq/preset", "Preajuste EQ", ENTRY_SELECT, "flat",
+                       options=[{"value": "flat", "label": "Plano"},
+                                {"value": "rock", "label": "Rock"},
+                                {"value": "pop", "label": "Pop"},
+                                {"value": "jazz", "label": "Jazz"},
+                                {"value": "classical", "label": "Clásica"},
+                                {"value": "custom", "label": "Personalizado"}]),
+    ]),
+    SettingsSection("dsp", "DSP", entries=[
+        SettingsEntry("dsp/chain", "Cadena DSP", ENTRY_TEXT, "",
+                       placeholder="eq,compressor,limiter", hint="Separado por comas"),
+        SettingsEntry("dsp/compressor", "Compresor", ENTRY_BOOL, False),
+        SettingsEntry("dsp/limiter", "Limitador", ENTRY_BOOL, False),
+        SettingsEntry("dsp/stereo_enhance", "Mejora estéreo", ENTRY_BOOL, False),
+    ]),
+])
+
+BITPERFECT = SettingsCategory("bitperfect", "Bit-perfect", "bitperfect", sections=[
+    SettingsSection("mode", "Modo", entries=[
+        SettingsEntry("bitperfect/enabled", "Modo bit-perfect", ENTRY_BOOL, False,
+                       hint="Requiere dispositivo compatible"),
+        SettingsEntry("bitperfect/exclusive_mode", "Modo exclusivo", ENTRY_BOOL, False),
+        SettingsEntry("bitperfect/dsd_mode", "Modo DSD", ENTRY_SELECT, "pcm",
+                       options=[{"value": "pcm", "label": "PCM"},
+                                {"value": "native", "label": "Nativo"},
+                                {"value": "dop", "label": "DoP"}]),
+        SettingsEntry("bitperfect/wasapi_exclusive", "WASAPI exclusivo", ENTRY_BOOL, False,
+                       hint="Solo Windows"),
+    ]),
+])
+
+CACHE = SettingsCategory("cache", "Caché", "cache", sections=[
+    SettingsSection("sizes", "Tamaños", entries=[
+        SettingsEntry("cache/covers_size", "Caché carátulas (MB)", ENTRY_INT, 50,
+                       validator=_positive_int, hint="Límite de carátulas en disco"),
+        SettingsEntry("cache/metadata_size", "Caché metadatos (MB)", ENTRY_INT, 20,
+                       validator=_positive_int),
+        SettingsEntry("cache/thumbnail_size", "Caché miniaturas (MB)", ENTRY_INT, 30,
+                       validator=_positive_int),
+    ]),
+    SettingsSection("behavior", "Comportamiento", entries=[
+        SettingsEntry("cache/auto_clean", "Limpiar automáticamente", ENTRY_BOOL, True),
+        SettingsEntry("cache/clean_interval_days", "Intervalo limpieza (días)", ENTRY_INT, 7,
+                       min_value=1, max_value=365),
+    ]),
+])
+
+NETWORK = SettingsCategory("network", "Red", "network", sections=[
+    SettingsSection("timeouts", "Timeouts", entries=[
+        SettingsEntry("network/radio_timeout", "Timeout radio (s)", ENTRY_INT, 15,
+                       min_value=5, max_value=120),
+        SettingsEntry("network/lyrics_timeout", "Timeout letras (s)", ENTRY_INT, 10,
+                       min_value=3, max_value=60),
+        SettingsEntry("network/metadata_timeout", "Timeout metadatos (s)", ENTRY_INT, 10,
+                       min_value=3, max_value=60),
+        SettingsEntry("network/discovery_timeout", "Timeout descubrimiento (s)", ENTRY_INT, 5,
+                       min_value=1, max_value=30),
+    ]),
+])
+
+RADIO = SettingsCategory("radio_settings", "Radio", "radio", sections=[
+    SettingsSection("playback", "Reproducción", entries=[
+        SettingsEntry("radio/default_codec", "Codec por defecto", ENTRY_SELECT, "MP3",
+                       options=[{"value": "MP3", "label": "MP3"},
+                                {"value": "AAC", "label": "AAC"},
+                                {"value": "OGG", "label": "Ogg Vorbis"},
+                                {"value": "FLAC", "label": "FLAC"}]),
+        SettingsEntry("radio/auto_reconnect", "Reconexión automática", ENTRY_BOOL, True),
+        SettingsEntry("radio/reconnect_delay", "Espera reconexión (s)", ENTRY_INT, 5,
+                       min_value=1, max_value=60),
+        SettingsEntry("radio/buffer_size", "Buffer radio (KB)", ENTRY_INT, 64,
+                       validator=_positive_int, hint="64-1024 KB"),
+    ]),
+])
+
+LYRICS_SETTINGS = SettingsCategory("lyrics_settings", "Letras", "lyrics", sections=[
+    SettingsSection("provider", "Proveedor", entries=[
+        SettingsEntry("lyrics/provider", "Proveedor de letras", ENTRY_SELECT, "lrclib",
+                       options=[{"value": "lrclib", "label": "LRCLIB"},
+                                {"value": "genius", "label": "Genius"},
+                                {"value": "musixmatch", "label": "Musixmatch"}]),
+        SettingsEntry("lyrics/auto_search", "Búsqueda automática", ENTRY_BOOL, True),
+        SettingsEntry("lyrics/cache_days", "Días en caché", ENTRY_INT, 30,
+                       min_value=1, max_value=365),
+        SettingsEntry("lyrics/offline_fallback", "Fallback sin conexión", ENTRY_BOOL, True),
+    ]),
+])
+
+DEVICES = SettingsCategory("devices_settings", "Dispositivos", "devices", sections=[
+    SettingsSection("sync", "Sincronización", entries=[
+        SettingsEntry("devices/sync_enabled", "Sincronización activada", ENTRY_BOOL, False),
+        SettingsEntry("devices/sync_interval", "Intervalo sincronización (min)", ENTRY_INT, 30,
+                       min_value=5, max_value=1440),
+        SettingsEntry("devices/sync_path", "Ruta de sincronización", ENTRY_FILE, "",
+                       placeholder="/mnt/device/Music"),
+        SettingsEntry("devices/auto_discover", "Descubrimiento automático", ENTRY_BOOL, True),
+    ]),
+])
+
+CONNECTIONS = SettingsCategory("connections_settings", "Conexiones", "connections", sections=[
+    SettingsSection("server", "Servidor", entries=[
+        SettingsEntry("connections/server_port", "Puerto del servidor", ENTRY_INT, 53318,
+                       validator=_port_validator, min_value=1024, max_value=65535),
+        SettingsEntry("connections/auto_discovery", "Descubrimiento automático", ENTRY_BOOL, True),
+        SettingsEntry("connections/pairing_timeout", "Timeout emparejamiento (s)", ENTRY_INT, 30,
+                       min_value=10, max_value=120),
+    ]),
+])
+
+HOME_AUDIO = SettingsCategory("home_audio_settings", "Home Audio", "home_audio", sections=[
+    SettingsSection("home_assistant", "Home Assistant", entries=[
+        SettingsEntry("home_audio/ha_host", "Host Home Assistant", ENTRY_TEXT, "",
+                       placeholder="192.168.1.100"),
+        SettingsEntry("home_audio/ha_port", "Puerto Home Assistant", ENTRY_INT, 8123,
+                       validator=_port_validator),
+        SettingsEntry("home_audio/ha_token", "Token Home Assistant", ENTRY_TEXT, "",
+                       placeholder="Ingrese token"),
+    ]),
+    SettingsSection("snapcast", "Snapcast", entries=[
+        SettingsEntry("home_audio/snapcast_host", "Host Snapcast", ENTRY_TEXT, "localhost"),
+        SettingsEntry("home_audio/snapcast_port", "Puerto Snapcast", ENTRY_INT, 1704,
+                       validator=_port_validator),
+    ]),
+])
+
+PRIVACY = SettingsCategory("privacy", "Privacidad", "privacy", sections=[
+    SettingsSection("history", "Historial", entries=[
+        SettingsEntry("privacy/history_enabled", "Historial activado", ENTRY_BOOL, True),
+        SettingsEntry("privacy/history_limit", "Límite del historial", ENTRY_INT, 500,
+                       min_value=10, max_value=10000, hint="Número máximo de entradas"),
+        SettingsEntry("privacy/telemetry", "Telemetría", ENTRY_BOOL, False),
+    ]),
+])
+
+APPEARANCE = SettingsCategory("appearance", "Apariencia", "appearance", sections=[
+    SettingsSection("theme", "Tema", entries=[
+        SettingsEntry("appearance/theme", "Tema", ENTRY_SELECT, "dark",
+                       options=[{"value": "dark", "label": "Oscuro"},
+                                {"value": "light", "label": "Claro"},
+                                {"value": "system", "label": "Del sistema"}]),
+        SettingsEntry("appearance/compact_mode", "Modo compacto", ENTRY_BOOL, False),
+        SettingsEntry("appearance/cover_size", "Tamaño carátulas", ENTRY_INT, 260,
+                       min_value=100, max_value=600),
+        SettingsEntry("appearance/language", "Idioma", ENTRY_SELECT, "es",
+                       options=[{"value": "es", "label": "Español"},
+                                {"value": "en", "label": "English"}]),
+    ]),
+])
+
+ACCESSIBILITY = SettingsCategory("accessibility", "Accesibilidad", "accessibility", sections=[
+    SettingsSection("display", "Pantalla", entries=[
+        SettingsEntry("accessibility/font_size", "Tamaño de fuente", ENTRY_SELECT, "normal",
+                       options=[{"value": "small", "label": "Pequeña"},
+                                {"value": "normal", "label": "Normal"},
+                                {"value": "large", "label": "Grande"},
+                                {"value": "xlarge", "label": "Muy grande"}]),
+        SettingsEntry("accessibility/high_contrast", "Alto contraste", ENTRY_BOOL, False),
+        SettingsEntry("accessibility/reduce_motion", "Reducir movimiento", ENTRY_BOOL, False),
+        SettingsEntry("accessibility/focus_indicators", "Indicadores de foco", ENTRY_BOOL, True),
+    ]),
+    SettingsSection("audio", "Audio", entries=[
+        SettingsEntry("accessibility/mono", "Modo mono", ENTRY_BOOL, False),
+        SettingsEntry("accessibility/balance", "Balance (L/R)", ENTRY_INT, 0,
+                       min_value=-100, max_value=100, hint="-100 = solo izquierdo, 100 = solo derecho"),
+    ]),
+])
+
+ADVANCED = SettingsCategory("advanced", "Avanzado", "advanced", sections=[
+    SettingsSection("logging", "Registro", entries=[
+        SettingsEntry("advanced/log_level", "Nivel de log", ENTRY_SELECT, "warning",
+                       options=[{"value": "debug", "label": "Debug"},
+                                {"value": "info", "label": "Info"},
+                                {"value": "warning", "label": "Warning"},
+                                {"value": "error", "label": "Error"},
+                                {"value": "critical", "label": "Critical"}]),
+        SettingsEntry("advanced/dev_mode", "Modo desarrollador", ENTRY_BOOL, False),
+        SettingsEntry("advanced/experimental_features", "Funciones experimentales", ENTRY_BOOL, False),
+    ]),
+    SettingsSection("performance", "Rendimiento", entries=[
+        SettingsEntry("advanced/thread_pool_size", "Tamaño del pool de hilos", ENTRY_INT, 4,
+                       min_value=1, max_value=16),
+        SettingsEntry("advanced/max_covers_parallel", "Carátulas en paralelo", ENTRY_INT, 4,
+                       min_value=1, max_value=16),
+    ]),
+])
+
+DIAGNOSTICS_SETTINGS = SettingsCategory("diagnostics_settings", "Diagnóstico", "diagnostics", sections=[
+    SettingsSection("tools", "Herramientas", entries=[]),
+])
+
 # ── All categories lookup ──
 
 ALL_CATEGORIES: list[SettingsCategory] = [
     GENERAL, LIBRARY, PLAYBACK, AUDIO, MPD, GSTREAMER,
+    BUFFER, GAPLESS, REPLAYGAIN, EQ_DSP, BITPERFECT, CACHE, NETWORK,
+    RADIO, LYRICS_SETTINGS, DEVICES, CONNECTIONS, HOME_AUDIO,
+    PRIVACY, APPEARANCE, ACCESSIBILITY, ADVANCED, DIAGNOSTICS_SETTINGS,
 ]
 
 
