@@ -200,9 +200,12 @@ class BridgeFactory(QObject):
         return self._bridges["playlists"]
 
     def create_settings_bridge(self):
-        from ui_qml_bridge.settings_bridge import SettingsBridge
+        from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
+        from core.settings_service import SettingsService
         if "settings" not in self._bridges:
-            self._bridges["settings"] = SettingsBridge()
+            svc = SettingsService()
+            self._bridges["settings_v2"] = SettingsBridgeV2(service=svc)
+            self._bridges["settings"] = SettingsBridgeV2(service=svc)
         return self._bridges["settings"]
 
     def create_eq_bridge(self):
