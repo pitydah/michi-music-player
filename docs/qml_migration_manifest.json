@@ -65,6 +65,9 @@
           "test_library_sources_service_add_remove",
           "test_library_sources_service_duplicate",
           "test_library_sources_service_importable",
+          "test_paged_empty_signal",
+          "test_paged_fetch_more_cancel",
+          "test_paged_refresh_lifecycle",
           "test_playlists_bridge_default",
           "test_query_service_empty_db",
           "test_query_service_filters",
@@ -785,6 +788,7 @@
           "test_duplicate_task_id_rejected",
           "test_worker_callback_main_thread",
           "test_worker_cancel_during_task",
+          "test_worker_progress_on_main_thread",
           "test_worker_task_completes"
         ],
         "async_jobs": true,
@@ -810,6 +814,7 @@
           "test_query_executor_cancel_resets_state",
           "test_query_executor_shutdown_no_shared_wm",
           "test_query_executor_success_async",
+          "test_query_success_terminal_once",
           "test_real_flow_cancel_and_requery"
         ],
         "async_jobs": true,

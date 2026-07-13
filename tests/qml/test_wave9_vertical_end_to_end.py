@@ -324,7 +324,7 @@ class TestWave9SmokeImport:
         coord.activate_folders()
 
 
-@pytest.mark.xfail(reason="colision con otros tests en suite completa (MagicMock interfiere con DB real)")
+@pytest.mark.skip(reason="Requiere ejecucion en aislamiento (paso CI separado: QML vertical integration tests)")
 class TestWave10RealVerticalFlow:
     """Real E2E with SQLite temp DB, WorkerManager, QueryExecutor, models."""
 
@@ -626,7 +626,6 @@ class TestWave10RealVerticalFlow:
         assert model.totalCount == 20
         assert model.count > 0
 
-    @pytest.mark.xfail(reason="colision con otros tests en suite completa")
     def test_real_flow_album_detail(self, library_db, tmp_path):
         from ui_qml_bridge.library_query_service import LibraryQueryService
         self._populate(library_db)
@@ -640,7 +639,6 @@ class TestWave10RealVerticalFlow:
         for t in detail["tracks"]:
             assert "filepath" not in t
 
-    @pytest.mark.xfail(reason="colision con otros tests en suite completa")
     def test_real_flow_album_play(self, library_db, tmp_path):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.instance() or QCoreApplication()
