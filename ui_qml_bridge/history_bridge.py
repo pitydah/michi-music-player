@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 class HistoryBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, history_query_service=None, parent=None):
+    def __init__(self, db=None, history_query_service=None, query_executor=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._hqs = history_query_service
