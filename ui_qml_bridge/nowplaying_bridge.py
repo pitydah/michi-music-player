@@ -1054,3 +1054,40 @@ class NowPlayingBridge(QObject):
         self._cover_key = _cover_key_for_path(filepath)
         self.coverChanged.emit()
         self._emit_state()
+
+    # ── Scoring helpers ──
+
+    @Slot(result=int)
+    def totalPlayed(self) -> int:
+        return len(self._history)
+
+    @Slot(result=int)
+    def queueDuration(self) -> int:
+        return sum(item.get("duration", 0) for item in self._queue)
+
+    @Slot(result=dict)
+    def playbackScore(self) -> dict:
+        """Return a playback quality score based on real state."""
+        score = 0
+        if self._backend_available:
+            score += 25
+        if self._player and hasattr(self._player, 'get_queue'):
+            score += 15
+        if self._track_title and self._track_title != "—":
+            score += 20
+        if self._duration > 0:
+            score += 10
+        if self._player and hasattr(self._player, 'state'):
+            score += 15
+        if len(self._queue) > 0:
+            score += 15
+        return {
+            "score": min(100, score),
+            "has_backend": self._backend_available,
+            "has_track": self._track_title != "—",
+            "has_queue": len(self._queue) > 0,
+            "has_position": self._position >= 0,
+            "has_duration": self._duration > 0,
+            "queue_count": len(self._queue),
+            "history_count": len(self._history),
+        }

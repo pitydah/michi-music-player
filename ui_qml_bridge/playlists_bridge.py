@@ -291,6 +291,32 @@ class PlaylistsBridge(QObject):
             logger.debug("playPlaylistFromIndex failed: %s", e)
             return {"ok": False, "error": str(e)}
 
+    @Slot(result=dict)
+    def playlistScore(self) -> dict:
+        """Return playlist module score based on real state."""
+        score = 0
+        if self._can():
+            score += 20
+        if self._playlists:
+            real = [p for p in self._playlists if not p.get("is_demo")]
+            count = len(real)
+            if count > 0:
+                score += min(30, count * 5)
+        if self._db and hasattr(self._db, 'get_playlist_items'):
+            score += 20
+        if self._db and hasattr(self._db, 'update_playlist'):
+            score += 15
+        if self._db and hasattr(self._db, 'delete_playlist'):
+            score += 15
+        return {
+            "score": min(100, score),
+            "has_db": self._can(),
+            "playlist_count": len([p for p in self._playlists if not p.get("is_demo")]),
+            "can_create": self._can() and hasattr(self._db, 'create_playlist') if self._db else False,
+            "can_delete": self._can() and hasattr(self._db, 'delete_playlist') if self._db else False,
+            "can_rename": self._can() and hasattr(self._db, 'update_playlist') if self._db else False,
+        }
+
     @Slot(str, result=dict)
     def saveQueueAsPlaylist(self, name: str):
         if not name:
