@@ -28,6 +28,11 @@ class BridgeFactory(QObject):
         self._capabilities: dict[str, bool] = {}
         self._action_registry = None
         self._qs_cache = None
+        self._qe_cache = None
+        self._lss_cache = None
+        self._settings_service_cache = None
+        self._history_qs_cache = None
+        self._mix_qs_cache = None
 
     @property
     def bridges(self) -> dict[str, QObject]:
@@ -81,6 +86,7 @@ class BridgeFactory(QObject):
         if "library" not in self._bridges:
             qs = self._get_library_query_service()
             qe = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
+            self._qe_cache = qe
             from core.track_action_service import TrackActionService
             tas = TrackActionService(
                 query_service=qs,
@@ -185,12 +191,16 @@ class BridgeFactory(QObject):
         self._register_capability("radio", "radio_manager")
         return self._bridges["radio"]
 
+    def create_selection_context_bridge(self):
+        from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
+        if "selection_context" not in self._bridges:
+            self._bridges["selection_context"] = SelectionContextBridge()
+        return self._bridges["selection_context"]
+
     def create_playlists_bridge(self):
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         if "playlists" not in self._bridges:
-            from ui_qml_bridge.selection_context_bridge import SelectionContextBridge
-            sel = SelectionContextBridge()
-            self._bridges["selection_context"] = sel
+            sel = self.create_selection_context_bridge()
             self._bridges["playlists"] = PlaylistsBridge(
                 db=self._services.db,
                 selection_context=sel,
@@ -201,11 +211,11 @@ class BridgeFactory(QObject):
 
     def create_settings_bridge(self):
         from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
-        from core.settings_service import SettingsService
         if "settings" not in self._bridges:
-            svc = SettingsService()
-            self._bridges["settings_v2"] = SettingsBridgeV2(service=svc)
-            self._bridges["settings"] = SettingsBridgeV2(service=svc)
+            svc = self._get_settings_service()
+            bridge = SettingsBridgeV2(service=svc)
+            self._bridges["settings"] = bridge
+            self._bridges["settings_v2"] = bridge
         return self._bridges["settings"]
 
     def create_eq_bridge(self):
@@ -297,6 +307,8 @@ class BridgeFactory(QObject):
                 db=self._services.db,
                 radio_manager=self._services.radio_manager,
                 sync_manager=self._services.sync_manager,
+                worker_manager=self._services.worker_manager,
+                query_executor=self._qe_cache,
             )
         self._register_capability("diagnostics", "db")
         return self._bridges["diagnostics"]
@@ -336,6 +348,7 @@ class BridgeFactory(QObject):
             self._bridges["global_search"] = GlobalSearchBridge(
                 db=self._services.db,
                 search_engine=self._services.search_engine,
+                query_executor=self._qe_cache,
             )
         return self._bridges["global_search"]
 
@@ -351,9 +364,14 @@ class BridgeFactory(QObject):
             self._bridges["job_bridge"] = JobBridge(
                 worker_manager=self._services.worker_manager,
                 db=self._services.db,
-                library_bridge=self.get("library"),
             )
         return self._bridges["job_bridge"]
+
+    def _wire_job_bridge_library(self):
+        jb = self._bridges.get("job_bridge")
+        lib = self._bridges.get("library")
+        if jb and lib:
+            jb._lib = lib
 
     def create_desktop_bridge(self):
         if "desktop" not in self._bridges:
@@ -381,8 +399,27 @@ class BridgeFactory(QObject):
         if "history" not in self._bridges:
             self._bridges["history"] = HistoryBridge(
                 db=self._services.db,
+                history_query_service=self._get_history_query_service(),
             )
         return self._bridges["history"]
+
+    def _get_settings_service(self):
+        if self._settings_service_cache is None:
+            from core.settings_service import SettingsService
+            self._settings_service_cache = SettingsService()
+        return self._settings_service_cache
+
+    def _get_history_query_service(self):
+        if self._history_qs_cache is None:
+            from core.history_query_service import HistoryQueryService
+            self._history_qs_cache = HistoryQueryService(db=self._services.db)
+        return self._history_qs_cache
+
+    def _get_mix_query_service(self):
+        if self._mix_qs_cache is None:
+            from core.mix_query_service import MixQueryService
+            self._mix_qs_cache = MixQueryService(db=self._services.db)
+        return self._mix_qs_cache
 
     def _get_library_sources_service(self):
         if not hasattr(self, '_lss_cache') or self._lss_cache is None:
@@ -428,47 +465,78 @@ class BridgeFactory(QObject):
         return self._bridges["library_sources"]
 
     def create_all(self) -> dict[str, QObject]:
-        """Create all bridges and return dict of name->bridge."""
+        """Phase A: shared services (cached, single instance)."""
+        self._get_library_query_service()
+        self._get_library_sources_service()
+        self._get_settings_service()
+        self._get_history_query_service()
+        self._get_mix_query_service()
+
+        """Phase B: fundamental bridges (no domain dependencies)."""
         self.create_navigation_bridge()
         self.create_app_bridge()
         self.create_theme_bridge()
+        self.create_notification_bridge()
+        self.create_app_state_bridge()
+        self.create_route_registry_bridge()
+        self.create_action_registry_bridge()
+        self.create_capability_bridge()
+        self.create_playlists_bridge()
+        self.create_selection_context_bridge()
+        self.create_job_bridge()
+
+        """Phase C: domain bridges (may depend on Phase B)."""
         self.create_library_bridge()
+        self._wire_job_bridge_library()
         self.create_playback_bridge()
         self.create_nowplaying_bridge()
+        self.create_queue_bridge()
+        self.create_history_bridge()
         self.create_mix_bridge()
         self.create_lyrics_bridge()
+        self.create_global_search_bridge()
+        self.create_settings_bridge()
+        self.create_output_profiles_bridge()
+        self.create_eq_bridge()
         self.create_connections_bridge()
         self.create_home_audio_bridge()
         self.create_devices_bridge()
         self.create_radio_bridge()
-        self.create_settings_bridge()
-        self.create_eq_bridge()
+        self.create_library_sources_bridge()
+        self.create_home_bridge()
+
+        """Phase D: advanced tools (may depend on Phase C)."""
         self.create_audio_lab_bridge()
         self.create_metadata_bridge()
         self.create_smart_tagging_bridge()
         self.create_disc_lab_bridge()
         self.create_library_doctor_bridge()
         self.create_michi_ai_bridge()
-        self.create_notification_bridge()
-        self.create_route_registry_bridge()
-        self.create_app_state_bridge()
         self.create_diagnostics_bridge()
-        self.create_action_registry_bridge()
         self.create_command_palette_bridge()
-        self.create_global_search_bridge()
         self.create_cover_provider_bridge()
-        self.create_job_bridge()
-        self.create_playlists_bridge()
         self.create_desktop_bridge()
         self.create_page_state_store()
-        self.create_queue_bridge()
-        self.create_history_bridge()
-        self.create_home_bridge()
-        self.create_library_sources_bridge()
-        self.create_output_profiles_bridge()
-        self.create_capability_bridge()
+
+        """Phase E: wiring assertions."""
+        self._assert_wiring()
         self.bind_action_handlers()
         return self._bridges
+
+    def _assert_wiring(self):
+        """Verify critical dependency chains are complete."""
+        lib = self._bridges.get("library")
+        jb = self._bridges.get("job_bridge")
+        pb = self._bridges.get("playlists")
+        tas = getattr(lib, '_tas', None) if lib else None
+        sv = self._bridges.get("settings")
+        sv2 = self._bridges.get("settings_v2")
+        if sv and sv2:
+            assert sv is sv2, "settings and settings_v2 must be the same object"
+        if lib and hasattr(lib, '_job_bridge'):
+            assert lib._job_bridge is jb, "library.job_bridge must be shared job_bridge"
+        if tas and hasattr(tas, '_pl') and pb:
+            assert tas._pl is pb, "TrackActionService.playlists must be shared PlaylistsBridge"
 
     def __repr__(self) -> str:
         return f"BridgeFactory(bridges={len(self._bridges)}, capabilities={self._capabilities})"
