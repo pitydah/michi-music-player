@@ -381,15 +381,20 @@ class BridgeFactory(QObject):
             )
         return self._bridges["history"]
 
+    def _get_library_sources_service(self):
+        if not hasattr(self, '_lss_cache') or self._lss_cache is None:
+            from core.library_sources_service import LibrarySourcesService
+            self._lss_cache = LibrarySourcesService(db=self._services.db)
+        return self._lss_cache
+
     def create_home_bridge(self):
         from ui_qml_bridge.home_bridge import HomeBridge
-        from core.library_sources_service import LibrarySourcesService
         if "home" not in self._bridges:
             self._bridges["home"] = HomeBridge(
                 db=self._services.db,
                 player_service=self._services.player_service,
                 library_bridge=self._bridges.get("library"),
-                library_sources_service=LibrarySourcesService(db=self._services.db),
+                library_sources_service=self._get_library_sources_service(),
                 job_bridge=self._bridges.get("job_bridge"),
             )
         self._register_capability("home", "db")
@@ -413,9 +418,8 @@ class BridgeFactory(QObject):
 
     def create_library_sources_bridge(self):
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
-        from core.library_sources_service import LibrarySourcesService
         if "library_sources" not in self._bridges:
-            svc = LibrarySourcesService(db=self._services.db)
+            svc = self._get_library_sources_service()
             self._bridges["library_sources"] = LibrarySourcesBridge(service=svc)
         return self._bridges["library_sources"]
 

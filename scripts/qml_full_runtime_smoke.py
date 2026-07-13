@@ -140,23 +140,30 @@ def main():
     check("No duplicate context properties", len(audit["duplicates"]) == 0,
           f"duplicates: {audit['duplicates']}")
 
-    # ── Navigate all registered routes ──
-    ROUTES = [
-        "home", "library", "playlists", "radio", "lyrics", "mix", "settings",
-        "devices", "connections", "home_audio", "eq", "queue", "history",
-        "diagnostics", "library_sources",
-    ]
+    # ── Navigate all registered routes from RouteRegistry ──
+    from ui_qml_bridge.route_registry import ROUTES as REGISTERED_ROUTES
     nav = all_bridges.get("navigation")
+    placeholder_count = 0
     if nav and hasattr(nav, 'navigate') and root_objects:
-        for route in ROUTES:
+        for route in REGISTERED_ROUTES:
+            if route == "placeholder":
+                continue
+            info = REGISTERED_ROUTES[route]
             try:
                 nav.navigate(route)
                 for _ in range(10):
                     app.processEvents()
+                # Check if resolved to placeholder
+                if info.get("source", "").endswith("PlaceholderPage.qml"):
+                    placeholder_count += 1
+                    FAILED.append(f"Route '{route}' resolves to PlaceholderPage")
+                    print(f"  [FAIL] Route '{route}' (placeholder)")
             except Exception as e:
                 FAILED.append(f"Route '{route}': {e}")
                 print(f"  [FAIL] Route '{route}': {e}")
         check("All routes navigated", True)
+        check("No placeholder routes", placeholder_count == 0,
+              f"{placeholder_count} routes resolved to PlaceholderPage")
     else:
         check("Navigation available", nav is not None)
 

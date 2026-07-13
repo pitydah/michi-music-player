@@ -23,6 +23,7 @@ class BasePagedListModel(QAbstractListModel):
     generationChanged = Signal()
     initializedChanged = Signal()
     canRetryChanged = Signal()
+    emptyChanged = Signal()
 
     def __init__(self, page_size: int = 250, query_executor=None, parent=None):
         super().__init__(parent)
@@ -88,7 +89,7 @@ class BasePagedListModel(QAbstractListModel):
     def activeQuery(self):
         return dict(self._query_args)
 
-    @Property(bool, notify=countChanged)
+    @Property(bool, notify=emptyChanged)
     def empty(self):
         return self._total_count == 0
 
@@ -151,10 +152,17 @@ class BasePagedListModel(QAbstractListModel):
             self.loadingMoreChanged.emit()
             self.errorChanged.emit()
 
+        def _on_cancelled():
+            if self._disposed or gen != self._refresh_gen:
+                self._reset_loading_more()
+                return
+            self._loading_more = False
+            self.loadingMoreChanged.emit()
+
         if self._qe is not None:
             self._active_request_id = self._qe.submit(
                 self._owner(), _task, on_success=_on_success, on_error=_on_error,
-                supersede=False,
+                on_cancelled=_on_cancelled, supersede=False,
             )
         else:
             items = _task()
@@ -175,6 +183,7 @@ class BasePagedListModel(QAbstractListModel):
         self._loading_more = False
         self.loadingChanged.emit()
         self.loadingMoreChanged.emit()
+        self.refreshingChanged.emit()
         self.cancelledChanged.emit()
         self.activeQueryChanged.emit()
         self.canRetryChanged.emit()
@@ -193,6 +202,7 @@ class BasePagedListModel(QAbstractListModel):
             if gen != self._refresh_gen:
                 return
             count, items = result if isinstance(result, tuple) and len(result) == 2 else (0, [])
+            old_total = self._total_count
             self._total_count = count if isinstance(count, int) else 0
             self.beginResetModel()
             self._items = list(items) if items else []
@@ -203,12 +213,15 @@ class BasePagedListModel(QAbstractListModel):
             self._initialized = True
             self._active_request_id = 0
             self.loadingChanged.emit()
+            self.refreshingChanged.emit()
             self.totalCountChanged.emit()
             self.countChanged.emit()
             self.hasMoreChanged.emit()
             self.initializedChanged.emit()
             self.activeRequestChanged.emit()
             self.canRetryChanged.emit()
+            if (old_total == 0) != (self._total_count == 0):
+                self.emptyChanged.emit()
 
         def _on_error(code, msg):
             if self._disposed:
@@ -220,6 +233,7 @@ class BasePagedListModel(QAbstractListModel):
             self._loading = False
             self._active_request_id = 0
             self.loadingChanged.emit()
+            self.refreshingChanged.emit()
             self.errorChanged.emit()
             self.activeRequestChanged.emit()
             self.canRetryChanged.emit()
@@ -233,6 +247,7 @@ class BasePagedListModel(QAbstractListModel):
             self._loading = False
             self._active_request_id = 0
             self.loadingChanged.emit()
+            self.refreshingChanged.emit()
             self.cancelledChanged.emit()
             self.activeRequestChanged.emit()
             self.canRetryChanged.emit()
