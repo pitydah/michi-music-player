@@ -27,11 +27,15 @@ class DiagnosticsBridge(QObject):
             "platform": platform.platform(),
             "qml_mode": True,
             "app_version": "0.2.0a0",
-            "player_available": self._player is not None,
-            "db_available": self._db is not None,
-            "radio_available": self._radio is not None,
-            "sync_available": self._sync is not None,
         }
+        # Backend availability
+        result["player_available"] = self._player is not None
+        result["db_available"] = self._db is not None
+        result["radio_available"] = self._radio is not None
+        result["sync_available"] = self._sync is not None
+        result["worker_manager"] = self._wm is not None
+        result["query_executor"] = self._qe is not None
+
         # DB health
         if self._db:
             try:
@@ -46,17 +50,71 @@ class DiagnosticsBridge(QObject):
                 result["fts5_available"] = fts is not None
             except Exception:
                 result["fts5_available"] = False
+            try:
+                schema = self._db.conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+                ).fetchall()
+                result["tables"] = len(schema)
+            except Exception:
+                result["tables"] = -1
+            try:
+                play_history = self._db.conn.execute(
+                    "SELECT COUNT(*) FROM play_history"
+                ).fetchone()
+                result["play_history_entries"] = play_history[0] if play_history else 0
+            except Exception:
+                result["play_history_entries"] = 0
+
         # WorkerManager health
         if self._wm:
-            result["thread_pool_active"] = self._wm.pending()
-            result["active_tasks"] = len(self._wm.active_tasks())
+            result["thread_pool_activo"] = self._wm.pending()
+            result["tareas_activas"] = len(self._wm.active_tasks())
+        else:
+            result["thread_pool_activo"] = -1
+            result["tareas_activas"] = -1
+
+        # QueryExecutor health
+        if self._qe:
+            result["requests_activos"] = len(self._qe.active_requests())
+        else:
+            result["requests_activos"] = -1
+
         # Player backend
         if self._player:
             try:
                 backend = self._player.get_active_backend_id() if hasattr(self._player, 'get_active_backend_id') else "unknown"
-                result["audio_backend"] = backend
+                result["backend_audio"] = backend
             except Exception:
-                result["audio_backend"] = "error"
+                result["backend_audio"] = "error"
+            try:
+                dev = self._player.get_output_device_id() if hasattr(self._player, 'get_output_device_id') else ""
+                result["dispositivo_salida"] = dev or "default"
+            except Exception:
+                result["dispositivo_salida"] = "error"
+            try:
+                vol = self._player.get_volume() if hasattr(self._player, 'get_volume') else -1
+                result["volumen"] = vol
+            except Exception:
+                result["volumen"] = -1
+
+        # Paths
+        try:
+            from core.paths import data_dir, cache_dir, config_dir, log_dir, database_path
+            result["data_path"] = str(data_dir())
+            result["cache_path"] = str(cache_dir())
+            result["config_path"] = str(config_dir())
+            result["log_path"] = str(log_dir())
+            result["database_path"] = str(database_path())
+        except Exception:
+            pass
+
+        # Settings summary
+        try:
+            from core.settings_schema import ALL_CATEGORIES
+            result["categorias_settings"] = len(ALL_CATEGORIES)
+        except Exception:
+            pass
+
         return result
 
     @Property("QVariantList", notify=dataChanged)
@@ -71,8 +129,12 @@ class DiagnosticsBridge(QObject):
         lines = ["=== Michi Music Player Diagnostics ==="]
         lines.append(f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
         for item in items:
+            # Sanitize secrets
+            val = item["value"]
+            if any(s in item["key"].lower() for s in ("token", "password", "secret", "key")):
+                val = "***"
             status = "OK" if item["ok"] else "FAIL"
-            lines.append(f"  {status}  {item['key']}: {item['value']}")
+            lines.append(f"  {status}  {item['key']}: {val}")
         return "\n".join(lines)
 
     @Slot()

@@ -280,6 +280,34 @@ class MetadataBridge(QObject):
         self._all_fields = {}
         self.dataChanged.emit()
 
+    @Slot("QVariantList", result=dict)
+    def batchSetField(self, filepaths: list, key: str, value: str):
+        results = {"ok": True, "applied": 0, "errors": 0, "details": []}
+        for fp in filepaths:
+            try:
+                from ui_qml_bridge.metadata_tag_adapter import (
+                    load_tags, apply_patch, create_backup, write_tags_safe,
+                )
+                base = load_tags(fp)
+                if base is None:
+                    results["errors"] += 1
+                    results["details"].append({"filepath": fp, "error": "FILE_NOT_FOUND"})
+                    continue
+                tags = apply_patch(base, {key: value})
+                if not tags.dirty:
+                    continue
+                backup = create_backup(fp)
+                result = write_tags_safe(tags, backup)
+                if result.get("ok"):
+                    results["applied"] += 1
+                else:
+                    results["errors"] += 1
+                    results["details"].append({"filepath": fp, "error": result.get("error_code")})
+            except Exception as e:
+                results["errors"] += 1
+                results["details"].append({"filepath": fp, "error": str(e)})
+        return results
+
     @Slot()
     def refresh(self):
         if self._current_filepath:
