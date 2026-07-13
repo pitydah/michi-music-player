@@ -1,4 +1,4 @@
-"""SettingsBridgeV2 — QML bridge for SettingsService, replaces legacy SettingsBridge."""
+"""SettingsBridgeV2 — QML bridge for SettingsService with coordinator-backed transactions."""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot

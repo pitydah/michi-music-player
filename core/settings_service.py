@@ -1,10 +1,13 @@
-"""SettingsService — agnostic UI service for reading/writing/validating settings."""
+"""SettingsService — agnostic UI service for reading/writing/validating settings.
+Transaction lifecycle coordinated by SettingsRuntimeCoordinator:
+validate → capture previous → apply service change → persist → emit
+"""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from core.settings_schema import ALL_CATEGORIES, get_entry, validate
+from core.settings_schema import ALL_CATEGORIES, get_entry
 from core.settings_manager import SETTINGS
 
 logger = logging.getLogger("michi.settings_service")
@@ -47,40 +50,17 @@ class SettingsService:
         return SETTINGS.value(key, default)
 
     def set_(self, key: str, value: Any) -> dict:
-        entry = get_entry(key)
-        if not entry:
-            return {"ok": False, "error_code": "UNKNOWN_KEY", "message": "Clave desconocida"}
-        ok, msg = validate(key, value)
-        if not ok:
-            return {"ok": False, "error_code": "INVALID_VALUE", "message": msg}
-        SETTINGS.setValue(key, value)
-        SETTINGS.sync()
-        result = {"ok": True, "key": key, "value": value}
-        if self._coordinator:
-            apply = self._coordinator.apply(key, value)
-            result.update({
-                "applied": apply.applied,
-                "requires_restart": apply.requires_restart,
-                "message": apply.message,
-            })
-        return result
+        if not self._coordinator:
+            return {"ok": False, "error_code": "NO_COORDINATOR", "message": "No hay coordinador de runtime"}
+        return self._coordinator.execute(key, value)
 
     def reset(self, key: str) -> dict:
+        if not self._coordinator:
+            return {"ok": False, "error_code": "NO_COORDINATOR", "message": "No hay coordinador de runtime"}
         entry = get_entry(key)
         if not entry:
             return {"ok": False, "error_code": "UNKNOWN_KEY", "message": "Clave desconocida"}
-        default = entry.default
-        SETTINGS.setValue(key, default)
-        SETTINGS.sync()
-        result = {"ok": True, "key": key, "value": default}
-        if self._coordinator:
-            apply = self._coordinator.apply(key, default)
-            result.update({
-                "applied": apply.applied if apply.ok else False,
-                "requires_restart": apply.requires_restart,
-                "message": apply.message,
-            })
-        return result
+        return self._coordinator.execute(key, entry.default)
 
     def get_all(self) -> dict[str, Any]:
         result = {}
@@ -91,9 +71,13 @@ class SettingsService:
         return result
 
     def reset_all(self) -> dict:
+        if not self._coordinator:
+            return {"ok": False, "error_code": "NO_COORDINATOR", "message": "No hay coordinador de runtime"}
+        errors = []
         for cat in ALL_CATEGORIES:
             for section in cat.sections:
                 for entry in section.entries:
-                    SETTINGS.setValue(entry.key, entry.default)
-        SETTINGS.sync()
-        return {"ok": True}
+                    result = self._coordinator.execute(entry.key, entry.default)
+                    if not result.get("ok"):
+                        errors.append(result)
+        return {"ok": not errors, "errors": errors}

@@ -1,6 +1,6 @@
 # QML Library Performance Report
 
-**Date:** 2026-07-13T19:43:19
+**Date:** 2026-07-13T19:50:46
 **Environment:** Linux, Python 3.11, PySide6 6.11, offscreen
 
 ## Synthetic Benchmark Results
@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | 100 tracks | 0.0001 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
 | 1,000 tracks | 0.0001 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
-| 10,000 tracks | 0.0002 | 0.0002 | 0.0002 | 0.0002 | 0.0 |
+| 10,000 tracks | 0.0001 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
 | 50,000 tracks | 0.0002 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
 
 ## Methodology

@@ -1,4 +1,6 @@
-"""ThemeBridge — dynamic theme with dark/light/system, accent, high contrast, density."""
+"""ThemeBridge — dynamic theme with dark/light/system, accent, high contrast, density.
+Connected to ThemeStore for real-time QML theme updates.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property
@@ -19,6 +21,18 @@ class ThemeBridge(QObject):
         self._font_scale = SETTINGS.value("accessibility/font_size", "normal")
         self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
         self._dark_mode = self._theme != "light"
+
+    def _notify_theme_store(self):
+        """Push current state to ThemeStore singleton in QML."""
+        try:
+            from PySide6.QtQml import qmlEngine
+            engine = qmlEngine(self)
+            if engine:
+                store = engine.singleton("ThemeStore")
+                if store:
+                    store.updateFromBridge(self)
+        except Exception:
+            pass
 
     @Property(bool, notify=themeChanged)
     def darkMode(self):
@@ -44,9 +58,8 @@ class ThemeBridge(QObject):
             self._dark_mode = val != "light"
             if self._coordinator:
                 self._coordinator.apply("appearance/theme", val)
-            else:
-                SETTINGS.setValue("appearance/theme", val)
-                SETTINGS.sync()
+            SETTINGS.setValue("appearance/theme", val)
+            SETTINGS.sync()
             self.themeChanged.emit()
 
     @Property(str, notify=themeChanged)
@@ -58,9 +71,8 @@ class ThemeBridge(QObject):
         self._accent_color = color
         if self._coordinator:
             self._coordinator.apply("appearance/accent_color", color)
-        else:
-            SETTINGS.setValue("appearance/accent_color", color)
-            SETTINGS.sync()
+        SETTINGS.setValue("appearance/accent_color", color)
+        SETTINGS.sync()
         self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
@@ -72,9 +84,8 @@ class ThemeBridge(QObject):
         self._high_contrast = val
         if self._coordinator:
             self._coordinator.apply("accessibility/high_contrast", val)
-        else:
-            SETTINGS.setValue("accessibility/high_contrast", val)
-            SETTINGS.sync()
+        SETTINGS.setValue("accessibility/high_contrast", val)
+        SETTINGS.sync()
         self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
@@ -86,9 +97,8 @@ class ThemeBridge(QObject):
         self._compact_mode = val
         if self._coordinator:
             self._coordinator.apply("appearance/compact_mode", val)
-        else:
-            SETTINGS.setValue("appearance/compact_mode", val)
-            SETTINGS.sync()
+        SETTINGS.setValue("appearance/compact_mode", val)
+        SETTINGS.sync()
         self.themeChanged.emit()
 
     @Property(str, notify=themeChanged)
@@ -100,9 +110,8 @@ class ThemeBridge(QObject):
         self._font_scale = val
         if self._coordinator:
             self._coordinator.apply("accessibility/font_size", val)
-        else:
-            SETTINGS.setValue("accessibility/font_size", val)
-            SETTINGS.sync()
+        SETTINGS.setValue("accessibility/font_size", val)
+        SETTINGS.sync()
         self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
@@ -114,7 +123,6 @@ class ThemeBridge(QObject):
         self._reduce_motion = val
         if self._coordinator:
             self._coordinator.apply("accessibility/reduce_motion", val)
-        else:
-            SETTINGS.setValue("accessibility/reduce_motion", val)
-            SETTINGS.sync()
+        SETTINGS.setValue("accessibility/reduce_motion", val)
+        SETTINGS.sync()
         self.themeChanged.emit()
