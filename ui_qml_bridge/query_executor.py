@@ -289,7 +289,6 @@ class QueryExecutor(QObject):
 
         self.requestStateChanged.emit(rec.request_id, state)
         self.requestFinished.emit(rec.request_id)
-        self._prune()
 
         if cb:
             try:
