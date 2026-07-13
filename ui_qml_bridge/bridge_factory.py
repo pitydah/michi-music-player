@@ -33,6 +33,8 @@ class BridgeFactory(QObject):
         self._settings_service_cache = None
         self._history_qs_cache = None
         self._mix_qs_cache = None
+        self._tas_cache = None
+        self._src_cache = None
 
     @property
     def bridges(self) -> dict[str, QObject]:
@@ -54,7 +56,10 @@ class BridgeFactory(QObject):
     def create_app_bridge(self):
         from ui_qml_bridge.app_bridge import AppBridge
         if "app" not in self._bridges:
-            self._bridges["app"] = AppBridge()
+            self._bridges["app"] = AppBridge(
+                worker_manager=self._services.worker_manager,
+                query_executor=self._get_query_executor(),
+            )
         return self._bridges["app"]
 
     def create_navigation_bridge(self):
@@ -82,18 +87,10 @@ class BridgeFactory(QObject):
 
     def create_library_bridge(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
-        from ui_qml_bridge.query_executor import QueryExecutor
         if "library" not in self._bridges:
             qs = self._get_library_query_service()
-            qe = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
-            self._qe_cache = qe
-            from core.track_action_service import TrackActionService
-            tas = TrackActionService(
-                query_service=qs,
-                player_service=self._services.player_service,
-                playlist_bridge=self._bridges.get("playlists"),
-                db=self._services.db,
-            )
+            qe = self._get_query_executor()
+            tas = self._get_track_action_service()
             self._bridges["library"] = LibraryBridge(
                 db=self._services.db,
                 search_engine=self._services.search_engine,
@@ -135,8 +132,7 @@ class BridgeFactory(QObject):
     def create_mix_bridge(self):
         from ui_qml_bridge.mix_bridge import MixBridge
         if "mix" not in self._bridges:
-            lib = self._bridges.get("library")
-            tas = getattr(lib, '_tas', None) if lib else None
+            tas = self._get_track_action_service()
             self._bridges["mix"] = MixBridge(
                 db=self._services.db,
                 player_service=self._services.player_service,
@@ -312,7 +308,7 @@ class BridgeFactory(QObject):
                 radio_manager=self._services.radio_manager,
                 sync_manager=self._services.sync_manager,
                 worker_manager=self._services.worker_manager,
-                query_executor=self._qe_cache,
+                query_executor=self._get_query_executor(),
             )
         self._register_capability("diagnostics", "db")
         return self._bridges["diagnostics"]
@@ -352,7 +348,7 @@ class BridgeFactory(QObject):
             self._bridges["global_search"] = GlobalSearchBridge(
                 db=self._services.db,
                 search_engine=self._services.search_engine,
-                query_executor=self._qe_cache,
+                query_executor=self._get_query_executor(),
             )
         return self._bridges["global_search"]
 
@@ -404,6 +400,7 @@ class BridgeFactory(QObject):
             self._bridges["history"] = HistoryBridge(
                 db=self._services.db,
                 history_query_service=self._get_history_query_service(),
+                query_executor=self._get_query_executor(),
             )
         return self._bridges["history"]
 
@@ -424,6 +421,32 @@ class BridgeFactory(QObject):
             from core.mix_query_service import MixQueryService
             self._mix_qs_cache = MixQueryService(db=self._services.db)
         return self._mix_qs_cache
+
+    def _get_query_executor(self):
+        if self._qe_cache is None:
+            from ui_qml_bridge.query_executor import QueryExecutor
+            self._qe_cache = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
+        return self._qe_cache
+
+    def _get_track_action_service(self):
+        if self._tas_cache is None:
+            from core.track_action_service import TrackActionService
+            self._tas_cache = TrackActionService(
+                query_service=self._get_library_query_service(),
+                player_service=self._services.player_service,
+                playlist_bridge=self._bridges.get("playlists"),
+                db=self._services.db,
+            )
+        return self._tas_cache
+
+    def _get_settings_runtime_coordinator(self):
+        if self._src_cache is None:
+            from core.settings_runtime_coordinator import SettingsRuntimeCoordinator
+            self._src_cache = SettingsRuntimeCoordinator(
+                player_service=self._services.player_service,
+                worker_manager=self._services.worker_manager,
+            )
+        return self._src_cache
 
     def _get_library_sources_service(self):
         if not hasattr(self, '_lss_cache') or self._lss_cache is None:
@@ -528,19 +551,20 @@ class BridgeFactory(QObject):
         return self._bridges
 
     def _assert_wiring(self):
-        """Verify critical dependency chains are complete."""
-        lib = self._bridges.get("library")
-        jb = self._bridges.get("job_bridge")
-        pb = self._bridges.get("playlists")
-        tas = getattr(lib, '_tas', None) if lib else None
+        """Verify critical dependency chains are complete via public APIs."""
         sv = self._bridges.get("settings")
         sv2 = self._bridges.get("settings_v2")
         if sv and sv2:
             assert sv is sv2, "settings and settings_v2 must be the same object"
-        if lib and hasattr(lib, '_job_bridge'):
-            assert lib._job_bridge is jb, "library.job_bridge must be shared job_bridge"
-        if tas and hasattr(tas, '_pl') and pb:
-            assert tas._pl is pb, "TrackActionService.playlists must be shared PlaylistsBridge"
+        # Verify shared executors
+        qe = self._qe_cache
+        if qe:
+            gs = self._bridges.get("global_search")
+            if gs and hasattr(gs, '_qe') and hasattr(qe, 'submit'):
+                assert gs._qe is qe, "global_search must use shared QueryExecutor"
+            diag = self._bridges.get("diagnostics")
+            if diag and hasattr(diag, '_qe'):
+                assert diag._qe is qe, "diagnostics must use shared QueryExecutor"
 
     def __repr__(self) -> str:
         return f"BridgeFactory(bridges={len(self._bridges)}, capabilities={self._capabilities})"

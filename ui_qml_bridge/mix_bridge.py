@@ -185,15 +185,17 @@ class MixBridge(QObject):
         if not self._current_songs:
             return {"ok": False, "error": "EMPTY_MIX"}
         try:
-            pid = self._pb._create_playlist(name) if hasattr(self._pb, '_create_playlist') else 0
-            if not pid:
-                return {"ok": False, "error": "NO_DB"}
+            result = self._pb.createPlaylist(name)
+            if not result.get("ok"):
+                return {"ok": False, "error": "CREATE_FAILED"}
+            pid = result["id"]
             count = 0
             for s in self._current_songs:
                 tid = s.get("track_id")
                 if tid:
-                    self._pb.addTrackToPlaylist(pid, track_id=str(tid))
-                    count += 1
+                    add = self._pb.addTrackToPlaylist(pid, track_id=str(tid))
+                    if add.get("ok"):
+                        count += 1
             self._pb.refresh()
             return {"ok": True, "id": pid, "count": count}
         except Exception as e:
