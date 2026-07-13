@@ -135,9 +135,13 @@ class BridgeFactory(QObject):
     def create_mix_bridge(self):
         from ui_qml_bridge.mix_bridge import MixBridge
         if "mix" not in self._bridges:
+            lib = self._bridges.get("library")
+            tas = getattr(lib, '_tas', None) if lib else None
             self._bridges["mix"] = MixBridge(
                 db=self._services.db,
-                playback_ctrl=self._services.player_service,
+                player_service=self._services.player_service,
+                track_action_service=tas,
+                playlist_bridge=self._bridges.get("playlists"),
             )
         self._register_capability("mix", "db")
         return self._bridges["mix"]

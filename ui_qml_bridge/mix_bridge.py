@@ -38,18 +38,6 @@ def _to_dict(s, reason: str = "") -> dict:
 class MixBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db=None, playback_ctrl=None, parent=None):
-        super().__init__(parent)
-        self._db = db
-        self._player = playback_ctrl
-        self._current_mix_id = ""
-        self._current_mix_title = ""
-        self._current_songs: list[dict] = []
-        self._error_message = ""
-        self._ai_enabled = False
-        from core.mix_query_service import MixQueryService
-        self._mqs = MixQueryService(db=db) if db else None
-
     @Property("QVariantList", notify=dataChanged)
     def categories(self):
         cats = list(MIX_CATEGORIES)
@@ -150,45 +138,66 @@ class MixBridge(QObject):
         self.dataChanged.emit()
         return {"ok": True}
 
+    def __init__(self, db=None, playback_ctrl=None, player_service=None,
+                 track_action_service=None, playlist_bridge=None, parent=None):
+        super().__init__(parent)
+        self._db = db
+        self._player = playback_ctrl or player_service
+        self._tas = track_action_service
+        self._pb = playlist_bridge
+        self._current_mix_id = ""
+        self._current_mix_title = ""
+        self._current_songs: list[dict] = []
+        self._error_message = ""
+        self._ai_enabled = False
+        from core.mix_query_service import MixQueryService
+        self._mqs = MixQueryService(db=db) if db else None
+
     @Slot(result=dict)
     def playMix(self):
-        if not self._current_songs:
+        if not self._current_songs or not self._current_songs[0].get("track_id"):
             return {"ok": False, "error": "EMPTY_MIX"}
-        first = self._current_songs[0]
-        fp = first.get("filepath", "")
-        if not fp or not self._player:
-            return {"ok": False, "error": "NO_PLAYER"}
-        try:
-            if hasattr(self._player, 'play_file'):
-                self._player.play_file(fp)
-            elif hasattr(self._player, 'play'):
-                self._player.play(fp)
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        tid = self._current_songs[0]["track_id"]
+        if self._tas:
+            return self._tas.play_track(tid)
+        return {"ok": False, "error": "NO_ACTION_SERVICE"}
 
     @Slot(result=dict)
     def enqueueMix(self):
         if not self._current_songs:
             return {"ok": False, "error": "EMPTY_MIX"}
-        fps = [s.get("filepath", "") for s in self._current_songs if s.get("filepath")]
-        if not fps or not self._player:
-            return {"ok": False, "error": "NO_PLAYER"}
-        try:
-            if hasattr(self._player, 'enqueue_multiple'):
-                self._player.enqueue_multiple(fps)
-            elif hasattr(self._player, 'enqueue'):
-                for fp in fps:
-                    self._player.enqueue(fp)
-            return {"ok": True, "count": len(fps)}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        if not self._tas:
+            return {"ok": False, "error": "NO_ACTION_SERVICE"}
+        count = 0
+        for s in self._current_songs:
+            tid = s.get("track_id")
+            if tid:
+                self._tas.enqueue_track(tid)
+                count += 1
+        return {"ok": True, "count": count}
 
     @Slot(str, result=dict)
     def saveMixAsPlaylist(self, name: str):
         if not name:
             return {"ok": False, "error": "EMPTY_NAME"}
-        return {"ok": False, "error": "UNSUPPORTED"}
+        if not self._pb:
+            return {"ok": False, "error": "NO_PLAYLIST_BRIDGE"}
+        if not self._current_songs:
+            return {"ok": False, "error": "EMPTY_MIX"}
+        try:
+            pid = self._pb._create_playlist(name) if hasattr(self._pb, '_create_playlist') else 0
+            if not pid:
+                return {"ok": False, "error": "NO_DB"}
+            count = 0
+            for s in self._current_songs:
+                tid = s.get("track_id")
+                if tid:
+                    self._pb.addTrackToPlaylist(pid, track_id=str(tid))
+                    count += 1
+            self._pb.refresh()
+            return {"ok": True, "id": pid, "count": count}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def explainCurrentMix(self):

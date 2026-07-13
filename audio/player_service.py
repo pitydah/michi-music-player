@@ -279,6 +279,22 @@ class PlayerService(QObject):
         set_("audio/profile", profile)
         self.switch_backend_for_profile(profile)
 
+    def set_profile(self, profile_id: str):
+        from audio.output_profiles import PROFILES
+        if profile_id not in PROFILES:
+            return {"ok": False, "error": "UNKNOWN_PROFILE"}
+        self._active_profile_id = profile_id
+        self.set_audio_profile(profile_id)
+        from core.settings_manager import set_
+        set_("audio/profile", profile_id)
+        return {"ok": True}
+
+    def get_active_profile_id(self) -> str:
+        if hasattr(self, '_active_profile_id') and self._active_profile_id:
+            return self._active_profile_id
+        from core.settings_manager import get
+        return get("audio/profile") or "standard"
+
     def set_output_device_id(self, device_id):
         self._engine.set_output_device_id(device_id)
 
