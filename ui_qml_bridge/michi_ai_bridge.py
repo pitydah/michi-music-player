@@ -110,3 +110,39 @@ class MichiAIBridge(QObject):
     @Slot(result=str)
     def getChatHistory(self):
         return json.dumps(self._chat_history)
+
+    @Slot(result=dict)
+    def aiScore(self) -> dict:
+        score = 0
+        if self._status in ("idle", "thinking"):
+            score += 20
+        if len(self._suggestions) > 0:
+            score += 15
+        if len(self._chat_history) > 0:
+            score += 15
+        if hasattr(self, 'cancel'):
+            score += 15
+        if hasattr(self, 'sendMessage'):
+            score += 15
+        try:
+            from michi_ai.context.ai_context_bridge import MichiAIContextBridge
+            bridge = MichiAIContextBridge()
+            snap = bridge.build_snapshot()
+            if snap:
+                score += 10
+        except Exception:
+            pass
+        try:
+            from michi_ai.planner.plan_builder import PlanBuilder
+            from michi_ai.tools.tool_registry import ToolRegistry
+            _ = ToolRegistry()
+            _ = PlanBuilder
+            score += 10
+        except Exception:
+            pass
+        return {
+            "score": min(100, score),
+            "status": self._status,
+            "suggestion_count": len(self._suggestions),
+            "chat_count": len(self._chat_history),
+        }
