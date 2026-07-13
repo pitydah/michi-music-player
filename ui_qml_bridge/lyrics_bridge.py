@@ -230,14 +230,15 @@ class LyricsBridge(QObject):
         self.dataChanged.emit()
         self._timeout_timer.start()
 
-        if self._wm and hasattr(self._wm, 'run'):
+        if self._wm and hasattr(self._wm, 'run_task'):
             search_id = self._search_counter
-            self._wm.run(
-                _search_impl, title, artist, album, duration,
-                callback=lambda r: self._on_search_complete(search_id, r),
+            self._wm.run_task(
+                f"lyrics_{search_id}",
+                lambda: _search_impl(title, artist, album, duration),
+                on_done=lambda r: self._on_search_complete(search_id, r),
+                cancellable=True, owner="lyrics",
             )
         else:
-            # Fallback: synchronous with timeout guard
             from PySide6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self._sync_fallback(title, artist, album, duration))
 
@@ -277,10 +278,12 @@ class LyricsBridge(QObject):
             source = result.get("source", "LRCLIB")
             return {"ok": True, "lyrics": plain, "synced_lyrics": synced, "source": source}
 
-        if self._wm and hasattr(self._wm, 'run'):
-            self._wm.run(
-                search_manual_impl, query,
-                callback=lambda r: self._on_search_complete(search_id, r),
+        if self._wm and hasattr(self._wm, 'run_task'):
+            self._wm.run_task(
+                f"lyrics_manual_{search_id}",
+                lambda: search_manual_impl(query),
+                on_done=lambda r: self._on_search_complete(search_id, r),
+                cancellable=True, owner="lyrics",
             )
         else:
             from PySide6.QtCore import QTimer

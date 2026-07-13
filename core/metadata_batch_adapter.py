@@ -15,10 +15,12 @@ class MetadataBatchAdapter:
     def cancel(self):
         self._cancelled = True
 
-    def scan_missing(self) -> dict:
+    def scan_missing(self, ctx=None) -> dict:
         if not self._db:
             return {"error": "NO_DB"}
         try:
+            if ctx:
+                ctx.token.raise_if_cancelled()
             rows = self._db.conn.execute(
                 "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL "
                 "AND (title IS NULL OR title = '' OR artist IS NULL OR artist = '' "
