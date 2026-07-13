@@ -164,37 +164,55 @@ class SmartTaggingBridge(QObject):
         self._status = "applying"
         self._progress = 0.0
         self.dataChanged.emit()
-        base = load_tags(self._current_filepath)
-        if base is None:
-            self._status = "error"
+
+        filepath = self._current_filepath
+        suggestions = list(self._suggestions)
+        selected_ids = set(self._selected_ids)
+        gen = self._scan_counter
+
+        def _task(ctx):
+            ctx.token.raise_if_cancelled()
+            base = load_tags(filepath)
+            if base is None:
+                return {"error": "FILE_NOT_FOUND"}
+            changes = {}
+            for s in suggestions:
+                if s.get("id") in selected_ids and s.get("field") and s.get("suggested"):
+                    changes[s["field"]] = s["suggested"]
+            tags = apply_patch(base, changes)
+            if not tags.dirty:
+                return {"error": "NO_CHANGES"}
+            ctx.report_progress(0.3, "Backup...")
+            backup = create_backup(filepath)
+            ctx.report_progress(0.5, "Escribiendo...")
+            result = write_tags_safe(tags, backup)
+            if not result.get("ok"):
+                if backup:
+                    rollback_tags(backup, filepath)
+                return {"error": result.get("error_code", "WRITE_FAILED")}
+            ctx.report_progress(1.0, "Completado")
+            return {"ok": True, "applied": len(changes)}
+
+        def _done(res):
+            if gen != self._scan_counter:
+                self._status = "stale"
+                self.dataChanged.emit()
+                return
+            if res.get("error"):
+                self._status = "error"
+                self.dataChanged.emit()
+                return
+            self._progress = 1.0
+            self.progressChanged.emit(self._progress)
+            self._status = "completed"
             self.dataChanged.emit()
-            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
-        changes = {}
-        for s in self._suggestions:
-            if s.get("id") in self._selected_ids and s.get("field") and s.get("suggested"):
-                changes[s["field"]] = s["suggested"]
-        tags = apply_patch(base, changes)
-        if not tags.dirty:
-            self._status = "review"
-            self.dataChanged.emit()
-            return {"ok": False, "error_code": "NO_CHANGES", "message": "Sin cambios"}
-        self._progress = 0.3
-        self.progressChanged.emit()
-        backup = create_backup(self._current_filepath)
-        self._progress = 0.5
-        self.progressChanged.emit()
-        result = write_tags_safe(tags, backup)
-        if not result.get("ok"):
-            if backup:
-                rollback_tags(backup, self._current_filepath)
-            self._status = "error"
-            self.dataChanged.emit()
-            return result
-        self._progress = 1.0
-        self.progressChanged.emit()
-        self._status = "completed"
-        self.dataChanged.emit()
-        return {"ok": True, "applied": len(changes)}
+
+        if self._wm and hasattr(self._wm, 'run_task'):
+            self._wm.run_task(f"st_apply_{id(self)}", _task, on_done=_done,
+                              pass_context=True, cancellable=True, owner="smart_tagging")
+        else:
+            _done(_task(None))
+        return {"ok": True, "queued": True}
 
     @Slot(result=dict)
     def cancelScan(self):

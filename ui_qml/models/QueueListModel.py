@@ -16,6 +16,8 @@ class QueueListModel(BasePagedListModel):
     AlbumRole = Qt.UserRole + 5
     AlbumKeyRole = Qt.UserRole + 6
     DurationRole = Qt.UserRole + 7
+    CurrentRole = Qt.UserRole + 8
+    PositionRole = Qt.UserRole + 9
 
     def __init__(self, player_service=None, query_executor=None, parent=None):
         super().__init__(page_size=500, query_executor=query_executor, parent=parent)
@@ -28,7 +30,8 @@ class QueueListModel(BasePagedListModel):
         return {self.TrackIdRole: b"trackId", self.TrackUidRole: b"trackUid",
                 self.TitleRole: b"title", self.ArtistRole: b"artist",
                 self.AlbumRole: b"album", self.AlbumKeyRole: b"albumKey",
-                self.DurationRole: b"duration"}
+                self.DurationRole: b"duration",
+                self.CurrentRole: b"current", self.PositionRole: b"position"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
@@ -37,7 +40,8 @@ class QueueListModel(BasePagedListModel):
         mapping = {self.TrackIdRole: "track_id", self.TrackUidRole: "track_uid",
                    self.TitleRole: "title", self.ArtistRole: "artist",
                    self.AlbumRole: "album", self.AlbumKeyRole: "album_key",
-                   self.DurationRole: "duration"}
+                   self.DurationRole: "duration",
+                   self.CurrentRole: "is_current", self.PositionRole: "position"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")
@@ -65,11 +69,11 @@ class QueueListModel(BasePagedListModel):
             if not q:
                 return []
             page = q[offset:offset + limit]
-            return [self._item_to_dict(i) for i in page]
+            return [self._item_to_dict(i, offset + idx) for idx, i in enumerate(page)]
         except Exception:
             return []
 
-    def _item_to_dict(self, item) -> dict:
+    def _item_to_dict(self, item, position=0) -> dict:
         if isinstance(item, dict):
             return {
                 "track_id": item.get("id", item.get("track_id", 0)),
@@ -79,6 +83,8 @@ class QueueListModel(BasePagedListModel):
                 "album": item.get("album", ""),
                 "album_key": item.get("album_key", ""),
                 "duration": item.get("duration", 0),
+                "is_current": item.get("is_current", False),
+                "position": position,
             }
         return {
             "track_id": getattr(item, "id", getattr(item, "track_id", 0)),
@@ -88,4 +94,6 @@ class QueueListModel(BasePagedListModel):
             "album": getattr(item, "album", ""),
             "album_key": getattr(item, "album_key", ""),
             "duration": getattr(item, "duration", 0),
+            "is_current": getattr(item, "is_current", False),
+            "position": position,
         }
