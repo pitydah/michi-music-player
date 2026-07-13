@@ -17,6 +17,7 @@ def engine(qapp):
 
 
 def _load_qml(engine, source: str) -> QQmlComponent:
+    engine.addImportPath(str(QML_DIR))
     component = QQmlComponent(engine)
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / source)))
     return component

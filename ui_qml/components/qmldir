@@ -48,5 +48,9 @@ MichiLoadingState 1.0 states/MichiLoadingState.qml
 MichiSkeleton 1.0 states/MichiSkeleton.qml
 MichiUnavailableState 1.0 states/MichiUnavailableState.qml
 
+# settings
+SettingsCategoryPage 1.0 settings/SettingsCategoryPage.qml
+SettingsRow 1.0 settings/SettingsRow.qml
+
 # dev (not for production)
 ComponentGallery 1.0 dev/ComponentGallery.qml

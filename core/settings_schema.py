@@ -10,6 +10,11 @@ ENTRY_BOOL = "bool"
 ENTRY_SELECT = "select"
 ENTRY_FILE = "file"
 ENTRY_AUDIO_DEVICE = "audio_device"
+ENTRY_SECRET = "secret"
+ENTRY_DIRECTORY = "directory"
+ENTRY_FLOAT = "float"
+ENTRY_SLIDER = "slider"
+ENTRY_ACTION = "action"
 
 
 @dataclass
@@ -26,6 +31,10 @@ class SettingsEntry:
     min_value: int | None = None
     max_value: int | None = None
     category: str = "general"
+    platforms: list[str] | None = None       # None = all, or ["Linux", "Windows", "Darwin"]
+    requires_capability: str = ""            # capability name, empty = always available
+    experimental: bool = False
+    visible_when: str = ""                   # expression or capability key
 
 
 @dataclass
@@ -144,13 +153,15 @@ AUDIO = SettingsCategory("audio", "Audio", "speaker", sections=[
     SettingsSection("output", "Salida", entries=[
         SettingsEntry("audio/output_device_id", "Dispositivo de salida", ENTRY_AUDIO_DEVICE, "auto"),
         SettingsEntry("audio/alsa_device", "Dispositivo ALSA", ENTRY_TEXT, "",
-                       placeholder="hw:0,0"),
+                       placeholder="hw:0,0", platforms=["Linux"]),
         SettingsEntry("audio/allow_resample", "Permitir remuestreo", ENTRY_BOOL, True),
         SettingsEntry("audio/resample_quality", "Calidad de remuestreo", ENTRY_SELECT, "medium",
                        options=[{"value": "low", "label": "Baja"},
                                 {"value": "medium", "label": "Media"},
                                 {"value": "high", "label": "Alta"},
                                 {"value": "ultra", "label": "Ultra"}]),
+        SettingsEntry("audio/wasapi_exclusive", "WASAPI exclusivo", ENTRY_BOOL, False,
+                       hint="Solo Windows", platforms=["Windows"]),
     ]),
 ])
 
@@ -246,7 +257,7 @@ BITPERFECT = SettingsCategory("bitperfect", "Bit-perfect", "bitperfect", section
                                 {"value": "native", "label": "Nativo"},
                                 {"value": "dop", "label": "DoP"}]),
         SettingsEntry("bitperfect/wasapi_exclusive", "WASAPI exclusivo", ENTRY_BOOL, False,
-                       hint="Solo Windows"),
+                       hint="Solo Windows", platforms=["Windows"]),
     ]),
 ])
 
