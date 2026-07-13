@@ -1,3 +1,4 @@
+# components
 GlassPanel 1.0 GlassPanel.qml
 GlassCard 1.0 GlassCard.qml
 HeroPanel 1.0 HeroPanel.qml
@@ -14,3 +15,38 @@ MichiIconButton 1.0 MichiIconButton.qml
 MichiSlider 1.0 MichiSlider.qml
 MichiBadge 1.0 MichiBadge.qml
 MichiProgressBar 1.0 MichiProgressBar.qml
+JobStatusBanner 1.0 JobStatusBanner.qml
+MichiIcon 1.0 IconSlot.qml
+MichiSearchField 1.0 SearchField.qml
+
+# content
+MichiAlbumTile 1.0 content/MichiAlbumTile.qml
+MichiArtistTile 1.0 content/MichiArtistTile.qml
+MichiListRow 1.0 content/MichiListRow.qml
+MichiMetadataLine 1.0 content/MichiMetadataLine.qml
+MichiStatCard 1.0 content/MichiStatCard.qml
+MichiTrackRow 1.0 content/MichiTrackRow.qml
+
+# foundations
+MichiFocusRing 1.0 foundations/MichiFocusRing.qml
+MichiReducedMotion 1.0 foundations/MichiReducedMotion.qml
+MichiResponsive 1.0 foundations/MichiResponsive.qml
+MichiVisualState 1.0 foundations/MichiVisualState.qml
+
+# layout
+MichiPage 1.0 layout/MichiPage.qml
+MichiPageHeader 1.0 layout/MichiPageHeader.qml
+MichiResponsiveGrid 1.0 layout/MichiResponsiveGrid.qml
+MichiSection 1.0 layout/MichiSection.qml
+MichiSplitView 1.0 layout/MichiSplitView.qml
+MichiToolbar 1.0 layout/MichiToolbar.qml
+
+# states
+MichiEmptyState 1.0 states/MichiEmptyState.qml
+MichiErrorState 1.0 states/MichiErrorState.qml
+MichiLoadingState 1.0 states/MichiLoadingState.qml
+MichiSkeleton 1.0 states/MichiSkeleton.qml
+MichiUnavailableState 1.0 states/MichiUnavailableState.qml
+
+# dev (not for production)
+ComponentGallery 1.0 dev/ComponentGallery.qml

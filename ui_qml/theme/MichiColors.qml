@@ -5,6 +5,7 @@ QtObject {
     readonly property color bgApp: "#070A10"
     readonly property color bgContent: "#090B11"
     readonly property color accentBlue: "#8FB7FF"
+    readonly property color accent: accentBlue
     readonly property color accentSurface: Qt.rgba(0.561, 0.718, 1.0, 0.10)
     readonly property color accentSelection: Qt.rgba(0.561, 0.718, 1.0, 0.18)
     readonly property color surfaceCard: "#0D0F16"
@@ -15,6 +16,15 @@ QtObject {
     readonly property color surfaceSidebar: "#080A10"
     readonly property color surfacePopup: "#0F1219"
     readonly property color surfaceInput: "#0C0E15"
+    readonly property color surfaceHover: Qt.rgba(1.0, 1.0, 1.0, 0.08)
+    readonly property color surfacePressed: Qt.rgba(1.0, 1.0, 1.0, 0.12)
+    readonly property color surfaceDisabled: Qt.rgba(1.0, 1.0, 1.0, 0.04)
+    readonly property color surfaceSubtle: Qt.rgba(1.0, 1.0, 1.0, 0.03)
+    readonly property color controlTrack: Qt.rgba(1.0, 1.0, 1.0, 0.08)
+    readonly property color controlThumb: Qt.rgba(1.0, 1.0, 1.0, 0.90)
+    readonly property color focusHalo: Qt.rgba(0.561, 0.718, 1.0, 0.18)
+    readonly property color skeletonBase: surfaceCard
+    readonly property color skeletonHighlight: surfaceCardHover
     readonly property color surfaceToolbar: Qt.rgba(0.027, 0.039, 0.063, 0.92)
     readonly property color surfaceOverlay: Qt.rgba(0.02, 0.03, 0.05, 0.85)
     readonly property color borderSubtle: Qt.rgba(1.0, 1.0, 1.0, 0.05)
@@ -28,6 +38,7 @@ QtObject {
     readonly property color textMuted: "#606878"
     readonly property color textMeta: "#485068"
     readonly property color textOnAccent: "#070A10"
+    readonly property color textOnError: "#070A10"
     readonly property color success: "#4ADE80"
     readonly property color warning: "#FBBF24"
     readonly property color error: "#F87171"

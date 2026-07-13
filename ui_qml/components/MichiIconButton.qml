@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import "../theme"
 
-Rectangle {
+QQC2.Button {
     id: root
 
     property string iconText: ""
@@ -10,55 +10,53 @@ Rectangle {
     property string tooltipText: ""
     property bool selected: false
     property int btnSize: 36
+    property string accessibleName: tooltipText
+    property string accessibleDescription: tooltipText
 
-    signal clicked()
+    width: Math.max(btnSize, MichiTheme.minimumInteractiveSize)
+    height: width
+    hoverEnabled: true
+    focusPolicy: Qt.StrongFocus
 
-    width: btnSize
-    height: btnSize
-    radius: MichiTheme.radiusPill
-    color: {
-        if (!enabled) return "transparent"
-        if (selected) return MichiTheme.colors.accentSurface
-        if (ma.containsMouse) return Qt.rgba(1,1,1,0.08)
-        return "transparent"
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName
+    Accessible.description: root.accessibleDescription
+
+    background: Rectangle {
+        radius: MichiTheme.radiusPill
+        color: !root.enabled ? "transparent"
+             : root.down ? MichiTheme.colors.surfacePressed
+             : root.selected ? MichiTheme.colors.accentSurface
+             : root.hovered ? MichiTheme.colors.surfaceHover : "transparent"
+        border.width: root.activeFocus ? MichiTheme.focusWidth : 0
+        border.color: MichiTheme.colors.borderFocus
     }
 
-    Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast; easing: Easing.OutCubic } }
-
-    Image {
-        anchors.centerIn: parent
-        width: 18
-        height: 18
-        source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : ""
-        visible: root.iconSource !== ""
-        sourceSize.width: 32
-        sourceSize.height: 32
-        fillMode: Image.PreserveAspectFit
-    }
-
-    Text {
-        anchors.centerIn: parent
-        text: root.iconText
-        font.pixelSize: MichiTheme.typography.cardTitleSize
-        color: {
-            if (!root.enabled) return Qt.rgba(1,1,1,MichiTheme.opacityDisabled)
-            if (root.selected) return MichiTheme.colors.accentBlue
-            return MichiTheme.colors.textPrimary
+    contentItem: Item {
+        Image {
+            anchors.centerIn: parent
+            width: 18
+            height: 18
+            source: root.iconSource !== "" ? Qt.resolvedUrl(root.iconSource) : ""
+            visible: root.iconSource !== ""
+            sourceSize.width: 32
+            sourceSize.height: 32
+            fillMode: Image.PreserveAspectFit
+            opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
         }
-        visible: root.iconSource === ""
-    }
 
-    MouseArea {
-        id: ma
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        enabled: root.enabled
-        onClicked: root.clicked()
+        Text {
+            anchors.centerIn: parent
+            text: root.iconText
+            font.pixelSize: MichiTheme.typography.cardTitleSize
+            color: root.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
+            opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
+            visible: root.iconSource === "" && root.iconText !== ""
+        }
     }
 
     QQC2.ToolTip {
-        visible: ma.containsMouse && root.tooltipText !== ""
+        visible: root.hovered && root.tooltipText !== ""
         text: root.tooltipText
         delay: 600
     }

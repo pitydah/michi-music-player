@@ -7,11 +7,16 @@ Item {
     id: root
 
     property string placeholderText: "Buscar..."
-    property string text: ""
+    property alias text: searchInput.text
     property bool fieldFocused: false
+    property string accessibleName: placeholderText
+    property string accessibleDescription: ""
 
     signal searchTextChanged(string newText)
     signal searchSubmitted(string text)
+    signal searchRequested(string text)
+    signal textChangedByUser(string text)
+    signal clearRequested()
 
     implicitHeight: 38
     implicitWidth: 280
@@ -19,7 +24,7 @@ Item {
     InputMaterial {
         anchors.fill: parent
         focused: root.fieldFocused
-        hoveredInput: searchInput.hovered
+        hoveredInput: hover.hovered
         radius: MichiTheme.radiusSm
     }
 
@@ -36,8 +41,6 @@ Item {
         clip: true
         verticalAlignment: TextInput.AlignVCenter
 
-        property bool hovered: false
-
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.placeholderText
@@ -46,17 +49,25 @@ Item {
             visible: parent.text === "" && !parent.activeFocus
         }
 
-        onTextChanged: root.searchTextChanged(text)
-        onAccepted: root.searchSubmitted(text)
-        onActiveFocusChanged: root.fieldFocused = activeFocus
+        Accessible.role: Accessible.EditableText
+        Accessible.name: root.accessibleName
+        Accessible.description: root.accessibleDescription
 
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.IBeamCursor
-            onEntered: searchInput.hovered = true
-            onExited: searchInput.hovered = false
-            onClicked: searchInput.forceActiveFocus()
+        onTextChanged: root.searchTextChanged(text)
+        onTextEdited: root.textChangedByUser(text)
+        onAccepted: {
+            root.searchSubmitted(text)
+            root.searchRequested(text)
         }
+        onActiveFocusChanged: root.fieldFocused = activeFocus
+        Keys.onEscapePressed: function(event) {
+            if (text !== "") {
+                text = ""
+                root.clearRequested()
+                event.accepted = true
+            }
+        }
+
+        HoverHandler { id: hover; cursorShape: Qt.IBeamCursor }
     }
 }

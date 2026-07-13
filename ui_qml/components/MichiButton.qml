@@ -7,6 +7,10 @@ QQC2.Button {
 
     property string variant: "primary"
     property string iconText: ""
+    property string iconSource: ""
+    property string tooltipText: ""
+    property string accessibleName: text
+    property string accessibleDescription: tooltipText
 
     topPadding: MichiTheme.spacing.sm
     bottomPadding: MichiTheme.spacing.sm
@@ -15,7 +19,13 @@ QQC2.Button {
     spacing: MichiTheme.spacing.sm
 
     implicitWidth: Math.max(72, contentRow.implicitWidth + leftPadding + rightPadding)
-    implicitHeight: Math.max(30, contentRow.implicitHeight + topPadding + bottomPadding)
+    implicitHeight: Math.max(MichiTheme.minimumInteractiveSize,
+                             contentRow.implicitHeight + topPadding + bottomPadding)
+    focusPolicy: Qt.StrongFocus
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.accessibleName
+    Accessible.description: root.accessibleDescription
 
     font.pixelSize: MichiTheme.typography.bodySize
     font.weight: MichiTheme.typography.weightMedium
@@ -23,15 +33,15 @@ QQC2.Button {
     background: Rectangle {
         radius: MichiTheme.radiusMd
         color: {
-            if (!root.enabled) return Qt.rgba(1,1,1,0.04)
-            if (root.down) return Qt.rgba(1,1,1,0.12)
-            if (root.hovered) return Qt.rgba(1,1,1,0.08)
+            if (!root.enabled) return MichiTheme.colors.surfaceDisabled
+            if (root.down) return MichiTheme.colors.surfacePressed
+            if (root.hovered) return MichiTheme.colors.surfaceHover
             if (root.variant === "primary") return MichiTheme.colors.accentBlue
             if (root.variant === "danger") return MichiTheme.colors.error
-            return Qt.rgba(1,1,1,0.06)
+            return MichiTheme.colors.badgeMutedBg
         }
         border.width: root.variant === "ghost" ? 0 : MichiTheme.borderWidth
-        border.color: root.activeFocus ? MichiTheme.colors.borderFocus : Qt.rgba(1,1,1,0.06)
+        border.color: root.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
     }
 
     contentItem: Item {
@@ -40,21 +50,28 @@ QQC2.Button {
             anchors.centerIn: parent
             spacing: root.spacing
 
+            Image {
+                width: MichiTheme.typography.cardTitleSize
+                height: width
+                source: root.iconSource
+                visible: root.iconSource !== ""
+                fillMode: Image.PreserveAspectFit
+            }
             Text {
                 text: root.iconText
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 color: {
-                    if (!root.enabled) return Qt.rgba(1,1,1,MichiTheme.opacityDisabled)
+                    if (!root.enabled) return MichiTheme.colors.textMuted
                     if (root.variant === "primary") return MichiTheme.colors.textOnAccent
                     return MichiTheme.colors.textPrimary
                 }
-                visible: root.iconText !== ""
+                visible: root.iconSource === "" && root.iconText !== ""
             }
             Text {
                 text: root.text
                 font: root.font
                 color: {
-                    if (!root.enabled) return Qt.rgba(1,1,1,MichiTheme.opacityDisabled)
+                    if (!root.enabled) return MichiTheme.colors.textMuted
                     if (root.variant === "primary") return MichiTheme.colors.textOnAccent
                     return MichiTheme.colors.textPrimary
                 }
@@ -64,8 +81,8 @@ QQC2.Button {
     }
 
     QQC2.ToolTip {
-        visible: root.hovered && root.text === ""
-        text: root.text
+        visible: root.hovered && root.tooltipText !== ""
+        text: root.tooltipText
         delay: 600
     }
 }

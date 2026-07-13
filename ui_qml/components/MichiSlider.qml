@@ -11,17 +11,23 @@ Rectangle {
     property real stepSize: 1
     property bool hovered: ma.containsMouse
     property bool pressed: ma.pressed
+    property string accessibleName: "Control deslizante"
+    property string accessibleDescription: ""
 
     signal moved(real value)
 
-    implicitHeight: 24
+    implicitHeight: MichiTheme.minimumInteractiveSize
     radius: MichiTheme.radiusPill
     color: root.activeFocus
-        ? Qt.rgba(0.56, 0.72, 1.0, 0.18)
-        : (root.hovered ? Qt.rgba(1,1,1,0.12) : Qt.rgba(1,1,1,0.08))
+        ? MichiTheme.colors.focusHalo
+        : (root.hovered ? MichiTheme.colors.surfacePressed : MichiTheme.colors.controlTrack)
     opacity: root.enabled ? 1.0 : MichiTheme.opacityDisabled
     focus: root.enabled
     activeFocusOnTab: root.enabled
+
+    Accessible.role: Accessible.Slider
+    Accessible.name: root.accessibleName
+    Accessible.description: root.accessibleDescription
 
     function _range() {
         return Math.max(0.0001, root.to - root.from)
@@ -84,7 +90,7 @@ Rectangle {
         height: parent.height
         width: root._ratioForValue(root.value) * parent.width
         radius: MichiTheme.radiusPill
-        color: root.enabled ? MichiTheme.colors.accentBlue : Qt.rgba(1,1,1,MichiTheme.opacityDisabled)
+        color: root.enabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
     }
 
     Rectangle {
@@ -93,7 +99,7 @@ Rectangle {
         width: root.pressed || root.activeFocus ? 12 : 8
         height: width
         radius: width / 2
-        color: root.enabled ? Qt.rgba(1,1,1,0.9) : Qt.rgba(1,1,1,MichiTheme.opacityDisabled)
+        color: root.enabled ? MichiTheme.colors.controlThumb : MichiTheme.colors.textMuted
         visible: root.enabled
         Behavior on width { NumberAnimation { duration: MichiTheme.motion.fast } }
     }

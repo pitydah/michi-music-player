@@ -7,6 +7,7 @@ QtObject {
     readonly property int sectionTitleSize: 18
     readonly property int cardTitleSize: 15
     readonly property int bodySize: 13
+    readonly property int captionSize: 12
     readonly property int metaSize: 11
     readonly property int badgeSize: 10
 
