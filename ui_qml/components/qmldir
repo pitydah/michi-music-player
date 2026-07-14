@@ -52,5 +52,42 @@ MichiUnavailableState 1.0 states/MichiUnavailableState.qml
 SettingsCategoryPage 1.0 settings/SettingsCategoryPage.qml
 SettingsRow 1.0 settings/SettingsRow.qml
 
+# states (direct access aliases)
+ErrorState 1.0 ErrorState.qml
+UnavailableState 1.0 UnavailableState.qml
+LoadingState 1.0 LoadingState.qml
+ProgressState 1.0 ProgressState.qml
+
+# async / state management
+AsyncStateView 1.0 AsyncStateView.qml
+CancellationBanner 1.0 CancellationBanner.qml
+InlineError 1.0 InlineError.qml
+ConfirmationDialog 1.0 ConfirmationDialog.qml
+DestructiveActionDialog 1.0 DestructiveActionDialog.qml
+SortMenu 1.0 SortMenu.qml
+ContextActionMenu 1.0 ContextActionMenu.qml
+KeyboardShortcutHint 1.0 KeyboardShortcutHint.qml
+ResponsivePageLayout 1.0 ResponsivePageLayout.qml
+ResponsiveToolbar 1.0 ResponsiveToolbar.qml
+SelectionActionBar 1.0 SelectionActionBar.qml
+JobProgressCard 1.0 JobProgressCard.qml
+NotificationToast 1.0 NotificationToast.qml
+NotificationBanner 1.0 NotificationBanner.qml
+NotificationCenter 1.0 NotificationCenter.qml
+NotificationItem 1.0 NotificationItem.qml
+NotificationProgressItem 1.0 NotificationProgressItem.qml
+ConnectionStatusBadge 1.0 ConnectionStatusBadge.qml
+ServiceHealthBadge 1.0 ServiceHealthBadge.qml
+CapabilityGuard 1.0 CapabilityGuard.qml
+
+# dialogs
+BaseDialog 1.0 dialogs/BaseDialog.qml
+ConfirmDialog 1.0 dialogs/ConfirmDialog.qml
+DestructiveDialog 1.0 dialogs/DestructiveDialog.qml
+InputDialog 1.0 dialogs/InputDialog.qml
+
+# capability
+CapabilityAwarePage 1.0 CapabilityAwarePage.qml
+
 # dev (not for production)
 ComponentGallery 1.0 dev/ComponentGallery.qml

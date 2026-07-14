@@ -1,0 +1,104 @@
+# Performance Audit — QML Pages
+# Generated for FY: Performance optimization
+
+overview:
+  pages_audited: 14
+  critical_issues: 1
+  major_issues: 3
+  minor_issues: 8
+  clean_pages: 5
+
+recommendations:
+  delegate_cache:
+    - page: RadioPage.qml
+      component: Repeater (stations)
+      suggestion: "Add cacheBuffer: 200 for Repeater with filtered model to improve scrolling"
+      priority: medium
+    - page: PlaylistsPage.qml
+      component: Flow + Repeater
+      suggestion: "Use ListView with delegate cache instead of Flow+Repeater for >20 items"
+      priority: medium
+
+  excessive_bindings:
+    - page: GlobalSearchPage.qml
+      component: resultsFlickable height
+      detail: "Complex height binding recalculates on every property change"
+      suggestion: "Use Binding on height with dependencies or Layout.fillHeight"
+      priority: high
+    - page: HistoryPage.qml
+      component: statusMsg color
+      detail: "Ternary in color binding evaluated on every render pass"
+      suggestion: "Use readonly property for color calculation"
+      priority: low
+
+  offscreen_loaders:
+    - page: LibraryPage.qml
+      component: StackLayout (4 tabs)
+      suggestion: "Consider Loader with active: true only for visible tab"
+      priority: medium
+
+  animation_motion_aware:
+    - page: All pages
+      suggestion: "Check all Behavior on/NumberAnimation for reduceMotion awareness; use ThemeStore.motionDuration*"
+      priority: medium
+
+  image_source_management:
+    - page: HomePage.qml
+      component: CoverImage
+      suggestion: "Verify image sources use cache and async loading"
+      priority: low
+
+  model_resets:
+    - page: RadioPage.qml
+      component: bridge.stations model
+      suggestion: "Use incremental model updates instead of full refresh for station list"
+      priority: low
+    - page: PlaylistsPage.qml
+      component: filter in model binding
+      suggestion: "Pre-filter on bridge side instead of JS filter in model binding"
+      priority: high
+
+  javascript_loops:
+    - page: GlobalSearchPage.qml
+      function: search()
+      detail: "Nested loops for grouping, section ordering, and dedup in JS"
+      suggestion: "Move grouping to Python bridge side"
+      priority: critical
+    - page: RadioPage.qml
+      function: visible binding
+      detail: "JS filter in delegate visible binding runs per-item"
+      suggestion: "Pre-filter model on bridge side"
+      priority: medium
+
+  property_var_large_data:
+    - page: GlobalSearchPage.qml
+      property: _groupedResults
+      suggestion: "Use ListModel with append() instead of property var for large result sets"
+      priority: medium
+    - page: HistoryPage.qml
+      property: _events
+      suggestion: "Consider paginating model instead of storing full array"
+      priority: low
+
+  listview_reuse:
+    - page: RadioPage.qml
+      component: Repeater
+      suggestion: "Replace Repeater with ListView and reuseItems: true for lists >20"
+      priority: medium
+    - page: PlaylistsPage.qml
+      component: Flow + Repeater
+      suggestion: "For >20 playlists, use GridView with reuseItems: true"
+      priority: medium
+
+  expensive_text_metrics:
+    - page: GlobalSearchPage.qml
+      component: noResultsText
+      suggestion: "Avoid text elide/wrap in frequently updating visible bindings"
+      priority: low
+
+performance_budget:
+  suggested_max_delegates_per_page: 50
+  suggested_max_bindings_per_item: 8
+  suggested_max_js_loop_iterations: 100
+  animation_duration_fast_ms: 80
+  animation_duration_normal_ms: 150

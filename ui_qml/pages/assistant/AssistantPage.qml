@@ -7,22 +7,77 @@ import "../../materials"
 
 Item {
     id: root
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi AI"
 
     property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
-    property var chatItems: []
+    property bool _initialized: false
+    property string _aiStatus: root.ai ? root.ai.status || "idle" : "unavailable"
+    property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
+    property var _chatHistory: root.ai ? parseChatHistory(root.ai.getChatHistory()) : []
+
+    function parseChatHistory(jsonStr) {
+        if (!jsonStr || jsonStr === "") return []
+        try {
+            return JSON.parse(jsonStr)
+        } catch (e) {
+            return []
+        }
+    }
+
+    on_AiStatusChanged: {
+        if (root._aiStatus === "executing") {
+            root._executing = true
+        } else {
+            root._executing = false
+        }
+        if (root._aiStatus === "awaiting_confirmation") {
+            actionPreview.visible = true
+        } else {
+            actionPreview.visible = false
+        }
+        if (root._aiStatus === "completed" || root._aiStatus === "failed" || root._aiStatus === "partially_executed") {
+            showResultForStatus()
+        }
+    }
+
+    property bool _executing: false
+    property string _pendingConfirmAction: ""
+
+    function showResultForStatus() {
+        if (root._aiStatus === "completed") {
+            executionResult.status = "success"
+            executionResult.summaryText = "Acción ejecutada correctamente."
+            executionResult.visible = true
+        } else if (root._aiStatus === "failed") {
+            executionResult.status = "failure"
+            executionResult.summaryText = "Error al ejecutar la acción."
+            executionResult.detailText = root._lastError
+            executionResult.visible = true
+        } else if (root._aiStatus === "partially_executed") {
+            executionResult.status = "partial"
+            executionResult.summaryText = "Acción ejecutada parcialmente."
+            executionResult.visible = true
+        }
+    }
 
     Component.onCompleted: {
         if (root.ai && typeof root.ai.refresh !== "undefined") {
             root.ai.refresh()
         }
+        root._initialized = true
     }
 
     Flickable {
+        id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
 
         Column {
             id: column
@@ -30,41 +85,69 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
+                id: aiHero
                 width: parent.width
                 height: 140
                 radius: MichiTheme.radiusLg
-                showGlow: true
+                showGlow: root.ai !== null
+                objectName: "aiHero"
+                Accessible.name: "Michi AI"
 
                 Column {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.xl
                     spacing: MichiTheme.spacing.sm
 
-                    Text {
-                        text: "Michi AI"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.heroTitleSize
-                        font.weight: MichiTheme.typography.weightBold
+                    Row {
+                        spacing: MichiTheme.spacing.md
+                        width: parent.width
+
+                        Text {
+                            text: "Michi AI"
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.heroTitleSize
+                            font.weight: MichiTheme.typography.weightBold
+                        }
+
+                        StatusBadge {
+                            text: root.ai ? (root._aiStatus === "idle" ? "Listo" : root._aiStatus) : "No disponible"
+                            kind: root.ai ? (root._aiStatus === "idle" || root._aiStatus === "completed" ? "success" : root._aiStatus === "failed" || root._aiStatus === "unavailable" ? "error" : root._aiStatus === "executing" ? "active" : "info") : "disconnected"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StatusBadge {
+                            text: "Experimental"
+                            kind: "experimental"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
                     }
 
                     Text {
-                        text: "Asistente inteligente para tu ecosistema musical. Pregunta, explora y descubre."
+                        text: root.ai === null
+                            ? "Asistente no disponible. Verifica la conexión con los servicios de Michi."
+                            : root._aiStatus === "initializing"
+                                ? "Inicializando asistente..."
+                                : root._aiStatus === "loading"
+                                    ? "Cargando modelos y servicios..."
+                                    : root._aiStatus === "error"
+                                        ? "Error: " + root._lastError
+                                        : root._aiStatus === "unavailable"
+                                            ? "Asistente no disponible en este contexto."
+                                            : "Asistente inteligente para tu ecosistema musical. Pregunta, explora y descubre."
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70
                         wrapMode: Text.WordWrap
                     }
-
-                    StatusBadge {
-                        text: "Experimental"
-                        kind: "experimental"
-                    }
                 }
             }
 
             SectionHeader {
+                id: suggestionsHeader
                 text: "Sugerencias"
                 width: parent.width
+                objectName: "suggestionsHeader"
+                Accessible.name: "Sugerencias"
             }
 
             Repeater {
@@ -76,36 +159,104 @@ Item {
                     suggestionTitle: model.title || ""
                     suggestionDescription: model.description || ""
                     actionRoute: model.route || ""
+                    objectName: "suggestionCard_" + index
+                    Accessible.name: model.title || "Sugerencia"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onActionTriggered()
+                    Keys.onSpacePressed: onActionTriggered()
                     onActionTriggered: {
-                        if (typeof navigationBridge !== "undefined" && navigationBridge) {
+                        if (model.action && root.ai && typeof root.ai.sendMessage !== "undefined") {
+                            root.ai.sendMessage(model.action)
+                        } else if (model.route && typeof navigationBridge !== "undefined" && navigationBridge) {
                             navigationBridge.navigate(model.route)
                         }
                     }
                 }
             }
 
-            SectionHeader {
-                text: "Chat"
+            AssistantConversation {
+                id: conversation
                 width: parent.width
+                chatHistory: root._chatHistory
+                aiThinking: root._aiStatus === "understanding" || root._aiStatus === "planning"
+                objectName: "assistantConversation"
+                Accessible.name: "Conversación"
             }
 
-            Column {
-                id: chatColumn
+            AssistantActionPreview {
+                id: actionPreview
                 width: parent.width
-                spacing: MichiTheme.spacing.md
+                visible: false
+                objectName: "assistantActionPreview"
+                Accessible.name: "Vista previa de acción"
+
+                onConfirm: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("sí")
+                    }
+                    actionPreview.visible = false
+                }
+
+                onReject: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("no")
+                    }
+                    actionPreview.visible = false
+                }
+            }
+
+            AssistantExecutionResult {
+                id: executionResult
+                width: parent.width
+                visible: false
+                objectName: "assistantExecutionResult"
+                Accessible.name: "Resultado de ejecución"
+
+                onRetry: {
+                    executionResult.visible = false
+                    if (root.ai && root._pendingConfirmAction) {
+                        root.ai.sendMessage(root._pendingConfirmAction)
+                    }
+                }
+            }
+
+            AssistantConfirmationDialog {
+                id: confirmationDialog
+                objectName: "assistantConfirmationDialog"
+                Accessible.name: "Diálogo de confirmación"
+                visible: false
+
+                onConfirmed: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("sí")
+                    }
+                    confirmationDialog.visible = false
+                }
+
+                onCancelled: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("no")
+                    }
+                    confirmationDialog.visible = false
+                }
             }
 
             Row {
+                id: chatInputRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
+                activeFocusOnTab: true
+                visible: root.ai !== null
 
                 Rectangle {
-                    width: parent.width - 50
-                    height: 38
+                    width: parent.width - MichiTheme.minimumInteractiveSize
+                    height: MichiTheme.minimumInteractiveSize
                     radius: MichiTheme.radiusSm
                     color: MichiTheme.colors.surfaceInput
                     border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                     border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
+                    objectName: "chatInputBackground"
+                    Accessible.name: "Entrada de chat"
 
                     TextInput {
                         id: chatInput
@@ -116,63 +267,90 @@ Item {
                         anchors.bottomMargin: MichiTheme.spacing.xs
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
+                        objectName: "chatInput"
+                        Accessible.name: "Pregunta a Michi AI"
+                        activeFocusOnTab: true
+                        enabled: root._aiStatus !== "executing" && root._aiStatus !== "understanding" && root._aiStatus !== "planning"
 
                         verticalAlignment: TextInput.AlignVCenter
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Pregunta a Michi AI..."
+                            text: root._aiStatus === "executing" || root._aiStatus === "understanding"
+                                ? "Procesando..."
+                                : "Pregunta a Michi AI..."
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.bodySize
                             visible: parent.text === "" && !parent.activeFocus
                         }
 
                         onAccepted: sendMessage()
+                        Keys.onReturnPressed: sendMessage()
+                        Keys.onEscapePressed: {
+                            if (root._executing && root.ai && typeof root.ai.cancel !== "undefined") {
+                                root.ai.cancel()
+                            } else {
+                                text = ""
+                                focus = false
+                            }
+                        }
                     }
                 }
 
                 MichiIconButton {
-                    iconSource: "../../icons/sidebar_add.svg"
-                    iconText: ">"
-                    tooltipText: "Enviar"
-                    btnSize: 38
-                    onClicked: sendMessage()
+                    id: sendBtn
+                    iconText: root._executing ? "■" : ">"
+                    tooltipText: root._executing ? "Cancelar" : "Enviar"
+                    btnSize: MichiTheme.minimumInteractiveSize
+                    objectName: "sendMessageButton"
+                    Accessible.name: root._executing ? "Cancelar" : "Enviar mensaje"
+                    activeFocusOnTab: true
+                    KeyNavigation.backtab: chatInput
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: {
+                        if (root._executing) {
+                            if (root.ai && typeof root.ai.cancel !== "undefined") {
+                                root.ai.cancel()
+                            }
+                        } else {
+                            sendMessage()
+                        }
+                    }
                 }
             }
 
             StatusBadge {
-                text: "Interfaz clásica disponible"
-                kind: "info"
+                id: aiStatusBadge
+                text: root.ai === null
+                    ? "Asistente no disponible"
+                    : root._executing
+                        ? "Ejecutando acción..."
+                        : root._aiStatus === "cancelled"
+                            ? "Acción cancelada"
+                            : "Interfaz clásica disponible"
+                kind: root.ai === null ? "disconnected" : root._executing ? "active" : "info"
+                objectName: "aiStatusBadge"
+                Accessible.name: "Estado de Michi AI"
             }
         }
     }
 
     function sendMessage() {
+        if (!root.ai) return
         var text = chatInput.text.trim()
         if (text === "") return
+
+        root._pendingConfirmAction = text
         chatInput.text = ""
-
-        if (root.ai && typeof root.ai.sendMessage !== "undefined") {
-            root.ai.sendMessage(text)
-        }
-
-        var bubble = Qt.createQmlObject(
-            'import QtQuick; import "../assistant"; ChatBubble { width: chatColumn.width; messageText: "' + escapeText(text) + '"; role: "user" }',
-            chatColumn
-        )
-
-        if (root.ai) {
-            root.ai.responseReceived.connect(function(response) {
-                var respBubble = Qt.createQmlObject(
-                    'import QtQuick; import "../assistant"; ChatBubble { width: chatColumn.width; messageText: "' + escapeText(response) + '"; role: "assistant" }',
-                    chatColumn
-                )
-            })
-        }
+        root.ai.sendMessage(text)
+        updateChatHistory()
     }
 
-    function escapeText(t) {
-        return t.replace(/"/g, '\\"').replace(/\n/g, ' ').replace(/\r/g, '')
+    function updateChatHistory() {
+        if (root.ai && typeof root.ai.getChatHistory !== "undefined") {
+            root._chatHistory = parseChatHistory(root.ai.getChatHistory())
+        }
     }
 
     Connections {
@@ -184,6 +362,17 @@ Item {
             for (var i = 0; i < items.length; i++) {
                 suggestionsRepeater.model.append(items[i])
             }
+            root._aiStatus = root.ai.status || "idle"
+            root.updateChatHistory()
+        }
+
+        function onResponseReceived(response) {
+            root._aiStatus = root.ai.status || "idle"
+            root.updateChatHistory()
+        }
+
+        function onStatusChanged(newStatus) {
+            root._aiStatus = newStatus
         }
     }
 }

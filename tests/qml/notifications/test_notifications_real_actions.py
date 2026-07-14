@@ -89,7 +89,13 @@ class TestRealActions:
         assert result.get("ok") is True
         mock_registry.execute.assert_called_once_with("navigate_home_audio")
 
-    def test_undo_action(self, bridge):
+    def test_undo_action(self, bridge, mock_registry):
         result = bridge.undoAction("track_add_to_queue")
+        assert result.get("ok") is True
+        mock_registry.execute.assert_called_once_with("undo_track_add_to_queue")
+
+    def test_undo_action_no_registry(self):
+        empty = NotificationBridge()
+        result = empty.undoAction("track_add_to_queue")
         assert result.get("ok") is True
         assert result.get("undo") == "track_add_to_queue"

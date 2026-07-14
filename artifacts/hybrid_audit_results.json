@@ -1,7 +1,7 @@
 {
   "counts": {
     "REQUIRED_FALLBACK": 1,
-    "MIGRATION_PENDING": 67,
+    "MIGRATION_PENDING": 63,
     "UNSAFE_HYBRID": 0,
     "DUPLICATED_LOGIC": 26,
     "REMOVABLE": 13
@@ -112,22 +112,12 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/navigation_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/page_state_store.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
       {
         "file": "ui_qml_bridge/physical_audio_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/playlists_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -227,11 +217,6 @@
         "reason": "QML page without actions"
       },
       {
-        "file": "ui_qml_bridge/capability_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "QML page without actions"
-      },
-      {
         "file": "ui_qml_bridge/command_bus.py",
         "category": "MIGRATION_PENDING",
         "reason": "QML page without actions"
@@ -283,11 +268,6 @@
       },
       {
         "file": "ui_qml_bridge/michi_ai_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "QML page without actions"
-      },
-      {
-        "file": "ui_qml_bridge/notification_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "QML page without actions"
       },
@@ -397,7 +377,7 @@
       {
         "file": "ui_qml_bridge/home_audio_bridge.py",
         "category": "REMOVABLE",
-        "reason": "8x return 'ok:True' sin ejecución real de backend"
+        "reason": "16x return 'ok:True' sin ejecución real de backend"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",

@@ -17,55 +17,98 @@ Item {
     signal clicked()
     signal contextMenuRequested(string action)
 
-    implicitWidth: 200; implicitHeight: 240
+    implicitWidth: 200
+    implicitHeight: 240
+
+    Accessible.role: Accessible.Button
+    Accessible.name: playlistTitle + (trackCount > 0 ? ", " + trackCount + " canciones" : "")
 
     GlassMaterial {
-        anchors.fill: parent; radius: MichiTheme.radiusMd
-        hovered: mouseArea.containsMouse; interactive: true
+        anchors.fill: parent
+        radius: MichiTheme.radiusMd
+        hovered: mouseArea.containsMouse
+        interactive: true
 
         Rectangle {
-            anchors.fill: parent; radius: MichiTheme.radiusMd
-            color: root.selected ? MichiTheme.colors.accentFaint : "transparent"
+            anchors.fill: parent
+            radius: MichiTheme.radiusMd
+            color: root.selected ? MichiTheme.colors.accentSurface : "transparent"
             visible: root.showSelection || root.selected
             border.color: root.selected ? MichiTheme.colors.accent : "transparent"
             border.width: root.selected ? 2 : 0
         }
 
         MouseArea {
-            id: mouseArea; anchors.fill: parent
-            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: root.clicked()
             onPressAndHold: contextMenu.popup()
         }
 
         Column {
-            anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+            anchors.fill: parent
+            anchors.margins: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.sm
 
             CoverImage {
-                width: parent.width; height: width
+                width: parent.width
+                height: width
                 coverRadius: MichiTheme.radiusSm
                 coverKey: root.coverKey || root.playlistTitle || "PL"
             }
 
             Text {
-                text: root.playlistTitle; color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                elide: Text.ElideRight; width: parent.width
+                text: root.playlistTitle
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.cardTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
+                elide: Text.ElideRight
+                width: parent.width
             }
             Text {
                 text: root.trackCount > 0 ? root.trackCount + " canciones" : ""
-                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
+            }
+            Text {
+                text: root.duration
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
+                visible: root.duration !== ""
             }
         }
     }
 
     Menu {
         id: contextMenu
-        MenuItem { text: "Reproducir"; onClicked: root.contextMenuRequested("shuffle") }
-        MenuItem { text: "Duplicar"; onClicked: root.contextMenuRequested("duplicate") }
+        objectName: "playlistCardContextMenu"
+        Accessible.name: "Menú contextual"
+        MenuItem {
+            text: "Reproducir"
+            objectName: "playPlaylistMenuItem"
+            Accessible.name: "Reproducir"
+            onTriggered: root.contextMenuRequested("shuffle")
+        }
+        MenuItem {
+            text: "Duplicar"
+            objectName: "duplicatePlaylistMenuItem"
+            Accessible.name: "Duplicar"
+            onTriggered: root.contextMenuRequested("duplicate")
+        }
         MenuSeparator {}
-        MenuItem { text: "Eliminar"; onClicked: root.contextMenuRequested("delete") }
+        MenuItem {
+            text: "Eliminar"
+            objectName: "deletePlaylistMenuItem"
+            Accessible.name: "Eliminar"
+            onTriggered: root.contextMenuRequested("delete")
+        }
     }
+
+    Keys.onReturnPressed: root.clicked()
+    Keys.onSpacePressed: root.clicked()
+    Keys.onMenuPressed: contextMenu.popup()
 }

@@ -11,7 +11,13 @@ Item {
     property string trackArtist: "—"
     property bool hasPlayback: false
 
+    signal activate()
+
     implicitHeight: 100
+
+    Accessible.role: Accessible.Button
+    Accessible.name: hasPlayback ? "Continuar " + trackTitle + " - " + trackArtist : "Sin reproducción activa"
+    Accessible.onPressAction: root.activate()
 
     GlassMaterial {
         anchors.fill: parent
@@ -24,6 +30,7 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            onClicked: root.activate()
         }
 
         Row {
@@ -31,9 +38,18 @@ Item {
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.lg
 
+            CoverImage {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 56
+                height: 56
+                coverRadius: MichiTheme.radiusSm
+                coverKey: root.hasPlayback ? "NOWPLAYING" : ""
+                visible: root.hasPlayback
+            }
+
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 140
+                width: parent.width - 200
                 spacing: MichiTheme.spacing.xs
 
                 Text {
@@ -59,6 +75,7 @@ Item {
                 text: root.hasPlayback ? "Reproducir" : "Sin reproducción"
                 variant: root.hasPlayback ? "accent" : "secondary"
                 enabled: root.hasPlayback
+                onClicked: root.activate()
             }
         }
     }

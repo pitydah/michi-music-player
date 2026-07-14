@@ -1,0 +1,561 @@
+# Integration Manifest — Michi QML Parallel Migration
+# Generated: 2026-07-14
+# For each module modified by the parallel front, lists context requirements,
+# new routes, models, signals, slots, and composition changes needed.
+
+modules:
+
+  - module: notifications
+    requires_context:
+      notificationsBridge:
+        class: NotificationBridge
+        dependencies:
+          - action_registry
+          - job_bridge
+          - notification_service
+          - navigation_bridge
+          - diagnostics_service
+    new_routes:
+      - notifications
+    new_models:
+      - NotificationListModel
+    new_signals:
+      - notificationChanged
+      - notificationCountChanged
+      - actionExecuted
+    new_slots:
+      - showMessage
+      - showAction
+      - showProgress
+      - dismiss
+      - clear
+      - executeCurrentAction
+      - executeNotificationAction
+      - openJob
+      - cancelJobById
+      - retryJob
+      - undoAction
+      - showTrack
+      - showDevice
+      - openDiagnostics
+      - openSettings
+      - updateProgress
+    composition_change_required: true
+
+  - module: devices
+    requires_context:
+      devicesBridge:
+        class: DevicesBridge
+        dependencies:
+          - sync_manager
+          - device_sync_service
+          - job_service
+    new_routes:
+      - devices
+      - devices.list
+      - devices.detail
+      - devices.pairing
+      - devices.transfer
+    new_models:
+      - DeviceListModel
+      - DeviceTransferModel
+    new_signals:
+      - stateChanged
+    new_slots:
+      - startServer
+      - stopServer
+      - refresh
+      - loadDeviceDetail
+      - discoverDevices
+      - pairDevice
+      - unpairDevice
+      - trustDevice
+      - untrustDevice
+      - authorizeDevice
+      - unauthorizeDevice
+      - deviceDetailStorage
+      - deviceDetailCompatibility
+      - startTransfer
+      - cancelTransfer
+      - retryTransfer
+      - clearTransferHistory
+      - validateAudioFile
+      - ejectDevice
+    composition_change_required: true
+
+  - module: connections
+    requires_context:
+      connectionsBridge:
+        class: ConnectionsBridge
+        dependencies:
+          - michi_link_ctrl
+          - navigation_bridge
+    new_routes:
+      - connections
+      - connections.detail
+      - connections.wizard
+    new_models:
+      - ConnectionListModel
+      - DiscoveryResultModel
+    new_signals:
+      - stateChanged
+    new_slots:
+      - scanForServers
+      - connectManual
+      - requestPair
+      - confirmPair
+      - rejectPair
+      - diagnose
+      - disconnect
+      - forgetServer
+      - addManualServer
+      - reconnect
+      - openHomeAudio
+      - refresh
+    composition_change_required: true
+
+  - module: home_audio
+    requires_context:
+      homeAudioBridge:
+        class: HomeAudioBridge
+        dependencies:
+          - ha_controller
+          - snapcast_ctrl
+    new_routes:
+      - home_audio
+      - home_audio.zone_detail
+      - home_audio.group_editor
+      - home_audio.stream_routing
+    new_models:
+      - HomeAudioDeviceModel
+      - HomeAudioZoneModel
+      - HomeAudioGroupModel
+    new_signals:
+      - stateChanged
+    new_slots:
+      - refresh
+      - configureHomeAssistant
+      - testHomeAssistant
+      - discoverReceivers
+      - openDiagnostics
+      - setZoneVolume
+      - setZoneMute
+      - assignStream
+      - disconnectHa
+      - reconnectHa
+      - groupZones
+      - ungroupZone
+      - renameZone
+      - deleteZone
+      - setLatency
+      - setSource
+      - transferPlayback
+      - handoffToServer
+    composition_change_required: true
+
+  - module: mix
+    requires_context:
+      mixBridge:
+        class: MixBridge
+        dependencies:
+          - db
+          - playback_ctrl
+          - player_service
+          - smart_mix_service
+          - navigation_bridge
+    new_routes:
+      - mix
+      - mix.detail
+      - mix.generator
+      - mix.rule_editor
+    new_models:
+      - MixCategoryModel
+    new_signals:
+      - dataChanged
+      - generationProgress
+      - generationError
+    new_slots:
+      - loadMix
+      - refresh
+      - playMix
+      - enqueueMix
+      - saveMixAsPlaylist
+      - playFromIndex
+      - cancelGeneration
+      - enqueueTrack
+      - explainCurrentMix
+      - partialFailureReport
+    composition_change_required: true
+
+  - module: global_search
+    requires_context:
+      globalSearchBridge:
+        class: GlobalSearchBridge
+        dependencies:
+          - search_service
+    new_routes:
+      - search
+      - search.results
+    new_models:
+      - SearchResultModel
+    new_signals:
+      - resultsChanged
+      - searchingChanged
+    new_slots:
+      - search
+      - cancel
+      - searchDomain
+    composition_change_required: true
+
+  - module: radio
+    requires_context:
+      radioBridge:
+        class: RadioBridge
+        dependencies:
+          - radio_manager
+          - player_service
+    new_routes:
+      - radio
+      - radio.detail
+      - radio.import
+      - radio.editor
+    new_models:
+      - RadioStationModel
+    new_signals:
+      - dataChanged
+    new_slots:
+      - refresh
+      - addStation
+      - playStation
+      - reconnectLast
+      - retryCurrent
+      - stopStream
+      - cancelStream
+      - deleteStation
+      - editStation
+      - toggleFavorite
+      - search
+      - importM3u
+      - exportM3u
+      - exportOpml
+      - getMetadata
+      - getCodec
+      - getBitrate
+    composition_change_required: true
+
+  - module: audio_lab
+    requires_context:
+      audioLabBridge:
+        class: AudioLabBridge
+        dependencies:
+          - db_conn
+          - navigation_bridge
+          - player_service
+          - audio_analysis_service
+          - worker_manager
+    new_routes:
+      - audio_lab
+      - audio_lab.overview
+      - audio_lab.analysis
+      - audio_lab.conversion
+      - audio_lab.normalization
+      - audio_lab.replaygain
+      - audio_lab.integrity
+      - audio_lab.comparison
+      - audio_lab.jobs
+      - audio_lab.profiles
+    new_models:
+      - AudioLabModuleModel
+    new_signals:
+      - dataChanged
+    new_slots:
+      - refresh
+      - navigateTo
+      - probeFile
+      - analyzeFile
+      - integrityCheck
+      - compareFiles
+    composition_change_required: true
+
+  - module: history
+    requires_context:
+      historyBridge:
+        class: HistoryBridge
+        dependencies:
+          - db
+          - history_query_service
+          - query_executor
+          - player_service
+          - playback_bridge
+    new_routes:
+      - history
+      - history.stats
+    new_models:
+      - HistoryListModel
+    new_signals:
+      - dataChanged
+    new_slots:
+      - refresh
+      - removeHistoryItem
+      - removeHistoryEvent
+      - clearHistory
+      - exportHistory
+      - cancelExport
+      - playHistoryItem
+      - applyRetention
+      - getStatistics
+      - setHistoryEnabled
+      - setHistoryLimit
+    composition_change_required: true
+
+  - module: playlists
+    requires_context:
+      playlistsBridge:
+        class: PlaylistsBridge
+        dependencies:
+          - db
+          - selection_context
+          - player_service
+          - playlist_service
+    new_routes:
+      - playlists
+      - playlist_detail
+      - playlists.smart_editor
+    new_models:
+      - PlaylistListModel
+      - PlaylistTrackListModel
+    new_signals:
+      - dataChanged
+    new_slots:
+      - refresh
+      - createPlaylist
+      - deletePlaylist
+      - renamePlaylist
+      - getPlaylistDetail
+      - addTrackToPlaylist
+      - removeTrackFromPlaylist
+      - addSelectedTrackToPlaylist
+      - batchAddTracks
+      - batchAddTrackIds
+      - duplicatePlaylist
+      - clearPlaylist
+      - reorderTrack
+      - playPlaylistFromIndex
+      - saveQueueAsPlaylist
+      - previewPlaylistImport
+      - confirmPlaylistImport
+      - cancelPlaylistImport
+      - importM3U
+      - exportM3U
+      - playPlaylist
+    composition_change_required: true
+
+  - module: command_palette
+    requires_context:
+      commandPaletteBridge:
+        class: CommandPaletteBridge
+        dependencies:
+          - action_registry
+          - navigation_bridge
+          - nowplaying_bridge
+    new_routes: []
+    new_models: []
+    new_signals:
+      - commandsChanged
+    new_slots:
+      - searchCommands
+      - executeCommand
+    composition_change_required: false
+
+  - module: michi_ai
+    requires_context:
+      michiAiBridge:
+        class: MichiAIBridge
+        dependencies:
+          - ai_controller
+          - context_service
+          - plan_builder
+          - tool_registry
+          - action_registry
+          - navigation_bridge
+          - track_action_service
+          - playlist_service
+          - global_search_service
+          - settings_service
+    new_routes:
+      - ai
+      - assistant
+    new_models:
+      - ChatHistoryModel
+    new_signals:
+      - contextChanged
+      - responseReceived
+      - statusChanged
+    new_slots:
+      - refresh
+      - cancel
+      - sendMessage
+      - getChatHistory
+    composition_change_required: true
+
+  - module: home
+    requires_context:
+      homeBridge:
+        class: HomeBridge
+        dependencies:
+          - db
+          - player_service
+          - library_bridge
+          - library_sources_service
+          - job_bridge
+    new_routes:
+      - home
+    new_models: []
+    new_signals:
+      - snapshotChanged
+    new_slots:
+      - refresh
+      - homeScore
+      - set_library_stats
+    composition_change_required: true
+
+  - module: library
+    requires_context:
+      libraryBridge:
+        class: LibraryBridge
+        dependencies:
+          - db
+          - search_engine
+          - playback_ctrl
+          - query_service
+          - query_executor
+          - worker_manager
+          - job_bridge
+          - track_action_service
+    new_routes:
+      - library
+      - library.tracks
+      - library.albums
+      - library.album_detail
+      - library.artists
+      - library.artist_detail
+      - library.folders
+      - library.sources
+      - library.genres
+      - library.genre_detail
+      - library.composers
+      - library.composer_detail
+      - library.favorites
+      - library.most_played
+      - library.recent
+      - library.unplayed
+      - library.years
+      - library.missing
+      - library.source_detail
+    new_models:
+      - TrackListModel
+      - AlbumListModel
+      - ArtistListModel
+      - FolderTreeModel
+      - LibraryRefreshCoordinator
+    new_signals:
+      - dataChanged
+      - stateChanged
+    new_slots:
+      - getSongsPage
+      - loadNextPage
+      - setPageSize
+      - resetPaging
+      - setSearchQuery
+      - clearSearch
+      - search
+      - setFormatFilter
+      - setGenreFilter
+      - setComposerFilter
+      - setYearFilter
+      - filterByArtist
+      - setArtistFilter
+      - filterByAlbum
+      - setAlbumFilter
+      - setFolderFilter
+      - setFavoritesFilter
+      - setUnplayedFilter
+      - setMissingFilter
+      - clearFilters
+      - sortBy
+      - refresh
+      - playTrackById
+      - play_song
+      - enqueueTrackById
+      - playNextTrackById
+      - addTrackToPlaylistById
+      - revealTrackById
+      - toggleFavoriteById
+      - enqueueSong
+      - revealInFileManager
+      - getAlbumDetail
+      - getAlbumTracks
+      - playAlbum
+      - enqueueAlbum
+      - getArtistDetail
+      - getArtistTracks
+      - getArtistAlbums
+      - playArtist
+      - getFolderTracks
+      - playFolder
+      - openFolder
+      - addFolder
+      - getMusicFolder
+      - setMusicFolder
+      - scanMusicFolder
+      - addMedia
+    composition_change_required: true
+
+  - module: accessibility
+    requires_context:
+      accessibilityBridge:
+        class: AccessibilityBridge
+        dependencies:
+          - service
+          - coordinator
+          - playback_service
+          - settings_service
+          - settings_coordinator
+    new_routes:
+      - settings.accessibility
+    new_models: []
+    new_signals:
+      - dataChanged
+    new_slots:
+      - refresh
+      - repairSelected
+      - cancelScan
+    composition_change_required: false
+
+  - module: theme
+    requires_context:
+      themeBridge:
+        class: ThemeBridge
+        dependencies:
+          - coordinator
+          - service
+    new_routes: []
+    new_models:
+      - ThemeStore (QML singleton)
+    new_signals:
+      - themeChanged
+    new_slots: []
+    composition_change_required: false
+
+  - module: capability
+    requires_context:
+      capabilityBridge:
+        class: CapabilityBridge
+        dependencies:
+          - factory
+    new_routes: []
+    new_models: []
+    new_signals:
+      - dataChanged
+    new_slots: []
+    composition_change_required: false

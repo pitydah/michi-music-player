@@ -8,14 +8,43 @@ import "../../materials"
 
 Item {
     id: root
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Biblioteca"
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
+    property bool _searchActive: false
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property var act: typeof actionRegistry !== "undefined" ? actionRegistry : null
     property string _labelArtists: "Artistas"
     property string _labelFolders: "Carpetas"
     property string _labelRefresh: "Refrescar"
+
+    PageStateManager {
+        id: pageState
+        route: "library"
+        active: true
+        onScrollYChanged: pageState.save()
+        onCurrentTabChanged: pageState.save()
+        onSearchTextChanged: pageState.save()
+    }
+
+    enum State {
+        INITIALIZING,
+        NO_SOURCES,
+        SCANNING,
+        LOADING,
+        READY,
+        FILTERED_EMPTY,
+        SOURCE_OFFLINE,
+        QUERY_ERROR,
+        DATABASE_ERROR,
+        CANCELLED
+    }
+
+    property int libraryState: LibraryPage.INITIALIZING
 
     function refreshData() {
         if (root.lib && typeof root.lib.refresh !== "undefined") {
@@ -43,21 +72,6 @@ Item {
         }
     }
 
-    enum State {
-        INITIALIZING,
-        NO_SOURCES,
-        SCANNING,
-        LOADING,
-        READY,
-        FILTERED_EMPTY,
-        SOURCE_OFFLINE,
-        QUERY_ERROR,
-        DATABASE_ERROR,
-        CANCELLED
-    }
-
-    property int libraryState: LibraryPage.INITIALIZING
-
     function _updateState() {
         if (!root.lib) return
         var s = root.lib.state || "INITIALIZING"
@@ -75,16 +89,40 @@ Item {
         }
     }
 
+    function onTrackContextMenu(trackId, trackTitle, trackArtist, trackAlbum) {
+        if (typeof contextMenu !== "undefined") {
+            contextMenu.trackId = trackId
+            contextMenu.trackTitle = trackTitle
+            contextMenu.trackArtist = trackArtist
+            contextMenu.trackAlbum = trackAlbum
+            contextMenu.open()
+        }
+    }
+
+    function onSelectionAction(actionId, ids) {
+        if (!root.act) return
+        root.act.execute(actionId, ids)
+        if (selectionBar) selectionBar.clearSelection()
+    }
+
     Column {
-        anchors.fill: parent; spacing: 0
+        anchors.fill: parent; spacing: MichiTheme.spacing.xs
 
         LibraryNavigationBar {
             id: navBar; width: parent.width
-            onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
+            objectName: "libraryNavBar"
+            Accessible.name: "Barra de navegación de biblioteca"
+            onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text); root._searchActive = text.length > 0; pageState.searchText = text }
+            Keys.onReturnPressed: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(navBar.searchText) }
+            Keys.onEscapePressed: { navBar.clearSearch(); root._searchActive = false; pageState.searchText = "" }
+            activeFocusOnTab: true
         }
 
         LibraryFilterBar {
             id: filterBar; width: parent.width
+            objectName: "libraryFilterBar"
+            Accessible.name: "Filtros de biblioteca"
+            activeFocusOnTab: true
             onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt) }
             onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre) }
             onYearFilterChanged: function(year) { if (root.lib) root.lib.setYearFilter(year) }
@@ -97,78 +135,162 @@ Item {
             albumCount: root.lib ? root.lib.albumCount : 0
             artistCount: root.lib ? root.lib.artistCount : 0
             state: root.lib ? root.lib.state : "INITIALIZING"
+            objectName: "libraryStatusHeader"
+            Accessible.name: "Estado de la biblioteca"
         }
 
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - navBar.height - filterBar.height - statusHeader.height
-            currentIndex: navBar.currentTab
+            height: parent.height - navBar.height - filterBar.height - statusHeader.height - selectionBar.height
+            currentIndex: pageState.hasSavedState() ? pageState.currentTab : navBar.currentTab
+            onCurrentIndexChanged: { if (activeFocus) pageState.currentTab = currentIndex }
 
-            LibraryTrackTable {
-                id: tracksView
-                trackModel: root.lib ? root.lib.trackModel : null
-                bridge: root.lib
-                notif: root.notif
-                actionRegistry: root.act
+            FocusScope {
+                id: tracksFocusScope
+                objectName: "tracksFocusScope"
+                Accessible.name: "Lista de canciones"
+                focus: navBar.currentTab === 0
+
+                LibraryTrackTable {
+                    id: tracksView
+                    anchors.fill: parent
+                    trackModel: root.lib ? root.lib.trackModel : null
+                    bridge: root.lib
+                    notif: root.notif
+                    actionRegistry: root.act
+                    selectionController: root.sel
+                    objectName: "libraryTrackTable"
+                    Accessible.name: "Lista de canciones"
+                    activeFocusOnTab: true
+                    onTrackContextMenuRequested: function(trackId, title, artist, album) {
+                        root.onTrackContextMenu(trackId, title, artist, album)
+                    }
+                }
             }
 
-            AlbumGridPage {
-                albumModel: root.lib ? root.lib.albumModel : null
-                bridge: root.lib
-                onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+            FocusScope {
+                id: albumsFocusScope
+                objectName: "albumsFocusScope"
+                Accessible.name: "Cuadrícula de álbumes"
+                focus: navBar.currentTab === 1
+
+                AlbumGridPage {
+                    id: albumGrid
+                    anchors.fill: parent
+                    albumModel: root.lib ? root.lib.albumModel : null
+                    bridge: root.lib
+                    objectName: "albumGridPage"
+                    Accessible.name: "Cuadrícula de álbumes"
+                    activeFocusOnTab: true
+                    onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+                }
             }
 
-            ArtistGridPage {
-                artistModel: root.lib ? root.lib.artistModel : null
-                bridge: root.lib
-                onArtistClicked: function(name) { root.showArtistDetail(name) }
+            FocusScope {
+                id: artistsFocusScope
+                objectName: "artistsFocusScope"
+                Accessible.name: "Cuadrícula de artistas"
+                focus: navBar.currentTab === 2
+
+                ArtistGridPage {
+                    id: artistGrid
+                    anchors.fill: parent
+                    artistModel: root.lib ? root.lib.artistModel : null
+                    bridge: root.lib
+                    objectName: "artistGridPage"
+                    Accessible.name: "Cuadrícula de artistas"
+                    activeFocusOnTab: true
+                    onArtistClicked: function(name) { root.showArtistDetail(name) }
+                }
             }
 
-            FolderBrowserPage {
-                folderModel: root.lib ? root.lib.folderModel : null
-                bridge: root.lib
+            FocusScope {
+                id: foldersFocusScope
+                objectName: "foldersFocusScope"
+                Accessible.name: "Explorador de carpetas"
+                focus: navBar.currentTab === 3
+
+                FolderBrowserPage {
+                    id: folderBrowser
+                    anchors.fill: parent
+                    folderModel: root.lib ? root.lib.folderModel : null
+                    bridge: root.lib
+                    objectName: "folderBrowserPage"
+                    Accessible.name: "Explorador de carpetas"
+                    activeFocusOnTab: true
+                }
             }
         }
+
+        LibrarySelectionBar {
+            id: selectionBar
+            width: parent.width
+            height: MichiTheme.toolbarHeight
+            z: 10
+            objectName: "librarySelectionBar"
+            Accessible.name: "Barra de selección"
+            bridge: root.lib
+            visible: selectedCount > 0
+            onActionRequested: function(actionId, ids) {
+                root.onSelectionAction(actionId, ids)
+            }
+            onSelectionCleared: {
+                if (root.sel && typeof root.sel.clear !== "undefined")
+                    root.sel.clear()
+            }
+        }
+    }
+
+    LibraryContextMenu {
+        id: contextMenu
+        objectName: "libraryContextMenu"
+        Accessible.name: "Menú contextual de biblioteca"
+        bridge: root.lib
+        actionRegistry: root.act
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.NO_SOURCES
-        sourceComponent: Text {
-            text: "No hay fuentes configuradas"
-            color: MichiTheme.textMuted
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryEmptyState {
+            title: "Sin fuentes"
+            message: "No hay fuentes de música configuradas. Agrega carpetas en Ajustes."
+            actionText: "Configurar fuentes"
+            onActionRequested: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") }
         }
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.FILTERED_EMPTY
-        sourceComponent: Text {
-            text: "No se encontraron resultados con los filtros actuales"
-            color: MichiTheme.textMuted
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryEmptyState {
+            title: "Sin resultados"
+            message: "No se encontraron elementos con los filtros actuales."
+            actionText: "Limpiar filtros"
+            onActionRequested: root.clearFilters()
         }
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.SOURCE_OFFLINE
-        sourceComponent: Text {
-            text: "Fuente de biblioteca no disponible"
-            color: MichiTheme.textMuted
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryEmptyState {
+            title: "Fuente no disponible"
+            message: "La fuente de biblioteca configurada no está disponible en este momento."
+            actionText: "Reintentar"
+            onActionRequested: root.refreshData()
         }
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
-        sourceComponent: Text {
-            text: "Error al cargar la biblioteca"
-            color: MichiTheme.errorColor
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryErrorState {
+            title: "Error de biblioteca"
+            message: root.lib ? root.lib.errorMessage : "Ocurrió un error al acceder a la biblioteca."
+            actionText: "Reintentar"
+            onActionRequested: root.refreshData()
         }
     }
 
@@ -176,13 +298,20 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
         sourceComponent: Item {
+            id: loadingContainer
             width: 120; height: 120
-            BusyIndicator { anchors.centerIn: parent; running: true }
+            Accessible.name: "Cargando biblioteca"
+            BusyIndicator {
+                anchors.centerIn: parent
+                running: true
+                Accessible.role: Accessible.Indicator
+            }
         }
     }
 
-    LibrarySelectionBar {
-        id: selectionBar; width: parent.width; height: 40
-        z: 10; visible: false
+    Connections {
+        target: root.lib
+        function onStateChanged() { root._updateState() }
+        function onDataChanged() { root._updateState() }
     }
 }

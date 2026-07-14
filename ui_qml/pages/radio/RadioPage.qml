@@ -8,6 +8,10 @@ import "."
 
 Item {
     id: root
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Radio"
 
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -70,140 +74,226 @@ Item {
     Component.onCompleted: {
         if (root.rd && typeof root.rd.refresh !== "undefined")
             root.rd.refresh()
+        radioGuard.checkCapability(root.rd)
     }
 
-    Flickable {
-        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
-        contentHeight: column.height + MichiTheme.spacing.xxl
-        clip: true; boundsBehavior: Flickable.StopAtBounds
+    CapabilityGuard {
+        id: radioGuard
+        anchors.fill: parent
+        capabilityName: "radio"
 
-        Column {
-            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
-
-            HeroMaterial {
-                width: parent.width; height: 140; radius: 16; showGlow: true
-                Column {
-                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
-                    Text {
-                        text: "Radio"; color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
-                    }
-                    Text {
-                        text: "Emisoras de todo el mundo."; color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
-                    }
-                    StatusBadge {
-                        text: root._buffering ? "Buffering..." : ""
-                        kind: "warning"
-                        visible: root._buffering
-                    }
-                }
-            }
-
-            SearchField {
-                width: parent.width
-                placeholderText: "Buscar emisoras..."
-                onSearchTextChanged: root.doSearch(text)
-            }
-
-            SectionHeader { text: "Favoritas"; width: parent.width }
-
-            Repeater {
-                model: root.rd ? root.rd.favorites : []
-
-                RadioStationDetail {
-                    width: parent.width
-                    stationData: modelData
-                    onPlayRequested: root.playStation(modelData.url)
-                    onToggleFavRequested: {
-                        var sid = modelData.id || 0
-                        if (sid > 0) root.toggleFavorite(sid)
-                    }
-                    onEditRequested: {
-                        root._activeDetailId = index
-                    }
-                    onDeleteRequested: root.deleteStation(modelData.url)
-                }
-            }
-
-            Text {
-                text: "No hay emisoras favoritas."
-                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                width: parent.width; wrapMode: Text.WordWrap
-                visible: root.rd && root.rd.favorites.length === 0
-            }
-
-            SectionHeader { text: "Todas las emisoras"; width: parent.width }
-
-            Repeater {
-                model: root.rd ? root.rd.stations : []
-
-                RadioStationDetail {
-                    width: parent.width
-                    stationData: modelData
-                    visible: {
-                        if (root._filterText === "") return true
-                        var name = (modelData.name || "").toLowerCase()
-                        var tags = (modelData.tags || []).join(" ").toLowerCase()
-                        var country = (modelData.country || "").toLowerCase()
-                        return name.indexOf(root._filterText) >= 0
-                            || tags.indexOf(root._filterText) >= 0
-                            || country.indexOf(root._filterText) >= 0
-                    }
-                    onPlayRequested: root.playStation(modelData.url)
-                    onToggleFavRequested: {
-                        var sid = modelData.id || 0
-                        if (sid > 0) root.toggleFavorite(sid)
-                    }
-                    onEditRequested: {
-                        root._activeDetailId = index
-                    }
-                    onDeleteRequested: root.deleteStation(modelData.url)
-                }
-            }
-
-            Text {
-                text: root._filterText !== ""
-                      ? "No se encontraron emisoras para \"" + root._filterText + "\""
-                      : "No hay emisoras configuradas."
-                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                width: parent.width; wrapMode: Text.WordWrap
-                visible: root.rd && root.rd.stations.length === 0
-            }
-
-            MichiButton {
-                text: _showAddStation ? "Cancelar" : "Añadir emisora"
-                variant: "ghost"
-                anchors.horizontalCenter: parent.horizontalCenter
-                onClicked: _showAddStation = !_showAddStation
-            }
+        Flickable {
+            id: flickable
+            anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+            contentHeight: column.height + MichiTheme.spacing.xxl
+            clip: true; boundsBehavior: Flickable.StopAtBounds
+            activeFocusOnTab: true
 
             Column {
-                width: parent.width; spacing: MichiTheme.spacing.sm
-                visible: _showAddStation
+                id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
-                Rectangle { width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
+                HeroMaterial {
+                    id: radioHero
+                    width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
+                    objectName: "radioHero"
+                    Accessible.name: "Radio"
+                    Column {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
+                        Text {
+                            text: "Radio"; color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
+                        }
+                        Text {
+                            text: "Emisoras de todo el mundo."; color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
+                        }
+                        StatusBadge {
+                            text: root._buffering ? "Buffering..." : ""
+                            kind: "warning"
+                            visible: root._buffering
+                        }
+                    }
+                }
 
-                SearchField { placeholderText: "Nombre"; width: parent.width; onTextChangedByUser: _newName = text }
-                SearchField { placeholderText: "URL del stream"; width: parent.width; onTextChangedByUser: _newUrl = text }
-                SearchField { placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onTextChangedByUser: _newCodec = text }
-                SearchField { placeholderText: "País"; width: parent.width; onTextChangedByUser: _newCountry = text }
-                MichiButton { text: "Añadir"; variant: "primary"; anchors.horizontalCenter: parent.horizontalCenter; onClicked: addStationFromUI() }
-            }
-
-            SectionHeader { text: "Historial reciente"; width: parent.width }
-            Repeater {
-                model: root.rd && typeof root.rd.history !== "undefined" ? root.rd.history : []
-                delegate: Text {
+                SearchField {
+                    id: radioSearch
                     width: parent.width
-                    text: (modelData.name || modelData.url || "") + " — " + (modelData.played_at || "")
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.captionSize
-                    elide: Text.ElideRight
+                    placeholderText: "Buscar emisoras..."
+                    objectName: "radioSearchField"
+                    Accessible.name: "Buscar emisoras"
+                    onSearchTextChanged: root.doSearch(text)
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: favoritesSection
+                    KeyNavigation.backtab: flickable
+                }
+
+                SectionHeader {
+                    id: favoritesSection
+                    text: "Favoritas"
+                    width: parent.width
+                    objectName: "favoritesSection"
+                    Accessible.name: "Favoritas"
+                }
+
+                Repeater {
+                    model: root.rd ? root.rd.favorites : []
+
+                    RadioStationDetail {
+                        width: parent.width
+                        stationData: modelData
+                        objectName: "favoriteStation_" + index
+                        Accessible.name: modelData.name || "Emisora favorita"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onPlayRequested()
+                        Keys.onSpacePressed: onPlayRequested()
+                        onPlayRequested: root.playStation(modelData.url)
+                        onToggleFavRequested: {
+                            var sid = modelData.id || 0
+                            if (sid > 0) root.toggleFavorite(sid)
+                        }
+                        onEditRequested: {
+                            root._activeDetailId = index
+                        }
+                        onDeleteRequested: root.deleteStation(modelData.url)
+                    }
+                }
+
+                Text {
+                    text: "No hay emisoras favoritas."
+                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                    width: parent.width; wrapMode: Text.WordWrap
+                    visible: root.rd && root.rd.favorites.length === 0
+                    Accessible.name: "No hay emisoras favoritas"
+                }
+
+                SectionHeader {
+                    id: allStationsHeader
+                    text: "Todas las emisoras"
+                    width: parent.width
+                    objectName: "allStationsHeader"
+                    Accessible.name: "Todas las emisoras"
+                }
+
+                Repeater {
+                    model: root.rd ? root.rd.stations : []
+
+                    RadioStationDetail {
+                        width: parent.width
+                        stationData: modelData
+                        objectName: "allStation_" + index
+                        Accessible.name: modelData.name || "Emisora"
+                        activeFocusOnTab: true
+                        visible: {
+                            if (root._filterText === "") return true
+                            var name = (modelData.name || "").toLowerCase()
+                            var tags = (modelData.tags || []).join(" ").toLowerCase()
+                            var country = (modelData.country || "").toLowerCase()
+                            return name.indexOf(root._filterText) >= 0
+                                || tags.indexOf(root._filterText) >= 0
+                                || country.indexOf(root._filterText) >= 0
+                        }
+                        onPlayRequested: root.playStation(modelData.url)
+                        onToggleFavRequested: {
+                            var sid = modelData.id || 0
+                            if (sid > 0) root.toggleFavorite(sid)
+                        }
+                        onEditRequested: {
+                            root._activeDetailId = index
+                        }
+                        onDeleteRequested: root.deleteStation(modelData.url)
+                    }
+                }
+
+                Text {
+                    text: root._filterText !== ""
+                          ? "No se encontraron emisoras para \"" + root._filterText + "\""
+                          : "No hay emisoras configuradas."
+                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                    width: parent.width; wrapMode: Text.WordWrap
+                    visible: root.rd && root.rd.stations.length === 0
+                    Accessible.name: "No hay emisoras configuradas"
+                }
+
+                MichiButton {
+                    id: addStationBtn
+                    text: _showAddStation ? "Cancelar" : "Añadir emisora"
+                    variant: "ghost"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    objectName: "addStationButton"
+                    Accessible.name: _showAddStation ? "Cancelar" : "Añadir emisora"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: addStationForm
+                    KeyNavigation.backtab: allStationsHeader
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: _showAddStation = !_showAddStation
+                }
+
+                Column {
+                    id: addStationForm
+                    width: parent.width; spacing: MichiTheme.spacing.sm
+                    visible: _showAddStation
+
+                    Rectangle { width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                    SearchField {
+                        placeholderText: "Nombre"; width: parent.width; onTextChangedByUser: _newName = text
+                        objectName: "newStationName"; Accessible.name: "Nombre de la emisora"
+                        activeFocusOnTab: true
+                    }
+                    SearchField {
+                        placeholderText: "URL del stream"; width: parent.width; onTextChangedByUser: _newUrl = text
+                        objectName: "newStationUrl"; Accessible.name: "URL del stream"
+                        activeFocusOnTab: true
+                    }
+                    SearchField {
+                        placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onTextChangedByUser: _newCodec = text
+                        objectName: "newStationCodec"; Accessible.name: "Codec"
+                        activeFocusOnTab: true
+                    }
+                    SearchField {
+                        placeholderText: "País"; width: parent.width; onTextChangedByUser: _newCountry = text
+                        objectName: "newStationCountry"; Accessible.name: "País"
+                        activeFocusOnTab: true
+                    }
+                    MichiButton {
+                        text: "Añadir"; variant: "primary"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        objectName: "confirmAddStation"
+                        Accessible.name: "Añadir emisora"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: addStationFromUI()
+                    }
+                }
+
+                SectionHeader {
+                    id: historySection
+                    text: "Historial reciente"
+                    width: parent.width
+                    objectName: "historySection"
+                    Accessible.name: "Historial reciente"
+                }
+                Repeater {
+                    model: root.rd && typeof root.rd.history !== "undefined" ? root.rd.history : []
+                    delegate: Text {
+                        width: parent.width
+                        text: (modelData.name || modelData.url || "") + " — " + (modelData.played_at || "")
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        elide: Text.ElideRight
+                    }
+                }
+
+                StatusBadge {
+                    id: radioStatusBadge
+                    text: "Radio QML — " + (root.rd && root.rd.stations ? root.rd.stations.length + " emisoras" : "0 emisoras")
+                    kind: "info"
+                    objectName: "radioStatusBadge"
+                    Accessible.name: "Estado de Radio"
                 }
             }
-
-            StatusBadge { text: "Radio QML — " + (root.rd && root.rd.stations ? root.rd.stations.length + " emisoras" : "0 emisoras"); kind: "info" }
         }
     }
 }
