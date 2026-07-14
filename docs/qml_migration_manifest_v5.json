@@ -1,0 +1,530 @@
+{
+  "version": "5.0",
+  "generated_at": "2026-07-14T09:34:39.292734+00:00",
+  "sha": "cff1d372b316f4f4e2e149510ece02d2f660ccca",
+  "area_weights": {
+    "shell_nav": 10,
+    "library_playback": 25,
+    "core_workflows": 20,
+    "advanced_tools": 20,
+    "ecosystem_network": 15,
+    "quality_release": 10
+  },
+  "dimension_weights": {
+    "route_load": 8,
+    "qml_instance": 7,
+    "model_data": 8,
+    "service_wiring": 10,
+    "read": 8,
+    "primary_action": 12,
+    "secondary_actions": 8,
+    "write": 8,
+    "error_contract": 7,
+    "async_execution": 6,
+    "real_cancellation": 5,
+    "persistence": 5,
+    "integration": 8,
+    "vertical_workflow": 8,
+    "performance": 5,
+    "accessibility": 5
+  },
+  "modules": [
+    {
+      "module": "navigation",
+      "area": "shell_nav",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "app_bridge",
+      "area": "shell_nav",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "theme",
+      "area": "shell_nav",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "notification",
+      "area": "shell_nav",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "accessibility",
+      "area": "shell_nav",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "home",
+      "area": "library_playback",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "library",
+      "area": "library_playback",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "album_views",
+      "area": "library_playback",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "playback",
+      "area": "library_playback",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "nowplaying",
+      "area": "library_playback",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "queue",
+      "area": "library_playback",
+      "module_weight": 10,
+      "status": "PRODUCTIVE",
+      "evidence": {
+        "test_count": 10,
+        "passed_count": 10,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "history",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "playlists",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "mix",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "lyrics",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "radio",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "global_search",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "worker_manager",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "query_executor",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "job_bridge",
+      "area": "core_workflows",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "eq_dsp",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "metadata",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "smart_tagging",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "audio_lab",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "library_doctor",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "disc_lab",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "diagnostics",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "michi_ai",
+      "area": "advanced_tools",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "connections",
+      "area": "ecosystem_network",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "home_audio",
+      "area": "ecosystem_network",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "devices_sync",
+      "area": "ecosystem_network",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "capabilities",
+      "area": "ecosystem_network",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "settings",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "settings_schema",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "settings_runtime",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "output_profiles",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "runtime_quality",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    },
+    {
+      "module": "performance",
+      "area": "quality_release",
+      "module_weight": 10,
+      "status": "NOT_IMPLEMENTED",
+      "evidence": {
+        "test_count": 0,
+        "passed_count": 0,
+        "failed_count": 0,
+        "skipped_count": 0,
+        "test_files": []
+      }
+    }
+  ],
+  "excluded": [
+    "PHYSICAL_AUDIO"
+  ]
+}

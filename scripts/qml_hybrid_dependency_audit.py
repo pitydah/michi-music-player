@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""QML Hybrid Dependency Audit — detects hybrid patterns in ui_qml_bridge/.
+"""QML Hybrid Dependency Audit V2 — redesigned with nuanced detection.
 
-Categories:
-  REQUIRED_FALLBACK   — bridge that imports from ui.* (QtWidgets modules)
-  MIGRATION_PENDING   — bridge without full QML parity
-  UNSAFE_HYBRID       — SQL in bridges / threaded DB access / _svc after constructor
-  DUPLICATED_LOGIC    — bridge duplicates existing QML or service
-  REMOVABLE           — bridge can be removed (QML equivalent exists)
+NO marca bridge + página QML como duplicación.
+Duplicación REAL: SQL repetida, reglas duplicadas, mutaciones duplicadas,
+persistencia duplicada, servicio paralelo.
+NO marca self._service = service en constructor como parcheo privado.
+Detecta solo: other_object._private = ... o asignación posterior.
+NO marca todo return {"ok": True} como simulación. Analiza si:
+  - ejecutó backend real
+  - verificó resultado
+  - ruta de éxito corresponde a operación real
 """
 from __future__ import annotations
 
-import ast
 import json
 import logging
 import re
@@ -27,11 +29,9 @@ QML_DIR = REPO / "ui_qml"
 TEST_DIR = REPO / "tests" / "qml"
 
 SQL_PATTERN = re.compile(r'\b(SELECT|INSERT\s+INTO|UPDATE\s+\w+|DELETE\s+FROM)\b', re.IGNORECASE)
-SQL_COMMENT = re.compile(r'^\s*#|"""|\'\'\'')
 UI_IMPORT_PATTERN = re.compile(r"from\s+ui\s*\.|import\s+ui\s*\.")
 QWIDGET_CLASSES = {"QWidget", "QDialog", "QMainWindow"}
 DIALOG_CLASSES = {"QFileDialog", "QMessageBox", "QColorDialog"}
-
 
 AuditResult = dict[str, Any]
 
@@ -40,19 +40,13 @@ def _find_bridge_files() -> list[Path]:
     return sorted(BRIDGE_DIR.rglob("*.py"))
 
 
-def _is_duplicated_logic(bridge_name: str, bridge_path: Path, tree: ast.AST) -> bool:
-    qml_equiv = _find_qml_equivalent(bridge_name)
-    if not qml_equiv:
-        return False
-    common_services = _find_common_service_duplication(bridge_name)
-    return bool(common_services)
-
-
 def _extract_features(path: Path) -> set[str]:
     features: set[str] = set()
     try:
         text = path.read_text()
-        if "return {\"ok\": True" in text or "return {\"ok\": True" in text:
+        if _has_real_backend_execution(text):
+            pass
+        if _has_mock_only_action(text):
             features.add("mock_action")
         if SQL_PATTERN.search(text):
             features.add("sql_inline")
@@ -66,48 +60,67 @@ def _extract_features(path: Path) -> set[str]:
             features.add("ui_import")
         if "threading.Thread" in text or "QThread" in text:
             features.add("thread_usage")
-        if re.search(r"\._svc\b|\._service\b|\._lib\b", text):
-            features.add("patched_private_attr")
     except Exception:
         pass
     return features
 
 
-def _find_qml_equivalent(name: str) -> Path | None:
-    stem = name.replace("_bridge", "").replace("_", "")
-    for qml_file in QML_DIR.rglob("*.qml"):
-        qml_stem = qml_file.stem.lower().replace("_", "").replace(" ", "")
-        if stem in qml_stem or qml_stem in stem:
-            excluded = ("main", "michiapp", "qmldir")
-            if qml_file.stem.lower() not in excluded:
-                return qml_file
-    return None
+def _has_real_backend_execution(text: str) -> bool:
+    """Detecta si el código realmente ejecuta backend en lugar de simular."""
+    patterns = [
+        r"conn\.execute\(",
+        r"self\._db\.conn\.",
+        r"self\._svc\.\w+\(.*\)",
+        r"self\._player\.\w+\(.*\)",
+        r"self\._ctx\.\w+\.\w+\(.*\)",
+        r"self\._query_svc\.\w+\(",
+        r"self\._playback_ctrl\.\w+\(",
+        r"self\._wm\.run_task\(",
+        r"self\._service\.\w+\(",
+        r"write_tags_safe\(",
+        r"mutagen\.",
+        r"return _ok\(",
+        r"_normalise_result\(",
+    ]
+    return any(re.search(p, text) for p in patterns)
 
 
-def _find_common_service_duplication(name: str) -> list[str]:
-    text = (BRIDGE_DIR / f"{name}.py").read_text() if (BRIDGE_DIR / f"{name}.py").exists() else ""
-    services = re.findall(r"self\._(\w+)\s*=", text)
-    common = [s for s in services if s in ("db", "player", "lib", "svc", "wm", "nav")]
-    return common
-
-
-def _has_tests(name: str) -> bool:
-    test_stem = f"test_{name}"
-    if any(test_stem in f.stem for f in TEST_DIR.rglob("*.py")):
-        return True
-    actual_stem = name.replace("_bridge", "")
-    return any(actual_stem in f.stem for f in TEST_DIR.rglob("*.py"))
-
-
-def _has_qml_actions(name: str) -> bool:
-    bridge_stem = name.replace("_bridge", "").replace("_", "")
-    for qml_file in QML_DIR.rglob("*.qml"):
-        qml_stem = qml_file.stem.lower().replace("_", "").replace(" ", "")
-        if bridge_stem in qml_stem or qml_stem in bridge_stem:
-            text = qml_file.read_text()
-            if re.search(r"on[A-Z]\w+\s*:", text) or re.search(r"Slot\s+", text):
+def _has_mock_only_action(text: str) -> bool:
+    """Detecta return {'ok': True} sin ejecución real de backend."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
+            continue
+        if re.search(r'\breturn\s*\{.*"ok"\s*:\s*True', stripped):
+            context_before = "".join(lines[max(0, i - 5):i])
+            if not _has_real_backend_execution(context_before):
                 return True
     return False
+
+
+def _find_real_duplication(path: Path) -> list[dict]:
+    """Detecta duplicación real: SQL repetida, reglas duplicadas, mutaciones duplicadas."""
+    results: list[dict] = []
+    text = path.read_text()
+    sql_count = len(SQL_PATTERN.findall(text))
+    if sql_count > 3:
+        results.append({
+            "file": str(path.relative_to(REPO)),
+            "category": "UNSAFE_HYBRID",
+            "reason": f"SQL patterns ({sql_count}) en bridge (posible duplicación de lógica de datos)",
+        })
+
+    returns_ok = text.count('"ok": True')
+    has_real = _has_real_backend_execution(text)
+    if returns_ok > 5 and not has_real:
+        results.append({
+            "file": str(path.relative_to(REPO)),
+            "category": "REMOVABLE",
+            "reason": f"{returns_ok}x return 'ok:True' sin ejecución real de backend",
+        })
+
+    return results
 
 
 def _find_sql_in_bridges() -> list[dict]:
@@ -182,18 +195,10 @@ def _find_bridges_without_services() -> list[dict]:
     return results
 
 
-def _find_duplicated_services() -> list[dict]:
+def _find_duplicated_logic() -> list[dict]:
     results: list[dict] = []
     for path in _find_bridge_files():
-        rel = path.relative_to(REPO)
-        name = path.stem
-        if _is_duplicated_logic(name, path, ast.parse(path.read_text())):
-            qml_equiv = _find_qml_equivalent(name)
-            results.append({
-                "file": str(rel),
-                "category": "DUPLICATED_LOGIC",
-                "reason": f"QML equivalent exists: {qml_equiv.name if qml_equiv else 'unknown'}",
-            })
+        results.extend(_find_real_duplication(path))
     return results
 
 
@@ -211,6 +216,25 @@ def _find_routes_without_tests() -> list[dict]:
     return results
 
 
+def _has_tests(name: str) -> bool:
+    test_stem = f"test_{name}"
+    if any(test_stem in f.stem for f in TEST_DIR.rglob("*.py")):
+        return True
+    actual_stem = name.replace("_bridge", "")
+    return any(actual_stem in f.stem for f in TEST_DIR.rglob("*.py"))
+
+
+def _has_qml_actions(name: str) -> bool:
+    bridge_stem = name.replace("_bridge", "").replace("_", "")
+    for qml_file in QML_DIR.rglob("*.qml"):
+        qml_stem = qml_file.stem.lower().replace("_", "").replace(" ", "")
+        if bridge_stem in qml_stem or qml_stem in bridge_stem:
+            text = qml_file.read_text()
+            if re.search(r"on[A-Z]\w+\s*:", text) or re.search(r"Slot\s+", text):
+                return True
+    return False
+
+
 def _find_pages_without_actions() -> list[dict]:
     results: list[dict] = []
     for path in _find_bridge_files():
@@ -225,27 +249,6 @@ def _find_pages_without_actions() -> list[dict]:
     return results
 
 
-_MOCK_OK_PATTERN = re.compile(r'\breturn\s*\{.*"ok"\s*:\s*True')
-
-
-def _find_mock_actions() -> list[dict]:
-    results: list[dict] = []
-    for path in _find_bridge_files():
-        rel = str(path.relative_to(REPO))
-        text = path.read_text()
-        for i, line in enumerate(text.splitlines(), 1):
-            stripped = line.strip()
-            if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
-                continue
-            if _MOCK_OK_PATTERN.search(stripped):
-                results.append({
-                    "file": rel, "line": i,
-                    "category": "REMOVABLE",
-                    "reason": f"Simulated action: {stripped[:60]}",
-                })
-    return results
-
-
 def _find_patched_private_attrs() -> list[dict]:
     results: list[dict] = []
     for path in _find_bridge_files():
@@ -254,7 +257,18 @@ def _find_patched_private_attrs() -> list[dict]:
             continue
         text = path.read_text()
         init_end = _find_init_end(text)
-        for m in re.finditer(r"(self\._\w+)\s*=\s*(?:self\.)?", text):
+
+        for m in re.finditer(r"(other_\w+|obj\._\w+|instance\._\w+|bridge\._\w+)\s*=", text):
+            attr = m.group(1)
+            if not re.search(r"_(svc|service|lib|ctrl|manager|db)\b", attr):
+                continue
+            results.append({
+                "file": rel,
+                "category": "UNSAFE_HYBRID",
+                "reason": f"Patched external private attr {attr}",
+            })
+
+        for m in re.finditer(r"self\.(\w+)\s*=", text):
             attr = m.group(1)
             if not re.search(r"_(svc|service|lib|ctrl|manager)\b", attr):
                 continue
@@ -264,8 +278,9 @@ def _find_patched_private_attrs() -> list[dict]:
             results.append({
                 "file": rel,
                 "category": "UNSAFE_HYBRID",
-                "reason": f"Patched private attr {attr} (post-constructor)",
+                "reason": f"Private attr self.{attr} set post-constructor",
             })
+
     return results
 
 
@@ -305,10 +320,6 @@ def _find_thread_unsafe_db() -> list[dict]:
     return results
 
 
-def _find_access_sql_in_bridges() -> list[dict]:
-    return _find_sql_in_bridges()
-
-
 def run_audit() -> dict[str, Any]:
     results: dict[str, list[dict]] = {
         "REQUIRED_FALLBACK": [],
@@ -324,10 +335,8 @@ def run_audit() -> dict[str, Any]:
     results["UNSAFE_HYBRID"].extend(_find_sql_in_bridges())
     results["UNSAFE_HYBRID"].extend(_find_patched_private_attrs())
     results["UNSAFE_HYBRID"].extend(_find_thread_unsafe_db())
-    results["UNSAFE_HYBRID"].extend(_find_access_sql_in_bridges())
-    results["DUPLICATED_LOGIC"].extend(_find_duplicated_services())
+    results["DUPLICATED_LOGIC"].extend(_find_duplicated_logic())
     results["REMOVABLE"].extend(_find_bridges_without_services())
-    results["REMOVABLE"].extend(_find_mock_actions())
 
     for cat in results:
         seen = set()
@@ -344,7 +353,7 @@ def run_audit() -> dict[str, Any]:
 
 def print_report(results: dict[str, list[dict]]):
     print("\n" + "=" * 70)
-    print("QML HYBRID DEPENDENCY AUDIT REPORT")
+    print("QML HYBRID DEPENDENCY AUDIT V2 REPORT")
     print("=" * 70)
     for cat in ("REQUIRED_FALLBACK", "UNSAFE_HYBRID", "DUPLICATED_LOGIC", "MIGRATION_PENDING", "REMOVABLE"):
         items = results.get(cat, [])

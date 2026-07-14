@@ -1,0 +1,15 @@
+{
+  "sha": "cff1d372b316f4f4e2e149510ece02d2f660ccca",
+  "python_version": "3.11.15",
+  "pyside_version": "6.11.1",
+  "qt_version": "6.11.1",
+  "platform": "linux",
+  "ruff_ok": true,
+  "compileall_ok": true,
+  "tests_collected": 1823,
+  "tests_passed": 1805,
+  "tests_failed": 11,
+  "tests_skipped": 7,
+  "runtime_smoke_ok": false,
+  "route_audit_ok": false
+}

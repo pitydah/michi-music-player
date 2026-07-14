@@ -1,0 +1,3036 @@
+{
+  "sha": "cff1d372b316f4f4e2e149510ece02d2f660ccca",
+  "junit_file": "artifacts/qml-results-v5.xml",
+  "total_evidence": 378,
+  "passed": 373,
+  "failed": 1,
+  "skipped": 4,
+  "testcases": [
+    {
+      "name": "test_wf1_search_and_filter",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow1LibraryToPlayback",
+      "time": 0.025,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf1_play_track",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow1LibraryToPlayback",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf1_enqueue_song",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow1LibraryToPlayback",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf1_nowplaying_reflects",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow1LibraryToPlayback",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf1_queue_management",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow1LibraryToPlayback",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf2_album_detail",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow2AlbumToPlaylist",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf2_album_enqueue",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow2AlbumToPlaylist",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf2_add_to_playlist",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow2AlbumToPlaylist",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf2_playlist_refresh",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow2AlbumToPlaylist",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf3_artist_detail",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow3ArtistMix",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf3_artist_tracks",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow3ArtistMix",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf3_mix_generation",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow3ArtistMix",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf3_artist_play",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow3ArtistMix",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf4_audio_lab_modules",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow4AudioLab",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf4_audio_lab_health",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow4AudioLab",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf4_audio_lab_diagnostics",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow4AudioLab",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf4_audio_lab_cancellation",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow4AudioLab",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf5_metadata_load",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow5Metadata",
+      "time": 0.024,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf5_metadata_edit_and_preview",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow5Metadata",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf5_metadata_field_enumeration",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow5Metadata",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf5_metadata_quality_summary",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow5Metadata",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf6_doctor_scan_real_db",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow6Doctor",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf6_doctor_issues_found",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow6Doctor",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf6_doctor_select_and_repair",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow6Doctor",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf6_doctor_healthy_count",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow6Doctor",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf6_doctor_cancel",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow6Doctor",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf7_search_returns_data",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow7Search",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf7_search_supersede",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow7Search",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf7_search_preserves_query",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow7Search",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf7_search_empty",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow7Search",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf8_create_playlist",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow8PlaylistCRUD",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf8_add_tracks_to_playlist",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow8PlaylistCRUD",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf8_duplicate_playlist",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow8PlaylistCRUD",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf8_playlist_refresh",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow8PlaylistCRUD",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf9_theme_change_dark_mode",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow9Theme",
+      "time": 0.015,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf9_theme_accent_color",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow9Theme",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf9_theme_density",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow9Theme",
+      "time": 0.005,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf9_theme_font_scale",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow9Theme",
+      "time": 0.004,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf9_theme_persistence",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow9Theme",
+      "time": 0.006,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf10_server_start_stop",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow10DeviceSync",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf10_device_state",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow10DeviceSync",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_wf10_device_refresh",
+      "classname": "tests.qml.workflows.test_vertical_workflows.TestWorkflow10DeviceSync",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_baseline_sha_matches_head",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestShaConsistency",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_evidence_sha_matches_head",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestShaConsistency",
+      "time": 0.004,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_manifest_sha_matches_head",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestShaConsistency",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_dimension_weights_no_physical",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestWeights",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_area_weights_sum_100",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestWeights",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_physical_in_dimensions",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestWeights",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_known_dimensions",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestWeights",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_known_areas",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestWeights",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_junit_file_exists",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestJunitParsing",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_junit_parses_tests",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestJunitParsing",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_junit_has_testcases",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestJunitParsing",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_junit_baseline_matches",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestJunitParsing",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_junit_passed_failed_skipped",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestJunitParsing",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_evidence_has_marked_tests",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestModuleMarkers",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_marked_tests_have_required_keys",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestModuleMarkers",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_evidence_testcases_have_required_keys",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestModuleMarkers",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_baseline_has_required_keys",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestBaselineInfo",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_manifest_excludes_physical",
+      "classname": "tests.qml.test_evidence_v5_baseline.TestBaselineInfo",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_qml_main_exists",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_michi_app_exists",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_qmldir_exists",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_theme_qmldir_exists",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_theme_files",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_materials_files",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_components_files",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_shell_files",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_page_stack_contains_new_routes",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_page_stack_references_exist",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_qml_files_have_no_emoji_icons",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.037,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_app_shell_titles_match_sidebar_routes",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_has_no_forbidden_routes",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_contains_radio_and_playlists",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_uses_michi_ai_label",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_contains_reproduccion_label",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_has_no_ajustes",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_page_stack_has_explicit_radio_playlists",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_no_settings_ajustes",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_has_no_emoji_glyphs",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_context_menu_has_no_emojis",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_qml_main_importable",
+      "classname": "tests.qml.test_qml_bridges",
+      "time": 0.018,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_instantiate",
+      "classname": "tests.qml.test_qml_bridges.TestAppBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_quit_slot",
+      "classname": "tests.qml.test_qml_bridges.TestAppBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_default_route",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_changes_route",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_same_route_no_change",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_empty_route_falls_back",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_invalid_route_falls_back",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_slot",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_radio_works",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_playlists_works",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_assistant_works",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_settings_falls_to_placeholder",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigate_michi_ai_falls_to_placeholder",
+      "classname": "tests.qml.test_qml_bridges.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_instantiate",
+      "classname": "tests.qml.test_qml_bridges.TestCommandBus",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_execute_does_not_crash",
+      "classname": "tests.qml.test_qml_bridges.TestCommandBus",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_default_dark",
+      "classname": "tests.qml.test_qml_bridges.TestThemeBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_set_light",
+      "classname": "tests.qml.test_qml_bridges.TestThemeBridge",
+      "time": 0.011,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_set_dark",
+      "classname": "tests.qml.test_qml_bridges.TestThemeBridge",
+      "time": 0.005,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_default_stats",
+      "classname": "tests.qml.test_qml_bridges.TestHomeBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_set_library_stats",
+      "classname": "tests.qml.test_qml_bridges.TestHomeBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_refresh_does_not_crash",
+      "classname": "tests.qml.test_qml_bridges.TestHomeBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_set_library_stats_slot",
+      "classname": "tests.qml.test_qml_bridges.TestHomeBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_default_state",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_scan_for_servers",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_add_manual_server",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_scan_slot",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_connect_manual_returns_dict",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_diagnose_returns_dict",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_disconnect_returns_dict",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_capabilities_list",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_default_state",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_configure_home_assistant_returns_dict",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_open_diagnostics",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_capabilities_no_controller",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_smart_tagging_importable",
+      "classname": "tests.qml.test_qml_bridges.TestSmartTaggingBridge",
+      "time": 0.004,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_smart_tagging_scan_by_id_no_service",
+      "classname": "tests.qml.test_qml_bridges.TestSmartTaggingBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_smart_tagging_apply_no_suggestions",
+      "classname": "tests.qml.test_qml_bridges.TestSmartTaggingBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_refresh_returns_dict",
+      "classname": "tests.qml.test_qml_bridges.TestSmartTaggingBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_discover_receivers_unsupported",
+      "classname": "tests.qml.test_qml_bridges.TestSmartTaggingBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_instantiate",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_default_counts",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_refresh_does_not_crash",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_add_folder_empty_path",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_add_folder_not_found",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_add_folder_no_db",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_add_media_empty",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_add_media_not_found",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_instantiate",
+      "classname": "tests.qml.test_qml_bridges.TestMichiAIBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_refresh_does_not_crash",
+      "classname": "tests.qml.test_qml_bridges.TestMichiAIBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_send_message_returns_response",
+      "classname": "tests.qml.test_qml_bridges.TestMichiAIBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_suggestions_after_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestMichiAIBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_importable_without_db",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridgeContract",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_songs_property_returns_list",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridgeContract",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_albums_property_returns_list",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridgeContract",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_refresh_does_not_crash_without_db",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridgeContract",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_play_song_delegates_to_player_service_with_metadata",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryBridgeContract",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_grid_qml_exists",
+      "classname": "tests.qml.test_qml_bridges.TestAlbumGrid",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_grid_uses_cover_bridge",
+      "classname": "tests.qml.test_qml_bridges.TestAlbumGrid",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_grid_no_emoji",
+      "classname": "tests.qml.test_qml_bridges.TestAlbumGrid",
+      "time": 0.075,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_song_table_qml_exists",
+      "classname": "tests.qml.test_qml_bridges.TestSongTable",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_song_table_structure",
+      "classname": "tests.qml.test_qml_bridges.TestSongTable",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_has_paint",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_cover_key_property",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_card_uses_cover_bridge",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_card_no_image_provider",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_card_no_parent_source",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_no_bare_except_pass",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_uses_qt_enums",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_has_cache_limit",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_qml_main_registers_cover_bridge",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_paint_no_db_load",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_cover_bridge_docstring_honest",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_broadcast_files_in_this_branch",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sidebar_no_genres",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigation_bridge_rejects_genres",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_page_stack_no_genres",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_app_shell_no_genres_title",
+      "classname": "tests.qml.test_qml_bridges.TestCoverBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_exists",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_properties",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_load_empty_path",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_clear",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_load_not_found",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_inspector_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_field_row_exists",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_artwork_preview_exists",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigation_bridge_accepts_metadata_inspector",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigation_bridge_rejects_nowplaying",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_nowplaying_page_in_qml_clean",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_can_apply_false_without_selection",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_can_apply_false_without_file",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_bridge_save_changes_return_dict",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_metadata_inspector_apply_button_disabled",
+      "classname": "tests.qml.test_qml_bridges.TestMetadataBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_artist_card_exists",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_artist_list_exists",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_artist_detail_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_detail_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_folder_browser_exists",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_page_has_artists_tab",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_page_has_folders_tab",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_bridge_has_artists_property",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_bridge_has_folders_property",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_bridge_has_filter_methods",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_folder_browser_no_emojis",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_grid_has_album_clicked_signal",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_bridge_has_categories",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_bridge_load_mix",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_hub_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_detail_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_detail_route_in_navigation",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_detail_route_in_pagestack",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_qml_main_registers_mix_bridge",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_favorites_uses_fav_db",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": true,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_recent_uses_last_played",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": true,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_unplayed_excludes_played",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": true,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_most_played_orders_by_play_count",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": true,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_daily_fallback_not_first_25",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.018,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_ai_requires_enabled",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_daily_uses_smart_mix_service",
+      "classname": "tests.qml.test_qml_bridges.TestMixComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playback_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestPlaybackComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playback_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestPlaybackComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playback_bridge_has_properties",
+      "classname": "tests.qml.test_qml_bridges.TestPlaybackComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_route_in_pagestack",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_edit_station",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_edit_station_no_mgr",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_toggle_favorite",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_toggle_favorite_no_mgr",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_search",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_search_no_match",
+      "classname": "tests.qml.test_qml_bridges.TestRadioComponents",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_route_in_navigation",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_route_in_pagestack",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bar_exists",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_cover_exists",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_info_exists",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_controls_exists",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_seekbar_exists",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_volume_exists",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_appshell_has_nowplaying",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bridge_mirrors_player_signals",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bridge_reads_current_track_object",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bridge_commands_call_player_service",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playback_bridge_has_nowplaying_props",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playback_bridge_advanced_slots",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bar_uses_nowplaying_bridge_first",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_nowplaying_bar_no_emojis",
+      "classname": "tests.qml.test_qml_bridges.TestNowPlayingBar",
+      "time": 0.65,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_query_service_sort_whitelist",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryQueryService",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_query_service_empty_db",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryQueryService",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_query_service_search_backend_detection",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryQueryService",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_track_model_has_correct_signals",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryQueryService",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_track_model_importable",
+      "classname": "tests.qml.test_qml_bridges.TestTrackListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_track_model_basic",
+      "classname": "tests.qml.test_qml_bridges.TestTrackListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_model_importable",
+      "classname": "tests.qml.test_qml_bridges.TestTrackListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_album_model_basic",
+      "classname": "tests.qml.test_qml_bridges.TestTrackListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_queue_model_importable",
+      "classname": "tests.qml.test_qml_bridges.TestQueueListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_queue_model_counts_empty",
+      "classname": "tests.qml.test_qml_bridges.TestQueueListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_queue_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestQueueListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_queue_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestQueueListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_history_model_importable",
+      "classname": "tests.qml.test_qml_bridges.TestHistoryListModel",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_history_model_basic",
+      "classname": "tests.qml.test_qml_bridges.TestHistoryListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_history_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestHistoryListModel",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_history_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestHistoryListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_history_bridge_clear_no_db",
+      "classname": "tests.qml.test_qml_bridges.TestHistoryListModel",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_eq_importable",
+      "classname": "tests.qml.test_qml_bridges.TestEqBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_eq_apply_preset_no_player",
+      "classname": "tests.qml.test_qml_bridges.TestEqBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_eq_toggle_bypass_no_player",
+      "classname": "tests.qml.test_qml_bridges.TestEqBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_importable",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_output_profiles",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_doctor_importable",
+      "classname": "tests.qml.test_qml_bridges.TestLibraryDoctorBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_bridge_duplicate",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsFullBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_bridge_clear",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsFullBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_bridge_save_queue_no_player",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsFullBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_bridge_m3u_import_not_found",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsFullBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_devices_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_device_card_exists",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_sync_status_panel_exists",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_devices_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_devices_route_in_pagestack",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_devices_start_server_no_sync",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_devices_stop_server_no_sync",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_devices_refresh_no_sync",
+      "classname": "tests.qml.test_qml_bridges.TestDevicesComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_page_real_exists",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlist_card_exists",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlist_detail_page_exists",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_route_in_pagestack",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlist_detail_route_in_pagestack",
+      "classname": "tests.qml.test_qml_bridges.TestPlaylistsComponents",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_song_context_menu_exists",
+      "classname": "tests.qml.test_qml_bridges.TestContextMenu",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestRadioBridgeIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestRadioBridgeIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_has_slots",
+      "classname": "tests.qml.test_qml_bridges.TestRadioBridgeIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audio_lab_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestAudioLabIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audio_lab_bridge_modules",
+      "classname": "tests.qml.test_qml_bridges.TestAudioLabIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audio_lab_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestAudioLabIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_disc_lab_importable",
+      "classname": "tests.qml.test_qml_bridges.TestDiscLabBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_disc_lab_unavailable_no_service",
+      "classname": "tests.qml.test_qml_bridges.TestDiscLabBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_disc_lab_scan_no_disc",
+      "classname": "tests.qml.test_qml_bridges.TestDiscLabBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_disc_lab_scan_with_tracks",
+      "classname": "tests.qml.test_qml_bridges.TestDiscLabBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_disc_lab_eject",
+      "classname": "tests.qml.test_qml_bridges.TestDiscLabBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsBridgeIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_settings_bridge_sections",
+      "classname": "tests.qml.test_qml_bridges.TestSettingsBridgeIntegration",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_connections_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_connections_bridge_scan",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_connections_bridge_no_demo_without_controller",
+      "classname": "tests.qml.test_qml_bridges.TestConnectionsV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_idle_on_create",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_parse_lrc",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_parse_lrc_no_timestamp",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_cache_hit",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_cancel_search",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_clear_cache_for_track",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_search_manual_empty",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_search_current_track_no_np",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_get_active_line",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_get_active_line_empty",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_lyrics_on_track_changed_noop_same_track",
+      "classname": "tests.qml.test_qml_bridges.TestLyricsBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_bridge_devices",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_capabilities_no_controller",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_configure_unsupported_without_ha",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_discover_receivers_unsupported",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_set_zone_volume_unsupported",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_test_ha_unsupported",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_assign_stream_unsupported",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_bridge_with_ha_adapter",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_bridge_with_snapcast_adapter",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_bridge_configure_with_ha_adapter",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_home_audio_bridge_volume_with_snapcast",
+      "classname": "tests.qml.test_qml_bridges.TestHomeAudioV2Bridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_action_registry_importable",
+      "classname": "tests.qml.test_qml_bridges.TestActionRegistry",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_action_registry_contains_navigation",
+      "classname": "tests.qml.test_qml_bridges.TestActionRegistry",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_action_registry_execute_no_handler",
+      "classname": "tests.qml.test_qml_bridges.TestActionRegistry",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_action_registry_execute_not_found",
+      "classname": "tests.qml.test_qml_bridges.TestActionRegistry",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_action_registry_register",
+      "classname": "tests.qml.test_qml_bridges.TestActionRegistry",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_global_search_importable",
+      "classname": "tests.qml.test_qml_bridges.TestGlobalSearchBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_global_search_empty_query",
+      "classname": "tests.qml.test_qml_bridges.TestGlobalSearchBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_global_search_no_db_returns_empty",
+      "classname": "tests.qml.test_qml_bridges.TestGlobalSearchBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestJobBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_unknown_job",
+      "classname": "tests.qml.test_qml_bridges.TestJobBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_run_scan",
+      "classname": "tests.qml.test_qml_bridges.TestJobBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_cancel",
+      "classname": "tests.qml.test_qml_bridges.TestJobBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_cancel_not_found",
+      "classname": "tests.qml.test_qml_bridges.TestJobBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_clear_completed",
+      "classname": "tests.qml.test_qml_bridges.TestJobBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_service_importable",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_service_add_remove",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_service_add_nonexistent",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_service_duplicate",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_bridge_importable",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_bridge_add_source",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_bridge_remove_missing",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_library_sources_bridge_refresh",
+      "classname": "tests.qml.test_qml_bridges.TestLibrarySourcesBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_radio_bridge_with_manager",
+      "classname": "tests.qml.test_qml_bridges.TestRadioBridgeWithService",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_bridge_with_db",
+      "classname": "tests.qml.test_qml_bridges.TestMixBridgeWithService",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_queue_state_path_not_temp",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_save_state",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_save_state_includes_timestamp",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_load_state_no_saved_state",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_save_and_load_roundtrip",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_save_empty_queue",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_player_service",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_save_state_persists_to_config_dir",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.034,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_save_state_shuffle_repeat",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_load_resolves_ids_to_tracks",
+      "classname": "tests.qml.test_queue_persistence",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audit_returns_all_categories",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.324,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_unsafe_hybrid_sql_in_non_repo_bridges",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.011,
+      "failure": "def test_no_unsafe_hybrid_sql_in_non_repo_bridges():\n        items = _find_sql_in_bridges()\n        bridge_files = {i[\"file\"] for i in items}\n        acceptable = {\"ui_qml_bridge/library_doctor_bridge.py\",\n                      \"ui_qml_bridge/library_query_service.py\",\n                      \"ui_qml_bridge/diagnostics_bridge.py\",\n                      \"ui_qml_bridge/history_bridge.py\",\n                      \"ui_qml_bridge/global_search_bridge.py\",\n                      \"ui_qml_bridge/library_bridge.py\"}\n        unacceptable = bridge_files - acceptable\n>       assert len(unacceptable) == 0, f\"SQL in non-repository bridges: {unacceptable}\"\nE       AssertionError: SQL in non-repository bridges: {'ui_qml_bridge/diagnostics_repository.py'}\nE       assert 1 == 0\nE        +  where 1 = len({'ui_qml_bridge/diagnostics_repository.py'})\n\ntests/qml/test_hybrid_audit_execution.py:38: AssertionError",
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_ui_imports_in_bridges_except_service_loader",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_qwidget_or_dialog_refs_in_bridges",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.009,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audit_detects_sql_in_bridges",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.011,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audit_detects_migration_pending",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audit_detects_duplicated_logic",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audit_detects_removable",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_audit_report_generates_json",
+      "classname": "tests.qml.test_hybrid_audit_execution",
+      "time": 0.321,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_all_factory_bridges_have_context_binding",
+      "classname": "tests.qml.test_bridge_registration_complete",
+      "time": 0.017,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_all_context_bindings_have_factory_bridge",
+      "classname": "tests.qml.test_bridge_registration_complete",
+      "time": 0.003,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_context_bindings_match_factory_bridges",
+      "classname": "tests.qml.test_bridge_registration_complete",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_duplicate_canonical_routes",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_duplicate_titles",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_all_canonical_routes_have_qml_files",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_aliases_point_to_valid_canonical_routes",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_no_alias_self_reference",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_all_aliases_have_deprecated_flag",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_all_old_slash_routes_have_aliases",
+      "classname": "tests.qml.test_canonical_routes.TestNoDuplicateRoutes",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_required_params_defined",
+      "classname": "tests.qml.test_canonical_routes.TestRouteParamsValidation",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_routes_with_params_have_detail_category",
+      "classname": "tests.qml.test_canonical_routes.TestRouteParamsValidation",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_detail_routes_have_required_params",
+      "classname": "tests.qml.test_canonical_routes.TestRouteParamsValidation",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_valid_status_values",
+      "classname": "tests.qml.test_canonical_routes.TestNoStatusField",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigation_bridge_resolves_aliases",
+      "classname": "tests.qml.test_canonical_routes.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigation_bridge_unknown_route_goes_to_placeholder",
+      "classname": "tests.qml.test_canonical_routes.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_navigation_bridge_empty_route_goes_to_home",
+      "classname": "tests.qml.test_canonical_routes.TestNavigationBridge",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_global_search_uses_public_query_executor_property",
+      "classname": "tests.qml.test_dependency_graph_public_api",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_diagnostics_uses_public_query_executor_property",
+      "classname": "tests.qml.test_dependency_graph_public_api",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_job_bridge_has_attach_library_coordinator",
+      "classname": "tests.qml.test_dependency_graph_public_api",
+      "time": 0.0,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_assert_wiring_no_private_attr",
+      "classname": "tests.qml.test_dependency_graph_public_api",
+      "time": 0.002,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_mix_bridge_receives_query_service",
+      "classname": "tests.qml.test_dependency_graph_public_api",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    },
+    {
+      "name": "test_playlists_bridge_receives_playlist_service",
+      "classname": "tests.qml.test_dependency_graph_public_api",
+      "time": 0.001,
+      "failure": null,
+      "skipped": false,
+      "suite": "pytest"
+    }
+  ],
+  "marked_tests": [],
+  "marked_test_count": 0
+}
