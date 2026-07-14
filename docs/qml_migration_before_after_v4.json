@@ -1,6 +1,6 @@
 {
   "sha_initial": "6a0aae3a38a8003c3af567497c8b9f74a172c09c",
-  "sha_final": "6a0aae3a38a8003c3af567497c8b9f74a172c09c",
+  "sha_final": "b923550701bedc21a50459718f799ed016085112",
   "waves": ["XLV", "XLVI", "XLVII", "XLVIII", "XLIX", "L", "LI", "LII", "LIII"],
   "commits": [
     "6a0aae3 Wave XLV: Pendientes finales (docs, physical, MICHI_UI, CI isolation, score V3)",

@@ -1,9 +1,9 @@
 {
-  "sha": "6a0aae3a38a8003c3af567497c8b9f74a172c09c",
-  "branch": "qml-wave53-advanced-tools-release",
+  "sha": "b923550701bedc21a50459718f799ed016085112",
+  "branch": "qml-macro-M-perf",
   "test_collection": {
     "count": 0,
-    "raw": "te-packages/gi/overrides/__init__.py:159: PyGIDeprecationWarning: GLib.unix_signal_add_full is deprecated; use GLibUnix.signal_add_full instead\n    value = getattr(proxy, attr)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n4442/4447 tests collected (5 deselected) in 1.41s\n"
+    "raw": "te-packages/gi/overrides/__init__.py:159: PyGIDeprecationWarning: GLib.unix_signal_add_full is deprecated; use GLibUnix.signal_add_full instead\n    value = getattr(proxy, attr)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n4469/4474 tests collected (5 deselected) in 4.11s\n"
   },
   "ruff": {
     "ok": true,
@@ -18,7 +18,7 @@
     "ok": false,
     "passed": 0,
     "failed": 0,
-    "output": "ow::test_real_flow_artist_model\nFAILED tests/qml/test_wave9_vertical_end_to_end.py::TestWave10RealVerticalFlow::test_real_flow_album_detail\nFAILED tests/qml/test_wave9_vertical_end_to_end.py::TestWave10RealVerticalFlow::test_real_flow_album_play\n11 failed, 965 passed, 5 skipped, 1 warning in 35.41s\n"
+    "output": "ow::test_real_flow_artist_model\nFAILED tests/qml/test_wave9_vertical_end_to_end.py::TestWave10RealVerticalFlow::test_real_flow_album_detail\nFAILED tests/qml/test_wave9_vertical_end_to_end.py::TestWave10RealVerticalFlow::test_real_flow_album_play\n13 failed, 972 passed, 5 skipped, 1 warning in 36.07s\n"
   },
   "bridge_files": [
     {
@@ -460,11 +460,14 @@
     "tests/perf/test_library_perf.py",
     "tests/perf/test_qml_library_scaling.py",
     "tests/perf/test_qml_memory_100k.py",
+    "tests/perf/test_qml_memory_navigation.py",
     "tests/perf/test_qml_models_real_db.py",
     "tests/perf/test_qml_real_db_100k.py",
-    "tests/perf/test_qml_real_db_10k_50k.py"
+    "tests/perf/test_qml_real_db_10k_50k.py",
+    "tests/perf/test_qml_startup_time.py"
   ],
   "artifacts": [
+    "artifacts/hybrid_audit_results.json",
     "artifacts/qml-physical-results.json",
     "artifacts/qml_evidence_v4.json"
   ]
