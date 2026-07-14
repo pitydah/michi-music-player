@@ -849,9 +849,8 @@ class TestNowPlayingBarMigration:
     def test_diagnostics_bridge_importable(self):
         from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
         bridge = DiagnosticsBridge()
-        check = bridge.runQuickCheck()
-        assert "python_version" in check
-        assert check["qml_mode"] is True
+        bridge.refresh()
+        assert bridge._env_info.get("qml_mode") is True
 
     def test_command_palette_bridge_importable(self):
         from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge

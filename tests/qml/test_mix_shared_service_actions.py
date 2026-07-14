@@ -178,6 +178,6 @@ def test_no_track_action_service():
 def test_stale_protection():
     bridge = MixBridge()
     bridge.loadMix("favorites")
-    bridge._gen += 1  # force stale
+    bridge._generation += 1  # force stale
     result = bridge.loadMix("favorites")
     assert result["ok"] or not result.get("ok")

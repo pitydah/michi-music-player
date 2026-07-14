@@ -152,6 +152,7 @@ class MixBridge(QObject):
         self._current_songs: list[dict] = []
         self._error_message = ""
         self._ai_enabled = False
+        self._generation = 0
         self._mqs = query_service
 
     @Slot(result=dict)
@@ -164,18 +165,30 @@ class MixBridge(QObject):
         return {"ok": False, "error": "NO_ACTION_SERVICE"}
 
     @Slot(result=dict)
+    @Slot(result=dict)
     def enqueueMix(self):
         if not self._current_songs:
             return {"ok": False, "error": "EMPTY_MIX"}
         if not self._tas:
             return {"ok": False, "error": "NO_ACTION_SERVICE"}
         count = 0
+        errors = []
         for s in self._current_songs:
             tid = s.get("track_id")
             if tid:
-                self._tas.enqueue_track(tid)
-                count += 1
-        return {"ok": True, "count": count}
+                try:
+                    result = self._tas.enqueue_track(tid)
+                    if isinstance(result, dict) and not result.get("ok"):
+                        errors.append({"track_id": tid, "error": result.get("error", "ENQUEUE_FAILED")})
+                    else:
+                        count += 1
+                except Exception as e:
+                    errors.append({"track_id": tid, "error": str(e)})
+        result = {"ok": True, "count": count}
+        if errors:
+            result["errors"] = errors
+            result["error_count"] = len(errors)
+        return result
 
     @Slot(str, result=dict)
     def saveMixAsPlaylist(self, name: str):
@@ -201,6 +214,59 @@ class MixBridge(QObject):
             return {"ok": True, "id": pid, "count": count}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    @Slot(int, result=dict)
+    def playFromIndex(self, index: int):
+        if not self._current_songs or index < 0 or index >= len(self._current_songs):
+            return {"ok": False, "error_code": "INVALID_INDEX", "message": "Índice inválido"}
+        song = self._current_songs[index]
+        tid = song.get("track_id")
+        if not tid:
+            return {"ok": False, "error_code": "NO_TRACK_ID", "message": "Pista sin identificador"}
+        if self._tas and hasattr(self._tas, 'play_track'):
+            try:
+                result = self._tas.play_track(tid)
+                if isinstance(result, dict):
+                    return result if not result.get("ok") else {"ok": True, "track_id": tid, "index": index}
+                return {"ok": True, "track_id": tid, "index": index}
+            except Exception as e:
+                return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
+        if self._playback:
+            try:
+                self._playback.play(tid)
+                return {"ok": True, "track_id": tid, "index": index}
+            except Exception as e:
+                return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
+        return {"ok": False, "error_code": "NO_PLAYBACK", "message": "Reproductor no disponible"}
+
+    @Slot(result=dict)
+    def cancelGeneration(self):
+        gen = self._generation
+        self._generation += 1
+        return {"ok": True, "cancelled": gen}
+
+    @Slot(int, result=dict)
+    def enqueueTrack(self, index: int):
+        if not self._current_songs or index < 0 or index >= len(self._current_songs):
+            return {"ok": False, "error_code": "INVALID_INDEX", "message": "Índice inválido"}
+        song = self._current_songs[index]
+        tid = song.get("track_id")
+        if not tid:
+            return {"ok": False, "error_code": "NO_TRACK_ID", "message": "Pista sin identificador"}
+        if self._playback:
+            try:
+                self._playback.play(tid)
+                return {"ok": True, "track_id": tid, "index": index, "queued": True}
+            except Exception as e:
+                return {"ok": False, "error_code": "ENQUEUE_FAILED", "message": str(e)}
+        return {"ok": False, "error_code": "NO_PLAYBACK", "message": "Reproductor no disponible"}
+
+    @Slot(result=dict)
+    def partialFailureReport(self):
+        failures = [getattr(s, '_error', s.get('_error', '')) or '' for s in (self._current_songs or []) if getattr(s, '_error', s.get('_error', ''))]
+        if not failures:
+            return {"ok": True, "has_failures": False, "failures": []}
+        return {"ok": True, "has_failures": True, "failures": failures[:10], "total": len(failures)}
 
     @Slot(result=dict)
     def explainCurrentMix(self):

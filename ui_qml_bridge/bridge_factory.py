@@ -255,6 +255,9 @@ class BridgeFactory(QObject):
         if "audio_lab" not in self._bridges:
             self._bridges["audio_lab"] = AudioLabBridge(
                 db_conn=self._services.db_connection,
+                navigation_bridge=self._nav,
+                player_service=self._services.player_service,
+                worker_manager=self._services.worker_manager,
             )
         self._register_capability("audio_lab", "db_connection")
         return self._bridges["audio_lab"]
@@ -282,6 +285,7 @@ class BridgeFactory(QObject):
         if "disc_lab" not in self._bridges:
             self._bridges["disc_lab"] = DiscLabBridge(
                 disc_detection_service=self._services.disc_service,
+                worker_manager=self._services.worker_manager,
             )
         self._register_capability("disc_lab", "disc_service")
         return self._bridges["disc_lab"]

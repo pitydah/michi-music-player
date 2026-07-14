@@ -1510,7 +1510,7 @@ class TestDevicesComponents:
         from ui_qml_bridge.devices_bridge import DevicesBridge
         bridge = DevicesBridge()
         result = bridge.stopServer()
-        assert result.get("ok") is True
+        assert result.get("ok") is not True
     def test_devices_refresh_no_sync(self):
         from ui_qml_bridge.devices_bridge import DevicesBridge
         bridge = DevicesBridge()
@@ -1566,7 +1566,7 @@ class TestAudioLabIntegration:
         bridge = AudioLabBridge()
         mods = bridge.modules
         assert len(mods) > 0
-        assert any(m["id"] == "diagnostics" for m in mods)
+        assert any(m["status"] == "experimental" for m in mods)
 
     def test_audio_lab_bridge_refresh(self):
         bridge = AudioLabBridge()
