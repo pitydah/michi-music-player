@@ -43,9 +43,9 @@ def _make_schema(conn):
             created_at REAL DEFAULT (strftime('%s','now')),
             deleted_at REAL
         );
-        CREATE TABLE IF NOT EXISTS media_fts (
-            id INTEGER PRIMARY KEY,
-            title TEXT, artist TEXT, album TEXT
+        CREATE VIRTUAL TABLE IF NOT EXISTS media_fts USING fts5(
+            title, artist, album, genre,
+            content='media_items', content_rowid='id'
         );
     """)
 
@@ -76,6 +76,9 @@ def _populate(conn, count=5000):
              album_key, year, genre, (i % 20) + 1, f"uid_{i}", random.uniform(120, 600))
         )
         total += 1
+    conn.commit()
+    conn.execute("INSERT INTO media_fts(rowid, title, artist, album, genre) "
+                 "SELECT id, title, artist, album, genre FROM media_items")
     conn.commit()
     return total
 

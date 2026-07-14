@@ -442,7 +442,7 @@ class LibraryQueryService:
             return "none"
         try:
             row = self._exec(
-                "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='media_fts'"
             ).fetchone()
             return "fts5" if row else "like"
         except Exception:

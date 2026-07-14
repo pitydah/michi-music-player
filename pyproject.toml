@@ -117,4 +117,5 @@ addopts = "-m 'not perf and not hardware'"
 markers = [
     "hardware: tests requiring physical DAC/audio hardware",
     "perf: performance tests, run manually with -m perf",
+    "isolation: tests requiring process isolation due to connection caching",
 ]
