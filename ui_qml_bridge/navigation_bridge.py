@@ -22,6 +22,9 @@ class NavigationBridge(QObject):
     def _resolve(self, route: str) -> str:
         if not route:
             return "home"
+        from ui_qml_bridge.route_registry import ALIASES
+        if route in ALIASES:
+            return ALIASES[route]["alias_of"]
         if route in ROUTES:
             return route
         return "placeholder"

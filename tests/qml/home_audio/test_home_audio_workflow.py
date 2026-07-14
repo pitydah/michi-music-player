@@ -1,9 +1,11 @@
 """Test Home Audio workflows through HomeAudioBridge."""
 from unittest.mock import MagicMock, PropertyMock
 
-import pytest
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
+import pytest
+pytestmark = pytest.mark.isolation
+
 
 
 @pytest.fixture

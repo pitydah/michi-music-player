@@ -4,9 +4,11 @@ All connect, pair, confirm operations must verify real results.
 """
 from unittest.mock import MagicMock
 
-import pytest
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
+import pytest
+pytestmark = pytest.mark.isolation
+
 
 
 @pytest.fixture

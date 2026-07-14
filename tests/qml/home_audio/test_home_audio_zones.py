@@ -3,9 +3,11 @@ sync status, latency, reconnect, group, ungroup, transfer playback,
 unavailable state, partial failure, and server handoff."""
 from unittest.mock import MagicMock, PropertyMock
 
-import pytest
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
+import pytest
+pytestmark = pytest.mark.isolation
+
 
 
 @pytest.fixture

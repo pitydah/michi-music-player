@@ -26,9 +26,21 @@ def find_marked_tests(repo: Path) -> list[dict]:
             tree = ast.parse(text)
         except SyntaxError:
             continue
+        # Check for module-level pytestmark
+        module_markers = set()
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "pytestmark" and isinstance(node.value, ast.List):
+                            for elt in node.value.elts:
+                                if isinstance(elt, ast.Call) and isinstance(elt.func, ast.Attribute):
+                                    if isinstance(elt.func.value, ast.Attribute) and elt.func.value.attr in ("qml_module", "qml_dimension"):
+                                        module_markers.add(elt.func.value.attr)
+                                elif isinstance(elt, ast.Attribute) and isinstance(elt.value, ast.Attribute) and elt.value.attr in ("qml_module", "qml_dimension"):
+                                    module_markers.add(elt.value.attr)
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                markers = []
+                markers = list(module_markers)
                 for deco in node.decorator_list:
                     if isinstance(deco, ast.Attribute) and isinstance(deco.value, ast.Attribute) and deco.value.attr in ("qml_module", "qml_dimension"):
                         markers.append(deco.value.attr)
@@ -39,7 +51,7 @@ def find_marked_tests(repo: Path) -> list[dict]:
                     results.append({
                         "file": relpath,
                         "function": node.name,
-                        "markers": markers,
+                        "markers": list(set(markers)),
                         "line": node.lineno,
                     })
     return results

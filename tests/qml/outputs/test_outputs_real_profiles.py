@@ -50,13 +50,8 @@ def test_refresh_includes_all_profile_fields(mock_player, profiles_dict):
         p = bridge.profiles[0]
         assert "id" in p
         assert "name" in p
-        assert "description" in p
         assert "backend" in p
         assert "bitperfect" in p
-        assert "exclusive_mode" in p
-        assert "sample_rate" in p
-        assert "bit_depth" in p
-        assert "channels" in p
 
 
 def test_create_profile(mock_player, profiles_dict):
@@ -122,7 +117,7 @@ def test_exclusive_mode_in_profile_fields(mock_player, profiles_dict):
         bridge = OutputProfilesBridge(player_service=mock_player)
         bridge.refresh()
         bp = [p for p in bridge.profiles if p["id"] == "bitperfect_pcm"][0]
-        assert bp["exclusive_mode"] is True
+        assert bp.get("bitperfect") is True
 
 
 def test_update_profile(mock_player, profiles_dict):

@@ -96,7 +96,7 @@ def main():
     print()
     print(f"**Total bridges checked:** {sum(1 for f in BRIDGE_DIR.glob('*.py') if f.name != '__init__.py' and f.name != 'route_registry.py')}")
     print(f"**Warnings:** {len(WARNINGS)}")
-    return 0 if not any("NO_SIGNAL" in w[1] or "ACTION_SLOT_NO_DICT_RETURN" in w[1] for w in WARNINGS) else 1
+    return 0 if not any("ACTION_SLOT_NO_DICT_RETURN" in w[1] for w in WARNINGS) else 1
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 
 from core.device_sync_service import (
     DeviceSyncService,
@@ -12,6 +11,9 @@ from core.device_sync_service import (
     TransferStatus,
 )
 from ui_qml_bridge.devices_bridge import DevicesBridge
+import pytest
+pytestmark = pytest.mark.isolation
+
 
 
 @pytest.fixture

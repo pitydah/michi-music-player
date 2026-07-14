@@ -3,13 +3,15 @@ transfer queue, audio-only validation, and DeviceSyncService integration."""
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 
 from core.device_sync_service import (
     DeviceSyncService, DeviceIdentity, DeviceProtocol, SyncDirection,
 )
 from core.job_service import JobService
 from ui_qml_bridge.devices_bridge import DevicesBridge
+import pytest
+pytestmark = pytest.mark.isolation
+
 
 
 @pytest.fixture

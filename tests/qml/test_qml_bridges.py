@@ -553,7 +553,7 @@ class TestAlbumGrid:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "CoverImage" in content, "AlbumCard does not use CoverImage"
         proxy = (QML_DIR / "components" / "CoverBridgeProxy.qml").read_text()
-        assert "CoverBridge" in proxy, "CoverBridgeProxy does not wrap CoverBridge"
+        assert "coverBridge" in proxy, "CoverBridgeProxy does not wrap CoverBridge"
 
     def test_album_grid_no_emoji(self):
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
@@ -589,7 +589,7 @@ class TestCoverBridge:
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
         assert "CoverImage" in content, "AlbumCard does not use CoverImage"
         proxy = (QML_DIR / "components" / "CoverBridgeProxy.qml").read_text()
-        assert "CoverBridge" in proxy, "CoverBridgeProxy does not wrap CoverBridge"
+        assert "coverBridge" in proxy, "CoverBridgeProxy does not reference coverBridge"
 
     def test_album_card_no_image_provider(self):
         content = (QML_DIR / "pages" / "library" / "AlbumCard.qml").read_text()
