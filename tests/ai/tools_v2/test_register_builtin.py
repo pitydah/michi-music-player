@@ -18,13 +18,13 @@ def _make_full_gateways() -> AssistantGateways:
         playback=FakePlaybackGateway(),
         queue=FakeQueueGateway(),
         library=FakeLibraryGateway(),
-        playlist=FakePlaylistGateway(),
+        playlists=FakePlaylistGateway(),
         audio_lab=FakeAudioLabGateway(),
-        device=FakeDeviceGateway(),
+        devices=FakeDeviceGateway(),
         settings=FakeSettingsGateway(),
         diagnostics=FakeDiagnosticsGateway(),
         mix=FakeMixGateway(),
-        job=FakeJobGateway(),
+        jobs=FakeJobGateway(),
         navigation=None,
     )
 
