@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import contextlib
-
 from PySide6.QtCore import QObject, Signal, Property
 
 from core.settings_manager import SETTINGS
@@ -10,9 +8,8 @@ from core.settings_manager import SETTINGS
 class ThemeBridge(QObject):
     themeChanged = Signal()
 
-    def __init__(self, coordinator=None, service=None, parent=None):
+    def __init__(self, service=None, parent=None):
         super().__init__(parent)
-        self._coordinator = coordinator
         self._service = service
         self._theme = SETTINGS.value("appearance/theme", "dark")
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
@@ -22,26 +19,20 @@ class ThemeBridge(QObject):
         self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
         self._dark_mode = self._theme != "light"
 
-    def _set_via_service(self, key: str, value):
-        if self._service:
+    def _write(self, key: str, value):
+        if self._service and hasattr(self._service, 'set_'):
             self._service.set_(key, value)
-            if hasattr(self._service, 'save'):
-                with contextlib.suppress(Exception):
-                    self._service.save()
-        elif self._coordinator:
-            self._coordinator.execute(key, value)
-        else:
-            SETTINGS.setValue(key, value)
-            SETTINGS.sync()
 
     def _notify_theme_store(self):
-        with contextlib.suppress(Exception):
+        try:
             from PySide6.QtQml import qmlEngine
             engine = qmlEngine(self)
             if engine:
                 store = engine.singleton("ThemeStore")
-                if store:
+                if store and hasattr(store, 'updateFromBridge'):
                     store.updateFromBridge(self)
+        except Exception:
+            pass
 
     @Property(bool, notify=themeChanged)
     def darkMode(self):
@@ -52,7 +43,7 @@ class ThemeBridge(QObject):
         if enabled != self._dark_mode:
             self._dark_mode = enabled
             self._theme = "dark" if enabled else "light"
-            self._set_via_service("appearance/theme", self._theme)
+            self._write("appearance/theme", self._theme)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -65,7 +56,7 @@ class ThemeBridge(QObject):
         if val != self._theme:
             self._theme = val
             self._dark_mode = val != "light"
-            self._set_via_service("appearance/theme", val)
+            self._write("appearance/theme", val)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -77,7 +68,7 @@ class ThemeBridge(QObject):
     def accentColor(self, color: str):
         if color != self._accent_color:
             self._accent_color = color
-            self._set_via_service("appearance/accent_color", color)
+            self._write("appearance/accent_color", color)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -89,7 +80,7 @@ class ThemeBridge(QObject):
     def highContrast(self, val: bool):
         if val != self._high_contrast:
             self._high_contrast = val
-            self._set_via_service("accessibility/high_contrast", val)
+            self._write("accessibility/high_contrast", val)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -101,7 +92,7 @@ class ThemeBridge(QObject):
     def compactMode(self, val: bool):
         if val != self._compact_mode:
             self._compact_mode = val
-            self._set_via_service("appearance/compact_mode", val)
+            self._write("appearance/compact_mode", val)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -113,7 +104,7 @@ class ThemeBridge(QObject):
     def fontScale(self, val: str):
         if val != self._font_scale:
             self._font_scale = val
-            self._set_via_service("accessibility/font_size", val)
+            self._write("accessibility/font_size", val)
             self._notify_theme_store()
             self.themeChanged.emit()
 
@@ -125,6 +116,6 @@ class ThemeBridge(QObject):
     def reduceMotion(self, val: bool):
         if val != self._reduce_motion:
             self._reduce_motion = val
-            self._set_via_service("accessibility/reduce_motion", val)
+            self._write("accessibility/reduce_motion", val)
             self._notify_theme_store()
             self.themeChanged.emit()

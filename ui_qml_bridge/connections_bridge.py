@@ -1,9 +1,11 @@
 """ConnectionsBridge — connects QML Connections page to real MichiLink services.
 
 States: not_configured, scanning, detected, pairing_required, paired,
-connected, contract_ok, contract_partial, contract_mismatch, error.
+connected, contract_ok, contract_partial, contract_mismatch, error,
+service_unavailable.
 All network operations: async, timeout, retry, cancel, status, last contact,
-auth, disconnect, reconnect, capabilities.
+auth, disconnect, reconnect, capabilities, compatibility, errors, retry.
+Without controller: SERVICE_UNAVAILABLE.
 Does NOT declare connection from saved config alone.
 Returns dict ok/error from all actions.
 """
@@ -60,6 +62,9 @@ class _AsyncOp:
             return self.cancelled
 
 
+_SERVICE_UNAVAILABLE = "service_unavailable"
+
+
 class ConnectionsBridge(QObject):
     stateChanged = Signal()
 
@@ -68,7 +73,7 @@ class ConnectionsBridge(QObject):
         super().__init__(parent)
         self._ctrl = michi_link_ctrl
         self._nav_bridge = navigation_bridge
-        self._state = "not_configured"
+        self._state = _SERVICE_UNAVAILABLE if michi_link_ctrl is None else "not_configured"
         self._alias = ""
         self._contract = ""
         self._last_error = ""
@@ -145,6 +150,8 @@ class ConnectionsBridge(QObject):
 
     @Slot(result=dict)
     def scanForServers(self):
+        if self._ctrl is None:
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         self._cancel_op()
         self._retry_count = 0
         self._set_state("scanning")
@@ -343,7 +350,7 @@ class ConnectionsBridge(QObject):
 
     def _update_state(self):
         if not self._ctrl:
-            self._state = "not_configured"
+            self._state = _SERVICE_UNAVAILABLE
             return
         try:
             caps = self._ctrl.get_capabilities()

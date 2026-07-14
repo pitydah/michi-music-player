@@ -1,8 +1,10 @@
 """HomeAudioBridge — connects QML Home Audio page to real HomeAudio/Snapcast controllers.
 
 All network operations: async, timeout, retry, cancel, status, last contact,
-auth, disconnect, reconnect, capabilities.
+auth, disconnect, reconnect, capabilities, server handoff, playback transfer,
+latency, offline, partial failure.
 Does NOT declare connection for saved config alone.
+Contractual adapters: SnapcastAdapter + HomeAudioAdapter.
 """
 from __future__ import annotations
 
@@ -31,10 +33,15 @@ class HomeAudioBridge(QObject):
         self._devices: list[dict] = []
         self._zones: list[dict] = []
         self._receivers: list[dict] = []
+        self._streams: list[dict] = []
+        self._groups: list[dict] = []
         self._last_error = ""
         self._last_contact = 0.0
         self._retry_count = 0
         self._retry_timer: QTimer | None = None
+        self._latency_ms = 0
+        self._server_handoff_available = False
+        self._offline = False
 
     # ── Capabilities ──
 
@@ -67,6 +74,10 @@ class HomeAudioBridge(QObject):
     def volumeSupported(self):
         return self._ha_ctrl is not None or self._snapcast_ctrl is not None
 
+    @Property(bool, constant=True)
+    def serverHandoffAvailable(self):
+        return self._server_handoff_available
+
     # ── State properties ──
 
     @Property(str, notify=stateChanged)
@@ -89,6 +100,14 @@ class HomeAudioBridge(QObject):
     def receivers(self):
         return self._receivers
 
+    @Property("QVariantList", notify=stateChanged)
+    def streams(self):
+        return self._streams
+
+    @Property("QVariantList", notify=stateChanged)
+    def groups(self):
+        return self._groups
+
     @Property(str, notify=stateChanged)
     def lastError(self):
         return self._last_error
@@ -96,6 +115,14 @@ class HomeAudioBridge(QObject):
     @Property(float, notify=stateChanged)
     def lastContact(self):
         return self._last_contact
+
+    @Property(int, notify=stateChanged)
+    def latencyMs(self):
+        return self._latency_ms
+
+    @Property(bool, notify=stateChanged)
+    def offline(self):
+        return self._offline
 
     # ── Async helpers ──
 
@@ -129,6 +156,7 @@ class HomeAudioBridge(QObject):
     @Slot(result=dict)
     def refresh(self):
         self._last_error = ""
+        self._offline = False
         try:
             if self._ha_ctrl:
                 try:
@@ -141,6 +169,16 @@ class HomeAudioBridge(QObject):
                             devs = self._ha_ctrl.get_devices()
                             self._devices = [{"name": d.get("name", ""), "entity": d.get("entity_id", "")}
                                              for d in (devs or [])]
+                        if hasattr(self._ha_ctrl, 'get_groups'):
+                            self._groups = self._ha_ctrl.get_groups() or []
+                        if hasattr(self._ha_ctrl, 'get_streams'):
+                            self._streams = self._ha_ctrl.get_streams() or []
+                        if hasattr(self._ha_ctrl, 'latency_ms'):
+                            raw_lat = getattr(self._ha_ctrl, 'latency_ms', 0)
+                            self._latency_ms = raw_lat() if callable(raw_lat) else int(raw_lat)
+                        if hasattr(self._ha_ctrl, 'server_handoff_available'):
+                            raw_ho = getattr(self._ha_ctrl, 'server_handoff_available', False)
+                            self._server_handoff_available = raw_ho() if callable(raw_ho) else bool(raw_ho)
                 except Exception as e:
                     logger.debug("HA refresh failed", exc_info=True)
                     self._ha_state = "error"
@@ -151,6 +189,8 @@ class HomeAudioBridge(QObject):
                     avail_raw = getattr(self._snapcast_ctrl, 'is_available', False)
                     avail = avail_raw() if callable(avail_raw) else bool(avail_raw)
                     self._snapcast_state = "available" if avail else "unavailable"
+                    if not avail and self._last_contact > 0 and time.time() - self._last_contact > 30:
+                        self._offline = True
                     if avail:
                         self._last_contact = time.time()
                         if hasattr(self._snapcast_ctrl, 'get_groups'):
@@ -267,3 +307,43 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "UNSUPPORTED"}
         self._cancel_retry()
         return self.testHomeAssistant()
+
+    @Slot(result=dict)
+    def serverHandoff(self):
+        if not self._server_handoff_available:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if self._ha_ctrl and hasattr(self._ha_ctrl, 'server_handoff'):
+                result = self._ha_ctrl.server_handoff()
+                self.refresh()
+                return {"ok": True, "handoff_result": str(result)}
+            if self._snapcast_ctrl and hasattr(self._snapcast_ctrl, 'server_handoff'):
+                result = self._snapcast_ctrl.server_handoff()
+                self.refresh()
+                return {"ok": True, "handoff_result": str(result)}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def playbackTransfer(self, target_zone_id: str = ""):
+        if not target_zone_id:
+            return {"ok": False, "error": "EMPTY_TARGET"}
+        try:
+            if self._snapcast_ctrl and hasattr(self._snapcast_ctrl, 'playback_transfer'):
+                self._snapcast_ctrl.playback_transfer(target_zone_id)
+                self.refresh()
+                return {"ok": True}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=dict)
+    def recoverFromOffline(self):
+        self._offline = False
+        self.refresh()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def getLatencyReport(self):
+        return {"ok": True, "latency_ms": self._latency_ms, "offline": self._offline}

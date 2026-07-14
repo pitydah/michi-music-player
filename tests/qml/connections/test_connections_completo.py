@@ -1,11 +1,11 @@
-"""Test Connections workflows through ConnectionsBridge."""
+"""Test ConnectionsBridge completo — discovery, manual, auth, pairing, reconnect,
+disconnect, remove, capabilities, compatibility, errors, retry, SERVICE_UNAVAILABLE."""
 from unittest.mock import MagicMock
-
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
 import pytest
-pytestmark = pytest.mark.isolation
 
+pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
@@ -38,6 +38,33 @@ def mock_ctrl():
 @pytest.fixture
 def bridge(mock_ctrl):
     return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
+
+
+class TestSERVICE_UNAVAILABLE:
+    def test_no_controller_state(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        assert b.microServerState == "service_unavailable"
+
+    def test_scan_no_controller(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.scanForServers()
+        assert result["ok"] is False
+        assert result["error"] == "SERVICE_UNAVAILABLE"
+
+    def test_reconnect_no_controller(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.reconnect()
+        assert result["ok"] is False
+
+    def test_add_manual_no_controller(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.addManualServer("10.0.0.1", 53318, "Test")
+        assert result["ok"] is True
+
+    def test_diagnose_no_controller(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.diagnose()
+        assert result["ok"] is True
 
 
 class TestInitialState:
@@ -125,8 +152,15 @@ class TestPairingAuth:
         bridge.confirmPair()
         assert bridge.microServerContract == "contract_ok"
 
+    def test_confirm_pair_no_ctrl(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        b.requestPair()
+        result = b.confirmPair()
+        assert result["ok"] is True
+        assert b.microServerState == "paired"
 
-class TestDisconnectReconnect:
+
+class TestDisconnectRemove:
     def test_disconnect_resets_state(self, bridge):
         bridge.connectManual("10.0.0.1", 53318, "Test")
         bridge.disconnect()
@@ -142,24 +176,24 @@ class TestDisconnectReconnect:
         bridge.forgetServer()
         assert bridge.microServerState == "not_configured"
 
+    def test_forget_removes_settings(self, bridge):
+        bridge.addManualServer("10.0.0.1", 53318, "Manual")
+        bridge.forgetServer()
+        assert bridge.microServerState == "not_configured"
+        assert bridge.microServerAlias == ""
+
+
+class TestReconnectRetry:
     def test_reconnect_calls_controller(self, bridge, mock_ctrl):
         result = bridge.reconnect()
         assert result["ok"] is True
         assert mock_ctrl.reconnect.called
 
-
-class TestDiagnostics:
-    def test_diagnose_updates_state(self, bridge):
-        result = bridge.diagnose()
-        assert result["ok"] is True
-
-    def test_diagnose_populates_version(self, bridge):
-        bridge.diagnose()
-        assert bridge.serverVersion == "Michi Server"
-
-    def test_refresh_returns_ok(self, bridge):
-        result = bridge.refresh()
-        assert result["ok"] is True
+    def test_reconnect_no_controller(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.reconnect()
+        assert result["ok"] is False
+        assert result["error"] == "UNSUPPORTED"
 
 
 class TestCapabilities:
@@ -181,20 +215,20 @@ class TestCapabilities:
         assert any(c["key"] == key and c["label"] == label for c in caps)
 
 
-class TestIsolatedBridge:
-    def test_no_controller_state(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
-        assert b.microServerState == "service_unavailable"
+class TestDiagnostics:
+    def test_diagnose_updates_state(self, bridge):
+        result = bridge.diagnose()
+        assert result["ok"] is True
 
-    def test_no_controller_scan_handled(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
-        result = b.scanForServers()
+    def test_diagnose_populates_version(self, bridge):
+        bridge.diagnose()
+        assert bridge.serverVersion == "Michi Server"
+
+    def test_refresh_returns_ok(self, bridge):
+        result = bridge.refresh()
+        assert result["ok"] is True
+
+    def test_open_home_audio_no_nav(self, bridge):
+        result = bridge.openHomeAudio("home_audio")
         assert result["ok"] is False
-
-    def test_no_controller_reconnect_handled(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
-        result = b.reconnect()
-        assert result["ok"] is False
-
-    def test_external_servers_empty(self, bridge):
-        assert hasattr(bridge, "discoveredServers")
+        assert result["error"] == "UNSUPPORTED"

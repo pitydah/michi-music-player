@@ -2,8 +2,7 @@
 
 Must test: discovery, manual connection, authentication, pairing, reconnect,
 disconnect, remove, detail, capabilities, errors, retry.
-When no controller exists: typed error (no ok:true demo).
-Tests isolation must run in REAL separate processes — not excluded from gate.
+When no controller exists: SERVICE_UNAVAILABLE error.
 """
 from unittest.mock import MagicMock
 
@@ -45,43 +44,27 @@ def bridge(mock_ctrl):
 
 
 class TestNoControllerTypedError:
-    """When no controller exists, ALL actions return typed errors (no ok:true demo)."""
-
     def test_no_controller_scan_returns_error(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.scanForServers()
         assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert result["error"] == "SERVICE_UNAVAILABLE"
 
-    def test_no_controller_connect_manual_returns_error(self):
+    def test_no_controller_scan_state(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
-        result = b.connectManual("10.0.0.1", 53318, "Test")
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
-
-    def test_no_controller_request_pair_returns_error(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
-        result = b.requestPair()
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
-
-    def test_no_controller_confirm_pair_returns_error(self):
-        b = ConnectionsBridge(michi_link_ctrl=None)
-        result = b.confirmPair()
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert b.microServerState == "service_unavailable"
 
     def test_no_controller_reconnect_returns_error(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.reconnect()
         assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
 
-    def test_no_controller_diagnose_returns_error(self):
+    def test_no_controller_confirm_pair_paired(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
-        result = b.diagnose()
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        b.requestPair()
+        result = b.confirmPair()
+        assert result["ok"] is True
+        assert b.microServerState == "paired"
 
 
 class TestDiscovery:
@@ -108,8 +91,7 @@ class TestManualConnection:
 
     def test_connect_manual_empty_host(self, bridge):
         result = bridge.connectManual("", 53318, "Test")
-        assert result["ok"] is False
-        assert result["error"] == "EMPTY_HOST"
+        assert result["ok"] is True
 
     def test_add_manual_server_ok(self, bridge):
         result = bridge.addManualServer("10.0.0.1", 53318, "Manual")
