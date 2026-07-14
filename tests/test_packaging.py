@@ -198,3 +198,79 @@ class TestPyProjectPackaging:
             "install.sh debian block missing base GStreamer GIR package"
         assert "gir1.2-gst-plugins-base-1.0" in debian_block, \
             "install.sh debian block missing GstPbutils GIR package"
+
+    # ── EL: Package separation ──
+
+    def test_el_michi_core_qt_widgets_imports_documented(self, pyproject):
+        """Legacy QtWidgets imports in core dirs are documented and tracked for removal."""
+        root = os.path.dirname(os.path.dirname(__file__))
+        legacy_qt_widgets = {
+            "audio/eq_advanced.py", "audio/eq_band_row.py", "audio/eq_basic.py",
+            "audio/eq_curve.py", "audio/spectrum.py",
+            "core/playback_controller.py", "core/file_actions.py", "core/interfaces.py",
+            "library/album_grid.py", "library/coverflow.py",
+            "library/song_grid.py", "library/tag_editor.py", "library/import_service.py",
+            "streaming/radio_widget.py", "streaming/remote_browser.py",
+            "streaming/server_dialog.py",
+            "integrations/snapcast/receivers.py",
+            "integrations/artist_metadata/artist_match_dialog.py",
+        }
+        for dirname in ("audio", "core", "library", "metadata", "lyrics",
+                        "integrations", "sources", "streaming", "sync",
+                        "recognition", "recommendation"):
+            d = os.path.join(root, dirname)
+            if not os.path.isdir(d):
+                continue
+            for base, _, files in os.walk(d):
+                for f in files:
+                    if not f.endswith(".py"):
+                        continue
+                    fp = os.path.join(base, f)
+                    rel = os.path.relpath(fp, root)
+                    with open(fp) as fh:
+                        content = fh.read()
+                    imports_qt = "from PySide6.QtWidgets" in content or "import PySide6.QtWidgets" in content
+                    if rel in legacy_qt_widgets:
+                        continue
+                    if imports_qt and not any(
+                        ig in rel for ig in ("adapters/mpd", "backends")
+                    ):
+                        assert False, f"Unexpected QtWidgets import in {rel}"
+
+    def test_el_michi_qml_no_new_qtwidgets_import(self, pyproject):
+        """michi-qml (ui_qml + ui_qml_bridge) should not import QtWidgets (known exceptions documented)."""
+        known_exceptions = {"ui_qml_bridge/desktop_bridge.py"}
+        qml_imports = set()
+        root = os.path.dirname(os.path.dirname(__file__))
+        for dirname in ("ui_qml", "ui_qml_bridge"):
+            d = os.path.join(root, dirname)
+            if not os.path.isdir(d):
+                continue
+            for base, _, files in os.walk(d):
+                for f in files:
+                    if f.endswith(".py"):
+                        fp = os.path.join(base, f)
+                        rel = os.path.relpath(fp, root)
+                        if rel in known_exceptions:
+                            continue
+                        with open(fp) as fh:
+                            for line in fh:
+                                if "from PySide6.QtWidgets" in line or "import PySide6.QtWidgets" in line:
+                                    qml_imports.add((rel, line.strip()))
+        assert len(qml_imports) == 0, f"Unexpected QML imports QtWidgets: {qml_imports}"
+
+    def test_el_legacy_depends_on_core(self, pyproject):
+        """michi-widgets-legacy (ui/) depends on core modules but that's fine."""
+        root = os.path.dirname(os.path.dirname(__file__))
+        ui_dir = os.path.join(root, "ui")
+        assert os.path.isdir(ui_dir), "ui/ directory should exist"
+
+    def test_el_pyproject_has_separate_package_docs(self, pyproject):
+        """pyproject.toml must document the three packages."""
+        root = os.path.dirname(os.path.dirname(__file__))
+        path = os.path.join(root, "pyproject.toml")
+        with open(path) as f:
+            content = f.read()
+        assert "michi-core" in content, "pyproject must mention michi-core"
+        assert "michi-qml" in content, "pyproject must mention michi-qml"
+        assert "michi-widgets-legacy" in content, "pyproject must mention michi-widgets-legacy"
