@@ -1,0 +1,6 @@
+queue_service:
+  requires: [playback_service, settings_service]
+audio_lab_service:
+  requires: [job_service, metadata_service]
+notification_service:
+  requires: [action_registry, job_service]
