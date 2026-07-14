@@ -193,7 +193,7 @@ BUILTIN_TOOL_DEFINITIONS: list[ToolDefinition] = [
     ToolDefinition(
         name="replace_queue", version="2.0.0",
         description="Replace the entire queue with new tracks",
-        input_schema=_schema(required=["track_ids"], properties={"track_ids": {"type": "array"}}),
+        input_schema=_schema(required=["track_ids"], properties={"track_ids": {"type": "array", "maxItems": 500}}),
         permission=PermissionLevel.PLAYBACK_CONTROL, capabilities=("queue.modify",),
         requires_confirmation=True, destructive=False, idempotent=False, timeout_seconds=10,
     ),
@@ -247,7 +247,7 @@ BUILTIN_TOOL_DEFINITIONS: list[ToolDefinition] = [
         description="Create a new playlist",
         input_schema=_schema(
             required=["name"],
-            properties={"name": {"type": "string", "maxLength": 200}, "track_ids": {"type": "array"}},
+            properties={"name": {"type": "string", "maxLength": 200}, "track_ids": {"type": "array", "maxItems": 500}},
         ),
         permission=PermissionLevel.LIBRARY_MUTATION, capabilities=("playlist.modify",),
         requires_confirmation=False, destructive=False, idempotent=False, timeout_seconds=15,
@@ -353,7 +353,7 @@ BUILTIN_TOOL_DEFINITIONS: list[ToolDefinition] = [
         input_schema=_schema(
             required=["track_ids", "target"],
             properties={
-                "track_ids": {"type": "array"},
+                "track_ids": {"type": "array", "maxItems": 500},
                 "target": {"type": "string", "enum": ["mobile", "micro_server", "hifi", "streaming"]},
             },
         ),
