@@ -1,97 +1,212 @@
-"""MichiAIBridge — connects QML Assistant to real Michi AIController and PlanBuilder."""
+from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
-import json
 import logging
+import uuid
+from typing import Any
+
+from PySide6.QtCore import QObject, Property, Signal, Slot
+
+from michi_ai.v2.core.assistant_core import AssistantCoreService
+from michi_ai.v2.core.models import AssistantRequest, AssistantResponse, AssistantResponseType
 
 logger = logging.getLogger("michi.ai.bridge")
 
+_VALID_STATES = frozenset({
+    "idle", "building_context", "routing", "planning",
+    "awaiting_confirmation", "executing", "cancelling",
+    "cancelled", "completed", "partial", "failed",
+})
+
+_RESPONSE_TYPE_MAP = {
+    AssistantResponseType.ANSWER: "answer",
+    AssistantResponseType.CLARIFICATION: "clarification",
+    AssistantResponseType.PLAN_PREVIEW: "plan_preview",
+    AssistantResponseType.CONFIRMATION_REQUEST: "confirmation",
+    AssistantResponseType.EXECUTION_PROGRESS: "progress",
+    AssistantResponseType.EXECUTION_RESULT: "result",
+    AssistantResponseType.ERROR: "error",
+    AssistantResponseType.SUGGESTION: "suggestion",
+}
+
 
 class MichiAIBridge(QObject):
-    contextChanged = Signal()
-    responseReceived = Signal(str)
+    responseChanged = Signal()
+    statusChanged = Signal(str)
+    progressChanged = Signal()
+    confirmationRequested = Signal(str, str, str)
+    suggestionsChanged = Signal()
+    errorOccurred = Signal(str)
+    sessionChanged = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, assistant_service: AssistantCoreService | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._suggestions = []
-        self._chat_history = []
-        self._controller = None
+        self._assistant = assistant_service
+        self._session_id: str = ""
+        self._current_response: AssistantResponse | None = None
+        self._status = "idle"
+        self._progress: dict[str, Any] = {}
+        self._pending_confirmation: dict[str, Any] = {}
+        self._last_error = ""
+        self._suggestions: list[dict[str, Any]] = []
 
-    def set_controller(self, controller):
-        self._controller = controller
+    @Property(str, notify=statusChanged)
+    def status(self) -> str:
+        return self._status
 
-    @Property("QVariantList", notify=contextChanged)
-    def suggestions(self):
-        return self._suggestions
+    def _set_status(self, new: str) -> None:
+        if new in _VALID_STATES and new != self._status:
+            self._status = new
+            self.statusChanged.emit(new)
 
-    @Slot()
-    def refresh(self):
-        try:
-            from michi_ai.context.ai_context_bridge import MichiAIContextBridge
-            bridge = MichiAIContextBridge()
-            snapshot = bridge.build_snapshot()
-            if snapshot:
-                self._suggestions = []
-                for s in (snapshot.get("suggestions") or []):
-                    self._suggestions.append({
-                        "title": s.get("title", ""),
-                        "description": s.get("description", ""),
-                        "action": s.get("action", "navigate"),
-                        "route": s.get("route", ""),
-                    })
-        except Exception:
-            logger.debug("MichiAI refresh failed", exc_info=True)
-        if not self._suggestions:
-            self._suggestions = [
-                {"title": "Explorar biblioteca", "description": "Navega por tus álbumes y canciones",
-                 "action": "navigate", "route": "library"},
-                {"title": "Ver conexiones", "description": "Configura servidores y Michi Micro Server",
-                 "action": "navigate", "route": "connections"},
-                {"title": "Abrir Home Audio", "description": "Controla la reproducción en tu hogar",
-                 "action": "navigate", "route": "home_audio"},
-            ]
-        self.contextChanged.emit()
+    @Property(str, notify=responseChanged)
+    def lastError(self) -> str:
+        return self._last_error
 
-    @Slot(str)
-    def sendMessage(self, text: str):
-        msg = text.strip().lower()
-        response = self._try_plan(msg, text)
-        if not response:
-            response = self._fallback_response(msg)
-        self._chat_history.append({"role": "user", "text": text})
-        self._chat_history.append({"role": "assistant", "text": response})
-        self.responseReceived.emit(response)
+    @Property(str, notify=responseChanged)
+    def currentResponse(self) -> str:
+        return self._current_response.message if self._current_response else ""
 
-    def _try_plan(self, msg: str, original: str) -> str:
-        try:
-            from michi_ai.planner.plan_builder import PlanBuilder
-            from michi_ai.tools.tool_registry import ToolRegistry
-            registry = ToolRegistry()
-            builder = PlanBuilder(tool_registry=registry)
-            plan = builder.build_plan(original)
-            if plan and hasattr(plan, 'steps') and plan.steps:
-                descs = []
-                for step in plan.steps[:3]:
-                    descs.append(step.get("description", "") or step.get("tool", ""))
-                if descs:
-                    return "Puedo ayudarte con eso:\n" + "\n".join(f"  • {d}" for d in descs)
-        except Exception:
-            logger.debug("PlanBuilder failed", exc_info=True)
+    @Property(str, notify=responseChanged)
+    def responseType(self) -> str:
+        if self._current_response:
+            return _RESPONSE_TYPE_MAP.get(self._current_response.type, "unknown")
         return ""
 
-    def _fallback_response(self, msg: str) -> str:
-        if "biblioteca" in msg or "canciones" in msg:
-            return "Puedes explorar tu biblioteca desde la sección Biblioteca. Usa el buscador para encontrar canciones y álbumes."
-        if "reproduc" in msg or "música" in msg or "play" in msg:
-            return "Abre la Biblioteca, busca una canción y haz doble clic para reproducirla."
-        if "servidor" in msg or "conexion" in msg or "micro" in msg:
-            return "Ve a Conexiones para configurar Michi Micro Server y servidores externos."
-        if "home audio" in msg or "asistent" in msg or "hogar" in msg:
-            return "Home Audio te permite conectar Home Assistant y el futuro Michi Music Stream."
-        if "ayuda" in msg or "qué puedes" in msg:
-            return "Puedo ayudarte a navegar por la app, buscar música, configurar servidores y controlar Home Audio."
-        return "No tengo una respuesta para eso. Puedes preguntarme sobre biblioteca, reproducción, servidores o Home Audio."
+    @Property(str, notify=responseChanged)
+    def responseTitle(self) -> str:
+        return self._current_response.title if self._current_response else ""
 
-    @Slot(result=str)
-    def getChatHistory(self):
-        return json.dumps(self._chat_history)
+    @Property(str, notify=responseChanged)
+    def responseDetails(self) -> str:
+        return self._current_response.details if self._current_response else ""
+
+    @Property("QVariantList", notify=responseChanged)
+    def responseActions(self) -> list[dict[str, Any]]:
+        return list(self._current_response.actions) if self._current_response else []
+
+    @Property(bool, notify=statusChanged)
+    def isBusy(self) -> bool:
+        return self._status in ("building_context", "routing", "planning", "executing")
+
+    @Property("QVariantMap", notify=progressChanged)
+    def progress(self) -> dict[str, Any]:
+        return self._progress
+
+    @Property("QVariantMap", notify=suggestionsChanged)
+    def pendingConfirmation(self) -> dict[str, Any]:
+        return self._pending_confirmation
+
+    @Property("QVariantList", notify=suggestionsChanged)
+    def suggestions(self) -> list[dict[str, Any]]:
+        return self._suggestions
+
+    @Property(str, notify=sessionChanged)
+    def sessionId(self) -> str:
+        return self._session_id
+
+    @Slot()
+    def startNewSession(self) -> None:
+        if self._assistant:
+            result = self._assistant.create_session()
+            if result.ok and result.data:
+                self._session_id = result.data.session_id
+                self.sessionChanged.emit()
+
+    @Slot(str)
+    def sendMessage(self, text: str) -> None:
+        if not self._assistant:
+            self._last_error = "Assistant service not available"
+            self._set_status("failed")
+            self.errorOccurred.emit(self._last_error)
+            return
+        if not self._session_id:
+            self.startNewSession()
+        self._set_status("routing")
+        request = AssistantRequest(text=text, session_id=self._session_id, correlation_id=uuid.uuid4().hex[:12])
+        response = self._assistant.process_message(request)
+        self._current_response = response
+        self._map_response(response)
+
+    def _map_response(self, response: AssistantResponse) -> None:
+        rtype = response.type
+        if rtype == AssistantResponseType.ANSWER:
+            self._set_status("completed")
+        elif rtype == AssistantResponseType.CLARIFICATION:
+            self._set_status("idle")
+        elif rtype == AssistantResponseType.PLAN_PREVIEW or rtype == AssistantResponseType.CONFIRMATION_REQUEST:
+            self._set_status("awaiting_confirmation")
+            plan_id = getattr(response.plan, "plan_id", "") if response.plan else ""
+            self._pending_confirmation = {"plan_id": plan_id, "summary": response.message, "title": response.title, "details": response.details}
+            self.confirmationRequested.emit(plan_id, response.message, response.details)
+        elif rtype == AssistantResponseType.EXECUTION_PROGRESS:
+            self._set_status("executing")
+            if response.progress:
+                self._progress = response.progress
+                self.progressChanged.emit()
+        elif rtype == AssistantResponseType.EXECUTION_RESULT:
+            self._set_status("completed")
+            self._pending_confirmation = {}
+        elif rtype == AssistantResponseType.ERROR:
+            self._set_status("failed")
+            self._last_error = response.message
+            self.errorOccurred.emit(self._last_error)
+        elif rtype == AssistantResponseType.SUGGESTION:
+            self._set_status("idle")
+        self.responseChanged.emit()
+
+    @Slot(str)
+    def confirmAction(self, confirmation_id: str) -> None:
+        if not self._assistant or not self._session_id:
+            return
+        self._set_status("executing")
+        response = self._assistant.confirm_plan(confirmation_id, self._session_id)
+        self._current_response = response
+        self._pending_confirmation = {}
+        self._map_response(response)
+
+    @Slot()
+    def rejectAction(self) -> None:
+        if not self._assistant or not self._session_id:
+            return
+        response = self._assistant.cancel_plan(self._session_id)
+        self._current_response = response
+        self._pending_confirmation = {}
+        self._map_response(response)
+
+    @Slot()
+    def cancelCurrentRequest(self) -> None:
+        if not self._assistant:
+            return
+        if self._pending_confirmation:
+            plan_id = self._pending_confirmation.get("plan_id", "")
+            if plan_id:
+                self._assistant.cancel_execution(plan_id)
+        self._set_status("cancelled")
+        self._pending_confirmation = {}
+
+    @Slot()
+    def requestSuggestions(self) -> None:
+        if not self._assistant:
+            return
+        suggestions = self._assistant.get_suggestions(self._session_id)
+        self._suggestions = [
+            {"id": s.id, "title": s.title, "description": s.description, "action": s.action, "priority": s.priority}
+            for s in suggestions
+        ]
+        self.suggestionsChanged.emit()
+
+    @Slot()
+    def clearConversation(self) -> None:
+        if self._assistant and self._session_id:
+            self._assistant.clear_history(self._session_id)
+        self._current_response = None
+        self._last_error = ""
+        self._pending_confirmation = {}
+        self._set_status("idle")
+        self.responseChanged.emit()
+
+    @Slot(str)
+    def dismissSuggestion(self, suggestion_id: str) -> None:
+        if self._assistant:
+            self._assistant.dismiss_suggestion(suggestion_id)
+        self.requestSuggestions()
