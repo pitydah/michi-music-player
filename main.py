@@ -8,11 +8,67 @@ import os
 import sys
 
 
+def _resolve_ui_mode() -> str:
+    mode = os.environ.get("MICHI_UI", "auto").strip().lower()
+    if mode not in ("widgets", "qml", "auto"):
+        mode = "auto"
+    return mode
+
+
+def _try_qml() -> bool:
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtQml import QQmlApplicationEngine
+    from PySide6.QtCore import QUrl
+    from pathlib import Path
+
+    app = QGuiApplication(sys.argv)
+    engine = QQmlApplicationEngine()
+    qml_dir = Path(__file__).resolve().parent / "ui_qml"
+    main_qml = qml_dir / "Main.qml"
+    if not main_qml.exists():
+        print("[QML] ERROR: Main.qml not found", file=sys.stderr)
+        return False
+
+    engine.load(QUrl.fromLocalFile(str(main_qml)))
+    app.processEvents()
+    if not engine.rootObjects():
+        print("[QML] ERROR: engine.load() returned no root objects", file=sys.stderr)
+        engine.deleteLater()
+        return False
+    engine.deleteLater()
+    QTimer.singleShot(0, app.quit)
+    app.exec()
+    return True
+
+
+def _run_qml():
+    from ui_qml_bridge.qml_main import main as qml_main
+    qml_main()
+
+
 def main():
-    if "--qml" in sys.argv:
-        from ui_qml_bridge.qml_main import main as qml_main
-        qml_main()
+    ui_mode = _resolve_ui_mode()
+
+    if ui_mode == "qml":
+        _run_qml()
         return
+
+    if ui_mode == "auto":
+        import logging
+        logging.basicConfig(level=logging.INFO, format="[MICHI_UI] %(levelname)s: %(message)s")
+        _log_auto = logging.getLogger("michi.ui_selector")
+        _log_auto.info("MICHI_UI=auto — attempting QML...")
+        try:
+            _run_qml()
+            return
+        except Exception as e:
+            _log_auto.error("QML failed: %s — falling back to QtWidgets", e)
+            print(f"[MICHI_UI] QML error: {e}", file=sys.stderr)
+            import gc
+            for obj in gc.get_objects():
+                if hasattr(obj, 'deleteLater'):
+                    obj.deleteLater()
 
     os.environ.setdefault("QT_MEDIA_BACKEND", "gstreamer")
 
