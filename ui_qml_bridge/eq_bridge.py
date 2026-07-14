@@ -251,8 +251,10 @@ class EqBridge(QObject):
             if len(bands) != GRAPHIC_BAND_COUNT:
                 return {"ok": False, "error": "INVALID_BAND_COUNT"}
             name = data.get("name", p.stem)
-            from audio.eq_presets import save_graphic_preset
-            save_graphic_preset(name, bands)
+            from audio.eq_presets import save_custom_presets, load_custom_presets
+            custom = load_custom_presets()
+            custom[name] = bands
+            save_custom_presets(custom)
             self._presets.append({"name": name, "bands": bands})
             self.stateChanged.emit()
             return {"ok": True, "name": name}
@@ -283,6 +285,21 @@ class EqBridge(QObject):
             set_("audio/eq_preset", self._current_preset)
             set_("audio/eq_graphic_bands", json.dumps(self._graphic_bands))
             return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def saveCustomPreset(self, name: str):
+        if not name:
+            return {"ok": False, "error": "EMPTY_NAME"}
+        try:
+            from audio.eq_presets import save_custom_presets, load_custom_presets
+            custom = load_custom_presets()
+            custom[name] = list(self._graphic_bands)
+            save_custom_presets(custom)
+            self._presets.append({"name": name, "bands": list(self._graphic_bands)})
+            self.stateChanged.emit()
+            return {"ok": True, "name": name}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

@@ -7,6 +7,9 @@ Item {
 
     property string fieldLabel: ""
     property string fieldValue: ""
+    property string fieldKey: ""
+    property bool editable: false
+    signal valueChanged(string newValue)
 
     implicitHeight: 32
 
@@ -26,13 +29,33 @@ Item {
             elide: Text.ElideRight
         }
 
-        Text {
+        Loader {
             width: parent.width * 0.65
+            sourceComponent: root.editable ? editComponent : displayComponent
+        }
+    }
+
+    Component {
+        id: displayComponent
+        Text {
+            width: parent.width
             text: root.fieldValue
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             anchors.verticalCenter: parent.verticalCenter
             elide: Text.ElideRight
+        }
+    }
+
+    Component {
+        id: editComponent
+        TextField {
+            width: parent.width
+            text: root.fieldValue
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.bodySize
+            anchors.verticalCenter: parent.verticalCenter
+            onTextChanged: root.valueChanged(text)
         }
     }
 }

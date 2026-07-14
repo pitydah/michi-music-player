@@ -1,59 +1,17 @@
 {
   "counts": {
-    "REQUIRED_FALLBACK": 8,
-    "MIGRATION_PENDING": 79,
-    "UNSAFE_HYBRID": 49,
-    "DUPLICATED_LOGIC": 21,
-    "REMOVABLE": 212
+    "REQUIRED_FALLBACK": 1,
+    "MIGRATION_PENDING": 66,
+    "UNSAFE_HYBRID": 51,
+    "DUPLICATED_LOGIC": 22,
+    "REMOVABLE": 221
   },
   "results": {
     "REQUIRED_FALLBACK": [
       {
-        "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 20,
-        "code": "from ui.controllers.michi_link_controller import MichiLinkController",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
-        "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 385,
-        "code": "from ui.playlist_io import parse_playlist_entries",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
-        "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 416,
-        "code": "from ui.playlist_io import parse_playlist_entries",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
-        "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 453,
-        "code": "from ui.playlist_io import export_m3u",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
         "file": "ui_qml_bridge/qml_main.py",
         "line": 125,
-        "code": "from ui.audio_lab.services.disc_detection_service import DiscDetectionService",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
-        "file": "ui_qml_bridge/qml_main.py",
-        "line": 133,
         "code": "from ui.audio_lab.services.smart_tagging_service import SmartTaggingService",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
-        "file": "ui_qml_bridge/service_bundle.py",
-        "line": 20,
-        "code": "from ui.controllers.playlist_controller import PlaylistController",
-        "category": "REQUIRED_FALLBACK"
-      },
-      {
-        "file": "ui_qml_bridge/service_bundle.py",
-        "line": 21,
-        "code": "from ui.controllers.smart_tagging_controller import SmartTaggingController",
         "category": "REQUIRED_FALLBACK"
       }
     ],
@@ -75,11 +33,6 @@
       },
       {
         "file": "ui_qml_bridge/app_state_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/audio_lab_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -109,11 +62,6 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/connections_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/context_bindings.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
@@ -139,32 +87,12 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/devices_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/disc_lab_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
       {
         "file": "ui_qml_bridge/error_catalog.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/home_audio_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/home_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/job_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -184,27 +112,12 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/lyrics_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/metadata_tag_adapter.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
       {
         "file": "ui_qml_bridge/navigation_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/nowplaying_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/output_profiles_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -230,11 +143,6 @@
       },
       {
         "file": "ui_qml_bridge/query_executor.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/radio_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -270,11 +178,6 @@
       },
       {
         "file": "ui_qml_bridge/settings_bridge_v2.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/smart_tagging_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -364,11 +267,6 @@
         "reason": "QML page without actions"
       },
       {
-        "file": "ui_qml_bridge/global_search_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "QML page without actions"
-      },
-      {
         "file": "ui_qml_bridge/library_query_service.py",
         "category": "MIGRATION_PENDING",
         "reason": "QML page without actions"
@@ -385,11 +283,6 @@
       },
       {
         "file": "ui_qml_bridge/michi_ai_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "QML page without actions"
-      },
-      {
-        "file": "ui_qml_bridge/navigation_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "QML page without actions"
       },
@@ -455,12 +348,6 @@
       }
     ],
     "UNSAFE_HYBRID": [
-      {
-        "file": "ui_qml_bridge/capability_bridge.py",
-        "line": 47,
-        "category": "UNSAFE_HYBRID",
-        "reason": "\"SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'\""
-      },
       {
         "file": "ui_qml_bridge/diagnostics_bridge.py",
         "line": 119,
@@ -653,6 +540,11 @@
         "reason": "Patched private attr self._svc (post-constructor)"
       },
       {
+        "file": "ui_qml_bridge/global_search_bridge.py",
+        "category": "UNSAFE_HYBRID",
+        "reason": "Patched private attr self._svc (post-constructor)"
+      },
+      {
         "file": "ui_qml_bridge/home_audio_bridge.py",
         "category": "UNSAFE_HYBRID",
         "reason": "Patched private attr self._ha_ctrl (post-constructor)"
@@ -713,12 +605,22 @@
         "reason": "Patched private attr self._svc (post-constructor)"
       },
       {
+        "file": "ui_qml_bridge/queue_bridge.py",
+        "category": "UNSAFE_HYBRID",
+        "reason": "Patched private attr self._queue_service (post-constructor)"
+      },
+      {
         "file": "ui_qml_bridge/settings_bridge_v2.py",
         "category": "UNSAFE_HYBRID",
         "reason": "Patched private attr self._svc (post-constructor)"
       },
       {
         "file": "ui_qml_bridge/smart_tagging_bridge.py",
+        "category": "UNSAFE_HYBRID",
+        "reason": "Patched private attr self._service (post-constructor)"
+      },
+      {
+        "file": "ui_qml_bridge/theme_bridge.py",
         "category": "UNSAFE_HYBRID",
         "reason": "Patched private attr self._service (post-constructor)"
       },
@@ -760,9 +662,14 @@
         "reason": "QML equivalent exists: EqPage.qml"
       },
       {
+        "file": "ui_qml_bridge/global_search_bridge.py",
+        "category": "DUPLICATED_LOGIC",
+        "reason": "QML equivalent exists: GlobalSearchOverlay.qml"
+      },
+      {
         "file": "ui_qml_bridge/history_bridge.py",
         "category": "DUPLICATED_LOGIC",
-        "reason": "QML equivalent exists: HistoryPage.qml"
+        "reason": "QML equivalent exists: DeviceSyncHistory.qml"
       },
       {
         "file": "ui_qml_bridge/home_bridge.py",
@@ -897,11 +804,6 @@
         "reason": "No service dependency"
       },
       {
-        "file": "ui_qml_bridge/theme_bridge.py",
-        "category": "REMOVABLE",
-        "reason": "No service dependency"
-      },
-      {
         "file": "ui_qml_bridge/app_bridge.py",
         "line": 135,
         "category": "REMOVABLE",
@@ -921,97 +823,97 @@
       },
       {
         "file": "ui_qml_bridge/audio_lab_bridge.py",
-        "line": 183,
+        "line": 192,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"route\": route}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 37,
+        "line": 36,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 181,
+        "line": 180,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(self._discovered)}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 195,
+        "line": 194,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 203,
+        "line": 202,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 217,
+        "line": 216,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 225,
+        "line": 224,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 238,
+        "line": 237,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 251,
+        "line": 250,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 262,
+        "line": 261,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 277,
+        "line": 276,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 333,
+        "line": 332,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/connections_bridge.py",
-        "line": 343,
+        "line": 342,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/cover_provider_bridge.py",
-        "line": 73,
+        "line": 69,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/cover_provider_bridge.py",
+        "line": 74,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/cover_provider_bridge.py",
         "line": 78,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True}"
-      },
-      {
-        "file": "ui_qml_bridge/cover_provider_bridge.py",
-        "line": 82,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"size\": len(self._cache), \"max\": self._m"
       },
@@ -1131,19 +1033,19 @@
       },
       {
         "file": "ui_qml_bridge/eq_bridge.py",
-        "line": 258,
+        "line": 260,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"name\": name}"
       },
       {
         "file": "ui_qml_bridge/eq_bridge.py",
-        "line": 272,
+        "line": 274,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/eq_bridge.py",
-        "line": 285,
+        "line": 287,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
@@ -1151,53 +1053,59 @@
         "file": "ui_qml_bridge/eq_bridge.py",
         "line": 302,
         "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True, \"name\": name}"
+      },
+      {
+        "file": "ui_qml_bridge/eq_bridge.py",
+        "line": 319,
+        "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/global_search_bridge.py",
-        "line": 89,
+        "line": 59,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": 0}"
       },
       {
         "file": "ui_qml_bridge/global_search_bridge.py",
-        "line": 113,
+        "line": 103,
         "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"queued\": True}"
+        "reason": "Simulated action: return {\"ok\": True, \"count\": 0}"
       },
       {
         "file": "ui_qml_bridge/global_search_bridge.py",
-        "line": 117,
+        "line": 111,
         "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"count\": len(results)}"
-      },
-      {
-        "file": "ui_qml_bridge/history_bridge.py",
-        "line": 29,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"count\": self.historyCount}"
+        "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/history_bridge.py",
         "line": 43,
         "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True}"
+        "reason": "Simulated action: return {\"ok\": True, \"count\": self.historyCount}"
       },
       {
         "file": "ui_qml_bridge/history_bridge.py",
-        "line": 59,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True}"
-      },
-      {
-        "file": "ui_qml_bridge/history_bridge.py",
-        "line": 67,
+        "line": 57,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/history_bridge.py",
         "line": 73,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/history_bridge.py",
+        "line": 81,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/history_bridge.py",
+        "line": 87,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
@@ -1299,27 +1207,9 @@
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 167,
+        "line": 197,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"loaded\": self._loaded_count, \"visible\":"
-      },
-      {
-        "file": "ui_qml_bridge/library_bridge.py",
-        "line": 174,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True}"
-      },
-      {
-        "file": "ui_qml_bridge/library_bridge.py",
-        "line": 180,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True}"
-      },
-      {
-        "file": "ui_qml_bridge/library_bridge.py",
-        "line": 196,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
@@ -1329,139 +1219,193 @@
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 218,
+        "line": 210,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 227,
+        "line": 224,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 239,
+        "line": 232,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 255,
+        "line": 244,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 269,
+        "line": 252,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 283,
+        "line": 260,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 268,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 277,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 289,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 301,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 311,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 321,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 331,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 351,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/library_bridge.py",
+        "line": 363,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"key\": key, \"asc\": self._sort_asc}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 293,
+        "line": 371,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": self.visibleCount}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 344,
+        "line": 420,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"title\": title, \"artist\": artist, \"album"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 371,
+        "line": 447,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 404,
+        "line": 478,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 428,
+        "line": 502,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"favorite\": fav}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 441,
+        "line": 515,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 456,
+        "line": 530,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 470,
+        "line": 542,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, **detail}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 499,
+        "line": 571,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(fps)}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 517,
+        "line": 589,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(fps)}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 532,
+        "line": 602,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, **detail}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 576,
+        "line": 646,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(fps)}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 612,
+        "line": 680,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(fps)}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 626,
+        "line": 694,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 644,
+        "line": 712,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"path\": folder_path, \"job\": True}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 661,
+        "line": 729,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"path\": folder_path}"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
-        "line": 684,
+        "line": 752,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"type\": \"folder\" if p.is_dir() else \"fil"
       },
@@ -1558,6 +1502,12 @@
       {
         "file": "ui_qml_bridge/lyrics_bridge.py",
         "line": 313,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/lyrics_bridge.py",
+        "line": 322,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
@@ -1677,63 +1627,63 @@
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 74,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"count\": len(self._current_songs)}"
-      },
-      {
-        "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 139,
+        "line": 157,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 214,
+        "line": 192,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True, \"track_id\": tid}"
+      },
+      {
+        "file": "ui_qml_bridge/mix_bridge.py",
+        "line": 242,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"id\": pid, \"count\": count}"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 231,
+        "line": 259,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"track_id\": tid, \"index\": index}"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 237,
+        "line": 265,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"track_id\": tid, \"index\": index}"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 246,
+        "line": 274,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"cancelled\": gen}"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 259,
+        "line": 292,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"track_id\": tid, \"index\": index, \"queued"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 268,
+        "line": 306,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True, \"reasons\": list(reasons)[:5],"
+      },
+      {
+        "file": "ui_qml_bridge/mix_bridge.py",
+        "line": 314,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"has_failures\": False, \"failures\": []}"
       },
       {
         "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 269,
+        "line": 315,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"has_failures\": True, \"failures\": failur"
-      },
-      {
-        "file": "ui_qml_bridge/mix_bridge.py",
-        "line": 280,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"reasons\": list(reasons)[:3]}"
       },
       {
         "file": "ui_qml_bridge/notification_bridge.py",
@@ -1800,6 +1750,30 @@
         "line": 51,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(self._profiles)}"
+      },
+      {
+        "file": "ui_qml_bridge/output_profiles_bridge.py",
+        "line": 126,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/output_profiles_bridge.py",
+        "line": 139,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/output_profiles_bridge.py",
+        "line": 150,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
+      },
+      {
+        "file": "ui_qml_bridge/output_profiles_bridge.py",
+        "line": 161,
+        "category": "REMOVABLE",
+        "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/playlists_bridge.py",
@@ -1899,25 +1873,13 @@
       },
       {
         "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 427,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"id\": pid, \"count\": count}"
-      },
-      {
-        "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 434,
+        "line": 397,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 461,
-        "category": "REMOVABLE",
-        "reason": "Simulated action: return {\"ok\": True, \"count\": len(fps)}"
-      },
-      {
-        "file": "ui_qml_bridge/playlists_bridge.py",
-        "line": 483,
+        "line": 430,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(fps)}"
       },
@@ -1929,43 +1891,43 @@
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 47,
+        "line": 53,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": self.queueCount}"
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 61,
+        "line": 67,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 72,
+        "line": 78,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 83,
+        "line": 89,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 107,
+        "line": 113,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True}"
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 145,
+        "line": 151,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"path\": path, \"count\": len(items)}"
       },
       {
         "file": "ui_qml_bridge/queue_bridge.py",
-        "line": 170,
+        "line": 176,
         "category": "REMOVABLE",
         "reason": "Simulated action: return {\"ok\": True, \"count\": len(resolved)}"
       },

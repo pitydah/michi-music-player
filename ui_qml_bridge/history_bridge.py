@@ -1,7 +1,9 @@
-"""HistoryBridge — provides HistoryListModel to QML via HistoryQueryService."""
+"""HistoryBridge — paginated play history via HistoryQueryService SQL JOIN, no N+1."""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+from ui_qml.models.HistoryListModel import HistoryListModel
 
 
 class HistoryBridge(QObject):
@@ -11,8 +13,9 @@ class HistoryBridge(QObject):
         super().__init__(parent)
         self._db = db
         self._hqs = history_query_service
-        from ui_qml.models.HistoryListModel import HistoryListModel
-        self._model = HistoryListModel(db=db, parent=self)
+        self._qe = query_executor
+        self._model = HistoryListModel(db=db, history_query_service=history_query_service,
+                                       query_executor=query_executor, parent=self)
 
     @Property("QVariant", notify=dataChanged)
     def historyModel(self):
@@ -21,6 +24,17 @@ class HistoryBridge(QObject):
     @Property(int, notify=dataChanged)
     def historyCount(self):
         return self._model.totalCount
+
+    @Property("QVariant", notify=dataChanged)
+    def historyQueryService(self):
+        return self._hqs
+
+    @Property("QVariant", notify=dataChanged)
+    def playbackBridge(self):
+        return getattr(self, '_playback_bridge', None)
+
+    def setPlaybackBridge(self, bridge):
+        self._playback_bridge = bridge
 
     @Slot(result=dict)
     def refresh(self):

@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 
 if TYPE_CHECKING:
-    from ui.controllers.michi_link_controller import MichiLinkController
     from ui_qml_bridge.navigation_bridge import NavigationBridge
 
 logger = logging.getLogger("michi.connections")
@@ -64,7 +63,7 @@ class _AsyncOp:
 class ConnectionsBridge(QObject):
     stateChanged = Signal()
 
-    def __init__(self, michi_link_ctrl: MichiLinkController | None = None,
+    def __init__(self, michi_link_ctrl=None,
                  navigation_bridge: NavigationBridge | None = None, parent=None):
         super().__init__(parent)
         self._ctrl = michi_link_ctrl

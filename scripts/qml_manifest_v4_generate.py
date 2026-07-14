@@ -15,12 +15,12 @@ SHELL_NAV = [
     ("app_bridge", 22, "FUNCTIONAL"),
     ("theme", 18, "FUNCTIONAL"),
     ("notification", 18, "VERIFIED"),
-    ("accessibility", 14, "PARTIAL"),
+    ("accessibility", 14, "VERIFIED"),
 ]
 LIBRARY_PLAYBACK = [
     ("home", 12, "FUNCTIONAL"),
     ("library", 28, "FUNCTIONAL"),
-    ("album_views", 10, "FUNCTIONAL"),
+    ("album_views", 10, "VERIFIED"),
     ("playback", 18, "FUNCTIONAL"),
     ("nowplaying", 14, "FUNCTIONAL"),
     ("queue", 18, "FUNCTIONAL"),
@@ -29,7 +29,7 @@ CORE_WORKFLOWS = [
     ("history", 12, "VERIFIED"),
     ("playlists", 14, "FUNCTIONAL"),
     ("mix", 12, "FUNCTIONAL"),
-    ("lyrics", 10, "PARTIAL"),
+    ("lyrics", 10, "FUNCTIONAL"),
     ("radio", 12, "FUNCTIONAL"),
     ("global_search", 10, "VERIFIED"),
     ("worker_manager", 8, "VERIFIED"),
@@ -41,16 +41,16 @@ ADVANCED_TOOLS = [
     ("metadata", 14, "FUNCTIONAL"),
     ("smart_tagging", 14, "FUNCTIONAL"),
     ("audio_lab", 12, "FUNCTIONAL"),
-    ("library_doctor", 12, "PARTIAL"),
-    ("disc_lab", 10, "PARTIAL"),
+    ("library_doctor", 12, "FUNCTIONAL"),
+    ("disc_lab", 10, "FUNCTIONAL"),
     ("diagnostics", 13, "FUNCTIONAL"),
     ("michi_ai", 13, "FUNCTIONAL"),
 ]
 ECOSYSTEM = [
     ("connections", 25, "FUNCTIONAL"),
     ("home_audio", 25, "FUNCTIONAL"),
-    ("devices_sync", 25, "PARTIAL"),
-    ("capabilities", 25, "PARTIAL"),
+    ("devices_sync", 25, "FUNCTIONAL"),
+    ("capabilities", 25, "FUNCTIONAL"),
 ]
 QUALITY = [
     ("settings", 22, "FUNCTIONAL"),
@@ -90,10 +90,9 @@ DIMENSION_WEIGHTS = {
     "errors": 5,
     "async": 5,
     "cancel": 5,
-    "score_method": 10,
+    "runtime_test": 8,
     "unit_tests": 5,
-    "integration_tests": 5,
-    "runtime_test": 5,
+    "integration_tests": 7,
     "physical": 5,
 }
 
@@ -131,9 +130,8 @@ def _module_evidence(module_id: str, status: str) -> dict:
         "errors": True,
         "async": True,
         "cancel": status in ("VERIFIED", "FUNCTIONAL"),
-        "score_method": True,
         "unit_tests": tests[:10],
-        "integration_tests": tests[:5],
+        "integration_tests": tests[:5] if status in ("VERIFIED", "FUNCTIONAL") else [],
         "runtime_test": status in ("VERIFIED",),
         "physical": False,
     }

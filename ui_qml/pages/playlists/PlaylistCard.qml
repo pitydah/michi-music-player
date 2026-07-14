@@ -11,18 +11,32 @@ Item {
     property int trackCount: 0
     property string duration: ""
     property string coverKey: ""
+    property bool selected: false
+    property bool showSelection: false
 
     signal clicked()
+    signal contextMenuRequested(string action)
 
     implicitWidth: 200; implicitHeight: 240
 
     GlassMaterial {
         anchors.fill: parent; radius: MichiTheme.radiusMd
         hovered: mouseArea.containsMouse; interactive: true
+
+        Rectangle {
+            anchors.fill: parent; radius: MichiTheme.radiusMd
+            color: root.selected ? MichiTheme.colors.accentFaint : "transparent"
+            visible: root.showSelection || root.selected
+            border.color: root.selected ? MichiTheme.colors.accent : "transparent"
+            border.width: root.selected ? 2 : 0
+        }
+
         MouseArea {
             id: mouseArea; anchors.fill: parent
             hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: root.clicked()
+            onPressAndHold: contextMenu.popup()
         }
 
         Column {
@@ -45,5 +59,13 @@ Item {
                 visible: text !== ""
             }
         }
+    }
+
+    Menu {
+        id: contextMenu
+        MenuItem { text: "Reproducir"; onClicked: root.contextMenuRequested("shuffle") }
+        MenuItem { text: "Duplicar"; onClicked: root.contextMenuRequested("duplicate") }
+        MenuSeparator {}
+        MenuItem { text: "Eliminar"; onClicked: root.contextMenuRequested("delete") }
     }
 }

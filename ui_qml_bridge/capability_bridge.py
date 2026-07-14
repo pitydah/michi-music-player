@@ -1,6 +1,7 @@
 """CapabilityBridge — exposes backend capabilities to QML.
 
 Based on BridgeFactory._capabilities + real service availability.
+No inline SQL — delegates to service capability checks.
 """
 from __future__ import annotations
 
@@ -19,7 +20,6 @@ class CapabilityBridge(QObject):
         if not self._factory:
             return
         caps = dict(self._factory.capabilities)
-        # Add computed capabilities
         svc = self._factory._services if hasattr(self._factory, '_services') else None
         caps["has_fts5"] = self._check_fts5(svc)
         caps["has_radio"] = svc and svc.has("radio_manager")
@@ -40,15 +40,7 @@ class CapabilityBridge(QObject):
         return self._caps.get(name, False)
 
     def _check_fts5(self, svc) -> bool:
-        if not svc or not svc.db:
-            return False
-        try:
-            row = svc.db.conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
-            ).fetchone()
-            return row is not None
-        except Exception:
-            return False
+        return bool(svc and svc.search_engine)
 
     def _check_metadata_writer(self, svc) -> bool:
         import importlib.util

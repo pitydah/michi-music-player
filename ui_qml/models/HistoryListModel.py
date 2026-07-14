@@ -1,4 +1,4 @@
-"""HistoryListModel — BasePagedListModel reading play history from DB."""
+"""HistoryListModel — BasePagedListModel with SQL pagination via HistoryQueryService (no N+1)."""
 from __future__ import annotations
 
 from typing import Any
@@ -16,10 +16,13 @@ class HistoryListModel(BasePagedListModel):
     AlbumRole = Qt.UserRole + 5
     DurationRole = Qt.UserRole + 6
     PlayedAtRole = Qt.UserRole + 7
+    DeviceRole = Qt.UserRole + 8
+    AlbumKeyRole = Qt.UserRole + 9
 
-    def __init__(self, db=None, query_executor=None, parent=None):
+    def __init__(self, db=None, history_query_service=None, query_executor=None, parent=None):
         super().__init__(page_size=200, query_executor=query_executor, parent=parent)
         self._db = db
+        self._hqs = history_query_service
 
     def _owner(self) -> str:
         return "history"
@@ -28,7 +31,8 @@ class HistoryListModel(BasePagedListModel):
         return {self.TrackIdRole: b"trackId", self.TrackUidRole: b"trackUid",
                 self.TitleRole: b"title", self.ArtistRole: b"artist",
                 self.AlbumRole: b"album", self.DurationRole: b"duration",
-                self.PlayedAtRole: b"playedAt"}
+                self.PlayedAtRole: b"playedAt", self.DeviceRole: b"device",
+                self.AlbumKeyRole: b"albumKey"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
@@ -37,7 +41,8 @@ class HistoryListModel(BasePagedListModel):
         mapping = {self.TrackIdRole: "track_id", self.TrackUidRole: "track_uid",
                    self.TitleRole: "title", self.ArtistRole: "artist",
                    self.AlbumRole: "album", self.DurationRole: "duration",
-                   self.PlayedAtRole: "played_at"}
+                   self.PlayedAtRole: "played_at", self.DeviceRole: "device",
+                   self.AlbumKeyRole: "album_key"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")
@@ -49,6 +54,16 @@ class HistoryListModel(BasePagedListModel):
         super().refresh()
 
     def _fetch_count(self, **kwargs) -> int:
+        if self._hqs and hasattr(self._hqs, 'count_history'):
+            try:
+                return self._hqs.count_history(
+                    artist=kwargs.get("artist", ""),
+                    album=kwargs.get("album", ""),
+                    device=kwargs.get("device", ""),
+                    search=kwargs.get("search", ""),
+                )
+            except Exception:
+                return 0
         if not self._db or not hasattr(self._db, 'get_play_history'):
             return 0
         try:
@@ -58,6 +73,17 @@ class HistoryListModel(BasePagedListModel):
             return 0
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
+        if self._hqs and hasattr(self._hqs, 'fetch_history'):
+            try:
+                return self._hqs.fetch_history(
+                    offset=offset, limit=limit,
+                    artist=kwargs.get("artist", ""),
+                    album=kwargs.get("album", ""),
+                    device=kwargs.get("device", ""),
+                    search=kwargs.get("search", ""),
+                )
+            except Exception:
+                return []
         if not self._db or not hasattr(self._db, 'get_play_history'):
             return []
         try:
@@ -71,11 +97,13 @@ class HistoryListModel(BasePagedListModel):
                 resolved = self._resolve_track(track_id)
                 if resolved:
                     resolved["played_at"] = r.get("played_at", "")
+                    resolved["device"] = r.get("device", "")
                     result.append(resolved)
                 else:
                     result.append({"track_id": 0, "track_uid": "",
                                    "title": track_id, "artist": "", "album": "",
-                                   "duration": 0, "played_at": r.get("played_at", "")})
+                                   "duration": 0, "played_at": r.get("played_at", ""),
+                                   "device": r.get("device", "")})
             return result
         except Exception:
             return []

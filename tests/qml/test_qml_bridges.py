@@ -2050,7 +2050,9 @@ class TestMixBridgeWithService:
         db = MagicMock()
         db.fetch_all.return_value = []
         db.conn.execute.return_value.fetchall.return_value = []
-        bridge = MixBridge(db=db)
+        mqs = MagicMock()
+        mqs.favorites.return_value = [{"track_id": 1, "title": "Test", "artist": "A", "album": "B", "duration": 200, "reason": "Fav"}]
+        bridge = MixBridge(db=db, query_service=mqs)
         assert len(bridge.categories) > 0
         result = bridge.loadMix("favorites")
         assert result.get("ok") is True

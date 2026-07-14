@@ -312,6 +312,15 @@ class LyricsBridge(QObject):
         self._cache_order = [k for k in self._cache_order if k != key]
         return {"ok": True}
 
+    @Slot(str, result=dict)
+    def saveLocalLyrics(self, text: str):
+        self._lyrics = text
+        self._synced_lyrics = []
+        self._status = "done"
+        self._source = "local"
+        self.dataChanged.emit()
+        return {"ok": True}
+
     def getActiveLine(self, position_ms: float) -> int | None:
         """Return index of active synced line for a given position in ms."""
         if not self._synced_lyrics:

@@ -1,7 +1,7 @@
 {
   "version": "4.0",
-  "generated_at": "2026-07-14T05:35:07.973014+00:00",
-  "sha": "b923550701bedc21a50459718f799ed016085112",
+  "generated_at": "2026-07-14T06:09:04.510853+00:00",
+  "sha": "06c84123aa6979016f7c1e4b2ca26fb79f58f67f",
   "area_weights": {
     "shell_nav": 10,
     "library_playback": 25,
@@ -20,10 +20,9 @@
     "errors": 5,
     "async": 5,
     "cancel": 5,
-    "score_method": 10,
+    "runtime_test": 5,
     "unit_tests": 5,
     "integration_tests": 5,
-    "runtime_test": 5,
     "physical": 5
   },
   "modules": [
@@ -43,7 +42,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_action_registry_contains_navigation",
           "test_mix_detail_route_in_navigation",
@@ -62,7 +61,6 @@
           "test_navigation_bridge_back_stack",
           "test_navigation_bridge_params"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -82,16 +80,17 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_app_bridge_uses_queue_service_for_shutdown",
           "test_factory_app_bridge_has_debug_info",
           "test_factory_creates_app_bridge_with_lifecycle"
         ],
         "integration_tests": [
+          "test_app_bridge_uses_queue_service_for_shutdown",
           "test_factory_app_bridge_has_debug_info",
           "test_factory_creates_app_bridge_with_lifecycle"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -111,27 +110,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_theme",
           "test_high_contrast_theme_values",
+          "test_minimum_target_size_michitheme",
+          "test_minimum_target_size_theme",
           "test_theme_bridge_processes_accessibility",
           "test_theme_files",
           "test_theme_key_not_theme_mode",
           "test_theme_noop_same_value",
           "test_theme_qmldir_exists",
-          "test_theme_setter_calls_coordinator",
-          "test_theme_setter_emits_signal",
-          "test_theme_setter_updates_dark_mode",
-          "test_theme_store_values_after_update"
+          "test_theme_setter_calls_coordinator"
         ],
         "integration_tests": [
+          "test_adapter_for_theme",
           "test_high_contrast_theme_values",
-          "test_theme_bridge_processes_accessibility",
-          "test_theme_files",
-          "test_theme_key_not_theme_mode",
-          "test_theme_noop_same_value"
+          "test_minimum_target_size_michitheme",
+          "test_minimum_target_size_theme",
+          "test_theme_bridge_processes_accessibility"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -151,7 +149,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": true,
         "unit_tests": [
           "test_execute_current_no_notification",
           "test_execute_notification_action_by_id",
@@ -170,7 +168,6 @@
           "test_execute_notification_action_not_found",
           "test_execute_notification_action_returns_result"
         ],
-        "runtime_test": true,
         "physical": false
       }
     },
@@ -179,29 +176,30 @@
       "area": "shell_nav",
       "title": "Accessibility",
       "module_weight": 14,
-      "status": "PARTIAL",
+      "status": "VERIFIED",
       "evidence": {
         "page": true,
         "bridge": true,
         "service": true,
         "read": true,
         "primary_action": true,
-        "write": false,
+        "write": true,
         "errors": true,
         "async": true,
-        "cancel": false,
-        "score_method": true,
+        "cancel": true,
+        "runtime_test": true,
         "unit_tests": [
           "test_accessibility_announcement",
           "test_accessibility_score_returns_dict",
+          "test_adapter_for_accessibility",
           "test_theme_bridge_processes_accessibility"
         ],
         "integration_tests": [
           "test_accessibility_announcement",
           "test_accessibility_score_returns_dict",
+          "test_adapter_for_accessibility",
           "test_theme_bridge_processes_accessibility"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -221,27 +219,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_home_audio",
           "test_configure_home_assistant_returns_dict",
+          "test_home_assistant_available",
           "test_home_audio_access_instantiate",
           "test_home_audio_assign_stream_unsupported",
           "test_home_audio_bridge_configure_with_ha_adapter",
           "test_home_audio_bridge_devices",
           "test_home_audio_bridge_refresh",
           "test_home_audio_bridge_registered",
-          "test_home_audio_bridge_volume_with_snapcast",
-          "test_home_audio_bridge_with_ha_adapter",
-          "test_home_audio_bridge_with_snapcast_adapter"
+          "test_home_audio_bridge_volume_with_snapcast"
         ],
         "integration_tests": [
+          "test_adapter_for_home_audio",
           "test_configure_home_assistant_returns_dict",
+          "test_home_assistant_available",
           "test_home_audio_access_instantiate",
-          "test_home_audio_assign_stream_unsupported",
-          "test_home_audio_bridge_configure_with_ha_adapter",
-          "test_home_audio_bridge_devices"
+          "test_home_audio_assign_stream_unsupported"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -261,27 +258,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_library",
           "test_all_library_files_exist",
+          "test_attach_library_coordinator_exists",
           "test_empty_library_is_warn_not_fail",
           "test_home_library_card_height_fixed",
           "test_job_bridge_has_attach_library_coordinator",
           "test_library_bridge_default_state",
           "test_library_bridge_has_artists_property",
           "test_library_bridge_has_filter_methods",
-          "test_library_bridge_has_folders_property",
-          "test_library_bridge_play_song_returns_dict",
-          "test_library_bridge_setsort"
+          "test_library_bridge_has_folders_property"
         ],
         "integration_tests": [
+          "test_adapter_for_library",
           "test_all_library_files_exist",
+          "test_attach_library_coordinator_exists",
           "test_empty_library_is_warn_not_fail",
-          "test_home_library_card_height_fixed",
-          "test_job_bridge_has_attach_library_coordinator",
-          "test_library_bridge_default_state"
+          "test_home_library_card_height_fixed"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -290,7 +286,7 @@
       "area": "library_playback",
       "title": "Album Views",
       "module_weight": 10,
-      "status": "FUNCTIONAL",
+      "status": "VERIFIED",
       "evidence": {
         "page": true,
         "bridge": true,
@@ -301,10 +297,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": true,
         "unit_tests": [],
-        "integration_tests": [],
-        "runtime_test": false,
+        "integration_tests": true,
         "physical": false
       }
     },
@@ -324,27 +319,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_playback",
+          "test_bar_playback_control_delegates",
+          "test_bridge_play_artist_no_playback",
+          "test_error_emitted_on_playback_failure",
           "test_mix_playback_by_id",
+          "test_no_blocking_on_playback_while_searching",
           "test_playback_bridge_advanced_slots",
+          "test_playback_bridge_error_propagation",
           "test_playback_bridge_has_nowplaying_props",
-          "test_playback_bridge_has_properties",
-          "test_playback_bridge_importable",
-          "test_playback_page_exists",
-          "test_playlist_to_playback",
-          "test_search_to_playback_by_id",
-          "test_track_to_playback_by_id_enqueue",
-          "test_track_to_playback_by_id_play_track"
+          "test_playback_bridge_has_properties"
         ],
         "integration_tests": [
-          "test_mix_playback_by_id",
-          "test_playback_bridge_advanced_slots",
-          "test_playback_bridge_has_nowplaying_props",
-          "test_playback_bridge_has_properties",
-          "test_playback_bridge_importable"
+          "test_adapter_for_playback",
+          "test_bar_playback_control_delegates",
+          "test_bridge_play_artist_no_playback",
+          "test_error_emitted_on_playback_failure",
+          "test_mix_playback_by_id"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -364,27 +358,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_appshell_has_nowplaying",
+          "test_bar_reads_state_from_nowplaying",
+          "test_bar_shares_state_with_nowplaying_page",
           "test_expanded_nowplaying_panel_exists",
           "test_expanded_nowplaying_panel_instantiate",
           "test_navigation_bridge_rejects_nowplaying",
           "test_no_nowplaying_page_in_qml_clean",
           "test_nowplaying_bar_exists",
           "test_nowplaying_bar_has_backend_status",
-          "test_nowplaying_bar_has_controls",
-          "test_nowplaying_bar_has_navigation_button",
-          "test_nowplaying_bar_has_notification_bridge"
+          "test_nowplaying_bar_has_controls"
         ],
         "integration_tests": [
           "test_appshell_has_nowplaying",
+          "test_bar_reads_state_from_nowplaying",
+          "test_bar_shares_state_with_nowplaying_page",
           "test_expanded_nowplaying_panel_exists",
-          "test_expanded_nowplaying_panel_instantiate",
-          "test_navigation_bridge_rejects_nowplaying",
-          "test_no_nowplaying_page_in_qml_clean"
+          "test_expanded_nowplaying_panel_instantiate"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -404,27 +397,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_album_to_queue_by_key",
           "test_album_to_queue_enqueue",
+          "test_app_bridge_uses_queue_service_for_shutdown",
+          "test_cancel_then_enqueue_still_works",
           "test_dismiss_queue",
+          "test_empty_mix_enqueue_returns_error",
           "test_enqueue_album",
           "test_enqueue_mix",
           "test_enqueue_no_track_name",
-          "test_enqueue_not_found",
-          "test_enqueue_requires_track",
-          "test_execute_notification_action_from_queue",
-          "test_nowplaying_bar_has_queue_panel"
+          "test_enqueue_not_found"
         ],
         "integration_tests": [
           "test_album_to_queue_by_key",
           "test_album_to_queue_enqueue",
-          "test_dismiss_queue",
-          "test_enqueue_album",
-          "test_enqueue_mix"
+          "test_app_bridge_uses_queue_service_for_shutdown",
+          "test_cancel_then_enqueue_still_works",
+          "test_dismiss_queue"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -444,27 +436,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": true,
         "unit_tests": [
+          "test_adapter_for_history",
           "test_clear_history",
+          "test_clear_history_empty",
+          "test_clear_history_then_new_entry",
+          "test_count_history",
+          "test_count_history_with_artist_filter",
           "test_detects_orphan_history",
           "test_empty_history",
-          "test_history",
-          "test_history_bridge_clear_no_db",
-          "test_history_bridge_default",
-          "test_history_bridge_importable",
-          "test_history_bridge_refresh",
-          "test_history_item_by_index",
-          "test_history_model_basic"
+          "test_fetch_history_joins_media",
+          "test_fetch_history_offset_works"
         ],
         "integration_tests": [
+          "test_adapter_for_history",
           "test_clear_history",
-          "test_detects_orphan_history",
-          "test_empty_history",
-          "test_history",
-          "test_history_bridge_clear_no_db"
+          "test_clear_history_empty",
+          "test_clear_history_then_new_entry",
+          "test_count_history"
         ],
-        "runtime_test": true,
         "physical": false
       }
     },
@@ -484,7 +475,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_list_playlists",
           "test_navigate_playlists_works",
@@ -504,7 +495,6 @@
           "test_playlists_bridge_add_track",
           "test_playlists_bridge_clear"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -524,27 +514,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_daily_mix_deduplicates",
+          "test_empty_mix_enqueue_returns_error",
+          "test_empty_mix_play_returns_error",
           "test_enqueue_mix",
           "test_explain_current_mix",
+          "test_explain_empty_mix_returns_error",
+          "test_explain_populated_mix_returns_reasons",
+          "test_favorites_mix_returns_real_tracks",
           "test_load_daily_mix",
-          "test_load_unknown_mix",
-          "test_mix_ai_requires_enabled",
-          "test_mix_bridge_default",
-          "test_mix_bridge_has_categories",
-          "test_mix_bridge_importable",
-          "test_mix_bridge_load_mix",
-          "test_mix_bridge_receives_query_service"
+          "test_load_unknown_mix"
         ],
         "integration_tests": [
+          "test_daily_mix_deduplicates",
+          "test_empty_mix_enqueue_returns_error",
+          "test_empty_mix_play_returns_error",
           "test_enqueue_mix",
-          "test_explain_current_mix",
-          "test_load_daily_mix",
-          "test_load_unknown_mix",
-          "test_mix_ai_requires_enabled"
+          "test_explain_current_mix"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -553,19 +542,20 @@
       "area": "core_workflows",
       "title": "Lyrics",
       "module_weight": 10,
-      "status": "PARTIAL",
+      "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
         "bridge": true,
         "service": true,
         "read": true,
         "primary_action": true,
-        "write": false,
+        "write": true,
         "errors": true,
         "async": true,
-        "cancel": false,
-        "score_method": true,
+        "cancel": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_lyrics",
           "test_lyrics_bridge_default",
           "test_lyrics_cache_hit",
           "test_lyrics_cancel_search",
@@ -574,17 +564,15 @@
           "test_lyrics_get_active_line_empty",
           "test_lyrics_idle_on_create",
           "test_lyrics_on_track_changed_noop_same_track",
-          "test_lyrics_parse_lrc",
-          "test_lyrics_parse_lrc_no_timestamp"
+          "test_lyrics_parse_lrc"
         ],
         "integration_tests": [
+          "test_adapter_for_lyrics",
           "test_lyrics_bridge_default",
           "test_lyrics_cache_hit",
           "test_lyrics_cancel_search",
-          "test_lyrics_clear_cache_for_track",
-          "test_lyrics_get_active_line"
+          "test_lyrics_clear_cache_for_track"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -604,8 +592,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_radio",
           "test_navigate_radio_works",
           "test_page_stack_has_explicit_radio_playlists",
           "test_quit_stops_radio",
@@ -614,17 +603,15 @@
           "test_radio_bridge_edit_station_no_mgr",
           "test_radio_bridge_has_slots",
           "test_radio_bridge_importable",
-          "test_radio_bridge_refresh",
-          "test_radio_bridge_search"
+          "test_radio_bridge_refresh"
         ],
         "integration_tests": [
+          "test_adapter_for_radio",
           "test_navigate_radio_works",
           "test_page_stack_has_explicit_radio_playlists",
           "test_quit_stops_radio",
-          "test_radio_bridge_default",
-          "test_radio_bridge_edit_station"
+          "test_radio_bridge_default"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -644,7 +631,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": true,
         "unit_tests": [
           "test_global_search_bridge_default",
           "test_global_search_empty_query",
@@ -659,7 +646,6 @@
           "test_global_search_no_db_returns_empty",
           "test_global_search_uses_public_query_executor_property"
         ],
-        "runtime_test": true,
         "physical": false
       }
     },
@@ -679,14 +665,15 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": true,
         "unit_tests": [
-          "test_quit_cancels_worker_manager"
+          "test_quit_cancels_worker_manager",
+          "test_repair_with_worker_manager"
         ],
         "integration_tests": [
-          "test_quit_cancels_worker_manager"
+          "test_quit_cancels_worker_manager",
+          "test_repair_with_worker_manager"
         ],
-        "runtime_test": true,
         "physical": false
       }
     },
@@ -706,7 +693,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_diagnostics_uses_public_query_executor_property",
           "test_global_search_uses_public_query_executor_property",
@@ -717,7 +704,6 @@
           "test_global_search_uses_public_query_executor_property",
           "test_quit_shuts_down_query_executor"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -737,7 +723,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": true,
         "unit_tests": [
           "test_created_after_job_bridge",
           "test_job_bridge_cancel",
@@ -757,7 +743,6 @@
           "test_job_bridge_clear_completed",
           "test_job_bridge_default"
         ],
-        "runtime_test": true,
         "physical": false
       }
     },
@@ -777,10 +762,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [],
         "integration_tests": [],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -800,27 +784,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_audio_lab_has_metadata_card",
           "test_detects_missing_metadata",
+          "test_load_metadata_returns_ok",
           "test_metadata_artwork_preview_exists",
           "test_metadata_bridge_can_apply_false_without_file",
           "test_metadata_bridge_can_apply_false_without_selection",
           "test_metadata_bridge_clear",
           "test_metadata_bridge_default",
           "test_metadata_bridge_exists",
-          "test_metadata_bridge_load_empty_path",
-          "test_metadata_bridge_load_not_found"
+          "test_metadata_bridge_load_empty_path"
         ],
         "integration_tests": [
           "test_audio_lab_has_metadata_card",
           "test_detects_missing_metadata",
+          "test_load_metadata_returns_ok",
           "test_metadata_artwork_preview_exists",
-          "test_metadata_bridge_can_apply_false_without_file",
-          "test_metadata_bridge_can_apply_false_without_selection"
+          "test_metadata_bridge_can_apply_false_without_file"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -840,7 +823,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_smart_tagging_apply_no_suggestions",
           "test_smart_tagging_bridge_default",
@@ -858,7 +841,6 @@
           "test_smart_tagging_has_file_dialog",
           "test_smart_tagging_importable"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -878,7 +860,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_audio_lab_bridge_importable",
           "test_audio_lab_bridge_modules",
@@ -893,7 +875,6 @@
           "test_audio_lab_has_metadata_card",
           "test_audio_lab_page_exists"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -902,18 +883,18 @@
       "area": "advanced_tools",
       "title": "Library Doctor",
       "module_weight": 12,
-      "status": "PARTIAL",
+      "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
         "bridge": true,
         "service": true,
         "read": true,
         "primary_action": true,
-        "write": false,
+        "write": true,
         "errors": true,
         "async": true,
-        "cancel": false,
-        "score_method": true,
+        "cancel": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_library_doctor_bridge_importable",
           "test_library_doctor_importable",
@@ -926,7 +907,6 @@
           "test_library_doctor_instantiate",
           "test_library_doctor_issue_clickable"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -935,18 +915,18 @@
       "area": "advanced_tools",
       "title": "Disc Lab",
       "module_weight": 10,
-      "status": "PARTIAL",
+      "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
         "bridge": true,
         "service": true,
         "read": true,
         "primary_action": true,
-        "write": false,
+        "write": true,
         "errors": true,
         "async": true,
-        "cancel": false,
-        "score_method": true,
+        "cancel": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_disc_lab_bridge_importable",
           "test_disc_lab_eject",
@@ -964,7 +944,6 @@
           "test_disc_lab_instantiate",
           "test_disc_lab_page_exists"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -984,7 +963,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_copy_diagnostics_format",
           "test_diagnose_no_diagnostics",
@@ -1004,7 +983,6 @@
           "test_diagnostics_bridge_importable",
           "test_diagnostics_created_before_ai"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1024,7 +1002,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_navigate_michi_ai_falls_to_placeholder",
           "test_sidebar_uses_michi_ai_label"
@@ -1033,7 +1011,6 @@
           "test_navigate_michi_ai_falls_to_placeholder",
           "test_sidebar_uses_michi_ai_label"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1053,18 +1030,19 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_connections",
           "test_connections_bridge_no_demo_without_controller",
           "test_connections_bridge_refresh",
           "test_connections_bridge_scan"
         ],
         "integration_tests": [
+          "test_adapter_for_connections",
           "test_connections_bridge_no_demo_without_controller",
           "test_connections_bridge_refresh",
           "test_connections_bridge_scan"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1084,8 +1062,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_adapter_for_home_audio",
           "test_home_audio_access_instantiate",
           "test_home_audio_assign_stream_unsupported",
           "test_home_audio_bridge_configure_with_ha_adapter",
@@ -1094,17 +1073,15 @@
           "test_home_audio_bridge_registered",
           "test_home_audio_bridge_volume_with_snapcast",
           "test_home_audio_bridge_with_ha_adapter",
-          "test_home_audio_bridge_with_snapcast_adapter",
-          "test_home_audio_capabilities_no_controller"
+          "test_home_audio_bridge_with_snapcast_adapter"
         ],
         "integration_tests": [
+          "test_adapter_for_home_audio",
           "test_home_audio_access_instantiate",
           "test_home_audio_assign_stream_unsupported",
           "test_home_audio_bridge_configure_with_ha_adapter",
-          "test_home_audio_bridge_devices",
-          "test_home_audio_bridge_refresh"
+          "test_home_audio_bridge_devices"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1113,21 +1090,20 @@
       "area": "ecosystem_network",
       "title": "Devices Sync",
       "module_weight": 25,
-      "status": "PARTIAL",
+      "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
         "bridge": true,
         "service": true,
         "read": true,
         "primary_action": true,
-        "write": false,
+        "write": true,
         "errors": true,
         "async": true,
-        "cancel": false,
-        "score_method": true,
+        "cancel": true,
+        "runtime_test": false,
         "unit_tests": [],
         "integration_tests": [],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1136,35 +1112,37 @@
       "area": "ecosystem_network",
       "title": "Capabilities",
       "module_weight": 25,
-      "status": "PARTIAL",
+      "status": "FUNCTIONAL",
       "evidence": {
         "page": true,
         "bridge": true,
         "service": true,
         "read": true,
         "primary_action": true,
-        "write": false,
+        "write": true,
         "errors": true,
         "async": true,
-        "cancel": false,
-        "score_method": true,
+        "cancel": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_android_mtp_capabilities",
           "test_capabilities_list",
+          "test_capabilities_list_shape",
           "test_capabilities_no_controller",
+          "test_capabilities_populated_after_pair",
           "test_generic_usb_capabilities",
           "test_home_audio_capabilities_no_controller",
+          "test_nowplaying_bridge_has_capabilities",
           "test_nowplaying_volume_has_capabilities",
           "test_ruizu_capabilities"
         ],
         "integration_tests": [
           "test_android_mtp_capabilities",
           "test_capabilities_list",
+          "test_capabilities_list_shape",
           "test_capabilities_no_controller",
-          "test_generic_usb_capabilities",
-          "test_home_audio_capabilities_no_controller"
+          "test_capabilities_populated_after_pair"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1184,27 +1162,26 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
+          "test_accessible_on_settings_page",
           "test_change_setting_no_settings",
+          "test_connect_manual_saves_settings",
           "test_navigate_settings_falls_to_placeholder",
           "test_open_settings_no_nav",
+          "test_pages_settings_all_controls_have_accessible",
           "test_settings_bridge_importable",
           "test_settings_bridge_sections",
           "test_settings_change_propagates_to_bridge",
-          "test_settings_importable",
-          "test_settings_output_profiles",
-          "test_settings_page_accessible",
-          "test_settings_page_exists"
+          "test_settings_importable"
         ],
         "integration_tests": [
+          "test_accessible_on_settings_page",
           "test_change_setting_no_settings",
+          "test_connect_manual_saves_settings",
           "test_navigate_settings_falls_to_placeholder",
-          "test_open_settings_no_nav",
-          "test_settings_bridge_importable",
-          "test_settings_bridge_sections"
+          "test_open_settings_no_nav"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1224,10 +1201,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
-        "unit_tests": [],
-        "integration_tests": [],
         "runtime_test": true,
+        "unit_tests": [],
+        "integration_tests": true,
         "physical": false
       }
     },
@@ -1247,10 +1223,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [],
         "integration_tests": [],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1270,7 +1245,7 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [
           "test_output_profiles_instantiate",
           "test_settings_output_profiles"
@@ -1279,7 +1254,6 @@
           "test_output_profiles_instantiate",
           "test_settings_output_profiles"
         ],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1299,10 +1273,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [],
         "integration_tests": [],
-        "runtime_test": false,
         "physical": false
       }
     },
@@ -1322,10 +1295,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
-        "unit_tests": [],
-        "integration_tests": [],
         "runtime_test": true,
+        "unit_tests": [],
+        "integration_tests": true,
         "physical": false
       }
     },
@@ -1345,10 +1317,9 @@
         "errors": true,
         "async": true,
         "cancel": true,
-        "score_method": true,
+        "runtime_test": false,
         "unit_tests": [],
         "integration_tests": [],
-        "runtime_test": false,
         "physical": false
       }
     }

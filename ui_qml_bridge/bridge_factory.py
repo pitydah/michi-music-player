@@ -427,16 +427,15 @@ class BridgeFactory(QObject):
         if "global_search" not in self._bridges:
             from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
             self._bridges["global_search"] = GlobalSearchBridge(
-                db=self._services.db,
-                search_engine=self._services.search_engine,
-                query_executor=self._get_query_executor(),
+                search_service=self._get_global_search_service(),
             )
         return self._bridges["global_search"]
 
     def create_cover_provider_bridge(self):
         if "cover_provider" not in self._bridges:
             from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
-            self._bridges["cover_provider"] = CoverProviderBridge(db=self._services.db)
+            cover_bridge = self.get("cover")
+            self._bridges["cover_provider"] = CoverProviderBridge(cover_bridge=cover_bridge)
         return self._bridges["cover_provider"]
 
     def create_job_bridge(self):
@@ -695,9 +694,6 @@ class BridgeFactory(QObject):
         # Verify shared executors via public API
         qe = self._qe_cache
         if qe:
-            gs = self._bridges.get("global_search")
-            if gs and hasattr(gs, 'query_executor') and hasattr(qe, 'submit'):
-                assert gs.query_executor is qe, "global_search must use shared QueryExecutor"
             diag = self._bridges.get("diagnostics")
             if diag and hasattr(diag, 'query_executor'):
                 assert diag.query_executor is qe, "diagnostics must use shared QueryExecutor"

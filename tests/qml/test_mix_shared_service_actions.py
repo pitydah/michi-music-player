@@ -21,8 +21,8 @@ def mock_db():
 def mock_mqs():
     mqs = MagicMock()
     mqs.favorites.return_value = [
-        {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "Al", "duration": 200},
-        {"track_id": 2, "title": "Fav 2", "artist": "B", "album": "Bl", "duration": 300},
+        {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "Al", "duration": 200, "reason": "Favorito"},
+        {"track_id": 2, "title": "Fav 2", "artist": "B", "album": "Bl", "duration": 300, "reason": "Favorito"},
     ]
     mqs.recent.return_value = [
         {"track_id": 3, "title": "Recent 1", "artist": "A", "album": "Al", "duration": 200},
@@ -46,7 +46,7 @@ def mock_tas():
 
 def test_bridge_creation(empty_bridge):
     assert empty_bridge.categories is not None
-    assert len(empty_bridge.categories) == 5
+    assert len(empty_bridge.categories) == 12
 
 
 def test_load_favorites(mock_mqs):
@@ -88,7 +88,7 @@ def test_load_daily_mix(mock_mqs):
 def test_load_unknown_mix(mock_mqs):
     bridge = MixBridge(query_service=mock_mqs)
     result = bridge.loadMix("nonexistent")
-    assert result["ok"]
+    assert not result["ok"]
 
 
 def test_play_mix(mock_mqs, mock_tas):
@@ -172,7 +172,7 @@ def test_no_track_action_service():
     bridge._current_songs = [{"track_id": 1}]
     result = bridge.playMix()
     assert not result["ok"]
-    assert result["error"] == "NO_ACTION_SERVICE"
+    assert result["error_code"] in ("NO_PLAYBACK", "NO_ACTION_SERVICE")
 
 
 def test_stale_protection():

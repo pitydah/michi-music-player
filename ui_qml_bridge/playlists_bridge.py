@@ -379,27 +379,7 @@ class PlaylistsBridge(QObject):
     def previewPlaylistImport(self, filepath: str):
         if self._svc:
             return self._svc.import_preview(filepath)
-        if not filepath or not Path(filepath).is_file():
-            return {"ok": False, "error": "FILE_NOT_FOUND"}
-        try:
-            from ui.playlist_io import parse_playlist_entries
-            entries = parse_playlist_entries(filepath)
-            valid = 0
-            missing = 0
-            for entry in entries:
-                fp = getattr(entry, 'filepath', entry) if not isinstance(entry, str) else entry
-                if isinstance(fp, str) and Path(fp).is_file():
-                    valid += 1
-                else:
-                    missing += 1
-            return {
-                "ok": True, "format": Path(filepath).suffix,
-                "name": Path(filepath).stem, "total_entries": len(entries),
-                "valid_entries": valid, "missing_entries": missing,
-                "encoding": "utf-8",
-            }
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(str, str, result=dict)
     def confirmPlaylistImport(self, filepath: str, name: str = ""):
@@ -408,29 +388,12 @@ class PlaylistsBridge(QObject):
             if result.get("ok"):
                 self.refresh()
             return result
-        if not filepath or not Path(filepath).is_file():
-            return {"ok": False, "error": "FILE_NOT_FOUND"}
-        if not self._can():
-            return {"ok": False, "error": "NO_DB"}
-        try:
-            from ui.playlist_io import parse_playlist_entries
-            entries = parse_playlist_entries(filepath)
-            playlist_name = name or Path(filepath).stem
-            pid = self._db.create_playlist(playlist_name)
-            count = 0
-            for entry in entries:
-                fp = getattr(entry, 'filepath', entry) if not isinstance(entry, str) else entry
-                if isinstance(fp, str) and Path(fp).is_file():
-                    self._db.add_track_to_playlist(pid, filepath=fp)
-                    count += 1
-            self.refresh()
-            return {"ok": True, "id": pid, "count": count}
-        except Exception as e:
-            logger.debug("confirmPlaylistImport failed: %s", e)
-            return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(str, result=dict)
     def cancelPlaylistImport(self, import_id: str):
+        if self._svc and hasattr(self._svc, 'import_cancel'):
+            return self._svc.import_cancel(import_id)
         return {"ok": True}
 
     @Slot(str, result=dict)
@@ -445,23 +408,7 @@ class PlaylistsBridge(QObject):
     def exportM3U(self, playlist_id: int, destination_path: str):
         if self._svc:
             return self._svc.export(playlist_id, destination_path)
-        if not destination_path:
-            return {"ok": False, "error": "EMPTY_PATH"}
-        if not self._can():
-            return {"ok": False, "error": "NO_DB"}
-        try:
-            from ui.playlist_io import export_m3u
-            internal = self._get_playlist_items_internal(playlist_id)
-            if not internal:
-                return {"ok": False, "error": "NO_TRACKS"}
-            fps = [t["filepath"] for t in internal if t.get("filepath")]
-            if not fps:
-                return {"ok": False, "error": "NO_VALID_TRACKS"}
-            export_m3u(destination_path, fps)
-            return {"ok": True, "count": len(fps)}
-        except Exception as e:
-            logger.debug("exportM3U failed: %s", e)
-            return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "NO_SERVICE"}
 
     @Slot(int, str, result=dict)
     def exportM3U8(self, playlist_id: int, destination_path: str):

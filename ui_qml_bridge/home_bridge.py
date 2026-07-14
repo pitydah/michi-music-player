@@ -95,14 +95,6 @@ class HomeBridge(QObject):
             self._tracks = getattr(self._lib, 'songCount', 0)
             self._albums = getattr(self._lib, 'albumCount', 0)
             self._artists = getattr(self._lib, 'artistCount', 0)
-        elif self._db and hasattr(self._db, 'conn'):
-            try:
-                row = self._db.conn.execute(
-                    "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL"
-                ).fetchone()
-                self._tracks = row[0] if row else 0
-            except Exception:
-                pass
 
     def _load_playback(self):
         if self._player:

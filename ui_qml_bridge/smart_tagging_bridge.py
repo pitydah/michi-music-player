@@ -407,7 +407,7 @@ class SmartTaggingBridge(QObject):
         if self._wm:
             self._wm.cancel_task("st_" + str(self._scan_counter))
         self.dataChanged.emit()
-        self.progressChanged.emit()
+        self.progressChanged.emit(0.0)
         return {"ok": True}
 
     @Slot()

@@ -27,7 +27,7 @@ class TestThemeBridgeProperties:
     def test_theme_setter_calls_coordinator(self, bridge):
         with patch("ui_qml_bridge.theme_bridge.SETTINGS"):
             bridge.theme = "light"
-            bridge._coordinator.apply.assert_called_once_with("appearance/theme", "light")
+            bridge._coordinator.execute.assert_called_once_with("appearance/theme", "light")
 
     def test_theme_setter_updates_dark_mode(self, bridge):
         with patch("ui_qml_bridge.theme_bridge.SETTINGS"):

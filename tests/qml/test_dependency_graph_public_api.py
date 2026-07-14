@@ -28,11 +28,10 @@ def _has_private_access(obj, attr: str) -> bool:
 
 
 def test_global_search_uses_public_query_executor_property():
-    """GlobalSearchBridge must expose query_executor as public property."""
+    """GlobalSearchBridge must expose search_service through public API."""
     from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
-    bridge = GlobalSearchBridge(db=MagicMock(), query_executor=MagicMock())
-    assert hasattr(bridge, 'query_executor'), "query_executor property missing"
-    assert bridge.query_executor is not None
+    bridge = GlobalSearchBridge(search_service=MagicMock())
+    assert hasattr(bridge, '_svc'), "search_service missing"
 
 
 def test_diagnostics_uses_public_query_executor_property():
@@ -58,7 +57,7 @@ def test_assert_wiring_no_private_attr():
     factory._qe_cache = MagicMock()
 
     from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
-    gs = GlobalSearchBridge(db=MagicMock(), query_executor=factory._qe_cache)
+    gs = GlobalSearchBridge(search_service=MagicMock())
     factory._bridges["global_search"] = gs
 
     from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge

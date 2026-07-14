@@ -120,21 +120,13 @@ def _create_services() -> ServiceBundle:
     except Exception as e:
         logger.debug("QML: MichiLink init failed: %s", e)
 
-    # Disc Detection Service
-    try:
-        from ui.audio_lab.services.disc_detection_service import DiscDetectionService
-        bundle.disc_service = DiscDetectionService()
-        logger.info("QML: DiscDetectionService created")
-    except Exception as e:
-        logger.debug("QML: DiscDetectionService init failed: %s", e)
-
-    # Metadata Service
+    # Smart Tagging + Metadata Service
     try:
         from ui.audio_lab.services.smart_tagging_service import SmartTaggingService
         bundle.smart_tagging_service = SmartTaggingService()
         bundle.metadata_service = bundle.smart_tagging_service
-    except Exception as e:
-        logger.debug("QML: SmartTagging init failed: %s", e)
+    except Exception:
+        pass
 
     logger.info("QML: Services available: %s", bundle.available_services)
     return bundle

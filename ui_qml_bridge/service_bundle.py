@@ -17,8 +17,6 @@ if TYPE_CHECKING:
     from metadata.services import MetadataService
     from integrations.michi_link.services.service_manager import ServiceManager as MichiLinkManager
     from streaming.disc_service import DiscService
-    from ui.controllers.playlist_controller import PlaylistController
-    from ui.controllers.smart_tagging_controller import SmartTaggingController
 
 
 @dataclass
@@ -35,8 +33,7 @@ class ServiceBundle:
     disc_service: DiscService | None = None
     worker_manager: WorkerManager | None = None
     metadata_service: MetadataService | None = None
-    playlist_controller: PlaylistController | None = None
-    smart_tagging_service: SmartTaggingController | None = None
+    smart_tagging_service: Any | None = None
 
     def has(self, name: str) -> bool:
         return getattr(self, name, None) is not None

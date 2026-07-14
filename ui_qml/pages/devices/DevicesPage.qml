@@ -8,8 +8,8 @@ import "."
 Item {
     id: root
 
-    property var devicesBridge: typeof devicesBridge !== "undefined" ? devicesBridge : null
-    property var deviceSyncService: typeof deviceSyncService !== "undefined" ? deviceSyncService : null
+    property var devicesBridge: typeof window !== "undefined" && window.devicesBridge ? window.devicesBridge : null
+    property var deviceSyncService: typeof window !== "undefined" && window.deviceSyncService ? window.deviceSyncService : null
 
     Component.onCompleted: {
         if (root.devicesBridge && typeof root.devicesBridge.refresh !== "undefined")

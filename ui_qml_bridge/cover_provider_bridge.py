@@ -1,4 +1,7 @@
-"""CoverProviderBridge — async cover loading with LRU cache."""
+"""CoverProviderBridge — async cover loading with LRU cache.
+
+Covers sourced via CoverBridge (repository-backed), no inline SQL.
+"""
 from __future__ import annotations
 
 import logging
@@ -13,9 +16,9 @@ _MAX_CACHE = 500
 class CoverProviderBridge(QObject):
     coverReady = Signal(str, str)  # cover_key, data_url_or_path
 
-    def __init__(self, db=None, parent=None):
+    def __init__(self, cover_bridge=None, parent=None):
         super().__init__(parent)
-        self._db = db
+        self._cover_bridge = cover_bridge
         self._cache: dict[str, dict] = {}
         self._max_cache = _MAX_CACHE
 
@@ -45,19 +48,12 @@ class CoverProviderBridge(QObject):
             cached = self._cache[cover_key]
             if cached.get("data_url"):
                 return cached["data_url"]
-        # Try DB album_art_cache
         data_url = ""
-        if self._db and hasattr(self._db, 'conn'):
+        if self._cover_bridge and hasattr(self._cover_bridge, 'get_cover_data_url'):
             try:
-                row = self._db.conn.execute(
-                    "SELECT data FROM album_art_cache WHERE album_hash=?",
-                    (cover_key,)
-                ).fetchone()
-                if row and row[0]:
-                    import base64
-                    data_url = f"data:image/jpeg;base64,{base64.b64encode(row[0]).decode('ascii')}"
+                data_url = self._cover_bridge.get_cover_data_url(cover_key) or ""
             except Exception:
-                pass
+                data_url = ""
         self._insert_cache(cover_key, data_url)
         return data_url
 

@@ -113,3 +113,51 @@ class OutputProfilesBridge(QObject):
                     "requested_profile": profile_id, "active_profile": self._active_id,
                     "requested_backend": backend, "active_backend": self._resolve_backend(self._active_id),
                     "fallback": False, "requires_restart": False}
+
+    @Slot(result=dict)
+    def duplicateProfile(self, profile_id: str):
+        if not self._player or not hasattr(self._player, 'duplicate_profile'):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            result = self._player.duplicate_profile(profile_id)
+            self.refresh()
+            if isinstance(result, dict) and result.get("ok"):
+                return result
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def deleteProfile(self, profile_id: str):
+        if not self._player or not hasattr(self._player, 'delete_profile'):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            self._player.delete_profile(profile_id)
+            if self._active_id == profile_id:
+                self._active_id = "standard"
+            self.refresh()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(dict, result=dict)
+    def createProfile(self, data: dict):
+        if not self._player or not hasattr(self._player, 'create_profile'):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            self._player.create_profile(data)
+            self.refresh()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(dict, result=dict)
+    def updateProfile(self, data: dict):
+        if not self._player or not hasattr(self._player, 'update_profile'):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            self._player.update_profile(data)
+            self.refresh()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
