@@ -1,0 +1,207 @@
+# QWidget Decommission Matrix — status of each domain
+domains:
+  - domain: navigation
+    widget_file: ui/sidebar_controller.py
+    qml_route: navigation
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+    removal_blockers: []
+
+  - domain: app_bridge
+    widget_file: ui/window.py
+    qml_route: app
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+    removal_blockers: []
+
+  - domain: theme
+    widget_file: ui/style_tokens.py
+    qml_route: theme
+    widget_status: W1_FROZEN
+    qml_status: PRODUCTIVE
+
+  - domain: notification
+    widget_file: ui/controllers/status_controller.py
+    qml_route: notification
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: accessibility
+    widget_file: ui/settings_pages.py
+    qml_route: accessibility
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: command_palette
+    widget_file: ui/controllers/command_palette_controller.py
+    qml_route: command_palette
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: home
+    widget_file: ui/hubs/home_page.py
+    qml_route: home
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: library
+    widget_file: ui/controllers/library_controller.py
+    qml_route: library.tracks
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: album_views
+    widget_file: ui/pages/album_page.py
+    qml_route: library.albums
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: playback
+    widget_file: audio/player_service.py
+    qml_route: playback
+    widget_status: W2_THIN_ADAPTER
+    qml_status: PRODUCTIVE
+
+  - domain: nowplaying
+    widget_file: ui/hubs/nowplaying/nowplaying_bar.py
+    qml_route: nowplaying
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: queue
+    widget_file: ui/pages/queue_page.py
+    qml_route: queue
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: playlists
+    widget_file: ui/pages/playlists_page.py
+    qml_route: playlists
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: history
+    widget_file: ui/pages/history_page.py
+    qml_route: history
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: mix
+    widget_file: ui/pages/smart_mix_page.py
+    qml_route: mix
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: lyrics
+    widget_file: ui/pages/lyrics_page.py
+    qml_route: lyrics
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: radio
+    widget_file: ui/pages/radio_page.py
+    qml_route: radio
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: global_search
+    widget_file: ui/controllers/search_controller.py
+    qml_route: search
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: eq_dsp
+    widget_file: ui/pages/equalizer_page.py
+    qml_route: equalizer
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: metadata
+    widget_file: ui/pages/metadata_page.py
+    qml_route: metadata
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: smart_tagging
+    widget_file: ui/audio_lab/services/__init__.py
+    qml_route: tagging
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: audio_lab
+    widget_file: ui/pages/audio_lab_page.py
+    qml_route: audio_lab
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: library_doctor
+    widget_file: ui/pages/library_doctor_page.py
+    qml_route: library_doctor
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: diagnostics
+    widget_file: ui/pages/diagnostics_page.py
+    qml_route: diagnostics
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: michi_ai
+    widget_file: ui/controllers/ai_controller.py
+    qml_route: ai
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: connections
+    widget_file: ui/pages/connections_page.py
+    qml_route: connections
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: home_audio
+    widget_file: ui/pages/home_audio_page.py
+    qml_route: home_audio
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: devices_sync
+    widget_file: ui/pages/devices_page.py
+    qml_route: devices
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: settings
+    widget_file: ui/pages/settings_page.py
+    qml_route: settings
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: output_profiles
+    widget_file: ui/pages/output_profiles_page.py
+    qml_route: outputs
+    widget_status: W3_LEGACY_ONLY
+    qml_status: PRODUCTIVE
+
+  - domain: disc_lab
+    widget_file: ui/pages/disc_lab_page.py
+    qml_route: disc_lab
+    widget_status: W1_FROZEN
+    qml_status: PARTIAL_WORKFLOW
+
+  - domain: capabilities
+    widget_file: core/app_context.py
+    qml_route: capabilities
+    widget_status: W1_FROZEN
+    qml_status: PRODUCTIVE
+
+  - domain: performance
+    widget_file: scripts/qml_library_benchmark.py
+    qml_route: performance
+    widget_status: W1_FROZEN
+    qml_status: PRODUCTIVE
+
+  - domain: runtime_quality
+    widget_file: scripts/qml_runtime_quality_audit.py
+    qml_route: runtime_quality
+    widget_status: W1_FROZEN
+    qml_status: PRODUCTIVE

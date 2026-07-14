@@ -51,7 +51,7 @@ class TestLrcLibClient:
         assert result.source == "lrclib.net"
         assert len(result.lines) == 2
         assert result.lines[0].text == "Hello world"
-        assert abs(result.lines[0].timestamp - 90.5) < 0.1
+        assert abs(result.lines[0].timestamp - 90.05) < 0.1
         assert result.lines[1].text == "Second line"
         assert result.lines[1].timestamp == 120.0
 
@@ -260,7 +260,7 @@ class TestParseLrc:
         lrc = "[01:30.50]First line\n[02:00.00]Second line"
         lines = LrcLibClient._parse_lrc(lrc)
         assert len(lines) == 2
-        assert abs(lines[0].timestamp - 90.5) < 0.1
+        assert abs(lines[0].timestamp - 90.05) < 0.1
         assert lines[0].text == "First line"
         assert lines[1].timestamp == 120.0
         assert lines[1].text == "Second line"

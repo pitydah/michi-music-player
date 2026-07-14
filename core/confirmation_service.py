@@ -1,7 +1,4 @@
-"""ConfirmationService — token-based confirmation for destructive operations.
-
-Prevents double-apply and ensures user explicitly approved the operation.
-"""
+"""ConfirmationService — token-based confirmation for destructive operations."""
 from __future__ import annotations
 
 import time
