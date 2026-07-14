@@ -1,7 +1,7 @@
 """Interfaces — abstract definitions for controller contracts."""
 
 from abc import ABC, abstractmethod
-from PySide6.QtWidgets import QWidget
+
 
 
 class IPlaybackController(ABC):
@@ -82,11 +82,11 @@ class IPlaybackController(ABC):
 
 class IViewController(ABC):
     @abstractmethod
-    def register(self, name: str, widget: QWidget):
+    def register(self, name: str, widget):
         ...
 
     @abstractmethod
-    def replace(self, name: str, widget: QWidget, delete_old: bool = True):
+    def replace(self, name: str, widget, delete_old: bool = True):
         ...
 
     @abstractmethod
@@ -98,6 +98,6 @@ class IViewController(ABC):
         ...
 
     @abstractmethod
-    def widget(self, name: str) -> QWidget | None:
+    def widget(self, name: str):
         ...
 

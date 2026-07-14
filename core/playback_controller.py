@@ -4,7 +4,7 @@ import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QApplication, QMenu, QDialog
+
 
 from audio.player import PlaybackState
 from sources.base_source import TrackRef
@@ -25,6 +25,7 @@ class PlaybackController:
         if not fp:
             return
         is_remote = fp.startswith("http://") or fp.startswith("https://")
+        from PySide6.QtWidgets import QMenu, QApplication
         menu = QMenu(self._win)
         menu.addAction("Reproducir", lambda: self._win._ctx.play_file(fp))
         menu.addAction("Añadir a cola",
@@ -65,6 +66,7 @@ class PlaybackController:
         self._win._ctx.rebuild_sidebar()
 
     def edit_tags(self, filepath: str):
+        from PySide6.QtWidgets import QDialog
         from library.tag_editor import TagEditorDialog
         dlg = TagEditorDialog(filepath, self._win)
         if dlg.exec() == QDialog.DialogCode.Accepted:
