@@ -48,3 +48,25 @@ class RouteRegistryBridge(QObject):
     def getCategory(self, route: str):
         info = ROUTES.get(route)
         return info["category"] if info else "system"
+
+    @Slot(str, result="QVariantMap")
+    def getParams(self, route: str):
+        info = ROUTES.get(route)
+        return info.get("params", {}) if info else {}
+
+    @Slot(str, result="QVariantList")
+    def getRequiredParamKeys(self, route: str):
+        info = ROUTES.get(route)
+        params = info.get("params", {}) if info else {}
+        return [k for k, v in params.items() if v.get("required")]
+
+    @Slot(str, "QVariantMap", result=bool)
+    def hasRequiredParams(self, route: str, params: dict):
+        info = ROUTES.get(route)
+        if not info:
+            return False
+        route_params = info.get("params", {})
+        for key, spec in route_params.items():
+            if spec.get("required") and key not in params:
+                return False
+        return True

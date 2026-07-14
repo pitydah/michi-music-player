@@ -161,16 +161,16 @@ class MichiAIBridge(QObject):
             self.responseReceived.emit("Acción cancelada.")
             return {"name": "_cancel", "internal": True}
 
-        if any(p in text_lower for p in ("reproducir canción", "reproduce ", "pon ", "play ")):
+        if any(p in text_lower for p in ("reproducir canción", "reproduce canción", "reproduce ", "pon ", "play ")):
             return {"name": "reproducir canción", "description": "reproducir una canción", "requires_confirmation": False}
 
-        if any(p in text_lower for p in ("reproducir álbum", "reproduce álbum", "pon álbum", "play album")):
+        if any(p in text_lower for p in ("reproducir álbum", "reproduce álbum", "reproduce el álbum", "pon álbum", "play album")):
             return {"name": "reproducir álbum", "description": "reproducir un álbum", "requires_confirmation": False}
 
         if any(p in text_lower for p in ("encolar", "añadir a cola", "agregar a cola")):
             return {"name": "encolar", "description": "encolar canciones", "requires_confirmation": False}
 
-        if any(p in text_lower for p in ("buscar ", "busca ", "encuentra ")):
+        if any(p in text_lower for p in ("buscar ", "buscar", "busca ", "encuentra ")):
             return {"name": "buscar", "description": "buscar en la biblioteca", "requires_confirmation": False}
 
         if any(p in text_lower for p in ("abrir ruta", "navegar a", "ir a ", "abre ")):
@@ -234,7 +234,8 @@ class MichiAIBridge(QObject):
         if name == "abrir ajustes":
             if self._nav and hasattr(self._nav, 'navigate'):
                 self._nav.navigate("settings")
-            return {"ok": True}
+                return {"ok": True, "route": "settings"}
+            return {"ok": False, "error": "NO_NAVIGATION_SERVICE"}
         if name == "cambiar ajuste seguro":
             return self._action_change_setting(action)
         return {"ok": False, "error": f"Acción desconocida: {name}"}
@@ -242,9 +243,18 @@ class MichiAIBridge(QObject):
     def _action_play(self, action: dict) -> dict:
         text = action.get("_original", "")
         if "álbum" in text.lower() or "album" in text.lower():
-            if self._tas and hasattr(self._tas, 'play_album'):
+            if self._tas and hasattr(self._tas, 'play_album') and callable(self._tas.play_album):
                 return self._tas.play_album(album=text)
-            return {"ok": True}
+            if self._global_search:
+                try:
+                    results = self._global_search.search(text, owner="michi_ai")
+                    if results.get("ok") and results.get("results"):
+                        first = results["results"][0]
+                        if first.get("type") == "album":
+                            return {"ok": True, "album": first.get("title")}
+                except Exception:
+                    pass
+            return {"ok": False, "error": "NO_SEARCH_SERVICE"}
         if self._tas and hasattr(self._tas, 'play_track'):
             parts = text.split(" ", 2)
             track_id = None
@@ -254,8 +264,6 @@ class MichiAIBridge(QObject):
                     break
             if track_id:
                 return self._tas.play_track(track_id)
-            if hasattr(self._tas, 'search_and_play'):
-                return self._tas.search_and_play(text)
             if self._global_search:
                 try:
                     results = self._global_search.search(text, owner="michi_ai")
@@ -263,14 +271,16 @@ class MichiAIBridge(QObject):
                         first = results["results"][0]
                         if first.get("type") == "track" and first.get("id"):
                             return self._tas.play_track(int(first["id"]))
-                except Exception:
-                    pass
-            return {"ok": True}
+                        return {"ok": False, "error": "TRACK_NOT_FOUND"}
+                    return {"ok": False, "error": "TRACK_NOT_FOUND"}
+                except Exception as e:
+                    return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": "NO_SEARCH_SERVICE"}
         return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
 
     def _action_enqueue(self, action: dict) -> dict:
         text = action.get("_original", "")
-        if self._tas and hasattr(self._tas, 'enqueue_track'):
+        if self._tas:
             parts = text.split(" ", 2)
             track_id = None
             for p in parts:
@@ -278,8 +288,23 @@ class MichiAIBridge(QObject):
                     track_id = int(p)
                     break
             if track_id:
-                return self._tas.enqueue_track(track_id)
-            return {"ok": True, "note": "Encolado (simulado sin track_id)"}
+                if hasattr(self._tas, 'enqueue_track') and callable(self._tas.enqueue_track):
+                    return self._tas.enqueue_track(track_id)
+                return {"ok": False, "error": "NO_ENQUEUE_METHOD"}
+            if self._global_search:
+                try:
+                    results = self._global_search.search(text, owner="michi_ai")
+                    if results.get("ok") and results.get("results"):
+                        first = results["results"][0]
+                        if first.get("type") == "track" and first.get("id"):
+                            if hasattr(self._tas, 'enqueue_track') and callable(self._tas.enqueue_track):
+                                return self._tas.enqueue_track(int(first["id"]))
+                            return {"ok": False, "error": "NO_ENQUEUE_METHOD"}
+                        return {"ok": False, "error": "TRACK_NOT_FOUND"}
+                    return {"ok": False, "error": "TRACK_NOT_FOUND"}
+                except Exception as e:
+                    return {"ok": False, "error": str(e)}
+            return {"ok": False, "error": "NO_SEARCH_SERVICE"}
         return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
 
     def _action_search(self, action: dict) -> dict:
@@ -312,7 +337,7 @@ class MichiAIBridge(QObject):
         if self._nav and hasattr(self._nav, 'navigate'):
             self._nav.navigate(target)
             return {"ok": True, "route": target}
-        return {"ok": True}
+        return {"ok": False, "error": "NO_NAVIGATION_SERVICE"}
 
     def _action_create_playlist(self, action: dict) -> dict:
         text = action.get("_original", "")
@@ -325,9 +350,11 @@ class MichiAIBridge(QObject):
                 parts = text.split("nombre", 1)
                 if len(parts) > 1:
                     name = parts[1].strip()
-        if self._playlist_svc and hasattr(self._playlist_svc, 'create'):
-            return self._playlist_svc.create(name)
-        if self._tas and hasattr(self._tas, 'create_playlist'):
+        if self._playlist_svc:
+            if hasattr(self._playlist_svc, 'create') and callable(self._playlist_svc.create):
+                return self._playlist_svc.create(name)
+            return {"ok": False, "error": "NO_CREATE_METHOD"}
+        if self._tas and hasattr(self._tas, 'create_playlist') and callable(self._tas.create_playlist):
             return self._tas.create_playlist(name)
         return {"ok": False, "error": "NO_PLAYLIST_SERVICE"}
 
@@ -362,20 +389,38 @@ class MichiAIBridge(QObject):
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "NO_DIAGNOSTICS_SERVICE"}
 
-    def _action_change_setting(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        if self._settings and hasattr(self._settings, 'set_'):
-            key = "audio/volume"
+    def _parse_intent(self, text: str) -> dict | None:
+        text_lower = text.lower()
+        if "volumen" in text_lower:
             val = 75
             for word in text.split():
                 if word.isdigit():
                     val = int(word)
                     break
-            if "tema" in text.lower() or "theme" in text.lower() or "oscuro" in text.lower():
-                key = "theme/mode"
-                val = "dark"
-            elif "volumen" in text.lower():
-                key = "audio/volume"
+            return {"action": "cambiar ajuste seguro", "entities": {"setting_key": "playback/default_volume", "setting_value": val}}
+        if "tema" in text_lower or "theme" in text_lower or "oscuro" in text_lower:
+            return {"action": "cambiar ajuste seguro", "entities": {"setting_key": "appearance/theme", "setting_value": "dark"}}
+        return None
+
+    def _action_change_setting(self, action: dict) -> dict:
+        text = action.get("_original", "")
+        if self._settings and hasattr(self._settings, 'set_'):
+            key = "playback/default_volume"
+            val = 75
+            intent = self._parse_intent(text)
+            if intent:
+                key = intent["entities"].get("setting_key", key)
+                val = intent["entities"].get("setting_value", val)
+            else:
+                for word in text.split():
+                    if word.isdigit():
+                        val = int(word)
+                        break
+                if "tema" in text.lower() or "theme" in text.lower() or "oscuro" in text.lower():
+                    key = "appearance/theme"
+                    val = "dark"
+                elif "volumen" in text.lower():
+                    key = "playback/default_volume"
             try:
                 self._settings.set_(key, val)
                 return {"ok": True, "key": key, "value": val}

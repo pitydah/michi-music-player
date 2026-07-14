@@ -1,6 +1,6 @@
 # QML Library Performance Report
 
-**Date:** 2026-07-13T21:53:17
+**Date:** 2026-07-13T23:17:52
 **Environment:** Linux, Python 3.11, PySide6 6.11, offscreen
 
 ## Synthetic Benchmark Results

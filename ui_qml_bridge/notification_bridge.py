@@ -46,6 +46,22 @@ class NotificationBridge(QObject):
     def queueLength(self):
         return len(self._queue)
 
+    @Property("QVariant", notify=notificationChanged)
+    def action_registry(self):
+        return self._action_registry
+
+    @Property("QVariant", notify=notificationChanged)
+    def job_bridge(self):
+        return self._job_bridge
+
+    @Property("QVariant", notify=notificationChanged)
+    def current(self):
+        return self._current
+
+    @Property("QVariantList", notify=notificationChanged)
+    def queue(self):
+        return list(self._queue)
+
     def _next(self):
         if not self._queue:
             self._current = None
@@ -247,6 +263,13 @@ class NotificationBridge(QObject):
         }
 
     # ── Score ──
+
+    @Slot(str, result=dict)
+    def retry(self, notification_id: str):
+        try:
+            return self.executeNotificationAction(notification_id)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def notificationScore(self) -> dict:

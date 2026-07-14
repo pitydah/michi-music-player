@@ -60,11 +60,23 @@ class NavigationBridge(QObject):
         self.routeChanged.emit(resolved)
         self.backStackChanged.emit()
 
+    def _has_required_params(self, route: str, params: dict) -> bool:
+        info = ROUTES.get(route)
+        if not info:
+            return True
+        route_params = info.get("params", {})
+        for key, spec in route_params.items():
+            if spec.get("required") and key not in params:
+                return False
+        return True
+
     @Slot(str, "QVariant")
     def navigateWithParams(self, route: str, params: dict):
         if params is None:
             params = {}
         resolved = self._resolve(route)
+        if not self._has_required_params(resolved, params):
+            return
         self._history.append((self._current_route, dict(self._current_params)))
         if len(self._history) > self._max_history:
             self._history.pop(0)
