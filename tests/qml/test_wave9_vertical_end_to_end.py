@@ -324,9 +324,13 @@ class TestWave9SmokeImport:
         coord.activate_folders()
 
 
-@pytest.mark.skip(reason="Requiere ejecucion en aislamiento (paso CI separado: QML vertical integration tests)")
+@pytest.mark.isolation
 class TestWave10RealVerticalFlow:
-    """Real E2E with SQLite temp DB, WorkerManager, QueryExecutor, models."""
+    """Real E2E with SQLite temp DB, WorkerManager, QueryExecutor, models.
+
+    Requires process isolation due to LibraryConnectionFactory thread-local
+    connection caching. Run with: pytest tests/qml/ -m isolation
+    """
 
     @pytest.fixture
     def library_db(self, tmp_path):
@@ -339,7 +343,7 @@ class TestWave10RealVerticalFlow:
             CREATE TABLE IF NOT EXISTS media_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 filepath TEXT UNIQUE NOT NULL,
-                filename TEXT NOT NULL,
+                filename TEXT NOT NULL DEFAULT '',
                 directory TEXT NOT NULL DEFAULT '',
                 ext TEXT NOT NULL DEFAULT '',
                 kind TEXT NOT NULL DEFAULT 'audio',
@@ -348,7 +352,7 @@ class TestWave10RealVerticalFlow:
                 duration REAL DEFAULT 0,
                 channels INTEGER DEFAULT 2,
                 sample_rate INTEGER DEFAULT 44100,
-                bitrate INTEGER DEFAULT 320,
+                bitrate INTEGER DEFAULT 0,
                 title TEXT DEFAULT '',
                 artist TEXT DEFAULT '',
                 album TEXT DEFAULT '',
@@ -364,7 +368,7 @@ class TestWave10RealVerticalFlow:
                 play_count INTEGER DEFAULT 0,
                 last_played REAL DEFAULT 0,
                 track_uid TEXT DEFAULT '',
-                created_at REAL DEFAULT (strftime('%%s','now')),
+                created_at REAL DEFAULT 0,
                 deleted_at REAL
             );
             CREATE TABLE IF NOT EXISTS playlists (
@@ -372,7 +376,7 @@ class TestWave10RealVerticalFlow:
                 name TEXT NOT NULL,
                 cover_path TEXT DEFAULT '',
                 description TEXT DEFAULT '',
-                created_at REAL DEFAULT (strftime('%%s','now'))
+                created_at REAL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS playlist_items (
                 playlist_id INTEGER NOT NULL REFERENCES playlists(id),
@@ -383,14 +387,14 @@ class TestWave10RealVerticalFlow:
             CREATE TABLE IF NOT EXISTS play_history (
                 track_id TEXT NOT NULL,
                 device TEXT DEFAULT 'desktop',
-                played_at REAL DEFAULT (strftime('%%s','now'))
+                played_at REAL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS queue_state (
                 id INTEGER PRIMARY KEY,
                 filepath TEXT NOT NULL
             );
         """)
-        yield conn
+        yield conn, db_path
         conn.close()
 
     def _populate(self, conn, artists=20, albums_per_artist=2, tracks_per_album=25):
@@ -470,12 +474,12 @@ class TestWave10RealVerticalFlow:
                 return [{"track_id": r[0], "played_at": r[1]} for r in rows]
         return FakeDB()
 
-    def test_real_flow_track_refresh(self, library_db, tmp_path):
+    def test_real_flow_track_refresh(self, library_db):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.instance() or QCoreApplication()
-        total = self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        total = self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
@@ -491,12 +495,12 @@ class TestWave10RealVerticalFlow:
         assert model.hasMore is True
         assert model.errorCode == ""
 
-    def test_real_flow_fetch_more(self, library_db, tmp_path):
+    def test_real_flow_fetch_more(self, library_db):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.instance() or QCoreApplication()
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
@@ -512,13 +516,13 @@ class TestWave10RealVerticalFlow:
         assert model.count > old_count
         assert model.hasMore is True
 
-    def test_real_flow_search(self, library_db, tmp_path):
+    def test_real_flow_search(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = TrackListModel(query_service=qs, query_executor=qe)
@@ -531,13 +535,13 @@ class TestWave10RealVerticalFlow:
             title = model.data(idx, model.TitleRole) or ""
             assert search_term.lower() in title.lower()
 
-    def test_real_flow_sort_desc(self, library_db, tmp_path):
+    def test_real_flow_sort_desc(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = TrackListModel(query_service=qs, query_executor=qe)
@@ -548,13 +552,13 @@ class TestWave10RealVerticalFlow:
         last = model.data(model.index(model.count - 1), model.YearRole) or 0
         assert first >= last
 
-    def test_real_flow_artist_filter(self, library_db, tmp_path):
+    def test_real_flow_artist_filter(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = TrackListModel(query_service=qs, query_executor=qe)
@@ -565,13 +569,13 @@ class TestWave10RealVerticalFlow:
             artist = model.data(model.index(i), model.ArtistRole)
             assert artist == "Artist_0"
 
-    def test_real_flow_album_filter(self, library_db, tmp_path):
+    def test_real_flow_album_filter(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = TrackListModel(query_service=qs, query_executor=qe)
@@ -579,13 +583,13 @@ class TestWave10RealVerticalFlow:
         assert model.loading is False
         assert model.totalCount == 25
 
-    def test_real_flow_format_filter(self, library_db, tmp_path):
+    def test_real_flow_format_filter(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.TrackListModel import TrackListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = TrackListModel(query_service=qs, query_executor=qe)
@@ -596,13 +600,13 @@ class TestWave10RealVerticalFlow:
             fmt = model.data(model.index(i), model.FormatRole) or ""
             assert fmt == "FLAC"
 
-    def test_real_flow_album_model(self, library_db, tmp_path):
+    def test_real_flow_album_model(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.AlbumListModel import AlbumListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = AlbumListModel(query_service=qs, query_executor=qe)
@@ -611,13 +615,13 @@ class TestWave10RealVerticalFlow:
         assert model.totalCount == 40
         assert model.count > 0
 
-    def test_real_flow_artist_model(self, library_db, tmp_path):
+    def test_real_flow_artist_model(self, library_db):
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
         from ui_qml.models.ArtistListModel import ArtistListModel
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qe = QueryExecutor()
         qs = LibraryQueryService(db, db_path=str(db_path))
         model = ArtistListModel(query_service=qs, query_executor=qe)
@@ -626,11 +630,11 @@ class TestWave10RealVerticalFlow:
         assert model.totalCount == 20
         assert model.count > 0
 
-    def test_real_flow_album_detail(self, library_db, tmp_path):
+    def test_real_flow_album_detail(self, library_db):
         from ui_qml_bridge.library_query_service import LibraryQueryService
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         qs = LibraryQueryService(db, db_path=str(db_path))
         detail = qs.fetch_album_detail("key_0_0")
         assert detail is not None
@@ -639,12 +643,12 @@ class TestWave10RealVerticalFlow:
         for t in detail["tracks"]:
             assert "filepath" not in t
 
-    def test_real_flow_album_play(self, library_db, tmp_path):
+    def test_real_flow_album_play(self, library_db):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.instance() or QCoreApplication()
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         from core.worker_manager import WorkerManager
         from ui_qml_bridge.query_executor import QueryExecutor
         from ui_qml_bridge.library_query_service import LibraryQueryService
@@ -669,11 +673,11 @@ class TestWave10RealVerticalFlow:
         for fp in player.enqueued:
             assert "/music/" in fp
 
-    def test_real_flow_playlist_create_play(self, library_db, tmp_path):
+    def test_real_flow_playlist_create_play(self, library_db):
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
 
         class FakePlayer:
             def __init__(s):
@@ -694,12 +698,12 @@ class TestWave10RealVerticalFlow:
         assert play_result.get("ok") is True
         assert len(player.enqueued) == 5
 
-    def test_real_flow_queue_history(self, library_db, tmp_path):
+    def test_real_flow_queue_history(self, library_db):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.instance() or QCoreApplication()
-        self._populate(library_db)
-        db_path = tmp_path / "test_music.db"
-        db = self._make_db_mock(library_db, db_path)
+        conn, db_path = library_db
+        self._populate(conn)
+        db = self._make_db_mock(conn, db_path)
         from ui_qml_bridge.queue_bridge import QueueBridge
         from ui_qml_bridge.history_bridge import HistoryBridge
 
@@ -715,7 +719,7 @@ class TestWave10RealVerticalFlow:
         assert qbridge.queueCount == 50
 
         hbridge = HistoryBridge(db=db)
-        library_db.execute(
+        conn.execute(
             "INSERT INTO play_history (track_id) VALUES (?)", ("/music/track_1.flac",))
         hbridge.refresh()
         assert hbridge.historyCount == 1

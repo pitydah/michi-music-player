@@ -16,7 +16,7 @@ STEPS = [
     ("smoke_ui_routes", [sys.executable, "scripts/smoke_ui_routes.py"]),
     ("qml_runtime_smoke", [sys.executable, "scripts/qml_full_runtime_smoke.py"]),
     ("check_runtime", [sys.executable, "scripts/check_runtime.py"]),
-    ("pytest_qml", [sys.executable, "-m", "pytest", "tests/qml/", "-q"]),
+    ("pytest_qml", [sys.executable, "-m", "pytest", "tests/qml/", "-q", "-m", "not isolation"]),
     ("test_schema", [sys.executable, "-m", "pytest", "tests/test_schema.py", "-q"]),
     ("test_format_probe", [sys.executable, "-m", "pytest", "tests/test_format_probe.py", "-q"]),
     ("test_playback_ctrl", [sys.executable, "-m", "pytest", "tests/test_playback_controller.py", "-q"]),
