@@ -1,0 +1,2897 @@
+{
+  "version": "8.0",
+  "generated_at": "2026-07-14T23:49:57.168619+00:00",
+  "sha": "aa4cb99c6f223aff2d89a64480c736c4c9c1d188",
+  "module_weights": {
+    "workflows": 25,
+    "workflows_interaction_real": 20,
+    "evidence": 15,
+    "library": 10,
+    "playback": 10,
+    "navigation": 10,
+    "settings": 5,
+    "devices": 5
+  },
+  "modules": [
+    {
+      "module": "devices",
+      "weight": 5,
+      "score": 100.0,
+      "markers": {
+        "qml_module": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "evidence",
+      "weight": 15,
+      "score": 80.0,
+      "markers": {
+        "qml_module": {
+          "status": "MISSING",
+          "tests": [
+            {
+              "name": "_extract_marker_name",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::_extract_marker_name",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_get_call_arg",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::_get_call_arg",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_get_enclosing_class",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::_get_enclosing_class",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "find_marked_tests",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::find_marked_tests",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "parse_junit",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::parse_junit",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "build_dimension_status",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::build_dimension_status",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "derive_composite_status",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::derive_composite_status",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "compute_module_score",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::compute_module_score",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "config",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::config",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_all_pass",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::_all_pass",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_write_test",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::_write_test",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_extract_function_level_marker",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_extract_function_level_marker",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_function_level_qml_module",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_function_level_qml_module",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_class_level_markers",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_class_level_markers",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_module_level_pytestmark_list",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_module_level_pytestmark_list",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_module_level_pytestmark_single",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_module_level_pytestmark_single",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_nodeid_format",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_nodeid_format",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_multiple_tests_same_module_different_dimensions",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_multiple_tests_same_module_different_dimensions",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_no_markers_returns_empty",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_no_markers_returns_empty",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_syntax_error_skipped",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestMarkerParsing::test_syntax_error_skipped",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_exact_nodeid_matching",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestJunitMatching::test_exact_nodeid_matching",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_junit_parse_basic",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestJunitMatching::test_junit_parse_basic",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_junit_with_failure",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestJunitMatching::test_junit_with_failure",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_junit_with_skip",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestJunitMatching::test_junit_with_skip",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_marked_test_matches_junit",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestJunitMatching::test_marked_test_matches_junit",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_dimension_passed_all_green",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestDimensionStatus::test_dimension_passed_all_green",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_dimension_failed_when_test_fails",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestDimensionStatus::test_dimension_failed_when_test_fails",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_dimension_missing_when_no_junit_evidence",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestDimensionStatus::test_dimension_missing_when_no_junit_evidence",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_dimension_not_applicable_when_no_markers",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestDimensionStatus::test_dimension_not_applicable_when_no_markers",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_skip_without_reason_is_missing",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestDimensionStatus::test_skip_without_reason_is_missing",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_score_all_passed",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScore::test_score_all_passed",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_score_all_failed",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScore::test_score_all_failed",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_score_weighted_mixed",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScore::test_score_weighted_mixed",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_score_empty_dimensions",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScore::test_score_empty_dimensions",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_score_not_applicable_declared",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScore::test_score_not_applicable_declared",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_failed_zero",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScoreMap::test_failed_zero",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_missing_zero",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScoreMap::test_missing_zero",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_passed_full",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScoreMap::test_passed_full",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_not_applicable_declared_full",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScoreMap::test_not_applicable_declared_full",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_deferred_physical_full",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestScoreMap::test_deferred_physical_full",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_config_has_modules",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestModulesConfig::test_config_has_modules",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_has_library_module",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestModulesConfig::test_has_library_module",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_module_has_weight",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestModulesConfig::test_module_has_weight",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_module_has_dimensions",
+              "classname": "tests/qml/test_evidence_v6_markers.py",
+              "nodeid": "tests/qml/test_evidence_v6_markers.py::TestModulesConfig::test_module_has_dimensions",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            }
+          ],
+          "weight": 15,
+          "reason": "No JUnit evidence for marked test"
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 15,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 15,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 15,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 15,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "library",
+      "weight": 10,
+      "score": 100.0,
+      "markers": {
+        "qml_module": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "navigation",
+      "weight": 10,
+      "score": 100.0,
+      "markers": {
+        "qml_module": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "playback",
+      "weight": 10,
+      "score": 100.0,
+      "markers": {
+        "qml_module": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 10,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "settings",
+      "weight": 5,
+      "score": 100.0,
+      "markers": {
+        "qml_module": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 5,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "workflows",
+      "weight": 25,
+      "score": 80.0,
+      "markers": {
+        "qml_module": {
+          "status": "MISSING",
+          "tests": [
+            {
+              "name": "_make_dummy_flac",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::_make_dummy_flac",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_make_dummy_wav",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::_make_dummy_wav",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_create_schema",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::_create_schema",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "sql_tmpdb",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::sql_tmpdb",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "sql_conn",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::sql_conn",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "player",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::player",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "real_db",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::real_db",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "__init__",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::__init__",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "pause",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::pause",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_or_resume",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::play_or_resume",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "set_volume",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::set_volume",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "get_queue",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::get_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "seek",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::seek",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "enqueue",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_index",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::play_index",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "remove_from_queue",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::remove_from_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "clear_queue",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::clear_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_next",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::play_next",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_prev",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::FakePlayerService::play_prev",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_search_returns_results",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_search_returns_results",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_format_filter",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_format_filter",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_select_and_play",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_select_and_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_queue_updates_after_play",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_queue_updates_after_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_nowplaying_updates",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_nowplaying_updates",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_clear_queue",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_clear_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_context_menu_play_artist",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow1Library::test_wf1_context_menu_play_artist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_audio_lab_loaded",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow2AudioLab::test_wf2_audio_lab_loaded",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_audio_lab_refresh",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow2AudioLab::test_wf2_audio_lab_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_audio_lab_probe",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow2AudioLab::test_wf2_audio_lab_probe",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_audio_lab_navigate",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow2AudioLab::test_wf2_audio_lab_navigate",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_audio_lab_analyze",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow2AudioLab::test_wf2_audio_lab_analyze",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_audio_lab_stats",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow2AudioLab::test_wf2_audio_lab_stats",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_history_loaded",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow3History::test_wf3_history_loaded",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_history_add_entry",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow3History::test_wf3_history_add_entry",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_history_remove_entry",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow3History::test_wf3_history_remove_entry",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_history_clear",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow3History::test_wf3_history_clear",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_history_filter",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow3History::test_wf3_history_filter",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_history_toggle_enabled",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow3History::test_wf3_history_toggle_enabled",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_categories",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_categories",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_load_favorites",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_load_favorites",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_load_recent",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_load_recent",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_load_most_played",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_load_most_played",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_load_unplayed",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_load_unplayed",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_regenerate",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_regenerate",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_cancel_generation",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_cancel_generation",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_mix_enqueue",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow4Mix::test_wf4_mix_enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_server_start_stop",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow5Devices::test_wf5_server_start_stop",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_device_state",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow5Devices::test_wf5_device_state",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_refresh",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow5Devices::test_wf5_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_peers_list",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow5Devices::test_wf5_peers_list",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_nowplaying_after_play",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow6NowPlaying::test_wf6_nowplaying_after_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_nowplaying_queue_updates",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow6NowPlaying::test_wf6_nowplaying_queue_updates",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_create_playlist",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow7Playlists::test_wf7_create_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_add_to_playlist",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow7Playlists::test_wf7_add_to_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_playlist_refresh",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow7Playlists::test_wf7_playlist_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_rename_playlist",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow7Playlists::test_wf7_rename_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_probe_wav",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow8ConversionLifecycle::test_wf8_probe_wav",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_analyze",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow8ConversionLifecycle::test_wf8_analyze",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_integrity_check",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow8ConversionLifecycle::test_wf8_integrity_check",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_enqueue_tracks",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow9Queue::test_wf9_enqueue_tracks",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_clear",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow9Queue::test_wf9_clear",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_play_records_history",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow10CrossWorkflow::test_wf10_play_records_history",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_queue_persists_after_play",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow10CrossWorkflow::test_wf10_queue_persists_after_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_mix_and_play_consistency",
+              "classname": "tests/qml/workflows/test_interactive_workflows.py",
+              "nodeid": "tests/qml/workflows/test_interactive_workflows.py::TestWorkflow10CrossWorkflow::test_wf10_mix_and_play_consistency",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_make_dummy_flac",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::_make_dummy_flac",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_make_dummy_mp3",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::_make_dummy_mp3",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_make_dummy_wav",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::_make_dummy_wav",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_create_schema",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::_create_schema",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "sql_tmpdb",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::sql_tmpdb",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "sql_conn",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::sql_conn",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "player",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::player",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "playback_ctrl",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::playback_ctrl",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "query_executor",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::query_executor",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "real_db",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::real_db",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "__init__",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::__init__",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "pause",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::pause",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_or_resume",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::play_or_resume",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "set_volume",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::set_volume",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "get_queue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::get_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "enqueue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_index",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::play_index",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "remove_from_queue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::remove_from_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "clear_queue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::clear_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "move_in_queue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::move_in_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_next",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlayerService::play_next",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "__init__",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlaybackCtrl::__init__",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_file",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlaybackCtrl::play_file",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "enqueue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlaybackCtrl::enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "enqueue_next",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::FakePlaybackCtrl::enqueue_next",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_get_playlists",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::_get_playlists",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_get_playlist_items",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::_get_playlist_items",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_search_and_filter",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow1LibraryToPlayback::test_wf1_search_and_filter",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_play_track",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow1LibraryToPlayback::test_wf1_play_track",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_enqueue_song",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow1LibraryToPlayback::test_wf1_enqueue_song",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_nowplaying_reflects",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow1LibraryToPlayback::test_wf1_nowplaying_reflects",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_queue_management",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow1LibraryToPlayback::test_wf1_queue_management",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_album_detail",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow2AlbumToPlaylist::test_wf2_album_detail",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_album_enqueue",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow2AlbumToPlaylist::test_wf2_album_enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_add_to_playlist",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow2AlbumToPlaylist::test_wf2_add_to_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_playlist_refresh",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow2AlbumToPlaylist::test_wf2_playlist_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_artist_detail",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow3ArtistMix::test_wf3_artist_detail",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_artist_tracks",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow3ArtistMix::test_wf3_artist_tracks",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_mix_generation",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow3ArtistMix::test_wf3_mix_generation",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_artist_play",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow3ArtistMix::test_wf3_artist_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_modules",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow4AudioLab::test_wf4_audio_lab_modules",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_health",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow4AudioLab::test_wf4_audio_lab_health",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_diagnostics",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow4AudioLab::test_wf4_audio_lab_diagnostics",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_cancellation",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow4AudioLab::test_wf4_audio_lab_cancellation",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_metadata_load",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow5Metadata::test_wf5_metadata_load",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_metadata_edit_and_preview",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow5Metadata::test_wf5_metadata_edit_and_preview",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_metadata_field_enumeration",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow5Metadata::test_wf5_metadata_field_enumeration",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_metadata_quality_summary",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow5Metadata::test_wf5_metadata_quality_summary",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_doctor_scan_real_db",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow6Doctor::test_wf6_doctor_scan_real_db",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_doctor_issues_found",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow6Doctor::test_wf6_doctor_issues_found",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_doctor_select_and_repair",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow6Doctor::test_wf6_doctor_select_and_repair",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_doctor_healthy_count",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow6Doctor::test_wf6_doctor_healthy_count",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_doctor_cancel",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow6Doctor::test_wf6_doctor_cancel",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_search_returns_data",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow7Search::test_wf7_search_returns_data",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_search_supersede",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow7Search::test_wf7_search_supersede",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_search_preserves_query",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow7Search::test_wf7_search_preserves_query",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_search_empty",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow7Search::test_wf7_search_empty",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_create_playlist",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow8PlaylistCRUD::test_wf8_create_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_add_tracks_to_playlist",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow8PlaylistCRUD::test_wf8_add_tracks_to_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_duplicate_playlist",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow8PlaylistCRUD::test_wf8_duplicate_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_playlist_refresh",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow8PlaylistCRUD::test_wf8_playlist_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_theme_change_dark_mode",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow9Theme::test_wf9_theme_change_dark_mode",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_theme_accent_color",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow9Theme::test_wf9_theme_accent_color",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_theme_density",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow9Theme::test_wf9_theme_density",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_theme_font_scale",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow9Theme::test_wf9_theme_font_scale",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_theme_persistence",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow9Theme::test_wf9_theme_persistence",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_server_start_stop",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow10DeviceSync::test_wf10_server_start_stop",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_device_state",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow10DeviceSync::test_wf10_device_state",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_device_refresh",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::TestWorkflow10DeviceSync::test_wf10_device_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "__init__",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::__init__",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "submit",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::submit",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "cancel",
+              "classname": "tests/qml/workflows/test_vertical_workflows.py",
+              "nodeid": "tests/qml/workflows/test_vertical_workflows.py::cancel",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            }
+          ],
+          "weight": 25,
+          "reason": "No JUnit evidence for marked test"
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 25,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 25,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 25,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 25,
+          "reason": ""
+        }
+      }
+    },
+    {
+      "module": "workflows_interaction_real",
+      "weight": 20,
+      "score": 80.0,
+      "markers": {
+        "qml_module": {
+          "status": "MISSING",
+          "tests": [
+            {
+              "name": "_make_dummy_flac",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::_make_dummy_flac",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_make_dummy_wav",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::_make_dummy_wav",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "_create_schema",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::_create_schema",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "real_db_and_player",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::real_db_and_player",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "player",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::player",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "__init__",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::__init__",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "pause",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::pause",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_or_resume",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::play_or_resume",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "stop",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::stop",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "set_volume",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::set_volume",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "get_queue",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::get_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "seek",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::seek",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "enqueue",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_index",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::play_index",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "remove_from_queue",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::remove_from_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "clear_queue",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::clear_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_next",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::play_next",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "play_prev",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::play_prev",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "mono",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::mono",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "set_mono",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::set_mono",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "balance",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::balance",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "set_balance",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealPlayerService::set_balance",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "__init__",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealDbWrapper::__init__",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "get_tracks",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealDbWrapper::get_tracks",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "get_playlists",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::RealDbWrapper::get_playlists",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_search_returns_results",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_search_returns_results",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_format_filter",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_format_filter",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_select_and_play",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_select_and_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_context_menu_play_artist",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_context_menu_play_artist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_queue_updates_after_play",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_queue_updates_after_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_nowplaying_updates",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_nowplaying_updates",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf1_clear_queue",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF1LibraryPlaybackQueue::test_wf1_clear_queue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_album_detail",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF2AlbumPlaylist::test_wf2_album_detail",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_album_tracks",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF2AlbumPlaylist::test_wf2_album_tracks",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_album_enqueue",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF2AlbumPlaylist::test_wf2_album_enqueue",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_add_to_playlist",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF2AlbumPlaylist::test_wf2_add_to_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf2_open_playlist",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF2AlbumPlaylist::test_wf2_open_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_artist_detail",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF3ArtistMix::test_wf3_artist_detail",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_artist_tracks",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF3ArtistMix::test_wf3_artist_tracks",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_mix_load_favorites",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF3ArtistMix::test_wf3_mix_load_favorites",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_mix_cancel_generation",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF3ArtistMix::test_wf3_mix_cancel_generation",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_mix_play",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF3ArtistMix::test_wf3_mix_play",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf3_mix_save_playlist",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF3ArtistMix::test_wf3_mix_save_playlist",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_probe_wav",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF4AudioLabConversion::test_wf4_probe_wav",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_analyze",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF4AudioLabConversion::test_wf4_analyze",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_modules",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF4AudioLabConversion::test_wf4_audio_lab_modules",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_refresh",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF4AudioLabConversion::test_wf4_audio_lab_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf4_audio_lab_stats",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF4AudioLabConversion::test_wf4_audio_lab_stats",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_history_loaded",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF5HistoryExportRemove::test_wf5_history_loaded",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_history_add_entry",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF5HistoryExportRemove::test_wf5_history_add_entry",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_history_remove_entry",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF5HistoryExportRemove::test_wf5_history_remove_entry",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_history_clear",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF5HistoryExportRemove::test_wf5_history_clear",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_history_filter",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF5HistoryExportRemove::test_wf5_history_filter",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf5_history_play_event",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF5HistoryExportRemove::test_wf5_history_play_event",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_search_cancels_previous",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF6SearchStaleCancellation::test_wf6_search_cancels_previous",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf6_stale_query_does_not_affect_latest",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF6SearchStaleCancellation::test_wf6_stale_query_does_not_affect_latest",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_radio_bridge_created",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF7RadioStartRetry::test_wf7_radio_bridge_created",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf7_radio_refresh",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF7RadioStartRetry::test_wf7_radio_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_metadata_loaded",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF8MetadataWriteUndo::test_wf8_metadata_loaded",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_metadata_load",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF8MetadataWriteUndo::test_wf8_metadata_load",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf8_db_write_verify",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF8MetadataWriteUndo::test_wf8_db_write_verify",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_library_doctor_loaded",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF9DoctorRepair::test_wf9_library_doctor_loaded",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf9_library_doctor_scan",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF9DoctorRepair::test_wf9_library_doctor_scan",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_devices_bridge_created",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF10DevicesUMSTransfer::test_wf10_devices_bridge_created",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_device_state",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF10DevicesUMSTransfer::test_wf10_device_state",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf10_device_refresh",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF10DevicesUMSTransfer::test_wf10_device_refresh",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf11_theme_change",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF11ThemePersistence::test_wf11_theme_change",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf11_theme_tokens_updated",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF11ThemePersistence::test_wf11_theme_tokens_updated",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf12_mono_toggle",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF12AccessibilityMonoBalance::test_wf12_mono_toggle",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf12_balance_adjust",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF12AccessibilityMonoBalance::test_wf12_balance_adjust",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf12_restore",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF12AccessibilityMonoBalance::test_wf12_restore",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf13_show_notification",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF13NotificationActions::test_wf13_show_notification",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf13_show_action_notification",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF13NotificationActions::test_wf13_show_action_notification",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf13_execute_current_action",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF13NotificationActions::test_wf13_execute_current_action",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            },
+            {
+              "name": "test_wf13_action_registry_has_actions",
+              "classname": "tests/qml/workflows/test_qml_interaction_real.py",
+              "nodeid": "tests/qml/workflows/test_qml_interaction_real.py::TestWF13NotificationActions::test_wf13_action_registry_has_actions",
+              "time": 0,
+              "failure": null,
+              "skipped": false,
+              "suite": "",
+              "_unmatched": true
+            }
+          ],
+          "weight": 20,
+          "reason": "No JUnit evidence for marked test"
+        },
+        "qml_dimension": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 20,
+          "reason": ""
+        },
+        "qml_route": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 20,
+          "reason": ""
+        },
+        "qml_workflow": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 20,
+          "reason": ""
+        },
+        "widget_replacement": {
+          "status": "NOT_APPLICABLE_DECLARED",
+          "tests": [],
+          "weight": 20,
+          "reason": ""
+        }
+      }
+    }
+  ],
+  "global_score": 88.0
+}

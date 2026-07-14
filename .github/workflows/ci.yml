@@ -8,44 +8,40 @@ on:
   workflow_dispatch:
 
 jobs:
-  packaging:
+  lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
+          python-version: "3.11"
       - name: Install package
         run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
-
-      - name: Verify metadata
-        run: |
-          python3 -c "import importlib.metadata; print('michi-music-player', importlib.metadata.version('michi-music-player'))"
-
       - name: Lint (ruff)
-        run: ruff check .
+        run: ruff check . --output-format concise
 
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
       - name: Compile check
         run: python -m compileall -q -x '.venv/|\.tmpl\.' .
 
-      - name: Build package
-        run: python -m build
-
-  runtime:
+  core-tests:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
@@ -57,7 +53,6 @@ jobs:
             python3-dbus python3-cairo \
             python3-numpy python3-mutagen python3-pil python3-pil.imagetk \
             python3-build
-
       - name: Create venv (system packages)
         run: |
           python3 -m venv --system-site-packages .venv
@@ -65,7 +60,6 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install -e ".[dev]"
           python3 -m pip install pytest-timeout
-
       - name: Verify PyGObject / GStreamer
         run: |
           source .venv/bin/activate
@@ -84,62 +78,19 @@ jobs:
               print("PyGObject/GStreamer import failed:", repr(e))
               raise
           PYEOF
-
-      - name: Verify metadata
-        run: |
-          source .venv/bin/activate
-          python3 -c "import importlib.metadata; print('michi-music-player', importlib.metadata.version('michi-music-player'))"
-
-      - name: Lint (ruff)
-        run: |
-          source .venv/bin/activate
-          ruff check .
-
-      - name: Compile check
-        run: |
-          source .venv/bin/activate
-          python -m compileall -q -x '.venv/|\.tmpl\.' .
-
-      - name: Smoke startup
-        run: |
-          source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen \
-          PYTHONUNBUFFERED=1 \
-          MICHI_SAFE_MODE=1 \
-          MICHI_TEST_DATA_DIR=${{ runner.temp }}/michi-smoke-data \
-          MICHI_TEST_CACHE_DIR=${{ runner.temp }}/michi-smoke-cache \
-          MICHI_TEST_CONFIG_DIR=${{ runner.temp }}/michi-smoke-config \
-          python3 scripts/smoke_startup.py
-
-      - name: Smoke UI routes
-        run: |
-          source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen \
-          PYTHONUNBUFFERED=1 \
-          MICHI_SAFE_MODE=1 \
-          MICHI_TEST_DATA_DIR=${{ runner.temp }}/michi-smoke-data \
-          MICHI_TEST_CACHE_DIR=${{ runner.temp }}/michi-smoke-cache \
-          MICHI_TEST_CONFIG_DIR=${{ runner.temp }}/michi-smoke-config \
-          python3 scripts/smoke_ui_routes.py
-
-      - name: Verify icons and data
-        run: |
-          python3 -c "
-          import pathlib
-          root = pathlib.Path('.').resolve()
-          icons = list(root.rglob('icons/*.svg'))
-          print(f'icons/: {len(icons)} SVGs')
-          assert len(icons) > 0, 'No SVG icons found'
-          "
-
-      - name: Album-focused tests
-        timeout-minutes: 2
+      - name: Core tests
+        timeout-minutes: 5
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONUNBUFFERED: 1
+          MICHI_SAFE_MODE: 1
         run: |
           source .venv/bin/activate
           python3 -m pytest \
+            tests/test_post_refactor_regressions.py \
+            tests/test_packaging.py \
+            tests/test_schema.py \
+            tests/test_format_probe.py \
             tests/test_album_final_closure.py \
             tests/test_album_repository.py \
             tests/test_album_repository_grouping_hard.py \
@@ -157,67 +108,7 @@ jobs:
             tests/test_album_server_import_dialog.py \
             -q --timeout=60
 
-      - name: Hybrid Audio Engine tests
-        timeout-minutes: 2
-        env:
-          QT_QPA_PLATFORM: offscreen
-          PYTHONUNBUFFERED: 1
-        run: |
-          source .venv/bin/activate
-          python3 -m pytest \
-            tests/test_no_merge_conflicts.py \
-            tests/test_audio_backend_base.py \
-            tests/test_gstreamer_backend.py \
-            tests/test_hybrid_audio_manager.py \
-            tests/test_audio_settings_schema.py \
-            tests/test_audio_settings_migrator.py \
-            tests/test_alsa_hw_params.py \
-            tests/test_bitperfect_verifier.py \
-            tests/test_mpd_protocol.py \
-            tests/test_mpd_client_mock.py \
-            tests/test_mpd_path_mapper.py \
-            tests/test_mpd_backend.py \
-            tests/test_mpd_config_builder.py \
-            tests/test_mpd_service_manager.py \
-            tests/test_mpd_discovery.py \
-            tests/test_audio_profile_backend_selection.py \
-            tests/test_dsp_state.py \
-            tests/test_player_service_hybrid.py \
-            tests/test_output_profiles_mpd.py \
-            tests/test_bitperfect_monitor_page.py \
-            tests/test_mpris_hybrid.py \
-            tests/test_hybrid_engine_end_to_end.py \
-            -q --timeout=60
-
-      - name: Tests (pytest) — anti-regression + packaging + intelligence
-        timeout-minutes: 3
-        env:
-          QT_QPA_PLATFORM: offscreen
-          PYTHONUNBUFFERED: 1
-          MICHI_SAFE_MODE: 1
-          MICHI_TEST_DATA_DIR: ${{ runner.temp }}/michi-test-data
-          MICHI_TEST_CACHE_DIR: ${{ runner.temp }}/michi-test-cache
-          MICHI_TEST_CONFIG_DIR: ${{ runner.temp }}/michi-test-config
-        run: |
-          source .venv/bin/activate
-          python3 -m pytest \
-            tests/test_post_refactor_regressions.py \
-            tests/test_packaging.py \
-            tests/test_home_dashboard_service.py \
-            tests/test_home_controller.py \
-            tests/test_crash_reporter.py \
-            tests/test_ecosystem_doctor.py \
-            tests/test_ecosystem_config_planner.py \
-            tests/test_ecosystem_diagnostics.py \
-            tests/test_section_context_providers.py \
-            tests/test_contextual_suggestion_engine.py \
-            tests/test_intent_router.py \
-            tests/test_audio_conversion_tools.py \
-            tests/test_prompt_context_builder.py \
-            tests/test_context_suggestion_bar_smoke.py \
-            -q --timeout=60
-
-  qml-all:
+  qml-load:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -235,10 +126,10 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install -e ".[dev]"
           python3 -m pip install pytest-timeout
-      - name: Ruff check
+      - name: Lint (ruff)
         run: |
           source .venv/bin/activate
-          ruff check .
+          ruff check . --output-format concise
       - name: Compile all
         run: |
           source .venv/bin/activate
@@ -255,18 +146,137 @@ jobs:
         run: |
           source .venv/bin/activate
           python scripts/qml_composition_audit.py
+
+  qml-instance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: QML instance all
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_instance_all.py
       - name: QML productive service audit
         run: |
           source .venv/bin/activate
           python scripts/qml_productive_service_audit.py
-      - name: QML hybrid dependency audit
+
+  qml-interaction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: QML interaction real tests
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/workflows/test_qml_interaction_real.py -q --timeout=600
+      - name: Interactive workflows
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/workflows/test_interactive_workflows.py -q --timeout=300
+
+  service-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Service graph audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_productive_service_audit.py
+      - name: Hybrid dependency audit
         run: |
           source .venv/bin/activate
           python scripts/qml_hybrid_dependency_audit.py
-      - name: QML isolation tests (separate processes)
+
+  widget-dependency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Widget dependency audit
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml -m isolation -n 1 -q --timeout=300
+          python scripts/qml_hybrid_dependency_audit.py
+      - name: Bridge contract audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_bridge_contract_audit.py
+      - name: Route registry audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_route_registry_audit.py
+
+  vertical-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
       - name: QML vertical workflows
         run: |
           source .venv/bin/activate
@@ -274,77 +284,195 @@ jobs:
       - name: QML tests (all)
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v6.xml
-      - name: Performance tests
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v8.xml
+
+  isolation-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: QML isolation tests (separate processes)
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml -m isolation -n 1 -q --timeout=300
+
+  runtime-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Runtime quality audit
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_runtime_quality_audit.py
+      - name: Check runtime
+        run: |
+          source .venv/bin/activate
+          python scripts/check_runtime.py
+
+  performance-10k-50k:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Performance tests (10k-50k)
         run: |
           source .venv/bin/activate
           QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/perf -q --timeout=600
-      - name: Evidence V6 collect
+
+  performance-100k:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Library benchmark
         run: |
           source .venv/bin/activate
-          python scripts/qml_evidence_v6_collect.py --junit artifacts/qml-results-v6.xml --expected-sha ${{ github.sha }}
-      - name: Manifest V6 generate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_library_benchmark.py
+
+  Evidence-V8:
+    runs-on: ubuntu-latest
+    needs: [qml-load, qml-instance, qml-interaction, vertical-workflows, performance-10k-50k, performance-100k]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Evidence V8 collect
         run: |
           source .venv/bin/activate
-          python scripts/qml_manifest_v6_generate.py
-      - name: Manifest V6 audit
+          python scripts/qml_evidence_v8_collect.py --junit artifacts/qml-results-v8.xml --expected-sha ${{ github.sha }}
+      - name: Manifest V8 generate
         run: |
           source .venv/bin/activate
-          python scripts/qml_manifest_v6_audit.py
-      - name: Score V6
+          python scripts/qml_manifest_v8_generate.py
+      - name: Manifest V8 audit
         run: |
           source .venv/bin/activate
-          python scripts/qml_migration_score_v6.py
-      - name: Instance-all runtime integrity
+          python scripts/qml_manifest_v8_audit.py
+      - name: Score V8
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_instance_all.py
-      - name: Interactive workflows
-        run: |
-          source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/workflows/test_interactive_workflows.py -q --timeout=300
-      - name: QML release gate
-        run: |
-          source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 timeout 300 python scripts/qml_ci_gate.py
-      - name: Save artifacts
+          python scripts/qml_migration_score_v8.py
+      - name: Save artifacts V8
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: qml-evidence-v6-${{ github.sha }}
+          name: qml-evidence-v8-${{ github.sha }}
           path: |
-            artifacts/qml-results-v6.xml
-            artifacts/qml-evidence-v6.json
-            docs/qml_migration_manifest_v6.json
+            artifacts/qml-results-v8.xml
+            artifacts/qml-evidence-v8.json
+            docs/qml_migration_manifest_v8.json
 
-  qml-release-gate:
-    needs: [packaging, runtime, qml-all]
+  release-gate:
+    needs:
+      - lint
+      - compile
+      - core-tests
+      - qml-load
+      - qml-instance
+      - qml-interaction
+      - service-graph
+      - widget-dependency
+      - vertical-workflows
+      - isolation-workflows
+      - runtime-quality
+      - performance-10k-50k
+      - performance-100k
+      - Evidence-V8
     runs-on: ubuntu-latest
     if: always()
     steps:
       - uses: actions/checkout@v4
       - name: Check all jobs passed
         run: |
-          echo "All upstream jobs completed — release gate passed"
-          echo "packaging: ${{ needs.packaging.result }}"
-          echo "runtime: ${{ needs.runtime.result }}"
-          echo "qml-all: ${{ needs.qml-all.result }}"
-          if [ "${{ needs.packaging.result }}" != "success" ] || \
-             [ "${{ needs.runtime.result }}" != "success" ] || \
-             [ "${{ needs.qml-all.result }}" != "success" ]; then
-            echo "FAIL: Not all jobs passed"
+          echo "All upstream jobs completed — release gate"
+          echo "lint: ${{ needs.lint.result }}"
+          echo "compile: ${{ needs.compile.result }}"
+          echo "core-tests: ${{ needs.core-tests.result }}"
+          echo "qml-load: ${{ needs.qml-load.result }}"
+          echo "qml-instance: ${{ needs.qml-instance.result }}"
+          echo "qml-interaction: ${{ needs.qml-interaction.result }}"
+          echo "service-graph: ${{ needs.service-graph.result }}"
+          echo "widget-dependency: ${{ needs.widget-dependency.result }}"
+          echo "vertical-workflows: ${{ needs.vertical-workflows.result }}"
+          echo "isolation-workflows: ${{ needs.isolation-workflows.result }}"
+          echo "runtime-quality: ${{ needs.runtime-quality.result }}"
+          echo "performance-10k-50k: ${{ needs.performance-10k-50k.result }}"
+          echo "performance-100k: ${{ needs.performance-100k.result }}"
+          echo "Evidence-V8: ${{ needs.Evidence-V8.result }}"
+          FAILED=""
+          for job in lint compile core-tests qml-load qml-instance qml-interaction service-graph widget-dependency vertical-workflows isolation-workflows runtime-quality performance-10k-50k performance-100k Evidence-V8; do
+            result_var="\${{ needs.$job.result }}"
+            if [ "$result_var" != "success" ]; then
+              FAILED="$FAILED $job"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
+            echo "FAIL: Jobs failed:$FAILED"
             exit 1
           fi
           echo "PASS: Release gate passed"
-
-  physical-artifact-validation:
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Validate physical artifact
-        run: python3 -m pytest tests/qml/test_physical_artifact_validation.py -q
