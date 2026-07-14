@@ -1,71 +1,73 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../../theme"
-import "../../materials"
 import "../../components"
+import "../../materials"
 
-Item {
+Rectangle {
     id: root
 
+    property string albumKey: ""
     property string albumTitle: ""
     property string albumArtist: ""
+    property int albumYear: 0
     property int trackCount: 0
-    property string coverId: ""
 
     signal clicked()
 
-    implicitWidth: 180
-    implicitHeight: 240
+    radius: MichiTheme.radiusSm
+    color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
-    GlassMaterial {
+    Accessible.role: Accessible.Button
+    Accessible.name: albumTitle + " - " + albumArtist
+    Accessible.onPressAction: root.clicked()
+
+    Column {
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
-        hovered: mouseArea.containsMouse
-        interactive: true
+        spacing: MichiTheme.spacing.xs
 
-        MouseArea {
-            id: mouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.clicked()
+        CoverImage {
+            width: parent.width; height: parent.width
+            coverRadius: MichiTheme.radiusSm
+            coverKey: root.albumKey || "ALBUM"
         }
 
-        Column {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.md
-            spacing: MichiTheme.spacing.sm
-
-            CoverImage {
-                width: parent.width
-                height: width
-                coverRadius: MichiTheme.radiusSm
-                coverKey: root.coverId || root.albumTitle || "COVER"
-            }
-
-            Text {
-                text: root.albumTitle
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.cardTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-                elide: Text.ElideRight
-                width: parent.width
-            }
-
-            Text {
-                text: root.albumArtist
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.metaSize
-                elide: Text.ElideRight
-                width: parent.width
-                visible: root.albumArtist !== ""
-            }
-
-            Text {
-                text: root.trackCount > 0 ? root.trackCount + " canciones" : ""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-            }
+        Text {
+            anchors.leftMargin: 2
+            text: root.albumTitle
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightMedium
+            elide: Text.ElideRight
+            width: parent.width - 4
+            maximumLineCount: 1
         }
+
+        Text {
+            anchors.leftMargin: 2
+            text: root.albumArtist + (root.albumYear > 0 ? " · " + root.albumYear : "")
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.metaSize
+            elide: Text.ElideRight
+            width: parent.width - 4
+            maximumLineCount: 1
+        }
+
+        Text {
+            anchors.leftMargin: 2
+            text: root.trackCount > 0 ? root.trackCount + " canciones" : ""
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.captionSize
+            visible: text !== ""
+        }
+    }
+
+    MouseArea {
+        id: mouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
     }
 }

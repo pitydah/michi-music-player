@@ -31,6 +31,12 @@ class QueueBridge(QObject):
         self._pb = playlists_bridge
         from ui_qml.models.QueueListModel import QueueListModel
         self._model = QueueListModel(player_service=player_service, parent=self)
+        from core.queue_service import QueueService
+        self._queue_service = QueueService(player_service=player_service)
+
+    @property
+    def queue_service(self):
+        return self._queue_service
 
     @Property("QVariant", notify=dataChanged)
     def queueModel(self):

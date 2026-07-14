@@ -13,7 +13,6 @@ Item {
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property bool _hasTrack: root.ps ? root.ps.hasTrack : false
     property bool _backendAvailable: root.ps ? root.ps.backendAvailable : false
-
     property string _lastShownError: ""
 
     Connections {
@@ -45,7 +44,6 @@ Item {
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.md
 
-            // Cover + info (25%) — click navega a reproduccion
             RowLayout {
                 Layout.preferredWidth: parent.width * 0.22
                 Layout.fillHeight: true
@@ -93,10 +91,8 @@ Item {
                 }
             }
 
-            // Spacer
             Item { Layout.fillWidth: true; Layout.preferredWidth: 1 }
 
-            // Controls + seek (45%)
             ColumnLayout {
                 Layout.preferredWidth: parent.width * 0.40
                 Layout.fillHeight: true
@@ -129,10 +125,8 @@ Item {
                 }
             }
 
-            // Spacer
             Item { Layout.fillWidth: true; Layout.preferredWidth: 1 }
 
-            // Volume + extra (22%)
             RowLayout {
                 Layout.preferredWidth: parent.width * 0.20
                 Layout.maximumWidth: 160

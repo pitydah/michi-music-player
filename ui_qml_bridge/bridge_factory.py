@@ -451,11 +451,8 @@ class BridgeFactory(QObject):
     def _wire_job_bridge_library(self):
         jb = self._bridges.get("job_bridge")
         lib = self._bridges.get("library")
-        if jb and lib:
-            if hasattr(jb, 'attach_library_coordinator'):
+        if jb and lib and hasattr(jb, 'attach_library_coordinator'):
                 jb.attach_library_coordinator(lib)
-            else:
-                jb._lib = lib
 
     def create_desktop_bridge(self):
         if "desktop" not in self._bridges:

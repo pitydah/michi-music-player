@@ -1,15 +1,35 @@
 """LibraryBridge — connects QML Library page to QueryService with pagination, filters, sort."""
 from __future__ import annotations
 
-import subprocess
 import os
+import subprocess
 from pathlib import Path
+from enum import Enum
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
+class LibraryState(Enum):
+    INITIALIZING = "INITIALIZING"
+    NO_SOURCES = "NO_SOURCES"
+    SOURCE_EMPTY = "SOURCE_EMPTY"
+    SOURCE_OFFLINE = "SOURCE_OFFLINE"
+    SOURCE_PERMISSION_ERROR = "SOURCE_PERMISSION_ERROR"
+    SCANNING = "SCANNING"
+    INDEXING = "INDEXING"
+    LOADING = "LOADING"
+    READY = "READY"
+    FILTERED_EMPTY = "FILTERED_EMPTY"
+    DATABASE_ERROR = "DATABASE_ERROR"
+    QUERY_ERROR = "QUERY_ERROR"
+    PARTIAL_RESULTS = "PARTIAL_RESULTS"
+    CANCELLED = "CANCELLED"
+    MISSING_CONTENT = "MISSING_CONTENT"
+
+
 class LibraryBridge(QObject):
     dataChanged = Signal()
+    stateChanged = Signal()
 
     def __init__(self, db=None, search_engine=None, playback_ctrl=None,
                  query_service=None, query_executor=None, worker_manager=None,
@@ -29,6 +49,12 @@ class LibraryBridge(QObject):
         self._filter_album = ""
         self._filter_format = ""
         self._filter_folder = ""
+        self._filter_genre = ""
+        self._filter_composer = ""
+        self._filter_year = ""
+        self._filter_favorites = False
+        self._filter_unplayed = False
+        self._filter_missing = False
         self._filter_missing_artist = False
         self._filter_missing_album = False
         self._page_size = 100
@@ -36,6 +62,7 @@ class LibraryBridge(QObject):
         self._error_message = ""
         self._last_operation = ""
         self._last_op_ok = False
+        self._state = LibraryState.INITIALIZING
         from ui_qml.models.TrackListModel import TrackListModel
         from ui_qml.models.AlbumListModel import AlbumListModel
         from ui_qml.models.ArtistListModel import ArtistListModel
@@ -51,7 +78,9 @@ class LibraryBridge(QObject):
             library_bridge=self, parent=self,
         )
 
-    # ── Properties ──
+    @Property(str, notify=stateChanged)
+    def state(self):
+        return self._state.value
 
     @Property(int, notify=dataChanged)
     def songCount(self):
@@ -83,22 +112,18 @@ class LibraryBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def songs(self):
-        """DEPRECATED: QML should use trackModel directly."""
         return []
 
     @Property("QVariantList", notify=dataChanged)
     def albums(self):
-        """DEPRECATED: QML should use albumModel directly."""
         return []
 
     @Property("QVariantList", notify=dataChanged)
     def artists(self):
-        """DEPRECATED: QML should use artistModel directly."""
         return []
 
     @Property("QVariantList", notify=dataChanged)
     def folders(self):
-        """DEPRECATED: QML should use folderModel directly."""
         return []
 
     @Property("QVariant", notify=dataChanged)
@@ -138,10 +163,12 @@ class LibraryBridge(QObject):
         return self._filter_format
 
     @Property(str, notify=dataChanged)
+    def activeGenreFilter(self):
+        return self._filter_genre
+
+    @Property(str, notify=dataChanged)
     def searchQuery(self):
         return self._search_query
-
-    # ── Pagination ──
 
     @Slot(int, int, result="QVariantList")
     def getSongsPage(self, page: int, pageSize: int):
@@ -153,7 +180,10 @@ class LibraryBridge(QObject):
                 offset=offset, limit=pageSize,
                 search=self._search_query, artist=self._filter_artist,
                 album=self._filter_album, fmt=self._filter_format,
-                folder=self._filter_folder,
+                folder=self._filter_folder, genre=self._filter_genre,
+                composer=self._filter_composer, year=self._filter_year,
+                favorites=self._filter_favorites, unplayed=self._filter_unplayed,
+                missing=self._filter_missing,
                 sort=self._sort_key, asc=self._sort_asc,
             )
             return [self._dict_to_qml(t) for t in items]
@@ -185,8 +215,6 @@ class LibraryBridge(QObject):
             self._refresh_coordinator.refresh_albums()
             self._refresh_coordinator.refresh_artists()
 
-    # ── Search ──
-
     @Slot(str, result=dict)
     def setSearchQuery(self, query: str):
         self._search_query = query
@@ -207,11 +235,33 @@ class LibraryBridge(QObject):
     def search(self, query: str):
         self.setSearchQuery(query)
 
-    # ── Filters ──
-
     @Slot(str, result=dict)
     def setFormatFilter(self, fmt: str):
         self._filter_format = fmt
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(str, result=dict)
+    def setGenreFilter(self, genre: str):
+        self._filter_genre = genre
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(str, result=dict)
+    def setComposerFilter(self, composer: str):
+        self._filter_composer = composer
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(str, result=dict)
+    def setYearFilter(self, year: str):
+        self._filter_year = year
         self._refresh_track_query()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -243,12 +293,38 @@ class LibraryBridge(QObject):
         return self.filterByAlbum(album_key)
 
     @Slot(str, result=dict)
-    def setGenreFilter(self, genre: str):
-        return {"ok": False, "error": "UNSUPPORTED"}
-
-    @Slot(str, result=dict)
     def setFolderFilter(self, folder_path: str):
         self._filter_folder = folder_path
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def setFavoritesFilter(self):
+        self._filter_favorites = True
+        self._filter_unplayed = False
+        self._filter_missing = False
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def setUnplayedFilter(self):
+        self._filter_favorites = False
+        self._filter_unplayed = True
+        self._filter_missing = False
+        self._refresh_track_query()
+        self._loaded_count = min(self._page_size, self.visibleCount)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def setMissingFilter(self):
+        self._filter_favorites = False
+        self._filter_unplayed = False
+        self._filter_missing = True
         self._refresh_track_query()
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
@@ -260,6 +336,12 @@ class LibraryBridge(QObject):
         self._filter_album = ""
         self._filter_format = ""
         self._filter_folder = ""
+        self._filter_genre = ""
+        self._filter_composer = ""
+        self._filter_year = ""
+        self._filter_favorites = False
+        self._filter_unplayed = False
+        self._filter_missing = False
         self._filter_missing_artist = False
         self._filter_missing_album = False
         self._refresh_track_query()
@@ -267,8 +349,6 @@ class LibraryBridge(QObject):
         self._error_message = ""
         self.dataChanged.emit()
         return {"ok": True}
-
-    # ── Sort ──
 
     @Slot(str, result=dict)
     def sortBy(self, key: str):
@@ -282,8 +362,6 @@ class LibraryBridge(QObject):
         self.dataChanged.emit()
         return {"ok": True, "key": key, "asc": self._sort_asc}
 
-    # ── Data loading ──
-
     @Slot(result=dict)
     def refresh(self, limit: int = 0):
         if self._refresh_coordinator:
@@ -291,8 +369,6 @@ class LibraryBridge(QObject):
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
         return {"ok": True, "count": self.visibleCount}
-
-    # ── Playback actions (single) ──
 
     @Slot(int, result=dict)
     def playTrackById(self, track_id: int):
@@ -395,8 +471,6 @@ class LibraryBridge(QObject):
             if not track or not track.get("filepath"):
                 return {"ok": False, "error": "NOT_FOUND"}
             parent = str(Path(track["filepath"]).parent)
-            import subprocess
-            import os
             if os.name == "nt":
                 subprocess.Popen(["explorer", parent])
             else:
@@ -456,8 +530,6 @@ class LibraryBridge(QObject):
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
-
-    # ── Album actions ──
 
     @Slot(str, result=dict)
     def getAlbumDetail(self, album_key: str):
@@ -519,8 +591,6 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Artist actions ──
-
     @Slot(str, result=dict)
     def getArtistDetail(self, artist_name: str):
         if not self._query_svc:
@@ -577,8 +647,6 @@ class LibraryBridge(QObject):
             return self.play_song(fps[0])
         except Exception as e:
             return {"ok": False, "error": str(e)}
-
-    # ── Folder actions ──
 
     @Slot(str, result="QVariantList")
     def getFolderTracks(self, folder_path: str):
@@ -685,8 +753,6 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Internal ──
-
     def _dict_to_qml(self, item: dict) -> dict:
         return {
             "track_id": item.get("track_id", 0),
@@ -694,12 +760,34 @@ class LibraryBridge(QObject):
             "public_ref": f"track_{item.get('track_id', 0)}",
             "title": item.get("title", "") or "",
             "artist": item.get("artist", ""),
+            "artist_id": item.get("artist_id", 0),
             "album": item.get("album", ""),
+            "album_id": item.get("album_id", 0),
             "album_key": item.get("album_key", ""),
+            "album_artist": item.get("album_artist", ""),
             "duration": item.get("duration", 0),
             "format": item.get("format", ""),
+            "codec": item.get("codec", ""),
+            "sample_rate": item.get("sample_rate", 0),
+            "bit_depth": item.get("bit_depth", 0),
+            "bitrate": item.get("bitrate", 0),
+            "channels": item.get("channels", 0),
+            "file_size": item.get("file_size", 0),
             "cover_key": item.get("album_key", "") or item.get("cover_key", ""),
             "year": item.get("year", 0),
             "track_number": item.get("track_number", 0),
+            "disc_number": item.get("disc_number", 0),
             "genre": item.get("genre", ""),
+            "composer": item.get("composer", ""),
+            "play_count": item.get("play_count", 0),
+            "last_played": item.get("last_played", ""),
+            "date_added": item.get("date_added", ""),
+            "favorite": item.get("favorite", False),
+            "missing": item.get("missing", False),
+            "source_id": item.get("source_id", 0),
+            "folder_id": item.get("folder_id", 0),
+            "directory": item.get("directory", ""),
+            "path": item.get("filepath", ""),
+            "replay_gain": item.get("replay_gain", 0.0),
+            "peak": item.get("peak", 0.0),
         }

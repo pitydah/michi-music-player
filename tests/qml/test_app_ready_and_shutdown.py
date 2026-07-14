@@ -109,9 +109,19 @@ def test_quit_stops_player():
 
 def test_quit_saves_queue():
     qb = MagicMock()
+    qb.queue_service = None
     bridge = _make_app_bridge(queue_bridge=qb)
     bridge.quit()
     qb.saveState.assert_called_once()
+
+
+def test_quit_uses_queue_service_shutdown():
+    qb = MagicMock()
+    qs = MagicMock()
+    qb.queue_service = qs
+    bridge = _make_app_bridge(queue_bridge=qb)
+    bridge.quit()
+    qs.shutdown.assert_called_once()
 
 
 def test_quit_closes_db():

@@ -14,8 +14,8 @@ class ArtistListModel(BasePagedListModel):
     AlbumCountRole = Qt.UserRole + 3
     CoverKeyRole = Qt.UserRole + 4
 
-    def __init__(self, query_service=None, query_executor=None, parent=None):
-        super().__init__(page_size=100, query_executor=query_executor, parent=parent)
+    def __init__(self, query_service=None, query_executor=None, parent=None, page_size=100):
+        super().__init__(page_size=page_size, query_executor=query_executor, parent=parent)
         self._qs = query_service
 
     def _owner(self) -> str:

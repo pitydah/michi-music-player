@@ -201,10 +201,14 @@ class AppBridge(QObject):
             if self._player_service and hasattr(self._player_service, 'stop'):
                 self._player_service.stop()
 
-        # i. Persist queue and session
+        # i. Persist queue and session via QueueService
         with contextlib.suppress(Exception):
             if self._queue_bridge:
-                self._queue_bridge.saveState()
+                qs = getattr(self._queue_bridge, 'queue_service', None)
+                if qs is not None and hasattr(qs, 'shutdown'):
+                    qs.shutdown()
+                elif hasattr(self._queue_bridge, 'saveState'):
+                    self._queue_bridge.saveState()
 
         # j. Close DB
         with contextlib.suppress(Exception):

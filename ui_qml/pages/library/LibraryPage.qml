@@ -12,9 +12,10 @@ Item {
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
-    property int _artistDetailTab: -1
-    property int _albumDetailTab: -1
-    property string _filterText: ""
+    property var act: typeof actionRegistry !== "undefined" ? actionRegistry : null
+    property string _labelArtists: "Artistas"
+    property string _labelFolders: "Carpetas"
+    property string _labelRefresh: "Refrescar"
 
     function refreshData() {
         if (root.lib && typeof root.lib.refresh !== "undefined") {
@@ -24,174 +25,89 @@ Item {
     }
 
     function clearFilters() {
-        _filterText = ""
+        navBar.clearSearch()
+        filterBar.clearAll()
         if (root.lib && typeof root.lib.clearFilters !== "undefined")
             root.lib.clearFilters()
     }
 
     function showArtistDetail(name) {
-        _artistDetailTab = tabBar.currentIndex
-        tabBar.currentIndex = 4
-        artistDetail.loadArtist(name)
+        pageStack.push("/pages/library/ArtistDetailPage.qml", {artistName: name})
     }
 
     function showAlbumDetail(key, title, artist, year) {
-        _albumDetailTab = tabBar.currentIndex
-        tabBar.currentIndex = 5
-        albumDetail.loadAlbum(key, title, artist, year)
+        pageStack.push("/pages/library/album/AlbumDetailPage.qml", {albumKey: key})
     }
-
-    function backFromDetail() {
-        if (_artistDetailTab >= 0) {
-            tabBar.currentIndex = _artistDetailTab
-            _artistDetailTab = -1
-        } else if (_albumDetailTab >= 0) {
-            tabBar.currentIndex = _albumDetailTab
-            _albumDetailTab = -1
-        }
-    }
-
-    Component.onCompleted: refreshData()
 
     Column {
         anchors.fill: parent; spacing: 0
 
-        TabBar {
-            id: tabBar
-            width: parent.width; height: 38
-            background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle } }
-
-            TabButton {
-                text: "Canciones"
-                font.pixelSize: MichiTheme.typography.bodySize
-                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 0 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 0 } }
-            }
-            TabButton {
-                text: "Álbumes"
-                font.pixelSize: MichiTheme.typography.bodySize
-                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 1 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 1 } }
-            }
-            TabButton {
-                text: "Artistas"
-                font.pixelSize: MichiTheme.typography.bodySize
-                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 2 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 2 } }
-            }
-            TabButton {
-                text: "Carpetas"
-                font.pixelSize: MichiTheme.typography.bodySize
-                contentItem: Text { text: parent.text; color: tabBar.currentIndex === 3 ? MichiTheme.colors.accentBlue : MichiTheme.colors.textSecondary; font: parent.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                background: Rectangle { color: "transparent"; Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1; color: MichiTheme.colors.accentBlue; visible: tabBar.currentIndex === 3 } }
-            }
+        LibraryNavigationBar {
+            id: navBar; width: parent.width
+            onSearchTextChanged: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
         }
 
-        Rectangle {
-            width: parent.width; height: 40; color: MichiTheme.colors.surfaceCard
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
-                spacing: MichiTheme.spacing.sm
-
-                SearchField {
-                    Layout.preferredWidth: 240; Layout.minimumWidth: 160; Layout.maximumWidth: 320
-                    placeholderText: "Buscar..."
-                    onSearchTextChanged: {
-                        root._filterText = text
-                        if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text)
-                    }
-                }
-
-                StatusBadge { text: root.lib ? root.lib.songCount + " canciones" : ""; kind: "info"; visible: root.lib && root.lib.songCount > 0 }
-                StatusBadge { text: root.lib ? root.lib.albumCount + " álbumes" : ""; kind: "info"; visible: root.lib && root.lib.albumCount > 0 }
-                StatusBadge { text: root.lib ? root.lib.artistCount + " artistas" : ""; kind: "info"; visible: root.lib && root.lib.artistCount > 0 }
-
-                Item { Layout.fillWidth: true }
-
-                MichiButton { text: "Añadir carpeta"; variant: "ghost"; onClicked: folderDialog.open() }
-                MichiButton { text: "Limpiar filtros"; variant: "ghost"; Layout.preferredWidth: 120; Layout.minimumWidth: 110; onClicked: root.clearFilters() }
-                MichiButton { text: "Refrescar"; variant: "ghost"; Layout.preferredWidth: 92; Layout.minimumWidth: 84; onClicked: root.refreshData() }
-            }
+        LibraryFilterBar {
+            id: filterBar; width: parent.width
+            onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt) }
+            onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre) }
+            onYearFilterChanged: function(year) { if (root.lib) root.lib.setYearFilter(year) }
         }
 
-        FolderDialog {
-            id: folderDialog
-            title: "Seleccionar carpeta de música"
-            currentFolder: "file://" + (typeof StandardPaths !== "undefined" ? StandardPaths.writableLocation(StandardPaths.MusicLocation) : "")
-            onAccepted: {
-                var folderPath = selectedFolder.toLocalFile()
-                if (root.lib && typeof root.lib.addFolder !== "undefined") {
-                    var result = root.lib.addFolder(folderPath)
-                    if (root.notif) {
-                        root.notif.showMessage(result.ok ? "Escaneando: " + folderPath : "Error: " + result.error,
-                                              result.ok ? "info" : "error")
-                    }
-                }
-            }
-        }
-
-        Flow {
-            width: parent.width; height: 30; spacing: MichiTheme.spacing.xs
-            leftPadding: MichiTheme.spacing.md; visible: tabBar.currentIndex === 0
-
-            FilterChip { text: "Todos"; selected: root.lib && root.lib.activeFormatFilter === ""; onClicked: { if (root.lib) root.lib.setFormatFilter("") } }
-            FilterChip { text: "FLAC"; selected: root.lib && root.lib.activeFormatFilter === "flac"; onClicked: { if (root.lib) root.lib.setFormatFilter("flac") } }
-            FilterChip { text: "MP3"; selected: root.lib && root.lib.activeFormatFilter === "mp3"; onClicked: { if (root.lib) root.lib.setFormatFilter("mp3") } }
-            FilterChip { text: "WAV"; selected: root.lib && root.lib.activeFormatFilter === "wav"; onClicked: { if (root.lib) root.lib.setFormatFilter("wav") } }
+        LibraryStatusHeader {
+            id: statusHeader; width: parent.width
+            visible: root.lib && (root.lib.songCount > 0 || root.lib.state !== "READY")
+            songCount: root.lib ? root.lib.songCount : 0
+            albumCount: root.lib ? root.lib.albumCount : 0
+            artistCount: root.lib ? root.lib.artistCount : 0
+            state: root.lib ? root.lib.state : "INITIALIZING"
         }
 
         StackLayout {
             id: stackContainer
             width: parent.width
-            height: parent.height - tabBar.height - 40 - 30
-            currentIndex: tabBar.currentIndex
+            height: parent.height - navBar.height - filterBar.height - statusHeader.height
+            currentIndex: navBar.currentTab
 
-            SongTable { id: songsView; songs: root.lib ? root.lib.songs : []; bridge: root.lib; trackModel: root.lib ? root.lib.trackModel : null }
-
-            Item {
-                id: albumContainer
-                anchors.fill: parent
-                visible: tabBar.currentIndex === 1
-
-                ColumnLayout {
-                    anchors.fill: parent; spacing: 0
-
-                    AlbumViewSelector {
-                        id: viewSelector
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 32
-                        currentView: 0
-                        onViewChanged: function(idx) { albumHost.currentView = idx }
-                    }
-
-                    AlbumViewHost {
-                        id: albumHost
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        albumModel: root.lib ? root.lib.albumModel : null
-                        bridge: root.lib
-                        onAlbumClicked: function(key, title, artist, year) {
-                            root.showAlbumDetail(key, title, artist, year)
-                        }
-                    }
-                }
+            LibraryTrackTable {
+                id: tracksView
+                trackModel: root.lib ? root.lib.trackModel : null
+                bridge: root.lib
+                notif: root.notif
+                actionRegistry: root.act
             }
 
-            ArtistList {
-                id: artistView; artists: root.lib ? root.lib.artists : []; bridge: root.lib
+            AlbumGridPage {
+                albumModel: root.lib ? root.lib.albumModel : null
+                bridge: root.lib
+                onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+            }
+
+            ArtistGridPage {
                 artistModel: root.lib ? root.lib.artistModel : null
-                onArtistSelected: function(name) { root.showArtistDetail(name) }
+                bridge: root.lib
+                onArtistClicked: function(name) { root.showArtistDetail(name) }
             }
 
-            FolderBrowser {
-                id: folderView; folders: root.lib ? root.lib.folders : []; bridge: root.lib
-                folderModel: root.lib ? root.lib.folderModel : null
+            FolderBrowserPage {
+                folderModel: root.ArtistListModel ? root.lib.folderModel : null
+                bridge: root.lib
             }
-
-            ArtistDetailPage { id: artistDetail; visible: tabBar.currentIndex === 4; bridge: root.lib; onBackRequested: root.backFromDetail() }
-            AlbumDetailPage { id: albumDetail; visible: tabBar.currentIndex === 5; bridge: root.lib; onBackRequested: root.backFromDetail() }
         }
+    }
+
+    LibraryErrorState {
+        id: errorState; anchors.centerIn: parent
+        visible: false
+    }
+
+    LibraryEmptyState {
+        id: emptyState; anchors.centerIn: parent
+        visible: false
+    }
+
+    LibrarySelectionBar {
+        id: selectionBar; width: parent.width; height: 40
+        z: 10; visible: false
     }
 }

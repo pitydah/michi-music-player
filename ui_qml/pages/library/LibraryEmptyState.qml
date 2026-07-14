@@ -1,0 +1,60 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
+import "../../components"
+
+Item {
+    id: root
+
+    property string title: "Biblioteca vacía"
+    property string message: "Agrega carpetas con música o refresca la biblioteca."
+    property string actionText: "Refrescar"
+
+    signal actionRequested()
+
+    Column {
+        anchors.centerIn: parent
+        spacing: MichiTheme.spacing.lg
+        width: Math.min(400, parent.width - 40)
+
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 64; height: 64; radius: 16
+            color: MichiTheme.colors.accentSurface
+            Text {
+                anchors.centerIn: parent
+                text: "BL"
+                color: MichiTheme.colors.accentBlue
+                font.pixelSize: 24
+                font.weight: MichiTheme.typography.weightBold
+                opacity: 0.7
+            }
+        }
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: root.title
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.weight: MichiTheme.typography.weightMedium
+        }
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: root.message
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: MichiTheme.spacing.sm
+
+            MichiButton { text: root.actionText; variant: "primary"; onClicked: root.actionRequested() }
+            MichiButton { text: "Ajustes"; variant: "ghost"; onClicked: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") } }
+        }
+    }
+}

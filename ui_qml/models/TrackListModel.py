@@ -1,4 +1,4 @@
-"""TrackListModel — BasePagedListModel with 12 roles via QueryService."""
+"""TrackListModel — BasePagedListModel with expanded roles via QueryService."""
 from __future__ import annotations
 
 from typing import Any
@@ -21,14 +21,43 @@ class TrackListModel(BasePagedListModel):
     GenreRole = Qt.UserRole + 10
     TrackNumberRole = Qt.UserRole + 11
     CoverKeyRole = Qt.UserRole + 12
+    ArtistIdRole = Qt.UserRole + 13
+    AlbumIdRole = Qt.UserRole + 14
+    AlbumArtistRole = Qt.UserRole + 15
+    DiscNumberRole = Qt.UserRole + 16
+    ComposerRole = Qt.UserRole + 17
+    CodecRole = Qt.UserRole + 18
+    SampleRateRole = Qt.UserRole + 19
+    BitDepthRole = Qt.UserRole + 20
+    BitrateRole = Qt.UserRole + 21
+    ChannelsRole = Qt.UserRole + 22
+    FileSizeRole = Qt.UserRole + 23
+    PlayCountRole = Qt.UserRole + 24
+    LastPlayedRole = Qt.UserRole + 25
+    DateAddedRole = Qt.UserRole + 26
+    FavoriteRole = Qt.UserRole + 27
+    MissingRole = Qt.UserRole + 28
+    SourceIdRole = Qt.UserRole + 29
+    FolderIdRole = Qt.UserRole + 30
+    DirectoryRole = Qt.UserRole + 31
+    PathRole = Qt.UserRole + 32
+    ReplayGainRole = Qt.UserRole + 33
+    PeakRole = Qt.UserRole + 34
 
-    def __init__(self, query_service=None, query_executor=None, parent=None):
-        super().__init__(page_size=250, query_executor=query_executor, parent=parent)
+    def __init__(self, query_service=None, query_executor=None, parent=None, page_size=250):
+        super().__init__(page_size=page_size, query_executor=query_executor, parent=parent)
         self._qs = query_service
         self._search = ""
         self._artist_filter = ""
         self._album_filter = ""
         self._fmt_filter = ""
+        self._genre_filter = ""
+        self._composer_filter = ""
+        self._year_filter = ""
+        self._folder_filter = ""
+        self._favorites_filter = False
+        self._unplayed_filter = False
+        self._missing_filter = False
         self._sort = "title"
         self._asc = True
 
@@ -41,7 +70,18 @@ class TrackListModel(BasePagedListModel):
                 self.AlbumRole: b"album", self.AlbumKeyRole: b"albumKey",
                 self.DurationRole: b"duration", self.FormatRole: b"format",
                 self.YearRole: b"year", self.GenreRole: b"genre",
-                self.TrackNumberRole: b"trackNumber", self.CoverKeyRole: b"coverKey"}
+                self.TrackNumberRole: b"trackNumber", self.CoverKeyRole: b"coverKey",
+                self.ArtistIdRole: b"artistId", self.AlbumIdRole: b"albumId",
+                self.AlbumArtistRole: b"albumArtist", self.DiscNumberRole: b"discNumber",
+                self.ComposerRole: b"composer", self.CodecRole: b"codec",
+                self.SampleRateRole: b"sampleRate", self.BitDepthRole: b"bitDepth",
+                self.BitrateRole: b"bitrate", self.ChannelsRole: b"channels",
+                self.FileSizeRole: b"fileSize", self.PlayCountRole: b"playCount",
+                self.LastPlayedRole: b"lastPlayed", self.DateAddedRole: b"dateAdded",
+                self.FavoriteRole: b"favorite", self.MissingRole: b"missing",
+                self.SourceIdRole: b"sourceId", self.FolderIdRole: b"folderId",
+                self.DirectoryRole: b"directory", self.PathRole: b"path",
+                self.ReplayGainRole: b"replayGain", self.PeakRole: b"peak"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
@@ -52,7 +92,18 @@ class TrackListModel(BasePagedListModel):
                    self.AlbumRole: "album", self.AlbumKeyRole: "album_key",
                    self.DurationRole: "duration", self.FormatRole: "format",
                    self.YearRole: "year", self.GenreRole: "genre",
-                   self.TrackNumberRole: "track_number", self.CoverKeyRole: "cover_key"}
+                   self.TrackNumberRole: "track_number", self.CoverKeyRole: "cover_key",
+                   self.ArtistIdRole: "artist_id", self.AlbumIdRole: "album_id",
+                   self.AlbumArtistRole: "album_artist", self.DiscNumberRole: "disc_number",
+                   self.ComposerRole: "composer", self.CodecRole: "codec",
+                   self.SampleRateRole: "sample_rate", self.BitDepthRole: "bit_depth",
+                   self.BitrateRole: "bitrate", self.ChannelsRole: "channels",
+                   self.FileSizeRole: "file_size", self.PlayCountRole: "play_count",
+                   self.LastPlayedRole: "last_played", self.DateAddedRole: "date_added",
+                   self.FavoriteRole: "favorite", self.MissingRole: "missing",
+                   self.SourceIdRole: "source_id", self.FolderIdRole: "folder_id",
+                   self.DirectoryRole: "directory", self.PathRole: "filepath",
+                   self.ReplayGainRole: "replay_gain", self.PeakRole: "peak"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")
@@ -61,23 +112,38 @@ class TrackListModel(BasePagedListModel):
         return None
 
     def refresh(self, search: str = "", artist: str = "", album: str = "",
-                fmt: str = "", sort: str = "title", asc: bool = True):
+                fmt: str = "", genre: str = "", composer: str = "", year: str = "",
+                folder: str = "", favorites: bool = False, unplayed: bool = False,
+                missing: bool = False, sort: str = "title", asc: bool = True):
         self._search = search
         self._artist_filter = artist
         self._album_filter = album
         self._fmt_filter = fmt
+        self._genre_filter = genre
+        self._composer_filter = composer
+        self._year_filter = year
+        self._folder_filter = folder
+        self._favorites_filter = favorites
+        self._unplayed_filter = unplayed
+        self._missing_filter = missing
         self._sort = sort
         self._asc = asc
-        kw = dict(search=search, artist=artist, album=album, fmt=fmt, sort=sort, asc=asc)
+        kw = dict(search=search, artist=artist, album=album, fmt=fmt,
+                  genre=genre, composer=composer, year=year, folder=folder,
+                  favorites=favorites, unplayed=unplayed, missing=missing,
+                  sort=sort, asc=asc)
         super().refresh(**kw)
 
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:
             return 0
-        kw = {k: v for k, v in kwargs.items() if k != "sort" and k != "asc"}
+        kw = {k: v for k, v in kwargs.items()
+              if k in ("search", "artist", "album", "fmt")}
         return self._qs.count_tracks(**kw)
 
     def _fetch_page(self, offset: int, limit: int, **kwargs) -> list[dict[str, Any]]:
         if not self._qs:
             return []
-        return self._qs.fetch_tracks(offset=offset, limit=limit, **kwargs)
+        kw = {k: v for k, v in kwargs.items()
+              if k in ("search", "artist", "album", "fmt", "sort", "asc", "folder")}
+        return self._qs.fetch_tracks(offset=offset, limit=limit, **kw)
