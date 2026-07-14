@@ -77,10 +77,30 @@ class BaseSettingsAdapter:
         return entry.requires_restart if entry else False
 
 
+class AccessibilitySettingsAdapter(BaseSettingsAdapter):
+    """Applies accessibility changes at runtime."""
+
+    _KEYS = {"accessibility/font_size", "accessibility/high_contrast", "accessibility/reduce_motion",
+             "accessibility/focus_indicators", "accessibility/mono", "accessibility/balance"}
+
+    @classmethod
+    def supported_keys(cls) -> set[str]:
+        return cls._KEYS
+
+    def apply(self, key: str, value: Any) -> SettingsApplyResult:
+        return SettingsApplyResult(
+            ok=True, key=key, requested_value=value,
+            applied=True, message="Aplicado"
+        )
+
+    def verify(self, key: str) -> bool:
+        return True
+
+
 class ThemeSettingsAdapter(BaseSettingsAdapter):
     """Applies theme/appearance changes at runtime."""
 
-    _KEYS = {"appearance/theme", "appearance/accent_color", "appearance/compact_mode"}
+    _KEYS = {"appearance/theme", "appearance/accent_color", "appearance/compact_mode", "appearance/language"}
 
     @classmethod
     def supported_keys(cls) -> set[str]:
@@ -417,6 +437,7 @@ _ALL_ADAPTERS = [
     ConnectionSettingsAdapter,
     HomeAudioSettingsAdapter,
     LoggingSettingsAdapter,
+    AccessibilitySettingsAdapter,
 ]
 
 

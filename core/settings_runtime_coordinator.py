@@ -70,7 +70,7 @@ class SettingsRuntimeCoordinator:
             ).to_dict()
 
         previous = SETTINGS.value(key, entry.default)
-        adapter = self._find_adapter(key)
+        adapter = self.adapter_for(key)
         affected_service = adapter.__class__.__name__ if adapter else ""
 
         if adapter:
@@ -108,8 +108,7 @@ class SettingsRuntimeCoordinator:
             else:
                 result.message = "Requiere reinicio" if restart else "No aplicado"
         else:
-            result.applied = True
-            result.message = "Aplicado"
+            result.message = "Sin adapter — sólo persistido"
 
         if result.applied and not restart:
             self._emit_change(key, value)
@@ -159,13 +158,19 @@ class SettingsRuntimeCoordinator:
         except Exception:
             pass
 
+    def adapter_for(self, key: str):
+        for adapter in self._adapters:
+            if key in adapter.supported_keys():
+                return adapter
+        return None
+
     def apply(self, key: str, value: Any) -> SettingsApplyResult:
         """Legacy alias for backward compatibility."""
         result_dict = self.execute(key, value)
         return SettingsApplyResult(
             ok=result_dict.get("ok", False),
             key=result_dict.get("key", key),
-            value=result_dict.get("requested_value", value),
+            requested_value=result_dict.get("requested_value", value),
             previous_value=result_dict.get("previous_value"),
             applied=result_dict.get("applied", False),
             requires_restart=result_dict.get("requires_restart", False),

@@ -18,6 +18,7 @@ Rectangle {
     property string restartMsg: ""
     property bool _debounceActive: false
     property var _debounceTimer: null
+    property var _sliderPreview: null
 
     signal clicked()
 
@@ -55,6 +56,9 @@ Rectangle {
         if (!result.ok) {
             root.errorMsg = result.message || "Error al guardar"
             root.appliedValue = root.originalValue
+            if (_sliderPreview !== null && !result.ok) {
+                _sliderPreview.value = root.originalValue
+            }
         } else {
             root.appliedValue = value
             root.dirty = (value !== root.originalValue)
@@ -67,7 +71,7 @@ Rectangle {
 
     function scheduleSave(value) {
         root.editedValue = value
-        if (root.entry.type === "slider") return
+        if (root.entry && root.entry.type === "slider") return
         if (_debounceTimer) _debounceTimer.stop()
         _debounceTimer = Qt.createQmlObject("import QtQuick; Timer {}", root)
         _debounceTimer.interval = 300
@@ -85,6 +89,14 @@ Rectangle {
             _debounceTimer.stop()
             _debounceActive = false
         }
+    }
+
+    function sliderCommit(value) {
+        root.doSave(value)
+    }
+
+    function sliderPreviewUpdate(value) {
+        root.editedValue = value
     }
 
     onEntryChanged: load()
@@ -119,18 +131,20 @@ Rectangle {
 
         Loader {
             id: fieldLoader; active: false
-            Layout.preferredWidth: root.entry.type === "bool" ? 48 : 200
+            Layout.preferredWidth: root.entry && root.entry.type === "bool" ? 48 : 200
             sourceComponent: {
                 if (!root.entry) return null
                 if (root.entry.type === "bool") return boolCtl
-                if (root.entry.type === "select") return selectCtl
+                if (root.entry.type === "select" || root.entry.type === "enum") return selectCtl
                 if (root.entry.type === "int") return intCtl
                 if (root.entry.type === "float") return floatCtl
-                if (root.entry.type === "slider") return sliderCtl
+                if (root.entry.type === "slider" || root.entry.type === "range") return sliderCtl
                 if (root.entry.type === "file") return fileCtl
-                if (root.entry.type === "directory") return dirCtl
+                if (root.entry.type === "directory" || root.entry.type === "path") return dirCtl
                 if (root.entry.type === "secret") return secretCtl
                 if (root.entry.type === "action") return actionCtl
+                if (root.entry.type === "color") return colorCtl
+                if (root.entry.type === "multi-select") return multiSelectCtl
                 return textCtl
             }
         }
@@ -163,15 +177,11 @@ Rectangle {
     }
 
     Component { id: floatCtl
-        SpinBox {
+        MichiDoubleSpinBox {
             value: root.originalValue !== null ? parseFloat(root.originalValue) || 0 : 0
             from: root.entry.min_value || 0
             to: root.entry.max_value || 999999
-            stepSize: 1
-            editable: true
             onValueModified: root.doSave(value)
-            Accessible.role: Accessible.SpinBox
-            Accessible.name: root.entry ? root.entry.label + " decimal" : ""
         }
     }
 
@@ -206,19 +216,53 @@ Rectangle {
     }
 
     Component { id: sliderCtl
-        MichiSlider {
-            width: 200
-            value: root.originalValue !== null ? parseFloat(root.originalValue) || 0 : 0
-            from: root.entry.min_value || 0
-            to: root.entry.max_value || 100
-            onMoved: root.doSave(value)
-            onPressedChanged: {
-                if (!pressed && value !== parseFloat(root.originalValue)) {
-                    root.doSave(value)
+        RowLayout {
+            spacing: MichiTheme.spacing.sm
+            Layout.fillWidth: true
+            MichiSlider {
+                id: slider
+                Layout.fillWidth: true
+                value: root.originalValue !== null ? parseFloat(root.originalValue) || 0 : 0
+                from: root.entry.min_value || 0
+                to: root.entry.max_value || 100
+                onPressedChanged: {
+                    if (!pressed) {
+                        root.sliderCommit(value)
+                    }
+                }
+                onMoved: {
+                    root.sliderPreviewUpdate(value)
+                }
+                Accessible.role: Accessible.Slider
+                Accessible.name: root.entry ? root.entry.label : ""
+            }
+            TextField {
+                id: sliderEditor
+                implicitWidth: 64
+                text: slider.value.toFixed(root.entry.type === "range" ? 2 : 0)
+                horizontalAlignment: Text.AlignHCenter
+                font.pixelSize: MichiTheme.typography.captionSize
+                color: MichiTheme.colors.textPrimary
+                background: Rectangle {
+                    color: MichiTheme.colors.surfaceInput
+                    radius: MichiTheme.radius.sm
+                    border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
+                    border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+                }
+                validator: DoubleValidator {
+                    bottom: slider.from
+                    top: slider.to
+                }
+                onEditingFinished: {
+                    var v = parseFloat(text)
+                    if (!isNaN(v)) {
+                        v = Math.max(slider.from, Math.min(slider.to, v))
+                        slider.value = v
+                        root.sliderCommit(v)
+                    }
+                    text = slider.value.toFixed(root.entry.type === "range" ? 2 : 0)
                 }
             }
-            Accessible.role: Accessible.Slider
-            Accessible.name: root.entry ? root.entry.label : ""
         }
     }
 
@@ -292,6 +336,34 @@ Rectangle {
             }
             Accessible.role: Accessible.Button
             Accessible.name: root.entry ? root.entry.label : ""
+        }
+    }
+
+    Component { id: colorCtl
+        RowLayout { spacing: MichiTheme.spacing.xs
+            Rectangle {
+                implicitWidth: 32; implicitHeight: 32; radius: MichiTheme.radius.sm
+                color: root.originalValue || "#8FB7FF"
+                border.width: 1; border.color: MichiTheme.colors.borderCard
+            }
+            TextField {
+                text: root.originalValue || "#8FB7FF"
+                Layout.fillWidth: true
+                font.pixelSize: MichiTheme.typography.captionSize
+                onTextEdited: root.scheduleSave(text)
+            }
+        }
+    }
+
+    Component { id: multiSelectCtl
+        RowLayout {
+            spacing: MichiTheme.spacing.xs
+            Layout.fillWidth: true
+            TextField {
+                text: root.originalValue ? String(root.originalValue) : ""
+                readOnly: true
+                Layout.fillWidth: true
+            }
         }
     }
 

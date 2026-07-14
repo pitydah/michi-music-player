@@ -145,11 +145,18 @@ Item {
             root.bridge.refresh()
     }
 
-    // Desktop: split view (categories always visible on desktop)
+    function _backIfNoBreadcrumbs() {
+        if (root.selectedEntry || root.selectedSection || root.selectedCategory) {
+            root.back()
+        }
+    }
+
+    // Desktop layout: width >= 900
     RowLayout {
         anchors.fill: parent; spacing: 0
+        visible: root.width >= 900
 
-        // Left panel: category list (always visible in desktop mode)
+        // Left panel: category list
         Rectangle {
             Layout.preferredWidth: 240; Layout.fillHeight: true
             color: MichiTheme.colors.surfaceCard
@@ -158,8 +165,10 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
                 SearchField {
+                    id: searchFieldDesktop
                     Layout.fillWidth: true
                     placeholderText: "Buscar ajustes..."
+                    Accessible.name: "Buscar ajustes"
                     onSearchTextChanged: root.searchCategories(text)
                 }
 
@@ -170,6 +179,7 @@ Item {
                         width: parent.width; height: 44; radius: MichiTheme.radius.sm
                         color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                         Accessible.name: modelData.title || ""
+                        Accessible.role: Accessible.ListItem
 
                         RowLayout {
                             anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
@@ -191,7 +201,15 @@ Item {
                             id: mouse; anchors.fill: parent; hoverEnabled: true
                             onClicked: root.openCategory(modelData.id)
                         }
+
+                        Keys.onReturnPressed: root.openCategory(modelData.id)
+                        Keys.onSpacePressed: root.openCategory(modelData.id)
+                        focus: true
+                        activeFocusOnTab: true
                     }
+                    Accessible.role: Accessible.List
+                    Accessible.name: "Categorías de ajustes"
+                    keyNavigationEnabled: true
                 }
 
                 Rectangle {
@@ -204,11 +222,12 @@ Item {
                     variant: "danger"
                     visible: root.bridge !== null
                     onClicked: confirmResetDialog.open()
+                    Accessible.name: "Restaurar todos los ajustes"
                 }
             }
         }
 
-        // Right panel: category/section/entry detail
+        // Right panel: detail view
         Rectangle {
             Layout.fillWidth: true; Layout.fillHeight: true
             color: "transparent"
@@ -267,10 +286,9 @@ Item {
                     }
                 }
 
-                // Header with back/restore
                 RowLayout {
                     Layout.fillWidth: true; visible: root.selectedCategory !== null
-                    MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back() }
+                    MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
                               root.selectedSection ? root.selectedSection.title :
@@ -283,23 +301,204 @@ Item {
                         variant: "ghost"
                         visible: root.selectedCategory !== null && root.selectedSection === null && root.selectedEntry === null
                         onClicked: root.resetCategory(root.selectedCategoryId)
+                        Accessible.name: "Restaurar categoría"
                     }
                 }
 
-                Loader {
+                ScrollView {
                     Layout.fillWidth: true; Layout.fillHeight: true
-                    sourceComponent: {
-                        if (root.selectedCategory === null) return desktopCategoryList
-                        if (root.selectedEntry) return entryDetailView
-                        if (root.selectedSection) return sectionDetailView
-                        return categoryDetailView
+                    clip: true
+                    Accessible.role: Accessible.ScrollArea
+
+                    Loader {
+                        sourceComponent: {
+                            if (root.selectedCategory === null) return desktopCategoryList
+                            if (root.selectedEntry) return entryDetailView
+                            if (root.selectedSection) return sectionDetailView
+                            return categoryDetailView
+                        }
                     }
                 }
             }
         }
     }
 
-    // Desktop category list (shown when no selection)
+    // Tablet layout: width >= 600 and < 900
+    RowLayout {
+        anchors.fill: parent; spacing: 0
+        visible: root.width >= 600 && root.width < 900
+
+        Rectangle {
+            Layout.preferredWidth: root.selectedCategory === null ? parent.width : 200
+            Layout.fillHeight: true
+            color: MichiTheme.colors.surfaceCard
+            visible: root.selectedCategory === null || root.width >= 700
+
+            ColumnLayout {
+                anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
+
+                SearchField {
+                    Layout.fillWidth: true
+                    placeholderText: "Buscar..."
+                    Accessible.name: "Buscar ajustes"
+                    onSearchTextChanged: root.searchCategories(text)
+                }
+
+                ListView {
+                    Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
+                    model: root.shownCategories
+                    delegate: Rectangle {
+                        width: parent.width; height: 44; radius: MichiTheme.radius.sm
+                        color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
+                        Accessible.name: modelData.title || ""
+                        Accessible.role: Accessible.ListItem
+
+                        RowLayout {
+                            anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: modelData.title || ""
+                                color: root.selectedCategoryId === modelData.id ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: ">"
+                                visible: mouse.containsMouse || root.selectedCategoryId === modelData.id
+                                color: MichiTheme.colors.textSecondary
+                            }
+                        }
+
+                        MouseArea {
+                            id: mouseT; anchors.fill: parent; hoverEnabled: true
+                            onClicked: root.openCategory(modelData.id)
+                        }
+                        Keys.onReturnPressed: root.openCategory(modelData.id)
+                        focus: true; activeFocusOnTab: true
+                    }
+                    Accessible.role: Accessible.List
+                    Accessible.name: "Categorías"
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true; Layout.fillHeight: true
+            color: "transparent"
+
+            ColumnLayout {
+                anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.md
+
+                RowLayout {
+                    Layout.fillWidth: true; visible: root.selectedCategory !== null
+                    MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
+                    Label {
+                        text: root.selectedEntry ? root.selectedEntry.label :
+                              root.selectedSection ? root.selectedSection.title :
+                              root.selectedCategory ? root.selectedCategory.title : ""
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
+                    }
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+                    Loader {
+                        sourceComponent: {
+                            if (root.selectedCategory === null) return tabletCategoryList
+                            if (root.selectedEntry) return entryDetailView
+                            if (root.selectedSection) return sectionDetailView
+                            return categoryDetailView
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Compact layout: width >= 400 and < 600
+    ColumnLayout {
+        anchors.fill: parent; spacing: 0
+        visible: root.width >= 400 && root.width < 600
+
+        RowLayout {
+            Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.md
+            MichiButton {
+                text: "< Volver"
+                variant: "ghost"
+                visible: root.selectedCategory !== null
+                onClicked: root.back()
+                Accessible.name: "Volver"
+            }
+            Label {
+                text: root.selectedEntry ? root.selectedEntry.label :
+                      root.selectedSection ? root.selectedSection.title :
+                      root.selectedCategory ? root.selectedCategory.title : "Ajustes"
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+            }
+        }
+
+        SearchField {
+            Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
+            placeholderText: "Buscar..."
+            visible: root.selectedCategory === null
+            Accessible.name: "Buscar ajustes"
+            onSearchTextChanged: root.searchCategories(text)
+        }
+
+        ScrollView {
+            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+            Loader {
+                sourceComponent: {
+                    if (root.selectedCategory === null) return compactList
+                    if (root.selectedEntry) return entryDetailView
+                    if (root.selectedSection) return sectionDetailView
+                    return compactCategoryDetail
+                }
+            }
+        }
+    }
+
+    // Narrow layout: width < 400
+    ColumnLayout {
+        anchors.fill: parent; spacing: 0
+        visible: root.width < 400
+
+        RowLayout {
+            Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
+            MichiButton {
+                text: "<"
+                variant: "ghost"
+                implicitWidth: 36
+                visible: root.selectedCategory !== null
+                onClicked: root.back()
+                Accessible.name: "Volver"
+            }
+            Label {
+                text: root.selectedEntry ? root.selectedEntry.label :
+                      root.selectedSection ? root.selectedSection.title :
+                      root.selectedCategory ? root.selectedCategory.title : "Ajustes"
+                font.pixelSize: MichiTheme.typography.bodySize
+                color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignHCenter
+            }
+        }
+
+        ScrollView {
+            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+            Loader {
+                sourceComponent: {
+                    if (root.selectedCategory === null) return compactList
+                    if (root.selectedEntry) return entryDetailView
+                    if (root.selectedSection) return sectionDetailView
+                    return compactCategoryDetail
+                }
+            }
+        }
+    }
+
     Component { id: desktopCategoryList
         ListView {
             clip: true; spacing: 2
@@ -313,7 +512,18 @@ Item {
         }
     }
 
-    // Category detail (list of sections)
+    Component { id: tabletCategoryList
+        ListView {
+            clip: true; spacing: 2
+            model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
+            delegate: GlassCard {
+                width: parent ? parent.width : 0; height: 64
+                title: modelData.title || ""
+                onClicked: root.openCategory(modelData.id)
+            }
+        }
+    }
+
     Component { id: categoryDetailView
         ColumnLayout {
             spacing: MichiTheme.spacing.md
@@ -330,7 +540,6 @@ Item {
         }
     }
 
-    // Section detail (list of entries)
     Component { id: sectionDetailView
         ColumnLayout {
             spacing: MichiTheme.spacing.sm
@@ -346,7 +555,6 @@ Item {
         }
     }
 
-    // Single entry detail
     Component { id: entryDetailView
         ColumnLayout {
             anchors.fill: parent; spacing: MichiTheme.spacing.md
@@ -355,26 +563,6 @@ Item {
                 entry: root.selectedEntry
             }
             Item { Layout.fillHeight: true }
-        }
-    }
-
-    // Compact fallback for narrow windows
-    ColumnLayout {
-        anchors.fill: parent; spacing: 0; visible: root.width < 600
-        RowLayout {
-            Layout.fillWidth: true
-            MichiButton { text: root.selectedCategory ? "< Volver" : ""; variant: "ghost"; visible: root.selectedCategory; onClicked: root.back() }
-            Label { text: root.selectedEntry ? root.selectedEntry.label : root.selectedSection ? root.selectedSection.title : root.selectedCategory ? root.selectedCategory.title : "Ajustes"; font.pixelSize: MichiTheme.typography.pageTitleSize; color: MichiTheme.colors.textPrimary; Layout.fillWidth: true }
-        }
-
-        Loader {
-            Layout.fillWidth: true; Layout.fillHeight: true
-            sourceComponent: {
-                if (root.selectedCategory === null) return compactList
-                if (root.selectedEntry) return compactEntryDetail
-                if (root.selectedSection) return compactSectionDetail
-                return compactCategoryDetail
-            }
         }
     }
 
@@ -402,21 +590,6 @@ Item {
         }
     }
 
-    Component { id: compactSectionDetail
-        ColumnLayout {
-            spacing: MichiTheme.spacing.sm
-            Repeater {
-                model: root.selectedSection ? root.selectedSection.entries : []
-                SettingsRow { Layout.fillWidth: true; entry: modelData }
-            }
-        }
-    }
-
-    Component { id: compactEntryDetail
-        SettingsRow { entry: root.selectedEntry }
-    }
-
-    // Confirm reset dialog
     ConfirmActionDialog {
         id: confirmResetDialog
         title: "Restaurar todos los ajustes"

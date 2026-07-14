@@ -1,5 +1,6 @@
 """ThemeBridge — dynamic theme with dark/light/system, accent, high contrast, density.
 Connected to ThemeStore for real-time QML theme updates.
+Uses SettingsService for persistence instead of direct SETTINGS writes.
 """
 from __future__ import annotations
 
@@ -11,9 +12,10 @@ from core.settings_manager import SETTINGS
 class ThemeBridge(QObject):
     themeChanged = Signal()
 
-    def __init__(self, coordinator=None, parent=None):
+    def __init__(self, coordinator=None, service=None, parent=None):
         super().__init__(parent)
         self._coordinator = coordinator
+        self._service = service
         self._theme = SETTINGS.value("appearance/theme", "dark")
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
         self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
@@ -22,8 +24,16 @@ class ThemeBridge(QObject):
         self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
         self._dark_mode = self._theme != "light"
 
+    def _set_via_service(self, key: str, value):
+        if self._service:
+            self._service.set_(key, value)
+        elif self._coordinator:
+            self._coordinator.execute(key, value)
+        else:
+            SETTINGS.setValue(key, value)
+            SETTINGS.sync()
+
     def _notify_theme_store(self):
-        """Push current state to ThemeStore singleton in QML."""
         try:
             from PySide6.QtQml import qmlEngine
             engine = qmlEngine(self)
@@ -43,8 +53,7 @@ class ThemeBridge(QObject):
         if enabled != self._dark_mode:
             self._dark_mode = enabled
             self._theme = "dark" if enabled else "light"
-            SETTINGS.setValue("appearance/theme", self._theme)
-            SETTINGS.sync()
+            self._set_via_service("appearance/theme", self._theme)
             self.themeChanged.emit()
 
     @Property(str, notify=themeChanged)
@@ -56,10 +65,7 @@ class ThemeBridge(QObject):
         if val != self._theme:
             self._theme = val
             self._dark_mode = val != "light"
-            if self._coordinator:
-                self._coordinator.apply("appearance/theme", val)
-            SETTINGS.setValue("appearance/theme", val)
-            SETTINGS.sync()
+            self._set_via_service("appearance/theme", val)
             self.themeChanged.emit()
 
     @Property(str, notify=themeChanged)
@@ -68,12 +74,10 @@ class ThemeBridge(QObject):
 
     @accentColor.setter
     def accentColor(self, color: str):
-        self._accent_color = color
-        if self._coordinator:
-            self._coordinator.apply("appearance/accent_color", color)
-        SETTINGS.setValue("appearance/accent_color", color)
-        SETTINGS.sync()
-        self.themeChanged.emit()
+        if color != self._accent_color:
+            self._accent_color = color
+            self._set_via_service("appearance/accent_color", color)
+            self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
     def highContrast(self):
@@ -81,12 +85,10 @@ class ThemeBridge(QObject):
 
     @highContrast.setter
     def highContrast(self, val: bool):
-        self._high_contrast = val
-        if self._coordinator:
-            self._coordinator.apply("accessibility/high_contrast", val)
-        SETTINGS.setValue("accessibility/high_contrast", val)
-        SETTINGS.sync()
-        self.themeChanged.emit()
+        if val != self._high_contrast:
+            self._high_contrast = val
+            self._set_via_service("accessibility/high_contrast", val)
+            self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
     def compactMode(self):
@@ -94,12 +96,10 @@ class ThemeBridge(QObject):
 
     @compactMode.setter
     def compactMode(self, val: bool):
-        self._compact_mode = val
-        if self._coordinator:
-            self._coordinator.apply("appearance/compact_mode", val)
-        SETTINGS.setValue("appearance/compact_mode", val)
-        SETTINGS.sync()
-        self.themeChanged.emit()
+        if val != self._compact_mode:
+            self._compact_mode = val
+            self._set_via_service("appearance/compact_mode", val)
+            self.themeChanged.emit()
 
     @Property(str, notify=themeChanged)
     def fontScale(self):
@@ -107,12 +107,10 @@ class ThemeBridge(QObject):
 
     @fontScale.setter
     def fontScale(self, val: str):
-        self._font_scale = val
-        if self._coordinator:
-            self._coordinator.apply("accessibility/font_size", val)
-        SETTINGS.setValue("accessibility/font_size", val)
-        SETTINGS.sync()
-        self.themeChanged.emit()
+        if val != self._font_scale:
+            self._font_scale = val
+            self._set_via_service("accessibility/font_size", val)
+            self.themeChanged.emit()
 
     @Property(bool, notify=themeChanged)
     def reduceMotion(self):
@@ -120,9 +118,7 @@ class ThemeBridge(QObject):
 
     @reduceMotion.setter
     def reduceMotion(self, val: bool):
-        self._reduce_motion = val
-        if self._coordinator:
-            self._coordinator.apply("accessibility/reduce_motion", val)
-        SETTINGS.setValue("accessibility/reduce_motion", val)
-        SETTINGS.sync()
-        self.themeChanged.emit()
+        if val != self._reduce_motion:
+            self._reduce_motion = val
+            self._set_via_service("accessibility/reduce_motion", val)
+            self.themeChanged.emit()
