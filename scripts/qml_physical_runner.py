@@ -162,7 +162,8 @@ def autofail(reason: str):
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     results = [{"id": c["id"], "label": c["label"], "passed": False, "evidence": reason} for c in CHECKS]
     artifact = {
-        "status": "FAILED",
+        "status": "BLOCKED_HARDWARE",
+        "message": reason,
         "sha": _get_git_sha(),
         "date": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "platform": _get_platform(),
@@ -175,7 +176,7 @@ def autofail(reason: str):
     }
     ARTIFACT_PATH.write_text(json.dumps(artifact, indent=2, ensure_ascii=False))
     print(f"Wrote autofail artifact to {ARTIFACT_PATH}: {reason}")
-    return 1
+    return 2
 
 
 def main():
