@@ -97,7 +97,8 @@ class TestAudioLabService:
         from core.audio_lab.audio_integrity_service import AudioIntegrityService
         svc = AudioIntegrityService()
         result = svc.check("/nonexistent/file.flac")
-        assert result.status == "error"
+        from core.audio_lab.audio_integrity_service import IntegrityStatus
+        assert result.status == IntegrityStatus.ERROR
         assert not result.is_valid
 
     def test_comparison_service_independent(self, app, db, wm):

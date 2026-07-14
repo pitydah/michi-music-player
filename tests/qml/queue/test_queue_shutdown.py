@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.queue_service import QueueService
 from ui_qml_bridge.queue_bridge import QueueBridge, _queue_state_path
 from ui_qml_bridge.app_bridge import AppBridge
 from ui_qml_bridge.bridge_factory import BridgeFactory
@@ -22,14 +23,27 @@ def mock_player():
     return player
 
 
+@pytest.fixture(autouse=True)
+def clean_state():
+    path = _queue_state_path()
+    if os.path.exists(path):
+        os.remove(path)
+    yield
+    if os.path.exists(path):
+        os.remove(path)
+
+
 def test_queue_bridge_has_queue_service(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+    qs = QueueService()
+    bridge = QueueBridge(player_service=mock_player, queue_service=qs)
     assert hasattr(bridge, 'queue_service')
     assert bridge.queue_service is not None
 
 
 def test_app_bridge_uses_queue_service_for_shutdown(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+    qs = QueueService()
+    qs.set_items([{"id": 1, "title": "T1"}])
+    bridge = QueueBridge(player_service=mock_player, queue_service=qs)
     app = AppBridge(
         queue_bridge=bridge,
         worker_manager=MagicMock(),
@@ -43,7 +57,6 @@ def test_app_bridge_uses_queue_service_for_shutdown(mock_player):
     )
     app.quit()
     assert os.path.exists(_queue_state_path())
-    os.remove(_queue_state_path())
 
 
 def test_factory_creates_queue_bridge_with_service():
@@ -58,14 +71,16 @@ def test_factory_creates_queue_bridge_with_service():
 
 
 def test_shutdown_with_queue_persistence(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+    qs = QueueService()
+    qs.set_items([{"id": 1, "title": "T1"}])
+    bridge = QueueBridge(player_service=mock_player, queue_service=qs)
     bridge.queue_service.shutdown()
     assert os.path.exists(_queue_state_path())
-    os.remove(_queue_state_path())
 
 
 def test_queue_service_closes_cleanly(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+    qs = QueueService()
+    qs.set_items([{"id": 1, "title": "T1"}])
+    bridge = QueueBridge(player_service=mock_player, queue_service=qs)
     bridge.queue_service.shutdown()
     assert os.path.exists(_queue_state_path())
-    os.remove(_queue_state_path())

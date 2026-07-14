@@ -11,9 +11,8 @@ Item {
     property var bridge: null
     property var notif: null
     property var actionRegistry: null
-    property bool _fetchingMore: false
+    property var selectionController: null
     property bool _shiftPressed: false
-    property var _selectedIds: []
     property int _lastClickedIndex: -1
 
     signal trackPlayRequested(int trackId)
@@ -42,7 +41,9 @@ Item {
 
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Shift) root._shiftPressed = true
-                if (event.key === Qt.Key_Escape) { root._selectedIds = []; selectionModel.clear(); selectionBar.visible = false }
+                if (event.key === Qt.Key_Escape) {
+                    if (root.selectionController) root.selectionController.clear()
+                }
                 if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
                     selectAll()
                 }
@@ -53,11 +54,9 @@ Item {
             }
 
             onContentYChanged: {
-                if (!root.trackModel || root._fetchingMore || !root.trackModel.hasMore) return
+                if (!root.trackModel || root.trackModel.loadingMore || !root.trackModel.hasMore) return
                 if (contentY + height >= contentHeight - 400) {
-                    root._fetchingMore = true
                     root.trackModel.fetchMore()
-                    root._fetchingMore = false
                 }
             }
 
@@ -80,7 +79,7 @@ Item {
                 trackFavorite: model.favorite || false
                 trackMissing: model.missing || false
                 trackQuality: model.bitDepth || model.bitrate || 0
-                isSelected: root._selectedIds.indexOf(model.trackId) !== -1
+                isSelected: root.selectionController ? root.selectionController.contains(model.trackId || 0) : false
                 isShiftPressed: root._shiftPressed
                 lastClickedIndex: root._lastClickedIndex
                 rowIndex: index
@@ -96,8 +95,9 @@ Item {
                 }
 
                 onRightClicked: function(mx, my) {
-                    root._selectedIds = [model.trackId || 0]
-                    updateSelectionBar()
+                    if (root.selectionController) {
+                        root.selectionController.replace([model.trackId || 0])
+                    }
                     if (root.actionRegistry) {
                         contextMenu.x = mx; contextMenu.y = my
                         contextMenu.open()
@@ -105,23 +105,16 @@ Item {
                 }
 
                 onSelectionToggled: function(id, ctrl, shift) {
+                    if (!root.selectionController) return
                     if (ctrl && shift) {
-                        var start = Math.min(root._lastClickedIndex, index)
-                        var end = Math.max(root._lastClickedIndex, index)
-                        for (var i = start; i <= end; i++) {
-                            var tid = root.trackModel.data(root.trackModel.index(i, 0), TrackIdRole)
-                            if (root._selectedIds.indexOf(tid) === -1)
-                                root._selectedIds.push(tid)
-                        }
+                        var visibleIds = root.trackModel ? root.trackModel.visibleIds() : []
+                        root.selectionController.selectRangeByRows(root._lastClickedIndex, index, visibleIds)
                     } else if (ctrl) {
-                        var idx = root._selectedIds.indexOf(id)
-                        if (idx !== -1) root._selectedIds.splice(idx, 1)
-                        else root._selectedIds.push(id)
+                        root.selectionController.toggle(id)
                     } else {
-                        root._selectedIds = [id]
+                        root.selectionController.replace([id])
                     }
                     root._lastClickedIndex = index
-                    updateSelectionBar()
                 }
             }
         }
@@ -142,10 +135,8 @@ Item {
             MichiButton {
                 text: "Cargar más"; variant: "ghost"; height: 24
                 onClicked: {
-                    if (root.trackModel && root.trackModel.hasMore && !root._fetchingMore) {
-                        root._fetchingMore = true
+                    if (root.trackModel && root.trackModel.hasMore && !root.trackModel.loadingMore) {
                         root.trackModel.fetchMore()
-                        root._fetchingMore = false
                     }
                 }
             }
@@ -166,30 +157,22 @@ Item {
         }
     }
 
-    LibrarySortMenu {
+    LibraryTrackContextMenu {
         id: contextMenu
         bridge: root.bridge
+        selectionController: root.selectionController
+        trackModel: root.trackModel
     }
 
     function selectAll() {
-        root._selectedIds = []
-        if (root.trackModel) {
-            for (var i = 0; i < root.trackModel.count; i++) {
-                root._selectedIds.push(root.trackModel.data(root.trackModel.index(i, 0), TrackIdRole))
-            }
+        if (root.selectionController && root.trackModel) {
+            var ids = root.trackModel.visibleIds()
+            root.selectionController.selectAllLoaded(ids)
         }
-        updateSelectionBar()
-    }
-
-    function updateSelectionBar() {
-        selectionBar.selectedCount = root._selectedIds.length
-        selectionBar.selectedIds = root._selectedIds
-        selectionBar.visible = root._selectedIds.length > 0
     }
 
     function clearSelection() {
-        root._selectedIds = []
-        selectionBar.visible = false
+        if (root.selectionController) root.selectionController.clear()
     }
 
     function formatDuration(secs) {

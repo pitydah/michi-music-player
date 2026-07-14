@@ -71,8 +71,8 @@ def test_stale_result_ignored(bridge, mock_service):
 def test_no_search_service():
     bridge = GlobalSearchBridge(search_service=None)
     result = bridge.search("Test")
-    assert result.get("ok")
-    assert result.get("count") == 0
+    assert not result.get("ok")
+    assert "SERVICE_UNAVAILABLE" in result.get("error", "")
 
 
 def test_results_property(bridge):

@@ -11,7 +11,7 @@ Item {
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-    property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
+    property var sel: typeof librarySelectionController !== "undefined" ? librarySelectionController : (typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null)
     property var act: typeof actionRegistry !== "undefined" ? actionRegistry : null
     property string _labelArtists: "Artistas"
     property string _labelFolders: "Carpetas"
@@ -111,6 +111,7 @@ Item {
                 bridge: root.lib
                 notif: root.notif
                 actionRegistry: root.act
+                selectionController: root.sel
             }
 
             AlbumGridPage {
@@ -183,6 +184,9 @@ Item {
 
     LibrarySelectionBar {
         id: selectionBar; width: parent.width; height: 40
-        z: 10; visible: false
+        z: 10
+        visible: root.sel ? root.sel.hasSelection : false
+        count: root.sel ? root.sel.count : 0
+        selectionController: root.sel
     }
 }

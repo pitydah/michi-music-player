@@ -17,11 +17,19 @@ Rectangle {
     property int trackCount: 0
     property string lastIndexed: ""
     property bool scanning: false
+    property string scanProgress: ""
+    property int priority: 0
+    property bool watchMode: false
+    property int exclusionCount: 0
 
     signal editRequested()
     signal removeRequested()
-    signal toggleEnabled()
+    signal toggleEnabled(bool enable)
     signal scanRequested()
+    signal cancelScanRequested()
+    signal priorityChanged(int newPriority)
+    signal watchModeToggled(bool enable)
+    signal exclusionsRequested()
 
     width: parent.width; height: 64
     radius: MichiTheme.radiusSm
@@ -57,7 +65,7 @@ Rectangle {
                     font.weight: MichiTheme.typography.weightMedium
                 }
                 Text {
-                    text: root.scanning ? "(Escaneando...)" : root.status
+                    text: root.scanning ? (root.scanProgress || "Escaneando...") : root.status
                     color: root.scanning ? MichiTheme.colors.accentBlue :
                            root.status === "error" ? MichiTheme.colors.error :
                            root.status === "offline" ? MichiTheme.colors.warning : MichiTheme.colors.textMuted
@@ -74,10 +82,18 @@ Rectangle {
             }
 
             Text {
-                text: root.trackCount > 0 ? root.trackCount + " canciones" : ""
+                text: root.trackCount > 0 ? root.trackCount + " canciones" +
+                      (root.exclusionCount > 0 ? " · " + root.exclusionCount + " exclusiones" : "") : ""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.captionSize
                 visible: text !== ""
+            }
+
+            Text {
+                text: "Prioridad: " + root.priority + (root.watchMode ? " · Watch" : "")
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.captionSize
+                visible: true
             }
         }
 
@@ -88,12 +104,15 @@ Rectangle {
             MichiButton {
                 text: root.enabled ? "Desactivar" : "Activar"
                 variant: "ghost"; height: 24
-                onClicked: root.toggleEnabled()
+                onClicked: root.toggleEnabled(!root.enabled)
             }
 
             RowLayout { spacing: MichiTheme.spacing.xs
                 MichiButton { text: "Editar"; variant: "ghost"; height: 24; onClicked: root.editRequested() }
-                MichiButton { text: root.scanning ? "..." : "Escanear"; variant: "ghost"; height: 24; enabled: !root.scanning; onClicked: root.scanRequested() }
+                MichiButton { text: root.scanning ? "Detener" : "Escanear"; variant: "ghost"; height: 24
+                    onClicked: root.scanning ? root.cancelScanRequested() : root.scanRequested()
+                }
+                MichiButton { text: "Excluir"; variant: "ghost"; height: 24; onClicked: root.exclusionsRequested() }
                 MichiButton { text: "Eliminar"; variant: "ghost"; height: 24; onClicked: root.removeRequested() }
             }
         }

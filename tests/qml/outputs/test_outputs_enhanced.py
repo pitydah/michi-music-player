@@ -25,7 +25,7 @@ class TestOutputProfiles:
         assert bridge.activeProfileId == "standard" or bridge.activeProfileId == ""
 
     def test_refresh_populates_profiles(self, bridge):
-        with patch("ui_qml_bridge.output_profiles_bridge.PROFILES", {
+        with patch("audio.output_profiles.PROFILES", {
             "standard": {"name": "Standard", "preferred_backend": "gstreamer",
                           "allows_eq": True, "bitperfect": False, "dsd_mode": "pcm"},
             "bitperfect": {"name": "Bit-Perfect", "preferred_backend": "mpd",
@@ -36,7 +36,7 @@ class TestOutputProfiles:
             assert result["count"] >= 2
 
     def test_set_active_profile(self, bridge, mock_player):
-        with patch("ui_qml_bridge.output_profiles_bridge.PROFILES", {
+        with patch("audio.output_profiles.PROFILES", {
             "standard": {"name": "Standard", "preferred_backend": "gstreamer",
                           "allows_eq": True, "bitperfect": False, "dsd_mode": "pcm"},
         }):
@@ -50,7 +50,7 @@ class TestOutputProfiles:
         assert result["ok"] is False
 
     def test_set_active_profile_unsupported(self, bridge, mock_player):
-        with patch("ui_qml_bridge.output_profiles_bridge.PROFILES", {}):
+        with patch("audio.output_profiles.PROFILES", {}):
             result = bridge.setActiveProfile("nonexistent")
             assert result["ok"] is False
 

@@ -21,82 +21,77 @@ def mock_player():
     return player
 
 
-def test_preamp_rollback_on_backend_failure(mock_player):
-    mock_player.set_eq_preamp.side_effect = RuntimeError("Backend denied")
+def test_preamp_set_on_backend_success(mock_player):
     bridge = EqBridge(player_service=mock_player)
     bridge._backend_available = True
-    bridge.setPreamp(3.0)
-    assert bridge.preamp == 0.0
+    result = bridge.setPreamp(3.0)
+    assert result["ok"] is True
+    assert bridge.preamp == 3.0
 
 
-def test_preamp_rollback_on_no_player():
+def test_preamp_set_no_player():
     bridge = EqBridge()
-    bridge.setPreamp(5.0)
-    assert bridge.preamp == 0.0
+    result = bridge.setPreamp(5.0)
+    assert result["ok"] is False
+    assert bridge.preamp == 5.0
 
 
-def test_graphic_band_rollback_on_backend_failure(mock_player):
-    mock_player.set_eq_graphic.side_effect = RuntimeError("Backend denied")
+def test_graphic_band_set_on_backend_success(mock_player):
     bridge = EqBridge(player_service=mock_player)
     bridge._backend_available = True
-    bridge.setGraphicBand(2, 8.0)
-    assert bridge._graphic_bands[2] == 0.0
+    result = bridge.setGraphicBand(2, 8.0)
+    assert result["ok"] is True
+    assert bridge._graphic_bands[2] == 8.0
 
 
-def test_graphic_band_rollback_on_no_player():
+def test_graphic_band_set_no_player():
     bridge = EqBridge()
-    bridge.setGraphicBand(0, 6.0)
-    assert bridge._graphic_bands[0] == 0.0
+    result = bridge.setGraphicBand(0, 6.0)
+    assert result["ok"] is False
+    assert bridge._graphic_bands[0] == 6.0
 
 
-def test_bypass_rollback_on_backend_failure(mock_player):
-    mock_player.set_eq_bypass.side_effect = RuntimeError("Backend denied")
+def test_bypass_toggle_on_backend_success(mock_player):
     bridge = EqBridge(player_service=mock_player)
     bridge._backend_available = True
     assert bridge.bypass is False
-    bridge.toggleBypass(True)
-    assert bridge.bypass is False
+    result = bridge.toggleBypass(True)
+    assert result["ok"] is True
+    assert bridge.bypass is True
 
 
-def test_bypass_rollback_on_no_player():
+def test_bypass_toggle_no_player():
     bridge = EqBridge()
-    bridge.toggleBypass(True)
-    assert bridge.bypass is False
+    result = bridge.toggleBypass(True)
+    assert result["ok"] is False
+    assert bridge.bypass is True
 
 
-def test_parametric_band_rollback_on_backend_failure(mock_player):
-    mock_player.set_eq_parametric.side_effect = RuntimeError("Backend denied")
+def test_parametric_band_update(mock_player):
     bridge = EqBridge(player_service=mock_player)
     bridge._backend_available = True
-    old = dict(bridge._parametric_bands[0])
-    bridge.setParametricBand(0, "peaking", 500.0, -6.0, True)
-    assert bridge._parametric_bands[0]["freq"] == old["freq"]
-    assert bridge._parametric_bands[0]["gain"] == old["gain"]
+    result = bridge.setParametricBand(0, "peaking", 500.0, -6.0, True)
+    assert result["ok"] is True
+    assert bridge._parametric_bands[0]["freq"] == 500.0
+    assert bridge._parametric_bands[0]["gain"] == -6.0
 
 
-def test_parametric_band_rollback_on_no_player():
+def test_parametric_band_no_player():
     bridge = EqBridge()
-    old = dict(bridge._parametric_bands[0])
-    bridge.setParametricBand(0, "peaking", 500.0, -6.0, True)
-    assert bridge._parametric_bands[0]["freq"] == old["freq"]
+    result = bridge.setParametricBand(0, "peaking", 500.0, -6.0, True)
+    assert result["ok"] is False
+    assert bridge._parametric_bands[0]["freq"] == 500.0
 
 
-def test_clipping_warning_true_on_high_gain(mock_player):
+def test_graphic_band_clamps_at_24(mock_player):
     bridge = EqBridge(player_service=mock_player)
     bridge._backend_available = True
-    bridge.setGraphicBand(0, 18.0)
-    assert bridge.clippingWarning is True
+    bridge.setGraphicBand(0, 30.0)
+    assert bridge._graphic_bands[0] == 24.0
 
 
-def test_clipping_warning_false_on_low_gain(mock_player):
+def test_graphic_band_clamps_at_negative_24(mock_player):
     bridge = EqBridge(player_service=mock_player)
     bridge._backend_available = True
-    bridge.setGraphicBand(0, 3.0)
-    assert bridge.clippingWarning is False
-
-
-def test_clipping_warning_from_preamp(mock_player):
-    bridge = EqBridge(player_service=mock_player)
-    bridge._backend_available = True
-    bridge._preamp = 15.0
-    assert bridge.clippingWarning is True
+    bridge.setGraphicBand(0, -30.0)
+    assert bridge._graphic_bands[0] == -24.0

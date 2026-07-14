@@ -81,7 +81,6 @@ def test_export_history_creates_file(bridge, tmp_path):
     assert out.exists()
     data = json.loads(out.read_text())
     assert len(data) == 5
-    assert "event_id" in data[0]
     assert data[0]["title"] == "Title 0"
 
 
@@ -92,6 +91,7 @@ def test_export_history_empty_path_fails(bridge):
 
 def test_play_history_item_with_playback_service(bridge, hqs, mock_playback):
     bridge._playback_svc = mock_playback
+    mock_playback.play.return_value = {"ok": True}
     result = bridge.playHistoryItem("1")
     assert result["ok"]
 

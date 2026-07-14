@@ -19,6 +19,9 @@ class MockModel:
             return row + 100
         return -1
 
+    def visibleIds(self):
+        return [self.idAt(i) for i in range(self._count)]
+
 
 class TestSelectionControllerAdvanced:
     @pytest.fixture
@@ -51,8 +54,8 @@ class TestSelectionControllerAdvanced:
         assert ctrl.count == 3
 
     def test_replace(self, ctrl):
-        ctrl.populate_all([1, 2, 3])
-        ctrl.replace(99)
+        ctrl.replace([1, 2, 3])
+        ctrl.replace([99])
         assert ctrl.selectedIds == [99]
         assert ctrl.anchor == 99
         assert ctrl.current == 99
@@ -72,48 +75,46 @@ class TestSelectionControllerAdvanced:
         assert 10 not in ctrl.selectedIds
 
     def test_remove_nonexistent(self, ctrl):
-        ctrl.populate_all([1, 2, 3])
+        ctrl.replace([1, 2, 3])
         ctrl.remove(99)
         assert ctrl.selectedIds == [1, 2, 3]
 
     def test_range_with_model(self, ctrl):
         model = MockModel(count=10)
         ctrl.toggle(101)
-        ctrl._anchor = 1
-        ctrl.range(1, 4, model)
-        assert 105 in ctrl.selectedIds or 104 in ctrl.selectedIds or len(ctrl.selectedIds) > 1
+        visible = model.visibleIds()
+        ctrl.selectRangeByRows(1, 4, visible)
+        assert len(ctrl.selectedIds) > 1
+        assert 105 in ctrl.selectedIds or 104 in ctrl.selectedIds
 
     def test_range_empty_anchor(self, ctrl):
         model = MockModel(count=10)
-        ctrl.range(2, 5, model)
-        assert len(ctrl.selectedIds) >= 0
+        visible = model.visibleIds()
+        ctrl.selectRangeByRows(2, 5, visible)
+        assert len(ctrl.selectedIds) == 4
 
     def test_select_all_loaded(self, ctrl):
         model = MockModel(count=5)
-        result = ctrl.selectAllLoaded(model)
-        assert result is True
+        ctrl.selectAllLoaded(model.visibleIds())
         assert ctrl.count == 5
         assert 100 in ctrl.selectedIds
         assert 104 in ctrl.selectedIds
 
     def test_select_all_loaded_empty_model(self, ctrl):
-        model = MockModel(count=0)
-        result = ctrl.selectAllLoaded(model)
-        assert result is True
+        ctrl.selectAllLoaded([])
         assert ctrl.count == 0
 
     def test_select_all_loaded_no_model(self, ctrl):
-        result = ctrl.selectAllLoaded(None)
-        assert result is False
+        ctrl.selectAllLoaded([])
+        assert ctrl.count == 0
 
     def test_select_all_preserves_existing(self, ctrl):
-        ctrl.toggle(5)
-        before = ctrl.count
-        ctrl.selectAll()
-        assert ctrl.count == before
+        ctrl.selectAllLoaded([5])
+        ctrl.selectAllLoaded([5])
+        assert ctrl.count == 1
 
     def test_clear(self, ctrl):
-        ctrl.populate_all([1, 2, 3])
+        ctrl.replace([1, 2, 3])
         ctrl.clear()
         assert ctrl.count == 0
         assert ctrl.anchor == -1
@@ -129,9 +130,8 @@ class TestSelectionControllerAdvanced:
         ctrl.toggle(1)
         assert ctrl.generation == g0 + 1
 
-    def test_selection_changed_emits_ids(self, ctrl):
-        emitted = []
-        ctrl.selectionChanged.connect(lambda ids: emitted.append(ids))
+    def test_selection_changed_emits(self, ctrl):
+        emitted = [0]
+        ctrl.selectionChanged.connect(lambda: emitted.__setitem__(0, emitted[0] + 1))
         ctrl.toggle(5)
-        assert len(emitted) == 1
-        assert emitted[0] == [5]
+        assert emitted[0] == 1

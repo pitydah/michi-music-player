@@ -83,14 +83,12 @@ class SelectionController(QObject):
             self._selected_ids = new_list
             self._mutate()
 
-    @Slot(int, int)
-    def selectRangeByRows(self, from_row: int, to_row: int, all_ids: list = None):
-        if all_ids is None:
-            self._selected_ids = list(range(min(from_row, to_row), max(from_row, to_row) + 1))
-        else:
-            low = min(from_row, to_row)
-            high = max(from_row, to_row)
-            self._selected_ids = [all_ids[i] for i in range(low, high + 1) if i < len(all_ids)]
+    @Slot(int, int, "QVariantList")
+    def selectRangeByRows(self, anchor_index: int, target_index: int, visible_ids: list):
+        low = min(anchor_index, target_index)
+        high = max(anchor_index, target_index)
+        self._selected_ids = [visible_ids[i] for i in range(low, high + 1) if i < len(visible_ids)]
+        self._anchor = self._selected_ids[0] if self._selected_ids else -1
         self._current = self._selected_ids[-1] if self._selected_ids else -1
         self._mutate()
 
@@ -121,12 +119,32 @@ class SelectionController(QObject):
         self._current = -1
         self._mutate()
 
+    @Slot(int)
+    def clearGeneration(self):
+        self._generation = 0
+        self.generationChanged.emit()
+
     @Slot(int, result=bool)
     def contains(self, item_id: int) -> bool:
         return item_id in self._selected_ids
 
+    @Slot(QObject, result=dict)
+    def restore(self, source):
+        try:
+            data = source.restore()
+            if isinstance(data, dict):
+                self._selected_ids = list(data.get("selected_ids", []))
+                self._anchor = data.get("anchor", -1)
+                self._current = data.get("current", -1)
+                self._generation = data.get("generation", 0)
+                self._mutate()
+                return {"ok": True, "count": len(self._selected_ids)}
+        except Exception:
+            pass
+        return {"ok": False, "error": "RESTORE_FAILED"}
+
     @Slot(result=dict)
-    def restore(self):
+    def snapshot(self):
         return {
             "ok": True,
             "selected_ids": list(self._selected_ids),

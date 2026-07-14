@@ -13,6 +13,8 @@ def db_conn():
         CREATE TABLE IF NOT EXISTS playlists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            cover TEXT DEFAULT '',
             track_count INTEGER DEFAULT 0,
             created_at TEXT DEFAULT ''
         )

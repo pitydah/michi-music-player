@@ -9,7 +9,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.queue_service import QueueService
 from ui_qml_bridge.queue_bridge import QueueBridge
+
+
+@pytest.fixture
+def queue_service():
+    return QueueService()
 
 
 @pytest.fixture
@@ -45,25 +51,31 @@ def test_queue_bridge_play_invalid_index(mock_player):
     assert result["error"] == "INVALID_INDEX"
 
 
-def test_queue_bridge_remove_from_queue(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+def test_queue_bridge_remove_from_queue(queue_service, mock_player):
+    bridge = QueueBridge(player_service=mock_player, queue_service=queue_service)
+    queue_service.add({"id": 1, "title": "T1"})
+    queue_service.add({"id": 2, "title": "T2"})
     result = bridge.removeFromQueue(0)
     assert result["ok"]
-    assert mock_player.remove_from_queue.called
+    assert queue_service.count == 1
 
 
-def test_queue_bridge_move_item(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+def test_queue_bridge_move_item(queue_service, mock_player):
+    bridge = QueueBridge(player_service=mock_player, queue_service=queue_service)
+    queue_service.add({"id": 1, "title": "T1"})
+    queue_service.add({"id": 2, "title": "T2"})
+    queue_service.add({"id": 3, "title": "T3"})
     result = bridge.moveItem(0, 2)
     assert result["ok"]
-    assert mock_player.move_in_queue.called
+    assert queue_service.items[2]["title"] == "T1"
 
 
-def test_queue_bridge_clear_queue(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+def test_queue_bridge_clear_queue(queue_service, mock_player):
+    bridge = QueueBridge(player_service=mock_player, queue_service=queue_service)
+    queue_service.add({"id": 1, "title": "T1"})
     result = bridge.clearQueue()
     assert result["ok"]
-    assert mock_player.clear_queue.called
+    assert queue_service.count == 0
 
 
 def test_queue_bridge_empty_queue(mock_player):
@@ -76,7 +88,7 @@ def test_queue_bridge_empty_queue(mock_player):
 def test_queue_bridge_no_player():
     bridge = QueueBridge()
     assert bridge.playFromIndex(0)["error"] == "NO_PLAYER"
-    assert bridge.clearQueue()["error"] == "UNSUPPORTED"
+    assert bridge.clearQueue()["error"] == "NO_QUEUE_SERVICE"
 
 
 def test_queue_bridge_save_as_playlist_no_name(mock_player):
@@ -104,7 +116,8 @@ def test_queue_bridge_refresh_updates_data(mock_player):
     assert result["count"] == 3
 
 
-def test_queue_bridge_remove_index(mock_player):
-    bridge = QueueBridge(player_service=mock_player)
+def test_queue_bridge_remove_index(queue_service, mock_player):
+    bridge = QueueBridge(player_service=mock_player, queue_service=queue_service)
+    queue_service.add({"id": 1, "title": "T1"})
     result = bridge.removeFromQueue(0)
     assert result["ok"]

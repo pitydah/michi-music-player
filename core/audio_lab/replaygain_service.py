@@ -69,6 +69,55 @@ class ReplayGainService(QObject):
                 r.album_peak = album_peak
         return results
 
+    def preview_tags(self, filepath: str) -> dict[str, Any]:
+        result: dict[str, Any] = {"filepath": filepath, "has_tags": False}
+        if not filepath or not os.path.isfile(filepath):
+            result["error"] = "FILE_NOT_FOUND"
+            return result
+        try:
+            import mutagen
+            af = mutagen.File(filepath)
+            if af is None or not hasattr(af, "tags") or af.tags is None:
+                return result
+            tags = af.tags
+            for key in tags:
+                if str(key).upper().startswith("REPLAYGAIN_"):
+                    result[str(key)] = str(tags[key])
+                    result["has_tags"] = True
+            result["status"] = "ok"
+        except Exception as e:
+            result["error"] = str(e)
+        return result
+
+    def verify_tags(self, filepath: str, expected: ReplayGainResult | dict[str, float]) -> dict[str, Any]:
+        result: dict[str, Any] = {"filepath": filepath, "verified": False}
+        if not filepath or not os.path.isfile(filepath):
+            result["error"] = "FILE_NOT_FOUND"
+            return result
+        try:
+            import mutagen
+            af = mutagen.File(filepath)
+            if af is None or not hasattr(af, "tags") or af.tags is None:
+                result["error"] = "NO_TAGS"
+                return result
+            tags = af.tags
+            checks = []
+            exp_track_gain = expected.get("track_gain", 0) if isinstance(expected, dict) else expected.track_gain
+            exp_track_peak = expected.get("track_peak", 0) if isinstance(expected, dict) else expected.track_peak
+            if "REPLAYGAIN_TRACK_GAIN" in tags:
+                val = str(tags["REPLAYGAIN_TRACK_GAIN"]).replace(" dB", "")
+                match = abs(float(val) - exp_track_gain) < 0.1
+                checks.append({"field": "track_gain", "written": val, "expected": f"{exp_track_gain:.2f}", "match": match})
+            if "REPLAYGAIN_TRACK_PEAK" in tags:
+                val = str(tags["REPLAYGAIN_TRACK_PEAK"])
+                match = abs(float(val) - exp_track_peak) < 0.001
+                checks.append({"field": "track_peak", "written": val, "expected": f"{exp_track_peak:.6f}", "match": match})
+            result["checks"] = checks
+            result["verified"] = all(c["match"] for c in checks)
+        except Exception as e:
+            result["error"] = str(e)
+        return result
+
     def write_tags(self, filepath: str, track_gain: float, track_peak: float,
                    album_gain: float | None = None,
                    album_peak: float | None = None) -> bool:

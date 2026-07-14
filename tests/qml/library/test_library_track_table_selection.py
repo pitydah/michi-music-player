@@ -50,17 +50,16 @@ def test_toggle_immutability(sc):
 
 
 def test_range_selection(sc):
-    sc.toggle(3)
-    sc.range(6)
-    assert sc.count >= 4
-    assert all(i in sc.selectedIds for i in [3, 4, 5, 6])
+    sc.selectRangeByRows(3, 6, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    assert sc.count == 4
+    assert all(i in sc.selectedIds for i in [4, 5, 6, 7])
 
 
 def test_range_without_anchor(sc):
     gen_before = sc.generation
-    sc.range(5)
+    sc.selectRangeByRows(5, 5, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     assert sc.generation > gen_before
-    assert sc.selectedIds == [5]
+    assert sc.selectedIds == [6]
 
 
 def test_clear_selection(sc):
@@ -75,8 +74,7 @@ def test_clear_selection(sc):
 
 
 def test_select_all(sc):
-    sc.selectAll()
-    sc.populate_all([1, 2, 3, 4, 5])
+    sc.selectAllLoaded([1, 2, 3, 4, 5])
     assert sc.count == 5
     assert sc.selectedIds == [1, 2, 3, 4, 5]
 
@@ -107,7 +105,7 @@ def test_anchor_and_current(sc):
 
 
 def test_populate_all_then_toggle(sc):
-    sc.populate_all([1, 2, 3])
+    sc.replace([1, 2, 3])
     sc.toggle(1)
     assert sc.selectedIds == [2, 3]
     sc.toggle(4)
@@ -115,12 +113,11 @@ def test_populate_all_then_toggle(sc):
 
 
 def test_double_range(sc):
-    sc.toggle(2)
-    sc.range(5)
+    sc.selectRangeByRows(2, 5, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     first_gen = sc.generation
-    sc.range(8)
+    sc.selectRangeByRows(5, 8, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     assert sc.generation > first_gen
-    assert all(i in sc.selectedIds for i in [2, 3, 4, 5, 6, 7, 8])
+    assert all(i in sc.selectedIds for i in [6, 7, 8, 9])
 
 
 def test_selected_ids_reassignment(sc):

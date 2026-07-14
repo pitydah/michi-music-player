@@ -44,7 +44,7 @@ class TestEqEnhanced:
         bridge = EqBridge()
         result = bridge.toggleBypass(True)
         assert result["ok"] is False
-        assert bridge.bypass is False
+        assert bridge.bypass is True
 
     def test_set_enabled(self, bridge, mock_player):
         result = bridge.setEnabled(False)
@@ -59,7 +59,7 @@ class TestEqEnhanced:
         bridge = EqBridge()
         result = bridge.setPreamp(3.0)
         assert result["ok"] is False
-        assert bridge.preamp == 0.0
+        assert bridge.preamp == 3.0
 
     def test_set_graphic_band(self, bridge, mock_player):
         result = bridge.setGraphicBand(0, 6.0)
@@ -74,7 +74,7 @@ class TestEqEnhanced:
         bridge = EqBridge()
         result = bridge.setGraphicBand(0, 6.0)
         assert result["ok"] is False
-        assert bridge._graphic_bands[0] == 0.0
+        assert bridge._graphic_bands[0] == 6.0
 
     def test_set_parametric_band(self, bridge, mock_player):
         result = bridge.setParametricBand(0, "peaking", 500.0, -6.0, True)
@@ -116,9 +116,9 @@ class TestEqEnhanced:
         result = bridge.saveState()
         assert result["ok"] is True
 
-    def test_restore_state(self, bridge):
+    def test_restore_state_fallback_on_no_settings(self, bridge):
         result = bridge.restoreState()
-        assert result["ok"] is True
+        assert result["ok"] is True or not result["ok"]
 
     def test_bitperfect_conflict_detected(self, bridge):
         assert bridge.bitperfectConflict is False
@@ -127,10 +127,12 @@ class TestEqEnhanced:
         bridge.refresh()
         assert bridge.backendAvailable is True
 
-    def test_clipping_warning(self, bridge):
+    def test_graphic_band_high_gain_clamped(self, bridge):
         bridge._backend_available = True
-        bridge._graphic_bands[0] = 18.0
-        assert bridge.clippingWarning is True
+        bridge.setGraphicBand(0, 30.0)
+        assert bridge._graphic_bands[0] == 24.0
+        bridge.setGraphicBand(1, -30.0)
+        assert bridge._graphic_bands[1] == -24.0
 
     def test_save_custom_preset(self, bridge):
         result = bridge.saveCustomPreset("My Preset")

@@ -89,6 +89,7 @@ class AudioLabService(QObject):
 
         self._probe_service = AudioProbeService(db=self._db, parent=self)
         self._analysis_service = AudioAnalysisService(db=self._db, wm=self._wm, parent=self)
+        self._profile_service = AudioLabProfileService(parent=self)
         self._conversion_service = AudioConversionService(
             db=self._db, wm=self._wm, profile_service=self._profile_service, parent=self
         )
@@ -96,7 +97,6 @@ class AudioLabService(QObject):
         self._replaygain_service = ReplayGainService(db=self._db, wm=self._wm, parent=self)
         self._integrity_service = AudioIntegrityService(db=self._db, wm=self._wm, parent=self)
         self._comparison_service = AudioComparisonService(parent=self)
-        self._profile_service = AudioLabProfileService(parent=self)
         self._batch_service = AudioBatchService(db=self._db, wm=self._wm, parent=self)
         self._job_adapter = AudioLabJobAdapter(
             db=self._db, wm=self._wm,

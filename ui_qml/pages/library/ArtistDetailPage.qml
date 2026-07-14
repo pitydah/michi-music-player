@@ -16,11 +16,15 @@ Item {
     property int artistTrackCount: 0
     property int artistAlbumCount: 0
     property string artistGenre: ""
+    property string artistAliases: ""
+    property bool isAlbumArtist: false
+    property bool _backState: false
 
     signal backRequested()
 
     function loadArtist(name) {
         artistName = name
+        root._backState = false
         if (root.lib && root.lib.trackModel) {
             root.lib.trackModel.refresh("artist", name, "year", true)
         }
@@ -33,8 +37,29 @@ Item {
                 artistAlbumCount = detail.album_count || 0
                 artistTrackCount = detail.track_count || 0
                 artistGenre = detail.genre || ""
+                artistAliases = detail.aliases || ""
+                isAlbumArtist = detail.is_album_artist || false
             }
         }
+    }
+
+    function shuffleArtist() {
+        if (root.lib && root.lib.trackModel) {
+            root.lib.trackModel.refresh("artist", root.artistName, "random", true)
+        }
+    }
+
+    function enqueueArtist() {
+        if (root.lib) root.lib.playArtist(root.artistName)
+    }
+
+    function playArtist() {
+        if (root.lib) root.lib.playArtist(root.artistName)
+    }
+
+    function goToMix() {
+        if (typeof navigationBridge !== "undefined")
+            navigationBridge.navigate("mix")
     }
 
     Flickable {
@@ -73,10 +98,18 @@ Item {
                     }
                     Text {
                         text: root.artistAlbumCount + " álbumes · " + root.artistTrackCount + " canciones" +
-                              (root.artistGenre ? " · " + root.artistGenre : "")
+                              (root.artistGenre ? " · " + root.artistGenre : "") +
+                              (root.isAlbumArtist ? " · Artista principal" : "")
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: text !== ""
+                    }
+                    Text {
+                        text: root.artistAliases ? "También conocido como: " + root.artistAliases : ""
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        visible: root.artistAliases !== ""
+                        font.italic: true
                     }
                 }
             }
@@ -84,13 +117,10 @@ Item {
             RowLayout {
                 anchors.leftMargin: MichiTheme.spacing.md; anchors.rightMargin: MichiTheme.spacing.md
                 spacing: MichiTheme.spacing.sm
-                MichiButton { text: "Reproducir todo"; variant: "primary"; onClicked: { if (root.lib) root.lib.playArtist(root.artistName) } }
-                MichiButton { text: "Mezclar"; variant: "ghost" }
-                MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: {
-                    if (root.lib && root.lib.trackModel) {
-                        root.lib.trackModel.refresh("artist", root.artistName, "", false)
-                    }
-                }}
+                MichiButton { text: "Reproducir todo"; variant: "primary"; onClicked: root.playArtist() }
+                MichiButton { text: "Mezclar"; variant: "ghost"; onClicked: root.shuffleArtist() }
+                MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: root.enqueueArtist() }
+                MichiButton { text: "Mix"; variant: "ghost"; onClicked: root.goToMix() }
             }
 
             SectionHeader { text: "Álbumes"; width: parent.width }
@@ -117,7 +147,8 @@ Item {
                                 elide: Text.ElideRight; width: parent.width
                             }
                             Text {
-                                text: (year > 0 ? year + " · " : "") + (trackCount || 0) + " temas"
+                                text: (year > 0 ? year + " · " : "") + (trackCount || 0) + " temas" +
+                                      (compilation ? " · Compilación" : "")
                                 color: MichiTheme.colors.textMuted
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
@@ -142,9 +173,10 @@ Item {
                         anchors.rightMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text {
                             text: title || ""
-                            color: MichiTheme.colors.textPrimary
+                            color: missing ? MichiTheme.colors.textDisabled : MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.bodySize
                             Layout.fillWidth: true; elide: Text.ElideRight
+                            font.italic: missing
                         }
                         Text {
                             text: album || ""
@@ -153,14 +185,15 @@ Item {
                             Layout.preferredWidth: 150; elide: Text.ElideRight
                         }
                         Text {
-                            text: duration ? formatDuration(duration) : ""
-                            color: MichiTheme.colors.textMuted
+                            text: missing ? "Faltante" : (duration ? formatDuration(duration) : "")
+                            color: missing ? MichiTheme.colors.errorColor : MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
+                            font.italic: missing
                         }
                     }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: { if (root.lib && root.lib.playTrackById) root.lib.playTrackById(trackId || 0) }
+                        onClicked: { if (!missing && root.lib && root.lib.playTrackById) root.lib.playTrackById(trackId || 0) }
                     }
                 }
             }

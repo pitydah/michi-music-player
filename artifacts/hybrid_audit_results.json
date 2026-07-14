@@ -122,11 +122,6 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/playlists_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/qml_main.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
