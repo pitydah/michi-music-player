@@ -335,6 +335,7 @@ class BridgeFactory(QObject):
                 sync_manager=self._services.sync_manager,
                 worker_manager=self._services.worker_manager,
                 query_executor=self._get_query_executor(),
+                library_bridge=self._bridges.get("library"),
             )
         self._register_capability("diagnostics", "db")
         return self._bridges["diagnostics"]
@@ -548,9 +549,7 @@ class BridgeFactory(QObject):
     def create_physical_audio_bridge(self):
         from ui_qml_bridge.physical_audio_bridge import PhysicalAudioBridge
         if "physical_audio" not in self._bridges:
-            self._bridges["physical_audio"] = PhysicalAudioBridge(
-                player_service=self._services.player_service,
-            )
+            self._bridges["physical_audio"] = PhysicalAudioBridge()
         return self._bridges["physical_audio"]
 
     def create_library_sources_bridge(self):
