@@ -332,6 +332,7 @@ class LibraryBridge(QObject):
 
     @Slot(result=dict)
     def clearFilters(self):
+        self._search_query = ""
         self._filter_artist = ""
         self._filter_album = ""
         self._filter_format = ""

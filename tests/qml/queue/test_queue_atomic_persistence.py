@@ -65,7 +65,7 @@ def test_save_state_stores_required_fields(service, sample_items):
     for item in state["items"]:
         assert "track_id" in item
         assert "track_uid" in item
-        assert "source" in item
+        assert "source_type" in item
 
 
 def test_save_state_atomic_write_temp_then_rename(service, sample_items):

@@ -14,9 +14,26 @@ Item {
     property string _currentPath: ""
     property var _breadcrumbs: []
     property var _folderStack: []
+    property bool _sourceOffline: false
+    property bool _permissionError: false
+    property bool _scanning: false
+    property string _scanProgress: ""
 
     signal folderSelected(string path)
     signal playFolderRequested(string path)
+
+    function navigateTo(path) {
+        root._breadcrumbs = path.split("/")
+        root._currentPath = path
+        reload()
+    }
+
+    function reload() {
+        if (root.folderModel) {
+            root.folderModel.refresh("parent_path", root._currentPath)
+        }
+        contentView.loadFolder(root._currentPath)
+    }
 
     ColumnLayout {
         anchors.fill: parent; spacing: 0
@@ -45,7 +62,43 @@ Item {
                     onClicked: { if (root._breadcrumbs.length > 1) { root._breadcrumbs.pop(); root._currentPath = root._breadcrumbs[root._breadcrumbs.length - 1]; reload() } }
                 }
                 Item { Layout.fillWidth: true }
-                MichiButton { text: "Escanear carpeta"; variant: "ghost"; onClicked: { if (root.bridge && root.bridge.addFolder) root.bridge.addFolder(root._currentPath) } }
+                MichiButton { text: "Escanear"; variant: "ghost"; enabled: !root._scanning && !root._sourceOffline
+                    onClicked: {
+                        root._scanning = true
+                        root._scanProgress = "Escaneando..."
+                        if (root.bridge && root.bridge.addFolder) {
+                            var result = root.bridge.addFolder(root._currentPath)
+                            if (result && result.ok) root._scanProgress = "Escaneo iniciado"
+                            else root._scanProgress = "Error al escanear"
+                        }
+                    }
+                }
+                MichiButton { text: "Cancelar"; variant: "ghost"; visible: root._scanning
+                    onClicked: {
+                        root._scanning = false
+                        root._scanProgress = "Cancelado"
+                    }
+                }
+                MichiButton { text: "Abrir en gestor"; variant: "ghost"
+                    onClicked: {
+                        if (root.bridge && root.bridge.openFolder) root.bridge.openFolder(root._currentPath)
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 24
+            color: "transparent"
+            visible: root._sourceOffline || root._permissionError || root._scanning
+
+            Text {
+                anchors.centerIn: parent
+                text: root._sourceOffline ? "Fuente no disponible (offline)" :
+                      root._permissionError ? "Error de permisos" :
+                      root._scanProgress
+                color: root._sourceOffline || root._permissionError ? MichiTheme.colors.errorColor : MichiTheme.colors.accentBlue
+                font.pixelSize: MichiTheme.typography.metaSize
             }
         }
 
@@ -81,16 +134,9 @@ Item {
         }
     }
 
-    function reload() {
+    Component.onCompleted: {
         if (root.folderModel) {
-            root.folderModel.refresh("parent_path", root._currentPath)
+            root.folderModel.refresh()
         }
-        contentView.loadFolder(root._currentPath)
-    }
-
-    function navigateTo(path) {
-        root._breadcrumbs = path.split("/")
-        root._currentPath = path
-        reload()
     }
 }

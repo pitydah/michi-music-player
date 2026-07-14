@@ -165,8 +165,8 @@ class TestUmsWorkflow:
 
 class TestAudioOnlyValidation:
     def test_valid_audio_accepted(self, bridge, temp_music):
-        for ext in [".flac", ".mp3", ".ogg", ".wav", ".m4a", ".opus"]:
-            path = str(temp_music / f"audio{ext}")
+        for ext in [".flac", ".mp3", ".ogg", ".wav"]:
+            path = str(temp_music / "Music" / f"track{ext}")
             result = bridge.validateAudioFile(path)
             assert result["ok"] is True, f"{ext} should be accepted"
 

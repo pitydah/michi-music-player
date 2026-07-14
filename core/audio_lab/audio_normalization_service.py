@@ -89,17 +89,36 @@ class AudioNormalizationService(QObject):
         return data
 
     def normalize_file(self, filepath: str, target_loudness: float = -14.0,
-                       destructive: bool = False) -> dict[str, Any]:
+                       destructive: bool = False,
+                       confirmation_token: str | None = None) -> dict[str, Any]:
         result: dict[str, Any] = {"ok": False, "filepath": filepath}
         if not filepath or not os.path.isfile(filepath):
             result["error"] = "FILE_NOT_FOUND"
             return result
         if destructive:
-            result["requires_confirmation"] = True
-            result["warning"] = "La normalización destructiva sobrescribirá el archivo original. Esta operación no se puede deshacer."
-            return result
-        if not destructive:
+            if not confirmation_token:
+                result["requires_confirmation"] = True
+                result["confirmation_token"] = f"norm_destructive_{id(filepath)}"
+                result["warning"] = "La normalización destructiva sobrescribirá el archivo original. Esta operación no se puede deshacer."
+                return result
+            return self._normalize_destructive(filepath, target_loudness)
+        else:
             result["ok"] = True
             result["status"] = "metadata_only"
             result["message"] = "Usar ReplayGain para normalización no destructiva"
         return result
+
+    def _normalize_destructive(self, filepath: str, target_loudness: float) -> dict[str, Any]:
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["ffmpeg", "-i", filepath, "-af", f"loudnorm=I={target_loudness}:TP=-1:LRA=7",
+                 "-y", filepath + ".tmp", filepath],
+                capture_output=True, text=True, timeout=300,
+            )
+            if result.returncode == 0:
+                os.replace(filepath + ".tmp", filepath)
+                return {"ok": True, "filepath": filepath, "target_loudness": target_loudness}
+            return {"ok": False, "error": f"ffmpeg error: {result.stderr[:200]}"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}

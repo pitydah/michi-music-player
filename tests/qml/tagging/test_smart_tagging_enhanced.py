@@ -28,9 +28,33 @@ class TestSmartTagging:
         return qs
 
     @pytest.fixture
-    def bridge(self, mock_service, mock_qs):
+    def mock_wm(self):
+        wm = MagicMock()
+        class FakeCtx:
+            class Token:
+                def raise_if_cancelled(self):
+                    pass
+            token = Token()
+            def report_progress(self, *a):
+                pass
+        def run_task(name, task, **kw):
+            on_done = kw.get("on_done")
+            try:
+                result = task(FakeCtx())
+                if on_done:
+                    on_done(result)
+            except Exception as e:
+                on_error = kw.get("on_error")
+                if on_error:
+                    on_error("ERROR", str(e))
+            return True
+        wm.run_task.side_effect = run_task
+        return wm
+
+    @pytest.fixture
+    def bridge(self, mock_service, mock_qs, mock_wm):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
-        return SmartTaggingBridge(service=mock_service, query_service=mock_qs)
+        return SmartTaggingBridge(service=mock_service, query_service=mock_qs, worker_manager=mock_wm)
 
     def test_initial_state(self, bridge):
         assert bridge.status == "idle"

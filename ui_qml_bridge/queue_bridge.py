@@ -161,6 +161,10 @@ class QueueBridge(QObject):
             return self._queue_service.missing_tracks()
         return []
 
+    def shutdown(self):
+        if self._queue_service:
+            self._queue_service.shutdown()
+
     def _resolve_track(self, item: dict) -> dict | None:
         tid = item.get("id", item.get("track_id", ""))
         if not self._player or not hasattr(self._player, 'get_track_by_id'):

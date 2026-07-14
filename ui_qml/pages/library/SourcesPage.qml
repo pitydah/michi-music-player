@@ -13,13 +13,67 @@ Item {
     property var bridge: null
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
     property var _sources: []
+    property bool _errorState: false
+    property string _errorMessage: ""
 
     signal sourceSelected(int sourceId)
+    signal sourceAdded(string path)
+    signal sourceRemoved(int sourceId)
 
     function reload() {
         if (root.lib && root.lib.getSourcesList) {
             root._sources = root.lib.getSourcesList()
+            root._errorState = false
+            root._errorMessage = ""
+        } else {
+            root._errorState = true
+            root._errorMessage = "Servicio de fuentes no disponible"
         }
+    }
+
+    function addSource(path) {
+        if (!path) return
+        if (root.lib && root.lib.addFolder) {
+            var result = root.lib.addFolder(path)
+            if (result && result.ok) {
+                root.sourceAdded(path)
+                root.reload()
+            } else {
+                root._errorState = true
+                root._errorMessage = result && result.error ? result.error : "Error al añadir fuente"
+            }
+        }
+    }
+
+    function editSource(sourceId, data) {
+        if (root.lib && root.lib.editSource) {
+            var result = root.lib.editSource(sourceId, data)
+            if (result && result.ok) root.reload()
+        }
+    }
+
+    function removeSource(sourceId) {
+        if (root.lib && root.lib.removeSource) {
+            var result = root.lib.removeSource(sourceId)
+            if (result && result.ok) {
+                root.sourceRemoved(sourceId)
+                root.reload()
+            }
+        }
+    }
+
+    function toggleSource(sourceId, enable) {
+        if (enable && root.lib && root.lib.enableSource) root.lib.enableSource(sourceId)
+        else if (!enable && root.lib && root.lib.disableSource) root.lib.disableSource(sourceId)
+        root.reload()
+    }
+
+    function scanSource(sourceId) {
+        if (root.lib && root.lib.scanSource) root.lib.scanSource(sourceId)
+    }
+
+    function cancelScan(sourceId) {
+        if (root.lib && root.lib.cancelSourceScan) root.lib.cancelSourceScan(sourceId)
     }
 
     Component.onCompleted: reload()
@@ -49,6 +103,18 @@ Item {
             }
         }
 
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 24
+            color: MichiTheme.colors.errorSurface
+            visible: root._errorState
+            Text {
+                anchors.centerIn: parent
+                text: root._errorMessage
+                color: MichiTheme.colors.errorColor
+                font.pixelSize: MichiTheme.typography.metaSize
+            }
+        }
+
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
             model: root._sources
@@ -68,19 +134,49 @@ Item {
                 trackCount: modelData.track_count || 0
                 lastIndexed: modelData.last_indexed || ""
                 scanning: modelData.scanning || false
+                scanProgress: modelData.scan_progress || ""
+                priority: modelData.priority || 0
+                watchMode: modelData.watch_mode || false
+                exclusionCount: modelData.exclusion_count || 0
 
-                onEditRequested: { editDialog.sourceId = sourceId; editDialog.open() }
-                onRemoveRequested: { confirmDialog.sourceId = sourceId; confirmDialog.open() }
-                onToggleEnabled: {
-                    if (modelData.enabled !== false) {
-                        if (root.lib && root.lib.disableSource) root.lib.disableSource(modelData.id)
-                    } else {
-                        if (root.lib && root.lib.enableSource) root.lib.enableSource(modelData.id)
-                    }
+                onEditRequested: {
+                    editDialog.sourceId = sourceId
+                    editDialog.sourceData = modelData
+                    editDialog.open()
+                }
+                onRemoveRequested: {
+                    confirmDialog.sourceId = sourceId
+                    confirmDialog.open()
+                }
+                onToggleEnabled: function(enable) {
+                    root.toggleSource(sourceId, enable)
                 }
                 onScanRequested: {
-                    if (root.lib && root.lib.scanSource) root.lib.scanSource(modelData.id)
+                    root.scanSource(sourceId)
                 }
+                onCancelScanRequested: {
+                    root.cancelScan(sourceId)
+                }
+                onPriorityChanged: function(newPriority) {
+                    if (root.lib && root.lib.setSourcePriority)
+                        root.lib.setSourcePriority(sourceId, newPriority)
+                }
+                onWatchModeToggled: function(enable) {
+                    if (root.lib && root.lib.setSourceWatchMode)
+                        root.lib.setSourceWatchMode(sourceId, enable)
+                }
+                onExclusionsRequested: {
+                    if (typeof navigationBridge !== "undefined")
+                        navigationBridge.navigateWithParams("library.source_exclusions", {source_id: sourceId})
+                }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                text: root._sources.length === 0 ? "No hay fuentes configuradas" : ""
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
+                visible: root._sources.length === 0
             }
         }
     }
@@ -90,16 +186,16 @@ Item {
         title: "Seleccionar carpeta de música"
         onAccepted: {
             var folderPath = selectedFolder.toLocalFile()
-            if (root.lib && root.lib.addFolder) {
-                root.lib.addFolder(folderPath)
-                root.reload()
-            }
+            root.addSource(folderPath)
         }
     }
 
     SourceEditorDialog {
         id: editDialog
         bridge: root.lib
+        onAccepted: {
+            root.editSource(editDialog.sourceId, editDialog.getData())
+        }
     }
 
     Popup {
@@ -137,8 +233,7 @@ Item {
                     text: "Sí"
                     variant: "danger"
                     onClicked: {
-                        if (root.lib && root.lib.removeSource) root.lib.removeSource(confirmDialog.sourceId)
-                        root.reload()
+                        root.removeSource(confirmDialog.sourceId)
                         confirmDialog.close()
                     }
                 }

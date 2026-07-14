@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Signal, Qt
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Signal, Slot, Qt
 
 
 class BasePagedListModel(QAbstractListModel):
@@ -57,8 +57,16 @@ class BasePagedListModel(QAbstractListModel):
     def loading(self):
         return self._loading
 
+    @Property(bool, notify=loadingChanged)
+    def isLoading(self):
+        return self._loading
+
     @Property(bool, notify=loadingMoreChanged)
     def loadingMore(self):
+        return self._loading_more
+
+    @Property(bool, notify=loadingMoreChanged)
+    def isFetchingMore(self):
         return self._loading_more
 
     @Property(bool, notify=refreshingChanged)
@@ -76,6 +84,10 @@ class BasePagedListModel(QAbstractListModel):
     @Property(str, notify=errorChanged)
     def errorMessage(self):
         return self._error_message
+
+    @Property(str, notify=errorChanged)
+    def lastError(self):
+        return self._error_message if self._error_code else ""
 
     @Property(bool, notify=hasMoreChanged)
     def hasMore(self):
@@ -323,6 +335,20 @@ class BasePagedListModel(QAbstractListModel):
     def _reset_loading_more(self):
         self._loading_more = False
         self.loadingMoreChanged.emit()
+
+    @Slot(int, result=int)
+    def idAt(self, row: int) -> int:
+        if 0 <= row < len(self._items):
+            return self._items[row].get("track_id", 0)
+        return -1
+
+    @Slot(result="QVariantList")
+    def visibleIds(self):
+        return [item.get("track_id", 0) for item in self._items]
+
+    @Slot(result="QVariantList")
+    def filteredIds(self):
+        return [item.get("track_id", 0) for item in self._items]
 
     def _owner(self) -> str:
         raise NotImplementedError

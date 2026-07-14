@@ -20,10 +20,18 @@ from core.worker_manager import WorkerManager
 logger = logging.getLogger("michi.audio_lab.integrity")
 
 
+class IntegrityStatus:
+    VALID = "VALID"
+    INVALID = "INVALID"
+    UNSUPPORTED = "UNSUPPORTED"
+    CANCELLED = "CANCELLED"
+    ERROR = "ERROR"
+
+
 @dataclass
 class IntegrityCheck:
     filepath: str = ""
-    status: str = "pending"
+    status: str = IntegrityStatus.VALID
     issues: list[dict] = field(default_factory=list)
     checksum: str = ""
     duration: float = 0.0
@@ -43,7 +51,7 @@ class AudioIntegrityService(QObject):
     def check(self, filepath: str, quick: bool = False) -> IntegrityCheck:
         result = IntegrityCheck(filepath=filepath)
         if not filepath or not os.path.isfile(filepath):
-            result.status = "error"
+            result.status = IntegrityStatus.ERROR
             result.error = "FILE_NOT_FOUND"
             result.is_valid = False
             result.issues.append({"type": "FILE_NOT_FOUND", "detail": "Archivo no encontrado"})
@@ -52,9 +60,13 @@ class AudioIntegrityService(QObject):
         result.file_size = os.path.getsize(filepath)
         ext = Path(filepath).suffix.lower()
 
-        if ext not in (".flac", ".wav", ".aiff", ".aif", ".mp3", ".m4a",
-                       ".mp4", ".opus", ".ogg", ".mka", ".wma", ".dsf", ".dff"):
+        supported_exts = {".flac", ".wav", ".aiff", ".aif", ".mp3", ".m4a",
+                          ".mp4", ".opus", ".ogg", ".mka", ".wma", ".dsf", ".dff"}
+        if ext not in supported_exts:
+            result.status = IntegrityStatus.UNSUPPORTED
             result.issues.append({"type": "UNSUPPORTED_EXTENSION", "detail": f"Extensión {ext} no soportada"})
+            result.is_valid = False
+            return result
 
         if ext == ".mp3" and not self._check_mp3_header(filepath):
             result.issues.append({"type": "INVALID_HEADER", "detail": "Cabecera MP3 inválida"})
@@ -84,15 +96,10 @@ class AudioIntegrityService(QObject):
         if not quick:
             result.checksum = self._compute_checksum(filepath)
 
-        if ext not in (".flac", ".wav", ".aiff", ".aif", ".mp3", ".m4a",
-                       ".mp4", ".opus", ".ogg", ".mka"):
-            if ext in (".wma", ".dsf", ".dff"):
-                pass
-            else:
-                result.issues.append({"type": "EXTENSION_MISMATCH",
-                                      "detail": f"Extensión {ext} con posible formato inconsistente"})
+        if ext in (".wma", ".dsf", ".dff"):
+            pass
 
-        result.status = "completed" if result.is_valid else "completed_with_issues"
+        result.status = IntegrityStatus.VALID if result.is_valid else IntegrityStatus.INVALID
         return result
 
     def _check_mp3_header(self, filepath: str) -> bool:

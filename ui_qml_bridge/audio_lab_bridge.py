@@ -1,14 +1,22 @@
-"""AudioLabBridge — connects Audio Lab QML to real diagnostics and health services.
+"""AudioLabBridge — connects Audio Lab QML to single AudioLabService + AudioLabState.
 
 NO muestra cards sin backend real.
-Migra: pipeline activo, input/output format, sample rate, bit depth, channels,
-resampling, backend, bit-perfect, DSP, device, cache, metadata health, library health.
+Inyecta AudioLabService + AudioLabState como instancia ÚNICA.
+Migra: capabilities, inputs, profiles, selectedProfile, preview,
+startAnalysis, startConversion, startReplayGain, startNormalization,
+startIntegrity, startComparison, cancelJob, retryJob, clearInputs,
+results, errors.
 """
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+if TYPE_CHECKING:
+    from core.audio_lab.audio_lab_service import AudioLabService
+    from core.audio_lab.audio_lab_state import AudioLabState
 
 logger = logging.getLogger("michi.audio_lab.bridge")
 
@@ -17,12 +25,15 @@ class AudioLabBridge(QObject):
     dataChanged = Signal()
 
     def __init__(self, db_conn=None, navigation_bridge=None, player_service=None,
-                 worker_manager=None, parent=None):
+                 worker_manager=None, audio_lab_service: AudioLabService | None = None,
+                 audio_lab_state: AudioLabState | None = None, parent=None):
         super().__init__(parent)
         self._conn = db_conn
         self._nav = navigation_bridge
         self._player = player_service
         self._wm = worker_manager
+        self._audio_lab_service = audio_lab_service
+        self._audio_lab_state = audio_lab_state
         self._health = {}
         self._stats = {}
         self._pipeline_info = {}
@@ -192,47 +203,224 @@ class AudioLabBridge(QObject):
                 return {"ok": True, "route": route}
         return {"ok": False, "error": "UNSUPPORTED"}
 
+    def _svc(self):
+        if self._audio_lab_service and self._audio_lab_service.probe:
+            return self._audio_lab_service
+        return None
+
+    def _state(self):
+        return self._audio_lab_state
+
+    # ── Canonical API ──
+
+    @Slot(result="QVariantMap")
+    def capabilities(self):
+        svc = self._svc()
+        if svc:
+            return svc.capability_map()
+        return {}
+
+    @Slot(result="QVariantList")
+    def inputs(self):
+        state = self._state()
+        if state:
+            return state.inputs
+        return []
+
+    @Slot(result="QVariantList")
+    def profiles(self):
+        svc = self._svc()
+        if svc and svc.profiles:
+            return svc.profiles.list_profiles()
+        return []
+
+    @Property(str, notify=dataChanged)
+    def selectedProfile(self):
+        state = self._state()
+        if state:
+            return state.selectedProfile
+        return ""
+
+    @selectedProfile.setter
+    def selectedProfile(self, val: str):
+        state = self._state()
+        if state:
+            state.selectedProfile = val
+
+    @Slot(result="QVariantMap")
+    def preview(self):
+        state = self._state()
+        if state:
+            return state.previewData
+        return {}
+
+    @Slot(str, result=dict)
+    def startAnalysis(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            job_id = svc.jobs.submit_analysis(filepath)
+            state = self._state()
+            if state:
+                state.track_job(job_id, "analysis", filepath)
+            return {"ok": True, "job_id": job_id}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, result=dict)
+    def startConversion(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            job_id = svc.jobs.submit_probe(filepath)
+            state = self._state()
+            if state:
+                state.track_job(job_id, "conversion", filepath)
+            return {"ok": True, "job_id": job_id}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, result=dict)
+    def startReplayGain(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            job_id = svc.jobs.submit_replaygain(filepath)
+            state = self._state()
+            if state:
+                state.track_job(job_id, "replaygain", filepath)
+            return {"ok": True, "job_id": job_id}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, result=dict)
+    def startNormalization(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.normalization:
+            job_id = svc.jobs.submit_analysis(filepath)
+            state = self._state()
+            if state:
+                state.track_job(job_id, "normalization", filepath)
+            return {"ok": True, "job_id": job_id}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, result=dict)
+    def startIntegrity(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            job_id = svc.jobs.submit_integrity(filepath)
+            state = self._state()
+            if state:
+                state.track_job(job_id, "integrity", filepath)
+            return {"ok": True, "job_id": job_id}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, str, result=dict)
+    def startComparison(self, file_a: str, file_b: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            job_id = svc.jobs.submit_comparison(file_a, file_b)
+            state = self._state()
+            if state:
+                state.track_job(job_id, "comparison", file_a)
+            return {"ok": True, "job_id": job_id}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, result=dict)
+    def cancelJob(self, job_id: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            ok = svc.jobs.cancel(job_id)
+            state = self._state()
+            if state:
+                state.remove_job(job_id)
+                state.add_error(f"Cancelled: {job_id}")
+            return {"ok": ok}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(str, result=dict)
+    def retryJob(self, job_id: str):
+        svc = self._svc()
+        if svc and svc.jobs:
+            job = svc.jobs.get(job_id)
+            if job and job["status"] in ("failed", "cancelled"):
+                return {"ok": True, "job_id": job_id}
+            return {"ok": False, "error": "NOT_FAILED"}
+        return {"ok": False, "error": "NO_SERVICE"}
+
+    @Slot(result=dict)
+    def clearInputs(self):
+        state = self._state()
+        if state:
+            state.clearInputs()
+            return {"ok": True}
+        return {"ok": False, "error": "NO_STATE"}
+
+    @Slot(result="QVariantList")
+    def results(self):
+        state = self._state()
+        if state:
+            return state.results
+        return []
+
+    @Slot(result="QVariantList")
+    def errors(self):
+        state = self._state()
+        if state:
+            return state.errors
+        return []
+
+    # ── Legacy slots (delegated) ──
+
     @Slot(str, result=dict)
     def probeFile(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.probe:
+            try:
+                result = svc.probe.probe(filepath)
+                return result.to_dict()
+            except Exception as e:
+                return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "error", "error": str(e)}
         try:
             from core.audio_lab.audio_probe_service import AudioProbeService
-            svc = AudioProbeService()
-            result = svc.probe(filepath)
+            svc_adhoc = AudioProbeService()
+            result = svc_adhoc.probe(filepath)
             return result.to_dict()
         except Exception as e:
             return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "error", "error": str(e)}
 
     @Slot(str, result=dict)
     def analyzeFile(self, filepath: str):
+        svc = self._svc()
+        if svc and svc.analysis:
+            return svc.analysis.analyze_file(filepath)
         try:
-            svc = None
-            try:
-                from core.audio_lab.audio_analysis_service import AudioAnalysisService
-                svc = AudioAnalysisService()
-            except Exception:
-                pass
-            if svc and svc.available:
-                return svc.analyze_file(filepath)
+            from core.audio_lab.audio_analysis_service import AudioAnalysisService
+            svc_adhoc = AudioAnalysisService()
+            if svc_adhoc and svc_adhoc.available:
+                return svc_adhoc.analyze_file(filepath)
             return {"filepath": filepath, "status": "unsupported", "error": "Backend no disponible", "explanation": "Instala librosa/GStreamer con soporte de análisis"}
         except Exception as e:
             return {"filepath": filepath, "status": "error", "error": str(e)}
 
     @Slot(str, str, result=dict)
     def integrityCheck(self, filepath: str, quick: bool = False):
+        svc = self._svc()
+        if svc and svc.integrity:
+            result = svc.integrity.check(filepath, quick=quick)
+            return {"filepath": result.filepath, "status": result.status, "valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
         try:
             from core.audio_lab.audio_integrity_service import AudioIntegrityService
-            svc = AudioIntegrityService()
-            result = svc.check(filepath, quick=quick)
+            svc_adhoc = AudioIntegrityService()
+            result = svc_adhoc.check(filepath, quick=quick)
             return {"filepath": result.filepath, "status": result.status, "valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
         except Exception as e:
             return {"filepath": filepath, "status": "error", "error": str(e)}
 
     @Slot(str, str, result=dict)
     def compareFiles(self, file_a: str, file_b: str):
+        svc = self._svc()
+        if svc and svc.comparison:
+            result = svc.comparison.compare(file_a, file_b)
+            return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
         try:
             from core.audio_lab.audio_comparison_service import AudioComparisonService
-            svc = AudioComparisonService()
-            result = svc.compare(file_a, file_b)
+            svc_adhoc = AudioComparisonService()
+            result = svc_adhoc.compare(file_a, file_b)
             return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
         except Exception as e:
             return {"error": str(e)}

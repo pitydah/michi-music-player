@@ -60,6 +60,7 @@ class AudioComparisonService(QObject):
             ("bit_depth", "Profundidad", f"{probe_a.bit_depth} bit", f"{probe_b.bit_depth} bit"),
             ("channels", "Canales", str(probe_a.channels), str(probe_b.channels)),
             ("size", "Tamaño", self._fmt_size(probe_a.file_size), self._fmt_size(probe_b.file_size)),
+            ("file_size_bytes", "Tamaño (bytes)", str(probe_a.file_size), str(probe_b.file_size)),
             ("duration", "Duración", f"{probe_a.duration:.1f}s", f"{probe_b.duration:.1f}s"),
             ("loudness", "Loudness", f"{probe_a.loudness or 0:.1f}", f"{probe_b.loudness or 0:.1f}"),
             ("peak", "Pico", f"{probe_a.peak or 0:.4f}", f"{probe_b.peak or 0:.4f}"),
@@ -85,6 +86,37 @@ class AudioComparisonService(QObject):
         if hash_a != hash_b:
             result.identical = False
 
+        meta_a = self._read_metadata_for_comparison(file_a)
+        meta_b = self._read_metadata_for_comparison(file_b)
+        meta_keys = ["title", "artist", "album", "genre", "date"]
+        for k in meta_keys:
+            va = meta_a.get(k, "")
+            vb = meta_b.get(k, "")
+            result.dimensions.append(ComparisonDimension(
+                key=f"meta_{k}", label=f"Metadata: {k}",
+                value_a=va, value_b=vb,
+                identical=va == vb,
+            ))
+            if va != vb:
+                result.identical = False
+
+        return result
+
+    def _read_metadata_for_comparison(self, filepath: str) -> dict[str, str]:
+        result: dict[str, str] = {}
+        try:
+            import mutagen
+            af = mutagen.File(filepath)
+            if af is not None and hasattr(af, "tags") and af.tags:
+                for key in ["title", "artist", "album", "genre"]:
+                    if key in af.tags:
+                        v = af.tags[key]
+                        result[key] = str(v[0] if isinstance(v, list) else v)
+                if "date" in af.tags:
+                    v = af.tags["date"]
+                    result["date"] = str(v[0] if isinstance(v, list) else v)
+        except Exception:
+            pass
         return result
 
     def _quick_hash(self, filepath: str) -> str:

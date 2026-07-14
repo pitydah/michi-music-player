@@ -15,11 +15,12 @@ class TestLibraryDoctor:
         conn = sqlite3.connect(":memory:")
         conn.execute("CREATE TABLE IF NOT EXISTS media_items "
                      "(id INTEGER PRIMARY KEY, filepath TEXT, title TEXT, "
-                     "artist TEXT, album TEXT, album_key TEXT, track_uid TEXT)")
-        conn.execute("INSERT INTO media_items VALUES (1, '/test/real.flac', 'Song', 'Artist', 'Album', 'ak1', 'uid1')")
-        conn.execute("INSERT INTO media_items VALUES (2, '/test/missing.flac', '', '', 'Album', 'ak2', 'uid2')")
-        conn.execute("INSERT INTO media_items VALUES (3, '/test/dup.flac', 'Dup', 'Artist', 'Album', 'ak3', 'uid3')")
-        conn.execute("INSERT INTO media_items VALUES (4, '/test/real.flac', 'Dup2', 'Artist2', 'Album2', 'ak4', 'uid4')")
+                     "artist TEXT, album TEXT, album_key TEXT, track_uid TEXT, "
+                     "deleted_at REAL)")
+        conn.execute("INSERT INTO media_items VALUES (1, '/test/real.flac', 'Song', 'Artist', 'Album', 'ak1', 'uid1', NULL)")
+        conn.execute("INSERT INTO media_items VALUES (2, '/test/missing.flac', '', '', 'Album', 'ak2', 'uid2', NULL)")
+        conn.execute("INSERT INTO media_items VALUES (3, '/test/dup.flac', 'Dup', 'Artist', 'Album', 'ak3', 'uid3', NULL)")
+        conn.execute("INSERT INTO media_items VALUES (4, '/test/real.flac', 'Dup2', 'Artist2', 'Album2', 'ak4', 'uid4', NULL)")
         return conn
 
     @pytest.fixture
@@ -28,7 +29,9 @@ class TestLibraryDoctor:
         db.conn = sqlite3.connect(":memory:")
         db.conn.execute("CREATE TABLE IF NOT EXISTS media_items "
                         "(id INTEGER PRIMARY KEY, filepath TEXT, title TEXT, "
-                        "artist TEXT, album TEXT)")
+                        "artist TEXT, album TEXT, album_key TEXT, track_uid TEXT, "
+                        "deleted_at REAL)")
+        db.conn.execute("INSERT INTO media_items VALUES (1, '/test/real.flac', 'Song', 'Artist', 'Album', 'ak1', 'uid1', NULL)")
         return db
 
     def test_initial_state(self, mock_db):
