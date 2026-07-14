@@ -40,7 +40,7 @@ def test_invalid_profile(mock_player):
 
 def test_mpd_unavailable_fallback(mock_player):
     mock_player.set_profile.return_value = {
-        "ok": False, "error": "MPD_CONNECTION_FAILED"
+        "ok": False, "error": "MPD_CONNECTION_FAILED", "fallback": True
     }
     mock_player.get_active_profile_id.return_value = "standard"
     bridge = OutputProfilesBridge(player_service=mock_player)
@@ -52,7 +52,7 @@ def test_mpd_unavailable_fallback(mock_player):
 
 
 def test_fallback_detection(mock_player):
-    mock_player.set_profile.return_value = {"ok": False, "error": "BACKEND_FAILED"}
+    mock_player.set_profile.return_value = {"ok": False, "error": "BACKEND_FAILED", "fallback": True}
     mock_player.get_active_profile_id.return_value = "standard"
     bridge = OutputProfilesBridge(player_service=mock_player)
     bridge._active_id = "standard"

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
+import time
 from pathlib import Path
 import contextlib
 
@@ -282,13 +283,84 @@ class MetadataBridge(QObject):
         self._all_fields = {}
         self.dataChanged.emit()
 
-    @Slot("QVariantList", result=dict)
-    def batchSetField(self, filepaths: list, key: str, value: str):
+    @Slot("QVariantList", str, "QVariant", result=dict)
+    def batchSetField(self, filepaths: list, key: str, value):
+        if not self._wm:
+            return self._batch_set_field_sync(filepaths, key, str(value))
+        task_id = f"metadata_batch_{id(self)}_{int(time.time())}"
+        gen = [0]
+
+        def _task(ctx):
+            gen[0] += 1
+            total = len(filepaths)
+            results = {"ok": True, "applied": 0, "errors": 0, "details": [], "cancelled": False}
+            from ui_qml_bridge.metadata_tag_adapter import (
+                load_tags, apply_patch, create_backup, write_tags_safe,
+                rollback,
+            )
+            for idx, fp in enumerate(filepaths):
+                ctx.token.raise_if_cancelled()
+                try:
+                    base = load_tags(fp)
+                    if base is None:
+                        results["errors"] += 1
+                        results["details"].append({"filepath": fp, "error": "FILE_NOT_FOUND"})
+                        continue
+                    tags = apply_patch(base, {key: str(value)})
+                    if not tags.dirty:
+                        continue
+                    backup = create_backup(fp)
+                    write_result = write_tags_safe(tags, backup)
+                    if write_result.get("ok"):
+                        results["applied"] += 1
+                    else:
+                        results["errors"] += 1
+                        results["details"].append({"filepath": fp, "error": write_result.get("error_code")})
+                        if backup:
+                            rollback(backup, fp)
+                except Exception as e:
+                    results["errors"] += 1
+                    results["details"].append({"filepath": fp, "error": str(e)})
+                ctx.report_progress((idx + 1) / total, f"{idx+1}/{total}")
+            return results
+
+        def _on_done(result):
+            if result.get("ok"):
+                self._batch_results = result
+                self.batchProgress.emit(result.get("applied", 0), len(filepaths))
+                self.dataChanged.emit()
+
+        def _on_error(code, msg):
+            self._batch_results = {"ok": False, "applied": 0, "errors": len(filepaths),
+                                    "error_code": code, "message": msg}
+            self.dataChanged.emit()
+
+        def _on_cancelled():
+            self._batch_results = {"ok": False, "applied": 0, "errors": len(filepaths),
+                                    "cancelled": True}
+            self.dataChanged.emit()
+
+        def _on_progress(pct, msg):
+            self.batchProgress.emit(int(pct * len(filepaths)), len(filepaths))
+
+        try:
+            self._wm.run_task(
+                task_id, _task,
+                pass_context=True, cancellable=True, owner="metadata",
+                on_done=_on_done, on_error=_on_error,
+                on_cancelled=_on_cancelled, on_progress=_on_progress,
+            )
+            return {"ok": True, "async": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _batch_set_field_sync(self, filepaths: list, key: str, value: str) -> dict:
         results = {"ok": True, "applied": 0, "errors": 0, "details": []}
         for fp in filepaths:
             try:
                 from ui_qml_bridge.metadata_tag_adapter import (
                     load_tags, apply_patch, create_backup, write_tags_safe,
+                    rollback,
                 )
                 base = load_tags(fp)
                 if base is None:
@@ -299,32 +371,24 @@ class MetadataBridge(QObject):
                 if not tags.dirty:
                     continue
                 backup = create_backup(fp)
-                result = write_tags_safe(tags, backup)
-                if result.get("ok"):
+                write_result = write_tags_safe(tags, backup)
+                if write_result.get("ok"):
                     results["applied"] += 1
                 else:
                     results["errors"] += 1
-                    results["details"].append({"filepath": fp, "error": result.get("error_code")})
+                    results["details"].append({"filepath": fp, "error": write_result.get("error_code")})
+                    if backup:
+                        rollback(backup, fp)
             except Exception as e:
                 results["errors"] += 1
                 results["details"].append({"filepath": fp, "error": str(e)})
         return results
 
-    @Slot("QVariantList", str, "QVariant", result=dict)
-    def batchSetFieldAsync(self, filepaths: list, key: str, value):
-        if not self._wm:
-            return self.batchSetField(filepaths, key, str(value))
-        import json
-        payload = json.dumps({"filepaths": filepaths, "key": key, "value": str(value)})
-        try:
-            self._wm.run_task(
-                "metadata_batch",
-                {"payload": payload, "operation": "set_field"},
-                callback=lambda r: self._on_batch_done(r),
-            )
-            return {"ok": True, "async": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+    @Slot(result=dict)
+    def cancelBatch(self):
+        if self._wm:
+            self._wm.cancel_task("metadata_batch")
+        return {"ok": True}
 
     def _on_batch_done(self, result: dict):
         if result.get("ok"):

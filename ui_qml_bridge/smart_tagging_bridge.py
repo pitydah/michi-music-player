@@ -1,12 +1,17 @@
-"""SmartTaggingBridge — async, selective, safe smart tagging with cancel and progress."""
+"""SmartTaggingBridge — async, selective, safe smart tagging with cancel and progress.
+
+Supports: single, batch, confidence, preview, select, accept/reject,
+progress, cancel, backup, apply, verify, rollback, refresh.
+"""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
+
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 from ui_qml_bridge.metadata_tag_adapter import (
     load_tags, apply_patch, create_backup,
-    write_tags_safe, rollback as rollback_tags,
+    write_tags_safe, rollback as rollback_tags, verify_changes,
 )
 
 logger = logging.getLogger("michi.smart_tagging")
@@ -16,6 +21,7 @@ class SmartTaggingBridge(QObject):
     dataChanged = Signal()
     scanCompleted = Signal(int)
     progressChanged = Signal(float)
+    batchProgress = Signal(int, int)
 
     def __init__(self, service=None, worker_manager=None, query_service=None, parent=None):
         super().__init__(parent)
@@ -29,6 +35,8 @@ class SmartTaggingBridge(QObject):
         self._scan_counter = 0
         self._progress = 0.0
         self._cancel_requested = False
+        self._batch_mode = False
+        self._batch_results: list[dict] = []
 
     def set_service(self, service):
         self._service = service
@@ -39,11 +47,15 @@ class SmartTaggingBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def suggestions(self):
-        return self._suggestions
+        return list(self._suggestions)
 
     @Property(float, notify=progressChanged)
     def progress(self):
         return self._progress
+
+    @Property("QVariantList", notify=dataChanged)
+    def batchResults(self):
+        return list(self._batch_results)
 
     @Slot(int, result=dict)
     def scanTrackById(self, track_id: int):
@@ -51,6 +63,7 @@ class SmartTaggingBridge(QObject):
             return {"ok": False, "error_code": "BUSY", "message": "Ya hay un escaneo en curso"}
         self._progress = 0.0
         self._status = "queued"
+        self._batch_mode = False
         self.dataChanged.emit()
         if not self._service:
             self._status = "unavailable"
@@ -79,13 +92,8 @@ class SmartTaggingBridge(QObject):
             if not track:
                 return {"error": "TRACK_NOT_FOUND"}
             ctx.token.raise_if_cancelled()
-            from library.media_item import TrackMetadata
-            meta = TrackMetadata(filepath=track["filepath"],
-                                 title=track.get("title", ""),
-                                 artist=track.get("artist", ""),
-                                 album=track.get("album", ""))
             if hasattr(service, 'suggest_for_track'):
-                results = service.suggest_for_track(meta)
+                results = service.suggest_for_track(track)
                 ctx.token.raise_if_cancelled()
                 return {"results": results or [], "filepath": track.get("filepath", "")}
             return {"error": "NO_SUGGEST_SERVICE"}
@@ -117,9 +125,91 @@ class SmartTaggingBridge(QObject):
             self.dataChanged.emit()
             self.scanCompleted.emit(len(self._suggestions))
 
+        def _on_error(code, msg):
+            if gen != self._scan_counter:
+                return
+            self._status = "error"
+            self.dataChanged.emit()
+
         if self._wm and hasattr(self._wm, 'run_task'):
             self._wm.run_task(f"st_{track_id}", _task, on_done=_done,
+                              on_error=_on_error,
                               pass_context=True, cancellable=True, owner="smart_tagging")
+        else:
+            _done(_task(None))
+        return {"ok": True, "queued": True}
+
+    @Slot("QVariantList", result=dict)
+    def scanBatch(self, track_ids: list):
+        if self._status in ("scanning", "applying"):
+            return {"ok": False, "error_code": "BUSY", "message": "Ya hay un escaneo en curso"}
+        if not track_ids:
+            return {"ok": False, "error_code": "NO_TRACKS", "message": "Sin pistas"}
+        self._progress = 0.0
+        self._status = "scanning"
+        self._batch_mode = True
+        self._batch_results = []
+        self._scan_counter += 1
+        gen = self._scan_counter
+        self.dataChanged.emit()
+
+        qs = self._qs
+        service = self._service
+
+        def _task(ctx):
+            ctx.token.raise_if_cancelled()
+            all_results = []
+            total = len(track_ids)
+            for idx, tid in enumerate(track_ids):
+                ctx.token.raise_if_cancelled()
+                ctx.report_progress((idx + 1) / total, f"Escaneando pista {idx+1}/{total}")
+                if gen != self._scan_counter:
+                    return {"stale": True, "results": all_results}
+                track = None
+                if qs:
+                    try:
+                        track = qs.fetch_track_internal(tid)
+                    except Exception:
+                        track = None
+                if not track:
+                    all_results.append({"track_id": tid, "error": "TRACK_NOT_FOUND"})
+                    continue
+                if hasattr(service, 'suggest_for_track'):
+                    try:
+                        suggestions = service.suggest_for_track(track)
+                    except Exception:
+                        suggestions = []
+                    all_results.append({
+                        "track_id": tid,
+                        "filepath": track.get("filepath", ""),
+                            "suggestions": [
+                                {"field": getattr(s, 'field', ''),
+                                 "current": getattr(s, 'current', '') or "",
+                                 "suggested": getattr(s, 'suggested', '') or "",
+                                 "confidence": getattr(s, 'confidence', 0.0) or 0.0,
+                                 "source": getattr(s, 'source', '') or "",
+                                 "warning": getattr(s, 'warning', '') or ""}
+                                for s in (suggestions or [])
+                            ],
+                        })
+            return {"results": all_results}
+
+        def _done(res):
+            if gen != self._scan_counter:
+                self._status = "stale"
+                self.dataChanged.emit()
+                return
+            self._batch_results = res.get("results", [])
+            self._status = "batch_review"
+            self._progress = 1.0
+            self.progressChanged.emit(self._progress)
+            self.dataChanged.emit()
+
+        if self._wm and hasattr(self._wm, 'run_task'):
+            self._wm.run_task(
+                f"st_batch_{gen}", _task,
+                on_done=_done, pass_context=True, cancellable=True, owner="smart_tagging",
+            )
         else:
             _done(_task(None))
         return {"ok": True, "queued": True}
@@ -146,6 +236,17 @@ class SmartTaggingBridge(QObject):
         return {"ok": True}
 
     @Slot(result=dict)
+    def selectHighConfidence(self, min_confidence: float = 0.8):
+        self._selected_ids = set(
+            s["id"] for s in self._suggestions
+            if s.get("id") is not None and (s.get("confidence", 0) or 0) >= min_confidence
+        )
+        for s in self._suggestions:
+            s["selected"] = s.get("id") in self._selected_ids
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
     def selectNone(self):
         self._selected_ids.clear()
         for s in self._suggestions:
@@ -155,8 +256,13 @@ class SmartTaggingBridge(QObject):
 
     @Slot(result=dict)
     def applySelected(self):
-        if self._status != "review":
+        if self._status not in ("review", "batch_review"):
             return {"ok": False, "error_code": "NOT_REVIEW", "message": "No hay sugerencias para aplicar"}
+        if self._batch_mode:
+            return self._applyBatchSelected()
+        return self._applySingleSelected()
+
+    def _applySingleSelected(self):
         if not self._suggestions or not self._selected_ids:
             return {"ok": False, "error_code": "NO_SUGGESTIONS", "message": "Sin sugerencias seleccionadas"}
         if not self._current_filepath:
@@ -190,6 +296,12 @@ class SmartTaggingBridge(QObject):
                 if backup:
                     rollback_tags(backup, filepath)
                 return {"error": result.get("error_code", "WRITE_FAILED")}
+            ctx.report_progress(0.8, "Verificando...")
+            verify = verify_changes(filepath, changes)
+            if not verify.get("ok"):
+                if backup:
+                    rollback_tags(backup, filepath)
+                return {"error": "VERIFY_FAILED"}
             ctx.report_progress(1.0, "Completado")
             return {"ok": True, "applied": len(changes)}
 
@@ -214,6 +326,76 @@ class SmartTaggingBridge(QObject):
             _done(_task(None))
         return {"ok": True, "queued": True}
 
+    def _applyBatchSelected(self):
+        self._status = "applying"
+        self._progress = 0.0
+        self.dataChanged.emit()
+
+        batch_results = list(self._batch_results)
+        gen = self._scan_counter
+
+        def _task(ctx):
+            ctx.token.raise_if_cancelled()
+            results = []
+            total = len(batch_results)
+            for idx, br in enumerate(batch_results):
+                ctx.token.raise_if_cancelled()
+                ctx.report_progress((idx + 1) / total, f"Aplicando {idx+1}/{total}")
+                fp = br.get("filepath", "")
+                suggestions = br.get("suggestions", [])
+                if not fp or not suggestions:
+                    results.append({"track_id": br.get("track_id"), "ok": False, "error": "NO_DATA"})
+                    continue
+                base = load_tags(fp)
+                if base is None:
+                    results.append({"track_id": br.get("track_id"), "ok": False, "error": "FILE_NOT_FOUND"})
+                    continue
+                changes = {}
+                for s in suggestions:
+                    if s.get("field") and s.get("suggested"):
+                        changes[s["field"]] = s["suggested"]
+                if not changes:
+                    results.append({"track_id": br.get("track_id"), "ok": True, "applied": 0})
+                    continue
+                tags = apply_patch(base, changes)
+                if not tags.dirty:
+                    results.append({"track_id": br.get("track_id"), "ok": True, "applied": 0})
+                    continue
+                backup = create_backup(fp)
+                write_result = write_tags_safe(tags, backup)
+                if write_result.get("ok"):
+                    results.append({"track_id": br.get("track_id"), "ok": True, "applied": len(changes)})
+                else:
+                    if backup:
+                        rollback_tags(backup, fp)
+                    results.append({"track_id": br.get("track_id"), "ok": False, "error": write_result.get("error_code")})
+            return {"results": results}
+
+        def _done(res):
+            if gen != self._scan_counter:
+                self._status = "stale"
+                return
+            self._batch_results = res.get("results", [])
+            self._progress = 1.0
+            self.progressChanged.emit(self._progress)
+            self._status = "completed"
+            self.dataChanged.emit()
+
+        if self._wm and hasattr(self._wm, 'run_task'):
+            self._wm.run_task(f"st_batch_apply_{gen}", _task, on_done=_done,
+                              pass_context=True, cancellable=True, owner="smart_tagging")
+        else:
+            _done(_task(None))
+        return {"ok": True, "queued": True}
+
+    @Slot(result=dict)
+    def acceptAll(self):
+        return self.selectAll()
+
+    @Slot(result=dict)
+    def rejectAll(self):
+        return self.selectNone()
+
     @Slot(result=dict)
     def cancelScan(self):
         self._cancel_requested = True
@@ -221,6 +403,9 @@ class SmartTaggingBridge(QObject):
         self._progress = 0.0
         self._suggestions = []
         self._selected_ids.clear()
+        self._batch_results = []
+        if self._wm:
+            self._wm.cancel_task("st_" + str(self._scan_counter))
         self.dataChanged.emit()
         self.progressChanged.emit()
         return {"ok": True}

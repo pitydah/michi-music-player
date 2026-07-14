@@ -3,8 +3,21 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+
+def _queue_state_path():
+    try:
+        from core.paths import app_config_dir
+        p = app_config_dir()
+        if p:
+            return str(p / "queue_state.json")
+    except Exception:
+        pass
+    import tempfile
+    return os.path.join(tempfile.gettempdir(), "michi_queue_state.json")
 
 logger = logging.getLogger("michi.queue_bridge")
 
@@ -101,42 +114,72 @@ class QueueBridge(QObject):
             return {"ok": False, "error": "NO_PLAYER"}
         try:
             q = self._player.get_queue()
+            shuffle = self._player.get_shuffle() if hasattr(self._player, 'get_shuffle') else False
+            repeat = self._player.get_repeat() if hasattr(self._player, 'get_repeat') else "none"
+            items = []
+            for i in (q or []):
+                if isinstance(i, dict):
+                    items.append({
+                        "id": i.get("id", i.get("track_id", "")),
+                        "track_uid": i.get("track_uid", ""),
+                        "title": i.get("title", ""),
+                        "artist": i.get("artist", ""),
+                        "album": i.get("album", ""),
+                        "duration": i.get("duration", 0),
+                        "source": i.get("source_type", "local_file"),
+                    })
+            import time
             state = {
-                "items": [
-                    {"id": i.get("id", i.get("track_id", "")),
-                     "title": i.get("title", ""),
-                     "artist": i.get("artist", ""),
-                     "album": i.get("album", ""),
-                     "duration": i.get("duration", 0)}
-                    for i in (q or [])
-                    if isinstance(i, dict)
-                ],
+                "version": 1,
+                "timestamp": time.time(),
+                "current_index": 0,
+                "position": 0,
+                "shuffle": shuffle,
+                "repeat": repeat,
+                "source": "queue_bridge",
+                "items": items,
             }
-            import tempfile
-            import os
-            path = os.path.join(tempfile.gettempdir(), "michi_queue_state.json")
+            path = _queue_state_path()
             with open(path, "w") as f:
                 json.dump(state, f)
-            return {"ok": True, "path": path, "count": len(state["items"])}
+            return {"ok": True, "path": path, "count": len(items)}
         except Exception as e:
             logger.exception("saveState failed")
             return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def loadState(self):
-        import os
-        import tempfile
-        path = os.path.join(tempfile.gettempdir(), "michi_queue_state.json")
+        path = _queue_state_path()
         if not os.path.exists(path):
             return {"ok": False, "error": "NO_SAVED_STATE"}
         try:
             with open(path) as f:
                 state = json.load(f)
             items = state.get("items", [])
+            if not items:
+                return {"ok": False, "error": "EMPTY_QUEUE"}
             if not self._player or not hasattr(self._player, 'set_queue'):
                 return {"ok": False, "error": "UNSUPPORTED"}
-            self._player.set_queue(items)
+            resolved = []
+            for item in items:
+                track = self._resolve_track(item)
+                if track:
+                    resolved.append(track)
+            self._player.set_queue(resolved)
             self.refresh()
-            return {"ok": True, "count": len(items)}
+            return {"ok": True, "count": len(resolved)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def _resolve_track(self, item: dict) -> dict | None:
+        """Resolve a saved item to a current track by ID."""
+        tid = item.get("id", item.get("track_id", ""))
+        if not self._player or not hasattr(self._player, 'get_track_by_id'):
+            return item
+        try:
+            track = self._player.get_track_by_id(tid)
+            if track:
+                return track
+        except Exception:
+            pass
+        return item

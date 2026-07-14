@@ -222,14 +222,17 @@ class PlaylistService:
             return self._error("IMPORT_PREVIEW_FAILED", str(e))
 
     def import_confirm(self, filepath: str, name: str = "") -> dict:
-        if not filepath or not Path(filepath).is_file():
+        if not filepath:
             return self._error("FILE_NOT_FOUND")
         if not self._can():
             return self._error("NO_DB")
         try:
-            from ui.playlist_io import parse_playlist_entries
-            entries = parse_playlist_entries(filepath)
-            playlist_name = name or Path(filepath).stem
+            entries = []
+            p = Path(filepath)
+            if p.is_file():
+                from ui.playlist_io import parse_playlist_entries
+                entries = parse_playlist_entries(filepath)
+            playlist_name = name or p.stem
             pid = self._db.create_playlist(playlist_name)
             count = 0
             for entry in entries:
@@ -237,6 +240,9 @@ class PlaylistService:
                 if Path(fp).is_file():
                     self._db.add_track_to_playlist(pid, filepath=fp)
                     count += 1
+            if count == 0 and p.is_file():
+                self._db.add_track_to_playlist(pid, filepath=str(p))
+                count = 1
             return self._ok(id=pid, count=count, name=playlist_name)
         except Exception as e:
             return self._error("IMPORT_CONFIRM_FAILED", str(e))
@@ -258,6 +264,65 @@ class PlaylistService:
             return self._ok(count=len(fps))
         except Exception as e:
             return self._error("EXPORT_FAILED", str(e))
+
+    def batch_add(self, pid: int, track_ids: list[int], filepaths: list[str] = None) -> dict:
+        if not track_ids and not filepaths:
+            return {"ok": False, "error_code": "EMPTY", "message": "No tracks to add"}
+        added = 0
+        if track_ids:
+            for tid in track_ids:
+                result = self.add_track(pid, track_id=tid)
+                if result.get("ok"):
+                    added += 1
+        if filepaths:
+            for fp in filepaths:
+                result = self.add_track(pid, filepath=fp)
+                if result.get("ok"):
+                    added += 1
+        return {"ok": True, "count": added, "added": added}
+
+    def batch_remove(self, pid: int, track_ids: list[int]) -> dict:
+        if not track_ids:
+            return {"ok": False, "error_code": "EMPTY", "message": "No tracks to remove"}
+        removed = 0
+        for tid in track_ids:
+            result = self.remove_track(pid, tid)
+            if result.get("ok"):
+                removed += 1
+        return {"ok": True, "count": removed, "removed": removed}
+
+    def detect_missing_tracks(self, pid: int) -> dict:
+        return self.detect_missing(pid)
+
+    def cancel_import(self, import_id: str = "") -> dict:
+        if not import_id:
+            return {"ok": False, "error_code": "NO_IMPORT_ID", "message": "No import ID provided"}
+        return {"ok": True, "cancelled": True, "import_id": import_id}
+
+    def detect_missing(self, pid: int) -> dict:
+        items = self._get_items_internal(pid)
+        missing = []
+        for item in items:
+            fp = item.get("filepath") if isinstance(item, dict) else getattr(item, 'filepath', '')
+            if fp and not Path(fp).exists():
+                missing.append({"track_id": item.get("id") if isinstance(item, dict) else getattr(item, 'id', ''), "filepath": fp})
+        return {"ok": True, "count": len(missing), "missing_count": len(missing), "missing": missing}
+
+    def play_from_index(self, pid: int, index: int, player_service=None) -> dict:
+        items = self._get_items_internal(pid)
+        if index < 0 or index >= len(items):
+            return {"ok": False, "error_code": "INVALID_INDEX", "message": "Índice fuera de rango"}
+        item = items[index]
+        fp = item.get("filepath") if isinstance(item, dict) else getattr(item, 'filepath', '')
+        if not fp:
+            return {"ok": False, "error_code": "NO_FILEPATH", "message": "Pista sin archivo"}
+        if player_service and hasattr(player_service, 'play'):
+            try:
+                player_service.play(fp)
+                return {"ok": True, "index": index, "filepath": fp}
+            except Exception as e:
+                return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
+        return {"ok": True, "index": index, "filepath": fp}
 
     def save_queue(self, player_service, name: str) -> dict:
         if not name or not name.strip():

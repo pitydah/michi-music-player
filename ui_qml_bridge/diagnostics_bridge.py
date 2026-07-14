@@ -1,15 +1,21 @@
-"""DiagnosticsBridge — real runtime diagnostics and health checks."""
+"""DiagnosticsBridge — real runtime diagnostics via async jobs.
+
+Diagnostics MUST NOT: query SQL from getters, walk storage from UI thread,
+run pytest from QML, or run benchmarks from QML.
+"""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
-import sys
 import platform
+import sys
 import time
-from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
 class DiagnosticsBridge(QObject):
     dataChanged = Signal()
+    diagnosticsUpdated = Signal(list)
 
     def __init__(self, player_service=None, db=None, radio_manager=None,
                  sync_manager=None, worker_manager=None, query_executor=None,
@@ -22,299 +28,172 @@ class DiagnosticsBridge(QObject):
         self._wm = worker_manager
         self._qe = query_executor
         self._lib = library_bridge
-        self._diagnostics: dict = {}
+        self._jobs: list[dict] = []
+        self._env_info: dict[str, Any] = {}
 
-    @Slot(result="QVariantMap")
-    def runQuickCheck(self):
-        result = {
+    @Property("QVariantList", notify=diagnosticsUpdated)
+    def jobs(self):
+        return list(self._jobs)
+
+    @Slot(result=dict)
+    def refresh(self):
+        self._env_info = {
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "platform": platform.platform(),
             "qml_mode": True,
             "app_version": "0.2.0a0",
         }
-        # Backend availability
-        result["player_available"] = self._player is not None
-        result["db_available"] = self._db is not None
-        result["radio_available"] = self._radio is not None
-        result["sync_available"] = self._sync is not None
-        result["worker_manager"] = self._wm is not None
-        result["query_executor"] = self._qe is not None
+        self.dataChanged.emit()
+        self._run_all_jobs()
+        return {"ok": True}
 
-        # Library diagnostics
-        result["db_path"] = ""
-        result["schema_version"] = ""
-        result["media_count"] = 0
-        result["source_count"] = 0
-        result["last_scan_timestamp"] = ""
-        result["model_count"] = 0
-        result["current_filters"] = ""
-        result["query_generation"] = 0
-        result["model_error"] = ""
-        result["page_status"] = ""
+    def _run_all_jobs(self):
+        if not self._wm:
+            self._jobs = [{"id": "worker.unavailable", "status": "FAIL",
+                           "value": False, "message": "WorkerManager no disponible",
+                           "duration_ms": 0}]
+            self.diagnosticsUpdated.emit(self._jobs)
+            return
 
-        if self._lib:
-            try:
-                tk = getattr(self._lib, 'trackModel', None)
-                if tk:
-                    result["model_count"] = tk.totalCount
-                    result["query_generation"] = getattr(tk, '_refresh_gen', 0)
-                    result["model_error"] = getattr(tk, 'errorMessage', '')
-                    result["page_status"] = "initialized" if getattr(tk, 'initialized', False) else "loading"
-                    result["current_filters"] = str(getattr(tk, 'activeQuery', {}))
-            except Exception:
-                pass
-            try:
-                qs = getattr(self._lib, '_query_svc', None)
-                if qs:
-                    result["query_generation"] = getattr(qs, '_gen', 0)
-            except Exception:
-                pass
+        self._jobs = []
+        self.diagnosticsUpdated.emit(self._jobs)
 
-        # DB health
-        if self._db:
-            try:
-                result["db_path"] = getattr(self._db, 'db_path', '') or str(getattr(self._db, '_db_path', ''))
-            except Exception:
-                result["db_path"] = ""
-            try:
-                row = self._db.conn.execute("SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL").fetchone()
-                result["media_count"] = row[0] if row else 0
-                result["library_tracks"] = result["media_count"]
-            except Exception:
-                result["media_count"] = -1
-                result["library_tracks"] = -1
-            try:
-                src_row = self._db.conn.execute("SELECT COUNT(*) FROM library_sources").fetchone()
-                result["source_count"] = src_row[0] if src_row else 0
-            except Exception:
-                result["source_count"] = 0
-            try:
-                row = self._db.conn.execute("SELECT MAX(last_scan) FROM library_scan_log").fetchone()
-                result["last_scan_timestamp"] = str(row[0] or "") if row else ""
-            except Exception:
-                result["last_scan_timestamp"] = ""
-            try:
-                sv = self._db.conn.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()
-                result["schema_version"] = str(sv[0] if sv else "")
-            except Exception:
-                result["schema_version"] = ""
-            try:
-                fts = self._db.conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"
+        checks = [
+            ("database.integrity", self._check_db_integrity),
+            ("library.status", self._check_library_status),
+            ("player.status", self._check_player_status),
+            ("storage.paths", self._check_storage_paths),
+            ("services.availability", self._check_services_availability),
+        ]
+
+        for job_id, check_fn in checks:
+            self._schedule_job(job_id, check_fn)
+
+    def _schedule_job(self, job_id: str, check_fn):
+        started = time.time()
+
+        def _task(ctx):
+            ctx.token.raise_if_cancelled()
+            return check_fn()
+
+        def _on_done(result):
+            elapsed = (time.time() - started) * 1000
+            job = {
+                "id": job_id,
+                "status": result.get("status", "UNKNOWN"),
+                "value": result.get("value"),
+                "message": result.get("message", ""),
+                "duration_ms": round(elapsed, 1),
+            }
+            self._jobs.append(job)
+            self.diagnosticsUpdated.emit(self._jobs)
+
+        def _on_error(code, msg):
+            elapsed = (time.time() - started) * 1000
+            job = {
+                "id": job_id,
+                "status": "FAIL",
+                "value": None,
+                "message": msg or code,
+                "duration_ms": round(elapsed, 1),
+            }
+            self._jobs.append(job)
+            self.diagnosticsUpdated.emit(self._jobs)
+
+        self._wm.run_task(
+            f"diag_{job_id}", _task,
+            pass_context=True, cancellable=True, owner="diagnostics",
+            on_done=_on_done, on_error=_on_error,
+        )
+
+    def _check_db_integrity(self) -> dict:
+        if not self._db:
+            return {"status": "FAIL", "value": False, "message": "Base de datos no disponible"}
+        try:
+            conn = getattr(self._db, 'conn', None)
+            if conn is None:
+                return {"status": "FAIL", "value": False, "message": "Conexión BD no disponible"}
+            row = conn.execute("PRAGMA integrity_check").fetchone()
+            if row and row[0] == "ok":
+                count = conn.execute(
+                    "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL"
                 ).fetchone()
-                result["fts5_available"] = fts is not None
-            except Exception:
-                result["fts5_available"] = False
-            try:
-                schema = self._db.conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-                ).fetchall()
-                result["tables"] = len(schema)
-            except Exception:
-                result["tables"] = -1
-            try:
-                play_history = self._db.conn.execute(
-                    "SELECT COUNT(*) FROM play_history"
-                ).fetchone()
-                result["play_history_entries"] = play_history[0] if play_history else 0
-            except Exception:
-                result["play_history_entries"] = 0
+                total = count[0] if count else 0
+                return {"status": "PASS", "value": total, "message": f"Integridad OK · {total} pistas"}
+            return {"status": "WARN", "value": False, "message": f"Integridad: {row[0] if row else 'desconocida'}"}
+        except Exception as e:
+            return {"status": "FAIL", "value": False, "message": str(e)}
 
-        # WorkerManager health
-        if self._wm:
-            result["thread_pool_activo"] = self._wm.pending()
-            result["tareas_activas"] = len(self._wm.active_tasks())
-        else:
-            result["thread_pool_activo"] = -1
-            result["tareas_activas"] = -1
-
-        # QueryExecutor health
-        if self._qe:
-            result["requests_activos"] = len(self._qe.active_requests())
-        else:
-            result["requests_activos"] = -1
-
-        # Player backend
-        if self._player:
-            try:
-                backend = self._player.get_active_backend_id() if hasattr(self._player, 'get_active_backend_id') else "unknown"
-                result["backend_audio"] = backend
-            except Exception:
-                result["backend_audio"] = "error"
-            try:
-                dev = self._player.get_output_device_id() if hasattr(self._player, 'get_output_device_id') else ""
-                result["dispositivo_salida"] = dev or "default"
-            except Exception:
-                result["dispositivo_salida"] = "error"
-            try:
-                vol = self._player.get_volume() if hasattr(self._player, 'get_volume') else -1
-                result["volumen"] = vol
-            except Exception:
-                result["volumen"] = -1
-
-        # Paths
+    def _check_library_status(self) -> dict:
+        if not self._db:
+            return {"status": "FAIL", "value": False, "message": "Base de datos no disponible"}
         try:
-            from core.paths import data_dir, cache_dir, config_dir, log_dir, database_path
-            result["data_path"] = str(data_dir())
-            result["cache_path"] = str(cache_dir())
-            result["config_path"] = str(config_dir())
-            result["log_path"] = str(log_dir())
-            result["database_path"] = str(database_path())
-        except Exception:
-            pass
+            conn = getattr(self._db, 'conn', None)
+            if conn is None:
+                return {"status": "FAIL", "value": False, "message": "Conexión BD no disponible"}
+            count = conn.execute(
+                "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL"
+            ).fetchone()
+            total = count[0] if count else 0
+            if total == 0:
+                return {"status": "WARN", "value": 0, "message": "Biblioteca vacía"}
+            missing = conn.execute(
+                "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL AND "
+                "(title IS NULL OR title = '' OR artist IS NULL OR artist = '')"
+            ).fetchone()
+            missing_count = missing[0] if missing else 0
+            if missing_count > 0:
+                return {"status": "WARN", "value": total,
+                        "message": f"{total} pistas · {missing_count} con metadatos incompletos"}
+            return {"status": "PASS", "value": total, "message": f"{total} pistas · OK"}
+        except Exception as e:
+            return {"status": "FAIL", "value": False, "message": str(e)}
 
-        # Settings summary
+    def _check_player_status(self) -> dict:
+        if not self._player:
+            return {"status": "WARN", "value": False, "message": "Player no disponible"}
         try:
-            from core.settings_schema import ALL_CATEGORIES
-            result["categorias_settings"] = len(ALL_CATEGORIES)
-        except Exception:
-            pass
+            backend = "unknown"
+            if hasattr(self._player, 'get_active_backend_id'):
+                backend = self._player.get_active_backend_id()
+            volume = -1
+            if hasattr(self._player, 'get_volume'):
+                volume = self._player.get_volume()
+            return {"status": "PASS", "value": True,
+                    "message": f"Backend: {backend} · Vol: {volume}"}
+        except Exception as e:
+            return {"status": "WARN", "value": False, "message": str(e)}
 
-        # Settings runtime coordinator
+    def _check_storage_paths(self) -> dict:
         try:
-            result["settings_coordinator_disponible"] = True
-        except Exception:
-            result["settings_coordinator_disponible"] = False
+            from core.paths import data_dir, cache_dir, config_dir, database_path
+            str(data_dir()), str(cache_dir()), str(config_dir()), str(database_path())
+            return {"status": "PASS", "value": True, "message": "Rutas de almacenamiento OK"}
+        except Exception as e:
+            return {"status": "FAIL", "value": False, "message": str(e)}
 
-        # WorkerManager methods
-        if self._wm:
-            result["wm_cancel_all"] = hasattr(self._wm, 'cancel_all')
-            result["wm_run_task"] = hasattr(self._wm, 'run_task')
-
-        # QueryExecutor methods
-        if self._qe:
-            result["qe_submit"] = hasattr(self._qe, 'submit')
-            result["qe_cancel"] = hasattr(self._qe, 'cancel')
-
-        # Bridge health
-        try:
-            import ui_qml_bridge.accessibility_bridge as _ab
-            result["accessibility_bridge_available"] = bool(_ab)
-        except Exception:
-            result["accessibility_bridge_available"] = False
-        try:
-            import ui_qml_bridge.runtime_quality_bridge as _rq
-            result["runtime_quality_bridge_available"] = bool(_rq)
-        except Exception:
-            result["runtime_quality_bridge_available"] = False
-        try:
-            import ui_qml_bridge.physical_audio_bridge as _pa
-            result["physical_audio_bridge_available"] = bool(_pa)
-        except Exception:
-            result["physical_audio_bridge_available"] = False
-
-        # LibraryDB playlists
-        if self._db:
-            try:
-                pl = self._db.conn.execute("SELECT COUNT(*) FROM playlists").fetchone()
-                result["playlists_count"] = pl[0] if pl else 0
-            except Exception:
-                result["playlists_count"] = 0
-
-        # Storage
-        try:
-            from core.paths import data_dir
-            ddir = data_dir()
-            if ddir and ddir.exists():
-                result["storage_bytes"] = sum(
-                    f.stat().st_size for f in ddir.rglob("*") if f.is_file()
-                )
-        except Exception:
-            result["storage_bytes"] = -1
-
-        return result
-
-    @Property("QVariantList", notify=dataChanged)
-    def checks(self):
-        check = self.runQuickCheck()
-        return [{"key": k, "value": str(v), "ok": bool(v) if not isinstance(v, (int, float)) or v != -1 else False}
-                for k, v in check.items()]
-
-    @Slot(result=str)
-    def copyDiagnostics(self):
-        items = self.checks
-        lines = ["=== Michi Music Player Diagnostics ==="]
-        lines.append(f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        for item in items:
-            # Sanitize secrets
-            val = item["value"]
-            if any(s in item["key"].lower() for s in ("token", "password", "secret", "key")):
-                val = "***"
-            status = "OK" if item["ok"] else "FAIL"
-            lines.append(f"  {status}  {item['key']}: {val}")
-        return "\n".join(lines)
-
-    @Slot(result=dict)
-    def performanceScore(self) -> dict:
-        """Return performance module score based on benchmark and pytest results."""
-        import subprocess
-        score = 0
-        try:
-            result = subprocess.run(
-                [sys.executable, "-m", "pytest", "tests/qml/", "-q"],
-                capture_output=True, text=True, timeout=60,
-                env={**dict(sorted(subprocess.os.environ.items())), "QT_QPA_PLATFORM": "offscreen", "MICHI_SAFE_MODE": "1"},
-            )
-            if result.returncode == 0:
-                score += 25
-        except Exception:
-            pass
-        try:
-            result = subprocess.run(
-                [sys.executable, str(Path(__file__).resolve().parent.parent / "scripts" / "qml_library_benchmark.py")],
-                capture_output=True, text=True, timeout=120,
-                env={**dict(sorted(subprocess.os.environ.items())), "QT_QPA_PLATFORM": "offscreen", "MICHI_SAFE_MODE": "1"},
-            )
-            if result.returncode == 0:
-                score += 25
-        except Exception:
-            pass
-        report = Path(__file__).resolve().parent.parent / "docs" / "QML_LIBRARY_PERFORMANCE_REPORT.md"
-        if report.exists():
-            score += 25
-            content = report.read_text()
-            if "100ms" in content or "excellent" in content:
-                score += 25
-        return {
-            "score": min(100, score),
-            "pytest_pass": score >= 25,
-            "benchmark_pass": score >= 50,
-            "report_exists": report.exists(),
-            "performance_ok": min(100, score) >= 75,
-        }
-
-    @Slot(result=dict)
-    def diagnosticsScore(self) -> dict:
-        score = 0
-        if self._player:
-            score += 15
-        if self._db:
-            score += 20
-        if self._wm:
-            score += 15
-        if self._qe:
-            score += 15
-        if hasattr(self, 'runQuickCheck'):
-            score += 10
-        if hasattr(self, 'copyDiagnostics'):
-            score += 15
-        try:
-            check = self.runQuickCheck()
-            if check.get("library_tracks", 0) >= 0:
-                score += 10
-        except Exception:
-            pass
-        return {
-            "score": min(100, score),
-            "player_available": self._player is not None,
-            "db_available": self._db is not None,
+    def _check_services_availability(self) -> dict:
+        services = {
+            "db": self._db is not None,
+            "player": self._player is not None,
             "worker_manager": self._wm is not None,
             "query_executor": self._qe is not None,
         }
+        ok = sum(1 for v in services.values() if v)
+        total = len(services)
+        if ok == total:
+            return {"status": "PASS", "value": ok, "message": f"{ok}/{total} servicios disponibles"}
+        if ok == 0:
+            return {"status": "FAIL", "value": 0, "message": "Ningún servicio disponible"}
+        return {"status": "WARN", "value": ok, "message": f"{ok}/{total} servicios disponibles"}
 
-    @Slot()
-    def refresh(self):
-        self.dataChanged.emit()
+    @Slot(result=str)
+    def copyDiagnostics(self):
+        lines = ["=== Michi Music Player Diagnostics ==="]
+        lines.append(f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        for j in self._jobs:
+            lines.append(f"  {j['status']}  {j['id']}: {j['message']} ({j['duration_ms']}ms)")
+        return "\n".join(lines)
 
     @property
     def query_executor(self):
