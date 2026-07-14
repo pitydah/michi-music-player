@@ -197,7 +197,7 @@ class RealDbWrapper:
         ]
 
 
-pytestmark = [pytest.mark.qml_module("workflows_interaction_real"), pytest.mark.qml_dimension("interactive_workflow")]
+pytestmark = [pytest.mark.qml_module("workflows_interaction_real"), pytest.mark.qml_dimension("interactive_workflow"), pytest.mark.qml_workflow("interaction_real")]
 
 
 @pytest.fixture(scope="function")

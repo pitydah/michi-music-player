@@ -1,6 +1,6 @@
 # QML Library Performance Report
 
-**Date:** 2026-07-14T17:35:11
+**Date:** 2026-07-14T19:49:01
 **Environment:** Linux, Python 3.11, PySide6 6.11, offscreen
 
 ## Synthetic Benchmark Results
@@ -10,7 +10,7 @@
 | 100 tracks | 0.0001 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
 | 1,000 tracks | 0.0001 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
 | 10,000 tracks | 0.0001 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
-| 50,000 tracks | 0.0003 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
+| 50,000 tracks | 0.0002 | 0.0001 | 0.0001 | 0.0001 | 0.0 |
 
 ## Methodology
 - Tracks created as MagicMock objects with realistic metadata

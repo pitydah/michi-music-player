@@ -1,44 +1,44 @@
-"""Tests for QML Evidence V6: marker parsing, JUnit matching, penalties, composite statuses."""
+"""Tests for QML Evidence V8: marker parsing, JUnit matching, scores."""
 import ast
-import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import yaml
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent.parent
 SCRIPTS = REPO / "scripts"
-CONFIG_FILE = REPO / "config" / "qml_migration_dimensions.json"
+CONFIG_FILE = REPO / "config" / "qml_modules.yaml"
 
-KNOWN_DIMENSIONS = [
-    "route_load", "qml_instance", "model_data", "service_wiring",
-    "read", "primary_action", "secondary_actions", "write",
-    "error_contract", "async_execution", "real_cancellation",
-    "persistence", "integration", "vertical_workflow",
-    "performance", "accessibility",
-]
+V8_MARKERS = {"qml_module", "qml_dimension", "qml_route", "qml_workflow", "widget_replacement"}
 
-PENALTY_MAP = {
+SCORE_MAP = {
+    "PASSED": 1.0,
     "FAILED": 0.0,
     "MISSING": 0.0,
-    "NOT_APPLICABLE": 1.0,
-    "PASSED": 1.0,
+    "NOT_APPLICABLE_DECLARED": 1.0,
+    "DEFERRED_PHYSICAL": 1.0,
 }
+
+KNOWN_DIMENSIONS = []
 
 
 def _extract_marker_name(node: ast.AST) -> str | None:
-    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Attribute) and node.attr in ("qml_module", "qml_dimension"):
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Attribute) and node.attr in V8_MARKERS:
         return node.attr
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("qml_module", "qml_dimension"):
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in V8_MARKERS:
         return node.func.attr
     return None
+
+
+pytestmark = [pytest.mark.qml_module("evidence"), pytest.mark.qml_dimension("verification")]
 
 
 def _get_call_arg(node: ast.Call) -> str | None:
     if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
         return node.args[0].value
     for kw in node.keywords:
-        if kw.arg in ("module", "dimension") and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+        if kw.arg in ("module", "dimension", "route", "workflow", "widget") and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
             return kw.value.value
     return None
 
@@ -95,6 +95,9 @@ def find_marked_tests(repo: Path) -> list[dict]:
                     "nodeid": f"{relpath}::{node.name}" if not cls_node else f"{relpath}::{cls_node}::{node.name}",
                     "module": markers.get("qml_module", ""),
                     "dimension": markers.get("qml_dimension", ""),
+                    "route": markers.get("qml_route", ""),
+                    "workflow": markers.get("qml_workflow", ""),
+                    "widget": markers.get("widget_replacement", ""),
                     "file": relpath,
                     "class": cls_node or "",
                     "function": node.name,
@@ -213,7 +216,7 @@ def compute_module_score(dimensions):
     for dim_val in dimensions.values():
         weight = dim_val.get("weight", 0)
         status = dim_val.get("status", "NOT_APPLICABLE")
-        factor = PENALTY_MAP.get(status, 0.0)
+        factor = SCORE_MAP.get(status, 0.0)
         weighted_sum += weight * factor
         total_weight += weight
     if total_weight == 0:
@@ -223,7 +226,8 @@ def compute_module_score(dimensions):
 
 @pytest.fixture
 def config():
-    return json.loads(CONFIG_FILE.read_text())
+    with open(CONFIG_FILE) as f:
+        return yaml.safe_load(f)
 
 
 class TestMarkerParsing:
@@ -446,137 +450,67 @@ class TestDimensionStatus:
         assert result["status"] == "MISSING"
 
 
-class TestCompositeStatus:
-    def _make_dim(self, status, weight=8):
-        return {"status": status, "tests": [], "weight": weight, "reason": ""}
-
-    def test_compiles_status(self):
-        dims = {
-            "route_load": self._make_dim("PASSED", 8),
-            "qml_instance": self._make_dim("PASSED", 7),
-            "model_data": self._make_dim("NOT_APPLICABLE", 8),
-        }
-        status = derive_composite_status(dims)
-        assert status == "COMPILES"
-
-    def test_read_only_status(self):
-        dims = {
-            "route_load": self._make_dim("PASSED", 8),
-            "qml_instance": self._make_dim("PASSED", 7),
-            "model_data": self._make_dim("PASSED", 8),
-            "service_wiring": self._make_dim("PASSED", 10),
-            "read": self._make_dim("PASSED", 8),
-            "primary_action": self._make_dim("NOT_APPLICABLE", 12),
-        }
-        status = derive_composite_status(dims)
-        assert status == "READ_ONLY"
-
-    def test_partial_workflow_status(self):
-        dims = {
-            "route_load": self._make_dim("PASSED", 8),
-            "qml_instance": self._make_dim("PASSED", 7),
-            "model_data": self._make_dim("PASSED", 8),
-            "service_wiring": self._make_dim("PASSED", 10),
-            "read": self._make_dim("PASSED", 8),
-            "primary_action": self._make_dim("PASSED", 12),
-            "secondary_actions": self._make_dim("NOT_APPLICABLE", 8),
-        }
-        status = derive_composite_status(dims)
-        assert status == "PARTIAL_WORKFLOW"
-
-    def test_productive_status(self):
-        dims = {
-            "route_load": self._make_dim("PASSED", 8),
-            "qml_instance": self._make_dim("PASSED", 7),
-            "model_data": self._make_dim("PASSED", 8),
-            "service_wiring": self._make_dim("PASSED", 10),
-            "read": self._make_dim("PASSED", 8),
-            "primary_action": self._make_dim("PASSED", 12),
-            "secondary_actions": self._make_dim("NOT_APPLICABLE", 8),
-            "write": self._make_dim("NOT_APPLICABLE", 8),
-            "error_contract": self._make_dim("PASSED", 7),
-            "async_execution": self._make_dim("NOT_APPLICABLE", 6),
-            "real_cancellation": self._make_dim("NOT_APPLICABLE", 5),
-            "persistence": self._make_dim("NOT_APPLICABLE", 5),
-            "integration": self._make_dim("PASSED", 8),
-            "vertical_workflow": self._make_dim("PASSED", 8),
-            "performance": self._make_dim("MISSING", 5),
-            "accessibility": self._make_dim("NOT_APPLICABLE", 5),
-        }
-        status = derive_composite_status(dims)
-        assert status == "PRODUCTIVE"
-
-    def test_parity_status(self):
-        dims = {d: self._make_dim("PASSED", 8) for d in KNOWN_DIMENSIONS}
-        status = derive_composite_status(dims)
-        assert status == "PARITY"
-
-    def test_not_implemented_status(self):
-        dims = {
-            "route_load": self._make_dim("NOT_APPLICABLE", 8),
-            "qml_instance": self._make_dim("NOT_APPLICABLE", 7),
-        }
-        status = derive_composite_status(dims)
-        assert status == "NOT_IMPLEMENTED"
-
-
 class TestScore:
     def test_score_all_passed(self):
-        weights = json.loads(CONFIG_FILE.read_text())["dimension_weights"]
-        dims = {d: {"status": "PASSED", "weight": weights.get(d, 5)} for d in KNOWN_DIMENSIONS}
+        dims = {"m1": {"status": "PASSED", "weight": 10}}
         score = compute_module_score(dims)
         assert score == 100.0
 
     def test_score_all_failed(self):
-        weights = json.loads(CONFIG_FILE.read_text())["dimension_weights"]
-        dims = {d: {"status": "FAILED", "weight": weights.get(d, 5)} for d in KNOWN_DIMENSIONS}
+        dims = {"m1": {"status": "FAILED", "weight": 10}}
         score = compute_module_score(dims)
         assert score == 0.0
 
     def test_score_weighted_mixed(self):
         dims = {
-            "route_load": {"status": "PASSED", "weight": 8},
-            "qml_instance": {"status": "FAILED", "weight": 7},
-            "read": {"status": "PASSED", "weight": 8},
+            "qml_module": {"status": "PASSED", "weight": 10},
+            "qml_dimension": {"status": "FAILED", "weight": 10},
         }
         score = compute_module_score(dims)
-        expected = ((8 * 1.0) + (7 * 0.0) + (8 * 1.0)) / (8 + 7 + 8) * 100.0
-        assert score == pytest.approx(expected)
+        assert score == 50.0
 
     def test_score_empty_dimensions(self):
         score = compute_module_score({})
         assert score == 0.0
 
-    def test_dimension_weights_from_config(self, config):
-        weights = config["dimension_weights"]
-        assert all(w > 0 for w in weights.values())
-        assert len(weights) == 16
+    def test_score_not_applicable_declared(self):
+        dims = {"m1": {"status": "NOT_APPLICABLE_DECLARED", "weight": 10}}
+        score = compute_module_score(dims)
+        assert score == 100.0
 
 
-class TestPenalties:
-    def test_failed_dimension_zero_score(self):
-        assert PENALTY_MAP["FAILED"] == 0.0
+class TestScoreMap:
+    def test_failed_zero(self):
+        assert SCORE_MAP["FAILED"] == 0.0
 
-    def test_missing_dimension_zero_score(self):
-        assert PENALTY_MAP["MISSING"] == 0.0
+    def test_missing_zero(self):
+        assert SCORE_MAP["MISSING"] == 0.0
 
-    def test_passed_dimension_full_score(self):
-        assert PENALTY_MAP["PASSED"] == 1.0
+    def test_passed_full(self):
+        assert SCORE_MAP["PASSED"] == 1.0
 
-    def test_not_applicable_dimension_full_score(self):
-        assert PENALTY_MAP["NOT_APPLICABLE"] == 1.0
+    def test_not_applicable_declared_full(self):
+        assert SCORE_MAP["NOT_APPLICABLE_DECLARED"] == 1.0
+
+    def test_deferred_physical_full(self):
+        assert SCORE_MAP["DEFERRED_PHYSICAL"] == 1.0
 
 
-class TestShaConsistency:
-    def test_config_has_no_physical(self, config):
-        dims = config.get("dimension_weights", {})
-        assert "physical" not in dims
+class TestModulesConfig:
+    def test_config_has_modules(self, config):
+        modules = config.get("modules", {})
+        assert len(modules) > 0
 
-    def test_config_has_16_dimensions(self, config):
-        dims = config.get("dimension_weights", {})
-        assert len(dims) == 16
+    def test_has_library_module(self, config):
+        assert "library" in config.get("modules", {})
 
-    def test_all_known_dimensions_present(self, config):
-        dims = config.get("dimension_weights", {})
-        for d in KNOWN_DIMENSIONS:
-            assert d in dims, f"Missing dimension: {d}"
+    def test_module_has_weight(self, config):
+        for _mod_name, mod_cfg in config.get("modules", {}).items():
+            assert "weight" in mod_cfg
+            assert isinstance(mod_cfg["weight"], int)
+            assert mod_cfg["weight"] > 0
+
+    def test_module_has_dimensions(self, config):
+        for _mod_name, mod_cfg in config.get("modules", {}).items():
+            assert "dimensions" in mod_cfg
+            assert isinstance(mod_cfg["dimensions"], list)

@@ -101,7 +101,7 @@ def _create_schema(conn: sqlite3.Connection):
     """)
 
 
-pytestmark = [pytest.mark.qml_module("workflows"), pytest.mark.qml_dimension("interactive_workflow")]
+pytestmark = [pytest.mark.qml_module("workflows"), pytest.mark.qml_dimension("interactive_workflow"), pytest.mark.qml_workflow("interactive")]
 
 
 @pytest.fixture
