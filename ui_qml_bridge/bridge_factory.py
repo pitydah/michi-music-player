@@ -1,41 +1,28 @@
-"""BridgeFactory — creates bridges once, injects dependencies, registers availability.
+"""BridgeFactory — creates bridges once, injects ServiceContainer.
 
 Does not open databases, construct backends, or start services.
+Does not cache or create core services internally.
 """
 from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
-
 from PySide6.QtCore import QObject
 
 from ui_qml_bridge.service_bundle import ServiceBundle
-
-if TYPE_CHECKING:
-    from ui_qml_bridge.navigation_bridge import NavigationBridge
 
 logger = logging.getLogger("michi.bridge_factory")
 
 
 class BridgeFactory(QObject):
-    """Creates each bridge exactly once with injected dependencies."""
+    """Creates each bridge exactly once with injected dependencies from ServiceContainer."""
 
-    def __init__(self, services: ServiceBundle, navigation_bridge: NavigationBridge | None = None, parent=None):
+    def __init__(self, services: ServiceBundle, parent=None):
         super().__init__(parent)
         self._services = services
-        self._nav = navigation_bridge
         self._bridges: dict[str, QObject] = {}
         self._capabilities: dict[str, bool] = {}
         self._action_registry = None
-        self._qs_cache = None
-        self._qe_cache = None
-        self._lss_cache = None
-        self._settings_service_cache = None
-        self._history_qs_cache = None
-        self._mix_qs_cache = None
-        self._tas_cache = None
-        self._src_cache = None
 
     @property
     def bridges(self) -> dict[str, QObject]:
@@ -59,7 +46,7 @@ class BridgeFactory(QObject):
         if "app" not in self._bridges:
             self._bridges["app"] = AppBridge(
                 worker_manager=self._services.worker_manager,
-                query_executor=self._get_query_executor(),
+                query_executor=None,
                 player_service=self._services.player_service,
                 queue_bridge=self._bridges.get("queue"),
                 sync_manager=self._services.sync_manager,
@@ -77,41 +64,28 @@ class BridgeFactory(QObject):
         if "navigation" not in self._bridges:
             nav = NavigationBridge()
             self._bridges["navigation"] = nav
-            self._nav = nav
         return self._bridges["navigation"]
 
     def create_theme_bridge(self):
         from ui_qml_bridge.theme_bridge import ThemeBridge
         if "theme" not in self._bridges:
             self._bridges["theme"] = ThemeBridge(
-                coordinator=self._get_settings_runtime_coordinator(),
+                coordinator=self._services.settings_coordinator,
             )
         return self._bridges["theme"]
-
-    def _get_library_query_service(self):
-        from ui_qml_bridge.library_query_service import LibraryQueryService
-        if not hasattr(self, '_qs_cache') or self._qs_cache is None:
-            db_path = ""
-            if self._services.db and hasattr(self._services.db, 'db_path'):
-                db_path = self._services.db.db_path
-            self._qs_cache = LibraryQueryService(self._services.db, db_path=db_path) if self._services.db or db_path else None
-        return self._qs_cache
 
     def create_library_bridge(self):
         from ui_qml_bridge.library_bridge import LibraryBridge
         if "library" not in self._bridges:
-            qs = self._get_library_query_service()
-            qe = self._get_query_executor()
-            tas = self._get_track_action_service()
             self._bridges["library"] = LibraryBridge(
                 db=self._services.db,
                 search_engine=self._services.search_engine,
                 playback_ctrl=self._services.player_service,
-                query_service=qs,
-                query_executor=qe,
+                query_service=None,
+                query_executor=None,
                 worker_manager=self._services.worker_manager,
                 job_bridge=self._bridges.get("job_bridge"),
-                track_action_service=tas,
+                track_action_service=None,
             )
         self._register_capability("library", "db")
         return self._bridges["library"]
@@ -144,15 +118,13 @@ class BridgeFactory(QObject):
     def create_mix_bridge(self):
         from ui_qml_bridge.mix_bridge import MixBridge
         if "mix" not in self._bridges:
-            tas = self._get_track_action_service()
-            mqs = self._get_mix_query_service()
             self._bridges["mix"] = MixBridge(
                 db=self._services.db,
                 player_service=self._services.player_service,
-                track_action_service=tas,
+                track_action_service=None,
                 playlist_bridge=self._bridges.get("playlists"),
-                query_service=mqs,
-                query_executor=self._get_query_executor(),
+                query_service=None,
+                query_executor=None,
             )
         self._register_capability("mix", "db")
         return self._bridges["mix"]
@@ -172,7 +144,7 @@ class BridgeFactory(QObject):
         if "connections" not in self._bridges:
             self._bridges["connections"] = ConnectionsBridge(
                 michi_link_ctrl=self._services.michi_link_controller,
-                navigation_bridge=self._nav,
+                navigation_bridge=None,
             )
         self._register_capability("connections", "michi_link_controller")
         return self._bridges["connections"]
@@ -216,27 +188,19 @@ class BridgeFactory(QObject):
         from ui_qml_bridge.playlists_bridge import PlaylistsBridge
         if "playlists" not in self._bridges:
             sel = self.create_selection_context_bridge()
-            ps = self._get_playlist_service()
             self._bridges["playlists"] = PlaylistsBridge(
                 db=self._services.db,
                 selection_context=sel,
                 player_service=self._services.player_service,
-                playlist_service=ps,
+                playlist_service=None,
             )
         self._register_capability("playlists", "db")
         return self._bridges["playlists"]
 
-    def _get_playlist_service(self):
-        if not hasattr(self, '_ps_cache') or self._ps_cache is None:
-            from core.playlist_service import PlaylistService
-            self._ps_cache = PlaylistService(db=self._services.db)
-        return self._ps_cache
-
     def create_settings_bridge(self):
         from ui_qml_bridge.settings_bridge_v2 import SettingsBridgeV2
         if "settings" not in self._bridges:
-            svc = self._get_settings_service()
-            bridge = SettingsBridgeV2(service=svc)
+            bridge = SettingsBridgeV2(service=None)
             self._bridges["settings"] = bridge
             self._bridges["settings_v2"] = bridge
         return self._bridges["settings"]
@@ -255,7 +219,7 @@ class BridgeFactory(QObject):
         if "audio_lab" not in self._bridges:
             self._bridges["audio_lab"] = AudioLabBridge(
                 db_conn=self._services.db_connection,
-                navigation_bridge=self._nav,
+                navigation_bridge=None,
                 player_service=self._services.player_service,
                 worker_manager=self._services.worker_manager,
             )
@@ -276,10 +240,9 @@ class BridgeFactory(QObject):
     def create_smart_tagging_bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         if "smart_tagging" not in self._bridges:
-            qs = self._get_library_query_service()
             br = SmartTaggingBridge(service=self._services.smart_tagging_service,
                                     worker_manager=self._services.worker_manager,
-                                    query_service=qs)
+                                    query_service=None)
             self._bridges["smart_tagging"] = br
         return self._bridges["smart_tagging"]
 
@@ -331,12 +294,7 @@ class BridgeFactory(QObject):
             except Exception:
                 pass
             action_registry = self._action_registry
-            nav = self._nav or self._bridges.get("navigation")
-            tas = self._get_track_action_service()
-            ps = self._get_playlist_service()
-            gss = self._get_global_search_service()
-            ss = self._get_settings_service()
-            diag = self._bridges.get("diagnostics")
+            nav = self._bridges.get("navigation")
             wm = self._services.worker_manager
             self._bridges["michi_ai"] = MichiAIBridge(
                 ai_controller=ai_controller,
@@ -345,18 +303,18 @@ class BridgeFactory(QObject):
                 tool_registry=tool_registry,
                 action_registry=action_registry,
                 navigation_bridge=nav,
-                track_action_service=tas,
-                playlist_service=ps,
-                global_search_service=gss,
-                settings_service=ss,
-                diagnostics_service=diag,
+                track_action_service=None,
+                playlist_service=None,
+                global_search_service=None,
+                settings_service=None,
+                diagnostics_service=None,
                 worker_manager=wm,
             )
         return self._bridges["michi_ai"]
 
     def create_cover_bridge(self):
         if "cover" not in self._bridges:
-            pass  # cover_bridge is registered as QML type, not context property
+            pass
         return self._bridges.get("cover")
 
     def create_notification_bridge(self):
@@ -391,7 +349,7 @@ class BridgeFactory(QObject):
                 radio_manager=self._services.radio_manager,
                 sync_manager=self._services.sync_manager,
                 worker_manager=self._services.worker_manager,
-                query_executor=self._get_query_executor(),
+                query_executor=None,
                 library_bridge=self._bridges.get("library"),
             )
         self._register_capability("diagnostics", "db")
@@ -421,7 +379,7 @@ class BridgeFactory(QObject):
             registry = self.get_action_registry()
             self._bridges["command_palette"] = CommandPaletteBridge(
                 action_registry=registry,
-                navigation_bridge=self._nav or self.get("navigation"),
+                navigation_bridge=self._bridges.get("navigation"),
                 nowplaying_bridge=self.get("nowplaying"),
             )
         return self._bridges["command_palette"]
@@ -430,7 +388,7 @@ class BridgeFactory(QObject):
         if "global_search" not in self._bridges:
             from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
             self._bridges["global_search"] = GlobalSearchBridge(
-                search_service=self._get_global_search_service(),
+                search_service=None,
             )
         return self._bridges["global_search"]
 
@@ -454,7 +412,7 @@ class BridgeFactory(QObject):
         jb = self._bridges.get("job_bridge")
         lib = self._bridges.get("library")
         if jb and lib and hasattr(jb, 'attach_library_coordinator'):
-                jb.attach_library_coordinator(lib)
+            jb.attach_library_coordinator(lib)
 
     def create_desktop_bridge(self):
         if "desktop" not in self._bridges:
@@ -482,47 +440,10 @@ class BridgeFactory(QObject):
         if "history" not in self._bridges:
             self._bridges["history"] = HistoryBridge(
                 db=self._services.db,
-                history_query_service=self._get_history_query_service(),
-                query_executor=self._get_query_executor(),
+                history_query_service=None,
+                query_executor=None,
             )
         return self._bridges["history"]
-
-    def _get_settings_service(self):
-        if self._settings_service_cache is None:
-            from core.settings_service import SettingsService
-            self._settings_service_cache = SettingsService(
-                coordinator=self._get_settings_runtime_coordinator(),
-            )
-        return self._settings_service_cache
-
-    def _get_history_query_service(self):
-        if self._history_qs_cache is None:
-            from core.history_query_service import HistoryQueryService
-            self._history_qs_cache = HistoryQueryService(db=self._services.db)
-        return self._history_qs_cache
-
-    def _get_mix_query_service(self):
-        if self._mix_qs_cache is None:
-            from core.mix_query_service import MixQueryService
-            self._mix_qs_cache = MixQueryService(db=self._services.db)
-        return self._mix_qs_cache
-
-    def _get_query_executor(self):
-        if self._qe_cache is None:
-            from ui_qml_bridge.query_executor import QueryExecutor
-            self._qe_cache = QueryExecutor(worker_manager=self._services.worker_manager, parent=self)
-        return self._qe_cache
-
-    def _get_track_action_service(self):
-        if self._tas_cache is None:
-            from core.track_action_service import TrackActionService
-            self._tas_cache = TrackActionService(
-                query_service=self._get_library_query_service(),
-                player_service=self._services.player_service,
-                playlist_bridge=self._bridges.get("playlists"),
-                db=self._services.db,
-            )
-        return self._tas_cache
 
     def _run_settings_migrations(self):
         try:
@@ -543,31 +464,6 @@ class BridgeFactory(QObject):
         except Exception as e:
             logger.warning("Settings migrations failed: %s", e)
 
-    def _get_settings_runtime_coordinator(self):
-        if self._src_cache is None:
-            from core.settings_runtime_coordinator import SettingsRuntimeCoordinator
-            self._src_cache = SettingsRuntimeCoordinator(
-                player_service=self._services.player_service,
-                worker_manager=self._services.worker_manager,
-            )
-        return self._src_cache
-
-    def _get_library_sources_service(self):
-        if not hasattr(self, '_lss_cache') or self._lss_cache is None:
-            from core.library_sources_service import LibrarySourcesService
-            self._lss_cache = LibrarySourcesService(db=self._services.db)
-        return self._lss_cache
-
-    def _get_global_search_service(self):
-        if not hasattr(self, '_gss_cache') or self._gss_cache is None:
-            from core.global_search_service import GlobalSearchService
-            from core.paths import database_path
-            db_path = getattr(self._services.db, 'db_path', '') if self._services.db else ''
-            if not db_path:
-                db_path = database_path()
-            self._gss_cache = GlobalSearchService(db_path=db_path)
-        return self._gss_cache
-
     def create_home_bridge(self):
         from ui_qml_bridge.home_bridge import HomeBridge
         if "home" not in self._bridges:
@@ -575,7 +471,7 @@ class BridgeFactory(QObject):
                 db=self._services.db,
                 player_service=self._services.player_service,
                 library_bridge=self._bridges.get("library"),
-                library_sources_service=self._get_library_sources_service(),
+                library_sources_service=None,
                 job_bridge=self._bridges.get("job_bridge"),
             )
         self._register_capability("home", "db")
@@ -618,21 +514,13 @@ class BridgeFactory(QObject):
     def create_library_sources_bridge(self):
         from ui_qml_bridge.library_sources_bridge import LibrarySourcesBridge
         if "library_sources" not in self._bridges:
-            svc = self._get_library_sources_service()
             self._bridges["library_sources"] = LibrarySourcesBridge(
-                service=svc, job_bridge=self._bridges.get("job_bridge"))
+                service=None, job_bridge=self._bridges.get("job_bridge"))
         return self._bridges["library_sources"]
 
     def create_all(self) -> dict[str, QObject]:
         """Phase 0: settings migrations before any service."""
         self._run_settings_migrations()
-
-        """Phase A: shared services (cached, single instance)."""
-        self._get_library_query_service()
-        self._get_library_sources_service()
-        self._get_settings_service()
-        self._get_history_query_service()
-        self._get_mix_query_service()
 
         """Phase B: fundamental bridges (no domain dependencies)."""
         self.create_navigation_bridge()
@@ -694,12 +582,63 @@ class BridgeFactory(QObject):
         sv2 = self._bridges.get("settings_v2")
         if sv and sv2:
             assert sv is sv2, "settings and settings_v2 must be the same object"
-        # Verify shared executors via public API
-        qe = self._qe_cache
-        if qe:
-            diag = self._bridges.get("diagnostics")
-            if diag and hasattr(diag, 'query_executor'):
-                assert diag.query_executor is qe, "diagnostics must use shared QueryExecutor"
+        services = self._services
+        app = self._bridges.get("app")
+        queue = self._bridges.get("queue")
+        audio_lab = self._bridges.get("audio_lab")
+        devices = self._bridges.get("devices")
+        notifications = self._bridges.get("notification")
+        history = self._bridges.get("history")
+        global_search = self._bridges.get("global_search")
+        michi_ai = self._bridges.get("michi_ai")
+        if app and hasattr(app, 'queue_service'):
+            assert app.queue_service is services.queue_service
+        if queue and hasattr(queue, 'queue_service'):
+            assert queue.queue_service is services.queue_service
+        if audio_lab and hasattr(audio_lab, 'audio_lab_service'):
+            assert audio_lab.audio_lab_service is services.audio_lab_service
+        if devices and hasattr(devices, 'device_sync_service'):
+            assert devices.device_sync_service is services.device_sync_service
+        if notifications and hasattr(notifications, 'notification_service'):
+            assert notifications.notification_service is services.notification_service
+        if notifications and hasattr(notifications, 'action_registry'):
+            assert notifications.action_registry is services.action_registry
+        if history and hasattr(history, 'history_query_service'):
+            assert history.history_query_service is services.history_query_service
+        if global_search and hasattr(global_search, 'search_service'):
+            assert global_search.search_service is services.global_search_service
+        if michi_ai and hasattr(michi_ai, 'diagnostics_service'):
+            assert michi_ai.diagnostics_service is services.diagnostics_service
 
     def __repr__(self) -> str:
         return f"BridgeFactory(bridges={len(self._bridges)}, capabilities={self._capabilities})"
+
+
+def create_all_bridges(container) -> dict[str, QObject]:
+    """Create all bridges from a ServiceContainer container.
+
+    Adapter function used by ApplicationBootstrap._build_bridges().
+    Extracts services from the container into a ServiceBundle,
+    then delegates to BridgeFactory.create_all().
+    """
+    from ui_qml_bridge.service_bundle import ServiceBundle
+
+    services = ServiceBundle(
+        db=container.get("connection_factory"),
+        db_connection=None,
+        player_service=container.get("playback_service"),
+        worker_manager=container.get("worker_manager"),
+        search_engine=container.get("global_search_service"),
+        radio_manager=container.get("radio_manager"),
+        sync_manager=container.get("device_sync_service"),
+        michi_link_controller=container.get("michi_link_service"),
+        home_audio_controller=container.get("home_audio_service"),
+        snapcast_controller=container.get("snapcast_service"),
+        disc_service=None,
+        metadata_service=container.get("metadata_service"),
+        smart_tagging_service=container.get("smart_tagging_service"),
+    )
+    services.job_service = container.get("job_service")
+
+    factory = BridgeFactory(services)
+    return factory.create_all()

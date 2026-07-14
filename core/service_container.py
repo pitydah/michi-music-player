@@ -4,6 +4,8 @@ All services are registered with a classification:
   - REQUIRED: domain-critical; failure blocks domain, capability=False, logs error
   - OPTIONAL: nice-to-have; failure tolerated, capability may degrade
   - DEFERRED: created on first access, not at startup
+
+Lifecycle: CREATED -> STARTING -> READY | DEGRADED | FAILED -> STOPPING -> STOPPED
 """
 from __future__ import annotations
 
@@ -14,20 +16,37 @@ from typing import Any
 logger = logging.getLogger("michi.service_container")
 
 
+class ContainerState(Enum):
+    CREATED = "created"
+    STARTING = "starting"
+    READY = "ready"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+
+
 class ServicePriority(Enum):
     REQUIRED = "required"
     OPTIONAL = "optional"
     DEFERRED = "deferred"
 
 
-class ServiceRegistry:
-    """Typed container holding all backend service references."""
+SERVICES_REQUIRED = {
+    "database", "connection_factory", "worker_manager", "query_executor",
+    "job_service", "settings_service", "queue_service",
+}
+
+
+class ServiceContainer:
+    """Typed container holding all backend service references with full lifecycle."""
 
     def __init__(self):
         self._services: dict[str, Any] = {}
         self._priorities: dict[str, ServicePriority] = {}
         self._failures: dict[str, str] = {}
-        self._started = False
+        self._state = ContainerState.CREATED
+        self._start_order: list[str] = []
 
         self._define_priorities()
 
@@ -42,14 +61,14 @@ class ServiceRegistry:
     @staticmethod
     def _required_names() -> set[str]:
         return {
-            "connection_factory", "worker_manager", "query_executor",
-            "job_service", "event_bus", "settings_coordinator",
-            "settings_service", "library_query_service",
-            "library_sources_service", "library_mutation_service",
-            "playlist_service", "history_query_service",
-            "global_search_service", "mix_query_service",
-            "track_action_service", "playback_service",
-            "queue_service", "metadata_service",
+            "database", "connection_factory", "worker_manager",
+            "query_executor", "job_service", "event_bus",
+            "settings_coordinator", "settings_service",
+            "library_query_service", "library_sources_service",
+            "library_mutation_service", "playlist_service",
+            "history_query_service", "global_search_service",
+            "mix_query_service", "track_action_service",
+            "playback_service", "queue_service", "metadata_service",
         }
 
     @staticmethod
@@ -81,6 +100,18 @@ class ServiceRegistry:
 
     def priority(self, name: str) -> ServicePriority | None:
         return self._priorities.get(name)
+
+    @property
+    def state(self) -> ContainerState:
+        return self._state
+
+    @state.setter
+    def state(self, value: ContainerState):
+        self._state = value
+
+    @property
+    def database(self):
+        return self._services.get("database")
 
     @property
     def connection_factory(self):
@@ -212,14 +243,20 @@ class ServiceRegistry:
         return self._services.get("action_registry")
 
     def start(self):
-        self._started = True
+        self._state = ContainerState.STARTING
+        required_failures = {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.REQUIRED}
+        self._state = ContainerState.DEGRADED if required_failures else ContainerState.READY
 
     def ready(self) -> bool:
-        return self._started
+        return self._state in (ContainerState.READY, ContainerState.DEGRADED)
+
+    def health(self) -> dict:
+        return {"state": self._state.value, "services": len(self._services), "failures": dict(self._failures)}
 
     def shutdown(self):
-        self._started = False
+        self._state = ContainerState.STOPPING
         self._failures.clear()
+        self._state = ContainerState.STOPPED
 
     def report_failure(self, name: str, error: str):
         self._failures[name] = error
@@ -247,3 +284,6 @@ class ServiceRegistry:
                 "capable": self.is_capable(name),
             }
         return result
+
+
+ServiceRegistry = ServiceContainer

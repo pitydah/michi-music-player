@@ -1,7 +1,7 @@
 {
   "counts": {
     "REQUIRED_FALLBACK": 1,
-    "MIGRATION_PENDING": 67,
+    "MIGRATION_PENDING": 66,
     "UNSAFE_HYBRID": 0,
     "DUPLICATED_LOGIC": 26,
     "REMOVABLE": 13
@@ -38,11 +38,6 @@
       },
       {
         "file": "ui_qml_bridge/audio_quality_adapter.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/bridge_factory.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },

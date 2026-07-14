@@ -34,6 +34,16 @@ class ServiceBundle:
     worker_manager: WorkerManager | None = None
     metadata_service: MetadataService | None = None
     smart_tagging_service: Any | None = None
+    settings_coordinator: Any | None = None
+    queue_service: Any | None = None
+    audio_lab_service: Any | None = None
+    device_sync_service: Any | None = None
+    notification_service: Any | None = None
+    action_registry: Any | None = None
+    history_query_service: Any | None = None
+    global_search_service: Any | None = None
+    diagnostics_service: Any | None = None
+    job_service: Any | None = None
 
     def has(self, name: str) -> bool:
         return getattr(self, name, None) is not None
