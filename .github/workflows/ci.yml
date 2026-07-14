@@ -274,7 +274,7 @@ jobs:
       - name: QML tests (all)
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v6.xml
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v7.xml
       - name: Performance tests
         run: |
           source .venv/bin/activate
@@ -315,7 +315,7 @@ jobs:
           path: |
             artifacts/qml-results-v6.xml
             artifacts/qml-evidence-v6.json
-            docs/qml_migration_manifest_v6.json
+            docs/qml_migration_manifest_v7.json
 
   qml-release-gate:
     needs: [packaging, runtime, qml-all]

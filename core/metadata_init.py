@@ -1,7 +1,4 @@
-"""Metadata service initialization for ServiceContainer.
-
-Creates MetadataService with all required dependencies.
-"""
+"""Metadata service initialization for ServiceContainer."""
 from __future__ import annotations
 
 import logging

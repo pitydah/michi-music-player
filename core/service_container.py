@@ -14,6 +14,16 @@ from typing import Any
 logger = logging.getLogger("michi.service_container")
 
 
+class ContainerState(Enum):
+    CREATED = "created"
+    STARTING = "starting"
+    READY = "ready"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+
+
 class ServicePriority(Enum):
     REQUIRED = "required"
     OPTIONAL = "optional"
@@ -28,6 +38,7 @@ class ServiceRegistry:
         self._priorities: dict[str, ServicePriority] = {}
         self._failures: dict[str, str] = {}
         self._started = False
+        self._state = ContainerState.CREATED
 
         self._define_priorities()
 
@@ -211,15 +222,26 @@ class ServiceRegistry:
     def action_registry(self):
         return self._services.get("action_registry")
 
+    @property
+    def state(self) -> ContainerState:
+        return self._state
+
     def start(self):
+        self._state = ContainerState.STARTING
         self._started = True
+        required_failures = {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.REQUIRED}
+        self._state = ContainerState.DEGRADED if required_failures else ContainerState.READY
 
     def ready(self) -> bool:
-        return self._started
+        return self._state in (ContainerState.READY, ContainerState.DEGRADED)
+
+    def health(self) -> dict:
+        return {"state": self._state.value, "services": len(self._services), "failures": dict(self._failures)}
 
     def shutdown(self):
-        self._started = False
+        self._state = ContainerState.STOPPING
         self._failures.clear()
+        self._state = ContainerState.STOPPED
 
     def report_failure(self, name: str, error: str):
         self._failures[name] = error

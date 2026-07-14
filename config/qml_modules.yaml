@@ -1,0 +1,272 @@
+# QML Modules inventory for Evidence V7 scoring.
+# Each module declares area, weight, applicable dimensions, and widget replacement status.
+dimension_weights:
+  route_load: 7
+  qml_instance: 7
+  model_data: 7
+  service_wiring: 8
+  read: 7
+  primary_action: 10
+  secondary_actions: 7
+  write: 7
+  error_contract: 6
+  async_execution: 6
+  real_cancellation: 5
+  persistence: 5
+  integration: 8
+  vertical_workflow: 8
+  performance: 4
+  accessibility: 4
+# Sum: 100
+
+area_weights:
+  shell_nav: 10
+  library_playback: 25
+  core_workflows: 20
+  advanced_tools: 20
+  ecosystem_network: 15
+  quality_release: 10
+# Sum: 100
+
+modules:
+  - module: navigation
+    area: shell_nav
+    module_weight: 20
+    applicable_dimensions: [route_load, qml_instance, service_wiring, read, primary_action, error_contract, integration]
+    widget_replacement: {legacy_module: ui.sidebar_controller, status: W3_LEGACY_ONLY}
+
+  - module: app_bridge
+    area: shell_nav
+    module_weight: 20
+    applicable_dimensions: [service_wiring, read, primary_action, write, error_contract, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.window, status: W3_LEGACY_ONLY}
+
+  - module: theme
+    area: shell_nav
+    module_weight: 15
+    applicable_dimensions: [route_load, qml_instance, service_wiring, read, primary_action, write, error_contract, persistence, integration, accessibility]
+    widget_replacement: {legacy_module: ui.style_tokens, status: W1_FROZEN}
+
+  - module: notification
+    area: shell_nav
+    module_weight: 15
+    applicable_dimensions: [route_load, qml_instance, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, integration]
+    widget_replacement: {legacy_module: ui.controllers.status_controller, status: W3_LEGACY_ONLY}
+
+  - module: accessibility
+    area: shell_nav
+    module_weight: 15
+    applicable_dimensions: [service_wiring, write, error_contract, integration, accessibility]
+    widget_replacement: {legacy_module: ui.settings_pages, status: W3_LEGACY_ONLY}
+
+  - module: command_palette
+    area: shell_nav
+    module_weight: 15
+    applicable_dimensions: [route_load, qml_instance, service_wiring, read, primary_action, error_contract, integration]
+    widget_replacement: {legacy_module: ui.controllers.command_palette_controller, status: W3_LEGACY_ONLY}
+
+  - module: home
+    area: library_playback
+    module_weight: 8
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, error_contract, integration]
+    widget_replacement: {legacy_module: ui.hubs.home_page, status: W3_LEGACY_ONLY}
+
+  - module: library
+    area: library_playback
+    module_weight: 22
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow, performance, accessibility]
+    widget_replacement: {legacy_module: ui.controllers.library_controller, status: W3_LEGACY_ONLY}
+
+  - module: album_views
+    area: library_playback
+    module_weight: 10
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, error_contract, integration]
+    widget_replacement: {legacy_module: ui.pages.album_page, status: W3_LEGACY_ONLY}
+
+  - module: playback
+    area: library_playback
+    module_weight: 20
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow, performance]
+    widget_replacement: {legacy_module: audio.player_service, status: W2_THIN_ADAPTER}
+
+  - module: nowplaying
+    area: library_playback
+    module_weight: 18
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, error_contract, integration, accessibility]
+    widget_replacement: {legacy_module: ui.hubs.nowplaying, status: W3_LEGACY_ONLY}
+
+  - module: queue
+    area: library_playback
+    module_weight: 22
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.queue_page, status: W3_LEGACY_ONLY}
+
+  - module: history
+    area: core_workflows
+    module_weight: 10
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.history_page, status: W3_LEGACY_ONLY}
+
+  - module: playlists
+    area: core_workflows
+    module_weight: 14
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.playlists_page, status: W3_LEGACY_ONLY}
+
+  - module: mix
+    area: core_workflows
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.smart_mix_page, status: W3_LEGACY_ONLY}
+
+  - module: lyrics
+    area: core_workflows
+    module_weight: 8
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, integration]
+    widget_replacement: {legacy_module: ui.pages.lyrics_page, status: W3_LEGACY_ONLY}
+
+  - module: radio
+    area: core_workflows
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.radio_page, status: W3_LEGACY_ONLY}
+
+  - module: global_search
+    area: core_workflows
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.controllers.search_controller, status: W3_LEGACY_ONLY}
+
+  - module: worker_manager
+    area: core_workflows
+    module_weight: 10
+    applicable_dimensions: [service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, integration, vertical_workflow]
+    widget_replacement: {legacy_module: core.worker_manager, status: W2_THIN_ADAPTER}
+
+  - module: query_executor
+    area: core_workflows
+    module_weight: 10
+    applicable_dimensions: [service_wiring, read, error_contract, async_execution, real_cancellation, integration]
+    widget_replacement: {legacy_module: ui_qml_bridge.query_executor, status: W2_THIN_ADAPTER}
+
+  - module: job_bridge
+    area: core_workflows
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, persistence, integration]
+    widget_replacement: {legacy_module: core.job_service, status: W2_THIN_ADAPTER}
+
+  - module: eq_dsp
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.equalizer_page, status: W3_LEGACY_ONLY}
+
+  - module: metadata
+    area: advanced_tools
+    module_weight: 14
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.metadata_page, status: W3_LEGACY_ONLY}
+
+  - module: smart_tagging
+    area: advanced_tools
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, persistence, integration]
+    widget_replacement: {legacy_module: ui.audio_lab.services, status: W3_LEGACY_ONLY}
+
+  - module: audio_lab
+    area: advanced_tools
+    module_weight: 14
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow, performance]
+    widget_replacement: {legacy_module: ui.pages.audio_lab_page, status: W3_LEGACY_ONLY}
+
+  - module: library_doctor
+    area: advanced_tools
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: ui.pages.library_doctor_page, status: W3_LEGACY_ONLY}
+
+  - module: disc_lab
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, error_contract, async_execution, real_cancellation, persistence]
+    widget_replacement: {legacy_module: ui.pages.disc_lab_page, status: W1_FROZEN}
+
+  - module: diagnostics
+    area: advanced_tools
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, persistence, integration]
+    widget_replacement: {legacy_module: ui.pages.diagnostics_page, status: W3_LEGACY_ONLY}
+
+  - module: michi_ai
+    area: advanced_tools
+    module_weight: 12
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, error_contract, async_execution, real_cancellation, integration]
+    widget_replacement: {legacy_module: ui.controllers.ai_controller, status: W3_LEGACY_ONLY}
+
+  - module: connections
+    area: ecosystem_network
+    module_weight: 25
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, persistence, integration]
+    widget_replacement: {legacy_module: ui.pages.connections_page, status: W3_LEGACY_ONLY}
+
+  - module: home_audio
+    area: ecosystem_network
+    module_weight: 25
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, integration]
+    widget_replacement: {legacy_module: ui.pages.home_audio_page, status: W3_LEGACY_ONLY}
+
+  - module: devices_sync
+    area: ecosystem_network
+    module_weight: 25
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, async_execution, real_cancellation, persistence, integration]
+    widget_replacement: {legacy_module: ui.pages.devices_page, status: W3_LEGACY_ONLY}
+
+  - module: capabilities
+    area: ecosystem_network
+    module_weight: 25
+    applicable_dimensions: [service_wiring, read, error_contract, integration]
+    widget_replacement: {legacy_module: core.app_context, status: W1_FROZEN}
+
+  - module: settings
+    area: quality_release
+    module_weight: 20
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, secondary_actions, write, error_contract, persistence, integration, vertical_workflow, performance, accessibility]
+    widget_replacement: {legacy_module: ui.pages.settings_page, status: W3_LEGACY_ONLY}
+
+  - module: settings_schema
+    area: quality_release
+    module_weight: 15
+    applicable_dimensions: [model_data, service_wiring, read, write, error_contract, integration]
+    widget_replacement: {legacy_module: core.settings_schema, status: W1_FROZEN}
+
+  - module: settings_runtime
+    area: quality_release
+    module_weight: 15
+    applicable_dimensions: [service_wiring, read, write, error_contract, async_execution, real_cancellation, persistence, integration, vertical_workflow]
+    widget_replacement: {legacy_module: core.settings_runtime_coordinator, status: W1_FROZEN}
+
+  - module: output_profiles
+    area: quality_release
+    module_weight: 14
+    applicable_dimensions: [route_load, qml_instance, model_data, service_wiring, read, primary_action, write, error_contract, persistence, integration]
+    widget_replacement: {legacy_module: ui.pages.output_profiles_page, status: W3_LEGACY_ONLY}
+
+  - module: physical_audio
+    area: quality_release
+    module_weight: 10
+    applicable_dimensions: []
+    widget_replacement: {legacy_module: audio.diagnostics, status: W1_FROZEN}
+    deferred: true
+    deferred_reason: "DEFERRED_UNTIL_QML_PARITY"
+
+  - module: performance
+    area: quality_release
+    module_weight: 14
+    applicable_dimensions: [service_wiring, read, error_contract, integration, performance]
+    widget_replacement: {legacy_module: scripts.qml_library_benchmark, status: W1_FROZEN}
+
+  - module: runtime_quality
+    area: quality_release
+    module_weight: 12
+    applicable_dimensions: [service_wiring, read, error_contract, integration, performance]
+    widget_replacement: {legacy_module: scripts.qml_runtime_quality_audit, status: W1_FROZEN}
