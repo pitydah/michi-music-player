@@ -303,51 +303,9 @@ class BridgeFactory(QObject):
     def create_michi_ai_bridge(self):
         from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
         if "michi_ai" not in self._bridges:
-            ai_controller = None
-            try:
-                from michi_ai.intelligence.controller import AIController
-                ai_controller = AIController()
-            except Exception:
-                pass
-            context_service = None
-            try:
-                from core.context.context_service import ContextService
-                context_service = ContextService(db=self._services.db)
-            except Exception:
-                pass
-            plan_builder = None
-            try:
-                from michi_ai.planner.plan_builder import PlanBuilder
-                plan_builder = PlanBuilder()
-            except Exception:
-                pass
-            tool_registry = None
-            try:
-                from michi_ai.tools.tool_registry import ToolRegistry
-                tool_registry = ToolRegistry()
-            except Exception:
-                pass
-            action_registry = self._action_registry
-            nav = self._nav or self._bridges.get("navigation")
-            tas = self._get_track_action_service()
-            ps = self._get_playlist_service()
-            gss = self._get_global_search_service()
-            ss = self._get_settings_service()
-            diag = self._bridges.get("diagnostics")
-            wm = self._services.worker_manager
+            assistant_core = self._services.registry.ensure_assistant_core()
             self._bridges["michi_ai"] = MichiAIBridge(
-                ai_controller=ai_controller,
-                context_service=context_service,
-                plan_builder=plan_builder,
-                tool_registry=tool_registry,
-                action_registry=action_registry,
-                navigation_bridge=nav,
-                track_action_service=tas,
-                playlist_service=ps,
-                global_search_service=gss,
-                settings_service=ss,
-                diagnostics_service=diag,
-                worker_manager=wm,
+                assistant_service=assistant_core,
             )
         return self._bridges["michi_ai"]
 

@@ -61,6 +61,14 @@ class ServiceRegistry:
             "connection_service", "home_audio_service",
             "diagnostics_service", "notification_service",
             "action_registry",
+            "assistant_core_service",
+            "assistant_tool_registry",
+            "assistant_capability_resolver",
+            "assistant_context_assembler",
+            "assistant_conversation_service",
+            "assistant_confirmation_service",
+            "assistant_trace_recorder",
+            "assistant_gateways",
         }
 
     @staticmethod
@@ -210,6 +218,123 @@ class ServiceRegistry:
     @property
     def action_registry(self):
         return self._services.get("action_registry")
+
+    @property
+    def assistant_core_service(self):
+        return self._services.get("assistant_core_service")
+
+    @property
+    def assistant_tool_registry(self):
+        return self._services.get("assistant_tool_registry")
+
+    @property
+    def assistant_gateways(self):
+        return self._services.get("assistant_gateways")
+
+    def ensure_assistant_core(self) -> Any | None:
+        if "assistant_core_service" in self._services and self._services["assistant_core_service"] is not None:
+            return self._services["assistant_core_service"]
+        self._build_assistant_core()
+        return self._services.get("assistant_core_service")
+
+    def _build_assistant_core(self) -> None:
+        try:
+            from michi_ai.v2 import AssistantCoreService
+            from michi_ai.v2.intent.capability_resolver import CapabilityResolver
+            from michi_ai.v2.intent.intent_router_v2 import IntentRouterV2
+            from michi_ai.v2.context.context_assembler import ContextAssembler
+            from michi_ai.v2.plan.confirmation_policy_v2 import ConfirmationPolicyV2
+            from michi_ai.v2.plan.plan_builder_v2 import PlanBuilderV2
+            from michi_ai.v2.plan.plan_executor_v2 import PlanExecutorV2
+            from michi_ai.v2.plan.plan_validator import PlanValidator
+            from michi_ai.v2.provider.provider_router import ProviderRouter
+            from michi_ai.v2.conversation.conversation_service import ConversationService
+            from michi_ai.v2.suggest.suggestion_engine_v2 import SuggestionEngineV2
+            from michi_ai.v2.trace.trace_recorder import TraceRecorder
+            from michi_ai.v2.core.response_composer import ResponseComposer
+            from michi_ai.v2.tools.register_builtin import register_builtin_tools
+            from michi_ai.v2.tools.tool_registry_v2 import ToolRegistryV2
+
+            tool_registry = ToolRegistryV2()
+            capability_resolver = CapabilityResolver()
+            context_assembler = ContextAssembler()
+            conversation_service = ConversationService()
+            confirmation_policy = ConfirmationPolicyV2()
+            plan_executor = PlanExecutorV2(tool_registry)
+            plan_validator = PlanValidator(tool_registry, capability_resolver)
+            plan_builder = PlanBuilderV2(tool_registry, capability_resolver)
+
+            core = AssistantCoreService(
+                intent_router=IntentRouterV2(),
+                context_assembler=context_assembler,
+                tool_registry=tool_registry,
+                capability_resolver=capability_resolver,
+                plan_builder=plan_builder,
+                plan_validator=plan_validator,
+                plan_executor=plan_executor,
+                confirmation_policy=confirmation_policy,
+                provider_router=ProviderRouter(),
+                conversation_service=conversation_service,
+                suggestion_engine=SuggestionEngineV2(),
+                trace_recorder=TraceRecorder(),
+                response_composer=ResponseComposer(),
+            )
+
+            from core.assistant_gateways import (
+                AssistantGateways, ProductionPlaybackGateway,
+                ProductionLibraryGateway, ProductionQueueGateway,
+                ProductionPlaylistGateway, ProductionSettingsGateway,
+                ProductionAudioLabGateway, ProductionDeviceGateway,
+                ProductionDiagnosticsGateway, ProductionMixGateway,
+                ProductionJobGateway, UnavailableNavigationGateway,
+                UnavailableRadioGateway,
+            )
+
+            gateways = AssistantGateways(
+                playback=ProductionPlaybackGateway(self._services.get("playback_service")),
+                queue=ProductionQueueGateway(self._services.get("playback_service")),
+                library=ProductionLibraryGateway(self._services.get("library_query_service"), self._services.get("global_search_service")),
+                playlists=ProductionPlaylistGateway(self._services.get("library_query_service"), self._services.get("playlist_service")),
+                settings=ProductionSettingsGateway(self._services.get("settings_service")),
+                audio_lab=ProductionAudioLabGateway(self._services.get("audio_lab_service")),
+                devices=ProductionDeviceGateway(self._services.get("device_sync_service")),
+                diagnostics=ProductionDiagnosticsGateway(self._services.get("diagnostics_service")),
+                mix=ProductionMixGateway(self._services.get("mix_query_service")),
+                jobs=ProductionJobGateway(self._services.get("job_service")),
+                navigation=UnavailableNavigationGateway(),
+                radio=UnavailableRadioGateway(),
+            )
+
+            register_builtin_tools(tool_registry, gateways, capabilities=capability_resolver)
+            core.register_gateways(gateways.to_dict())
+
+            from core.assistant_context_providers import register_all_context_providers
+            svc_map = {
+                "player_service": self._services.get("playback_service"),
+                "library_db": self._services.get("library_query_service"),
+                "settings_service": self._services.get("settings_service"),
+                "job_service": self._services.get("job_service"),
+                "sync_manager": self._services.get("device_sync_service"),
+                "diagnostics_service": self._services.get("diagnostics_service"),
+                "navigation_bridge": self._services.get("navigation_bridge"),
+                "selection_service": self._services.get("selection_service"),
+            }
+            register_all_context_providers(context_assembler, svc_map)
+            core.initialize()
+
+            self.register("assistant_core_service", core)
+            self.register("assistant_tool_registry", tool_registry)
+            self.register("assistant_capability_resolver", capability_resolver)
+            self.register("assistant_context_assembler", context_assembler)
+            self.register("assistant_conversation_service", conversation_service)
+            self.register("assistant_confirmation_service", confirmation_policy)
+            self.register("assistant_trace_recorder", core.trace_recorder)
+            self.register("assistant_gateways", gateways)
+            logger.info("AssistantCoreService built and registered productively")
+        except Exception as e:
+            logger.warning("AssistantCoreService build failed: %s", e)
+            import traceback
+            logger.debug(traceback.format_exc())
 
     def start(self):
         self._started = True

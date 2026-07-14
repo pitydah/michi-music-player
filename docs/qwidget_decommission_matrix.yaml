@@ -1,0 +1,210 @@
+# QWidget Decommission Matrix — Fase 3 BT
+# W0_ACTIVE → vista Widgets sigue siendo implementación principal
+# W1_FROZEN → no recibe funciones nuevas
+# W2_THIN_ADAPTER → solo consume servicios core
+# W3_LEGACY_ONLY → solo por launcher legacy
+# W4_DETACHED → fuera de imports QML
+# W5_REMOVABLE_AFTER_PHYSICAL → eliminable tras validación
+
+domains:
+  nowplaying:
+    widget_file: ui/nowplaying_bar.py
+    qml_route: nowplaying
+    qml_file: ui_qml/pages/nowplaying/NowPlayingPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Now Playing, QML bridge activo, widget retirado a legacy"
+
+  queue:
+    widget_file: ui/hubs/playback_hub_page.py
+    qml_route: queue
+    qml_file: ui_qml/pages/queue/QueuePage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Queue, QML bridge activo, widget legacy"
+
+  lyrics:
+    widget_file: ui/lyrics_widget.py
+    qml_route: lyrics
+    qml_file: ui_qml/pages/lyrics/LyricsPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Lyrics, QML bridge activo"
+
+  settings:
+    widget_file: ui/settings_pages.py
+    qml_route: settings
+    qml_file: ui_qml/pages/SettingsPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Settings, bridge v2 activo"
+
+  output_profiles:
+    widget_file: ui/preferences_window.py
+    qml_route: output_profiles
+    qml_file: ui_qml/pages/outputs/OutputProfilesPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Output Profiles, bridge activo"
+
+  metadata:
+    widget_file: ui/metadata_editor.py
+    qml_route: metadata
+    qml_file: ui_qml/pages/metadata/MetadataEditorPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Metadata editor, QML bridge activo"
+
+  smart_tagging:
+    widget_file: ui/audio_lab/smart_tagging_panel.py
+    qml_route: smart_tagging
+    qml_file: ui_qml/pages/metadata/SmartTaggingWorkflowPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Smart Tagging, QML bridge activo"
+
+  diagnostics:
+    widget_file: ui/audio_lab/diagnostics_page.py
+    qml_route: diagnostics
+    qml_file: ui_qml/pages/DiagnosticsPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CS Ola 1 — Diagnostics, QML bridge activo"
+
+  library:
+    widget_file: ui/controllers/library_controller.py
+    qml_route: library
+    qml_file: ui_qml/pages/library/LibraryPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — Library, QML bridge activo"
+
+  album_artist:
+    widget_file: ui/album_detail_view.py
+    qml_route: library/albums
+    qml_file: ui_qml/pages/library/AlbumGridPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — Album/Artist, QML bridge activo"
+
+  playlists:
+    widget_file: ui/playlist_hub.py
+    qml_route: playlists
+    qml_file: ui_qml/pages/playlists/PlaylistsPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — Playlists, QML bridge activo"
+
+  history:
+    widget_file: ui/hubs/playback_hub_page.py
+    qml_route: history
+    qml_file: ui_qml/pages/history/HistoryPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — History, QML bridge activo"
+
+  global_search:
+    widget_file: ui/search_controller.py
+    qml_route: global_search
+    qml_file: ui_qml/pages/search/GlobalSearchPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — Global Search, QML bridge activo"
+
+  mix:
+    widget_file: ui/hubs/mix_hub_page.py
+    qml_route: mix
+    qml_file: ui_qml/pages/mix/MixHubPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — Mix, QML bridge activo"
+
+  radio:
+    widget_file: ui/discover_dashboard.py
+    qml_route: radio
+    qml_file: ui_qml/pages/radio/RadioPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — Radio, QML bridge activo"
+
+  equalizer:
+    widget_file: ui/eq_panel.py
+    qml_route: eq
+    qml_file: ui_qml/pages/equalizer/EqualizerPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W3_LEGACY_ONLY
+    notes: "CT Ola 2 — EQ, QML bridge activo"
+
+  home:
+    widget_file: ui/hubs/home_page.py
+    qml_route: home
+    qml_file: ui_qml/pages/home/HomePage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W2_THIN_ADAPTER
+    notes: "Home QML active, widget still shares launcher"
+
+  connections:
+    widget_file: ui/hubs/connections_hub_page.py
+    qml_route: connections
+    qml_file: ui_qml/pages/connections/ConnectionsPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W2_THIN_ADAPTER
+
+  home_audio:
+    widget_file: ui/home_audio_view.py
+    qml_route: home_audio
+    qml_file: ui_qml/pages/home_audio/HomeAudioPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W2_THIN_ADAPTER
+
+  devices:
+    widget_file: ui/devices_page.py
+    qml_route: devices
+    qml_file: ui_qml/pages/devices/DevicesPage.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W2_THIN_ADAPTER
+
+  audio_lab:
+    widget_file: ui/audio_lab/audio_lab_page.py
+    qml_route: audio_lab
+    qml_file: ui_qml/pages/assistant/AudioLabPage.qml
+    qml_status: PARTIAL
+    shares_business_logic: true
+    status: W1_FROZEN
+    notes: "Widget contiene lógica de negocio (diagnostics_service, smart_tagging_service) no migrada a core/"
+
+  sidebar:
+    widget_file: ui/sidebar_widget.py
+    qml_route: null
+    qml_file: ui_qml/shell/Sidebar.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W1_FROZEN
+
+  main_window:
+    widget_file: ui/window.py
+    qml_route: null
+    qml_file: ui_qml/shell/AppShell.qml
+    qml_status: PRODUCTIVE
+    shares_business_logic: false
+    status: W1_FROZEN

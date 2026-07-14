@@ -1,471 +1,258 @@
-"""MichiAIBridge — connects QML Assistant to real AIController, PlanBuilder, and services.
-
-States: idle, understanding, planning, awaiting_confirmation, executing, completed, cancelled, failed.
-Destructive actions require confirmation.
-"""
-
 from __future__ import annotations
 
 import logging
+import uuid
+from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Property, Signal, Slot
+
+from michi_ai.v2.core.assistant_core import AssistantCoreService
+from michi_ai.v2.core.models import (
+    AssistantRequest, AssistantResponse, AssistantResponseType,
+)
 
 logger = logging.getLogger("michi.ai.bridge")
 
-VALID_STATES = frozenset({
-    "idle", "understanding", "planning", "awaiting_confirmation",
-    "executing", "completed", "cancelled", "failed",
+_VALID_STATES = frozenset({
+    "idle", "building_context", "routing", "planning",
+    "awaiting_confirmation", "executing", "cancelling",
+    "cancelled", "completed", "partial", "failed",
 })
+
+_RESPONSE_TYPE_MAP = {
+    AssistantResponseType.ANSWER: "answer",
+    AssistantResponseType.CLARIFICATION: "clarification",
+    AssistantResponseType.PLAN_PREVIEW: "plan_preview",
+    AssistantResponseType.CONFIRMATION_REQUEST: "confirmation",
+    AssistantResponseType.EXECUTION_PROGRESS: "progress",
+    AssistantResponseType.EXECUTION_RESULT: "result",
+    AssistantResponseType.ERROR: "error",
+    AssistantResponseType.SUGGESTION: "suggestion",
+}
 
 
 class MichiAIBridge(QObject):
-    contextChanged = Signal()
-    responseReceived = Signal(str)
+    responseChanged = Signal()
     statusChanged = Signal(str)
+    progressChanged = Signal()
+    confirmationRequested = Signal(str, str, str)
+    suggestionsChanged = Signal()
+    errorOccurred = Signal(str)
+    sessionChanged = Signal()
 
-    def __init__(self, ai_controller=None, context_service=None,
-                 plan_builder=None, tool_registry=None,
-                 action_registry=None, navigation_bridge=None,
-                 track_action_service=None, playlist_service=None,
-                 global_search_service=None, settings_service=None,
-                 diagnostics_service=None, worker_manager=None,
-                 parent=None):
+    def __init__(self, assistant_service: AssistantCoreService | None = None, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._ai_controller = ai_controller
-        self._context_service = context_service
-        self._plan_builder = plan_builder
-        self._tool_registry = tool_registry
-        self._action_registry = action_registry
-        self._nav = navigation_bridge
-        self._tas = track_action_service
-        self._playlist_svc = playlist_service
-        self._global_search = global_search_service
-        self._settings = settings_service
-        self._diagnostics = diagnostics_service
-        self._wm = worker_manager
-
-        self._suggestions: list[dict] = []
-        self._chat_history: list[dict] = []
+        self._assistant = assistant_service
+        self._session_id: str = ""
+        self._current_response: AssistantResponse | None = None
         self._status = "idle"
-        self._pending_action: dict | None = None
+        self._progress: dict[str, Any] = {}
+        self._pending_confirmation: dict[str, Any] = {}
         self._last_error = ""
-        self._current_task_id: str = ""
+        self._suggestions: list[dict[str, Any]] = []
 
     @Property(str, notify=statusChanged)
-    def status(self):
+    def status(self) -> str:
         return self._status
 
-    def _set_status(self, new: str):
-        if new in VALID_STATES and new != self._status:
+    def _set_status(self, new: str) -> None:
+        if new in _VALID_STATES and new != self._status:
             self._status = new
             self.statusChanged.emit(new)
 
-    @Property(str, notify=contextChanged)
-    def lastError(self):
+    @Property(str, notify=responseChanged)
+    def lastError(self) -> str:
         return self._last_error
 
-    @Property("QVariantList", notify=contextChanged)
-    def suggestions(self):
+    @Property(str, notify=responseChanged)
+    def currentResponse(self) -> str:
+        if self._current_response:
+            return self._current_response.message
+        return ""
+
+    @Property(str, notify=responseChanged)
+    def responseType(self) -> str:
+        if self._current_response:
+            return _RESPONSE_TYPE_MAP.get(self._current_response.type, "unknown")
+        return ""
+
+    @Property(str, notify=responseChanged)
+    def responseTitle(self) -> str:
+        if self._current_response:
+            return self._current_response.title
+        return ""
+
+    @Property(str, notify=responseChanged)
+    def responseDetails(self) -> str:
+        if self._current_response:
+            return self._current_response.details
+        return ""
+
+    @Property("QVariantList", notify=responseChanged)
+    def responseActions(self) -> list[dict[str, Any]]:
+        if self._current_response:
+            return list(self._current_response.actions)
+        return []
+
+    @Property(bool, notify=statusChanged)
+    def isBusy(self) -> bool:
+        return self._status in ("building_context", "routing", "planning", "executing")
+
+    @Property("QVariantMap", notify=progressChanged)
+    def progress(self) -> dict[str, Any]:
+        return self._progress
+
+    @Property("QVariantMap", notify=suggestionsChanged)
+    def pendingConfirmation(self) -> dict[str, Any]:
+        return self._pending_confirmation
+
+    @Property("QVariantList", notify=suggestionsChanged)
+    def suggestions(self) -> list[dict[str, Any]]:
         return self._suggestions
 
-    @Slot()
-    def refresh(self):
-        self._suggestions = self._build_suggestions()
-        self.contextChanged.emit()
-
-    def _build_suggestions(self) -> list[dict]:
-        if self._context_service:
-            try:
-                ctx = self._context_service
-                if hasattr(ctx, 'get_suggestions'):
-                    items = ctx.get_suggestions()
-                    if items:
-                        return [
-                            {"title": s.get("title", ""), "description": s.get("description", ""),
-                             "action": s.get("action", "navigate"), "route": s.get("route", "")}
-                            for s in items[:5]
-                        ]
-            except Exception:
-                logger.debug("Context suggestions failed", exc_info=True)
-        return [
-            {"title": "Reproducir una canción", "description": "Reproduce una canción de tu biblioteca",
-             "action": "reproducir canción", "route": ""},
-            {"title": "Buscar en biblioteca", "description": "Busca canciones, álbumes o artistas",
-             "action": "buscar", "route": ""},
-            {"title": "Crear playlist", "description": "Crea una lista de reproducción nueva",
-             "action": "crear playlist", "route": ""},
-            {"title": "Diagnosticar biblioteca", "description": "Revisa el estado de tu biblioteca",
-             "action": "diagnosticar biblioteca", "route": ""},
-            {"title": "Abrir ajustes", "description": "Configura Michi Music Player",
-             "action": "abrir ajustes", "route": "settings"},
-        ]
+    @Property(str, notify=sessionChanged)
+    def sessionId(self) -> str:
+        return self._session_id
 
     @Slot()
-    def cancel(self):
-        if self._current_task_id and self._wm:
-            self._wm.cancel_task(self._current_task_id)
-            self._current_task_id = ""
-        self._pending_action = None
-        self._last_error = ""
-        self._set_status("cancelled")
+    def startNewSession(self) -> None:
+        if self._assistant:
+            result = self._assistant.create_session()
+            if result.ok and result.data:
+                self._session_id = result.data.session_id
+                self.sessionChanged.emit()
 
     @Slot(str)
-    def sendMessage(self, text: str):
-        self._chat_history.append({"role": "user", "text": text})
-        self._set_status("understanding")
-
-        action = self._resolve_action(text.strip())
-        if action is None:
-            self._set_status("idle")
-            response = "No entendí tu solicitud. Puedes pedirme: reproducir canción, reproducir álbum, encolar, buscar, abrir ruta, crear playlist, agregar canciones, mostrar no escuchadas, diagnosticar biblioteca, abrir ajustes o cambiar ajuste seguro."
-            self._chat_history.append({"role": "assistant", "text": response})
-            self.responseReceived.emit(response)
-            self.contextChanged.emit()
-            return
-
-        name = action["name"]
-        if action.get("internal"):
-            return
-
-        description = action.get("description", name)
-        requires_confirm = action.get("requires_confirmation", False)
-        action["_original"] = text
-
-        if requires_confirm:
-            self._pending_action = action
-            self._set_status("awaiting_confirmation")
-            msg = f"¿Confirmas que quieres {description}? Responde 'sí' para confirmar o 'no' para cancelar."
-            self._chat_history.append({"role": "assistant", "text": msg})
-            self.responseReceived.emit(msg)
-            return
-
-        self._execute_action(action)
-
-    def _resolve_action(self, text: str) -> dict | None:
-        text_lower = text.lower()
-
-        if text_lower in ("si", "sí", "confirmar", "yes"):
-            if self._pending_action:
-                action = self._pending_action
-                self._pending_action = None
-                self._execute_action(action)
-            else:
-                self._chat_history.append({"role": "assistant", "text": "No hay ninguna acción pendiente de confirmación."})
-                self.responseReceived.emit("No hay ninguna acción pendiente de confirmación.")
-            return {"name": "_confirm", "internal": True}
-
-        if text_lower in ("no", "cancelar", "cancel"):
-            self._pending_action = None
-            self._set_status("cancelled")
-            self._chat_history.append({"role": "assistant", "text": "Acción cancelada."})
-            self.responseReceived.emit("Acción cancelada.")
-            return {"name": "_cancel", "internal": True}
-
-        if any(p in text_lower for p in ("reproducir canción", "reproduce canción", "reproduce ", "pon ", "play ")):
-            return {"name": "reproducir canción", "description": "reproducir una canción", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("reproducir álbum", "reproduce álbum", "reproduce el álbum", "pon álbum", "play album")):
-            return {"name": "reproducir álbum", "description": "reproducir un álbum", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("encolar", "añadir a cola", "agregar a cola")):
-            return {"name": "encolar", "description": "encolar canciones", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("buscar ", "buscar", "busca ", "encuentra ")):
-            return {"name": "buscar", "description": "buscar en la biblioteca", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("abrir ruta", "navegar a", "ir a ", "abre ")):
-            return {"name": "abrir ruta", "description": "navegar a una sección", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("crear playlist", "nueva lista", "crear lista")):
-            return {"name": "crear playlist", "description": "crear una playlist nueva", "requires_confirmation": True}
-
-        if any(p in text_lower for p in ("agregar canciones", "añadir canciones", "agregar a playlist")):
-            return {"name": "agregar canciones", "description": "agregar canciones a una playlist", "requires_confirmation": True}
-
-        if "no escuchad" in text_lower or "no reproducidas" in text_lower:
-            return {"name": "mostrar no escuchadas", "description": "mostrar canciones no escuchadas", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("diagnosticar biblioteca", "diagnóstico", "salud biblioteca")):
-            return {"name": "diagnosticar biblioteca", "description": "diagnosticar la biblioteca", "requires_confirmation": False}
-
-        if any(p in text_lower for p in ("abrir ajustes", "ajustes", "configuración", "settings")):
-            return {"name": "abrir ajustes", "description": "abrir ajustes", "requires_confirmation": False}
-
-        if "cambiar ajuste" in text_lower or "cambiar config" in text_lower:
-            return {"name": "cambiar ajuste seguro", "description": "cambiar un ajuste de configuración", "requires_confirmation": True}
-
-        return None
-
-    def _execute_action(self, action: dict):
-        self._set_status("executing")
-        name = action["name"]
-        description = action.get("description", name)
-        result = self._dispatch_action(name, action)
-        if result is None:
-            result = {"ok": False, "error": "No se pudo ejecutar la acción"}
-        if result.get("ok"):
-            self._set_status("completed")
-            response = f"Hecho: {description}."
-        else:
+    def sendMessage(self, text: str) -> None:
+        if not self._assistant:
+            self._last_error = "Assistant service not available"
             self._set_status("failed")
-            self._last_error = result.get("error", "Error desconocido")
-            response = f"Error al {description}: {self._last_error}"
-        self._chat_history.append({"role": "assistant", "text": response})
-        self.responseReceived.emit(response)
-        self.contextChanged.emit()
+            self.errorOccurred.emit(self._last_error)
+            return
 
-    def _dispatch_action(self, name: str, action: dict) -> dict:
-        if name == "reproducir canción" or name == "reproducir álbum":
-            return self._action_play(action)
-        if name == "encolar":
-            return self._action_enqueue(action)
-        if name == "buscar":
-            return self._action_search(action)
-        if name == "abrir ruta":
-            return self._action_open_route(action)
-        if name == "crear playlist":
-            return self._action_create_playlist(action)
-        if name == "agregar canciones":
-            return self._action_add_songs(action)
-        if name == "mostrar no escuchadas":
-            return self._action_show_unheard(action)
-        if name == "diagnosticar biblioteca":
-            return self._action_diagnose(action)
-        if name == "abrir ajustes":
-            if self._nav and hasattr(self._nav, 'navigate'):
-                self._nav.navigate("settings")
-                return {"ok": True, "route": "settings"}
-            return {"ok": False, "error": "NO_NAVIGATION_SERVICE"}
-        if name == "cambiar ajuste seguro":
-            return self._action_change_setting(action)
-        return {"ok": False, "error": f"Acción desconocida: {name}"}
+        if not self._session_id:
+            self.startNewSession()
 
-    def _action_play(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        if "álbum" in text.lower() or "album" in text.lower():
-            if self._tas and hasattr(self._tas, 'play_album') and callable(self._tas.play_album):
-                return self._tas.play_album(album=text)
-            if self._global_search:
-                try:
-                    results = self._global_search.search(text, owner="michi_ai")
-                    if results.get("ok") and results.get("results"):
-                        first = results["results"][0]
-                        if first.get("type") == "album":
-                            return {"ok": True, "album": first.get("title")}
-                except Exception:
-                    pass
-            return {"ok": False, "error": "NO_SEARCH_SERVICE"}
-        if self._tas and hasattr(self._tas, 'play_track'):
-            parts = text.split(" ", 2)
-            track_id = None
-            for p in parts:
-                if p.isdigit():
-                    track_id = int(p)
-                    break
-            if track_id:
-                return self._tas.play_track(track_id)
-            if self._global_search:
-                try:
-                    results = self._global_search.search(text, owner="michi_ai")
-                    if results.get("ok") and results.get("results"):
-                        first = results["results"][0]
-                        if first.get("type") == "track" and first.get("id"):
-                            return self._tas.play_track(int(first["id"]))
-                        return {"ok": False, "error": "TRACK_NOT_FOUND"}
-                    return {"ok": False, "error": "TRACK_NOT_FOUND"}
-                except Exception as e:
-                    return {"ok": False, "error": str(e)}
-            return {"ok": False, "error": "NO_SEARCH_SERVICE"}
-        return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
+        self._set_status("routing")
+        request = AssistantRequest(
+            text=text,
+            session_id=self._session_id,
+            correlation_id=uuid.uuid4().hex[:12],
+        )
 
-    def _action_enqueue(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        if self._tas:
-            parts = text.split(" ", 2)
-            track_id = None
-            for p in parts:
-                if p.isdigit():
-                    track_id = int(p)
-                    break
-            if track_id:
-                if hasattr(self._tas, 'enqueue_track') and callable(self._tas.enqueue_track):
-                    return self._tas.enqueue_track(track_id)
-                return {"ok": False, "error": "NO_ENQUEUE_METHOD"}
-            if self._global_search:
-                try:
-                    results = self._global_search.search(text, owner="michi_ai")
-                    if results.get("ok") and results.get("results"):
-                        first = results["results"][0]
-                        if first.get("type") == "track" and first.get("id"):
-                            if hasattr(self._tas, 'enqueue_track') and callable(self._tas.enqueue_track):
-                                return self._tas.enqueue_track(int(first["id"]))
-                            return {"ok": False, "error": "NO_ENQUEUE_METHOD"}
-                        return {"ok": False, "error": "TRACK_NOT_FOUND"}
-                    return {"ok": False, "error": "TRACK_NOT_FOUND"}
-                except Exception as e:
-                    return {"ok": False, "error": str(e)}
-            return {"ok": False, "error": "NO_SEARCH_SERVICE"}
-        return {"ok": False, "error": "NO_TRACK_ACTION_SERVICE"}
+        response = self._assistant.process_message(request)
+        self._current_response = response
+        self._map_response_to_bridge(response)
 
-    def _action_search(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        query = text.replace("buscar ", "").replace("busca ", "").replace("encuentra ", "").strip()
-        if not query:
-            return {"ok": False, "error": "SIN_QUERY"}
-        if self._global_search:
-            try:
-                results = self._global_search.search(query, owner="michi_ai")
-                if results.get("ok"):
-                    count = results.get("count", 0)
-                    return {"ok": True, "count": count, "results": results.get("results", [])}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_SEARCH_SERVICE"}
+    def _map_response_to_bridge(self, response: AssistantResponse) -> None:
+        rtype = response.type
 
-    def _action_open_route(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        route_map = {
-            "biblioteca": "library", "inicio": "home", "radio": "radio",
-            "playlist": "playlists", "mix": "mix", "conexiones": "connections",
-            "home audio": "home_audio", "ajustes": "settings", "dispositivos": "devices",
-        }
-        target = "home"
-        for key, route in route_map.items():
-            if key in text.lower():
-                target = route
-                break
-        if self._nav and hasattr(self._nav, 'navigate'):
-            self._nav.navigate(target)
-            return {"ok": True, "route": target}
-        return {"ok": False, "error": "NO_NAVIGATION_SERVICE"}
+        if rtype == AssistantResponseType.ANSWER:
+            self._set_status("completed")
 
-    def _action_create_playlist(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        name = "Nueva playlist"
-        if "llamada" in text.lower() or "nombre" in text.lower():
-            parts = text.split("llamada", 1)
-            if len(parts) > 1:
-                name = parts[1].strip()
-            else:
-                parts = text.split("nombre", 1)
-                if len(parts) > 1:
-                    name = parts[1].strip()
-        if self._playlist_svc:
-            if hasattr(self._playlist_svc, 'create') and callable(self._playlist_svc.create):
-                return self._playlist_svc.create(name)
-            return {"ok": False, "error": "NO_CREATE_METHOD"}
-        if self._tas and hasattr(self._tas, 'create_playlist') and callable(self._tas.create_playlist):
-            return self._tas.create_playlist(name)
-        return {"ok": False, "error": "NO_PLAYLIST_SERVICE"}
+        elif rtype == AssistantResponseType.CLARIFICATION:
+            self._set_status("idle")
 
-    def _action_add_songs(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        playlist_id = None
-        for word in text.split():
-            if word.isdigit():
-                playlist_id = int(word)
-                break
-        if playlist_id and self._playlist_svc and hasattr(self._playlist_svc, 'batch_add'):
-            return self._playlist_svc.batch_add(playlist_id, [])
-        return {"ok": False, "error": "NO_PLAYLIST_ID"}
+        elif rtype == AssistantResponseType.PLAN_PREVIEW:
+            self._set_status("awaiting_confirmation")
+            if response.plan:
+                plan_id = getattr(response.plan, "plan_id", "")
+                summary = response.message
+                self._pending_confirmation = {
+                    "plan_id": plan_id,
+                    "summary": summary,
+                    "title": response.title,
+                    "details": response.details,
+                }
+                self.confirmationRequested.emit(plan_id, summary, response.details)
 
-    def _action_show_unheard(self, action: dict) -> dict:
-        if self._global_search:
-            try:
-                query = "play_count:0"
-                results = self._global_search.search(query, owner="michi_ai")
-                if results.get("ok"):
-                    return {"ok": True, "unheard_count": results.get("count", 0)}
-            except Exception:
-                pass
-        return {"ok": True, "unheard_count": 0}
+        elif rtype == AssistantResponseType.CONFIRMATION_REQUEST:
+            self._set_status("awaiting_confirmation")
+            plan = response.plan
+            plan_id = getattr(plan, "plan_id", "") if plan else ""
+            summary = response.message
+            self._pending_confirmation = {
+                "plan_id": plan_id,
+                "summary": summary,
+                "title": response.title,
+                "details": response.details,
+            }
+            self.confirmationRequested.emit(plan_id, summary, response.details)
 
-    def _action_diagnose(self, action: dict) -> dict:
-        if self._diagnostics and hasattr(self._diagnostics, 'runQuickCheck'):
-            try:
-                result = self._diagnostics.runQuickCheck()
-                return {"ok": True, "diagnostics": result}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_DIAGNOSTICS_SERVICE"}
+        elif rtype == AssistantResponseType.EXECUTION_PROGRESS:
+            self._set_status("executing")
+            if response.progress:
+                self._progress = response.progress
+                self.progressChanged.emit()
 
-    def _parse_intent(self, text: str) -> dict | None:
-        text_lower = text.lower()
-        if "volumen" in text_lower:
-            val = 75
-            for word in text.split():
-                if word.isdigit():
-                    val = int(word)
-                    break
-            return {"action": "cambiar ajuste seguro", "entities": {"setting_key": "playback/default_volume", "setting_value": val}}
-        if "tema" in text_lower or "theme" in text_lower or "oscuro" in text_lower:
-            return {"action": "cambiar ajuste seguro", "entities": {"setting_key": "appearance/theme", "setting_value": "dark"}}
-        return None
+        elif rtype == AssistantResponseType.EXECUTION_RESULT:
+            self._set_status("completed")
+            self._pending_confirmation = {}
 
-    def _action_change_setting(self, action: dict) -> dict:
-        text = action.get("_original", "")
-        if self._settings and hasattr(self._settings, 'set_'):
-            key = "playback/default_volume"
-            val = 75
-            intent = self._parse_intent(text)
-            if intent:
-                key = intent["entities"].get("setting_key", key)
-                val = intent["entities"].get("setting_value", val)
-            else:
-                for word in text.split():
-                    if word.isdigit():
-                        val = int(word)
-                        break
-                if "tema" in text.lower() or "theme" in text.lower() or "oscuro" in text.lower():
-                    key = "appearance/theme"
-                    val = "dark"
-                elif "volumen" in text.lower():
-                    key = "playback/default_volume"
-            try:
-                self._settings.set_(key, val)
-                return {"ok": True, "key": key, "value": val}
-            except Exception as e:
-                return {"ok": False, "error": str(e)}
-        return {"ok": False, "error": "NO_SETTINGS_SERVICE"}
+        elif rtype == AssistantResponseType.ERROR:
+            self._set_status("failed")
+            self._last_error = response.message
+            self.errorOccurred.emit(self._last_error)
 
-    @Slot(result=str)
-    def getChatHistory(self):
-        import json
-        return json.dumps(self._chat_history)
+        elif rtype == AssistantResponseType.SUGGESTION:
+            self._set_status("idle")
 
-    @Slot(result=dict)
-    def aiScore(self) -> dict:
-        score = 0
-        if self._ai_controller:
-            score += 20
-        if self._tas:
-            score += 15
-        if self._global_search:
-            score += 10
-        if self._playlist_svc:
-            score += 10
-        if self._settings:
-            score += 10
-        if self._diagnostics:
-            score += 10
-        if self._wm:
-            score += 10
-        if self._status in VALID_STATES:
-            score += 5
-        if len(self._suggestions) > 0:
-            score += 5
-        if len(self._chat_history) > 0:
-            score += 5
-        return {
-            "score": min(100, score),
-            "status": self._status,
-            "has_controller": self._ai_controller is not None,
-            "has_tas": self._tas is not None,
-            "has_search": self._global_search is not None,
-            "has_playlist": self._playlist_svc is not None,
-            "has_settings": self._settings is not None,
-            "has_diagnostics": self._diagnostics is not None,
-            "has_worker_manager": self._wm is not None,
-            "suggestion_count": len(self._suggestions),
-            "chat_count": len(self._chat_history),
-        }
+        self.responseChanged.emit()
+
+    @Slot(str)
+    def confirmAction(self, confirmation_id: str) -> None:
+        if not self._assistant or not self._session_id:
+            return
+        self._set_status("executing")
+        response = self._assistant.confirm_plan(confirmation_id, self._session_id)
+        self._current_response = response
+        self._pending_confirmation = {}
+        self._map_response_to_bridge(response)
+
+    @Slot()
+    def rejectAction(self) -> None:
+        if not self._assistant or not self._session_id:
+            return
+        response = self._assistant.cancel_plan(self._session_id)
+        self._current_response = response
+        self._pending_confirmation = {}
+        self._map_response_to_bridge(response)
+
+    @Slot()
+    def cancelCurrentRequest(self) -> None:
+        if not self._assistant:
+            return
+        if self._pending_confirmation:
+            plan_id = self._pending_confirmation.get("plan_id", "")
+            if plan_id:
+                self._assistant.cancel_execution(plan_id)
+        self._set_status("cancelled")
+        self._pending_confirmation = {}
+
+    @Slot()
+    def requestSuggestions(self) -> None:
+        if not self._assistant:
+            return
+        suggestions = self._assistant.get_suggestions(self._session_id)
+        self._suggestions = [
+            {"id": s.id, "title": s.title, "description": s.description,
+             "action": s.action, "priority": s.priority}
+            for s in suggestions
+        ]
+        self.suggestionsChanged.emit()
+
+    @Slot()
+    def clearConversation(self) -> None:
+        if self._assistant and self._session_id:
+            self._assistant.clear_history(self._session_id)
+        self._current_response = None
+        self._last_error = ""
+        self._pending_confirmation = {}
+        self._set_status("idle")
+        self.responseChanged.emit()
+
+    @Slot(str)
+    def dismissSuggestion(self, suggestion_id: str) -> None:
+        if self._assistant:
+            self._assistant.dismiss_suggestion(suggestion_id)
+        self.requestSuggestions()

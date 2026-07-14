@@ -1,0 +1,1056 @@
+modules:
+  - module: shell_nav
+    area: shell_nav
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.shell
+      status: W1_FROZEN
+
+  - module: main_window
+    area: shell_nav
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.window
+      status: W1_FROZEN
+
+  - module: sidebar
+    area: shell_nav
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.sidebar
+      status: W1_FROZEN
+
+  - module: header_bar
+    area: shell_nav
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.header
+      status: W1_FROZEN
+
+  - module: navigation
+    area: shell_nav
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.navigation
+      status: W1_FROZEN
+
+  - module: library_browser
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.library
+      status: W1_FROZEN
+
+  - module: album_grid
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.album_grid
+      status: W1_FROZEN
+
+  - module: album_details
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.album_detail
+      status: W1_FROZEN
+
+  - module: artist_grid
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.artist_grid
+      status: W1_FROZEN
+
+  - module: artist_details
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.artist_detail
+      status: W1_FROZEN
+
+  - module: genre_view
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.genre
+      status: W1_FROZEN
+
+  - module: folder_view
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.folder
+      status: W1_FROZEN
+
+  - module: search
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.search
+      status: W1_FROZEN
+
+  - module: track_table
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.track_table
+      status: W1_FROZEN
+
+  - module: selection
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.selection
+      status: W1_FROZEN
+
+  - module: nowplaying_bar
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.nowplaying_bar
+      status: W1_FROZEN
+
+  - module: nowplaying_page
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.nowplaying_page
+      status: W1_FROZEN
+
+  - module: queue
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.queue
+      status: W1_FROZEN
+
+  - module: playback
+    area: library_playback
+    module_weight: 25
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: audio.playback
+      status: W1_FROZEN
+
+  - module: playlist
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.playlist
+      status: W1_FROZEN
+
+  - module: history
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.history
+      status: W1_FROZEN
+
+  - module: mix
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.mix
+      status: W1_FROZEN
+
+  - module: settings
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.settings
+      status: W1_FROZEN
+
+  - module: theme
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.theme
+      status: W1_FROZEN
+
+  - module: equalizer
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.equalizer
+      status: W1_FROZEN
+
+  - module: lyrics
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.lyrics
+      status: W1_FROZEN
+
+  - module: notifications
+    area: core_workflows
+    module_weight: 20
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.notifications
+      status: W1_FROZEN
+
+  - module: audio_lab
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.audio_lab
+      status: W1_FROZEN
+
+  - module: audio_analysis
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: core.audio_analysis
+      status: W1_FROZEN
+
+  - module: metadata_editor
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.metadata
+      status: W1_FROZEN
+
+  - module: tagging
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.tagging
+      status: W1_FROZEN
+
+  - module: disc_lab
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.disc_lab
+      status: W1_FROZEN
+
+  - module: library_doctor
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.library_doctor
+      status: W1_FROZEN
+
+  - module: smart_tagging
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: core.smart_tagging
+      status: W1_FROZEN
+
+  - module: diagnostics
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.diagnostics
+      status: W1_FROZEN
+
+  - module: coverflow
+    area: advanced_tools
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.coverflow
+      status: W1_FROZEN
+
+  - module: radio
+    area: ecosystem_network
+    module_weight: 15
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.radio
+      status: W1_FROZEN
+
+  - module: connections
+    area: ecosystem_network
+    module_weight: 15
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.connections
+      status: W1_FROZEN
+
+  - module: home_audio
+    area: ecosystem_network
+    module_weight: 15
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.home_audio
+      status: W1_FROZEN
+
+  - module: devices_sync
+    area: ecosystem_network
+    module_weight: 15
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.devices
+      status: W1_FROZEN
+
+  - module: michi_ai
+    area: ecosystem_network
+    module_weight: 15
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.michi_ai
+      status: W1_FROZEN
+
+  - module: physical_audio
+    area: quality_release
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.physical_audio
+      status: W1_FROZEN
+
+  - module: runtime_quality
+    area: quality_release
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.runtime_quality
+      status: W1_FROZEN
+
+  - module: composition
+    area: quality_release
+    module_weight: 10
+    applicable_dimensions:
+      - route_load
+      - qml_instance
+      - model_data
+      - service_wiring
+      - read
+      - primary_action
+      - secondary_actions
+      - write
+      - error_contract
+      - async_execution
+      - real_cancellation
+      - persistence
+      - integration
+      - vertical_workflow
+      - performance
+      - accessibility
+    widget_replacement:
+      legacy_module: ui.composition
+      status: W1_FROZEN
