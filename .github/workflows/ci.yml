@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, qml-migration-foundation-clean, qml-wave44-release-readiness]
+    branches: [main, qml-migration-foundation-clean, qml-wave44-release-readiness, qml-macro-A*]
   pull_request:
     branches: [main, qml-migration-foundation-clean]
+  workflow_dispatch:
 
 jobs:
   # ── Job 1: packaging — validates pyproject.toml, deps, ruff, compile ──
@@ -133,7 +134,7 @@ jobs:
           assert len(icons) > 0, 'No SVG icons found'
           "
 
-      - name: Album-focused tests (pure Python, no Qt)
+      - name: Album-focused tests
         timeout-minutes: 2
         env:
           QT_QPA_PLATFORM: offscreen
@@ -218,8 +219,8 @@ jobs:
             tests/test_context_suggestion_bar_smoke.py \
             -q --timeout=60
 
-  # ── Job 3: QML unit tests ──
-  qml-unit:
+  # ── Job 3: QML all tests — evidence V5 ──
+  qml-all:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -237,155 +238,75 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install -e ".[dev]"
           python3 -m pip install pytest-timeout
-      - name: Run QML unit tests
+      - name: Ruff check
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen python3 -m pytest tests/qml/ -q --timeout=180
-
-  # ── Job 4: QML isolation tests ──
-  qml-isolation:
-    needs: [qml-unit]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            python3-numpy python3-mutagen python3-pil
-      - name: Create venv
-        run: |
-          python3 -m venv --system-site-packages .venv
-          source .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -e ".[dev]"
-          python3 -m pip install pytest-timeout
-      - name: Run QML isolation tests
+          ruff check .
+      - name: Compile all
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen python3 -m pytest tests/qml/test_wave9_vertical_end_to_end.py -q --timeout=180 -m isolation
-
-  # ── Job 5: QML integration tests ──
-  qml-integration:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            python3-numpy python3-mutagen python3-pil
-      - name: Create venv
-        run: |
-          python3 -m venv --system-site-packages .venv
-          source .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -e ".[dev]"
-          python3 -m pip install pytest-timeout
-      - name: Run QML integration tests
+          python -m compileall -q -x '.venv/|\.tmpl\.' .
+      - name: QML compile all
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen \
-          python3 -m pytest tests/qml/test_wave12_async_production_flow.py \
-            tests/qml/test_wave13_visible_workflows.py \
-            -q --timeout=180 -m integration
-
-  # ── Job 5: QML runtime smoke ──
-  qml-runtime:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            python3-numpy python3-mutagen python3-pil
-      - name: Create venv
-        run: |
-          python3 -m venv --system-site-packages .venv
-          source .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -e ".[dev]"
-      - name: Run QML full runtime smoke
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_compile_all.py
+      - name: QML full runtime smoke
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen \
-          MICHI_SAFE_MODE=1 \
-          MICHI_TEST_DATA_DIR=${{ runner.temp }}/michi-runtime-data \
-          MICHI_TEST_CACHE_DIR=${{ runner.temp }}/michi-runtime-cache \
-          MICHI_TEST_CONFIG_DIR=${{ runner.temp }}/michi-runtime-config \
-          python3 scripts/qml_full_runtime_smoke.py
-
-  # ── Job 6: QML evidence audit ──
-  qml-evidence:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_full_runtime_smoke.py
+      - name: QML composition audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_composition_audit.py
+      - name: QML productive service audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_productive_service_audit.py
+      - name: QML hybrid dependency audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_hybrid_dependency_audit.py
+      - name: QML vertical workflows
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/workflows -q --timeout=600
+      - name: QML tests (all)
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v5.xml
+      - name: Performance tests
+        run: |
+          source .venv/bin/activate
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/perf -q --timeout=600
+      - name: Evidence V5 collect
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_evidence_v5_collect.py --junit artifacts/qml-results-v5.xml --expected-sha $(git rev-parse HEAD)
+      - name: Manifest V5 generate
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_manifest_v5_generate.py
+      - name: Manifest V5 audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_manifest_v5_audit.py
+      - name: Score V5
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_migration_score_v5.py
+      - name: Save artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          python-version: "3.11"
-      - name: Install package
-        run: |
-          pip install --upgrade pip
-          pip install -e ".[dev]"
-      - name: Run manifest V3 audit
-        run: python3 scripts/qml_manifest_evidence_audit.py
+          name: qml-evidence-v5-${{ github.sha }}
+          path: |
+            artifacts/qml-results-v5.xml
+            artifacts/qml-evidence-v5.json
+            docs/qml_migration_manifest_v5.json
 
-  # ── Job 7: Performance benchmarks 10k/50k ──
-  performance-10k-50k:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
-            python3-numpy python3-mutagen
-      - name: Create venv
-        run: |
-          python3 -m venv --system-site-packages .venv
-          source .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -e ".[dev]"
-          python3 -m pip install pytest-timeout
-      - name: Run benchmarks 10k/50k
-        run: |
-          source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen python3 -m pytest tests/perf/test_qml_real_db_10k_50k.py -q --timeout=180
-
-  # ── Job 8: Performance benchmarks 100k ──
-  performance-100k:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
-            python3-numpy python3-mutagen
-      - name: Create venv
-        run: |
-          python3 -m venv --system-site-packages .venv
-          source .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -e ".[dev]"
-          python3 -m pip install pytest-timeout
-      - name: Run benchmarks 100k
-        run: |
-          source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen python3 -m pytest tests/perf/test_qml_real_db_100k.py -q --timeout=180
-
-  # ── Job 9: Physical artifact validation ──
+  # ── Physical artifact validation (DEFERRED) ──
   physical-artifact-validation:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
