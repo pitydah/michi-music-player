@@ -12,7 +12,8 @@ class DiagnosticsBridge(QObject):
     dataChanged = Signal()
 
     def __init__(self, player_service=None, db=None, radio_manager=None,
-                 sync_manager=None, worker_manager=None, query_executor=None, parent=None):
+                 sync_manager=None, worker_manager=None, query_executor=None,
+                 library_bridge=None, parent=None):
         super().__init__(parent)
         self._player = player_service
         self._db = db
@@ -20,6 +21,8 @@ class DiagnosticsBridge(QObject):
         self._sync = sync_manager
         self._wm = worker_manager
         self._qe = query_executor
+        self._lib = library_bridge
+        self._diagnostics: dict = {}
 
     @Slot(result="QVariantMap")
     def runQuickCheck(self):
@@ -37,13 +40,64 @@ class DiagnosticsBridge(QObject):
         result["worker_manager"] = self._wm is not None
         result["query_executor"] = self._qe is not None
 
+        # Library diagnostics
+        result["db_path"] = ""
+        result["schema_version"] = ""
+        result["media_count"] = 0
+        result["source_count"] = 0
+        result["last_scan_timestamp"] = ""
+        result["model_count"] = 0
+        result["current_filters"] = ""
+        result["query_generation"] = 0
+        result["model_error"] = ""
+        result["page_status"] = ""
+
+        if self._lib:
+            try:
+                tk = getattr(self._lib, 'trackModel', None)
+                if tk:
+                    result["model_count"] = tk.totalCount
+                    result["query_generation"] = getattr(tk, '_refresh_gen', 0)
+                    result["model_error"] = getattr(tk, 'errorMessage', '')
+                    result["page_status"] = "initialized" if getattr(tk, 'initialized', False) else "loading"
+                    result["current_filters"] = str(getattr(tk, 'activeQuery', {}))
+            except Exception:
+                pass
+            try:
+                qs = getattr(self._lib, '_query_svc', None)
+                if qs:
+                    result["query_generation"] = getattr(qs, '_gen', 0)
+            except Exception:
+                pass
+
         # DB health
         if self._db:
             try:
-                row = self._db.conn.execute("SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL").fetchone()
-                result["library_tracks"] = row[0] if row else 0
+                result["db_path"] = getattr(self._db, 'db_path', '') or str(getattr(self._db, '_db_path', ''))
             except Exception:
+                result["db_path"] = ""
+            try:
+                row = self._db.conn.execute("SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL").fetchone()
+                result["media_count"] = row[0] if row else 0
+                result["library_tracks"] = result["media_count"]
+            except Exception:
+                result["media_count"] = -1
                 result["library_tracks"] = -1
+            try:
+                src_row = self._db.conn.execute("SELECT COUNT(*) FROM library_sources").fetchone()
+                result["source_count"] = src_row[0] if src_row else 0
+            except Exception:
+                result["source_count"] = 0
+            try:
+                row = self._db.conn.execute("SELECT MAX(last_scan) FROM library_scan_log").fetchone()
+                result["last_scan_timestamp"] = str(row[0] or "") if row else ""
+            except Exception:
+                result["last_scan_timestamp"] = ""
+            try:
+                sv = self._db.conn.execute("SELECT value FROM metadata WHERE key='schema_version'").fetchone()
+                result["schema_version"] = str(sv[0] if sv else "")
+            except Exception:
+                result["schema_version"] = ""
             try:
                 fts = self._db.conn.execute(
                     "SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='media_fts'"

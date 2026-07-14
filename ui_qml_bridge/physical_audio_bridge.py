@@ -1,66 +1,96 @@
-"""PhysicalAudioBridge — real audio backend, output device, profiles, bit-perfect."""
+"""PhysicalAudioBridge — reads artifacts/qml-physical-results.json for physical audio closure.
+
+Does NOT calculate its own score based on heuristic methods.
+Reads the artifact produced by scripts/qml_physical_runner.py.
+States: PENDING, RUNNING, VERIFIED, FAILED, BLOCKED_HARDWARE.
+"""
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Slot
+import json
+from pathlib import Path
+
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 
-def _get_active_profile(player) -> dict:
-    if not player:
-        return {"name": "none", "backend": "none", "bitperfect": False}
+ARTIFACT_PATH = Path(__file__).resolve().parent.parent / "artifacts" / "qml-physical-results.json"
+
+
+def _read_artifact() -> dict:
     try:
-        pid = player.get_active_backend_id() if hasattr(player, 'get_active_backend_id') else "gstreamer"
-        return {"name": pid, "backend": pid, "bitperfect": False}
+        if ARTIFACT_PATH.exists():
+            return json.loads(ARTIFACT_PATH.read_text())
     except Exception:
-        return {"name": "error", "backend": "error", "bitperfect": False}
-
-
-def _get_output_device(player) -> dict:
-    if not player:
-        return {"name": "none", "protocol": "none"}
-    try:
-        dev = player.get_output_device_id() if hasattr(player, 'get_output_device_id') else "default"
-        return {"name": dev or "default", "protocol": "ALSA"}
-    except Exception:
-        return {"name": "error", "protocol": "error"}
+        pass
+    return {"status": "PENDING", "checks": [], "passed": 0, "total": 0}
 
 
 class PhysicalAudioBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, player_service=None, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._player = player_service
+
+    def _artifact(self) -> dict:
+        return _read_artifact()
+
+    @Property(str, notify=dataChanged)
+    def status(self) -> str:
+        return self._artifact().get("status", "PENDING")
+
+    @Property(int, notify=dataChanged)
+    def passed(self) -> int:
+        return self._artifact().get("passed", 0)
+
+    @Property(int, notify=dataChanged)
+    def total(self) -> int:
+        return self._artifact().get("total", 0)
+
+    @Property(str, notify=dataChanged)
+    def sha(self) -> str:
+        return self._artifact().get("sha", "")
+
+    @Property(str, notify=dataChanged)
+    def date(self) -> str:
+        return self._artifact().get("date", "")
+
+    @Property(str, notify=dataChanged)
+    def platform(self) -> str:
+        return self._artifact().get("platform", "")
+
+    @Property(str, notify=dataChanged)
+    def backend(self) -> str:
+        return self._artifact().get("backend", "")
+
+    @Property(str, notify=dataChanged)
+    def device(self) -> str:
+        return self._artifact().get("device", "")
+
+    @Property(str, notify=dataChanged)
+    def version(self) -> str:
+        return self._artifact().get("version", "")
+
+    @Property("QVariantList", notify=dataChanged)
+    def checks(self):
+        return self._artifact().get("checks", [])
 
     @Slot(result=dict)
     def physicalAudioScore(self) -> dict:
-        score = 0
-        if self._player:
-            score += 20
-            try:
-                profile = _get_active_profile(self._player)
-                if profile["name"] != "none":
-                    score += 20
-            except Exception:
-                pass
-            try:
-                dev = _get_output_device(self._player)
-                if dev["name"] != "none":
-                    score += 20
-            except Exception:
-                pass
-        else:
-            score += 15
-        if self._player and hasattr(self._player, 'get_volume'):
-            score += 15
-        if self._player and hasattr(self._player, 'get_active_backend_id'):
-            score += 15
-        if self._player and hasattr(self._player, 'get_output_device_id'):
-            score += 10
+        art = self._artifact()
+        status = art.get("status", "PENDING")
+        passed = art.get("passed", 0)
+        total = art.get("total", 0) or 1
+        score = int((passed / total) * 100) if total > 0 else 0
         return {
-            "score": min(100, score),
-            "player_available": self._player is not None,
-            "has_profile": score >= 40,
-            "has_device": score >= 60,
+            "score": score,
+            "status": status,
+            "passed": passed,
+            "total": total,
+            "verified": status == "VERIFIED",
+            "sha": art.get("sha", ""),
+            "date": art.get("date", ""),
+            "platform": art.get("platform", ""),
+            "backend": art.get("backend", ""),
+            "device": art.get("device", ""),
         }
 
     @Slot()
