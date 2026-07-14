@@ -243,12 +243,10 @@ class BridgeFactory(QObject):
     def create_michi_ai_bridge(self):
         from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
         if "michi_ai" not in self._bridges:
-            assistant_core = self._services.assistant_core_service
-            if assistant_core is None and self._services.registry:
-                assistant_core = self._services.registry.ensure_assistant_core()
             self._bridges["michi_ai"] = MichiAIBridge(
-                assistant_service=assistant_core,
+                assistant_service=self._services.assistant_core_service,
             )
+            self._register_capability("michi_ai", "assistant_core_service")
         return self._bridges["michi_ai"]
 
     def create_cover_bridge(self):

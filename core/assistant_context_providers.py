@@ -183,6 +183,27 @@ class DiagnosticsContextProvider:
         return {"status": "operational"}
 
 
+class MetadataContextProvider:
+    def __init__(self, metadata_service: Any = None, selection_service: Any = None) -> None:
+        self._ms = metadata_service
+        self._ss = selection_service
+
+    def get_context(self) -> dict[str, Any]:
+        if self._ms is None:
+            return {"available": False}
+        try:
+            selection = self._ss.get_selection() if self._ss and hasattr(self._ss, "get_selection") else {}
+            track_ids = selection.get("items", [])[:50] if isinstance(selection, dict) else []
+            return {
+                "available": True,
+                "selected_count": len(track_ids),
+                "service_ready": hasattr(self._ms, "inspect") or hasattr(self._ms, "get_media_item_by_id"),
+            }
+        except Exception as e:
+            logger.debug("MetadataContextProvider error: %s", e)
+            return {"available": True, "error": str(e)}
+
+
 def register_all_context_providers(assembler: Any, services: dict[str, Any]) -> None:
     assembler.register("playback", PlaybackContextProvider(services.get("player_service")))
     assembler.register("queue", QueueContextProvider(services.get("player_service")))
@@ -194,3 +215,4 @@ def register_all_context_providers(assembler: Any, services: dict[str, Any]) -> 
     assembler.register("settings", SettingsContextProvider(services.get("settings_service")))
     assembler.register("jobs", JobContextProvider(services.get("job_service")))
     assembler.register("diagnostics", DiagnosticsContextProvider(services.get("diagnostics_service")))
+    assembler.register("metadata", MetadataContextProvider(services.get("metadata_service"), services.get("selection_service")))

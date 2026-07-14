@@ -56,6 +56,164 @@ def _unavailable_response(name: str) -> dict[str, Any]:
     return {"ok": False, "error": f"Service '{name}' unavailable", "code": "CAPABILITY_UNAVAILABLE"}
 
 
+class ProductionQueueServiceGateway(QueueGateway):
+    def __init__(self, queue_service: Any) -> None:
+        self._qs = queue_service
+
+    def get_queue(self) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            if hasattr(self._qs, "get_queue"):
+                q = self._qs.get_queue()
+            elif hasattr(self._qs, "get_queue_state"):
+                paths, idx = self._qs.get_queue_state()
+                q = list(paths)
+            else:
+                q = self._qs.get_queue() if hasattr(self._qs, "get_queue") else []
+            return {"ok": True, "queue": q or [], "count": len(q or [])}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def add_to_queue(self, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            if hasattr(self._qs, "enqueue"):
+                self._qs.enqueue(track_ids, play_now=False)
+            return {"ok": True, "added": len(track_ids), "status": "COMPLETED", "count": len(self._verify_queue())}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def play_next(self, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            if hasattr(self._qs, "enqueue_next"):
+                self._qs.enqueue_next(track_ids)
+            return {"ok": True, "status": "COMPLETED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def replace_queue(self, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            if hasattr(self._qs, "play_queue"):
+                self._qs.play_queue(track_ids, start_index=0)
+            return {"ok": True, "count": len(track_ids), "status": "COMPLETED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def remove_from_queue(self, position: int, **kwargs: Any) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            q = self._verify_queue()
+            if 0 <= position < len(q):
+                q.pop(position)
+                if hasattr(self._qs, "reorder_queue"):
+                    self._qs.reorder_queue(q)
+                return {"ok": True}
+            return {"ok": False, "error": "INVALID_POSITION"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def clear_queue(self, **kwargs: Any) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            if hasattr(self._qs, "clear_queue"):
+                self._qs.clear_queue()
+            return {"ok": True, "status": "COMPLETED", "count": 0}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def reorder_queue(self, from_pos: int, to_pos: int, **kwargs: Any) -> dict[str, Any]:
+        if self._qs is None:
+            return _unavailable_response("QueueService")
+        try:
+            q = self._verify_queue()
+            if 0 <= from_pos < len(q) and 0 <= to_pos < len(q):
+                item = q.pop(from_pos)
+                q.insert(to_pos, item)
+                if hasattr(self._qs, "reorder_queue"):
+                    self._qs.reorder_queue(q)
+                return {"ok": True}
+            return {"ok": False, "error": "INVALID_POSITION"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _verify_queue(self) -> list:
+        if hasattr(self._qs, "get_queue"):
+            return list(self._qs.get_queue() or [])
+        return []
+
+
+class ProductionPlaylistServiceGateway(PlaylistGateway):
+    def __init__(self, playlist_service: Any) -> None:
+        self._ps = playlist_service
+
+    def list_playlists(self) -> dict[str, Any]:
+        if self._ps is None:
+            return _unavailable_response("PlaylistService")
+        try:
+            if hasattr(self._ps, "get_all_playlists"):
+                pls = self._ps.get_all_playlists()
+            elif hasattr(self._ps, "get_playlists"):
+                pls = self._ps.get_playlists()
+            else:
+                pls = []
+            return {"ok": True, "playlists": pls, "total": len(pls)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def get_playlist(self, playlist_id: str) -> dict[str, Any]:
+        if self._ps is None:
+            return _unavailable_response("PlaylistService")
+        try:
+            if hasattr(self._ps, "get_playlist_items"):
+                items = self._ps.get_playlist_items(int(playlist_id))
+                return {"ok": True, "playlist": {"id": playlist_id, "tracks": items}}
+            return {"ok": False, "error": "NOT_FOUND"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def create_playlist(self, name: str, track_ids: list[str] | None = None, **kwargs: Any) -> dict[str, Any]:
+        if self._ps is None:
+            return _unavailable_response("PlaylistService")
+        try:
+            if hasattr(self._ps, "create_playlist"):
+                pid = self._ps.create_playlist(name)
+                if track_ids and pid:
+                    for tid in track_ids:
+                        if hasattr(self._ps, "add_track_to_playlist"):
+                            self._ps.add_track_to_playlist(pid, tid)
+                return {"ok": True, "playlist": {"id": str(pid), "name": name}}
+            return {"ok": False, "error": "CREATE_FAILED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def add_to_playlist(self, playlist_id: str, track_ids: list[str], **kwargs: Any) -> dict[str, Any]:
+        if self._ps is None:
+            return _unavailable_response("PlaylistService")
+        try:
+            count = 0
+            for tid in track_ids:
+                if hasattr(self._ps, "add_track_to_playlist"):
+                    self._ps.add_track_to_playlist(int(playlist_id), tid)
+                    count += 1
+            return {"ok": True, "added": count}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def remove_from_playlist(self, playlist_id: str, position: int, **kwargs: Any) -> dict[str, Any]:
+        return _unavailable_response("remove_from_playlist (not yet wired)")
+
+    def reorder_playlist(self, playlist_id: str, from_pos: int, to_pos: int, **kwargs: Any) -> dict[str, Any]:
+        return _unavailable_response("reorder_playlist (not yet wired)")
+
+
 class ProductionPlaybackGateway(PlaybackGateway):
     def __init__(self, player_service: Any) -> None:
         self._ps = player_service
@@ -146,6 +304,9 @@ class ProductionPlaybackGateway(PlaybackGateway):
         if volume < 0 or volume > 100:
             return {"ok": False, "error": "INVALID_VOLUME"}
         try:
+            current = getattr(self._ps, "get_volume", lambda: None)()
+            if current is not None and current == int(volume):
+                return {"ok": True, "status": "COMPLETED", "volume": int(volume), "idempotent": True}
             self._ps.set_volume(int(volume))
             return {"ok": True, "status": "COMPLETED", "volume": int(volume)}
         except Exception as e:
@@ -157,6 +318,9 @@ class ProductionPlaybackGateway(PlaybackGateway):
         if mode not in ("none", "one", "all"):
             return {"ok": False, "error": "INVALID_MODE"}
         try:
+            current = getattr(self._ps, "get_repeat", lambda: None)()
+            if current is not None and current == mode:
+                return {"ok": True, "status": "COMPLETED", "idempotent": True}
             self._ps.set_repeat(mode)
             return {"ok": True, "status": "COMPLETED"}
         except Exception as e:
@@ -166,6 +330,9 @@ class ProductionPlaybackGateway(PlaybackGateway):
         if self._ps is None:
             return _unavailable_response("PlayerService")
         try:
+            current = getattr(self._ps, "get_shuffle", lambda: None)()
+            if current is not None and bool(current) == enabled:
+                return {"ok": True, "status": "COMPLETED", "idempotent": True}
             if enabled:
                 self._ps.toggle_shuffle()
             return {"ok": True, "status": "COMPLETED"}

@@ -436,6 +436,79 @@ BUILTIN_TOOL_DEFINITIONS: list[ToolDefinition] = [
         idempotent=True, timeout_seconds=20,
     ),
 
+    ToolDefinition(
+        name="inspect_selection", version="2.0.0",
+        description="Inspect metadata for a selection of tracks",
+        input_schema=_schema(
+            required=["track_ids"],
+            properties={"track_ids": {"type": "array", "maxItems": 50}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("metadata.read",),
+        idempotent=True, timeout_seconds=30,
+    ),
+    ToolDefinition(
+        name="build_proposal", version="2.0.0",
+        description="Build a metadata change proposal from track IDs",
+        input_schema=_schema(
+            required=["track_ids"],
+            properties={"track_ids": {"type": "array", "maxItems": 50}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("metadata.read",),
+        idempotent=True, timeout_seconds=60,
+    ),
+    ToolDefinition(
+        name="preview_changes", version="2.0.0",
+        description="Preview metadata changes from a review",
+        input_schema=_schema(
+            required=["review_id"],
+            properties={"review_id": {"type": "string"}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("metadata.read",),
+        idempotent=True, timeout_seconds=15,
+    ),
+    ToolDefinition(
+        name="apply_review", version="2.0.0",
+        description="Apply a metadata review with confirmation",
+        input_schema=_schema(
+            required=["review_id", "confirmation_token"],
+            properties={"review_id": {"type": "string"}, "confirmation_token": {"type": "string"}},
+        ),
+        permission=PermissionLevel.DESTRUCTIVE, capabilities=("metadata.modify",),
+        requires_confirmation=True, destructive=False, cancellable=True,
+        idempotent=False, timeout_seconds=300,
+        rollback_tool="rollback_metadata",
+    ),
+    ToolDefinition(
+        name="rollback_metadata", version="2.0.0",
+        description="Rollback a metadata operation",
+        input_schema=_schema(
+            required=["operation_id", "confirmation_token"],
+            properties={"operation_id": {"type": "string"}, "confirmation_token": {"type": "string"}},
+        ),
+        permission=PermissionLevel.DESTRUCTIVE, capabilities=("metadata.modify",),
+        requires_confirmation=True, destructive=False,
+        idempotent=False, timeout_seconds=300,
+    ),
+    ToolDefinition(
+        name="check_consistency", version="2.0.0",
+        description="Check metadata consistency across tracks",
+        input_schema=_schema(
+            required=["track_ids"],
+            properties={"track_ids": {"type": "array", "maxItems": 200}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("metadata.read",),
+        idempotent=True, timeout_seconds=60,
+    ),
+    ToolDefinition(
+        name="scan_duplicates", version="2.0.0",
+        description="Scan for duplicate metadata entries",
+        input_schema=_schema(
+            properties={"track_ids": {"type": "array", "maxItems": 200}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("metadata.read",),
+        idempotent=True, timeout_seconds=60,
+    ),
+
     # == Library Doctor ==
     ToolDefinition(
         name="scan_library_health", version="2.0.0",
