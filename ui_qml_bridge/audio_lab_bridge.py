@@ -176,9 +176,63 @@ class AudioLabBridge(QObject):
                 "diagnostics": "diagnostics",
                 "health": "library_doctor",
                 "metadata_doctor": "metadata_inspector",
+                "overview": "audio_lab_overview",
+                "analysis": "audio_lab_analysis",
+                "conversion": "audio_lab_conversion",
+                "normalization": "audio_lab_normalization",
+                "replaygain": "audio_lab_replaygain",
+                "integrity": "audio_lab_integrity",
+                "comparison": "audio_lab_comparison",
+                "jobs": "audio_lab_jobs",
+                "profiles": "audio_lab_profiles",
             }
             route = route_map.get(module_id, "")
             if route:
                 self._nav.navigate(route)
                 return {"ok": True, "route": route}
         return {"ok": False, "error": "UNSUPPORTED"}
+
+    @Slot(str, result=dict)
+    def probeFile(self, filepath: str):
+        try:
+            from core.audio_lab.audio_probe_service import AudioProbeService
+            svc = AudioProbeService()
+            result = svc.probe(filepath)
+            return result.to_dict()
+        except Exception as e:
+            return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "error", "error": str(e)}
+
+    @Slot(str, result=dict)
+    def analyzeFile(self, filepath: str):
+        try:
+            svc = None
+            try:
+                from core.audio_lab.audio_analysis_service import AudioAnalysisService
+                svc = AudioAnalysisService()
+            except Exception:
+                pass
+            if svc and svc.available:
+                return svc.analyze_file(filepath)
+            return {"filepath": filepath, "status": "unsupported", "error": "Backend no disponible", "explanation": "Instala librosa/GStreamer con soporte de análisis"}
+        except Exception as e:
+            return {"filepath": filepath, "status": "error", "error": str(e)}
+
+    @Slot(str, str, result=dict)
+    def integrityCheck(self, filepath: str, quick: bool = False):
+        try:
+            from core.audio_lab.audio_integrity_service import AudioIntegrityService
+            svc = AudioIntegrityService()
+            result = svc.check(filepath, quick=quick)
+            return {"filepath": result.filepath, "status": result.status, "valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
+        except Exception as e:
+            return {"filepath": filepath, "status": "error", "error": str(e)}
+
+    @Slot(str, str, result=dict)
+    def compareFiles(self, file_a: str, file_b: str):
+        try:
+            from core.audio_lab.audio_comparison_service import AudioComparisonService
+            svc = AudioComparisonService()
+            result = svc.compare(file_a, file_b)
+            return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
+        except Exception as e:
+            return {"error": str(e)}

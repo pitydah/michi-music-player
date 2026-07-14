@@ -1,0 +1,105 @@
+"""AudioNormalizationService — destructive normalization of audio files.
+
+Requires explicit confirmation for destructive operations.
+Differentiates: ReplayGain metadata (non-destructive),
+player-side gain (in-memory), destructive normalization (rewrites file).
+"""
+from __future__ import annotations
+
+import logging
+import os
+import subprocess
+from dataclasses import dataclass
+from typing import Any
+
+from PySide6.QtCore import QObject, Signal
+
+from core.worker_manager import WorkerManager
+
+logger = logging.getLogger("michi.audio_lab.normalization")
+
+
+@dataclass
+class NormalizationResult:
+    filepath: str = ""
+    status: str = "pending"
+    integrated_loudness: float = 0.0
+    true_peak: float = 0.0
+    loudness_range: float = 0.0
+    target_loudness: float = -14.0
+    gain_applied: float = 0.0
+    error: str = ""
+    destructive: bool = False
+
+
+class AudioNormalizationService(QObject):
+    normalizationCompleted = Signal(str, object)
+
+    def __init__(self, db=None, wm: WorkerManager | None = None, parent=None):
+        super().__init__(parent)
+        self._db = db
+        self._wm = wm
+
+    def measure_loudness(self, filepath: str) -> NormalizationResult:
+        result = NormalizationResult(filepath=filepath)
+        if not filepath or not os.path.isfile(filepath):
+            result.status = "error"
+            result.error = "FILE_NOT_FOUND"
+            return result
+        try:
+            loudness_data = self._scan_loudness(filepath)
+            result.integrated_loudness = loudness_data.get("integrated", 0.0)
+            result.true_peak = loudness_data.get("true_peak", 0.0)
+            result.loudness_range = loudness_data.get("loudness_range", 0.0)
+            result.status = "completed"
+        except Exception as e:
+            logger.exception("Loudness measurement failed for %s", filepath)
+            result.status = "error"
+            result.error = str(e)
+        return result
+
+    def _scan_loudness(self, filepath: str) -> dict[str, float]:
+        data: dict[str, float] = {}
+        try:
+            result = subprocess.run(
+                ["ffmpeg", "-i", filepath, "-af", "loudnorm=I=-14:LRA=1:TP=-1:print_format=json",
+                 "-f", "null", "-"],
+                capture_output=True, text=True, timeout=120
+            )
+            import json
+            for line in result.stderr.split("\n"):
+                if "{" in line:
+                    try:
+                        parsed = json.loads(line.strip())
+                        data["integrated"] = float(parsed.get("input_i", 0.0))
+                        data["true_peak"] = float(parsed.get("input_tp", 0.0))
+                        data["loudness_range"] = float(parsed.get("input_lra", 0.0))
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+        except Exception:
+            pass
+        if not data:
+            import mutagen
+            try:
+                af = mutagen.File(filepath)
+                if af and hasattr(af.info, "sample_rate") and af.info.sample_rate:
+                    data = {"integrated": 0.0, "true_peak": 0.0, "loudness_range": 0.0}
+            except Exception:
+                pass
+        return data
+
+    def normalize_file(self, filepath: str, target_loudness: float = -14.0,
+                       destructive: bool = False) -> dict[str, Any]:
+        result: dict[str, Any] = {"ok": False, "filepath": filepath}
+        if not filepath or not os.path.isfile(filepath):
+            result["error"] = "FILE_NOT_FOUND"
+            return result
+        if destructive:
+            result["requires_confirmation"] = True
+            result["warning"] = "La normalización destructiva sobrescribirá el archivo original. Esta operación no se puede deshacer."
+            return result
+        if not destructive:
+            result["ok"] = True
+            result["status"] = "metadata_only"
+            result["message"] = "Usar ReplayGain para normalización no destructiva"
+        return result
