@@ -294,6 +294,17 @@ class PlaylistService:
     def detect_missing_tracks(self, pid: int) -> dict:
         return self.detect_missing(pid)
 
+    def clear_playlist(self, pid: int) -> dict:
+        if not self._can():
+            return self._error("NO_DB")
+        try:
+            if hasattr(self._db, 'clear_playlist'):
+                self._db.clear_playlist(pid)
+                return self._ok()
+            return self._error("UNSUPPORTED")
+        except Exception as e:
+            return self._error("CLEAR_FAILED", str(e))
+
     def cancel_import(self, import_id: str = "") -> dict:
         if not import_id:
             return {"ok": False, "error_code": "NO_IMPORT_ID", "message": "No import ID provided"}

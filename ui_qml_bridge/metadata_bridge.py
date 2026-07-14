@@ -1,79 +1,32 @@
-"""MetadataBridge — metadata inspector and editor for QML.
+"""MetadataBridge — thin QML adapter over MetadataService.
 
-Supports read, write, artwork, and batch operations.
+Delegates all filesystem, mutagen, and provider operations to MetadataService.
+No direct Mutagen, HTTP, filesystem writes, or SQL.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
-import time
 from pathlib import Path
-import contextlib
 
-logger = logging.getLogger("michi.metadata")
+logger = logging.getLogger("michi.metadata.bridge")
 
 _NA = "No disponible"
-
-
-def _read_full_metadata(filepath: str) -> dict:
-    p = Path(filepath)
-    if not p.is_file():
-        return {"error": "FILE_NOT_FOUND"}
-    result = {
-        "title": p.stem, "artist": "", "album": "", "album_artist": "",
-        "genre": "", "year": 0, "track_number": 0, "track_total": 0,
-        "disc_number": 0, "disc_total": 0, "composer": "", "comment": "",
-        "bpm": 0, "format": p.suffix.lower().lstrip(".").upper(),
-        "size": p.stat().st_size if p.exists() else 0,
-        "bitrate": 0, "sample_rate": 0, "bit_depth": 0, "channels": 0, "duration": 0.0,
-        "has_artwork": False,
-    }
-    try:
-        from mutagen import File as MFile
-        audio = MFile(filepath)
-        if audio is None:
-            return result
-        if hasattr(audio, 'tags') and audio.tags:
-            tags = audio.tags
-            result["title"] = str(tags.get("title", [result["title"]])[0]) if "title" in tags else result["title"]
-            result["artist"] = str(tags.get("artist", [""])[0]) if "artist" in tags else ""
-            result["album"] = str(tags.get("album", [""])[0]) if "album" in tags else ""
-            result["album_artist"] = str(tags.get("albumartist", [""])[0]) if "albumartist" in tags else ""
-            result["genre"] = str(tags.get("genre", [""])[0]) if "genre" in tags else ""
-            result["composer"] = str(tags.get("composer", [""])[0]) if "composer" in tags else ""
-            result["comment"] = str(tags.get("comment", [""])[0]) if "comment" in tags else ""
-            with contextlib.suppress(ValueError, TypeError):
-                result["year"] = int(str(tags.get("year", [0])[0])) if "year" in tags else 0
-            with contextlib.suppress(ValueError, TypeError):
-                result["track_number"] = int(str(tags.get("tracknumber", [0])[0]).split("/")[0]) if "tracknumber" in tags else 0
-            with contextlib.suppress(ValueError, IndexError, TypeError):
-                result["track_total"] = int(str(tags.get("tracknumber", [""])[0]).split("/")[1]) if "tracknumber" in tags and "/" in str(tags["tracknumber"][0]) else 0
-            result["has_artwork"] = "APIC:" in str(type(audio)) or hasattr(audio, 'pictures') and len(audio.pictures) > 0
-        if hasattr(audio, 'info') and audio.info:
-            info = audio.info
-            if hasattr(info, 'bitrate') and info.bitrate:
-                result["bitrate"] = info.bitrate
-            if hasattr(info, 'sample_rate') and info.sample_rate:
-                result["sample_rate"] = info.sample_rate
-            if hasattr(info, 'channels') and info.channels:
-                result["channels"] = info.channels
-            if hasattr(info, 'bits_per_sample') and info.bits_per_sample:
-                result["bit_depth"] = info.bits_per_sample
-            if hasattr(info, 'length') and info.length:
-                result["duration"] = info.length
-    except Exception:
-        logger.debug("Metadata read failed for %s", filepath, exc_info=True)
-    return result
 
 
 class MetadataBridge(QObject):
     dataChanged = Signal()
     selectionChanged = Signal()
-    batchProgress = Signal(int, int)  # done, total
+    batchProgress = Signal(int, int)
+    statusChanged = Signal(str)
+    operationCompleted = Signal(str)
+    operationFailed = Signal(str, str)
+    confirmationRequested = Signal(str, int)
 
-    def __init__(self, worker_manager=None, parent=None):
+    def __init__(self, metadata_service=None, job_service=None, parent=None):
         super().__init__(parent)
-        self._wm = worker_manager
+        self._ms = metadata_service
+        self._js = job_service
         self._current_filepath = ""
         self._has_selection = False
         self._is_loading = False
@@ -85,36 +38,56 @@ class MetadataBridge(QObject):
         self._quality_summary = ""
         self._artwork_status = ""
         self._all_fields: dict = {}
+        self._pending_review_id = ""
+        self._status = "IDLE"
 
     @Property(bool, notify=selectionChanged)
-    def hasSelection(self): return self._has_selection
+    def hasSelection(self):
+        return self._has_selection
 
     @Property(bool, notify=dataChanged)
-    def isLoading(self): return self._is_loading
+    def isLoading(self):
+        return self._is_loading
 
     @Property(str, notify=dataChanged)
-    def errorMessage(self): return self._error_message
+    def errorMessage(self):
+        return self._error_message
 
     @Property(str, notify=dataChanged)
-    def trackTitle(self): return self._track_title
+    def trackTitle(self):
+        return self._track_title
 
     @Property(str, notify=dataChanged)
-    def trackArtist(self): return self._track_artist
+    def trackArtist(self):
+        return self._track_artist
 
     @Property(str, notify=dataChanged)
-    def trackAlbum(self): return self._track_album
+    def trackAlbum(self):
+        return self._track_album
 
     @Property("QVariantList", notify=dataChanged)
-    def fields(self): return self._fields
+    def fields(self):
+        return self._fields
 
     @Property(str, notify=dataChanged)
-    def qualitySummary(self): return self._quality_summary
+    def qualitySummary(self):
+        return self._quality_summary
 
     @Property(str, notify=dataChanged)
-    def artworkStatus(self): return self._artwork_status
+    def artworkStatus(self):
+        return self._artwork_status
 
     @Property(bool, notify=selectionChanged)
-    def canApply(self): return self._has_selection and bool(self._current_filepath)
+    def canApply(self):
+        return self._has_selection and bool(self._current_filepath)
+
+    @Property(str, notify=statusChanged)
+    def status(self):
+        return self._status
+
+    def _set_status(self, status: str):
+        self._status = status
+        self.statusChanged.emit(status)
 
     @Slot(str, result=dict)
     def loadMetadata(self, filepath: str):
@@ -123,21 +96,88 @@ class MetadataBridge(QObject):
         p = Path(filepath)
         if not p.is_file():
             return {"ok": False, "error": "FILE_NOT_FOUND"}
+        self._set_status("READING")
         self._current_filepath = filepath
         self._has_selection = True
         self._is_loading = True
         self._error_message = ""
-        meta = _read_full_metadata(filepath)
-        if "error" in meta:
-            self._error_message = meta["error"]
-            self._is_loading = False
-            self.dataChanged.emit()
-            return {"ok": False, "error": meta["error"]}
-        self._all_fields = meta
-        self._track_title = meta.get("title", _NA)
-        self._track_artist = meta.get("artist", _NA)
-        self._track_album = meta.get("album", _NA)
-        self._fields = [
+
+        if self._ms:
+            result = self._ms.read(filepath)
+            if result.ok:
+                fields = result.data.get("fields", {})
+                self._all_fields = fields
+                self._track_title = fields.get("title", _NA)
+                self._track_artist = fields.get("artist", _NA)
+                self._track_album = fields.get("album", _NA)
+                self._fields = self._build_field_list(fields)
+                fmt = fields.get("format", "?")
+                br = fields.get("bitrate", 0)
+                sr = fields.get("sample_rate", 0)
+                self._quality_summary = f"{fmt} · {br // 1000 if br else 0}kbps · {sr}Hz"
+                self._artwork_status = "Con carátula" if fields.get("has_artwork") else "Sin carátula"
+                self._is_loading = False
+                self._set_status("IDLE")
+                self.dataChanged.emit()
+                return {"ok": True, "title": fields.get("title", "")}
+            self._error_message = result.message or result.code
+        else:
+            meta = self._legacy_read(filepath)
+            if "error" not in meta:
+                self._all_fields = meta
+                self._track_title = meta.get("title", _NA)
+                self._track_artist = meta.get("artist", _NA)
+                self._track_album = meta.get("album", _NA)
+                self._fields = self._build_field_list(meta)
+                self._quality_summary = f"{meta.get('format', '?')} · {meta.get('bitrate', 0) // 1000}kbps · {meta.get('sample_rate', 0)}Hz"
+                self._artwork_status = "Con carátula" if meta.get("has_artwork") else "Sin carátula"
+                self._is_loading = False
+                self._set_status("IDLE")
+                self.dataChanged.emit()
+                return {"ok": True, "title": meta.get("title", "")}
+            self._error_message = meta.get("error", "UNKNOWN")
+
+        self._is_loading = False
+        self._set_status("ERROR")
+        self.dataChanged.emit()
+        return {"ok": False, "error": self._error_message}
+
+    def _legacy_read(self, filepath: str) -> dict:
+        result = {
+            "title": Path(filepath).stem, "artist": "", "album": "",
+            "format": Path(filepath).suffix.lower().lstrip(".").upper(),
+            "bitrate": 0, "sample_rate": 0, "channels": 0, "duration": 0.0,
+            "has_artwork": False,
+        }
+        try:
+            from metadata.tag_reader import read_tags as rt
+            tags = rt(filepath)
+            if tags:
+                result["title"] = tags.title or result["title"]
+                result["artist"] = tags.artist
+                result["album"] = tags.album
+                result["album_artist"] = tags.albumartist
+                result["genre"] = tags.genre
+                result["composer"] = tags.composer
+                result["comment"] = tags.comment
+                result["year"] = tags.date
+                result["track_number"] = tags.tracknumber
+                result["track_total"] = tags.tracktotal
+                result["disc_number"] = tags.discnumber
+                result["disc_total"] = tags.disctotal
+                result["bpm"] = tags.bpm
+                result["bitrate"] = tags.bitrate
+                result["sample_rate"] = tags.sample_rate
+                result["channels"] = tags.channels
+                result["duration"] = tags.duration
+                result["has_artwork"] = tags.has_artwork
+        except Exception:
+            pass
+        return result
+
+    @staticmethod
+    def _build_field_list(meta: dict) -> list[dict]:
+        return [
             {"key": "title", "label": "Título", "value": meta.get("title", ""), "type": "text"},
             {"key": "artist", "label": "Artista", "value": meta.get("artist", ""), "type": "text"},
             {"key": "album", "label": "Álbum", "value": meta.get("album", ""), "type": "text"},
@@ -158,58 +198,155 @@ class MetadataBridge(QObject):
             {"key": "channels", "label": "Canales", "value": meta.get("channels", 0), "type": "info"},
             {"key": "duration", "label": "Duración", "value": meta.get("duration", 0.0), "type": "info"},
         ]
-        self._quality_summary = f"{meta.get('format', '?')} · {meta.get('bitrate', 0) // 1000}kbps · {meta.get('sample_rate', 0)}Hz"
-        self._artwork_status = "Con carátula" if meta.get("has_artwork") else "Sin carátula"
-        self._is_loading = False
-        self.dataChanged.emit()
-        return {"ok": True, "title": meta.get("title", "")}
 
     @Slot(str, str, result=dict)
     def setField(self, key: str, value: str):
         if not self._current_filepath:
             return {"ok": False, "error": "NO_FILE_SELECTED"}
         self._all_fields[key] = value
-        self._fields = [{"key": f.get("key"), "label": f.get("label"), "value": self._all_fields.get(f.get("key"), f.get("value")), "type": f.get("type")} for f in self._fields]
+        self._fields = [
+            {"key": f.get("key"), "label": f.get("label"),
+             "value": self._all_fields.get(f.get("key"), f.get("value")),
+             "type": f.get("type")}
+            for f in self._fields
+        ]
         self.dataChanged.emit()
         return {"ok": True}
 
     @Slot(result=dict)
     def saveChanges(self):
         if not self._current_filepath:
-            return {"ok": False, "error_code": "NO_FILE_SELECTED", "message": "No hay archivo seleccionado"}
-        from ui_qml_bridge.metadata_tag_adapter import (
-            load_tags, apply_patch, create_backup, write_tags_safe,
-            verify_changes, rollback,
-        )
-        base_tags = load_tags(self._current_filepath)
-        if base_tags is None:
-            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
-        changes = {}
-        for k, v in self._all_fields.items():
-            if k in ("has_artwork", "format", "bitrate", "sample_rate", "bit_depth", "channels", "duration"):
-                continue
-            if k in ("title", "artist", "album", "album_artist", "genre", "year",
-                     "track_number", "track_total", "disc_number", "disc_total",
-                     "composer", "comment", "bpm", "copyright"):
-                changes[k] = v
-        tags = apply_patch(base_tags, changes)
-        if not tags.dirty:
+            return {"ok": False, "error_code": "NO_FILE_SELECTED",
+                    "message": "No hay archivo seleccionado"}
+
+        self._set_status("AWAITING_CONFIRMATION")
+        changes = self._collect_changes()
+        if not changes:
             return {"ok": False, "error_code": "NO_CHANGES", "message": "Sin cambios"}
+
+        from metadata.tag_reader import read_tags as rt
+        tags = rt(self._current_filepath)
+        if tags is None:
+            return {"ok": False, "error_code": "FILE_NOT_FOUND"}
+
+        for key, val in changes.items():
+            field_map = {
+                "title": "title", "artist": "artist", "album": "album",
+                "album_artist": "albumartist", "genre": "genre",
+                "year": "date", "track_number": "tracknumber",
+                "track_total": "tracktotal", "disc_number": "discnumber",
+                "disc_total": "disctotal", "composer": "composer",
+                "comment": "comment", "bpm": "bpm",
+            }
+            tag_field = field_map.get(key)
+            if tag_field:
+                setattr(tags, tag_field, str(val))
+                tags.dirty = True
+                tags.dirty_fields.add(tag_field)
+
+        if not tags.dirty:
+            return {"ok": False, "error_code": "NO_CHANGES"}
+
+        if self._ms:
+            review_id = self._ms.create_confirmation_token(
+                self._current_filepath, len(changes),
+            )
+            self._pending_review_id = review_id
+            self._set_status("AWAITING_CONFIRMATION")
+            self.confirmationRequested.emit(review_id, len(changes))
+            return {"ok": True, "review_id": review_id, "awaiting_confirmation": True}
+
+        return self._write_and_verify(tags)
+
+    @Slot(str, result=dict)
+    def confirmSave(self, review_id: str):
+        if not self._ms or self._pending_review_id != review_id:
+            return {"ok": False, "error_code": "INVALID_TOKEN"}
+
+        from metadata.tag_reader import read_tags as rt
+        tags = rt(self._current_filepath)
+        if tags is None:
+            return {"ok": False, "error_code": "FILE_NOT_FOUND"}
+
+        for key, val in self._collect_changes().items():
+            field_map = {
+                "title": "title", "artist": "artist", "album": "album",
+                "album_artist": "albumartist", "genre": "genre",
+                "year": "date", "track_number": "tracknumber",
+                "track_total": "tracktotal", "disc_number": "discnumber",
+                "disc_total": "disctotal", "composer": "composer",
+                "comment": "comment", "bpm": "bpm",
+            }
+            tag_field = field_map.get(key)
+            if tag_field:
+                setattr(tags, tag_field, str(val))
+                tags.dirty = True
+                tags.dirty_fields.add(tag_field)
+
+        if not tags.dirty:
+            return {"ok": False, "error_code": "NO_CHANGES"}
+
+        result = self._ms.confirm_and_apply(review_id, tags)
+        self._pending_review_id = ""
+        if result.ok:
+            self._set_status("SUCCEEDED")
+            self.operationCompleted.emit("save")
+        else:
+            self._set_status("FAILED")
+            self.operationFailed.emit(result.code, result.message)
+        return {"ok": result.ok, "code": result.code, "message": result.message}
+
+    @Slot(result=dict)
+    def rejectSave(self):
+        self._pending_review_id = ""
+        self._set_status("IDLE")
+        return {"ok": True}
+
+    def _write_and_verify(self, tags):
+        from ui_qml_bridge.metadata_tag_adapter import (
+            create_backup, write_tags_safe, verify_changes, rollback,
+        )
+        self._set_status("BACKING_UP")
         backup = create_backup(self._current_filepath)
+        self._set_status("WRITING")
         result = write_tags_safe(tags, backup)
         if not result.get("ok"):
             if backup:
+                self._set_status("ROLLING_BACK")
                 rollback(backup, self._current_filepath)
+            self._set_status("FAILED")
+            self.operationFailed.emit(result.get("error_code", "WRITE_FAILED"),
+                                       result.get("message", ""))
             return result
-        verify = verify_changes(self._current_filepath, changes)
+
+        self._set_status("VERIFYING")
+        verify = verify_changes(self._current_filepath, self._collect_changes())
         if not verify.get("ok"):
             if backup:
+                self._set_status("ROLLING_BACK")
                 rollback(backup, self._current_filepath)
+            self._set_status("FAILED")
+            self.operationFailed.emit(verify.get("error_code", "VERIFY_FAILED"),
+                                       verify.get("message", ""))
             return verify
+
+        self._set_status("SUCCEEDED")
         self._error_message = ""
         self._quality_summary = "Metadatos guardados"
         self.dataChanged.emit()
+        self.operationCompleted.emit("save")
         return {"ok": True}
+
+    def _collect_changes(self) -> dict:
+        editable = {"title", "artist", "album", "album_artist", "genre",
+                     "year", "track_number", "track_total", "disc_number",
+                     "disc_total", "composer", "comment", "bpm"}
+        changes = {}
+        for key in editable:
+            val = self._all_fields.get(key)
+            if val is not None and val != "":
+                changes[key] = val
+        return changes
 
     @Slot(result=dict)
     def hasArtwork(self):
@@ -218,30 +355,43 @@ class MetadataBridge(QObject):
     @Slot(str, result=dict)
     def replaceArtwork(self, image_path: str):
         if not image_path or not Path(image_path).is_file():
-            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
+            return {"ok": False, "error_code": "FILE_NOT_FOUND"}
         if not self._current_filepath:
-            return {"ok": False, "error_code": "NO_FILE_SELECTED", "message": "No hay archivo"}
-        from ui_qml_bridge.metadata_tag_adapter import load_tags, create_backup, write_tags_safe, rollback
-        tags = load_tags(self._current_filepath)
+            return {"ok": False, "error_code": "NO_FILE_SELECTED"}
+
+        from metadata.tag_reader import read_tags as rt
+        from ui_qml_bridge.metadata_tag_adapter import (
+            create_backup, write_tags_safe, rollback,
+        )
+        tags = rt(self._current_filepath)
         if tags is None:
-            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
+            return {"ok": False, "error_code": "FILE_NOT_FOUND"}
+
         mime = self._detect_mime(image_path)
         tags.has_artwork = True
+        tags.artwork_dirty = True
         with open(image_path, "rb") as f:
             tags.artwork_data = f.read()
         tags.artwork_mime = mime
-        tags.artwork_dirty = True
+
+        self._set_status("BACKING_UP")
         backup = create_backup(self._current_filepath)
+        self._set_status("WRITING")
         result = write_tags_safe(tags, backup)
         if not result.get("ok"):
             if backup:
+                self._set_status("ROLLING_BACK")
                 rollback(backup, self._current_filepath)
+            self._set_status("FAILED")
             return result
         self._artwork_status = "Carátula actualizada"
+        self._set_status("SUCCEEDED")
         self.dataChanged.emit()
+        self.operationCompleted.emit("artwork")
         return {"ok": True}
 
-    def _detect_mime(self, path: str) -> str:
+    @staticmethod
+    def _detect_mime(path: str) -> str:
         ext = Path(path).suffix.lower()
         return {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
                 "webp": "image/webp"}.get(ext.lstrip("."), "image/jpeg")
@@ -249,23 +399,34 @@ class MetadataBridge(QObject):
     @Slot(result=dict)
     def removeArtwork(self):
         if not self._current_filepath:
-            return {"ok": False, "error_code": "NO_FILE_SELECTED", "message": "No hay archivo"}
-        from ui_qml_bridge.metadata_tag_adapter import load_tags, create_backup, write_tags_safe, rollback
-        tags = load_tags(self._current_filepath)
+            return {"ok": False, "error_code": "NO_FILE_SELECTED"}
+
+        from metadata.tag_reader import read_tags as rt
+        from ui_qml_bridge.metadata_tag_adapter import (
+            create_backup, write_tags_safe, rollback,
+        )
+        tags = rt(self._current_filepath)
         if tags is None:
-            return {"ok": False, "error_code": "FILE_NOT_FOUND", "message": "Archivo no encontrado"}
+            return {"ok": False, "error_code": "FILE_NOT_FOUND"}
         tags.has_artwork = False
         tags.artwork_data = b""
         tags.artwork_mime = ""
         tags.artwork_dirty = True
+
+        self._set_status("BACKING_UP")
         backup = create_backup(self._current_filepath)
+        self._set_status("WRITING")
         result = write_tags_safe(tags, backup)
         if not result.get("ok"):
             if backup:
+                self._set_status("ROLLING_BACK")
                 rollback(backup, self._current_filepath)
+            self._set_status("FAILED")
             return result
         self._artwork_status = "Carátula eliminada"
+        self._set_status("SUCCEEDED")
         self.dataChanged.emit()
+        self.operationCompleted.emit("artwork_removed")
         return {"ok": True}
 
     @Slot()
@@ -281,93 +442,41 @@ class MetadataBridge(QObject):
         self._quality_summary = ""
         self._artwork_status = ""
         self._all_fields = {}
+        self._pending_review_id = ""
+        self._set_status("IDLE")
         self.dataChanged.emit()
 
     @Slot("QVariantList", str, "QVariant", result=dict)
     def batchSetField(self, filepaths: list, key: str, value):
-        if not self._wm:
-            return self._batch_set_field_sync(filepaths, key, str(value))
-        task_id = f"metadata_batch_{id(self)}_{int(time.time())}"
-        gen = [0]
+        if not self._ms:
+            return {"ok": False, "error": "METADATA_SERVICE_UNAVAILABLE"}
+        self._set_status("QUEUED")
 
-        def _task(ctx):
-            gen[0] += 1
-            total = len(filepaths)
-            results = {"ok": True, "applied": 0, "errors": 0, "details": [], "cancelled": False}
-            from ui_qml_bridge.metadata_tag_adapter import (
-                load_tags, apply_patch, create_backup, write_tags_safe,
-                rollback,
-            )
-            for idx, fp in enumerate(filepaths):
-                ctx.token.raise_if_cancelled()
-                try:
-                    base = load_tags(fp)
-                    if base is None:
-                        results["errors"] += 1
-                        results["details"].append({"filepath": fp, "error": "FILE_NOT_FOUND"})
-                        continue
-                    tags = apply_patch(base, {key: str(value)})
-                    if not tags.dirty:
-                        continue
-                    backup = create_backup(fp)
-                    write_result = write_tags_safe(tags, backup)
-                    if write_result.get("ok"):
-                        results["applied"] += 1
-                    else:
-                        results["errors"] += 1
-                        results["details"].append({"filepath": fp, "error": write_result.get("error_code")})
-                        if backup:
-                            rollback(backup, fp)
-                except Exception as e:
-                    results["errors"] += 1
-                    results["details"].append({"filepath": fp, "error": str(e)})
-                ctx.report_progress((idx + 1) / total, f"{idx+1}/{total}")
-            return results
+        if self._js:
+            job = self._js.create(kind="metadata_batch", meta={
+                "count": len(filepaths), "field": key,
+            })
+            job_id = job.job_id if job else None
+        else:
+            job_id = None
 
-        def _on_done(result):
-            if result.get("ok"):
-                self._batch_results = result
-                self.batchProgress.emit(result.get("applied", 0), len(filepaths))
-                self.dataChanged.emit()
+        self._set_status("APPLYING")
+        results = {"ok": True, "applied": 0, "errors": 0, "details": [],
+                    "cancelled": False, "job_id": job_id}
 
-        def _on_error(code, msg):
-            self._batch_results = {"ok": False, "applied": 0, "errors": len(filepaths),
-                                    "error_code": code, "message": msg}
-            self.dataChanged.emit()
+        from metadata.tag_reader import read_tags as rt
+        from ui_qml_bridge.metadata_tag_adapter import (
+            apply_patch, create_backup, write_tags_safe, rollback,
+        )
 
-        def _on_cancelled():
-            self._batch_results = {"ok": False, "applied": 0, "errors": len(filepaths),
-                                    "cancelled": True}
-            self.dataChanged.emit()
-
-        def _on_progress(pct, msg):
-            self.batchProgress.emit(int(pct * len(filepaths)), len(filepaths))
-
-        try:
-            self._wm.run_task(
-                task_id, _task,
-                pass_context=True, cancellable=True, owner="metadata",
-                on_done=_on_done, on_error=_on_error,
-                on_cancelled=_on_cancelled, on_progress=_on_progress,
-            )
-            return {"ok": True, "async": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
-    def _batch_set_field_sync(self, filepaths: list, key: str, value: str) -> dict:
-        results = {"ok": True, "applied": 0, "errors": 0, "details": []}
-        for fp in filepaths:
+        for _idx, fp in enumerate(filepaths):
             try:
-                from ui_qml_bridge.metadata_tag_adapter import (
-                    load_tags, apply_patch, create_backup, write_tags_safe,
-                    rollback,
-                )
-                base = load_tags(fp)
+                base = rt(fp)
                 if base is None:
                     results["errors"] += 1
                     results["details"].append({"filepath": fp, "error": "FILE_NOT_FOUND"})
                     continue
-                tags = apply_patch(base, {key: value})
+                tags = apply_patch(base, {key: str(value)})
                 if not tags.dirty:
                     continue
                 backup = create_backup(fp)
@@ -382,17 +491,26 @@ class MetadataBridge(QObject):
             except Exception as e:
                 results["errors"] += 1
                 results["details"].append({"filepath": fp, "error": str(e)})
+
+        if self._js and job_id:
+            job = self._js.get(job_id)
+            if job:
+                if results["errors"] == 0:
+                    self._js.update(job_id, status="completed", progress=1.0)
+                elif results["applied"] > 0:
+                    self._js.update(job_id, status="failed", progress=float(results["applied"]) / len(filepaths))
+                else:
+                    self._js.update(job_id, status="failed", progress=0)
+
+        self._set_status("SUCCEEDED" if results["errors"] == 0 else "PARTIAL" if results["applied"] > 0 else "FAILED")
+        self.batchProgress.emit(results["applied"], len(filepaths))
+        self.dataChanged.emit()
         return results
 
     @Slot(result=dict)
     def cancelBatch(self):
-        if self._wm:
-            self._wm.cancel_task("metadata_batch")
+        self._set_status("CANCELLED")
         return {"ok": True}
-
-    def _on_batch_done(self, result: dict):
-        if result.get("ok"):
-            self.dataChanged.emit()
 
     @Slot()
     def refresh(self):

@@ -139,7 +139,6 @@ def test_genre_filter(bridge):
     assert bridge.activeGenreFilter == "Rock"
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_clear_filters(bridge):
     bridge.setFormatFilter("FLAC")
     bridge.setSearchQuery("test")

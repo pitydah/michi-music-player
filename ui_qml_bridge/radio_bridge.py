@@ -1,5 +1,3 @@
-"""RadioBridge — connects QML Radio page to real RadioManager."""
-
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
 
@@ -15,6 +13,9 @@ class RadioBridge(QObject):
         self._player = player_service
         self._stations = []
         self._favorites = []
+        self._history = []
+        self._current_station = ""
+        self._reconnect_attempts = 0
 
     @Property("QVariantList", notify=dataChanged)
     def stations(self):
@@ -23,6 +24,10 @@ class RadioBridge(QObject):
     @Property("QVariantList", notify=dataChanged)
     def favorites(self):
         return self._favorites
+
+    @Property("QVariantList", notify=dataChanged)
+    def history(self):
+        return list(self._history)
 
     @Slot(result=dict)
     def refresh(self):
@@ -53,25 +58,52 @@ class RadioBridge(QObject):
                 logger.info("Radio station added: id=%s, name=%s, url=%s",
                             getattr(station, 'id', '?'), name, url)
                 self.refresh()
-                count = len(self._stations) if hasattr(self, '_stations') else 0
-                return {"ok": True, "id": getattr(station, 'id', 0), "count": count}
+                return {"ok": True, "id": getattr(station, 'id', 0)}
             except Exception as e:
                 logger.warning("Radio add failed: %s", e, exc_info=True)
                 return {"ok": False, "error": str(e)}
-        logger.warning("Radio add failed: no radio manager or missing 'add' method")
         return {"ok": False, "error": "NO_RADIO_MANAGER"}
 
     @Slot(str, result=dict)
-    def playStation(self, url: str):
+    def playStation(self, url: str, name: str = ""):
         if not url:
             return {"ok": False, "error": "EMPTY_URL"}
         if self._player and hasattr(self._player, 'play_url'):
             try:
                 self._player.play_url(url)
+                self._current_station = url
+                if name:
+                    self._history.insert(0, {"name": name, "url": url, "played_at": __import__("time").time()})
+                    self._history = self._history[:50]
+                    self.dataChanged.emit()
                 return {"ok": True}
             except Exception as e:
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "NO_PLAYER_SERVICE"}
+
+    @Slot(result=dict)
+    def reconnectLast(self):
+        if self._current_station:
+            return self.playStation(self._current_station)
+        return {"ok": False, "error": "NO_LAST_STATION"}
+
+    @Slot(result=dict)
+    def retryCurrent(self):
+        return self.reconnectLast()
+
+    @Slot(result=dict)
+    def stopStream(self):
+        if self._player and hasattr(self._player, 'stop'):
+            try:
+                self._player.stop()
+                return {"ok": True}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "NO_PLAYER"}
+
+    @Slot(result=dict)
+    def cancelStream(self):
+        return self.stopStream()
 
     @Slot(str, result=dict)
     def deleteStation(self, url: str):
@@ -141,7 +173,65 @@ class RadioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    @Slot(result=str)
+    @Slot(str, result=dict)
+    def importM3u(self, filepath: str):
+        if not self._radio_mgr:
+            return {"ok": False, "error": "NO_RADIO_MANAGER"}
+        from pathlib import Path
+        if not Path(filepath).is_file():
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
+        try:
+            count = 0
+            with open(filepath) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and line.startswith("http"):
+                        name = Path(line).stem or "Imported"
+                        self._radio_mgr.add(name, line)
+                        count += 1
+            self.refresh()
+            return {"ok": True, "count": count}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def exportM3u(self, filepath: str):
+        if not self._stations:
+            return {"ok": False, "error": "NO_STATIONS"}
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write("#EXTM3U\n")
+                for s in self._stations:
+                    f.write(f"#EXTINF:-1,{s['name']}\n{s['url']}\n")
+            return {"ok": True, "count": len(self._stations)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def exportOpml(self, filepath: str):
+        if not self._stations:
+            return {"ok": False, "error": "NO_STATIONS"}
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+                f.write('<opml version="2.0"><body><outline text="Radio Stations">\n')
+                for s in self._stations:
+                    f.write(f'<outline type="rss" text="{s["name"]}" xmlUrl="{s["url"]}"/>\n')
+                f.write('</outline></body></opml>\n')
+            return {"ok": True, "count": len(self._stations)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def getMetadata(self, url: str):
+        if self._radio_mgr and hasattr(self._radio_mgr, 'get_metadata'):
+            try:
+                return self._radio_mgr.get_metadata(url)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "NO_METADATA"}
+
+    @Slot(str, result=str)
     def getCodec(self):
         if self._radio_mgr and hasattr(self._radio_mgr, 'get_all'):
             try:

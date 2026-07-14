@@ -73,7 +73,6 @@ def mock_action_registry():
     return reg
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_export_history_creates_file(bridge, tmp_path):
     out = tmp_path / "history.json"
     result = bridge.exportHistory(str(out))
@@ -86,26 +85,22 @@ def test_export_history_creates_file(bridge, tmp_path):
     assert data[0]["title"] == "Title 0"
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_export_history_empty_path_fails(bridge):
     result = bridge.exportHistory("")
     assert not result["ok"]
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_play_history_item_with_playback_service(bridge, hqs, mock_playback):
     bridge._playback_svc = mock_playback
     result = bridge.playHistoryItem("1")
     assert result["ok"]
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_play_history_item_no_service_returns_error(bridge):
     result = bridge.playHistoryItem("1")
     assert not result["ok"]
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_play_history_item_with_action_registry(bridge, mock_action_registry):
     bridge._action_registry = mock_action_registry
     bridge._playback_svc = None
@@ -114,14 +109,12 @@ def test_play_history_item_with_action_registry(bridge, mock_action_registry):
     mock_action_registry.execute.assert_called_with("track_play_now")
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_remove_history_event_by_id(bridge, hqs):
     result = bridge.removeHistoryEvent("1")
     assert result["ok"]
     assert hqs.count_history() == 4
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_remove_nonexistent_event(bridge):
     result = bridge.removeHistoryEvent("999")
     assert result["ok"]
@@ -140,7 +133,6 @@ def test_clear_history_then_refresh_empty(bridge, hqs):
     assert result["count"] == 0
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_apply_retention_policy(bridge, hqs):
     old_time = time.time() - 10000000
     hqs._db.conn.execute("INSERT INTO play_history (track_id, played_at, device) VALUES (?, ?, ?)",

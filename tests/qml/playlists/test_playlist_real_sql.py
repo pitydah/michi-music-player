@@ -43,19 +43,23 @@ class FakeDb:
         rows = self.conn.execute("SELECT id, name, track_count FROM playlists").fetchall()
         return [{"id": r[0], "name": r[1], "track_count": r[2]} for r in rows]
 
-    def create_playlist(self, name):
+    def create_playlist(self, name, description="", cover=""):
         if "create_playlist" in self._fail_on:
             raise RuntimeError("Simulated failure")
-        self.conn.execute("INSERT INTO playlists (name) VALUES (?)", (name,))
+        self.conn.execute("INSERT INTO playlists (name, description, cover) VALUES (?, ?, ?)", (name, description, cover))
         self.conn.commit()
         return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
-    def update_playlist(self, pid, name=None):
+    def update_playlist(self, pid, name=None, description=None, cover=None):
         if "update_playlist" in self._fail_on:
             raise RuntimeError("Simulated failure")
         if name:
             self.conn.execute("UPDATE playlists SET name=? WHERE id=?", (name, pid))
-            self.conn.commit()
+        if description is not None:
+            self.conn.execute("UPDATE playlists SET description=? WHERE id=?", (description, pid))
+        if cover is not None:
+            self.conn.execute("UPDATE playlists SET cover=? WHERE id=?", (cover, pid))
+        self.conn.commit()
 
     def delete_playlist(self, pid):
         if "delete_playlist" in self._fail_on:
@@ -225,7 +229,6 @@ def test_rename_playlist(svc):
     assert svc.list()[0]["name"] == "New Name"
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_clear_playlist(svc):
     svc.create("Clear")
     pid = svc.list()[0]["id"]

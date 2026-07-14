@@ -1,4 +1,3 @@
-"""AppBridge — real application state and lifecycle."""
 from __future__ import annotations
 
 import os
@@ -18,9 +17,19 @@ def get_app_version() -> str:
 class AppBridge(QObject):
     statusChanged = Signal(str)
 
-    PHASE_INITIALIZING = "initializing"
-    PHASE_LOADING_SERVICES = "loading_services"
-    PHASE_LOADING_QML = "loading_qml"
+    BOOTSTRAP = "bootstrap"
+    DATABASE_READY = "database_ready"
+    SERVICES_READY = "services_ready"
+    BRIDGES_READY = "bridges_ready"
+    QML_LOADING = "qml_loading"
+    READY = "ready"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    SHUTTING_DOWN = "shutting_down"
+    STOPPED = "stopped"
+    PHASE_LOADING_SERVICES = "services_ready"
+    PHASE_INITIALIZING = "bootstrap"
+    PHASE_LOADING_QML = "qml_loading"
     PHASE_READY = "ready"
     PHASE_SHUTTING_DOWN = "shutting_down"
     PHASE_FAILED = "failed"
@@ -37,18 +46,16 @@ class AppBridge(QObject):
         self._ready = False
         self._shutting_down = False
         self._restart_required = False
-        self._wm = worker_manager
-        self._qe = query_executor
-        self._player_service = player_service
-        self._queue_bridge = queue_bridge
-        self._sync_manager = sync_manager
-        self._home_audio = home_audio_controller
-        self._radio_manager = radio_manager
-        self._discovery = discovery
-        self._db = db
+        self._services: list = [s for s in [worker_manager, query_executor,
+                               player_service, queue_bridge, sync_manager,
+                               home_audio_controller, radio_manager, discovery, db]
+                               if s is not None]
         self._ui_mode = "qml"
-        self._phase = self.PHASE_INITIALIZING
+        self._phase = self.BOOTSTRAP
         self._accepting_new = True
+
+    def receive_services(self, *services):
+        self._services = list(services)
 
     @Property(str, constant=True)
     def appName(self):
@@ -118,15 +125,15 @@ class AppBridge(QObject):
         except Exception:
             return ""
 
-    @Slot()
-    def setReady(self):
-        self._ready = True
-        self._phase = self.PHASE_READY
-        self.statusChanged.emit("ready")
-
     def setPhase(self, phase: str):
         self._phase = phase
         self.statusChanged.emit(phase)
+
+    @Slot()
+    def setReady(self):
+        self._ready = True
+        self._phase = self.READY
+        self.statusChanged.emit("ready")
 
     @Slot(result=dict)
     def requestRestart(self):
@@ -152,109 +159,59 @@ class AppBridge(QObject):
     @Slot()
     def quit(self):
         self._shutting_down = True
-        self._phase = self.PHASE_SHUTTING_DOWN
+        self._phase = self.SHUTTING_DOWN
         self._accepting_new = False
         self.statusChanged.emit("shutting_down")
+        self._ordered_shutdown()
+
+    def _ordered_shutdown(self):
+        steps = []
+        for svc in self._services:
+            steps.append(svc)
 
         import contextlib
+        for step in steps:
+            if hasattr(step, 'shutdown'):
+                with contextlib.suppress(Exception):
+                    step.shutdown()
 
-        # b. Cancel QueryExecutor
-        with contextlib.suppress(Exception):
-            if self._qe and hasattr(self._qe, 'shutdown'):
-                self._qe.shutdown(2000)
+        self._phase = self.STOPPED
+        self.statusChanged.emit("stopped")
 
-        # c. Cancel WorkerManager
-        with contextlib.suppress(Exception):
-            if self._wm and hasattr(self._wm, 'cancel_all'):
-                self._wm.cancel_all()
-            if self._wm and hasattr(self._wm, 'shutdown'):
-                self._wm.shutdown(3000)
-
-        # d. Stop SyncManager
-        with contextlib.suppress(Exception):
-            if self._sync_manager and hasattr(self._sync_manager, 'stop'):
-                self._sync_manager.stop()
-
-        # e. Stop discovery
-        with contextlib.suppress(Exception):
-            if self._discovery and hasattr(self._discovery, 'stop'):
-                self._discovery.stop()
-
-        # f. Stop Home Audio polling
-        with contextlib.suppress(Exception):
-            if self._home_audio:
-                if hasattr(self._home_audio, 'stop'):
-                    self._home_audio.stop()
-                elif hasattr(self._home_audio, 'shutdown'):
-                    self._home_audio.shutdown()
-
-        # g. Stop radio
-        with contextlib.suppress(Exception):
-            if self._radio_manager:
-                if hasattr(self._radio_manager, 'stop'):
-                    self._radio_manager.stop()
-                elif hasattr(self._radio_manager, 'shutdown'):
-                    self._radio_manager.shutdown()
-
-        # h. Stop audio
-        with contextlib.suppress(Exception):
-            if self._player_service and hasattr(self._player_service, 'stop'):
-                self._player_service.stop()
-
-        # i. Persist queue and session via QueueService
-        with contextlib.suppress(Exception):
-            if self._queue_bridge:
-                qs = getattr(self._queue_bridge, 'queue_service', None)
-                if qs is not None and hasattr(qs, 'shutdown'):
-                    qs.shutdown()
-                elif hasattr(self._queue_bridge, 'saveState'):
-                    self._queue_bridge.saveState()
-
-        # j. Close DB
-        with contextlib.suppress(Exception):
-            if self._db and hasattr(self._db, 'close'):
-                self._db.close()
-
-        # k. Quit Qt
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.quit()
 
     @Slot()
     def cancelAllTasks(self):
-        if self._wm and hasattr(self._wm, 'cancel_all'):
-            self._wm.cancel_all()
+        import contextlib
+        for svc in self._services:
+            if hasattr(svc, 'cancel_all'):
+                with contextlib.suppress(Exception):
+                    svc.cancel_all()
 
     def notifyRestartRequired(self):
         self._restart_required = True
         self.statusChanged.emit("restart_required")
 
-    def getWorkerManager(self):
-        return self._wm
-
-    def getQueryExecutor(self):
-        return self._qe
-
     @Slot(result=dict)
     def appScore(self) -> dict:
         score = 0
-        if self._wm:
+        if self._services:
             score += 25
-        if self._qe:
-            score += 20
         if self._ready:
             score += 15
         if not self._safe_mode and self._ready:
             score += 15
-        if self._wm and hasattr(self._wm, 'cancel_all'):
+        if len(self._services) > 2:
             score += 15
-        if self._wm and hasattr(self._wm, 'shutdown'):
-            score += 10
+        if self._phase in (self.READY, self.DEGRADED):
+            score += 15
         return {
             "score": min(100, score),
-            "has_worker_manager": self._wm is not None,
-            "has_query_executor": self._qe is not None,
+            "service_count": len(self._services),
             "ready": self._ready,
             "safe_mode": self._safe_mode,
             "shutting_down": self._shutting_down,
             "restart_required": self._restart_required,
+            "phase": self._phase,
         }

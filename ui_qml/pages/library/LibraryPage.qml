@@ -32,11 +32,47 @@ Item {
     }
 
     function showArtistDetail(name) {
-        pageStack.push("/pages/library/ArtistDetailPage.qml", {artistName: name})
+        if (typeof navigationBridge !== "undefined") {
+            navigationBridge.navigateWithParams("library.artist_detail", {artist: name})
+        }
     }
 
     function showAlbumDetail(key, title, artist, year) {
-        pageStack.push("/pages/library/album/AlbumDetailPage.qml", {albumKey: key})
+        if (typeof navigationBridge !== "undefined") {
+            navigationBridge.navigateWithParams("library.album_detail", {album_key: key})
+        }
+    }
+
+    enum State {
+        INITIALIZING,
+        NO_SOURCES,
+        SCANNING,
+        LOADING,
+        READY,
+        FILTERED_EMPTY,
+        SOURCE_OFFLINE,
+        QUERY_ERROR,
+        DATABASE_ERROR,
+        CANCELLED
+    }
+
+    property int libraryState: LibraryPage.INITIALIZING
+
+    function _updateState() {
+        if (!root.lib) return
+        var s = root.lib.state || "INITIALIZING"
+        switch (s) {
+            case "NO_SOURCES": libraryState = LibraryPage.NO_SOURCES; break
+            case "SCANNING": libraryState = LibraryPage.SCANNING; break
+            case "LOADING": libraryState = LibraryPage.LOADING; break
+            case "READY": libraryState = LibraryPage.READY; break
+            case "FILTERED_EMPTY": libraryState = LibraryPage.FILTERED_EMPTY; break
+            case "SOURCE_OFFLINE": libraryState = LibraryPage.SOURCE_OFFLINE; break
+            case "QUERY_ERROR": libraryState = LibraryPage.QUERY_ERROR; break
+            case "DATABASE_ERROR": libraryState = LibraryPage.DATABASE_ERROR; break
+            case "CANCELLED": libraryState = LibraryPage.CANCELLED; break
+            default: libraryState = LibraryPage.INITIALIZING
+        }
     }
 
     Column {
@@ -90,20 +126,59 @@ Item {
             }
 
             FolderBrowserPage {
-                folderModel: root.ArtistListModel ? root.lib.folderModel : null
+                folderModel: root.lib ? root.lib.folderModel : null
                 bridge: root.lib
             }
         }
     }
 
-    LibraryErrorState {
-        id: errorState; anchors.centerIn: parent
-        visible: false
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.NO_SOURCES
+        sourceComponent: Text {
+            text: "No hay fuentes configuradas"
+            color: MichiTheme.textMuted
+            font.pixelSize: MichiTheme.fontSizeLarge
+        }
     }
 
-    LibraryEmptyState {
-        id: emptyState; anchors.centerIn: parent
-        visible: false
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.FILTERED_EMPTY
+        sourceComponent: Text {
+            text: "No se encontraron resultados con los filtros actuales"
+            color: MichiTheme.textMuted
+            font.pixelSize: MichiTheme.fontSizeLarge
+        }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.SOURCE_OFFLINE
+        sourceComponent: Text {
+            text: "Fuente de biblioteca no disponible"
+            color: MichiTheme.textMuted
+            font.pixelSize: MichiTheme.fontSizeLarge
+        }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
+        sourceComponent: Text {
+            text: "Error al cargar la biblioteca"
+            color: MichiTheme.errorColor
+            font.pixelSize: MichiTheme.fontSizeLarge
+        }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
+        sourceComponent: Item {
+            width: 120; height: 120
+            BusyIndicator { anchors.centerIn: parent; running: true }
+        }
     }
 
     LibrarySelectionBar {

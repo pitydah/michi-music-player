@@ -420,6 +420,30 @@ DIAGNOSTICS_SETTINGS = SettingsCategory("diagnostics_settings", "Diagnóstico", 
     SettingsSection("tools", "Herramientas", entries=[]),
 ])
 
+METADATA_SETTINGS = SettingsCategory("metadata", "Metadatos", "metadata", sections=[
+    SettingsSection("general", "General", entries=[
+        SettingsEntry("metadata/write_to_files", "Escribir a archivos", ENTRY_BOOL, True),
+        SettingsEntry("metadata/update_database", "Actualizar base de datos", ENTRY_BOOL, True),
+        SettingsEntry("metadata/preserve_unknown_fields", "Preservar campos desconocidos", ENTRY_BOOL, True),
+        SettingsEntry("metadata/verify_after_write", "Verificar después de escribir", ENTRY_BOOL, True),
+        SettingsEntry("metadata/backup_enabled", "Crear backup antes de escribir", ENTRY_BOOL, True),
+        SettingsEntry("metadata/auto_apply_threshold", "Umbral auto-aplicar (%)", ENTRY_INT, 90,
+                       min_value=50, max_value=100),
+    ]),
+    SettingsSection("providers", "Proveedores", entries=[
+        SettingsEntry("metadata/musicbrainz_enabled", "MusicBrainz", ENTRY_BOOL, True),
+        SettingsEntry("metadata/musicbrainz_auto_lookup", "Búsqueda automática MusicBrainz", ENTRY_BOOL, True),
+        SettingsEntry("metadata/cache_enabled", "Cache de metadatos", ENTRY_BOOL, True),
+        SettingsEntry("metadata/cache_ttl", "TTL caché (horas)", ENTRY_INT, 24,
+                       min_value=1, max_value=720),
+    ]),
+    SettingsSection("artwork", "Carátulas", entries=[
+        SettingsEntry("artwork/max_bytes", "Tamaño máximo (MB)", ENTRY_INT, 10,
+                       min_value=1, max_value=50),
+        SettingsEntry("artwork/auto_download", "Descarga automática", ENTRY_BOOL, True),
+    ]),
+])
+
 # ── All categories lookup ──
 
 ALL_CATEGORIES: list[SettingsCategory] = [
@@ -427,6 +451,7 @@ ALL_CATEGORIES: list[SettingsCategory] = [
     BUFFER, GAPLESS, REPLAYGAIN, EQ_DSP, BITPERFECT, CACHE, NETWORK,
     RADIO, LYRICS_SETTINGS, DEVICES, CONNECTIONS, HOME_AUDIO,
     PRIVACY, APPEARANCE, ACCESSIBILITY, ADVANCED, DIAGNOSTICS_SETTINGS,
+    METADATA_SETTINGS,
 ]
 
 

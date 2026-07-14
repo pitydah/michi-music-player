@@ -25,7 +25,6 @@ def mock_mqs():
     return mqs
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_cancel_generation_calls_worker_manager_cancel(mock_wm, mock_mqs):
     bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
     bridge.loadMix("favorites")
@@ -34,7 +33,6 @@ def test_cancel_generation_calls_worker_manager_cancel(mock_wm, mock_mqs):
     mock_wm.cancel_all.assert_called_with(owner="mix_bridge")
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_cancel_generation_increments_counter(mock_wm, mock_mqs):
     bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
     bridge.loadMix("favorites")
@@ -44,7 +42,6 @@ def test_cancel_generation_increments_counter(mock_wm, mock_mqs):
     assert bridge._generation == gen_before + 1
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_generation_counter_used_in_load_stale_check(mock_wm, mock_mqs):
     bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
     bridge.loadMix("favorites")
@@ -54,14 +51,12 @@ def test_generation_counter_used_in_load_stale_check(mock_wm, mock_mqs):
     assert bridge._generation > old_gen
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
-def test_custom_mix_with_seed(mock_wm):
+def test_custom_mix_with_seed(mock_wm, mock_mqs):
     bridge = MixBridge(worker_manager=mock_wm)
     result = bridge.loadMix("custom", seed='{"artist": "Genesis", "limit": 5}')
     assert result["ok"]
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_custom_mix_with_rules_empty(mock_wm, mock_mqs):
     bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
     result = bridge.loadMix("custom")
@@ -74,7 +69,6 @@ def test_cancel_generation_still_ok_without_wm():
     assert result["ok"]
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_cancel_twice_still_ok(mock_wm, mock_mqs):
     bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
     bridge.cancelGeneration()

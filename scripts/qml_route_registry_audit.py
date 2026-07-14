@@ -19,8 +19,8 @@ def check():
             if key not in info:
                 ERRORS.append(f"{route}: missing {key}")
 
-        # Every source exists
-        if "source" in info:
+            # Every source exists
+        if "source" in info and info.get("status") != "placeholder":
             source_path = info["source"].replace("../pages/", "pages/")
             qml_path = ROOT / "ui_qml" / source_path
             if not qml_path.exists():

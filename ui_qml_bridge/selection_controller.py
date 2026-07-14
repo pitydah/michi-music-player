@@ -1,7 +1,3 @@
-"""SelectionController — QObject adapted selection state with immutability guarantees.
-
-selectedIds is always a new list on every mutation. Never mutates in place.
-"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -43,6 +39,19 @@ class SelectionController(QObject):
     def hasSelection(self):
         return len(self._selected_ids) > 0
 
+    def _mutate(self):
+        self._generation += 1
+        self.selectionChanged.emit()
+        self.countChanged.emit()
+        self.generationChanged.emit()
+
+    @Slot("QVariantList")
+    def replace(self, ids: list):
+        self._selected_ids = list(ids)
+        self._anchor = ids[0] if ids else -1
+        self._current = ids[-1] if ids else -1
+        self._mutate()
+
     @Slot(int)
     def toggle(self, item_id: int):
         new_list = list(self._selected_ids)
@@ -55,57 +64,74 @@ class SelectionController(QObject):
                 self._anchor = item_id
         self._current = item_id
         self._selected_ids = new_list
-        self._generation += 1
-        self.selectionChanged.emit()
-        self.countChanged.emit()
-        self.generationChanged.emit()
+        self._mutate()
 
     @Slot(int)
-    def range(self, item_id: int):
-        if self._anchor < 0 or not self._selected_ids:
-            self.toggle(item_id)
-            return
-        low = min(self._anchor, item_id)
-        high = max(self._anchor, item_id)
-        new_set = set(self._selected_ids)
-        for i in range(low, high + 1):
-            new_set.add(i)
-        self._current = item_id
-        self._selected_ids = sorted(new_set)
-        self._generation += 1
-        self.selectionChanged.emit()
-        self.countChanged.emit()
-        self.generationChanged.emit()
+    def add(self, item_id: int):
+        if item_id not in self._selected_ids:
+            self._selected_ids = list(self._selected_ids) + [item_id]
+            if self._anchor < 0:
+                self._anchor = item_id
+            self._current = item_id
+            self._mutate()
 
-    @Slot()
-    def selectAll(self):
-        self._selected_ids = []
-        self._generation += 1
-        self.selectionChanged.emit()
-        self.countChanged.emit()
-        self.generationChanged.emit()
+    @Slot(int)
+    def remove(self, item_id: int):
+        if item_id in self._selected_ids:
+            new_list = list(self._selected_ids)
+            new_list.remove(item_id)
+            self._selected_ids = new_list
+            self._mutate()
 
-    def populate_all(self, ids: list[int]):
-        self._selected_ids = list(ids)
-        self._generation += 1
-        self.selectionChanged.emit()
-        self.countChanged.emit()
-        self.generationChanged.emit()
+    @Slot(int, int)
+    def selectRangeByRows(self, from_row: int, to_row: int, all_ids: list = None):
+        if all_ids is None:
+            self._selected_ids = list(range(min(from_row, to_row), max(from_row, to_row) + 1))
+        else:
+            low = min(from_row, to_row)
+            high = max(from_row, to_row)
+            self._selected_ids = [all_ids[i] for i in range(low, high + 1) if i < len(all_ids)]
+        self._current = self._selected_ids[-1] if self._selected_ids else -1
+        self._mutate()
 
-    @Slot()
-    def selectFiltered(self):
-        pass
+    @Slot(list)
+    def selectAllLoaded(self, all_ids: list):
+        self._selected_ids = list(all_ids)
+        self._anchor = all_ids[0] if all_ids else -1
+        self._current = all_ids[-1] if all_ids else -1
+        self._mutate()
+
+    @Slot(list)
+    def selectAllFiltered(self, filtered_ids: list):
+        self._selected_ids = list(filtered_ids)
+        self._anchor = filtered_ids[0] if filtered_ids else -1
+        self._current = filtered_ids[-1] if filtered_ids else -1
+        self._mutate()
+
+    @Slot(list)
+    def invertLoaded(self, all_ids: list):
+        current_set = set(self._selected_ids)
+        self._selected_ids = [i for i in all_ids if i not in current_set]
+        self._mutate()
 
     @Slot()
     def clear(self):
         self._selected_ids = []
         self._anchor = -1
         self._current = -1
-        self._generation += 1
-        self.selectionChanged.emit()
-        self.countChanged.emit()
-        self.generationChanged.emit()
+        self._mutate()
 
     @Slot(int, result=bool)
     def contains(self, item_id: int) -> bool:
         return item_id in self._selected_ids
+
+    @Slot(result=dict)
+    def restore(self):
+        return {
+            "ok": True,
+            "selected_ids": list(self._selected_ids),
+            "anchor": self._anchor,
+            "current": self._current,
+            "generation": self._generation,
+            "count": len(self._selected_ids),
+        }

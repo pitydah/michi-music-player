@@ -87,7 +87,6 @@ def test_edit_station_updates_metadata(mock_radio_mgr, mock_player):
     mock_radio_mgr.update.assert_called_once_with(1, name="Edited FM", url="http://edited.stream")
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_play_station_adds_to_history(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     bridge.refresh()
@@ -96,7 +95,6 @@ def test_play_station_adds_to_history(mock_radio_mgr, mock_player):
     assert bridge.history[0]["name"] == "Jazz FM"
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_import_m3u(mock_radio_mgr, mock_player):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     result = bridge.importM3u("/nonexistent/file.m3u")
@@ -104,7 +102,6 @@ def test_import_m3u(mock_radio_mgr, mock_player):
     assert result["error"] == "FILE_NOT_FOUND"
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_export_m3u(mock_radio_mgr, mock_player, tmp_path):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     bridge.refresh()
@@ -117,7 +114,6 @@ def test_export_m3u(mock_radio_mgr, mock_player, tmp_path):
     assert "Jazz FM" in content
 
 
-@pytest.mark.xfail(reason="pre-existing", strict=False)
 def test_import_export_opml(mock_radio_mgr, mock_player, tmp_path):
     bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
     bridge.refresh()

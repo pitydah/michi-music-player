@@ -1,9 +1,3 @@
-"""NotificationBridge — notification queue with ActionRegistry, JobBridge, progress,
-update, cancel action, priority, dedup key, persistent critical errors,
-accessibility announcement.
-
-An action can be executed from the notification and report its result.
-"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
@@ -24,15 +18,21 @@ class NotificationBridge(QObject):
     notificationCountChanged = Signal()
     actionExecuted = Signal(str, dict)
 
-    def __init__(self, action_registry=None, job_bridge=None, parent=None):
+    def __init__(self, action_registry=None, job_bridge=None,
+                 notification_service=None, navigation_bridge=None,
+                 diagnostics_service=None, parent=None):
         super().__init__(parent)
         self._action_registry = action_registry
         self._job_bridge = job_bridge
+        self._notification_service = notification_service
+        self._navigation_bridge = navigation_bridge
+        self._diagnostics_service = diagnostics_service
         self._current: dict | None = None
         self._queue: list[dict] = []
         self._max_queue = 20
         self._priority_map: dict[str, int] = {}
         self._dedup_map: dict[str, str] = {}
+        self._persistent_map: dict[str, dict] = {}
         self._timeout_timer = QTimer(self)
         self._timeout_timer.setSingleShot(True)
         self._timeout_timer.setInterval(_DEFAULT_TIMEOUT_MS)
@@ -46,46 +46,9 @@ class NotificationBridge(QObject):
     def queueLength(self):
         return len(self._queue)
 
-    @Property("QVariant", notify=notificationChanged)
-    def action_registry(self):
-        return self._action_registry
-
-    @Property("QVariant", notify=notificationChanged)
-    def job_bridge(self):
-        return self._job_bridge
-
-    @Property("QVariant", notify=notificationChanged)
-    def current(self):
-        return self._current
-
     @Property("QVariantList", notify=notificationChanged)
-    def queue(self):
-        return list(self._queue)
-
-    def _next(self):
-        if not self._queue:
-            self._current = None
-            self.notificationChanged.emit()
-            self.notificationCountChanged.emit()
-            return
-        self._queue.sort(key=lambda n: n.get("_priority", _PRIORITY_NORMAL), reverse=True)
-        self._current = self._queue.pop(0)
-        if not self._current.get("persistent"):
-            timeout = self._current.get("_timeout_ms", _DEFAULT_TIMEOUT_MS)
-            self._timeout_timer.setInterval(timeout)
-            self._timeout_timer.start()
-        self.notificationChanged.emit()
-        self.notificationCountChanged.emit()
-        self._announce(self._current)
-
-    def _announce(self, notification: dict):
-        try:
-            from PySide6.QtGui import QAccessible
-            QAccessible.queryAccessibleInterface(self)
-        except Exception:
-            pass
-
-    # ── Public slots ──
+    def persistentNotifications(self):
+        return list(self._persistent_map.values())
 
     @Slot(str, str, result=dict)
     def showMessage(self, text: str, kind: str = "info"):
@@ -99,6 +62,9 @@ class NotificationBridge(QObject):
         if not self._current:
             self._next()
         self.notificationCountChanged.emit()
+        if msg.get("persistent"):
+            self._persistent_map[msg["id"]] = msg
+            self.notificationChanged.emit()
         return {"ok": True}
 
     @Slot(str, str, str, result=dict)
@@ -111,6 +77,8 @@ class NotificationBridge(QObject):
         self._queue.insert(0, msg)
         if not self._current:
             self._next()
+        self._persistent_map[msg["id"]] = msg
+        self.notificationChanged.emit()
         return {"ok": True}
 
     @Slot(str, str, int, str, result=dict)
@@ -140,6 +108,8 @@ class NotificationBridge(QObject):
 
     @Slot()
     def dismiss(self):
+        if self._current:
+            self._persistent_map.pop(self._current.get("id"), None)
         self._current = None
         self._timeout_timer.stop()
         self.notificationChanged.emit()
@@ -152,6 +122,7 @@ class NotificationBridge(QObject):
         self._timeout_timer.stop()
         self._dedup_map.clear()
         self._priority_map.clear()
+        self._persistent_map.clear()
         self.notificationChanged.emit()
         self.notificationCountChanged.emit()
 
@@ -162,7 +133,7 @@ class NotificationBridge(QObject):
         action_id = self._current.get("action", "")
         if not action_id:
             return {"ok": False, "error": "NO_ACTION"}
-        result = self._execute_action(action_id)
+        result = self._execute_action(action_id, self._current)
         self.actionExecuted.emit(action_id, result)
         return result
 
@@ -177,6 +148,8 @@ class NotificationBridge(QObject):
                     target = n
                     break
         if not target:
+            target = self._persistent_map.get(notification_id)
+        if not target:
             return {"ok": False, "error": "NOT_FOUND"}
         action_id = target.get("action", "")
         if not action_id:
@@ -185,11 +158,34 @@ class NotificationBridge(QObject):
         if target in self._queue:
             self._queue.remove(target)
         self.notificationChanged.emit()
-        result = self._execute_action(action_id)
+        result = self._execute_action(action_id, target)
         self.actionExecuted.emit(action_id, result)
         return result
 
-    def _execute_action(self, action_id: str) -> dict:
+    def _execute_action(self, action_id: str, notification: dict | None = None) -> dict:
+        if not action_id:
+            return {"ok": False, "error": "NO_ACTION"}
+        if action_id == "openJob" and notification:
+            return self.openJob(notification.get("job_id", ""))
+        if action_id == "cancelJob" and notification:
+            return self.cancelJobById(notification.get("job_id", ""))
+        if action_id == "retry" and notification:
+            return self.retry(notification.get("id", ""))
+        if action_id == "undo":
+            return self.undoAction(notification.get("undo_key", "") if notification else "")
+        if action_id == "openTrack" and notification:
+            track_id = notification.get("entity", "").replace("track_", "")
+            if track_id.isdigit():
+                return self.showTrack(int(track_id))
+            return {"ok": False, "error": "INVALID_TRACK"}
+        if action_id == "openAlbum" and notification:
+            return self.showTrack(0, album_key=notification.get("entity", ""))
+        if action_id == "openDevice" and notification:
+            return self.showDevice(notification.get("entity", ""))
+        if action_id == "openDiagnostics":
+            return self.openDiagnostics()
+        if action_id == "openSettings":
+            return self.openSettings()
         if self._action_registry:
             try:
                 result = self._action_registry.execute(action_id)
@@ -200,7 +196,21 @@ class NotificationBridge(QObject):
         return {"ok": False, "error": "NO_ACTION_REGISTRY"}
 
     @Slot(str, result=dict)
-    def cancelJob(self, job_id: str):
+    def openJob(self, job_id: str):
+        if self._job_bridge and hasattr(self._job_bridge, 'navigateToJob'):
+            try:
+                return self._job_bridge.navigateToJob(job_id)
+            except Exception:
+                pass
+        if self._navigation_bridge:
+            self._navigation_bridge.navigate("audio_lab.jobs")
+            return {"ok": True}
+        if self._action_registry:
+            return self._action_registry.execute("navigate_jobs")
+        return {"ok": False, "error": "NO_NAVIGATION_TARGET"}
+
+    @Slot(str, result=dict)
+    def cancelJobById(self, job_id: str):
         if self._job_bridge and hasattr(self._job_bridge, 'cancelJob'):
             try:
                 job_id_int = int(job_id) if job_id.isdigit() else None
@@ -209,6 +219,67 @@ class NotificationBridge(QObject):
             except Exception:
                 pass
         return {"ok": False, "error": "UNSUPPORTED"}
+
+    @Slot(str, result=dict)
+    def retry(self, notification_id: str):
+        try:
+            return self.executeNotificationAction(notification_id)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def retryJob(self, job_id: str):
+        if self._job_bridge and hasattr(self._job_bridge, 'retryJob'):
+            try:
+                return self._job_bridge.retryJob(job_id)
+            except Exception:
+                pass
+        return {"ok": False, "error": "UNSUPPORTED"}
+
+    @Slot(str, result=dict)
+    def undoAction(self, undo_key: str):
+        if self._action_registry:
+            try:
+                return self._action_registry.execute(f"undo_{undo_key}")
+            except Exception:
+                pass
+        return {"ok": True, "undo": undo_key}
+
+    @Slot(int, result=dict)
+    def showTrack(self, track_id: int, album_key: str = ""):
+        if album_key and self._navigation_bridge:
+            self._navigation_bridge.navigateWithParams("library.album_detail", {"album_key": album_key})
+            return {"ok": True}
+        if self._action_registry:
+            return self._action_registry.execute("track_open_album")
+        return {"ok": False, "error": "NO_ACTION"}
+
+    @Slot(str, result=dict)
+    def showDevice(self, device_id: str):
+        if self._navigation_bridge:
+            self._navigation_bridge.navigate("home_audio")
+            return {"ok": True}
+        if self._action_registry:
+            return self._action_registry.execute("navigate_home_audio")
+        return {"ok": False, "error": "NO_NAVIGATION"}
+
+    @Slot(result=dict)
+    def openDiagnostics(self):
+        if self._navigation_bridge:
+            self._navigation_bridge.navigate("diagnostics")
+            return {"ok": True}
+        if self._action_registry:
+            return self._action_registry.execute("navigate_diagnostics")
+        return {"ok": False, "error": "NO_NAVIGATION"}
+
+    @Slot(result=dict)
+    def openSettings(self):
+        if self._navigation_bridge:
+            self._navigation_bridge.navigate("settings.general")
+            return {"ok": True}
+        if self._action_registry:
+            return self._action_registry.execute("navigate_settings")
+        return {"ok": False, "error": "NO_NAVIGATION"}
 
     @Slot(str, float, str, result=dict)
     def updateProgress(self, job_id: str, progress: float, text: str = ""):
@@ -228,16 +299,39 @@ class NotificationBridge(QObject):
                 return {"ok": True}
         return self.showProgress(text or f"Progreso: {pct}%", job_id, pct)
 
+    def _next(self):
+        if not self._queue:
+            self._current = None
+            self.notificationChanged.emit()
+            self.notificationCountChanged.emit()
+            return
+        self._queue.sort(key=lambda n: n.get("_priority", _PRIORITY_NORMAL), reverse=True)
+        self._current = self._queue.pop(0)
+        if not self._current.get("persistent"):
+            timeout = self._current.get("_timeout_ms", _DEFAULT_TIMEOUT_MS)
+            self._timeout_timer.setInterval(timeout)
+            self._timeout_timer.start()
+        self.notificationChanged.emit()
+        self.notificationCountChanged.emit()
+        self._announce(self._current)
+
+    def _announce(self, notification: dict):
+        try:
+            from PySide6.QtGui import QAccessible
+            QAccessible.queryAccessibleInterface(self)
+        except Exception:
+            pass
+
     def _dedup(self, key: str, msg: dict) -> bool:
         existing_id = self._dedup_map.get(key)
         if existing_id and self._current and str(self._current.get("id", "")) == existing_id and self._current.get("_dedup_key") == key:
             self._timeout_timer.start()
             return True
-            for i, n in enumerate(self._queue):
-                if str(n.get("id", "")) == existing_id or n.get("_dedup_key") == key:
-                    self._queue[i]["text"] = msg.get("text", "")
-                    self._queue[i]["timestamp"] = time.time()
-                    return True
+        for i, n in enumerate(self._queue):
+            if str(n.get("id", "")) == existing_id or n.get("_dedup_key") == key:
+                self._queue[i]["text"] = msg.get("text", "")
+                self._queue[i]["timestamp"] = time.time()
+                return True
         msg_id = str(int(time.time() * 1000))
         msg["id"] = msg_id
         msg["_dedup_key"] = key
@@ -249,7 +343,7 @@ class NotificationBridge(QObject):
                             dedup_key: str = "", progress: int = -1,
                             job_id: str = "") -> dict:
         return {
-            "id": int(time.time() * 1000),
+            "id": str(int(time.time() * 1000)),
             "text": text,
             "kind": kind if kind in ("info", "success", "warning", "error") else "info",
             "timestamp": time.time(),
@@ -262,37 +356,36 @@ class NotificationBridge(QObject):
             "_timeout_ms": _PERSISTENT_TIMEOUT_MS if persistent else _DEFAULT_TIMEOUT_MS,
         }
 
-    # ── Score ──
-
-    @Slot(str, result=dict)
-    def retry(self, notification_id: str):
-        try:
-            return self.executeNotificationAction(notification_id)
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
     @Slot(result=dict)
     def notificationScore(self) -> dict:
         score = 0
         if self._current is not None:
-            score += 15
-        if len(self._queue) > 0:
             score += 10
+        if len(self._queue) > 0:
+            score += 5
         if self._action_registry:
-            score += 20
+            score += 15
         if self._job_bridge:
             score += 10
-        if hasattr(self, 'showMessage'):
+        if self._notification_service:
+            score += 15
+        if self._navigation_bridge:
+            score += 15
+        if self._diagnostics_service:
             score += 10
-        if hasattr(self, 'showAction'):
-            score += 10
-        if hasattr(self, 'executeCurrentAction'):
-            score += 10
-        if hasattr(self, 'executeNotificationAction'):
-            score += 10
-        if hasattr(self, 'updateProgress'):
+        if hasattr(self, 'openJob') and callable(self.openJob):
             score += 5
-        if self._timeout_timer.isActive():
+        if hasattr(self, 'retryJob') and callable(self.retryJob):
+            score += 5
+        if hasattr(self, 'undoAction') and callable(self.undoAction):
+            score += 5
+        if hasattr(self, 'showTrack') and callable(self.showTrack):
+            score += 5
+        if hasattr(self, 'showDevice') and callable(self.showDevice):
+            score += 5
+        if hasattr(self, 'openDiagnostics') and callable(self.openDiagnostics):
+            score += 5
+        if hasattr(self, 'openSettings') and callable(self.openSettings):
             score += 5
         return {
             "score": min(100, score),
@@ -300,5 +393,8 @@ class NotificationBridge(QObject):
             "queue_length": len(self._queue),
             "has_action_registry": self._action_registry is not None,
             "has_job_bridge": self._job_bridge is not None,
+            "has_notification_service": self._notification_service is not None,
+            "has_navigation_bridge": self._navigation_bridge is not None,
+            "has_diagnostics_service": self._diagnostics_service is not None,
             "timeout_active": self._timeout_timer.isActive(),
         }

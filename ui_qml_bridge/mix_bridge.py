@@ -5,6 +5,8 @@ Deterministic seed support, explainable, stale-safe, partial results explicit.
 """
 from __future__ import annotations
 
+import contextlib
+
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
 
@@ -147,6 +149,20 @@ class MixBridge(QObject):
             return []
 
     def _build_custom_mix(self, params: str = "") -> list[dict]:
+        if not params or not self._mqs:
+            return []
+        try:
+            import json
+            rules = json.loads(params) if isinstance(params, str) else params
+            artist = rules.get("artist", "")
+            genre = rules.get("genre", "")
+            limit = int(rules.get("limit", 30))
+            if artist:
+                return self._mqs.by_field("artist", value=artist, limit=limit) or []
+            if genre:
+                return self._mqs.by_field("genre", value=genre, limit=limit) or []
+        except (json.JSONDecodeError, Exception):
+            pass
         return []
 
     @Slot(result=dict)
@@ -158,7 +174,8 @@ class MixBridge(QObject):
 
     def __init__(self, db=None, playback_ctrl=None, player_service=None,
                  track_action_service=None, playlist_bridge=None,
-                 query_service=None, query_executor=None, parent=None):
+                 query_service=None, query_executor=None,
+                 worker_manager=None, parent=None):
         super().__init__(parent)
         self._db = db
         self._player = playback_ctrl or player_service
@@ -172,6 +189,7 @@ class MixBridge(QObject):
         self._ai_enabled = False
         self._generation = 0
         self._mqs = query_service
+        self._wm = worker_manager
 
     @Slot(result=dict)
     def playMix(self):
@@ -269,6 +287,10 @@ class MixBridge(QObject):
 
     @Slot(result=dict)
     def cancelGeneration(self):
+        if self._wm and hasattr(self._wm, 'cancel_all'):
+            with contextlib.suppress(Exception):
+                self._wm.cancel_all(owner="mix_bridge")
+                pass
         gen = self._generation
         self._generation += 1
         return {"ok": True, "cancelled": gen}

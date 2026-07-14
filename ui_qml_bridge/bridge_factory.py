@@ -265,8 +265,11 @@ class BridgeFactory(QObject):
     def create_metadata_bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
         if "metadata" not in self._bridges:
+            ms = self._services.metadata_service
+            js = self._services.job_service
             self._bridges["metadata"] = MetadataBridge(
-                worker_manager=self._services.worker_manager,
+                metadata_service=ms,
+                job_service=js,
             )
         return self._bridges["metadata"]
 

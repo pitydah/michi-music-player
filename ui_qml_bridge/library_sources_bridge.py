@@ -1,4 +1,3 @@
-"""LibrarySourcesBridge — QML bridge for LibrarySourcesService with shared JobBridge."""
 from __future__ import annotations
 
 import logging
@@ -20,6 +19,7 @@ class LibrarySourcesBridge(QObject):
         self._svc = service or LibrarySourcesService()
         self._jb = job_bridge
         self._status = "ready"
+        self._exclusions: list[str] = []
 
     @Property("QVariantList", notify=dataChanged)
     def sources(self):
@@ -40,6 +40,10 @@ class LibrarySourcesBridge(QObject):
         self.dataChanged.emit()
         return result
 
+    @Slot(str, str, result=dict)
+    def editSource(self, path: str, new_path: str):
+        return self.relinkSource(path, new_path)
+
     @Slot(str, result=dict)
     def removeSource(self, path: str):
         result = self._svc.remove(path)
@@ -56,7 +60,16 @@ class LibrarySourcesBridge(QObject):
     def scanSource(self, path: str):
         if not self._jb:
             return {"ok": False, "error": "NO_JOB_SERVICE"}
+        self.dataChanged.emit()
         return self._jb.runJob("library_scan", path)
+
+    @Slot(str, result=dict)
+    def cancelSourceScan(self, path: str):
+        if not self._jb:
+            return {"ok": False, "error": "NO_JOB_SERVICE"}
+        self._status = "idle"
+        self.dataChanged.emit()
+        return {"ok": True}
 
     @Slot(result=dict)
     def scanAllSources(self):
@@ -74,6 +87,28 @@ class LibrarySourcesBridge(QObject):
         add = self._svc.add(new_path)
         self.dataChanged.emit()
         return add
+
+    @Slot(str, result=dict)
+    def setExclusion(self, path: str):
+        if path not in self._exclusions:
+            self._exclusions.append(path)
+        return {"ok": True, "exclusions": list(self._exclusions)}
+
+    @Slot(str, result=dict)
+    def removeExclusion(self, path: str):
+        self._exclusions = [e for e in self._exclusions if e != path]
+        return {"ok": True, "exclusions": list(self._exclusions)}
+
+    @Slot(result=dict)
+    def watchState(self):
+        import time
+        return {
+            "ok": True,
+            "sources": self._svc.list(),
+            "status": self._status,
+            "exclusions": list(self._exclusions),
+            "timestamp": time.time(),
+        }
 
     @Slot(result=dict)
     def refreshAvailability(self):

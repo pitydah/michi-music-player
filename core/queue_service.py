@@ -1,11 +1,8 @@
-"""QueueService — canonical queue management for PlayerService.
+"""QueueService — canonical single source of truth for queue state."""
 
-This is the single source of truth for queue state.
-PlayerService delegates queue operations here.
-QueueBridge and NowPlayingBridge both read from PlayerService.
-"""
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -31,38 +28,84 @@ def _queue_state_path():
 class QueueService:
     def __init__(self, player_service=None):
         self._player = player_service
+        self._items: list[dict] = []
         self._undo_stack: list[dict] = []
         self._can_undo = False
 
+    def get_items(self) -> list[dict]:
+        return list(self._items)
+
+    def set_items(self, items: list[dict]):
+        self._save_undo()
+        self._items = list(items)
+        if self._player and hasattr(self._player, 'set_queue'):
+            with contextlib.suppress(Exception):
+                self._player.set_queue(items)
+
+    def insert(self, index: int, items: list[dict]):
+        self._save_undo()
+        for i, item in enumerate(items):
+            self._items.insert(index + i, item)
+        self._sync()
+
+    def append(self, items: list[dict]):
+        self._save_undo()
+        self._items.extend(items)
+        self._sync()
+
+    def replace(self, items: list[dict]):
+        self._save_undo()
+        self._items = list(items)
+        self._sync()
+
+    def reorder(self, from_index: int, to_index: int):
+        self._save_undo()
+        if 0 <= from_index < len(self._items) and 0 <= to_index < len(self._items):
+            item = self._items.pop(from_index)
+            self._items.insert(to_index, item)
+            self._sync()
+
+    def remove(self, indices: list[int]):
+        self._save_undo()
+        for idx in sorted(indices, reverse=True):
+            if 0 <= idx < len(self._items):
+                self._items.pop(idx)
+        self._sync()
+
+    def clear(self):
+        self._save_undo()
+        self._items = []
+        self._sync()
+
+    def undo(self):
+        if self._undo_stack:
+            self._items = self._undo_stack.pop()
+            self._can_undo = len(self._undo_stack) > 0
+            self._sync()
+
+    def _save_undo(self):
+        self._undo_stack.append(list(self._items))
+        self._can_undo = True
+
+    def _sync(self):
+        if self._player and hasattr(self._player, 'set_queue'):
+            with contextlib.suppress(Exception):
+                self._player.set_queue(self._items)
+
     def save_state(self) -> dict:
-        if not self._player or not hasattr(self._player, 'get_queue'):
-            return {"ok": False, "error": "NO_PLAYER"}
         try:
-            q = self._player.get_queue()
-            items = []
-            for i in (q or []):
-                if isinstance(i, dict):
-                    items.append({
-                        "id": i.get("id", i.get("track_id", "")),
-                        "track_uid": i.get("track_uid", ""),
-                        "title": i.get("title", ""),
-                        "artist": i.get("artist", ""),
-                        "album": i.get("album", ""),
-                        "duration": i.get("duration", 0),
-                        "source": i.get("source_type", "local_file"),
-                    })
             state = {
                 "version": 1,
                 "timestamp": time.time(),
                 "current_index": 0,
                 "position": 0,
                 "source": "queue_service",
-                "items": items,
+                "items": self._items,
             }
             path = _queue_state_path()
             with open(path, "w") as f:
                 json.dump(state, f)
-            return {"ok": True, "path": path, "count": len(items)}
+            return {"ok": True, "path": path, "count": len(self._items)}
         except Exception as e:
             logger.exception("save_state failed")
             return {"ok": False, "error": str(e)}
@@ -77,29 +120,20 @@ class QueueService:
             items = state.get("items", [])
             if not items:
                 return {"ok": False, "error": "EMPTY_QUEUE"}
-            if not self._player or not hasattr(self._player, 'set_queue'):
-                return {"ok": False, "error": "UNSUPPORTED"}
-            resolved = []
-            for item in items:
-                track = self._resolve_track(item)
-                if track:
-                    resolved.append(track)
-            self._player.set_queue(resolved)
-            return {"ok": True, "count": len(resolved)}
+            self._items = list(items)
+            self._sync()
+            return {"ok": True, "count": len(items)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def _resolve_track(self, item: dict) -> dict | None:
-        tid = item.get("id", item.get("track_id", ""))
-        if not self._player or not hasattr(self._player, 'get_track_by_id'):
-            return item
-        try:
-            track = self._player.get_track_by_id(tid)
-            if track:
-                return track
-        except Exception:
-            pass
-        return item
+    def persist(self) -> dict:
+        return self.save_state()
+
+    def restore(self) -> dict:
+        return self.load_state()
+
+    def missing_tracks(self) -> list[dict]:
+        return [item for item in self._items if not item.get("filepath")]
 
     def shutdown(self):
         self.save_state()

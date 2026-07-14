@@ -3,8 +3,8 @@
     "REQUIRED_FALLBACK": 1,
     "MIGRATION_PENDING": 67,
     "UNSAFE_HYBRID": 0,
-    "DUPLICATED_LOGIC": 24,
-    "REMOVABLE": 12
+    "DUPLICATED_LOGIC": 26,
+    "REMOVABLE": 13
   },
   "results": {
     "REQUIRED_FALLBACK": [
@@ -355,6 +355,11 @@
     "UNSAFE_HYBRID": [],
     "DUPLICATED_LOGIC": [
       {
+        "file": "ui_qml_bridge/audio_analysis_bridge.py",
+        "category": "REMOVABLE",
+        "reason": "15x return 'ok:True' sin ejecución real de backend"
+      },
+      {
         "file": "ui_qml_bridge/audio_quality_adapter.py",
         "category": "DUPLICATED_LOGIC",
         "reason": "Business rule: file-exists check (aparece en bridge y core)"
@@ -363,6 +368,16 @@
         "file": "ui_qml_bridge/connections_bridge.py",
         "category": "REMOVABLE",
         "reason": "12x return 'ok:True' sin ejecución real de backend"
+      },
+      {
+        "file": "ui_qml_bridge/conversion_bridge.py",
+        "category": "DUPLICATED_LOGIC",
+        "reason": "Business rule: file-exists check (aparece en bridge y core)"
+      },
+      {
+        "file": "ui_qml_bridge/conversion_bridge.py",
+        "category": "REMOVABLE",
+        "reason": "6x return 'ok:True' sin ejecución real de backend"
       },
       {
         "file": "ui_qml_bridge/cover_bridge.py",
@@ -425,11 +440,6 @@
         "reason": "Business rule: track-uid logic (aparece en bridge y core)"
       },
       {
-        "file": "ui_qml_bridge/metadata_bridge.py",
-        "category": "DUPLICATED_LOGIC",
-        "reason": "Business rule: file-exists check (aparece en bridge y core)"
-      },
-      {
         "file": "ui_qml_bridge/metadata_tag_adapter.py",
         "category": "DUPLICATED_LOGIC",
         "reason": "Business rule: file-exists check (aparece en bridge y core)"
@@ -441,8 +451,13 @@
       },
       {
         "file": "ui_qml_bridge/notification_bridge.py",
+        "category": "DUPLICATED_LOGIC",
+        "reason": "Business rule: album-key logic (aparece en bridge y core)"
+      },
+      {
+        "file": "ui_qml_bridge/notification_bridge.py",
         "category": "REMOVABLE",
-        "reason": "10x return 'ok:True' sin ejecución real de backend"
+        "reason": "16x return 'ok:True' sin ejecución real de backend"
       },
       {
         "file": "ui_qml_bridge/nowplaying_bridge.py",
@@ -468,11 +483,6 @@
         "file": "ui_qml_bridge/qml_main.py",
         "category": "DUPLICATED_LOGIC",
         "reason": "Business rule: file-exists check (aparece en bridge y core)"
-      },
-      {
-        "file": "ui_qml_bridge/queue_bridge.py",
-        "category": "DUPLICATED_LOGIC",
-        "reason": "Business rule: track-uid logic (aparece en bridge y core)"
       }
     ],
     "REMOVABLE": [
@@ -483,6 +493,16 @@
       },
       {
         "file": "ui_qml_bridge/adapters/snapcast_adapter.py",
+        "category": "REMOVABLE",
+        "reason": "No service dependency"
+      },
+      {
+        "file": "ui_qml_bridge/audio_analysis_bridge.py",
+        "category": "REMOVABLE",
+        "reason": "No service dependency"
+      },
+      {
+        "file": "ui_qml_bridge/conversion_bridge.py",
         "category": "REMOVABLE",
         "reason": "No service dependency"
       },
@@ -502,12 +522,7 @@
         "reason": "No service dependency"
       },
       {
-        "file": "ui_qml_bridge/navigation_bridge.py",
-        "category": "REMOVABLE",
-        "reason": "No service dependency"
-      },
-      {
-        "file": "ui_qml_bridge/notification_bridge.py",
+        "file": "ui_qml_bridge/metadata_bridge.py",
         "category": "REMOVABLE",
         "reason": "No service dependency"
       },
