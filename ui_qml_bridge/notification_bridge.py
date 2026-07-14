@@ -4,6 +4,8 @@ from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 import logging
 import time
 
+from core.notification_service import Notification, NotificationService, NotificationType
+
 logger = logging.getLogger("michi.notifications")
 
 _DEFAULT_TIMEOUT_MS = 5000
@@ -24,7 +26,7 @@ class NotificationBridge(QObject):
         super().__init__(parent)
         self._action_registry = action_registry
         self._job_bridge = job_bridge
-        self._notification_service = notification_service
+        self._notification_service: NotificationService | None = notification_service
         self._navigation_bridge = navigation_bridge
         self._diagnostics_service = diagnostics_service
         self._current: dict | None = None
@@ -37,6 +39,20 @@ class NotificationBridge(QObject):
         self._timeout_timer.setSingleShot(True)
         self._timeout_timer.setInterval(_DEFAULT_TIMEOUT_MS)
         self._timeout_timer.timeout.connect(self._next)
+
+        if self._notification_service is not None:
+            self._notification_service.on(self._on_service_notification)
+
+    def _on_service_notification(self, n: Notification):
+        kind = n.type.value if isinstance(n.type, NotificationType) else "info"
+        text = n.message or n.title
+        if n.type == NotificationType.PROGRESS:
+            self.showProgress(text, n.job_id or n.id, int(n.progress) if n.progress >= 0 else 0, kind=kind)
+        elif n.actions:
+            action = n.actions[0] if n.actions else ""
+            self.showAction(text, action, kind=kind)
+        else:
+            self.showMessage(text, kind=kind, persistent=n.persistent)
 
     @Property("QVariant", notify=notificationChanged)
     def currentNotification(self):
@@ -51,8 +67,10 @@ class NotificationBridge(QObject):
         return list(self._persistent_map.values())
 
     @Slot(str, str, result=dict)
-    def showMessage(self, text: str, kind: str = "info"):
-        msg = self._build_notification(text, kind=kind, persistent=(kind == "error"))
+    def showMessage(self, text: str, kind: str = "info", persistent: bool | None = None):
+        if persistent is None:
+            persistent = kind == "error"
+        msg = self._build_notification(text, kind=kind, persistent=persistent)
         dedup_key = msg.get("_dedup_key", text)
         if self._dedup(dedup_key, msg):
             return {"ok": True, "dedup": True}
@@ -106,14 +124,20 @@ class NotificationBridge(QObject):
         self.notificationCountChanged.emit()
         return {"ok": True}
 
-    @Slot()
-    def dismiss(self):
-        if self._current:
-            self._persistent_map.pop(self._current.get("id"), None)
-        self._current = None
-        self._timeout_timer.stop()
-        self.notificationChanged.emit()
-        self._next()
+    @Slot(str, result=dict)
+    def dismiss(self, notification_id: str = ""):
+        if notification_id:
+            self._persistent_map.pop(notification_id, None)
+            if self._notification_service:
+                self._notification_service.dismiss(notification_id)
+        if not notification_id or (self._current and str(self._current.get("id", "")) == notification_id):
+            if self._current:
+                self._persistent_map.pop(self._current.get("id"), None)
+            self._current = None
+            self._timeout_timer.stop()
+            self.notificationChanged.emit()
+            self._next()
+        return {"ok": True}
 
     @Slot()
     def clear(self):
@@ -123,6 +147,8 @@ class NotificationBridge(QObject):
         self._dedup_map.clear()
         self._priority_map.clear()
         self._persistent_map.clear()
+        if self._notification_service:
+            self._notification_service.clear()
         self.notificationChanged.emit()
         self.notificationCountChanged.emit()
 
@@ -172,7 +198,8 @@ class NotificationBridge(QObject):
         if action_id == "retry" and notification:
             return self.retry(notification.get("id", ""))
         if action_id == "undo":
-            return self.undoAction(notification.get("undo_key", "") if notification else "")
+            result = self.undoAction(notification.get("undo_key", "") if notification else "")
+            return result
         if action_id == "openTrack" and notification:
             track_id = notification.get("entity", "").replace("track_", "")
             if track_id.isdigit():
@@ -240,10 +267,11 @@ class NotificationBridge(QObject):
     def undoAction(self, undo_key: str):
         if self._action_registry:
             try:
-                return self._action_registry.execute(f"undo_{undo_key}")
+                result = self._action_registry.execute(f"undo_{undo_key}")
+                return result if isinstance(result, dict) else {"ok": True}
             except Exception:
                 pass
-        return {"ok": True, "undo": undo_key}
+        return {"ok": False, "error": "UNSUPPORTED_UNDO"}
 
     @Slot(int, result=dict)
     def showTrack(self, track_id: int, album_key: str = ""):
@@ -376,8 +404,6 @@ class NotificationBridge(QObject):
         if hasattr(self, 'openJob') and callable(self.openJob):
             score += 5
         if hasattr(self, 'retryJob') and callable(self.retryJob):
-            score += 5
-        if hasattr(self, 'undoAction') and callable(self.undoAction):
             score += 5
         if hasattr(self, 'showTrack') and callable(self.showTrack):
             score += 5

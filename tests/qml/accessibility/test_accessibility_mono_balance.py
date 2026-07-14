@@ -31,9 +31,6 @@ class TestMonoBalance:
     @pytest.fixture
     def settings_service(self):
         svc = MagicMock()
-        def mock_get(key, default=None):
-            return default
-        svc.get.side_effect = mock_get
         svc.set_.return_value = {"ok": True}
         return svc
 
@@ -48,6 +45,7 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
+        bridge._mono = False
         bridge.mono = True
         assert ps.mono_enabled is True
         assert bridge.mono is True
@@ -57,8 +55,7 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
-        bridge.mono = True
-        assert ps.mono_enabled is True
+        bridge._mono = True
         bridge.mono = False
         assert ps.mono_enabled is False
         assert bridge.mono is False
@@ -68,6 +65,7 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
+        bridge._mono = False
         bridge.mono = True
         assert bridge.mono is False
 
@@ -76,6 +74,7 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
+        bridge._balance = 0
         bridge.balance = 30
         assert ps.balance_value == 30
         assert bridge.balance == 30
@@ -85,6 +84,7 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
+        bridge._balance = 0
         bridge.balance = 150
         assert bridge.balance == 100
         bridge.balance = -200
@@ -95,6 +95,7 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator,
                                      playback_service=ps)
+        bridge._balance = 0
         bridge.balance = 50
         assert bridge.balance == 0
 
@@ -102,5 +103,12 @@ class TestMonoBalance:
         bridge = AccessibilityBridge(settings_service=settings_service,
                                      settings_coordinator=coordinator)
         old = bridge.mono
-        bridge.mono = True
+        bridge.mono = not old
         assert bridge.mono == old
+
+    def test_balance_no_playback_service(self, settings_service, coordinator):
+        bridge = AccessibilityBridge(settings_service=settings_service,
+                                     settings_coordinator=coordinator)
+        old = bridge.balance
+        bridge.balance = 50
+        assert bridge.balance == old

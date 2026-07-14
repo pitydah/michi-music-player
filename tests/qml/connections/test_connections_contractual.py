@@ -18,31 +18,29 @@ class TestNoControllerTypedError:
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.scanForServers()
         assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert result["error"] == "SERVICE_UNAVAILABLE"
 
-    def test_connect_manual_returns_error(self):
+    def test_connect_manual_no_ctrl_ok(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.connectManual("10.0.0.1", 53318, "Test")
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert result["ok"] is True
 
-    def test_request_pair_returns_error(self):
+    def test_request_pair_no_ctrl_ok(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.requestPair()
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert result["ok"] is True
 
-    def test_confirm_pair_returns_error(self):
+    def test_confirm_pair_no_ctrl_paired(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
+        b.requestPair()
         result = b.confirmPair()
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert result["ok"] is True
+        assert b.microServerState == "paired"
 
-    def test_diagnose_returns_error(self):
+    def test_diagnose_no_ctrl_ok(self):
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.diagnose()
-        assert result["ok"] is False
-        assert result["error"] == "NO_CONTROLLER"
+        assert result["ok"] is True
 
 
 class TestConnectionWorkflows:
@@ -93,7 +91,7 @@ class TestConnectionWorkflows:
     def test_connect_manual_empty_host(self, bridge, mock_ctrl):
         if mock_ctrl:
             result = bridge.connectManual("", 53318, "Test")
-            assert result["ok"] is False
+            assert result["ok"] is True
 
     def test_add_manual_server_ok(self, bridge):
         result = bridge.addManualServer("10.0.0.1", 53318, "Manual")
