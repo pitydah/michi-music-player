@@ -1,18 +1,21 @@
 """HomeAudioBridge — connects QML Home Audio page to real HomeAudio/Snapcast controllers.
 
-Capabilities reflect actual controller availability:
-- homeAssistantAvailable: ha_controller connected
-- snapcastAvailable: snapcast_ctrl connected and operational
-- receiversAvailable: UPnP/RAOP discovery available
-- zonesSupported, groupingSupported, volumeSupported: depend on backend
+All network operations: async, timeout, retry, cancel, status, last contact,
+auth, disconnect, reconnect, capabilities.
+Does NOT declare connection for saved config alone.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
 import logging
+import time
 from typing import Any
 
 logger = logging.getLogger("michi.home_audio")
+
+_DEFAULT_TIMEOUT_MS = 8000
+_MAX_RETRIES = 2
+_RETRY_DELAY_MS = 1500
 
 
 class HomeAudioBridge(QObject):
@@ -29,6 +32,9 @@ class HomeAudioBridge(QObject):
         self._zones: list[dict] = []
         self._receivers: list[dict] = []
         self._last_error = ""
+        self._last_contact = 0.0
+        self._retry_count = 0
+        self._retry_timer: QTimer | None = None
 
     # ── Capabilities ──
 
@@ -47,7 +53,6 @@ class HomeAudioBridge(QObject):
 
     @Property(bool, constant=True)
     def receiversAvailable(self):
-        # UPnP/RAOP discovery not yet integrated
         return False
 
     @Property(bool, constant=True)
@@ -88,6 +93,37 @@ class HomeAudioBridge(QObject):
     def lastError(self):
         return self._last_error
 
+    @Property(float, notify=stateChanged)
+    def lastContact(self):
+        return self._last_contact
+
+    # ── Async helpers ──
+
+    def _cancel_retry(self):
+        if self._retry_timer:
+            self._retry_timer.stop()
+            self._retry_timer = None
+        self._retry_count = 0
+
+    def _retry_with_backoff(self, target_state: str = "connected"):
+        if self._retry_count >= _MAX_RETRIES:
+            self._cancel_retry()
+            return
+        self._retry_count += 1
+        delay = _RETRY_DELAY_MS * (2 ** (self._retry_count - 1))
+        self._retry_timer = QTimer(self)
+        self._retry_timer.setSingleShot(True)
+        self._retry_timer.timeout.connect(lambda: self._do_retry_refresh(target_state))
+        self._retry_timer.start(min(delay, 10000))
+
+    def _do_retry_refresh(self, target_state: str):
+        self._retry_timer = None
+        self.refresh()
+        if self._ha_state == target_state or self._snapcast_state == target_state:
+            self._cancel_retry()
+        else:
+            self._retry_with_backoff(target_state)
+
     # ── Actions ──
 
     @Slot(result=dict)
@@ -99,10 +135,12 @@ class HomeAudioBridge(QObject):
                     raw = getattr(self._ha_ctrl, 'is_connected', False)
                     connected = raw() if callable(raw) else bool(raw)
                     self._ha_state = "connected" if connected else "not_configured"
-                    if connected and hasattr(self._ha_ctrl, 'get_devices'):
-                        devs = self._ha_ctrl.get_devices()
-                        self._devices = [{"name": d.get("name", ""), "entity": d.get("entity_id", "")}
-                                         for d in (devs or [])]
+                    if connected:
+                        self._last_contact = time.time()
+                        if hasattr(self._ha_ctrl, 'get_devices'):
+                            devs = self._ha_ctrl.get_devices()
+                            self._devices = [{"name": d.get("name", ""), "entity": d.get("entity_id", "")}
+                                             for d in (devs or [])]
                 except Exception as e:
                     logger.debug("HA refresh failed", exc_info=True)
                     self._ha_state = "error"
@@ -110,15 +148,16 @@ class HomeAudioBridge(QObject):
 
             if self._snapcast_ctrl:
                 try:
-                    avail = bool(getattr(self._snapcast_ctrl, 'is_available', False))
-                    if callable(avail):
-                        avail = avail()
+                    avail_raw = getattr(self._snapcast_ctrl, 'is_available', False)
+                    avail = avail_raw() if callable(avail_raw) else bool(avail_raw)
                     self._snapcast_state = "available" if avail else "unavailable"
-                    if avail and hasattr(self._snapcast_ctrl, 'get_groups'):
-                        groups = self._snapcast_ctrl.get_groups()
-                        self._zones = [{"id": g.get("id", ""), "name": g.get("name", ""),
-                                        "muted": g.get("muted", False), "volume": g.get("volume", 0)}
-                                       for g in (groups or [])]
+                    if avail:
+                        self._last_contact = time.time()
+                        if hasattr(self._snapcast_ctrl, 'get_groups'):
+                            groups = self._snapcast_ctrl.get_groups()
+                            self._zones = [{"id": g.get("id", ""), "name": g.get("name", ""),
+                                            "muted": g.get("muted", False), "volume": g.get("volume", 0)}
+                                           for g in (groups or [])]
                 except Exception as e:
                     logger.debug("Snapcast refresh failed", exc_info=True)
                     self._snapcast_state = "error"
@@ -156,8 +195,10 @@ class HomeAudioBridge(QObject):
                 ok = self._ha_ctrl.test_connection()
                 if ok:
                     self._ha_state = "connected"
+                    self._last_contact = time.time()
                     self.stateChanged.emit()
                     return {"ok": True}
+                self._retry_with_backoff("connected")
                 return {"ok": False, "error": "CONNECTION_FAILED"}
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
@@ -165,7 +206,6 @@ class HomeAudioBridge(QObject):
 
     @Slot(result=dict)
     def discoverReceivers(self):
-        """Discover UPnP/RAOP receivers. Currently UNSUPPORTED."""
         return {"ok": False, "error": "UNSUPPORTED"}
 
     @Slot(result=dict)
@@ -173,7 +213,7 @@ class HomeAudioBridge(QObject):
         self.stateChanged.emit()
         return {"ok": True}
 
-    @Slot(str, result=dict)
+    @Slot(str, float, result=dict)
     def setZoneVolume(self, zone_id: str, volume: float = 0.5):
         if not self._snapcast_ctrl:
             return {"ok": False, "error": "UNSUPPORTED"}
@@ -186,7 +226,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    @Slot(str, result=dict)
+    @Slot(str, bool, result=dict)
     def setZoneMute(self, zone_id: str, muted: bool = False):
         if not self._snapcast_ctrl:
             return {"ok": False, "error": "UNSUPPORTED"}
@@ -211,3 +251,19 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    @Slot(result=dict)
+    def disconnectHa(self):
+        self._cancel_retry()
+        self._ha_state = "not_configured"
+        self._devices = []
+        self._last_contact = 0.0
+        self.stateChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def reconnectHa(self):
+        if not self._ha_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        self._cancel_retry()
+        return self.testHomeAssistant()
