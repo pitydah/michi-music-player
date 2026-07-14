@@ -121,3 +121,14 @@ markers = [
     "qml_module: QML module name for evidence V5 mapping",
     "qml_dimension: QML migration dimension for evidence V5 scoring",
 ]
+
+# ── EL: Package separation ──
+# michi-core:           audio, core, library, metadata, lyrics, integrations,
+#                       sources, streaming, sync, recognition, recommendation
+# michi-qml:            ui_qml, ui_qml_bridge (NO QtWidgets dependency)
+# michi-widgets-legacy: ui, main.py (depends on michi-core)
+
+# Linux platform extras:
+#   wayland, x11, kde, desktop file, notifications, media keys
+# Windows platform extras:
+#   paths, reserved names, ffmpeg, mtp, shortcuts, packaging, notifications
