@@ -9,7 +9,7 @@ Item {
     id: root
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
-    property string _loading: false
+    property bool _loading: false
 
     Component.onCompleted: {
         if (root.mx && typeof root.mx.refresh !== "undefined")

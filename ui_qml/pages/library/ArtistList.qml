@@ -23,7 +23,6 @@ Item {
             artistName: modelData.name || ""
             trackCount: modelData.track_count || 0
             albumCount: modelData.album_count || 0
-            coverId: modelData.cover_key || ""
             onClicked: root.artistSelected(modelData.name || "")
         }
 

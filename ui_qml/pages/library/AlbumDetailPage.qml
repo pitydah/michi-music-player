@@ -25,7 +25,7 @@ Item {
         albumKey = key; albumTitle = title; albumArtist = artist; albumYear = year
         albumCoverKey = key
         if (root.lib && root.lib.trackModel) {
-            root.lib.trackModel.refresh(album: key, sort: "track_number", asc: true)
+            root.lib.trackModel.refresh("album", key, "track_number", true)
         }
         if (root.lib && root.lib.getAlbumDetail) {
             var detail = root.lib.getAlbumDetail(key)
@@ -103,7 +103,7 @@ Item {
                             MichiButton { text: "Reproducir"; variant: "primary"; onClicked: { if (root.lib) root.lib.playAlbum(root.albumKey) } }
                             MichiButton { text: "Mezclar"; variant: "ghost"; onClicked: {
                                 if (root.lib && root.lib.trackModel) {
-                                    root.lib.trackModel.refresh(album: root.albumKey, sort: "random", asc: true)
+                                    root.lib.trackModel.refresh("album", root.albumKey, "random", true)
                                 }
                             }}
                             MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: { if (root.lib) root.lib.enqueueAlbum(root.albumKey) } }

@@ -12,7 +12,7 @@ Item {
 
     function reload() {
         if (root.lib && root.lib.trackModel) {
-            root.lib.trackModel.refresh(sort: "play_count", asc: false)
+            root.lib.trackModel.refresh("sort", "play_count", "play_count", false)
         }
     }
 

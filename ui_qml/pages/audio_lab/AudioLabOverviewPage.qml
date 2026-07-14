@@ -44,7 +44,7 @@ Item {
                 }
             }
 
-            SelectionSummary { id: selectionSummary }
+            AudioSelectionSummary { id: selectionSummary }
 
             SectionHeader { text: "Herramientas"; width: parent.width }
 

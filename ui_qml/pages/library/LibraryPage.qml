@@ -44,7 +44,7 @@ Item {
 
         LibraryNavigationBar {
             id: navBar; width: parent.width
-            onSearchTextChanged: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
+            onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
         }
 
         LibraryFilterBar {

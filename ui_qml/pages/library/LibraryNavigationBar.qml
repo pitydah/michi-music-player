@@ -11,7 +11,7 @@ Item {
     property int currentTab: 0
     property string searchText: ""
 
-    signal searchTextChanged(string text)
+    signal searchTextUpdated(string text)
 
     function clearSearch() { searchInput.text = "" }
 
@@ -58,7 +58,7 @@ Item {
             placeholderText: "Buscar en biblioteca..."
             onSearchTextChanged: {
                 root.searchText = text
-                root.searchTextChanged(text)
+                root.searchTextUpdated(text)
             }
         }
     }

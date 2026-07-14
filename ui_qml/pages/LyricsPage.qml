@@ -29,7 +29,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
-            Item { width: 1; height: 1; Layout.fillWidth: true }
+            Item { width: 1; height: 1; }
             StatusBadge {
                 text: root.lb ? root.lb.status : "idle"
                 kind: root.lb && root.lb.status === "done" ? "success" :

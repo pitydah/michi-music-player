@@ -33,8 +33,7 @@ Item {
 
         MichiButton {
             text: "Vaciar"
-            variant: "ghost"
-            destructive: true
+            variant: "danger"
             visible: root.qb && root.qb.queueCount > 0
             onClicked: {
                 if (root.qb) {

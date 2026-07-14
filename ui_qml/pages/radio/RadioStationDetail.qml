@@ -11,10 +11,10 @@ Item {
     property var stationData: null
     property bool _isFav: stationData ? stationData.favorite : false
 
-    signal play()
-    signal toggleFav()
-    signal edit()
-    signal delete()
+    signal playRequested()
+    signal toggleFavRequested()
+    signal editRequested()
+    signal deleteRequested()
 
     implicitHeight: 70
 
@@ -36,7 +36,7 @@ Item {
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Reproducir"
-                onClicked: root.play()
+                onClicked: root.playRequested()
             }
 
             MichiButton {
@@ -44,7 +44,7 @@ Item {
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
-                onClicked: root.toggleFav()
+                onClicked: root.toggleFavRequested()
             }
 
             MichiButton {
@@ -53,7 +53,7 @@ Item {
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Editar"
                 visible: true
-                onClicked: root.edit()
+                onClicked: root.editRequested()
             }
 
             MichiButton {
@@ -61,7 +61,7 @@ Item {
                 variant: "danger"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Eliminar"
-                onClicked: root.delete()
+                onClicked: root.deleteRequested()
             }
         }
     }

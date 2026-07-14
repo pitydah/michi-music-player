@@ -3,6 +3,7 @@ import QtQuick.Controls
 import "../theme"
 import "../components"
 import "../materials"
+import "../pages/library"
 
 Item {
     id: root
@@ -41,10 +42,9 @@ Item {
                 }
             }
 
-            SongTable {
+            LibraryTrackTable {
                 width: parent.width
                 height: parent.height - 60
-                songs: root.mx ? root.mx.currentSongs : []
                 bridge: null
             }
         }

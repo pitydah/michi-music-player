@@ -76,7 +76,7 @@ Item {
                     onClicked: {
                         if (model.isExpandable && !model.expanded) {
                             root.folderModel._items = []
-                            root.folderModel.refresh(parent_path: model.folderPath)
+                            root.folderModel.refresh("parent_path", model.folderPath)
                         }
                         root.folderSelected(model.folderPath || "")
                     }
@@ -87,7 +87,7 @@ Item {
 
     function navigateTo(path) {
         if (root.folderModel) {
-            root.folderModel.refresh(parent_path: path)
+            root.folderModel.refresh("parent_path", path)
         }
     }
 }

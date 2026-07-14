@@ -13,9 +13,9 @@ Item {
     property int volume: 50
     property bool hasLatency: false
 
-    signal zoneClicked()
-    signal volumeChanged(int volume)
-    signal muteToggled()
+    signal zoneCardClicked()
+    signal zoneCardVolumeChanged(int volume)
+    signal zoneMuteToggled()
 
     implicitHeight: 100
 
@@ -30,7 +30,7 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.zoneClicked()
+            onClicked: root.zoneCardClicked()
         }
 
         Column {
@@ -79,7 +79,7 @@ Item {
                 MichiButton {
                     text: root.isMuted ? "Activar sonido" : "Silenciar"
                     variant: root.isMuted ? "secondary" : "ghost"
-                    onClicked: root.muteToggled()
+                    onClicked: root.zoneMuteToggled()
                 }
 
                 Text {

@@ -55,7 +55,7 @@ Item {
             }
             MichiButton { text: "Retención"; variant: "ghost"; onClicked: retentionDialog.open() }
             MichiButton {
-                text: "Limpiar todo"; variant: "ghost"; destructive: true
+                text: "Limpiar todo"; variant: "danger"
                 onClicked: confirmClearDialog.open()
             }
             MichiButton {

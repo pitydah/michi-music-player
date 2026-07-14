@@ -10,12 +10,12 @@ Item {
 
     property var profileData: null
     property bool isActive: false
-    property string _backend: profileData ? (profileData.backend || profileData.preferred_backend || "gstreamer") : "gstreamer"
+    readonly property string _backend: root.profileData ? (root.profileData.backend || root.profileData.preferred_backend || "gstreamer") : "gstreamer"
 
-    signal select()
-    signal edit()
-    signal duplicate()
-    signal delete()
+    signal cardSelected()
+    signal editRequested()
+    signal duplicateRequested()
+    signal deleteRequested()
 
     implicitHeight: 120
 
@@ -74,19 +74,19 @@ Item {
                 MichiButton {
                     text: "Editar"
                     variant: "ghost"
-                    onClicked: root.edit()
+                    onClicked: root.editRequested()
                 }
 
                 MichiButton {
                     text: "Duplicar"
                     variant: "ghost"
-                    onClicked: root.duplicate()
+                    onClicked: root.duplicateRequested()
                 }
 
                 MichiButton {
                     text: "Eliminar"
                     variant: "danger"
-                    onClicked: root.delete()
+                    onClicked: root.deleteRequested()
                 }
             }
         }
@@ -94,7 +94,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.select()
+            onClicked: root.cardSelected()
         }
     }
 }

@@ -1,7 +1,7 @@
 {
   "version": "5.0",
-  "generated_at": "2026-07-14T09:34:39.292734+00:00",
-  "sha": "cff1d372b316f4f4e2e149510ece02d2f660ccca",
+  "generated_at": "2026-07-14T15:05:28.016993+00:00",
+  "sha": "a73722aa3f7f1a1544918afd638074763737667b",
   "area_weights": {
     "shell_nav": 10,
     "library_playback": 25,
@@ -59,10 +59,10 @@
       "module": "theme",
       "area": "shell_nav",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 13,
+        "passed_count": 13,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -72,11 +72,11 @@
       "module": "notification",
       "area": "shell_nav",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
+        "test_count": 64,
+        "passed_count": 53,
+        "failed_count": 11,
         "skipped_count": 0,
         "test_files": []
       }
@@ -85,12 +85,12 @@
       "module": "accessibility",
       "area": "shell_nav",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "READ_ONLY",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 58,
+        "passed_count": 57,
         "failed_count": 0,
-        "skipped_count": 0,
+        "skipped_count": 1,
         "test_files": []
       }
     },
@@ -111,12 +111,12 @@
       "module": "library",
       "area": "library_playback",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
-        "skipped_count": 0,
+        "test_count": 249,
+        "passed_count": 247,
+        "failed_count": 1,
+        "skipped_count": 1,
         "test_files": []
       }
     },
@@ -137,12 +137,12 @@
       "module": "playback",
       "area": "library_playback",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "READ_ONLY",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 58,
+        "passed_count": 57,
         "failed_count": 0,
-        "skipped_count": 0,
+        "skipped_count": 1,
         "test_files": []
       }
     },
@@ -150,10 +150,10 @@
       "module": "nowplaying",
       "area": "library_playback",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 17,
+        "passed_count": 17,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -165,8 +165,8 @@
       "module_weight": 10,
       "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 10,
-        "passed_count": 10,
+        "test_count": 33,
+        "passed_count": 33,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -176,11 +176,11 @@
       "module": "history",
       "area": "core_workflows",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
+        "test_count": 43,
+        "passed_count": 35,
+        "failed_count": 8,
         "skipped_count": 0,
         "test_files": []
       }
@@ -189,11 +189,11 @@
       "module": "playlists",
       "area": "core_workflows",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
+        "test_count": 34,
+        "passed_count": 33,
+        "failed_count": 1,
         "skipped_count": 0,
         "test_files": []
       }
@@ -202,11 +202,11 @@
       "module": "mix",
       "area": "core_workflows",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
+        "test_count": 46,
+        "passed_count": 40,
+        "failed_count": 6,
         "skipped_count": 0,
         "test_files": []
       }
@@ -215,10 +215,10 @@
       "module": "lyrics",
       "area": "core_workflows",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 19,
+        "passed_count": 19,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -228,11 +228,11 @@
       "module": "radio",
       "area": "core_workflows",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
+        "test_count": 22,
+        "passed_count": 18,
+        "failed_count": 4,
         "skipped_count": 0,
         "test_files": []
       }
@@ -241,11 +241,11 @@
       "module": "global_search",
       "area": "core_workflows",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PARTIAL_WORKFLOW",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
-        "failed_count": 0,
+        "test_count": 44,
+        "passed_count": 42,
+        "failed_count": 2,
         "skipped_count": 0,
         "test_files": []
       }
@@ -306,10 +306,10 @@
       "module": "metadata",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 45,
+        "passed_count": 45,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -319,10 +319,10 @@
       "module": "smart_tagging",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 17,
+        "passed_count": 17,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -332,10 +332,10 @@
       "module": "audio_lab",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 48,
+        "passed_count": 48,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -345,10 +345,10 @@
       "module": "library_doctor",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 37,
+        "passed_count": 37,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -358,10 +358,10 @@
       "module": "disc_lab",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 8,
+        "passed_count": 8,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -371,10 +371,10 @@
       "module": "diagnostics",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 24,
+        "passed_count": 24,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -384,10 +384,10 @@
       "module": "michi_ai",
       "area": "advanced_tools",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 67,
+        "passed_count": 67,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -449,10 +449,10 @@
       "module": "settings",
       "area": "quality_release",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 99,
+        "passed_count": 99,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -475,10 +475,10 @@
       "module": "settings_runtime",
       "area": "quality_release",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 33,
+        "passed_count": 33,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []
@@ -488,10 +488,10 @@
       "module": "output_profiles",
       "area": "quality_release",
       "module_weight": 10,
-      "status": "NOT_IMPLEMENTED",
+      "status": "PRODUCTIVE",
       "evidence": {
-        "test_count": 0,
-        "passed_count": 0,
+        "test_count": 10,
+        "passed_count": 10,
         "failed_count": 0,
         "skipped_count": 0,
         "test_files": []

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, qml-migration-foundation-clean, qml-wave44-release-readiness, qml-macro-A*]
+    branches: [main, qml-migration-foundation-clean, qml-wave44-release-readiness, qml-macro-*]
   pull_request:
     branches: [main, qml-migration-foundation-clean]
   workflow_dispatch:

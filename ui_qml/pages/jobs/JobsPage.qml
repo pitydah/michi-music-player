@@ -52,7 +52,7 @@ Item {
 
             MichiEmptyState {
                 anchors.centerIn: parent; visible: jobList.count === 0
-                text: "Sin trabajos"
+                title: "Sin trabajos"
             }
 
             MichiLoadingState {

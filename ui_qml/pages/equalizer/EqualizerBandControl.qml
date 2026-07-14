@@ -11,7 +11,7 @@ Item {
     property int index: 0
     property bool eqEnabled: true
 
-    signal gainChanged(int idx, real val)
+    signal bandGainChanged(int idx, real val)
 
     implicitHeight: 48
 
@@ -35,7 +35,7 @@ Item {
             stepSize: 0.5
             enabled: root.enabled && root.eqEnabled
             accessibleName: "Banda " + root.freq + " Hz"
-            onMoved: root.gainChanged(root.index, value)
+            onMoved: root.bandGainChanged(root.index, value)
         }
 
         Text {

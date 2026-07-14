@@ -7,21 +7,21 @@ import "../../materials"
 Item {
     id: root
 
-    property bool visible: true
+    property bool dialogVisible: true
     property string detectedDeviceName: ""
     property string detectedDeviceType: ""
 
     signal pairRequested(string name, string type)
     signal cancelRequested()
 
-    implicitHeight: visible ? 280 : 0
+    implicitHeight: dialogVisible ? 280 : 0
 
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
         radius: MichiTheme.radiusMd
         variant: "elevated"
-        visible: root.visible
+        visible: root.dialogVisible
 
         Column {
             id: column

@@ -75,12 +75,12 @@ Item {
                     width: parent.width
                     profileData: modelData
                     isActive: modelData.id === (root.op ? root.op.activeProfileId : "")
-                    onSelect: root.selectProfile(modelData.id)
-                    onEdit: {
+                    onCardSelected: root.selectProfile(modelData.id)
+                    onEditRequested: {
                         root._editProfile = modelData
                         root._showEditor = true
                     }
-                    onDuplicate: {
+                    onDuplicateRequested: {
                         if (root.op && typeof root.op.duplicateProfile === "function") {
                             var r = root.op.duplicateProfile(modelData.id)
                             if (r.ok) {
@@ -91,7 +91,7 @@ Item {
                             }
                         }
                     }
-                    onDelete: {
+                    onDeleteRequested: {
                         if (root.op && typeof root.op.deleteProfile === "function") {
                             var r = root.op.deleteProfile(modelData.id)
                             if (r.ok) {

@@ -114,15 +114,15 @@ Item {
                 RadioStationDetail {
                     width: parent.width
                     stationData: modelData
-                    onPlay: root.playStation(modelData.url)
-                    onToggleFav: {
+                    onPlayRequested: root.playStation(modelData.url)
+                    onToggleFavRequested: {
                         var sid = modelData.id || 0
                         if (sid > 0) root.toggleFavorite(sid)
                     }
-                    onEdit: {
+                    onEditRequested: {
                         root._activeDetailId = index
                     }
-                    onDelete: root.deleteStation(modelData.url)
+                    onDeleteRequested: root.deleteStation(modelData.url)
                 }
             }
 
@@ -150,15 +150,15 @@ Item {
                             || tags.indexOf(root._filterText) >= 0
                             || country.indexOf(root._filterText) >= 0
                     }
-                    onPlay: root.playStation(modelData.url)
-                    onToggleFav: {
+                    onPlayRequested: root.playStation(modelData.url)
+                    onToggleFavRequested: {
                         var sid = modelData.id || 0
                         if (sid > 0) root.toggleFavorite(sid)
                     }
-                    onEdit: {
+                    onEditRequested: {
                         root._activeDetailId = index
                     }
-                    onDelete: root.deleteStation(modelData.url)
+                    onDeleteRequested: root.deleteStation(modelData.url)
                 }
             }
 

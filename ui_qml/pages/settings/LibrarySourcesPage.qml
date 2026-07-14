@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt.labs.platform
 import "../../theme"
 import "../../components"
 
@@ -62,7 +63,7 @@ Item {
                     }
 
                     MichiButton { text: "Escanear"; variant: "ghost"; enabled: modelData.available; onClicked: { if (root.bridge) root.bridge.scanSource(modelData.path) } }
-                    MichiButton { text: "Eliminar"; variant: "ghost"; destructive: true; onClicked: { if (root.bridge) root.bridge.removeSource(modelData.path); root.refresh() } }
+                    MichiButton { text: "Eliminar"; variant: "danger"; onClicked: { if (root.bridge) root.bridge.removeSource(modelData.path); root.refresh() } }
                 }
             }
 
@@ -75,9 +76,8 @@ Item {
     FolderDialog {
         id: addDialog
         title: "Seleccionar carpeta"
-        currentFolder: "file://" + (typeof StandardPaths !== "undefined" ? StandardPaths.writableLocation(StandardPaths.MusicLocation) : "")
         onAccepted: {
-            var folderPath = selectedFolder.toLocalFile()
+            var folderPath = folder.toString().replace("file://", "")
             if (root.bridge && folderPath) {
                 var result = root.bridge.addSource(folderPath)
                 if (root.notif) root.notif.showMessage(result.ok ? "Fuente agregada" : "Error: " + (result.error || ""), result.ok ? "info" : "error")

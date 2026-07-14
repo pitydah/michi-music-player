@@ -93,6 +93,8 @@ def _create_schema(conn: sqlite3.Connection):
         INSERT OR IGNORE INTO metadata (key, value) VALUES ('schema_version', '12');
     """)
 
+pytestmark = [pytest.mark.qml_module("workflows"), pytest.mark.qml_dimension("vertical_workflow")]
+
 
 @pytest.fixture
 def sql_tmpdb(tmp_path: Path):

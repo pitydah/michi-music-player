@@ -130,7 +130,7 @@ Item {
                     gain: modelData ? modelData.gain : 0
                     index: index
                     enabled: root._cap("backendAvailable") && !(root.eq && root.eq.bitperfectConflict)
-                    onGainChanged: function(idx, val) {
+                    onBandGainChanged: function(idx, val) {
                         if (root.eq) root.eq.setGraphicBand(idx, val)
                     }
                 }

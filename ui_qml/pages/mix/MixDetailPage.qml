@@ -80,7 +80,7 @@ Item {
                 }
             }
             MichiButton {
-                text: "Cancelar generación"; variant: "ghost"; destructive: true
+                text: "Cancelar generación"; variant: "danger"
                 visible: root._generating
                 onClicked: {
                     if (root.mx && typeof root.mx.cancelGeneration !== "undefined")

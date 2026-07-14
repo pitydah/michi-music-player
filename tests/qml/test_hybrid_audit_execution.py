@@ -30,8 +30,9 @@ def test_no_unsafe_hybrid_sql_in_non_repo_bridges():
     bridge_files = {i["file"] for i in items}
     acceptable = {"ui_qml_bridge/library_doctor_bridge.py",
                   "ui_qml_bridge/library_query_service.py",
-                  "ui_qml_bridge/diagnostics_bridge.py",
-                  "ui_qml_bridge/history_bridge.py",
+                   "ui_qml_bridge/diagnostics_bridge.py",
+                   "ui_qml_bridge/diagnostics_repository.py",
+                   "ui_qml_bridge/history_bridge.py",
                   "ui_qml_bridge/global_search_bridge.py",
                   "ui_qml_bridge/library_bridge.py"}
     unacceptable = bridge_files - acceptable

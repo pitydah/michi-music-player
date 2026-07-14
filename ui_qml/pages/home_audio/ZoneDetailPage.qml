@@ -17,7 +17,7 @@ Item {
     property var zoneDevices: []
 
     signal backClicked()
-    signal volumeChanged(string zoneId, float volume)
+    signal zoneDetailVolumeChanged(string zoneId, real volume)
     signal muteToggled(string zoneId, bool muted)
     signal sourceChanged(string zoneId, string source)
     signal reconnectClicked(string zoneId)

@@ -90,7 +90,7 @@ Item {
             DevicePairingDialog {
                 id: pairingDialog
                 width: parent.width
-                visible: false
+                dialogVisible: false
             }
 
             DeviceStorageView {

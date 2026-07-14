@@ -31,7 +31,7 @@ Rectangle {
         }
         Label {
             text: "(ver Jobs)"; color: MichiTheme.colors.accentBlue
-            font.pixelSize: MichiTheme.typography.captionSize; underline: true
+            font.pixelSize: MichiTheme.typography.captionSize; font.underline: true
         }
     }
 

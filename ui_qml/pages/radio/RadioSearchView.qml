@@ -62,11 +62,11 @@ Item {
             RadioStationDetail {
                 width: parent.width
                 stationData: modelData
-                onPlay: {
+                onPlayRequested: {
                     if (root.rd && typeof root.rd.playStation === "function")
                         root.rd.playStation(modelData.url)
                 }
-                onToggleFav: {
+                onToggleFavRequested: {
                     var sid = modelData.id || 0
                     if (sid > 0 && root.rd && typeof root.rd.toggleFavorite === "function")
                         root.rd.toggleFavorite(sid)

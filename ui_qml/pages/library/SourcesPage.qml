@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import Qt.labs.platform
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -101,17 +102,52 @@ Item {
         bridge: root.lib
     }
 
-    Dialog {
+    Popup {
         id: confirmDialog
         property int sourceId: 0
-        title: "Eliminar fuente"
-        standardButtons: Dialog.Yes | Dialog.No
+        modal: true
+        focus: true
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 3
+        width: 320
 
-        Label { text: "¿Eliminar esta fuente de la biblioteca?" }
+        Column {
+            spacing: MichiTheme.spacing.md
+            padding: MichiTheme.spacing.lg
 
-        onAccepted: {
-            if (root.lib && root.lib.removeSource) root.lib.removeSource(confirmDialog.sourceId)
-            root.reload()
+            Label {
+                text: "Eliminar fuente"
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.weight: MichiTheme.typography.weightSemiBold
+                color: MichiTheme.colors.textPrimary
+            }
+
+            Label {
+                text: "¿Eliminar esta fuente de la biblioteca?"
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                wrapMode: Text.WordWrap
+                width: parent.width
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.sm
+                anchors.horizontalCenter: parent.horizontalCenter
+                MichiButton {
+                    text: "Sí"
+                    variant: "danger"
+                    onClicked: {
+                        if (root.lib && root.lib.removeSource) root.lib.removeSource(confirmDialog.sourceId)
+                        root.reload()
+                        confirmDialog.close()
+                    }
+                }
+                MichiButton {
+                    text: "No"
+                    variant: "ghost"
+                    onClicked: confirmDialog.close()
+                }
+            }
         }
     }
 }

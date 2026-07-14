@@ -83,7 +83,7 @@ Item {
 
     function reload() {
         if (root.folderModel) {
-            root.folderModel.refresh(parent_path: root._currentPath)
+            root.folderModel.refresh("parent_path", root._currentPath)
         }
         contentView.loadFolder(root._currentPath)
     }
