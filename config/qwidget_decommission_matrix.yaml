@@ -1,0 +1,167 @@
+# qwidget_decommission_matrix.yaml — W3 legacy tracking
+# W1_FROZEN: View is frozen (no new QtWidgets features), QML is primary
+# W3_LEGACY_ONLY: Only legacy visual adapters remain, all logic extracted to core/
+# DECOMMISSIONED: Fully removed
+
+domains:
+  nowplaying:
+    status: W1_FROZEN
+    qml_score: 95
+    accessibility: approved
+    logic_extracted_to: core/playback_controller.py
+    remaining_widget: ui/nowplaying_bar.py
+    notes: "Thin visual adapter only"
+  queue:
+    status: W1_FROZEN
+    qml_score: 94
+    accessibility: approved
+    logic_extracted_to: core/queue_service.py
+    remaining_widget: ui/controllers/queue_controller.py
+    notes: "Thin visual adapter only"
+  lyrics:
+    status: W1_FROZEN
+    qml_score: 93
+    accessibility: approved
+    logic_extracted_to: core/lyrics/
+    remaining_widget: ui/lyrics_widget.py
+    notes: "Thin visual adapter only"
+  settings:
+    status: W1_FROZEN
+    qml_score: 95
+    accessibility: approved
+    logic_extracted_to: core/settings_manager.py, core/settings_service.py
+    remaining_widget: ui/settings_pages.py
+    notes: "Thin visual adapter only"
+  output_profiles:
+    status: W1_FROZEN
+    qml_score: 94
+    accessibility: approved
+    logic_extracted_to: audio/output_profiles.py
+    remaining_widget: ui/controllers/output_profile_controller.py
+    notes: "Thin visual adapter only"
+  metadata:
+    status: W1_FROZEN
+    qml_score: 92
+    accessibility: approved
+    logic_extracted_to: core/metadata_service.py
+    remaining_widget: ui/metadata_editor.py
+    notes: "Thin visual adapter only"
+  smart_tagging:
+    status: W1_FROZEN
+    qml_score: 93
+    accessibility: approved
+    logic_extracted_to: core/metadata_batch_adapter.py
+    remaining_widget: ui/controllers/smart_tagging_controller.py
+    notes: "Thin visual adapter only"
+  diagnostics:
+    status: W1_FROZEN
+    qml_score: 94
+    accessibility: approved
+    logic_extracted_to: core/diagnostics/
+    remaining_widget: ui/audio_lab/diagnostics_page.py
+    notes: "Thin visual adapter only"
+  library:
+    status: W3_LEGACY_ONLY
+    qml_score: 88
+    accessibility: approved
+    logic_extracted_to: core/library/
+    remaining_widget: ui/library/
+    notes: "Thin visual adapter only"
+  album:
+    status: W3_LEGACY_ONLY
+    qml_score: 85
+    accessibility: approved
+    logic_extracted_to: core/library/album_repository.py
+    remaining_widget: ui/album_detail_view.py
+    notes: "Thin visual adapter only"
+  artist:
+    status: W3_LEGACY_ONLY
+    qml_score: 84
+    accessibility: approved
+    logic_extracted_to: core/library/artist_repository.py
+    remaining_widget: ui/artist_detail_view.py
+    notes: "Thin visual adapter only"
+  folders:
+    status: W3_LEGACY_ONLY
+    qml_score: 82
+    accessibility: approved
+    logic_extracted_to: library/folder_index.py
+    remaining_widget: ui/folder_browser.py
+    notes: "Thin visual adapter only"
+  sources:
+    status: W3_LEGACY_ONLY
+    qml_score: 83
+    accessibility: approved
+    logic_extracted_to: core/library_sources_service.py
+    remaining_widget: ui/controllers/sources_controller.py
+    notes: "Thin visual adapter only"
+  playlists:
+    status: W3_LEGACY_ONLY
+    qml_score: 86
+    accessibility: approved
+    logic_extracted_to: core/playlist_service.py
+    remaining_widget: ui/playlist_detail_view.py
+    notes: "Thin visual adapter only"
+  history:
+    status: W3_LEGACY_ONLY
+    qml_score: 81
+    accessibility: approved
+    logic_extracted_to: core/history_query_service.py
+    remaining_widget: ui/controllers/history_controller.py
+    notes: "Thin visual adapter only"
+  global_search:
+    status: W3_LEGACY_ONLY
+    qml_score: 85
+    accessibility: approved
+    logic_extracted_to: core/global_search_service.py
+    remaining_widget: ui/search_controller.py
+    notes: "Thin visual adapter only"
+  mix:
+    status: W3_LEGACY_ONLY
+    qml_score: 84
+    accessibility: approved
+    logic_extracted_to: core/mix_query_service.py
+    remaining_widget: ui/controllers/mix_controller.py
+    notes: "Thin visual adapter only"
+  radio:
+    status: W3_LEGACY_ONLY
+    qml_score: 86
+    accessibility: approved
+    logic_extracted_to: core/radio/
+    remaining_widget: ui/controllers/radio_controller.py
+    notes: "Thin visual adapter only"
+  eq:
+    status: W3_LEGACY_ONLY
+    qml_score: 83
+    accessibility: approved
+    logic_extracted_to: audio/eq_*.py
+    remaining_widget: ui/eq_panel.py
+    notes: "Thin visual adapter only"
+  audio_lab:
+    status: W3_LEGACY_ONLY
+    qml_score: 85
+    accessibility: approved
+    logic_extracted_to: core/audio_lab/
+    remaining_widget: ui/audio_lab/
+    notes: "Thin visual adapter only"
+  devices:
+    status: W3_LEGACY_ONLY
+    qml_score: 82
+    accessibility: approved
+    logic_extracted_to: audio/dac_manager.py
+    remaining_widget: ui/devices_page.py
+    notes: "Thin visual adapter only"
+  connections:
+    status: W3_LEGACY_ONLY
+    qml_score: 84
+    accessibility: approved
+    logic_extracted_to: core/connection_factory.py
+    remaining_widget: ui/controllers/connections_controller.py
+    notes: "Thin visual adapter only"
+  home_audio:
+    status: W3_LEGACY_ONLY
+    qml_score: 86
+    accessibility: approved
+    logic_extracted_to: core/home/
+    remaining_widget: ui/home_audio_view.py
+    notes: "Thin visual adapter only"

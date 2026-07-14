@@ -10,12 +10,7 @@ import os
 import subprocess
 import logging
 
-from PySide6.QtCore import QThread
-from PySide6.QtWidgets import QFileDialog
-
 from core.paths import database_path
-from ui.loading_overlay import LoadingOverlay
-from ui.toast_notification import ToastNotification
 
 logger = logging.getLogger("michi.file_actions")
 
@@ -90,6 +85,8 @@ class FileActions:
                 on_done(None)
 
     def open_files(self, all_exts: frozenset):
+        from PySide6.QtWidgets import QFileDialog
+        from ui.toast_notification import ToastNotification
         exts = " ".join(f"*{e}" for e in sorted(all_exts))
         files, _ = QFileDialog.getOpenFileNames(
             self._win, "Abrir archivos", os.path.expanduser("~"),
@@ -104,6 +101,7 @@ class FileActions:
                 f"{len(files)} archivos añadidos", self._win)
 
     def add_folder(self):
+        from PySide6.QtWidgets import QFileDialog
         path = QFileDialog.getExistingDirectory(
             self._win, "Añadir carpeta", os.path.expanduser("~"))
         if not path:
@@ -120,6 +118,7 @@ class FileActions:
             for fp in filepaths:
                 self._db.add_to_playlist(pid, fp)
             self._rebuild_sidebar()
+            from ui.toast_notification import ToastNotification
             ToastNotification.success(
                 f"Playlist \"{name}\" creada con {len(filepaths)} canciones", self._win)
 
@@ -154,7 +153,11 @@ class FileActions:
         self._add_file_list(paths)
 
     def scan_path(self, path: str):
+        from PySide6.QtCore import QThread
         from library.indexer import Indexer
+        from ui.loading_overlay import LoadingOverlay
+        from ui.toast_notification import ToastNotification
+
         worker = Indexer.from_db_path(self._db_path, path)
         thread = QThread()
 
