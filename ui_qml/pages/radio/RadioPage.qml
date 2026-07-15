@@ -13,6 +13,13 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Radio"
 
+    Keys.onEscapePressed: function(event) {
+        if (root._showAddStation) {
+            root._showAddStation = false
+            event.accepted = true
+        }
+    }
+
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string _filterText: ""

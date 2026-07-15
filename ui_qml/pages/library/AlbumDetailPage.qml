@@ -7,6 +7,9 @@ import "../../materials"
 
 Item {
     id: root
+    objectName: "AlbumDetailPage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: albumTitle ? "Álbum " + albumTitle : "Detalle del álbum"
 
     property string albumKey: ""
     property string albumTitle: ""

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
@@ -11,7 +10,6 @@ logger = logging.getLogger("michi.qml_app")
 
 def run_qml() -> int:
     """Start the QML application. Returns exit code."""
-    os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
     try:
         from PySide6.QtGui import QGuiApplication
         from PySide6.QtQml import QQmlApplicationEngine
@@ -19,21 +17,24 @@ def run_qml() -> int:
         logger.error("Failed to import QML modules: %s", e)
         return 1
 
-    app = QGuiApplication(sys.argv)
+    app = QGuiApplication.instance() or QGuiApplication(sys.argv)
     app.setApplicationName("Michi Music Player")
     app.setOrganizationName("Michi")
 
     engine = QQmlApplicationEngine()
-    engine.addImportPath(os.path.join(os.path.dirname(__file__), "..", "ui_qml"))
+    from core.application_bootstrap import ApplicationBootstrap
 
-    qml_path = os.path.join(os.path.dirname(__file__), "..", "ui_qml", "Main.qml")
-    if not os.path.exists(qml_path):
-        logger.error("Main.qml not found at %s", qml_path)
+    bootstrap = ApplicationBootstrap()
+    try:
+        bootstrap.run(engine)
+    except Exception:
+        logger.exception("QML bootstrap failed")
+        bootstrap.shutdown()
         return 1
 
-    engine.load(qml_path)
     if not engine.rootObjects():
-        logger.error("Failed to load QML root objects")
+        bootstrap.shutdown()
         return 1
 
+    app.aboutToQuit.connect(bootstrap.shutdown)
     return app.exec()

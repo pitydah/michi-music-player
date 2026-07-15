@@ -7,6 +7,9 @@ import "../../materials"
 
 Item {
     id: root
+    objectName: "ArtistDetailPage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: artistName ? "Artista " + artistName : "Detalle del artista"
 
     property string artistName: ""
     property var bridge: null

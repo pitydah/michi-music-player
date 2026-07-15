@@ -153,7 +153,7 @@ class TestPyprojectTomlReal:
 
     def test_entrypoints_present(self):
         text = (REPO / "pyproject.toml").read_text()
-        for ep in ("michi = ", "michi-qml = ", "michi-widgets = ", "michi-qml-verify = "):
+        for ep in ("michi = ", "michi-qml = ", "michi-qml-verify = "):
             assert ep in text, f"Missing entrypoint: {ep}"
 
     def test_entrypoints_target_correct(self):
@@ -161,7 +161,7 @@ class TestPyprojectTomlReal:
         scripts = data["project"]["scripts"]
         assert scripts["michi"] == "michi.app_launcher:launch"
         assert scripts["michi-qml"] == "michi.qml_app:run_qml"
-        assert scripts["michi-widgets"] == "michi.widgets_app:run_widgets"
+        assert "michi-widgets" not in scripts
         assert scripts["michi-qml-verify"] == "michi.verify_app:run_verify"
 
     def test_michi_core_docs_correct(self):

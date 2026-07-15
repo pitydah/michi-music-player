@@ -428,3 +428,24 @@ class DurableJobService(QObject):
                         del self._jobs[job_id]
                 except (ValueError, OSError):
                     pass
+
+    def clear_terminal(self) -> int:
+        """Remove completed jobs from memory and persistence."""
+        terminal_ids = [
+            job_id for job_id, job in self._jobs.items()
+            if job.state in TERMINAL_STATES
+        ]
+        for job_id in terminal_ids:
+            self._jobs.pop(job_id, None)
+            self._delete_job(job_id)
+        self.queueChanged.emit(self._queue_count())
+        return len(terminal_ids)
+
+    def _delete_job(self, job_id: str) -> None:
+        import sqlite3
+
+        try:
+            with sqlite3.connect(self._db_path) as conn:
+                conn.execute("DELETE FROM durable_jobs WHERE id = ?", (job_id,))
+        except Exception as exc:
+            logger.error("Failed to delete job %s: %s", job_id, exc)

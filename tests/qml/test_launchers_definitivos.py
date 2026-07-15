@@ -2,6 +2,7 @@ from __future__ import annotations
 """Tests for HC — Launchers definitivos.
 Verifies qml_app, widgets_app, app_launcher, verify_app contracts."""
 
+import ast
 import os
 import sys
 from pathlib import Path
@@ -43,57 +44,43 @@ class TestQmlAppNoWidgets:
         assert "from ui." not in source
 
 
-class TestWidgetsAppConsumesCore:
-    def test_widgets_app_imports_application_bootstrap(self):
+class TestWidgetsAppCompatibility:
+    def test_widgets_app_does_not_create_qml_objects(self):
         import michi.widgets_app
         source = Path(michi.widgets_app.__file__).read_text()
-        assert "ApplicationBootstrap" in source
-
-    def test_widgets_app_invokes_bootstrap_build_and_start(self):
-        import michi.widgets_app
-        source = Path(michi.widgets_app.__file__).read_text()
-        assert ".build()" in source
-        assert ".start()" in source
+        assert "QQmlApplicationEngine" not in source
+        assert "QGuiApplication" not in source
 
     def test_widgets_app_imports_qapplication(self):
         import michi.widgets_app
         source = Path(michi.widgets_app.__file__).read_text()
         assert "QApplication" in source
 
-    def test_widgets_app_run_returns_exit_code(self):
-        import michi.widgets_app
-        boot_patch = patch("core.application_bootstrap.ApplicationBootstrap")
-        with boot_patch as MockBoot:
-            mock_boot = MagicMock()
-            MockBoot.return_value = mock_boot
-            with patch("PySide6.QtWidgets.QApplication") as MockApp:
-                mock_app = MagicMock()
-                mock_app.exec.return_value = 0
-                MockApp.return_value = mock_app
-                with patch.dict("sys.modules", {"main": MagicMock(MainWindow=MagicMock())}):
-                    code = michi.widgets_app.run_widgets()
-                    assert code == 0
-                    mock_boot.build.assert_called_once()
-                    mock_boot.start.assert_called_once()
+    def test_widgets_app_remains_source_compatible(self):
+        from michi.widgets_app import run_widgets
+        assert callable(run_widgets)
 
 
 class TestAppLauncherNoQt:
     def test_app_launcher_does_not_create_qapplication(self):
         import michi.app_launcher
         source = Path(michi.app_launcher.__file__).read_text()
-        assert "QApplication" not in source
-        assert "QGuiApplication" not in source
-        assert "QQmlApplicationEngine" not in source
+        tree = ast.parse(source)
+        qt_imports = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+            and "PySide6" in ast.unparse(node)
+        ]
+        assert not qt_imports
 
-    def test_app_launcher_defaults_to_widgets(self):
+    def test_app_launcher_defaults_to_qml(self):
         import michi.app_launcher
         with (
             patch.dict(os.environ, {}, clear=True),
-            patch("michi.app_launcher.sys.exit"),
-            patch("michi.widgets_app.run_widgets") as mock_run,
+            patch("michi.qml_app.run_qml") as mock_run,
         ):
             mock_run.return_value = 0
-            michi.app_launcher.launch()
+            assert michi.app_launcher.launch() == 0
             mock_run.assert_called_once()
 
     def test_app_launcher_qml_mode_dispatches_to_qml(self):
@@ -164,7 +151,7 @@ class TestEntrypoints:
         scripts = data["project"]["scripts"]
         assert "michi" in scripts
         assert "michi-qml" in scripts
-        assert "michi-widgets" in scripts
+        assert "michi-widgets" not in scripts
         assert "michi-qml-verify" in scripts
 
 

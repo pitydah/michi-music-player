@@ -41,7 +41,7 @@ def test_app_launcher_dispatches_qml():
     assert "run_widgets" in code
 
 
-def test_app_launcher_defaults_widgets():
-    """app_launcher.py must default to widgets."""
+def test_app_launcher_defaults_qml():
+    """app_launcher.py must default to QML."""
     code = (REPO / "michi" / "app_launcher.py").read_text()
-    assert '"widgets"' in code or "'widgets'" in code
+    assert 'os.environ.get("MICHI_UI", "qml")' in code

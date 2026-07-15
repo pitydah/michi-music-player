@@ -6,6 +6,9 @@ import "../components"
 
 Item {
     id: root
+    objectName: "PlaybackPage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Reproducción"
 
     property var ps: typeof playbackBridge !== "undefined" ? playbackBridge
                    : (typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null)

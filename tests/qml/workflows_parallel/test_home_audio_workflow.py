@@ -1,145 +1,73 @@
-from unittest.mock import MagicMock, PropertyMock
+"""Home Audio workflow through the current service/bridge contract."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+import pytest
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 
-"""Full workflow: select zones -> group -> change volume -> ungroup."""
-
-import pytest
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-def mock_ha():
-    ha = MagicMock()
-    ha.is_connected = True
-    type(ha).is_connected = PropertyMock(return_value=True)
-    ha.test_connection.return_value = True
-    ha.get_devices.return_value = [
+def service():
+    svc = MagicMock()
+    svc.available = True
+    svc.ha_available = True
+    svc.snapcast_available = True
+    svc.is_connected = True
+    svc.latency_ms = 12
+    svc.get_zones.return_value = [
+        {"id": "zone1", "name": "Living Room"},
+        {"id": "zone2", "name": "Kitchen"},
+        {"id": "zone3", "name": "Bedroom"},
+    ]
+    svc.get_devices.return_value = [
         {"name": "Living Room Speaker", "entity_id": "media_player.living_room"},
         {"name": "Kitchen Speaker", "entity_id": "media_player.kitchen"},
     ]
-    ha.set_volume = MagicMock()
-    ha.set_mute = MagicMock()
-    ha.reconnect = MagicMock()
-    ha.select_source = MagicMock()
-    ha.join = MagicMock()
-    ha.unjoin = MagicMock()
-    return ha
+    svc.get_groups.return_value = []
+    svc.get_streams.return_value = []
+    svc.group.return_value = {"ok": True, "group_id": "group1"}
+    svc.ungroup.return_value = {"ok": True}
+    svc.set_volume.return_value = {"ok": True}
+    svc.set_mute.return_value = {"ok": True}
+    return svc
 
 
 @pytest.fixture
-def mock_snapcast():
-    sc = MagicMock()
-    sc.is_available = True
-    type(sc).is_available = PropertyMock(return_value=True)
-    sc.get_groups.return_value = []
-    return sc
+def bridge(service):
+    return HomeAudioBridge(home_audio_service=service)
 
 
-@pytest.fixture
+def test_refresh_discovers_real_service_state(bridge):
+    assert bridge.refresh()["ok"] is True
+    assert bridge.homeAssistantState == "connected"
+    assert len(bridge.zones) == 3
+    assert len(bridge.devices) == 2
 
 
-class TestFullWorkflow:
-    def test_select_zones_and_group(self, bridge, mock_snapcast):
-        bridge.refresh()
-        assert len(bridge.zones) >= 3
-        result = bridge.groupZones("zone1,zone2")
-        assert result["ok"] is True
-        assert mock_snapcast.group.called
+def test_group_volume_mute_and_ungroup(bridge, service):
+    assert bridge.groupZones("zone1,zone2")["ok"] is True
+    assert bridge.setZoneVolume("group1", 0.75)["ok"] is True
+    assert bridge.setZoneMute("group1", False)["ok"] is True
+    assert bridge.ungroupZone("group1")["ok"] is True
+    service.group.assert_called_once_with("zone1,zone2")
+    service.set_volume.assert_called_once_with("group1", 0.75)
+    service.set_mute.assert_called_once_with("group1", False)
+    service.ungroup.assert_called_once_with("group1")
 
-    def test_group_then_change_volume(self, bridge, mock_snapcast):
-        bridge.groupZones("zone1,zone2")
-        result = bridge.setZoneVolume("zone1", 0.9)
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_volume.called
 
-    def test_group_then_mute(self, bridge, mock_snapcast):
-        bridge.groupZones("zone1,zone2")
-        result = bridge.setZoneMute("zone1", True)
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_mute.called
+def test_disconnect_clears_qml_state(bridge):
+    bridge.refresh()
+    assert bridge.disconnectHa()["ok"] is True
+    assert bridge.homeAssistantState == "not_configured"
+    assert bridge.devices == []
 
-    def test_group_then_ungroup(self, bridge, mock_snapcast):
-        bridge.groupZones("zone1,zone2")
-        result = bridge.ungroupZone("zone1")
-        assert result["ok"] is True
-        assert mock_snapcast.ungroup.called
 
-    def test_volume_multiple_zones(self, bridge, mock_snapcast):
-        for zone in ["zone1", "zone2", "zone3"]:
-            result = bridge.setZoneVolume(zone, 0.5)
-            assert result["ok"] is True
-        assert mock_snapcast.set_group_volume.call_count >= 3
-
-    def test_group_all_three(self, bridge, mock_snapcast):
-        result = bridge.groupZones("zone1,zone2,zone3")
-        assert result["ok"] is True
-        assert mock_snapcast.group.called
-
-    def test_ungroup_all(self, bridge, mock_snapcast):
-        for zone in ["zone1", "zone2", "zone3"]:
-            result = bridge.ungroupZone(zone)
-            assert result["ok"] is True
-        assert mock_snapcast.ungroup.call_count >= 3
-
-    def test_refresh_after_group(self, bridge):
-        bridge.groupZones("zone1,zone2")
-        bridge.refresh()
-        assert len(bridge.zones) >= 3
-
-    def test_disconnect_after_workflow(self, bridge):
-        bridge.refresh()
-        bridge.groupZones("zone1,zone2")
-        bridge.setZoneVolume("zone1", 0.5)
-        bridge.disconnectHa()
-        assert bridge.homeAssistantState == "not_configured"
-        assert bridge.devices == []
-
-    def test_full_lifecycle(self, bridge, mock_snapcast, mock_ha):
-        bridge.refresh()
-        assert len(bridge.zones) >= 3
-        assert len(bridge.devices) >= 2
-
-        bridge.groupZones("zone1,zone2")
-        assert mock_snapcast.group.called
-
-        bridge.setZoneVolume("group1", 0.75)
-        assert mock_snapcast.set_group_volume.called or mock_ha.set_volume.called
-
-        bridge.setZoneMute("group1", False)
-        assert mock_snapcast.set_group_mute.called or mock_ha.set_mute.called
-
-        bridge.reconnectHa()
-        assert mock_ha.test_connection.called
-
-        bridge.disconnectHa()
-        assert bridge.homeAssistantState == "not_configured"
-
-    def test_config_lifecycle(self, bridge, mock_ha):
-        bridge.configureHomeAssistant("192.168.1.1", 8123, "token")
-        bridge.refresh()
-        bridge.disconnectHa()
-        assert bridge.homeAssistantState == "not_configured"
-        assert bridge.lastContact == 0.0
-
-    def test_stream_lifecycle(self, bridge, mock_snapcast):
-        bridge.assignStream("stream_main")
-        assert mock_snapcast.assign_stream.called
-        bridge.refresh()
-        assert bridge.snapcastState == "available"
-
-    def test_diagnostics_lifecycle(self, bridge):
-        result = bridge.openDiagnostics()
-        assert result["ok"] is True
-
-    def test_no_controller_full_workflow(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        b.refresh()
-        assert b.snapcastState == "concept"
-        assert b.devices == []
-        result = b.setZoneVolume("z1", 0.5)
-        assert result["ok"] is False
-        result = b.groupZones("z1,z2")
-        assert result["ok"] is False
-        b.disconnectHa()
-        assert b.homeAssistantState == "not_configured"
+def test_missing_service_reports_capability_unavailable():
+    bridge = HomeAudioBridge()
+    assert bridge.groupZones("zone1")["ok"] is False
+    assert bridge.receiversAvailable is False

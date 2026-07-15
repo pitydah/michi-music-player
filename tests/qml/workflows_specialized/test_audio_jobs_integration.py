@@ -7,7 +7,7 @@ import pytest
 from PySide6.QtCore import QCoreApplication
 
 from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
-from core.job_service import JobService, JobStatus
+from core.job_service import JobService, JobState
 
 
 class TestAudioJobsIntegration:
@@ -36,8 +36,8 @@ class TestAudioJobsIntegration:
         return s
 
     @pytest.fixture
-    def job_svc(self):
-        return JobService()
+    def job_svc(self, tmp_path):
+        return JobService(db_path=str(tmp_path / "jobs.db"))
 
     @pytest.fixture
     def bridge(self, audio_lab_svc, job_svc):
@@ -47,62 +47,66 @@ class TestAudioJobsIntegration:
         )
 
     def test_job_service_injected(self, bridge, job_svc):
-        assert bridge._job_svc is job_svc
+        assert bridge._jobs is job_svc
 
     def test_job_service_creates_job(self, job_svc):
-        job = job_svc.create("conversion", {"file": "/test.flac"})
-        assert job.job_id is not None
-        assert job.kind == "conversion"
-        assert job.status == JobStatus.QUEUED
+        job_id = job_svc.create_job("conversion", payload={"file": "/test.flac"})
+        job = job_svc.get_job(job_id)
+        assert job is not None
+        assert job.type == "conversion"
+        assert job.state == JobState.QUEUED
 
     def test_job_service_cancel(self, job_svc):
-        job = job_svc.create("conversion", {"file": "/test.flac"})
-        result = job_svc.cancel(job.job_id)
+        job_id = job_svc.create_job("conversion", payload={"file": "/test.flac"})
+        result = job_svc.cancel_job(job_id)
         assert result is True
-        assert job_svc.get(job.job_id).status == JobStatus.CANCELLED
+        assert job_svc.get_job(job_id).state == JobState.CANCELLED
 
     def test_job_service_cancel_real(self, job_svc):
         """Cancel is REAL — reaches service."""
-        job = job_svc.create("conversion", {"file": "/test.flac"})
-        job_svc.cancel(job.job_id)
-        updated = job_svc.get(job.job_id)
-        assert updated.status == JobStatus.CANCELLED
-        assert updated.finished_at > 0
+        job_id = job_svc.create_job("conversion", payload={"file": "/test.flac"})
+        job_svc.cancel_job(job_id)
+        updated = job_svc.get_job(job_id)
+        assert updated.state == JobState.CANCELLED
+        assert updated.finishedAt
 
     def test_job_service_double_cancel(self, job_svc):
-        job = job_svc.create("conversion", {"file": "/test.flac"})
-        job_svc.cancel(job.job_id)
-        result = job_svc.cancel(job.job_id)
+        job_id = job_svc.create_job("conversion", payload={"file": "/test.flac"})
+        job_svc.cancel_job(job_id)
+        result = job_svc.cancel_job(job_id)
         assert result is False
 
     def test_job_service_list_active(self, job_svc):
-        job1 = job_svc.create("probe", {"file": "/a.flac"})
-        job2 = job_svc.create("analysis", {"file": "/b.flac"})
-        job_svc.cancel(job1.job_id)
-        active = job_svc.list_active()
+        first = job_svc.create_job("probe", payload={"file": "/a.flac"})
+        second = job_svc.create_job("analysis", payload={"file": "/b.flac"})
+        job_svc.cancel_job(first)
+        active = job_svc.list_jobs(state=JobState.QUEUED)
         assert len(active) == 1
-        assert active[0].job_id == job2.job_id
+        assert active[0]["id"] == second
 
     def test_job_service_completed(self, job_svc):
-        job = job_svc.create("conversion", {"file": "/test.flac"})
-        job_svc.update(job.job_id, status=JobStatus.COMPLETED)
-        assert job_svc.get(job.job_id).status == JobStatus.COMPLETED
+        job_id = job_svc.create_job("conversion", payload={"file": "/test.flac"})
+        job_svc.register_handler("conversion", lambda _job, _progress: {})
+        assert job_svc.start_job(job_id) is True
+        assert job_svc.get_job(job_id).state == JobState.SUCCEEDED
 
     def test_job_service_clear_completed(self, job_svc):
-        job1 = job_svc.create("probe", {"file": "/a.flac"})
-        job2 = job_svc.create("probe", {"file": "/b.flac"})
-        job_svc.update(job1.job_id, status=JobStatus.COMPLETED)
-        job_svc.clear_completed()
-        assert job_svc.get(job1.job_id) is None
-        assert job_svc.get(job2.job_id) is not None
+        first = job_svc.create_job("probe", payload={"file": "/a.flac"})
+        second = job_svc.create_job("probe", payload={"file": "/b.flac"})
+        job_svc.register_handler("probe", lambda _job, _progress: {})
+        job_svc.start_job(first)
+        removed = job_svc.clear_terminal()
+        assert removed == 1
+        assert job_svc.get_job(first) is None
+        assert job_svc.get_job(second) is not None
 
     def test_job_bridge_integration(self, bridge):
-        assert bridge._job_svc is not None
+        assert bridge._jobs is not None
 
     def test_job_kind_filter(self, job_svc):
-        job_svc.create("probe", {"file": "/a.flac"})
-        job_svc.create("conversion", {"file": "/b.flac"})
-        probes = job_svc.list_by_kind("probe")
+        job_svc.create_job("probe", payload={"file": "/a.flac"})
+        job_svc.create_job("conversion", payload={"file": "/b.flac"})
+        probes = job_svc.list_jobs(job_type="probe")
         assert len(probes) == 1
-        conversions = job_svc.list_by_kind("conversion")
+        conversions = job_svc.list_jobs(job_type="conversion")
         assert len(conversions) == 1

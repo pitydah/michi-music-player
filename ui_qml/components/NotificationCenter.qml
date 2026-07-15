@@ -16,7 +16,7 @@ Rectangle {
 
     objectName: "NotificationCenter"
 
-    Accessible.role: Accessible.Panel
+    Accessible.role: Accessible.Pane
     Accessible.name: "Centro de notificaciones"
     Accessible.description: "Lista de notificaciones activas"
 

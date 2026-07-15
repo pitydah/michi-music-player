@@ -99,6 +99,10 @@ class ApplicationBootstrap:
             self.register_context(engine)
             self.load_qml(engine, qml_path)
 
+    def _validate_required(self) -> list[str]:
+        """Compatibility hook for startup diagnostics and focused workflow tests."""
+        return self.container.validate()
+
     def _build_config(self):
         from core.settings_manager import SETTINGS
         self.container.register("settings_manager", SETTINGS)
@@ -262,17 +266,31 @@ class ApplicationBootstrap:
     def _build_connection_services(self):
         try:
             from core.connection_service import ConnectionService
-            cs = ConnectionService()
+            from integrations.connections.connection_manager import ConnectionManager
+            from integrations.connections.discovery_manager import DiscoveryManager
+
+            cs = ConnectionService(
+                connection_manager=ConnectionManager(),
+                discovery_manager=DiscoveryManager(),
+            )
             self.container.register("connection_service", cs, priority=ServicePriority.OPTIONAL)
-        except Exception:
+        except Exception as exc:
+            logger.warning("ConnectionService unavailable: %s", exc)
             self.container.register("connection_service", None, priority=ServicePriority.OPTIONAL)
 
     def _build_home_audio_services(self):
         try:
             from core.home_audio_service import HomeAudioService
-            ha = HomeAudioService()
+            from integrations.snapcast.discovery import SnapClientDiscovery
+            from integrations.snapcast.group_manager import GroupManager
+
+            ha = HomeAudioService(
+                snapcast_group_manager=GroupManager(),
+                snapcast_discovery=SnapClientDiscovery(),
+            )
             self.container.register("home_audio_service", ha, priority=ServicePriority.OPTIONAL)
-        except Exception:
+        except Exception as exc:
+            logger.warning("HomeAudioService unavailable: %s", exc)
             self.container.register("home_audio_service", None, priority=ServicePriority.OPTIONAL)
 
     def _build_lyrics_services(self):
@@ -355,48 +373,9 @@ class ApplicationBootstrap:
         self._build_equalizer_service()
 
     def _build_action_registry(self):
-        ar = self.container.get("action_registry")
-        if ar is None:
-            return
-        from ui_qml_bridge.action_registry import ActionDescriptor
-        ps = self.container.get("playback_service")
-
-        def _play():
-            if ps and hasattr(ps, 'play'):
-                ps.play()
-
-        def _pause():
-            if ps and hasattr(ps, 'pause'):
-                ps.pause()
-
-        def _next():
-            if ps and hasattr(ps, 'next'):
-                ps.next()
-
-        def _prev():
-            if ps and hasattr(ps, 'prev'):
-                ps.prev()
-
-        def _stop():
-            if ps and hasattr(ps, 'stop'):
-                ps.stop()
-
-        def _queue_add():
-            pass
-
-        def _favorite():
-            pass
-
-        ar.register(ActionDescriptor(action_id="play", title="Play", category="playback", handler=_play))
-        ar.register(ActionDescriptor(action_id="pause", title="Pause", category="playback", handler=_pause))
-        ar.register(ActionDescriptor(action_id="next", title="Next", category="playback", handler=_next))
-        ar.register(ActionDescriptor(action_id="previous", title="Previous", category="playback", handler=_prev))
-        ar.register(ActionDescriptor(action_id="stop", title="Stop", category="playback", handler=_stop))
-        ar.register(ActionDescriptor(action_id="queue_add", title="Add to queue", category="queue", handler=_queue_add))
-        ar.register(ActionDescriptor(action_id="favorite", title="Toggle favorite", category="track", handler=_favorite))
-        ar.register(ActionDescriptor(action_id="settings.open", title="Open Settings", category="navigation", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="playlist.create", title="Create Playlist", category="playlist", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="mix.generate", title="Generate Mix", category="mix", handler=lambda: None))
+        # Handlers are bound after every bridge exists by ActionRegistryBinder.
+        # Keeping composition here free of UI closures prevents placeholder actions.
+        return
 
     def _build_michi_ai(self):
         try:

@@ -7,6 +7,9 @@ import "../../components"
 
 Item {
     id: root
+    objectName: "QueuePage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Cola de reproducción"
 
     property var qb: typeof queueBridge !== "undefined" ? queueBridge : null
     property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge

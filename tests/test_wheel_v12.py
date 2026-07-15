@@ -87,6 +87,14 @@ def test_wheel_contains_qml_bridge():
     assert not missing, f"Bridge modules missing from wheel: {missing}"
 
 
+def test_wheel_contains_qml_application_resources():
+    wheel = _build_wheel()
+    files = _wheel_files(wheel)
+    qml_files = [name for name in files if name.endswith(".qml")]
+    assert qml_files, "Wheel must contain QML resources"
+    assert any(name.endswith("ui_qml/Main.qml") for name in qml_files)
+
+
 def test_wheel_does_not_contain_tests():
     wheel = _build_wheel()
     files = _wheel_files(wheel)

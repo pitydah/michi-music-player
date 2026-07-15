@@ -13,6 +13,14 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Playlists"
 
+    Keys.onEscapePressed: function(event) {
+        if (editorDialog.visible) editorDialog.close()
+        if (importDialog.visible) importDialog.close()
+        if (smartPlaylistDialog.visible) smartPlaylistDialog.visible = false
+        if (confirmBatchDelete.visible) confirmBatchDelete.close()
+        event.accepted = true
+    }
+
     property var pl: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property string _newName: ""

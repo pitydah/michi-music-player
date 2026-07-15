@@ -44,40 +44,44 @@ Item {
             anchors.rightMargin: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.md
 
-            RowLayout {
+            Item {
                 Layout.preferredWidth: parent.width * 0.22
                 Layout.fillHeight: true
-                spacing: MichiTheme.spacing.md
 
-                NowPlayingCover {
-                    id: coverArt
-                    Layout.preferredWidth: 56
-                    Layout.preferredHeight: 56
-                    coverKey: root.ps ? root.ps.coverPath : ""
-                    placeholderMode: !root._hasTrack
-                }
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: MichiTheme.spacing.md
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    spacing: 3
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                        elide: Text.ElideRight
+                    NowPlayingCover {
+                        id: coverArt
+                        Layout.preferredWidth: 56
+                        Layout.preferredHeight: 56
+                        coverKey: root.ps ? root.ps.coverPath : ""
+                        placeholderMode: !root._hasTrack
                     }
-                    Text {
+
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: root._hasTrack && root.ps && root.ps.trackArtist
-                              ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
-                              : "Selecciona una canción desde Biblioteca"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight
+                        Layout.fillHeight: true
+                        spacing: 3
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root._hasTrack && root.ps && root.ps.trackArtist
+                                  ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
+                                  : "Selecciona una canción desde Biblioteca"
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            elide: Text.ElideRight
+                        }
                     }
                 }
 

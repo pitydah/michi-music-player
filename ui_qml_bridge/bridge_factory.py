@@ -568,6 +568,7 @@ class BridgeFactory(QObject):
         self.create_selection_context_bridge()
         self.create_query_executor()
 
+        self._refresh_capabilities()
         capability = self._bridges.get("capability")
         if capability and hasattr(capability, 'refresh'):
             capability.refresh()
@@ -577,6 +578,33 @@ class BridgeFactory(QObject):
         self._validate_bridge_identities()
         self._assert_wiring()
         return self._bridges
+
+    def _refresh_capabilities(self):
+        service_map = {
+            "audio_lab": "audio_lab_service",
+            "metadata": "metadata_service",
+            "smart_tagging": "smart_tagging_service",
+            "library_doctor": "library_doctor_service",
+            "eq": "equalizer_service",
+            "output_profiles": "output_profile_service",
+            "devices": "device_sync_service",
+            "connections": "connection_service",
+            "home_audio": "home_audio_service",
+            "settings": "settings_service",
+            "diagnostics": "diagnostics_service",
+            "ai": "michi_ai_service",
+            "disc_lab": "disc_lab_service",
+        }
+        self._capabilities = {
+            name: "available" if self._container.contains(service) else "unavailable"
+            for name, service in service_map.items()
+        }
+        navigation = self._bridges.get("navigation")
+        if navigation is not None and hasattr(navigation, "set_capabilities"):
+            navigation.set_capabilities({
+                name for name, state in self._capabilities.items()
+                if state == "available"
+            })
 
     def _validate_bridge_identities(self):
         keys = set(self._bridges.keys())

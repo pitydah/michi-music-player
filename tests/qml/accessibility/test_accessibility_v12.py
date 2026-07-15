@@ -1,14 +1,11 @@
 """Tests for Accessibility v12 — validar en runtime Accessible.role, name, focus, tab order, font scale 150%."""
 from unittest.mock import MagicMock
 
-import pytest
-
-
 class TestAccessibilityBridge:
-    def test_requires_playback_service(self):
+    def test_playback_service_is_optional_for_visual_settings(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-        with pytest.raises(Exception):
-            AccessibilityBridge()
+        bridge = AccessibilityBridge()
+        assert bridge.accessibilityScore()["has_playback_service"] is False
 
     def test_creation(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge

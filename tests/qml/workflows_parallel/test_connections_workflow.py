@@ -1,8 +1,20 @@
 
 
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+
+from ui_qml_bridge.connections_bridge import ConnectionsBridge
+
+
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
+    ctrl.discover_servers.return_value = [
+        SimpleNamespace(name="Server A", host="10.0.0.2"),
+        SimpleNamespace(name="Server B", host="10.0.0.3"),
+    ]
     ctrl.get_capabilities.return_value = {
         "micro_server_state": "connected",
         "micro_server_name": "MyServer",
@@ -192,7 +204,8 @@ class TestFullWorkflow:
         assert b.microServerAlias == "X"
         b.disconnect()
         assert b.microServerState == "not_configured"
-        b.reconnect()
-        assert b.microServerState == "scanning"
+        result = b.reconnect()
+        assert result["ok"] is False
+        assert b.microServerState == "not_configured"
         b.forgetServer()
         assert b.microServerAlias == ""

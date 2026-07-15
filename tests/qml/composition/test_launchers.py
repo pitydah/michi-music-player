@@ -13,34 +13,30 @@ class TestAppLauncher:
     def test_launch_widgets_dispatches_correctly(self):
         with patch.dict('os.environ', {'MICHI_UI': 'widgets'}), \
              patch('michi.widgets_app.run_widgets', return_value=0) as mock_w:
-            with pytest.raises(SystemExit):
-                from michi.app_launcher import launch
-                launch()
+            from michi.app_launcher import launch
+            assert launch() == 0
             mock_w.assert_called_once()
 
     def test_launch_qml_dispatches_correctly(self):
         with patch.dict('os.environ', {'MICHI_UI': 'qml'}), \
              patch('michi.qml_app.run_qml', return_value=0) as mock_q:
-            with pytest.raises(SystemExit):
-                from michi.app_launcher import launch
-                launch()
+            from michi.app_launcher import launch
+            assert launch() == 0
             mock_q.assert_called_once()
 
     def test_launch_verify_dispatches_correctly(self):
         with patch.dict('os.environ', {'MICHI_UI': 'verify'}), \
-             patch('michi.qml_app.run_qml', return_value=0) as mock_q:
-            with pytest.raises(SystemExit):
-                from michi.app_launcher import launch
-                launch()
-            mock_q.assert_called_once()
+             patch('michi.verify_app.run_verify', return_value=0) as mock_verify:
+            from michi.app_launcher import launch
+            assert launch() == 0
+            mock_verify.assert_called_once()
 
-    def test_launch_defaults_to_widgets(self):
+    def test_launch_defaults_to_qml(self):
         with patch.dict('os.environ', {}, clear=True), \
-             patch('michi.widgets_app.run_widgets', return_value=0) as mock_w:
-            with pytest.raises(SystemExit):
-                from michi.app_launcher import launch
-                launch()
-            mock_w.assert_called_once()
+             patch('michi.qml_app.run_qml', return_value=0) as mock_q:
+            from michi.app_launcher import launch
+            assert launch() == 0
+            mock_q.assert_called_once()
 
 
 class TestLauncherModules:

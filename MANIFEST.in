@@ -4,6 +4,7 @@ recursive-include icons *
 recursive-include data *
 recursive-include docs *.md
 recursive-include scripts *.sh *.py
+recursive-include ui_qml *.qml *.js *.mjs *.json *.png *.jpg *.jpeg *.svg *.ttf *.otf
 include MANIFEST.in
 include README.md
 include LICENSE

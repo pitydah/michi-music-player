@@ -7,6 +7,9 @@ import "../../materials"
 
 Item {
     id: root
+    objectName: "MetadataInspectorPage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Inspector de metadatos"
 
     property var md: typeof metadataBridge !== "undefined" ? metadataBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null

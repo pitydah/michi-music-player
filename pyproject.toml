@@ -74,7 +74,6 @@ Issues = "https://github.com/pitydah/michi-music-player/issues"
 [project.scripts]
 michi = "michi.app_launcher:launch"
 michi-qml = "michi.qml_app:run_qml"
-michi-widgets = "michi.widgets_app:run_widgets"
 michi-qml-verify = "michi.verify_app:run_verify"
 michi-music-player = "michi.app_launcher:launch"
 
@@ -83,7 +82,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["tests*", "tools*", "ha_custom_component*", "legacy_widgets*", "__pycache__*"]
+exclude = ["tests*", "tools*", "ha_custom_component*", "legacy_widgets*", "ui", "ui.*", "__pycache__*"]
+
+[tool.setuptools.package-data]
+ui_qml = ["**/*.qml", "**/*.js", "**/*.mjs", "**/*.json", "**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.svg", "**/*.ttf", "**/*.otf"]
 
 [tool.ruff]
 line-length = 100

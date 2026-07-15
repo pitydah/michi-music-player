@@ -8,6 +8,11 @@ from pathlib import Path
 logger = logging.getLogger("michi.playlist_service")
 
 
+def _entry_filepath(entry) -> str:
+    """Return the canonical location for a parsed playlist entry."""
+    return getattr(entry, "resolved_path", getattr(entry, "filepath", str(entry)))
+
+
 class PlaylistTransaction:
     def __init__(self, db):
         self._db = db
@@ -211,9 +216,9 @@ class PlaylistService:
         if not filepath or not Path(filepath).is_file():
             return self._error("FILE_NOT_FOUND")
         try:
-            from legacy_widgets.ui.playlist_io import parse_playlist_entries
+            from core.playlist_io import parse_playlist_entries
             entries = parse_playlist_entries(filepath)
-            valid = sum(1 for e in entries if Path(e.filepath if hasattr(e, 'filepath') else str(e)).is_file())
+            valid = sum(1 for entry in entries if Path(_entry_filepath(entry)).is_file())
             return self._ok(
                 format=Path(filepath).suffix,
                 name=Path(filepath).stem,
@@ -233,13 +238,13 @@ class PlaylistService:
             entries = []
             p = Path(filepath)
             if p.is_file():
-                from legacy_widgets.ui.playlist_io import parse_playlist_entries
+                from core.playlist_io import parse_playlist_entries
                 entries = parse_playlist_entries(filepath)
             playlist_name = name or p.stem
             pid = self._db.create_playlist(playlist_name)
             count = 0
             for entry in entries:
-                fp = entry.filepath if hasattr(entry, 'filepath') else str(entry)
+                fp = _entry_filepath(entry)
                 if Path(fp).is_file():
                     self._db.add_track_to_playlist(pid, filepath=fp)
                     count += 1
@@ -256,7 +261,7 @@ class PlaylistService:
         if not self._can():
             return self._error("NO_DB")
         try:
-            from legacy_widgets.ui.playlist_io import export_m3u
+            from core.playlist_io import export_m3u
             items = self._get_items_internal(pid)
             if not items:
                 return self._error("NO_TRACKS")

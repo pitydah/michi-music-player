@@ -6,6 +6,7 @@ Item {
     id: root
 
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property var current: notif ? notif.currentNotification : null
 
     Rectangle {
         id: toast
@@ -15,11 +16,11 @@ Item {
         width: Math.min(400, parent.width * 0.8)
         height: 48
         radius: MichiTheme.radiusSm
-        visible: root.notif ? root.notif.visible : false
+        visible: root.current !== null && root.current !== undefined
 
         color: {
             if (!root.notif) return "transparent"
-            switch (root.notif.kind) {
+            switch (root.current ? root.current.kind : "info") {
                 case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.20)
                 case "warning": return Qt.rgba(1, 0.75, 0.14, 0.20)
                 case "error": return Qt.rgba(1, 0.44, 0.44, 0.20)
@@ -29,7 +30,7 @@ Item {
 
         border.color: {
             if (!root.notif) return "transparent"
-            switch (root.notif.kind) {
+            switch (root.current ? root.current.kind : "info") {
                 case "success": return MichiTheme.colors.success
                 case "warning": return MichiTheme.colors.warning
                 case "error": return MichiTheme.colors.error
@@ -42,7 +43,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: MichiTheme.spacing.md
             anchors.verticalCenter: parent.verticalCenter
-            text: root.notif ? root.notif.message : ""
+            text: root.current ? root.current.message : ""
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             elide: Text.ElideRight
@@ -66,7 +67,7 @@ Item {
 
         Timer {
             interval: 4000
-            running: root.notif ? root.notif.visible : false
+            running: toast.visible
             onTriggered: { if (root.notif) root.notif.clear() }
         }
     }

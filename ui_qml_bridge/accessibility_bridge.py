@@ -11,7 +11,6 @@ class AccessibilityBridge(QObject):
     def __init__(self, service=None, coordinator=None, playback_service=None,
                  settings_service=None, settings_coordinator=None, parent=None):
         super().__init__(parent)
-        assert playback_service is not None, "AccessibilityBridge: playback_service is REQUIRED"
         self._svc = service or settings_service
         self._coordinator = coordinator or settings_coordinator
         self._playback_service = playback_service
@@ -134,9 +133,12 @@ class AccessibilityBridge(QObject):
     @balance.setter
     def balance(self, val: int):
         if val != self._balance:
+            old = self._balance
             self._balance = max(-100, min(100, val))
             self._set_via_service("accessibility/balance", self._balance)
             self._apply_balance_to_playback()
+            if not self._playback_service:
+                self._balance = old
             self.dataChanged.emit()
 
     @Slot(result=dict)

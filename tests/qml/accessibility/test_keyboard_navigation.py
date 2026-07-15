@@ -187,7 +187,7 @@ class TestKeyboardFocusAcrossPages:
             pytest.skip("PlaylistsPage.qml not found")
         content = p.read_text()
         assert "Keys.onEscapePressed" in content
-        assert "createDialog.close()" in content or "createDialog.opened" in content
+        assert "editorDialog.close()" in content or "editorDialog.visible" in content
 
     def test_history_escape_dismisses_dialogs(self):
         p = QML_DIR / "pages/history/HistoryPage.qml"

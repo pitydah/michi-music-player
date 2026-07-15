@@ -22,8 +22,18 @@ from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 
 from core.application_bootstrap import ApplicationBootstrap  # noqa: E402
 from core.service_container import ContainerState  # noqa: E402
+from ui_qml_bridge.route_registry import CAPABILITY_MAP  # noqa: E402
 
 NAV_ROUTES = ["home", "library", "playback", "home_audio", "connections", "queue", "radio", "playlists", "ai", "library.tracks", "library.albums", "mix", "history"]
+
+
+def _required_capability(route: str) -> str | None:
+    for pattern, capability in CAPABILITY_MAP.items():
+        if pattern.endswith(".*") and route.startswith(pattern[:-2]):
+            return capability
+        if route == pattern:
+            return capability
+    return None
 
 def main():
     errors = []
@@ -86,15 +96,33 @@ def main():
         if navigation_bridge:
             logger.info("NavigationBridge found in context, initial route=%s", getattr(navigation_bridge, "currentRoute", "?"))
             registered_routes = []
+            capability_blocked_routes = []
             for r in NAV_ROUTES:
                 try:
                     navigation_bridge.navigate(r)
                     QCoreApplication.processEvents()
+                    current_route = getattr(navigation_bridge, "currentRoute", "?")
+                    if current_route != r:
+                        required = _required_capability(r)
+                        available = getattr(navigation_bridge, "_capabilities", set())
+                        if required and required not in available:
+                            capability_blocked_routes.append(r)
+                            logger.info(
+                                "  Route '%s' blocked by capability '%s'",
+                                r,
+                                required,
+                            )
+                            continue
+                        errors.append(
+                            f"Navigation to '{r}' resolved to '{current_route}'"
+                        )
+                        continue
                     registered_routes.append(r)
-                    logger.info("  Navigated to '%s' — currentRoute=%s", r, getattr(navigation_bridge, "currentRoute", "?"))
+                    logger.info("  Navigated to '%s' — currentRoute=%s", r, current_route)
                 except Exception as e:
                     errors.append(f"Navigation to '{r}' failed: {e}")
             logger.info("Routes navigated: %s", registered_routes)
+            logger.info("Routes capability-blocked: %s", capability_blocked_routes)
         else:
             errors.append("NavigationBridge NOT found in context")
 
