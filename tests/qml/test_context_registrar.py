@@ -5,7 +5,8 @@ from unittest.mock import MagicMock
 from PySide6.QtCore import QObject
 from PySide6.QtQml import QQmlApplicationEngine
 
-from ui_qml_bridge.context_registrar import ContextRegistrar, CONTEXT_BINDINGS, CONTEXT_MODELS
+from ui_qml_bridge.context_registrar import ContextRegistrar
+from ui_qml_bridge.context_bindings import CONTEXT_BINDINGS
 
 
 class _FakeBridge(QObject):

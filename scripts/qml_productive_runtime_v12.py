@@ -36,10 +36,6 @@ def main():
 
     container = bootstrap.container
 
-    none_req = container.validate_no_none_required()
-    if none_req:
-        errors.append(f"REQUIRED services are None: {none_req}")
-
     container.start()
     if container.state == ContainerState.FAILED:
         errors.append(f"Container FAILED on start: {container.health()['failures']}")

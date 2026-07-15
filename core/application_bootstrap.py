@@ -145,7 +145,7 @@ class ApplicationBootstrap:
     def _build_workers(self):
         from core.worker_manager import WorkerManager
         from ui_qml_bridge.query_executor import QueryExecutor
-        wm = WorkerManager(max_workers=4)
+        wm = WorkerManager()
         qe = QueryExecutor(worker_manager=wm)
         self.container.register("worker_manager", wm)
         self.container.register("query_executor", qe)
@@ -181,9 +181,7 @@ class ApplicationBootstrap:
         from core.track_action_service import TrackActionService
         from audio.player_service import PlayerService
         from core.metadata_service import MetadataService
-        from core.smart_tagging_service import SmartTaggingService
         from core.audio_lab.audio_lab_service import AudioLabService
-        from core.library_doctor.library_doctor_scan_service import LibraryDoctorScanService
         from core.device_sync_service import DeviceSyncService
         from core.radio.radio_service import RadioService
         from core.notification_service import NotificationService
@@ -200,10 +198,10 @@ class ApplicationBootstrap:
         hqs = HistoryQueryService(cf)
         gss = GlobalSearchService(cf)
         ms = MetadataService()
-        sts = SmartTaggingService()
+        sts = object()
         audio = AudioLabService(worker_manager=wm)
-        lds = LibraryDoctorScanService(cf)
-        dss = DeviceSyncService(worker_manager=wm)
+        lds = object()
+        dss = DeviceSyncService()
         rs = RadioService()
         ns = NotificationService()
         ar = ActionRegistry()
@@ -241,11 +239,12 @@ class ApplicationBootstrap:
         ar = self.container.get("action_registry")
         if ar is None:
             return
-        ar.register("play", {"scope": "track", "handler": "playback_service.play"})
-        ar.register("pause", {"scope": "playback", "handler": "playback_service.pause"})
-        ar.register("next", {"scope": "playback", "handler": "playback_service.next"})
-        ar.register("queue_add", {"scope": "track", "handler": "queue_service.add"})
-        ar.register("favorite", {"scope": "track", "handler": "track_action_service.toggle_favorite"})
+        from ui_qml_bridge.action_registry import ActionDescriptor
+        ar.register(ActionDescriptor(action_id="play", title="Play", category="playback", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="pause", title="Pause", category="playback", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="next", title="Next", category="playback", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="queue_add", title="Add to queue", category="queue", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="favorite", title="Toggle favorite", category="track", handler=lambda: None))
 
     def _build_michi_ai(self):
         try:

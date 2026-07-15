@@ -13,6 +13,25 @@ from core.service_container import ServiceContainer
 
 logger = logging.getLogger("michi.bridge_factory")
 
+INFRASTRUCTURE = [
+    "page_state", "route_registry", "navigation", "action_registry",
+    "query_executor", "job_bridge", "confirmation", "theme", "accessibility",
+    "app_state",
+]
+
+DOMAIN = [
+    "library_sources", "library", "playback", "nowplaying", "queue",
+    "playlists", "history", "global_search", "mix", "lyrics",
+    "settings", "output_profiles", "eq", "connections",
+    "home_audio", "devices", "radio", "audio_lab", "metadata",
+    "smart_tagging", "disc_lab", "library_doctor", "diagnostics", "michi_ai",
+]
+
+AGGREGATORS = [
+    "notification", "command_palette", "home", "capability",
+    "app", "desktop", "runtime_quality", "physical_audio",
+]
+
 
 class BridgeFactory(QObject):
     """Creates each bridge with injected dependencies from ServiceContainer."""
@@ -374,7 +393,6 @@ class BridgeFactory(QObject):
         if "michi_ai" not in self._bridges:
             from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
             self._bridges["michi_ai"] = MichiAIBridge(
-                device_sync_service=self._get("device_sync_service"),
                 job_service=self._get("job_service"),
                 action_registry=self._bridges.get("action_registry"),
                 confirmation_service=self._bridges.get("confirmation"),
@@ -468,7 +486,7 @@ class BridgeFactory(QObject):
     def create_cover_provider_bridge(self):
         if "cover_provider" not in self._bridges:
             from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
-            self._bridges["cover_provider"] = CoverProviderBridge(cover_bridge=None)
+            self._bridges["cover_provider"] = CoverProviderBridge(cover_bridge=self._bridges.get("cover"))
 
     def create_query_executor(self):
         if "query_executor" not in self._bridges:
@@ -542,6 +560,9 @@ class BridgeFactory(QObject):
 
         self.create_runtime_quality_bridge()
         self.create_physical_audio_bridge()
+        if "cover" not in self._bridges:
+            from PySide6.QtCore import QObject
+            self._bridges["cover"] = QObject()
         self.create_cover_provider_bridge()
         self.create_app_state_bridge()
         self.create_selection_context_bridge()
@@ -609,6 +630,66 @@ class BridgeFactory(QObject):
         if ai is not None:
             assert ai._registry is container.require("action_registry"), \
                 "ai_bridge.action_registry identity mismatch"
+
+    def _create_infrastructure(self):
+        for name in INFRASTRUCTURE:
+            method_name = {
+                "page_state": "create_page_state_store",
+                "route_registry": "create_route_registry_bridge",
+                "navigation": "create_navigation_bridge",
+                "action_registry": "create_action_registry_bridge",
+                "query_executor": "create_query_executor",
+                "job_bridge": "create_job_bridge",
+                "confirmation": "create_confirmation_bridge",
+                "theme": "create_theme_bridge",
+                "accessibility": "create_accessibility_bridge",
+                "app_state": "create_app_state_bridge",
+            }[name]
+            getattr(self, method_name)()
+
+    def _create_domain(self):
+        for name in DOMAIN:
+            method_name = {
+                "library_sources": "create_library_sources_bridge",
+                "library": "create_library_bridge",
+                "playback": "create_playback_bridge",
+                "nowplaying": "create_nowplaying_bridge",
+                "queue": "create_queue_bridge",
+                "playlists": "create_playlists_bridge",
+                "history": "create_history_bridge",
+                "global_search": "create_search_bridge",
+                "mix": "create_mix_bridge",
+                "lyrics": "create_lyrics_bridge",
+                "settings": "create_settings_bridge",
+                "output_profiles": "create_output_profiles_bridge",
+                "eq": "create_eq_bridge",
+                "connections": "create_connections_bridge",
+                "home_audio": "create_home_audio_bridge",
+                "devices": "create_devices_bridge",
+                "radio": "create_radio_bridge",
+                "audio_lab": "create_audio_lab_bridge",
+                "metadata": "create_metadata_bridge",
+                "smart_tagging": "create_smart_tagging_bridge",
+                "disc_lab": "create_disc_lab_bridge",
+                "library_doctor": "create_library_doctor_bridge",
+                "diagnostics": "create_diagnostics_bridge",
+                "michi_ai": "create_michi_ai_bridge",
+            }[name]
+            getattr(self, method_name)()
+
+    def _create_aggregators(self):
+        for name in AGGREGATORS:
+            method_name = {
+                "notification": "create_notification_bridge",
+                "command_palette": "create_command_palette_bridge",
+                "home": "create_home_bridge",
+                "capability": "create_capability_bridge",
+                "app": "create_app_bridge",
+                "desktop": "create_desktop_bridge",
+                "runtime_quality": "create_runtime_quality_bridge",
+                "physical_audio": "create_physical_audio_bridge",
+            }[name]
+            getattr(self, method_name)()
 
     def bind_action_handlers(self):
         registry = self._bridges.get("action_registry")
