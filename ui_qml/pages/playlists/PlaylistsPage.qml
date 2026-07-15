@@ -1,31 +1,92 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
+import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 import "../../materials"
 
 Item {
     id: root
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playlists"
 
     property var pl: typeof playlistsBridge !== "undefined" ? playlistsBridge : null
-    property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
+    property var sel: typeof selectionController !== "undefined" ? selectionController : null
     property string _newName: ""
     property string _addResult: ""
     property string _searchText: ""
     property var _selectedPlaylists: []
     property bool _selectionMode: false
     property bool _confirmBatchDelete: false
+    property string _state: "LOADING"
+<<<<<<< Updated upstream
+    property string _errorMsg: ""
+
+=======
+<<<<<<< HEAD
+
+    objectName: "playlists.page"
+    focus: true
+
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Playlists"
+    Accessible.description: "Gestión de listas de reproducción"
+=======
+    property string _errorMsg: ""
+
+>>>>>>> Stashed changes
+    PageStateManager {
+        id: pageState
+        route: "playlists"
+        active: true
+        onSearchTextChanged: pageState.save()
+    }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     Component.onCompleted: {
         if (root.pl && typeof root.pl.refresh !== "undefined")
             root.pl.refresh()
+<<<<<<< Updated upstream
+        root._updateState()
+    }
+
+=======
+<<<<<<< HEAD
+        root._state = root.pl && root.pl.playlists && root.pl.playlists.length > 0 ? "READY" : "EMPTY"
+    }
+
+    onPlChanged: {
+        root._state = root.pl && root.pl.playlists && root.pl.playlists.length > 0 ? "READY" : "EMPTY"
+=======
+        root._updateState()
+    }
+
+>>>>>>> Stashed changes
+    onPlChanged: root._updateState()
+
+    function _updateState() {
+        if (!root.pl) { root._state = "ERROR"; return }
+        var items = root.pl.playlists
+        if (!items || items.length === 0) { root._state = "EMPTY"; return }
+        root._state = "READY"
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 
     function toggleSelection(pid) {
         var idx = root._selectedPlaylists.indexOf(pid)
         if (idx >= 0) root._selectedPlaylists.splice(idx, 1)
         else root._selectedPlaylists.push(pid)
+        if (root.sel && typeof root.sel.toggle !== "undefined")
+            root.sel.toggle(pid)
     }
 
     function duplicatePlaylist(pid) {
@@ -38,58 +99,236 @@ Item {
             root.pl.playPlaylist(pid)
     }
 
+<<<<<<< Updated upstream
+    function deletePlaylist(pid) {
+        if (root.pl && typeof root.pl.deletePlaylist !== "undefined")
+            root.pl.deletePlaylist(pid)
+=======
+<<<<<<< HEAD
+    function getFilteredPlaylists() {
+        if (!root.pl || !root.pl.playlists) return []
+        var items = root.pl.playlists
+        if (root._searchText) {
+            var q = root._searchText.toLowerCase()
+            items = items.filter(function(p) {
+                return (p.title || "").toLowerCase().indexOf(q) >= 0
+            })
+        }
+        return items
+>>>>>>> Stashed changes
+    }
+
+    function createNewPlaylist(name) {
+        if (root.pl && typeof root.pl.createPlaylist !== "undefined")
+            root.pl.createPlaylist(name)
+    }
+
+    function openEditor() {
+        editorDialog.playlistId = -1
+        editorDialog.playlistName = ""
+        editorDialog.playlistDescription = ""
+        editorDialog.open()
+    }
+
+    function openImport() {
+        importDialog.reset()
+        importDialog.open()
+    }
+
+    function refresh() {
+        if (root.pl && typeof root.pl.refresh !== "undefined")
+            root.pl.refresh()
+        root._updateState()
+    }
+
     Flickable {
-        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+        id: flickable
+        anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
-        clip: true; boundsBehavior: Flickable.StopAtBounds
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
 
         Column {
-            id: column; width: parent.width; spacing: MichiTheme.spacing.lg
+            id: column
+            width: parent.width
+            spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
-                width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
+                id: playlistHero
+                width: parent.width
+                height: MichiTheme.typography.heroTitleSize * 5
+                radius: MichiTheme.radiusLg
+                showGlow: true
+                objectName: "playlistHero"
+                Accessible.name: "Playlists"
                 Column {
-                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.xl
+                    spacing: MichiTheme.spacing.sm
                     Text {
-                        text: "Playlists"; color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold
+                        text: "Playlists"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize
+                        font.weight: MichiTheme.typography.weightBold
                     }
                     Text {
-                        text: "Gestiona tus listas de reproducción."; color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.70; wrapMode: Text.WordWrap
+                        text: "Gestiona tus listas de reproducción."
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        width: parent.width * 0.70
+                        wrapMode: Text.WordWrap
                     }
                 }
             }
 
             SearchField {
+                id: playlistSearch
                 width: parent.width * 0.5
                 placeholderText: "Buscar playlists..."
+                objectName: "playlistSearchField"
+                Accessible.name: "Buscar playlists"
                 onSearchTextChanged: root._searchText = text
+                activeFocusOnTab: true
+                KeyNavigation.tab: createPlaylistBtn
+                KeyNavigation.backtab: flickable
+                Keys.onEscapePressed: { root._searchText = ""; text = "" }
             }
 
             Row {
+                id: actionRow
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    text: "+ Nueva playlist"; variant: "primary"
-                    onClicked: createDialog.open()
+                    id: createPlaylistBtn
+                    text: "+ Nueva playlist"
+                    variant: "primary"
+                    objectName: "createPlaylistButton"
+                    Accessible.name: "Nueva playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: smartPlaylistBtn
+                    KeyNavigation.backtab: playlistSearch
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.openEditor()
                 }
-                MichiButton { text: "Importar M3U"; variant: "secondary"; onClicked: importDialog.open() }
                 MichiButton {
-                    text: "Seleccionar"; variant: "ghost"
+                    id: smartPlaylistBtn
+                    text: "Smart playlist"
+                    variant: "secondary"
+                    objectName: "smartPlaylistButton"
+                    Accessible.name: "Smart playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: importPlaylistBtn
+                    KeyNavigation.backtab: createPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: smartPlaylistDialog.open()
+                }
+                MichiButton {
+                    id: importPlaylistBtn
+                    text: "Importar"
+                    variant: "secondary"
+                    objectName: "importPlaylistButton"
+                    Accessible.name: "Importar playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: selectPlaylistBtn
+                    KeyNavigation.backtab: smartPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.openImport()
+                }
+                MichiButton {
+                    id: selectPlaylistBtn
+                    text: "Seleccionar"
+                    variant: "ghost"
+                    objectName: "selectPlaylistButton"
+                    Accessible.name: "Seleccionar playlists"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: deletePlaylistBtn
+                    KeyNavigation.backtab: importPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
                     onClicked: root._selectionMode = !root._selectionMode
                     highlighted: root._selectionMode
                 }
                 MichiButton {
-                    text: "Eliminar seleccionadas"; variant: "danger"
+                    id: deletePlaylistBtn
+                    text: "Eliminar seleccionadas"
+                    variant: "danger"
+                    objectName: "deletePlaylistButton"
+                    Accessible.name: "Eliminar seleccionadas"
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: refreshBtn
+                    KeyNavigation.backtab: selectPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
                     onClicked: root._confirmBatchDelete = true
+                }
+                MichiButton {
+                    id: refreshBtn
+                    text: "Refrescar"
+                    variant: "ghost"
+                    objectName: "refreshPlaylistsButton"
+                    Accessible.name: "Refrescar playlists"
+                    visible: root._state !== "LOADING"
+                    activeFocusOnTab: true
+                    KeyNavigation.backtab: deletePlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.refresh()
                 }
             }
 
-            SectionHeader { text: "Tus playlists"; width: parent.width }
+            LoadingState {
+                width: parent.width
+                visible: root._state === "LOADING"
+                title: "Cargando playlists"
+                message: "Obteniendo listas de reproducción..."
+                objectName: "playlistsLoadingState"
+                Accessible.name: "Cargando playlists"
+            }
+
+            EmptyState {
+                width: parent.width
+                visible: root._state === "EMPTY"
+                iconText: ""
+                title: "Sin playlists"
+                subtitle: "Crea tu primera lista de reproducción para empezar a organizar tu música."
+                actionText: "Crear playlist"
+                showAction: true
+                objectName: "playlistsEmptyState"
+                Accessible.name: "Sin playlists"
+                onActionClicked: root.openEditor()
+            }
+
+            ErrorState {
+                width: parent.width
+                visible: root._state === "ERROR"
+                title: "Error al cargar playlists"
+                message: !root.pl ? "El servicio de playlists no está disponible."
+                                 : "No se pudieron cargar las playlists. Verifica la conexión."
+                showRetry: true
+                objectName: "playlistsErrorState"
+                Accessible.name: "Error al cargar playlists"
+                onRetryRequested: root.refresh()
+            }
+
+            SectionHeader {
+                id: yourPlaylistsHeader
+                text: "Tus playlists"
+                width: parent.width
+                visible: root._state === "READY"
+                objectName: "yourPlaylistsHeader"
+                Accessible.name: "Tus playlists"
+            }
 
             Flow {
-                width: parent.width; spacing: MichiTheme.spacing.md
+                id: playlistFlow
+                width: parent.width
+                spacing: MichiTheme.spacing.md
+                visible: root._state === "READY"
 
                 Repeater {
                     model: {
@@ -111,6 +350,11 @@ Item {
                         coverKey: modelData.cover_key || ""
                         selected: root._selectedPlaylists.indexOf(modelData.id) >= 0
                         showSelection: root._selectionMode
+                        objectName: "playlistCard_" + (modelData.id || index)
+                        Accessible.name: modelData.title || "Playlist"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
 
                         onClicked: {
                             if (root._selectionMode) {
@@ -125,7 +369,10 @@ Item {
                                     }
                                 } else {
                                     if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                        navigationBridge.navigate("playlist_detail")
+                                        navigationBridge.navigateWithParams("playlist_detail", {
+                                            playlistId: modelData.id,
+                                            playlistTitle: modelData.title
+                                        })
                                 }
                             }
                         }
@@ -133,10 +380,7 @@ Item {
                         onContextMenuRequested: function(action) {
                             if (action === "duplicate") root.duplicatePlaylist(modelData.id)
                             else if (action === "shuffle") root.shufflePlaylist(modelData.id)
-                            else if (action === "delete") {
-                                if (root.pl && typeof root.pl.deletePlaylist !== "undefined")
-                                    root.pl.deletePlaylist(modelData.id)
-                            }
+                            else if (action === "delete") root.deletePlaylist(modelData.id)
                         }
                     }
                 }
@@ -145,47 +389,401 @@ Item {
             Text {
                 text: root._addResult
                 color: root._addResult.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.success
-                font.pixelSize: MichiTheme.typography.metaSize; visible: text !== ""
+                font.pixelSize: MichiTheme.typography.metaSize
+                visible: text !== ""
+                Accessible.name: root._addResult
             }
 
-            StatusBadge { text: "Playlists completas — transacciones, importación, exportación"; kind: "info" }
+            StatusBadge {
+                id: playlistStatusBadge
+                text: "Playlists completas — transacciones, importación, exportación"
+                kind: "info"
+                objectName: "playlistStatusBadge"
+                Accessible.name: "Estado de playlists"
+            }
         }
     }
 
-    Dialog {
-        id: createDialog
-        title: "Nueva playlist"
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        modal: true
-        x: (parent.width - width) / 2; y: (parent.height - height) / 3
+    PlaylistEditorDialog {
+        id: editorDialog
+        bridge: root.pl
+        objectName: "createPlaylistDialog"
+        Accessible.name: "Nueva playlist"
+        onSaved: function(id, name) {
+            if (id < 0 && root.pl && typeof root.pl.createPlaylist !== "undefined")
+                root.pl.createPlaylist(name)
+            root._addResult = "Creada \"" + name + "\""
+            root.refresh()
+            forceActiveFocus()
+        }
+<<<<<<< Updated upstream
+        onCancelled: { forceActiveFocus() }
+=======
+=======
+    function deletePlaylist(pid) {
+        if (root.pl && typeof root.pl.deletePlaylist !== "undefined")
+            root.pl.deletePlaylist(pid)
+    }
+
+    function createNewPlaylist(name) {
+        if (root.pl && typeof root.pl.createPlaylist !== "undefined")
+            root.pl.createPlaylist(name)
+    }
+
+    function openEditor() {
+        editorDialog.playlistId = -1
+        editorDialog.playlistName = ""
+        editorDialog.playlistDescription = ""
+        editorDialog.open()
+    }
+
+    function openImport() {
+        importDialog.reset()
+        importDialog.open()
+    }
+
+    function refresh() {
+        if (root.pl && typeof root.pl.refresh !== "undefined")
+            root.pl.refresh()
+        root._updateState()
+    }
+
+    Flickable {
+        id: flickable
+        anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
 
         Column {
-            spacing: MichiTheme.spacing.md
-            Text { text: "Ingresa el nombre de la playlist:"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
-            TextField {
-                id: nameInput; width: 280
-                placeholderText: "Mi nueva playlist"
-                onAccepted: createDialog.accept()
+            id: column
+            width: parent.width
+            spacing: MichiTheme.spacing.lg
+
+            HeroMaterial {
+                id: playlistHero
+                width: parent.width
+                height: MichiTheme.typography.heroTitleSize * 5
+                radius: MichiTheme.radiusLg
+                showGlow: true
+                objectName: "playlistHero"
+                Accessible.name: "Playlists"
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.xl
+                    spacing: MichiTheme.spacing.sm
+                    Text {
+                        text: "Playlists"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.heroTitleSize
+                        font.weight: MichiTheme.typography.weightBold
+                    }
+                    Text {
+                        text: "Gestiona tus listas de reproducción."
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        width: parent.width * 0.70
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            SearchField {
+                id: playlistSearch
+                width: parent.width * 0.5
+                placeholderText: "Buscar playlists..."
+                objectName: "playlistSearchField"
+                Accessible.name: "Buscar playlists"
+                onSearchTextChanged: root._searchText = text
+                activeFocusOnTab: true
+                KeyNavigation.tab: createPlaylistBtn
+                KeyNavigation.backtab: flickable
+                Keys.onEscapePressed: { root._searchText = ""; text = "" }
+            }
+
+            Row {
+                id: actionRow
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    id: createPlaylistBtn
+                    text: "+ Nueva playlist"
+                    variant: "primary"
+                    objectName: "createPlaylistButton"
+                    Accessible.name: "Nueva playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: smartPlaylistBtn
+                    KeyNavigation.backtab: playlistSearch
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.openEditor()
+                }
+                MichiButton {
+                    id: smartPlaylistBtn
+                    text: "Smart playlist"
+                    variant: "secondary"
+                    objectName: "smartPlaylistButton"
+                    Accessible.name: "Smart playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: importPlaylistBtn
+                    KeyNavigation.backtab: createPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: smartPlaylistDialog.open()
+                }
+                MichiButton {
+                    id: importPlaylistBtn
+                    text: "Importar"
+                    variant: "secondary"
+                    objectName: "importPlaylistButton"
+                    Accessible.name: "Importar playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: selectPlaylistBtn
+                    KeyNavigation.backtab: smartPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.openImport()
+                }
+                MichiButton {
+                    id: selectPlaylistBtn
+                    text: "Seleccionar"
+                    variant: "ghost"
+                    objectName: "selectPlaylistButton"
+                    Accessible.name: "Seleccionar playlists"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: deletePlaylistBtn
+                    KeyNavigation.backtab: importPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._selectionMode = !root._selectionMode
+                    highlighted: root._selectionMode
+                }
+                MichiButton {
+                    id: deletePlaylistBtn
+                    text: "Eliminar seleccionadas"
+                    variant: "danger"
+                    objectName: "deletePlaylistButton"
+                    Accessible.name: "Eliminar seleccionadas"
+                    visible: root._selectionMode && root._selectedPlaylists.length > 0
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: refreshBtn
+                    KeyNavigation.backtab: selectPlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._confirmBatchDelete = true
+                }
+                MichiButton {
+                    id: refreshBtn
+                    text: "Refrescar"
+                    variant: "ghost"
+                    objectName: "refreshPlaylistsButton"
+                    Accessible.name: "Refrescar playlists"
+                    visible: root._state !== "LOADING"
+                    activeFocusOnTab: true
+                    KeyNavigation.backtab: deletePlaylistBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.refresh()
+                }
+            }
+
+            LoadingState {
+                width: parent.width
+                visible: root._state === "LOADING"
+                title: "Cargando playlists"
+                message: "Obteniendo listas de reproducción..."
+                objectName: "playlistsLoadingState"
+                Accessible.name: "Cargando playlists"
+            }
+
+            EmptyState {
+                width: parent.width
+                visible: root._state === "EMPTY"
+                iconText: ""
+                title: "Sin playlists"
+                subtitle: "Crea tu primera lista de reproducción para empezar a organizar tu música."
+                actionText: "Crear playlist"
+                showAction: true
+                objectName: "playlistsEmptyState"
+                Accessible.name: "Sin playlists"
+                onActionClicked: root.openEditor()
+            }
+
+            ErrorState {
+                width: parent.width
+                visible: root._state === "ERROR"
+                title: "Error al cargar playlists"
+                message: !root.pl ? "El servicio de playlists no está disponible."
+                                 : "No se pudieron cargar las playlists. Verifica la conexión."
+                showRetry: true
+                objectName: "playlistsErrorState"
+                Accessible.name: "Error al cargar playlists"
+                onRetryRequested: root.refresh()
+            }
+
+            SectionHeader {
+                id: yourPlaylistsHeader
+                text: "Tus playlists"
+                width: parent.width
+                visible: root._state === "READY"
+                objectName: "yourPlaylistsHeader"
+                Accessible.name: "Tus playlists"
+            }
+
+            Flow {
+                id: playlistFlow
+                width: parent.width
+                spacing: MichiTheme.spacing.md
+                visible: root._state === "READY"
+
+                Repeater {
+                    model: {
+                        if (!root.pl || !root.pl.playlists) return []
+                        var items = root.pl.playlists
+                        if (root._searchText) {
+                            var q = root._searchText.toLowerCase()
+                            items = items.filter(function(p) {
+                                return (p.title || "").toLowerCase().indexOf(q) >= 0
+                            })
+                        }
+                        return items
+                    }
+
+                    PlaylistCard {
+                        playlistTitle: modelData.title || ""
+                        trackCount: modelData.track_count || 0
+                        duration: modelData.duration || ""
+                        coverKey: modelData.cover_key || ""
+                        selected: root._selectedPlaylists.indexOf(modelData.id) >= 0
+                        showSelection: root._selectionMode
+                        objectName: "playlistCard_" + (modelData.id || index)
+                        Accessible.name: modelData.title || "Playlist"
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+
+                        onClicked: {
+                            if (root._selectionMode) {
+                                root.toggleSelection(modelData.id)
+                            } else {
+                                if (root.sel && root.sel.hasSelection) {
+                                    var result = root.pl.addSelectedTrackToPlaylist(modelData.id)
+                                    if (result && result.ok) {
+                                        root._addResult = "Canción agregada a \"" + modelData.title + "\""
+                                    } else {
+                                        root._addResult = result && result.error ? "Error: " + result.error : "Error al agregar"
+                                    }
+                                } else {
+                                    if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                        navigationBridge.navigateWithParams("playlist_detail", {
+                                            playlistId: modelData.id,
+                                            playlistTitle: modelData.title
+                                        })
+                                }
+                            }
+                        }
+
+                        onContextMenuRequested: function(action) {
+                            if (action === "duplicate") root.duplicatePlaylist(modelData.id)
+                            else if (action === "shuffle") root.shufflePlaylist(modelData.id)
+                            else if (action === "delete") root.deletePlaylist(modelData.id)
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: root._addResult
+                color: root._addResult.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.success
+                font.pixelSize: MichiTheme.typography.metaSize
+                visible: text !== ""
+                Accessible.name: root._addResult
+            }
+
+            StatusBadge {
+                id: playlistStatusBadge
+                text: "Playlists completas — transacciones, importación, exportación"
+                kind: "info"
+                objectName: "playlistStatusBadge"
+                Accessible.name: "Estado de playlists"
             }
         }
+    }
 
-        onAccepted: {
-            var name = nameInput.text.trim()
-            if (name !== "" && root.pl && typeof root.pl.createPlaylist !== "undefined")
+    PlaylistEditorDialog {
+        id: editorDialog
+        bridge: root.pl
+        objectName: "createPlaylistDialog"
+        Accessible.name: "Nueva playlist"
+        onSaved: function(id, name) {
+            if (id < 0 && root.pl && typeof root.pl.createPlaylist !== "undefined")
                 root.pl.createPlaylist(name)
-            nameInput.text = ""
+            root._addResult = "Creada \"" + name + "\""
+            root.refresh()
+            forceActiveFocus()
         }
-        onRejected: { nameInput.text = "" }
+        onCancelled: { forceActiveFocus() }
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 
     PlaylistImportDialog {
         id: importDialog
         bridge: root.pl
+<<<<<<< Updated upstream
+        objectName: "importPlaylistDialog"
+        Accessible.name: "Importar playlist"
+        onImportCompleted: function(name, count) {
+            root.refresh()
+            root._addResult = "Importada \"" + name + "\" (" + count + " canciones)"
+=======
+<<<<<<< HEAD
+        objectName: "playlists.importDialog"
         onImportCompleted: {
             if (root.pl && typeof root.pl.refresh !== "undefined")
                 root.pl.refresh()
             root._addResult = "Importada \"" + name + "\" (" + count + " canciones)"
+            root._state = "READY"
+=======
+        objectName: "importPlaylistDialog"
+        Accessible.name: "Importar playlist"
+        onImportCompleted: function(name, count) {
+            root.refresh()
+            root._addResult = "Importada \"" + name + "\" (" + count + " canciones)"
+>>>>>>> Stashed changes
+            forceActiveFocus()
         }
+        onImportCancelled: { forceActiveFocus() }
+    }
+
+    SmartPlaylistEditorPage {
+        id: smartPlaylistDialog
+        bridge: root.pl
+        objectName: "smartPlaylistEditorDialog"
+        Accessible.name: "Smart playlist"
+        visible: false
+        anchors.fill: parent
+        onSaved: function(name, rules) {
+            root._addResult = "Smart playlist \"" + name + "\" creada"
+            root.refresh()
+            smartPlaylistDialog.visible = false
+            forceActiveFocus()
+        }
+        onBackRequested: {
+            smartPlaylistDialog.visible = false
+            forceActiveFocus()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
+        }
+    }
+
+    PlaylistExportDialog {
+        id: exportDirectDialog
+        bridge: root.pl
+        objectName: "playlists.exportDirectDialog"
     }
 
     Dialog {
@@ -194,11 +792,52 @@ Item {
         standardButtons: Dialog.Yes | Dialog.No
         modal: true
         visible: root._confirmBatchDelete
-        x: (parent.width - width) / 2; y: (parent.height - height) / 3
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 3
+<<<<<<< Updated upstream
+        objectName: "confirmBatchDeleteDialog"
+        Accessible.name: "Eliminar playlists"
+        closePolicy: Popup.CloseOnEscape
+
+=======
+<<<<<<< HEAD
+        objectName: "playlists.confirmBatchDelete"
+
+        Accessible.role: Accessible.Dialog
+        Accessible.name: "Confirmar eliminación de playlists"
+        Accessible.description: "Confirma la eliminación de las playlists seleccionadas"
+
+        Keys.onEscapePressed: {
+            root._confirmBatchDelete = false
+            confirmBatchDelete.visible = false
+        }
 
         Text {
             text: "¿Eliminar " + root._selectedPlaylists.length + " playlist(s) seleccionada(s)?"
-            color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.bodySize
+=======
+        objectName: "confirmBatchDeleteDialog"
+        Accessible.name: "Eliminar playlists"
+        closePolicy: Popup.CloseOnEscape
+
+>>>>>>> Stashed changes
+        Column {
+            spacing: MichiTheme.spacing.md
+            Text {
+                text: "¿Eliminar " + root._selectedPlaylists.length + " playlist(s) seleccionada(s)?"
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.bodySize
+            }
+            Text {
+                text: "Esta acción no se puede deshacer."
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
+            }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         }
 
         onAccepted: {
@@ -209,7 +848,18 @@ Item {
             root._selectedPlaylists = []
             root._selectionMode = false
             root._confirmBatchDelete = false
+<<<<<<< Updated upstream
+            root.refresh()
+            forceActiveFocus()
+=======
+<<<<<<< HEAD
+            root._state = root.pl && root.pl.playlists && root.pl.playlists.length > 0 ? "READY" : "EMPTY"
+=======
+            root.refresh()
+            forceActiveFocus()
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         }
-        onRejected: root._confirmBatchDelete = false
+        onRejected: { root._confirmBatchDelete = false; forceActiveFocus() }
     }
 }

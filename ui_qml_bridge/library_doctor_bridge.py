@@ -348,6 +348,12 @@ class LibraryDoctorBridge(QObject):
             logger.exception("Library doctor repair failed")
             return {"ok": False}
 
+    @Slot(str, result=str)
+    def fileName(self, path: str) -> str:
+        if not path:
+            return ""
+        return Path(path).name
+
     @Slot(result=dict)
     def cancelScan(self):
         if self._wm:

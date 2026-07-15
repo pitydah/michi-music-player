@@ -12,11 +12,45 @@ Item {
     property var notif: null
     property var actionRegistry: null
     property var selectionController: null
+<<<<<<< Updated upstream
+    property bool _fetchingMore: false
+=======
+<<<<<<< HEAD
+=======
+    property bool _fetchingMore: false
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     property bool _shiftPressed: false
     property int _lastClickedIndex: -1
 
     signal trackPlayRequested(int trackId)
-    signal trackContextMenuRequested(int trackId, int x, int y)
+    signal trackContextMenuRequested(int trackId, string title, string artist, string album)
+
+    function getTrackId(index) {
+        if (!root.trackModel) return 0
+        var idx = root.trackModel.index(index, 0)
+        var role = root.trackModel.TrackIdRole || 256
+        return root.trackModel.data(idx, role) || 0
+    }
+
+    function getTrackData(index, roleName) {
+        if (!root.trackModel || !root.trackModel.roleNames) return ""
+        var roleMap = root.trackModel.roleNames()
+        var role = 256
+        for (var r in roleMap) {
+            if (roleMap[r] === roleName) { role = parseInt(r); break }
+        }
+        var idx = root.trackModel.index(index, 0)
+        return root.trackModel.data(idx, role) || ""
+    }
+
+    property bool _loading: root.trackModel ? !root.trackModel.initialized : true
+    property bool _empty: root.trackModel && root.trackModel.initialized && root.trackModel.count === 0
+    property bool _error: false
+
+    objectName: "library.trackTable"
+    Accessible.role: Accessible.Table
+    Accessible.name: "Lista de canciones"
 
     Column {
         anchors.fill: parent; spacing: 0
@@ -27,6 +61,46 @@ Item {
             bridge: root.bridge
             sortKey: root.bridge ? root.bridge.activeSortKey : "title"
             sortAsc: root.bridge ? root.bridge.activeSortAscending : true
+            objectName: "library.trackHeader"
+        }
+
+        Item {
+            width: parent.width
+            height: parent.height - header.height - loadMoreBar.height
+            visible: root._loading
+            anchors.centerIn: undefined
+
+            Column {
+                anchors.centerIn: parent
+                spacing: MichiTheme.spacing.sm
+                BusyIndicator {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    running: true
+                    Accessible.name: "Cargando canciones"
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Cargando canciones..."
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                }
+            }
+        }
+
+        Item {
+            width: parent.width
+            height: parent.height - header.height - loadMoreBar.height
+            visible: root._error
+
+            LibraryErrorState {
+                anchors.centerIn: parent
+                title: "Error al cargar canciones"
+                message: "No se pudieron cargar las canciones"
+                actionText: "Reintentar"
+                onActionRequested: {
+                    if (root.trackModel) root.trackModel.refresh()
+                }
+            }
         }
 
         ListView {
@@ -38,14 +112,77 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             cacheBuffer: 200
             focus: true
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+            visible: !root._loading && !root._error
+            objectName: "library.trackList"
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
+            keyNavigationWraps: false
 
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Shift) root._shiftPressed = true
                 if (event.key === Qt.Key_Escape) {
+<<<<<<< Updated upstream
+                    root._selectedIds = []
                     if (root.selectionController) root.selectionController.clear()
+                    updateSelectionBar()
+=======
+<<<<<<< HEAD
+                    if (root.selectionController) root.selectionController.clear()
+=======
+                    root._selectedIds = []
+                    if (root.selectionController) root.selectionController.clear()
+                    updateSelectionBar()
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                 }
                 if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
                     selectAll()
+                }
+<<<<<<< Updated upstream
+                if (event.key === Qt.Key_Down) {
+                    incrementCurrentIndex()
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Up) {
+                    decrementCurrentIndex()
+                    event.accepted = true
+                }
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    var curIdx = listView.currentIndex
+                    if (curIdx >= 0) {
+                        var tid = getTrackId(curIdx)
+                        if (root.bridge && root.bridge.playTrackById)
+                            root.bridge.playTrackById(tid)
+                    }
+<<<<<<< Updated upstream
+                    event.accepted = true
+=======
+=======
+                if (event.key === Qt.Key_Down) {
+                    incrementCurrentIndex()
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Up) {
+                    decrementCurrentIndex()
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    var curIdx = listView.currentIndex
+                    if (curIdx >= 0) {
+                        var tid = getTrackId(curIdx)
+                        if (root.bridge && root.bridge.playTrackById)
+                            root.bridge.playTrackById(tid)
+                    }
+                    event.accepted = true
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                 }
             }
 
@@ -79,7 +216,15 @@ Item {
                 trackFavorite: model.favorite || false
                 trackMissing: model.missing || false
                 trackQuality: model.bitDepth || model.bitrate || 0
+<<<<<<< Updated upstream
+                isSelected: root._selectedIds.indexOf(model.trackId || 0) !== -1
+=======
+<<<<<<< HEAD
                 isSelected: root.selectionController ? root.selectionController.contains(model.trackId || 0) : false
+=======
+                isSelected: root._selectedIds.indexOf(model.trackId || 0) !== -1
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                 isShiftPressed: root._shiftPressed
                 lastClickedIndex: root._lastClickedIndex
                 rowIndex: index
@@ -95,20 +240,46 @@ Item {
                 }
 
                 onRightClicked: function(mx, my) {
+<<<<<<< Updated upstream
+                    root._selectedIds = [model.trackId || 0]
+                    updateSelectionBar()
+                    root.trackContextMenuRequested(model.trackId || 0, model.title || "", model.artist || "", model.album || "")
+=======
+<<<<<<< HEAD
                     if (root.selectionController) {
                         root.selectionController.replace([model.trackId || 0])
                     }
-                    if (root.actionRegistry) {
-                        contextMenu.x = mx; contextMenu.y = my
-                        contextMenu.open()
-                    }
+                    contextMenu.x = mx; contextMenu.y = my
+                    contextMenu.open()
+=======
+                    root._selectedIds = [model.trackId || 0]
+                    updateSelectionBar()
+                    root.trackContextMenuRequested(model.trackId || 0, model.title || "", model.artist || "", model.album || "")
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                 }
 
                 onSelectionToggled: function(id, ctrl, shift) {
                     if (!root.selectionController) return
                     if (ctrl && shift) {
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
                         var visibleIds = root.trackModel ? root.trackModel.visibleIds() : []
                         root.selectionController.selectRangeByRows(root._lastClickedIndex, index, visibleIds)
+=======
+>>>>>>> Stashed changes
+                        var start = Math.min(root._lastClickedIndex, index)
+                        var end = Math.max(root._lastClickedIndex, index)
+                        for (var i = start; i <= end; i++) {
+                            var tid = getTrackId(i)
+                            if (root._selectedIds.indexOf(tid) === -1)
+                                root._selectedIds.push(tid)
+                        }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     } else if (ctrl) {
                         root.selectionController.toggle(id)
                     } else {
@@ -124,6 +295,7 @@ Item {
             width: parent.width; height: 28; spacing: MichiTheme.spacing.sm
             leftPadding: MichiTheme.spacing.md
             visible: root.trackModel && root.trackModel.hasMore
+            objectName: "library.loadMoreBar"
 
             Text {
                 text: "Mostrando " + (root.trackModel ? root.trackModel.count : 0) + " de " + (root.trackModel ? root.trackModel.totalCount : 0)
@@ -134,6 +306,8 @@ Item {
 
             MichiButton {
                 text: "Cargar más"; variant: "ghost"; height: 24
+                objectName: "library.loadMoreButton"
+                Accessible.name: "Cargar más canciones"
                 onClicked: {
                     if (root.trackModel && root.trackModel.hasMore && !root.trackModel.loadingMore) {
                         root.trackModel.fetchMore()
@@ -145,7 +319,7 @@ Item {
         Item {
             width: parent.width
             height: parent.height > 0 ? parent.height - listView.height - header.height - loadMoreBar.height : 0
-            visible: root.trackModel && root.trackModel.count === 0 && root.trackModel.initialized
+            visible: root.trackModel && root.trackModel.initialized && root.trackModel.count === 0
 
             LibraryEmptyState {
                 anchors.centerIn: parent
@@ -157,22 +331,68 @@ Item {
         }
     }
 
+<<<<<<< Updated upstream
+    function selectAll() {
+        root._selectedIds = []
+        if (root.trackModel) {
+            for (var i = 0; i < root.trackModel.count; i++) {
+                var tid = getTrackId(i)
+                if (tid > 0) root._selectedIds.push(tid)
+            }
+        }
+        updateSelectionBar()
+=======
+<<<<<<< HEAD
     LibraryTrackContextMenu {
         id: contextMenu
         bridge: root.bridge
         selectionController: root.selectionController
         trackModel: root.trackModel
+        objectName: "library.trackContextMenu"
+>>>>>>> Stashed changes
     }
 
-    function selectAll() {
-        if (root.selectionController && root.trackModel) {
-            var ids = root.trackModel.visibleIds()
-            root.selectionController.selectAllLoaded(ids)
+    function updateSelectionBar() {
+        if (typeof selectionBar !== "undefined" && selectionBar) {
+            selectionBar.selectedCount = root._selectedIds.length
+            selectionBar.selectedIds = root._selectedIds
+            selectionBar.visible = root._selectedIds.length > 0
         }
     }
 
     function clearSelection() {
+<<<<<<< Updated upstream
+        root._selectedIds = []
+        if (typeof selectionBar !== "undefined" && selectionBar)
+            selectionBar.visible = false
+=======
         if (root.selectionController) root.selectionController.clear()
+=======
+    function selectAll() {
+        root._selectedIds = []
+        if (root.trackModel) {
+            for (var i = 0; i < root.trackModel.count; i++) {
+                var tid = getTrackId(i)
+                if (tid > 0) root._selectedIds.push(tid)
+            }
+        }
+        updateSelectionBar()
+    }
+
+    function updateSelectionBar() {
+        if (typeof selectionBar !== "undefined" && selectionBar) {
+            selectionBar.selectedCount = root._selectedIds.length
+            selectionBar.selectedIds = root._selectedIds
+            selectionBar.visible = root._selectedIds.length > 0
+        }
+    }
+
+    function clearSelection() {
+        root._selectedIds = []
+        if (typeof selectionBar !== "undefined" && selectionBar)
+            selectionBar.visible = false
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 
     function formatDuration(secs) {

@@ -8,10 +8,15 @@ Item {
     id: root
 
     property var discoveredServers: []
+    property string objectName: "connections.discoveryPanel"
 
     signal serverSelected(int index)
 
     implicitHeight: 300
+
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Descubrimiento en red"
+    Accessible.description: root.discoveredServers.length > 0 ? root.discoveredServers.length + " servidores detectados" : "Sin servidores detectados"
 
     GlassMaterial {
         anchors.fill: parent
@@ -28,6 +33,7 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
+                objectName: root.objectName + ".title"
             }
 
             Text {
@@ -35,6 +41,7 @@ Item {
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.discoveredServers.length > 0
+                objectName: root.objectName + ".subtitle"
             }
 
             Repeater {
@@ -48,6 +55,7 @@ Item {
                     serverType: modelData.type || ""
                     serverStatus: modelData.status || "disconnected"
                     ctaText: "Conectar"
+                    objectName: root.objectName + ".card." + index
                     onCtaClicked: root.serverSelected(index)
                 }
             }
@@ -59,6 +67,7 @@ Item {
                 visible: root.discoveredServers.length === 0
                 wrapMode: Text.WordWrap
                 width: parent.width
+                objectName: root.objectName + ".emptyText"
             }
         }
     }

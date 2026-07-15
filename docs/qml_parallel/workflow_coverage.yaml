@@ -1,0 +1,129 @@
+# Workflow Coverage Audit — tests/qml/workflows_parallel/
+# Generated for FV: Workflow verification tests
+
+overview:
+  total_modules: 14
+  modules_with_workflow_tests: 14
+  modules_missing_workflow_tests: 0
+  total_workflow_test_files: 14
+  total_bridges: 15
+
+workflow_tests:
+  test_home_workflow.py:
+    path: tests/qml/workflows_parallel/test_home_workflow.py
+    status: PRESENT
+    test_count: 5
+    modules_covered:
+      - home
+      - home_dashboard
+
+  test_library_workflow.py:
+    path: tests/qml/workflows_parallel/test_library_workflow.py
+    status: PRESENT
+    test_count: 6
+    modules_covered:
+      - library
+      - library_track_table
+      - library_albums
+
+  test_search_workflow.py:
+    path: tests/qml/workflows_parallel/test_search_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - search
+      - global_search
+
+  test_history_workflow.py:
+    path: tests/qml/workflows_parallel/test_history_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - history
+
+  test_playlists_workflow.py:
+    path: tests/qml/workflows_parallel/test_playlists_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - playlists
+
+  test_radio_workflow.py:
+    path: tests/qml/workflows_parallel/test_radio_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - radio
+
+  test_mix_workflow.py:
+    path: tests/qml/workflows_parallel/test_mix_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - mix
+
+  test_michi_ai_workflow.py:
+    path: tests/qml/workflows_parallel/test_michi_ai_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - michi_ai
+      - assistant
+
+  test_device_workflow.py:
+    path: tests/qml/workflows_parallel/test_device_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - devices
+
+  test_connections_workflow.py:
+    path: tests/qml/workflows_parallel/test_connections_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - connections
+
+  test_home_audio_workflow.py:
+    path: tests/qml/workflows_parallel/test_home_audio_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - home_audio
+
+  test_audio_lab_workflow.py:
+    path: tests/qml/workflows_parallel/test_audio_lab_workflow.py
+    status: PRESENT
+    test_count: 4
+    modules_covered:
+      - audio_lab
+
+  test_command_palette_workflow.py:
+    path: tests/qml/workflows_parallel/test_command_palette_workflow.py
+    status: PRESENT
+    test_count: 3
+    modules_covered:
+      - command_palette
+
+  test_notification_workflow.py:
+    path: tests/qml/workflows_parallel/test_notification_workflow.py
+    status: PRESENT
+    test_count: 3
+    modules_covered:
+      - notifications
+
+missing_tests: []
+
+recommendations:
+  - module: playback
+    new_workflow_test: test_playback_workflow.py
+    priority: medium
+    reason: "Playback is a core module without a dedicated workflow test in workflows_parallel/"
+  - module: lyrics
+    new_workflow_test: test_lyrics_workflow.py
+    priority: low
+    reason: "Lyrics module has tests in tests/qml/lyrics/ but no parallel workflow test"
+  - module: metadata
+    new_workflow_test: test_metadata_workflow.py
+    priority: low
+    reason: "Metadata module has tests in tests/qml/metadata/ but no parallel workflow test"

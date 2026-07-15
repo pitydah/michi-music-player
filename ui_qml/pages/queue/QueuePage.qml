@@ -16,6 +16,18 @@ Item {
     property string _selectedItems: ""
     property bool _multiSelect: false
 
+    objectName: "queue.page"
+    focus: true
+
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Cola de reproducción"
+    Accessible.description: "Gestión de la cola de reproducción"
+
+    Keys.onEscapePressed: {
+        root._selectedItems = ""
+        root._multiSelect = false
+    }
+
     function refresh() {
         if (root.qb) root.qb.refresh()
     }
@@ -25,11 +37,14 @@ Item {
     }
 
     ColumnLayout {
+        id: mainLayout
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
         spacing: MichiTheme.spacing.md
+        objectName: "queue.mainLayout"
 
         QueueHeader {
+            id: queueHeader
             Layout.fillWidth: true
             qb: root.qb
             notif: root.notif
@@ -37,6 +52,7 @@ Item {
         }
 
         QueueActions {
+            id: queueActions
             Layout.fillWidth: true
             qb: root.qb
             ps: root.ps
@@ -44,6 +60,7 @@ Item {
         }
 
         QueueListView {
+            id: queueListView
             Layout.fillWidth: true
             Layout.fillHeight: true
             qb: root.qb

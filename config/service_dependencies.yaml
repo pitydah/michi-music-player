@@ -1,6 +1,33 @@
+# Service dependency graph for ServiceContainer
+# Keys: service name
+# Values: required dependencies (must be registered before the service)
+playlist_service:
+  requires: [library_query_service, connection_factory]
+history_query_service:
+  requires: [connection_factory]
+global_search_service:
+  requires: [connection_factory, library_query_service]
+playback_service:
+  requires: [queue_service, worker_manager]
 queue_service:
-  requires: [playback_service, settings_service]
+  requires: [playlist_service, worker_manager, settings_service]
 audio_lab_service:
-  requires: [job_service, metadata_service]
+  requires: [job_service, metadata_service, worker_manager, library_query_service]
+metadata_service:
+  requires: [worker_manager, library_mutation_service]
+library_doctor_service:
+  requires: [library_query_service, library_mutation_service, worker_manager]
+device_sync_service:
+  requires: [worker_manager, library_query_service]
+connection_service:
+  requires: [worker_manager]
+home_audio_service:
+  requires: [worker_manager, playback_service]
+diagnostics_service:
+  requires: [worker_manager, library_query_service, settings_service]
 notification_service:
   requires: [action_registry, job_service]
+mix_query_service:
+  requires: [library_query_service]
+track_action_service:
+  requires: [library_mutation_service]

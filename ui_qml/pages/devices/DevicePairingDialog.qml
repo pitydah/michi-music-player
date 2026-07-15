@@ -16,6 +16,10 @@ Item {
 
     implicitHeight: dialogVisible ? 280 : 0
 
+    objectName: "DevicePairingDialog"
+    Accessible.role: Accessible.Dialog
+    Accessible.name: "Vincular dispositivo"
+
     GlassMaterial {
         width: parent.width
         height: column.height + MichiTheme.spacing.xl * 2
@@ -34,6 +38,8 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
+                objectName: "pairingDialogTitle"
+                Accessible.name: "Vincular dispositivo"
             }
 
             Text {
@@ -42,21 +48,25 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
                 width: parent.width
+                objectName: "pairingDialogDescription"
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogNameLabel" }
                 TextField {
+                    id: pairingNameField
                     width: 200
                     placeholderText: root.detectedDeviceName || "Nombre del dispositivo"
+                    objectName: "pairingDialogNameField"
+                    Accessible.name: "Nombre del dispositivo"
                 }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                Text { text: "Tipo:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-                Text { text: root.detectedDeviceType || "Desconocido"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+                Text { text: "Tipo:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogTypeLabel" }
+                Text { text: root.detectedDeviceType || "Desconocido"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogTypeValue" }
             }
 
             Row {
@@ -66,12 +76,16 @@ Item {
                     text: "Vincular"
                     variant: "primary"
                     onClicked: root.pairRequested(root.detectedDeviceName, root.detectedDeviceType)
+                    objectName: "pairingDialogPairButton"
+                    Accessible.name: "Vincular dispositivo"
                 }
 
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
                     onClicked: root.cancelRequested()
+                    objectName: "pairingDialogCancelButton"
+                    Accessible.name: "Cancelar vinculación"
                 }
             }
         }

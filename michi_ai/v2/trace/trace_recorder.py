@@ -90,6 +90,33 @@ class TraceRecorder:
         except Exception as e:
             logger.debug("Failed to record trace: %s", e)
 
+    def record_intent(self, trace_id: str, intent: str, confidence: float, entities: dict[str, Any],
+                       capabilities: list[str], plan: str = "") -> None:
+        self.record_event(trace_id, "intent", {
+            "intent": intent, "confidence": confidence,
+            "entities": entities, "capabilities": capabilities, "plan": plan,
+        })
+
+    def record_tool_result(self, trace_id: str, tool: str, ok: bool, duration_ms: float, error: str = "") -> None:
+        self.record_event(trace_id, "tool_result", {
+            "tool": tool, "ok": ok, "duration_ms": duration_ms, "error": error,
+        })
+
+    def record_cancellation(self, trace_id: str, reason: str, stage: str = "") -> None:
+        self.record_event(trace_id, "cancellation", {
+            "reason": reason, "stage": stage,
+        })
+
+    def record_rollback(self, trace_id: str, rolled_back: list[str], failed: list[str]) -> None:
+        self.record_event(trace_id, "rollback", {
+            "rolled_back": rolled_back, "failed": failed,
+        })
+
+    def record_response(self, trace_id: str, response_type: str, title: str = "", error: str = "") -> None:
+        self.record_event(trace_id, "response", {
+            "type": response_type, "title": title, "error": error,
+        })
+
     def record_event(self, trace_id: str, event_type: str, payload: dict[str, Any] | None = None) -> None:
         if not self._initialized or self._conn is None:
             return

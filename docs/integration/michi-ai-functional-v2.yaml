@@ -1,0 +1,218 @@
+branch: michi-ai-functional-v2
+description: "Michi AI V2 — Complete functional implementation"
+version: 2.0.0
+created: "2026-07-14"
+status: FROZEN
+
+modules:
+  - michi_ai/v2/core/models.py
+  - michi_ai/v2/core/operation_result.py
+  - michi_ai/v2/core/cancellation.py
+  - michi_ai/v2/core/gateways.py
+  - michi_ai/v2/core/response_composer.py
+  - michi_ai/v2/core/assistant_core.py
+  - michi_ai/v2/intent/intent_router_v2.py
+  - michi_ai/v2/intent/entity_extractor.py
+  - michi_ai/v2/intent/capability_resolver.py
+  - michi_ai/v2/context/context_assembler.py
+  - michi_ai/v2/conversation/conversation_service.py
+  - michi_ai/v2/plan/plan_builder_v2.py
+  - michi_ai/v2/plan/plan_validator.py
+  - michi_ai/v2/plan/confirmation_policy_v2.py
+  - michi_ai/v2/plan/plan_executor_v2.py
+  - michi_ai/v2/provider/provider_router.py
+  - michi_ai/v2/suggest/suggestion_engine_v2.py
+  - michi_ai/v2/trace/trace_recorder.py
+  - michi_ai/v2/tools/tool_registry_v2.py
+  - michi_ai/v2/tools/tool_definitions.py
+  - michi_ai/v2/tools/register_builtin.py
+  - michi_ai/v2/tools/legacy_adapter.py
+  - michi_ai/v2/eval/evaluation_harness.py
+
+tool_ids:
+  - search_library
+  - get_track_details
+  - get_album_details
+  - get_artist_details
+  - list_recent_tracks
+  - list_unplayed_tracks
+  - list_favorites
+  - find_metadata_gaps
+  - play_track
+  - play_album
+  - play_artist
+  - play_playlist
+  - pause
+  - resume
+  - stop
+  - next
+  - previous
+  - seek
+  - set_volume
+  - set_repeat
+  - set_shuffle
+  - get_queue
+  - add_to_queue
+  - play_next
+  - replace_queue
+  - remove_from_queue
+  - clear_queue
+  - reorder_queue
+  - list_playlists
+  - get_playlist
+  - draft_playlist
+  - create_playlist
+  - add_to_playlist
+  - remove_from_playlist
+  - reorder_playlist
+  - delete_playlist
+  - create_smart_mix
+  - explain_mix
+  - save_mix_as_playlist
+  - cancel_mix_generation
+  - probe_audio
+  - analyze_audio
+  - recommend_conversion_profile
+  - preview_conversion
+  - start_conversion
+  - cancel_conversion
+  - analyze_replaygain
+  - check_integrity
+  - compare_audio
+  - inspect_metadata
+  - suggest_metadata_changes
+  - scan_library_health
+  - preview_library_repair
+  - apply_library_repair
+  - rollback_library_repair
+  - list_devices
+  - get_device_details
+  - plan_device_sync
+  - start_device_sync
+  - cancel_device_sync
+  - get_sync_status
+  - diagnose_ecosystem
+  - diagnose_micro_server
+  - diagnose_home_audio
+  - diagnose_pairing
+  - get_setting
+  - list_settings
+  - suggest_setting_change
+  - preview_setting_change
+  - apply_setting_change
+  - restore_setting
+  - navigate
+
+plan_schema:
+  action_plan:
+    fields:
+      - plan_id
+      - session_id
+      - title
+      - description
+      - intent
+      - steps
+      - preconditions
+      - postconditions
+      - risks
+      - warnings
+      - requires_confirmation
+      - confirmation_scope
+      - rollback_strategy
+      - estimated_cost
+      - estimated_duration
+      - created_at
+      - expires_at
+  plan_step:
+    fields:
+      - step_id
+      - tool
+      - arguments
+      - depends_on
+      - preconditions
+      - expected_result
+      - on_failure
+      - rollback
+      - timeout
+      - cancellable
+      - compensate
+
+result_states:
+  - CREATED
+  - VALIDATING
+  - AWAITING_CONFIRMATION
+  - QUEUED
+  - RUNNING
+  - PAUSING
+  - PAUSED
+  - CANCELLING
+  - CANCELLED
+  - ROLLING_BACK
+  - ROLLED_BACK
+  - SUCCEEDED
+  - PARTIAL_SUCCESS
+  - FAILED
+  - INTERRUPTED
+
+gateway_protocols:
+  - PlaybackGateway
+  - QueueGateway
+  - LibraryGateway
+  - PlaylistGateway
+  - AudioLabGateway
+  - DeviceGateway
+  - SettingsGateway
+  - DiagnosticsGateway
+  - NavigationRequestGateway
+  - MixGateway
+  - JobGateway
+
+error_codes:
+  - OK
+  - NO_MATCH
+  - AMBIGUOUS_INTENT
+  - INVALID_ARGUMENTS
+  - CAPABILITY_UNAVAILABLE
+  - TOOL_NOT_FOUND
+  - TOOL_UNAVAILABLE
+  - TOOL_TIMEOUT
+  - TOOL_CANCELLED
+  - TOOL_FAILED
+  - CONFIRMATION_REQUIRED
+  - CONFIRMATION_EXPIRED
+  - PLAN_INVALID
+  - PLAN_STEP_FAILED
+  - PLAN_CANCELLED
+  - ROLLBACK_SUCCEEDED
+  - ROLLBACK_FAILED
+  - PROVIDER_UNAVAILABLE
+  - PROVIDER_TIMEOUT
+  - PROVIDER_INVALID_RESPONSE
+  - CONTEXT_REJECTED
+  - PRIVACY_BLOCKED
+  - SESSION_NOT_FOUND
+  - INTERNAL_ERROR
+
+tests:
+  - tests/ai/test_core_models.py
+  - tests/ai/test_cancellation.py
+  - tests/ai/test_capability_resolver.py
+  - tests/ai/test_confirmation_policy.py
+  - tests/ai/test_context_assembler.py
+  - tests/ai/test_conversation_service.py
+  - tests/ai/test_entity_extractor.py
+  - tests/ai/test_intent_router_v2.py
+  - tests/ai/test_plan_builder.py
+  - tests/ai/test_plan_executor.py
+  - tests/ai/test_plan_validator.py
+  - tests/ai/test_provider_router.py
+  - tests/ai/test_response_composer.py
+  - tests/ai/test_suggestion_engine.py
+  - tests/ai/test_tool_registry_v2.py
+  - tests/ai/test_trace_recorder.py
+  - tests/ai/test_assistant_core.py
+  - tests/ai/test_adversarial.py
+  - tests/ai/tools_v2/test_legacy_adapter.py
+  - tests/ai/tools_v2/test_register_builtin.py
+  - tests/ai/tools_v2/test_tool_definitions.py
+  - tests/ai/tools_v2/test_workflows.py

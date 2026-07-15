@@ -6,6 +6,7 @@ progress, cancel, backup, apply, verify, rollback, refresh.
 from __future__ import annotations
 
 import logging
+import os
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
@@ -409,6 +410,11 @@ class SmartTaggingBridge(QObject):
         self.dataChanged.emit()
         self.progressChanged.emit(0.0)
         return {"ok": True}
+
+    @Slot(str, result=str)
+    def detectFormat(self, filepath: str) -> str:
+        ext = os.path.splitext(filepath)[1].lower().lstrip(".")
+        return ext if ext else ""
 
     @Slot()
     def refresh(self):

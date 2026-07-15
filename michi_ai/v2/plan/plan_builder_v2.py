@@ -91,6 +91,172 @@ class PlanBuilderV2:
                 "risks": ["Posible pérdida de datos en destino"],
                 "confirmation_mode": "ONCE_PER_PLAN",
             },
+            "enqueue": {
+                "title": "Encolar canción",
+                "steps": [{"tool": "enqueue", "depends_on": []}],
+                "risks": [],
+            },
+            "device_sync": {
+                "title": "Sincronizar dispositivo",
+                "steps": [
+                    {"tool": "device_sync", "depends_on": []},
+                ],
+                "risks": ["Posible pérdida de datos en destino"],
+                "confirmation_mode": "ONCE_PER_PLAN",
+            },
+            "settings_navigation": {
+                "title": "Navegar a configuración",
+                "steps": [{"tool": "settings_navigation", "depends_on": []}],
+                "risks": [],
+            },
+            "diagnostics_open": {
+                "title": "Abrir diagnóstico",
+                "steps": [{"tool": "diagnostics_open", "depends_on": []}],
+                "risks": [],
+            },
+            "route_navigation": {
+                "title": "Navegar a ruta",
+                "steps": [{"tool": "route_navigation", "depends_on": []}],
+                "risks": [],
+            },
+            "mix_generate": {
+                "title": "Generar mix",
+                "steps": [{"tool": "mix_generate", "depends_on": []}],
+                "risks": [],
+            },
+            "playlist_create": {
+                "title": "Crear playlist",
+                "steps": [{"tool": "playlist_create", "depends_on": []}],
+                "risks": [],
+            },
+            "audio_analysis": {
+                "title": "Analizar audio",
+                "steps": [{"tool": "audio_analysis", "depends_on": []}],
+                "risks": [],
+            },
+            "metadata_preview": {
+                "title": "Previsualizar metadata",
+                "steps": [{"tool": "metadata_preview", "depends_on": []}],
+                "risks": [],
+            },
+            "get_queue": {
+                "title": "Ver cola",
+                "steps": [{"tool": "get_queue", "depends_on": []}],
+                "risks": [],
+            },
+            "add_to_queue": {
+                "title": "Agregar a cola",
+                "steps": [{"tool": "add_to_queue", "depends_on": []}],
+                "risks": [],
+            },
+            "play_next": {
+                "title": "Reproducir después",
+                "steps": [{"tool": "play_next", "depends_on": []}],
+                "risks": [],
+            },
+            "replace_queue": {
+                "title": "Reemplazar cola",
+                "steps": [{"tool": "replace_queue", "depends_on": []}],
+                "risks": ["Se perderá la cola actual"],
+                "confirmation_mode": "ONCE_PER_PLAN",
+            },
+            "remove_from_queue": {
+                "title": "Quitar de cola",
+                "steps": [{"tool": "remove_from_queue", "depends_on": []}],
+                "risks": [],
+            },
+            "clear_queue": {
+                "title": "Limpiar cola",
+                "steps": [{"tool": "clear_queue", "depends_on": []}],
+                "risks": ["Se eliminará toda la cola"],
+                "confirmation_mode": "ONCE_PER_PLAN",
+            },
+            "reorder_queue": {
+                "title": "Reordenar cola",
+                "steps": [{"tool": "reorder_queue", "depends_on": []}],
+                "risks": [],
+            },
+            "list_playlists": {
+                "title": "Listar playlists",
+                "steps": [{"tool": "list_playlists", "depends_on": []}],
+                "risks": [],
+            },
+            "get_playlist": {
+                "title": "Ver playlist",
+                "steps": [{"tool": "get_playlist", "depends_on": []}],
+                "risks": [],
+            },
+            "draft_playlist": {
+                "title": "Borrador de playlist",
+                "steps": [{"tool": "draft_playlist", "depends_on": []}],
+                "risks": [],
+            },
+            "add_to_playlist": {
+                "title": "Agregar a playlist",
+                "steps": [{"tool": "add_to_playlist", "depends_on": []}],
+                "risks": [],
+            },
+            "remove_from_playlist": {
+                "title": "Quitar de playlist",
+                "steps": [{"tool": "remove_from_playlist", "depends_on": []}],
+                "risks": [],
+            },
+            "reorder_playlist": {
+                "title": "Reordenar playlist",
+                "steps": [{"tool": "reorder_playlist", "depends_on": []}],
+                "risks": [],
+            },
+            "delete_playlist": {
+                "title": "Eliminar playlist",
+                "steps": [{"tool": "delete_playlist", "depends_on": []}],
+                "risks": ["Esta acción es irreversible"],
+                "confirmation_mode": "ONCE_PER_PLAN",
+            },
+            "pause": {
+                "title": "Pausar",
+                "steps": [{"tool": "pause", "depends_on": []}],
+                "risks": [],
+            },
+            "resume": {
+                "title": "Reanudar",
+                "steps": [{"tool": "resume", "depends_on": []}],
+                "risks": [],
+            },
+            "stop": {
+                "title": "Detener",
+                "steps": [{"tool": "stop", "depends_on": []}],
+                "risks": [],
+            },
+            "next": {
+                "title": "Siguiente",
+                "steps": [{"tool": "next", "depends_on": []}],
+                "risks": [],
+            },
+            "previous": {
+                "title": "Anterior",
+                "steps": [{"tool": "previous", "depends_on": []}],
+                "risks": [],
+            },
+            "seek": {
+                "title": "Buscar posición",
+                "steps": [{"tool": "seek", "depends_on": []}],
+                "risks": [],
+            },
+            "set_volume": {
+                "title": "Ajustar volumen",
+                "steps": [{"tool": "set_volume", "depends_on": []}],
+                "risks": [],
+            },
+            "set_repeat": {
+                "title": "Modo repetir",
+                "steps": [{"tool": "set_repeat", "depends_on": []}],
+                "risks": [],
+            },
+            "set_shuffle": {
+                "title": "Modo aleatorio",
+                "steps": [{"tool": "set_shuffle", "depends_on": []}],
+                "risks": [],
+            },
             "general_query": {
                 "title": "Consulta general",
                 "steps": [],

@@ -209,9 +209,16 @@ class PlanExecutorV2:
         for step_result in reversed(completed):
             step_id = step_result.tool_name
             defn = self._tool_registry.get(step_id)
-            if defn and defn.rollback_tool:
+            rb_tool = defn.rollback_tool if defn and defn.rollback_tool else ""
+            compensate_tool = ""
+            for step in execution.plan.steps:
+                if step.tool == step_id:
+                    compensate_tool = step.compensate
+                    break
+            rollback_target = rb_tool or compensate_tool
+            if rollback_target:
                 rb_result = self._tool_registry.execute(
-                    name=defn.rollback_tool,
+                    name=rollback_target,
                     arguments=step_result.data or {},
                 )
                 if rb_result.ok:

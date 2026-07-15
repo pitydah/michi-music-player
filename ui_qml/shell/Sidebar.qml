@@ -4,16 +4,34 @@ import "../theme"
 import "../materials"
 import "../components"
 
-Item {
+FocusScope {
     id: root
 
     property string currentRoute: "home"
     property bool collapsed: false
     property bool deliveryMode: typeof appStateBridge !== "undefined" && appStateBridge ? appStateBridge.deliveryMode : false
+
     signal routeRequested(string route)
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
     Behavior on width { NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic } }
+
+    objectName: "sidebar"
+    Accessible.role: Accessible.Navigation
+    Accessible.name: "Barra lateral"
+    activeFocusOnTab: true
+
+    Keys.onSpacePressed: function(event) {
+        root.collapsed = !root.collapsed
+    }
+
+    Keys.onLeftPressed: {
+        if (!root.collapsed) root.collapsed = true
+    }
+
+    Keys.onRightPressed: {
+        if (root.collapsed) root.collapsed = false
+    }
 
     SidebarMaterial {
         anchors.fill: parent
@@ -53,7 +71,11 @@ Item {
                             label: model.label
                             active: root.currentRoute === model.route
                             collapsed: root.collapsed
+                            objectName: "sidebar.item." + model.route
+                            Accessible.name: model.label
+                            Accessible.onPressAction: root.routeRequested(model.route)
                             onClicked: root.routeRequested(model.route)
+                            KeyNavigation.tab: root.collapsed ? collapseBtn : null
                         }
                     }
                 }
@@ -66,14 +88,39 @@ Item {
                 anchors.leftMargin: collapsed ? (parent.width - implicitWidth) / 2 : MichiTheme.spacing.lg
                 text: collapsed ? "E" : "Experimental"
                 kind: "experimental"
+                Accessible.name: collapsed ? "Versión experimental" : "Experimental"
             }
 
             Item { width: parent.width; height: 40
-                Rectangle { anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
-                    color: collapseBtn.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                Rectangle {
+                    id: collapseBtn
+                    anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
+                    color: collapseBtn.containsMouse || collapseBtn.activeFocus ? Qt.rgba(1,1,1,0.08) : "transparent"
+                    border.color: collapseBtn.activeFocus ? MichiTheme.colors.accentBlue : "transparent"
+                    border.width: collapseBtn.activeFocus ? MichiTheme.borderWidthFocus : 0
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                    Text { anchors.centerIn: parent; text: root.collapsed ? ">" : "<"; color: MichiTheme.colors.textMuted; font.pixelSize: 14; font.weight: MichiTheme.typography.weightBold }
-                    MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
+                    objectName: "sidebar.collapseToggle"
+                    Accessible.name: root.collapsed ? "Expandir barra lateral" : "Colapsar barra lateral"
+                    focus: true
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.collapsed ? ">" : "<"
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: 14
+                        font.weight: MichiTheme.typography.weightBold
+                    }
+
+                    MouseArea {
+                        id: collapseBtnMA
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.collapsed = !root.collapsed
+                    }
+
+                    Keys.onReturnPressed: root.collapsed = !root.collapsed
+                    Keys.onSpacePressed: root.collapsed = !root.collapsed
                 }
             }
         }

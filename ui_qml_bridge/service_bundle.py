@@ -14,6 +14,10 @@ if TYPE_CHECKING:
     from streaming.radio_manager import RadioManager
     from sync.sync_manager import SyncManager
     from core.worker_manager import WorkerManager
+    from core.device_sync_service import DeviceSyncService
+    from core.job_service import JobService
+    from core.confirmation_service import ConfirmationService
+    from core.audio_lab.audio_lab_service import AudioLabService
     from metadata.services import MetadataService
     from integrations.michi_link.services.service_manager import ServiceManager as MichiLinkManager
     from streaming.disc_service import DiscService
@@ -27,6 +31,10 @@ class ServiceBundle:
     search_engine: SearchEngine | None = None
     radio_manager: RadioManager | None = None
     sync_manager: SyncManager | None = None
+    device_sync_service: DeviceSyncService | None = None
+    job_service: JobService | None = None
+    confirmation_service: ConfirmationService | None = None
+    audio_lab_service: AudioLabService | None = None
     michi_link_controller: MichiLinkManager | None = None
     home_audio_controller: Any | None = None
     snapcast_controller: Any | None = None

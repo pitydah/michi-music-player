@@ -8,8 +8,12 @@ Item {
     id: root
 
     property var capabilities: []
+    property string objectName: "connections.capabilities"
 
     implicitHeight: childrenRect.height
+
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Capacidades del servidor"
 
     GlassMaterial {
         id: glass
@@ -30,6 +34,7 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
+                objectName: root.objectName + ".title"
             }
 
             Repeater {
@@ -50,6 +55,7 @@ Item {
                     StatusBadge {
                         text: modelData.enabled ? "Disponible" : "No disponible"
                         kind: modelData.enabled ? "success" : "disconnected"
+                        objectName: root.objectName + ".item." + index
                     }
                 }
             }

@@ -176,7 +176,7 @@ Item {
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
                     model: root.shownCategories
                     delegate: Rectangle {
-                        width: parent.width; height: 44; radius: MichiTheme.radius.sm
+                        width: parent.width; height: 44; radius: MichiTheme.radiusSm
                         color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                         Accessible.name: modelData.title || ""
                         Accessible.role: Accessible.ListItem
@@ -348,7 +348,7 @@ Item {
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
                     model: root.shownCategories
                     delegate: Rectangle {
-                        width: parent.width; height: 44; radius: MichiTheme.radius.sm
+                        width: parent.width; height: 44; radius: MichiTheme.radiusSm
                         color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                         Accessible.name: modelData.title || ""
                         Accessible.role: Accessible.ListItem

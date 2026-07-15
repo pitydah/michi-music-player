@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Protocol, runtime_checkable
@@ -8,6 +9,13 @@ from typing import Any, Callable, Protocol, runtime_checkable
 from michi_ai.v2.core.models import ContextSnapshot, PrivacyLevel, SanitizedContext
 
 logger = logging.getLogger(__name__)
+
+_MAX_CONTEXT_SIZE = 500
+_SENSITIVE_KEYS: frozenset[str] = frozenset({
+    "token", "password", "api_key", "secret", "cookie", "credentials",
+    "auth", "authorization", "bearer", "jwt", "session_token",
+    "refresh_token", "access_key", "private_key",
+})
 
 
 @runtime_checkable
@@ -24,8 +32,10 @@ class ContextProviderRegistration:
 
 
 class ContextAssembler:
-    def __init__(self) -> None:
+    def __init__(self, max_context_size: int = _MAX_CONTEXT_SIZE) -> None:
         self._providers: dict[str, ContextProviderRegistration] = {}
+        self._max_context_size = max_context_size
+        self._lock = threading.Lock()
 
     def register(self, name: str, provider: ContextProvider | Callable[[], dict[str, Any]], required: bool = False, timeout: float = 5.0) -> None:
         self._providers[name] = ContextProviderRegistration(
@@ -35,21 +45,50 @@ class ContextAssembler:
     def unregister(self, name: str) -> None:
         self._providers.pop(name, None)
 
+    def _get_provider_data(self, reg: ContextProviderRegistration) -> dict[str, Any]:
+        if isinstance(reg.provider, ContextProvider):
+            return reg.provider.get_context()
+        return reg.provider()
+
     def assemble(self, session_id: str = "", privacy_level: PrivacyLevel = PrivacyLevel.STANDARD) -> ContextSnapshot:
         sections: dict[str, dict[str, Any]] = {}
         warnings: list[str] = []
 
-        for name, reg in self._providers.items():
+        def _fetch_provider(reg: ContextProviderRegistration, container: list[dict[str, Any] | Exception], evt: threading.Event) -> None:
             try:
-                result = reg.provider.get_context() if isinstance(reg.provider, ContextProvider) else reg.provider()
-                sections[name] = result if isinstance(result, dict) else {}
+                data = reg.provider.get_context() if isinstance(reg.provider, ContextProvider) else reg.provider()
+                container.append(data if isinstance(data, dict) else {})
             except Exception as e:
+                container.append(e)
+            finally:
+                evt.set()
+
+        for name, reg in self._providers.items():
+            event = threading.Event()
+            result_container: list[dict[str, Any] | Exception] = []
+
+            t = threading.Thread(target=_fetch_provider, args=(reg, result_container, event), daemon=True)
+            t.start()
+            timed_out = not event.wait(timeout=reg.timeout)
+
+            if timed_out or not result_container:
+                msg = f"timed out after {reg.timeout}s" if timed_out else "no response"
                 if reg.required:
-                    warnings.append(f"Required context provider '{name}' failed: {e}")
+                    warnings.append(f"Required context provider '{name}' {msg}")
                     sections[name] = {}
                 else:
-                    logger.debug("Optional context provider '%s' failed: %s", name, e)
+                    logger.debug("Optional context provider '%s' %s", name, msg)
                     sections[name] = {}
+            elif isinstance(result_container[0], Exception):
+                exc = result_container[0]
+                if reg.required:
+                    warnings.append(f"Required context provider '{name}' failed: {exc}")
+                    sections[name] = {}
+                else:
+                    logger.debug("Optional context provider '%s' failed: %s", name, exc)
+                    sections[name] = {}
+            else:
+                sections[name] = result_container[0]
 
         snapshot = ContextSnapshot(
             timestamp=datetime.now(timezone.utc),

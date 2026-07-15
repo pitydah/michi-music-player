@@ -33,7 +33,7 @@ Item {
                     variant: root.selectedMode === index ? "accent" : "base"
                     hovered: mouseArea.containsMouse
                     interactive: true
-                    radius: 14
+                    radius: MichiTheme.radiusLg
 
                     MouseArea {
                         id: mouseArea
@@ -61,7 +61,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: modelData.glyph
                                 color: root.selectedMode === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                                font.pixelSize: 14
+                                font.pixelSize: MichiTheme.typography.bodySize
                                 font.weight: MichiTheme.typography.weightSemiBold
                                 font.letterSpacing: 1.5
                             }

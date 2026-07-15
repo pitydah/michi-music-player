@@ -17,6 +17,10 @@ Item {
 
     implicitHeight: 80
 
+    objectName: "DeviceCard"
+    Accessible.role: Accessible.ListItem
+    Accessible.name: root.deviceAlias || (root.paired ? "Dispositivo vinculado" : "Dispositivo detectado")
+
     GlassMaterial {
         anchors.fill: parent
         radius: MichiTheme.radiusMd
@@ -28,6 +32,7 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            onClicked: root.connectClicked()
         }
 
         Row {
@@ -42,7 +47,7 @@ Item {
                     anchors.centerIn: parent
                     text: root.deviceAlias ? root.deviceAlias.charAt(0).toUpperCase() : "?"
                     color: root.paired ? MichiTheme.colors.success : MichiTheme.colors.accentBlue
-                    font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightBold
                 }
             }
 
@@ -53,6 +58,8 @@ Item {
                     text: root.deviceAlias || "Dispositivo"
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideRight; width: parent.width
+                    objectName: "deviceCardName"
+                    Accessible.name: text
                 }
                 Text {
                     text: root.deviceIp ? root.deviceIp + ":" + root.devicePort : root.deviceType
@@ -64,6 +71,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.paired ? "Vinculado" : "Detectado"
                 kind: root.paired ? "success" : "info"
+                objectName: "deviceCardBadge"
+                Accessible.name: text
             }
         }
     }

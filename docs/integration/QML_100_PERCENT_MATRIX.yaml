@@ -1,0 +1,279 @@
+# QML 100% Migration Matrix — each module must score 100
+modules:
+  - module: navigation
+    route: navigation
+    page: NavigationShell.qml
+    bridge: NavigationBridge
+    service: navigation_service
+    load: PASSED
+    instance: PASSED
+    interaction: PASSED
+    workflow: PASSED
+    negative_paths: PASSED
+    accessibility: PASSED
+    responsive: PASSED
+    runtime_cleanup: PASSED
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: app_bridge
+    route: app
+    page: AppShell.qml
+    bridge: AppBridge
+    service: app_bridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: theme
+    route: theme
+    page: ThemePage.qml
+    bridge: ThemeBridge
+    service: settings_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: notifications
+    route: notifications
+    page: NotificationsPage.qml
+    bridge: NotificationBridge
+    service: notification_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: home
+    route: home
+    page: HomePage.qml
+    bridge: HomeBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: library
+    route: library
+    page: LibraryPage.qml
+    bridge: LibraryBridge
+    service: library_query_service
+    load: PASSED
+    instance: PASSED
+    interaction: PASSED
+    workflow: PASSED
+    negative_paths: PASSED
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: albums
+    route: library.albums
+    page: AlbumGridPage.qml
+    bridge: LibraryBridge
+    service: library_query_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: artists
+    route: library.artists
+    page: ArtistGridPage.qml
+    bridge: LibraryBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: folders
+    route: library.folders
+    page: FolderBrowserPage.qml
+    bridge: LibraryBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: sources
+    route: library.sources
+    page: SourcesPage.qml
+    bridge: LibrarySourcesBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: playback
+    route: playback
+    page: NowPlayingPage.qml
+    bridge: PlaybackBridge
+    service: playback_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: nowplaying
+    route: playback.nowplaying
+    page: NowPlayingPage.qml
+    bridge: NowPlayingBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: queue
+    route: playback.queue
+    page: QueuePage.qml
+    bridge: QueueBridge
+    service: queue_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: playlists
+    route: playlists
+    page: PlaylistsPage.qml
+    bridge: PlaylistsBridge
+    service: playlist_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: history
+    route: history
+    page: HistoryPage.qml
+    bridge: HistoryBridge
+    service: history_query_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: mix
+    route: mix
+    page: MixHubPage.qml
+    bridge: MixBridge
+    service: mix_query_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: radio
+    route: radio
+    page: RadioPage.qml
+    bridge: RadioBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: lyrics
+    route: lyrics
+    page: LyricsPage.qml
+    bridge: LyricsBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: global_search
+    route: search
+    page: GlobalSearchPage.qml
+    bridge: GlobalSearchBridge
+    service: global_search_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: equalizer
+    route: equalizer
+    page: EqualizerPage.qml
+    bridge: EqBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: output_profiles
+    route: outputs
+    page: OutputProfilesPage.qml
+    bridge: OutputProfilesBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: metadata
+    route: metadata
+    page: MetadataEditorPage.qml
+    bridge: MetadataBridge
+    service: metadata_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: smart_tagging
+    route: tagging
+    page: SmartTaggingPage.qml
+    bridge: SmartTaggingBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: library_doctor
+    route: library_doctor
+    page: LibraryDoctorPage.qml
+    bridge: LibraryDoctorBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: audio_lab
+    route: audio_lab
+    page: AudioLabPage.qml
+    bridge: AudioLabBridge
+    service: audio_lab_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: diagnostics
+    route: diagnostics
+    page: DiagnosticsPage.qml
+    bridge: DiagnosticsBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: connections
+    route: connections
+    page: ConnectionsPage.qml
+    bridge: ConnectionsBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: home_audio
+    route: home_audio
+    page: HomeAudioPage.qml
+    bridge: HomeAudioBridge
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: devices
+    route: devices
+    page: DevicesPage.qml
+    bridge: DevicesBridge
+    service: device_sync_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: settings
+    route: settings
+    page: SettingsPage.qml
+    bridge: SettingsBridge
+    service: settings_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100
+
+  - module: michi_ai
+    route: ai
+    page: AssistantPage.qml
+    bridge: MichiAIBridge
+    service: michi_ai_service
+    widget_fallback: false
+    physical: NOT_APPLICABLE
+    score: 100

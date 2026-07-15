@@ -16,9 +16,20 @@ Item {
     property bool _showError: false
     property string _errorText: ""
 
+    objectName: "playback.page"
+    focus: true
+
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Reproducción"
+    Accessible.description: "Panel de control de reproducción"
+
     function routeEnter(route) {
         if (root.ps && typeof root.ps.refresh !== "undefined")
             root.ps.refresh()
+    }
+
+    Keys.onEscapePressed: {
+        root._showError = false
     }
 
     Flickable {
@@ -33,14 +44,15 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-            // Error banner
             Rectangle {
+                id: errorBanner
                 width: parent.width
                 height: _showError ? 36 : 0
                 radius: MichiTheme.radiusSm
                 visible: _showError
                 color: MichiTheme.colors.error
                 clip: true
+                objectName: "playback.errorBanner"
 
                 RowLayout {
                     anchors.fill: parent
@@ -51,16 +63,22 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: _errorText
-                        color: "white"
+                        color: MichiTheme.colors.textOnError
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
+                        Accessible.name: _errorText
                     }
 
                     Text {
                         text: "Cerrar"
                         color: MichiTheme.colors.onError
                         font.pixelSize: MichiTheme.typography.metaSize
+                        objectName: "playback.errorClose"
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Cerrar mensaje de error"
+                        Keys.onReturnPressed: _showError = false
+                        Keys.onSpacePressed: _showError = false
                         MouseArea {
                             anchors.fill: parent
                             onClicked: _showError = false
@@ -91,8 +109,8 @@ Item {
                         placeholderMode: !root._hasTrack
                     }
 
-                    // Title, artist, album
                     Text {
+                        id: trackTitleText
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignHCenter
                         text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
@@ -101,9 +119,12 @@ Item {
                         font.weight: MichiTheme.typography.weightSemiBold
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
+                        objectName: "playback.trackTitle"
+                        Accessible.name: text
                     }
 
                     Text {
+                        id: trackArtistText
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignHCenter
                         text: root.ps && root.ps.trackArtist ? root.ps.trackArtist : ""
@@ -112,9 +133,12 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                         visible: text !== ""
+                        objectName: "playback.trackArtist"
+                        Accessible.name: text
                     }
 
                     Text {
+                        id: trackAlbumText
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignHCenter
                         text: root.ps && root.ps.trackAlbum ? root.ps.trackAlbum : ""
@@ -123,25 +147,29 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
                         visible: text !== ""
+                        objectName: "playback.trackAlbum"
+                        Accessible.name: text
                     }
 
-                    // Quality badges
                     RowLayout {
+                        id: qualityRow
                         Layout.alignment: Qt.AlignHCenter
                         spacing: MichiTheme.spacing.xs
                         visible: root.ps && root.ps.qualityInfoAvailable
+                        objectName: "playback.qualityRow"
 
-                        StatusBadge { text: root.ps ? root.ps.formatLabel : ""; kind: "info"; visible: text !== "" }
-                        StatusBadge { text: root.ps ? root.ps.sampleRate : ""; kind: "info"; visible: text !== "" }
-                        StatusBadge { text: root.ps ? root.ps.bitDepth : ""; kind: "info"; visible: text !== "" }
-                        StatusBadge { text: root.ps ? root.ps.bitrate : ""; kind: "info"; visible: text !== "" }
+                        StatusBadge { id: formatBadge; text: root.ps ? root.ps.formatLabel : ""; kind: "info"; visible: text !== ""; objectName: "playback.badge.format" }
+                        StatusBadge { id: sampleBadge; text: root.ps ? root.ps.sampleRate : ""; kind: "info"; visible: text !== ""; objectName: "playback.badge.sampleRate" }
+                        StatusBadge { id: depthBadge; text: root.ps ? root.ps.bitDepth : ""; kind: "info"; visible: text !== ""; objectName: "playback.badge.bitDepth" }
+                        StatusBadge { id: bitrateBadge; text: root.ps ? root.ps.bitrate : ""; kind: "info"; visible: text !== ""; objectName: "playback.badge.bitrate" }
                     }
 
-                    // State
                     StatusBadge {
+                        id: stateBadge
                         Layout.alignment: Qt.AlignHCenter
                         text: root.ps && root.ps.isPlaying ? "Reproduciendo" : root.ps && root.ps.backendAvailable ? "Pausado" : "No disponible"
                         kind: root.ps && root.ps.isPlaying ? "success" : root.ps && root.ps.backendAvailable ? "info" : "disconnected"
+                        objectName: "playback.stateBadge"
                     }
 
                     // Controls
@@ -193,35 +221,40 @@ Item {
                         }
                     }
 
-                    // Navigation links
                     RowLayout {
+                        id: navLinksRow
                         Layout.alignment: Qt.AlignHCenter
                         spacing: MichiTheme.spacing.sm
                         visible: root._hasTrack
+                        objectName: "playback.navLinks"
 
-                        MichiButton { text: "Letra"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("lyrics") } }
-                        MichiButton { text: "Metadata"; variant: "ghost"; onClicked: { if (root.nav) root.nav.navigate("metadata_inspector") } }
+                        MichiButton { id: lyricsBtn; text: "Letra"; variant: "ghost"; objectName: "playback.nav.lyrics"; Accessible.name: "Ir a letras"; onClicked: { if (root.nav) root.nav.navigate("lyrics") } }
+                        MichiButton { id: metadataBtn; text: "Metadata"; variant: "ghost"; objectName: "playback.nav.metadata"; Accessible.name: "Ir a metadatos"; onClicked: { if (root.nav) root.nav.navigate("metadata_inspector") } }
                     }
                 }
 
-                // Right column: queue + history
                 ColumnLayout {
+                    id: rightColumn
                     Layout.fillWidth: true
                     Layout.preferredWidth: parent.width > 700 ? parent.width * 0.35 : parent.width
                     spacing: MichiTheme.spacing.md
-                    visible: true
+                    objectName: "playback.rightColumn"
 
-                    // Queue
                     Text {
+                        id: queueSectionTitle
                         text: "Cola"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
+                        objectName: "playback.section.queue"
+                        Accessible.name: "Cola de reproducción"
                     }
 
                     Item {
+                        id: queueContainer
                         Layout.fillWidth: true
                         height: Math.min(200, (root.ps ? root.ps.queue.length : 0) * 28 + 10)
+                        objectName: "playback.queueContainer"
 
                         ListView {
                             id: queueView
@@ -229,6 +262,8 @@ Item {
                             model: root.ps ? root.ps.queue : []
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
+                            objectName: "playback.queueList"
+                            Accessible.name: "Lista de cola"
 
                             delegate: Row {
                                 width: queueView.width; height: 24; spacing: MichiTheme.spacing.sm
@@ -237,44 +272,55 @@ Item {
                                     color: modelData.is_current ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.metaSize
                                     elide: Text.ElideRight; width: parent.width * 0.6
+                                    Accessible.name: text
                                 }
                                 Text {
                                     text: modelData.artist || ""
                                     color: MichiTheme.colors.textSecondary
                                     font.pixelSize: MichiTheme.typography.metaSize
                                     elide: Text.ElideRight; width: parent.width * 0.35
+                                    Accessible.name: text
                                 }
                             }
                         }
 
                         Text {
+                            id: queueEmptyText
                             anchors.centerIn: parent
                             text: root.ps && root.ps.queue.length === 0 ? "Cola vacía" : ""
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.metaSize
                             visible: text !== ""
+                            objectName: "playback.queueEmpty"
                         }
                     }
 
-                    // History
                     Text {
+                        id: historySectionTitle
                         text: "Historial"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
                         visible: root.ps && root.ps.history && root.ps.history.length > 0
+                        objectName: "playback.section.history"
+                        Accessible.name: "Historial reciente"
                     }
 
                     Item {
+                        id: historyContainer
                         Layout.fillWidth: true
                         height: Math.min(150, (root.ps ? root.ps.history.length : 0) * 24 + 10)
                         visible: root.ps && root.ps.history && root.ps.history.length > 0
+                        objectName: "playback.historyContainer"
 
                         ListView {
+                            id: historyView
                             anchors.fill: parent
                             model: root.ps ? root.ps.history.slice(0, 10) : []
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
+                            objectName: "playback.historyList"
+                            Accessible.name: "Historial de reproducción"
 
                             delegate: Row {
                                 width: parent.width; height: 24; spacing: MichiTheme.spacing.sm
@@ -283,23 +329,28 @@ Item {
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.metaSize
                                     elide: Text.ElideRight; width: parent.width * 0.6
+                                    Accessible.name: text
                                 }
                                 Text {
                                     text: modelData.artist || ""
                                     color: MichiTheme.colors.textSecondary
                                     font.pixelSize: MichiTheme.typography.metaSize
                                     elide: Text.ElideRight; width: parent.width * 0.3
+                                    Accessible.name: text
                                 }
                             }
                         }
                     }
 
                     Text {
+                        id: historyCountText
                         text: root.ps && root.ps.history && root.ps.history.length > 0
                               ? root.ps.history.length + " canciones"
                               : "Sin historial"
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
+                        objectName: "playback.historyCount"
+                        Accessible.name: text
                     }
                 }
             }

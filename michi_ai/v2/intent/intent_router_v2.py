@@ -342,6 +342,32 @@ class IntentRouterV2:
         self.ranker = CandidateRanker()
         self.ambiguity_resolver = AmbiguityResolver()
 
+    def detect_multi(self, text: str, context: dict[str, Any] | None = None) -> list[ParsedIntent]:
+        ctx = context or {}
+        normalized = self.normalizer.normalize(text)
+        entities = self.entity_extractor.extract(normalized.cleaned, ctx)
+        candidates = self.rule_detector.detect(normalized.cleaned, entities)
+        ranked = self.ranker.rank(candidates)
+        if not ranked:
+            return []
+        seen: set[str] = set()
+        result: list[ParsedIntent] = []
+        for c in ranked:
+            iid = c.intent.intent_id
+            if iid not in seen and iid != "unknown" and c.intent.confidence >= 0.5:
+                seen.add(iid)
+                result.append(ParsedIntent(
+                    intent_id=iid,
+                    confidence=c.intent.confidence,
+                    source=c.intent.source,
+                    entities={e.name: e.value for e in entities if e.confidence >= 0.7},
+                    constraints=self._build_constraints(entities),
+                    requested_actions=(iid,),
+                    negated_actions=self._detect_negations(normalized.cleaned, iid),
+                    matched_rule=c.intent.matched_rule,
+                ))
+        return result
+
     def detect(self, text: str, context: dict[str, Any] | None = None) -> ParsedIntent:
         ctx = context or {}
         normalized = self.normalizer.normalize(text)

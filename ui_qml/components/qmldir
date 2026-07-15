@@ -18,6 +18,22 @@ MichiProgressBar 1.0 MichiProgressBar.qml
 JobStatusBanner 1.0 JobStatusBanner.qml
 MichiIcon 1.0 IconSlot.qml
 MichiSearchField 1.0 SearchField.qml
+AsyncStateView 1.0 AsyncStateView.qml
+LoadingState 1.0 LoadingState.qml
+ErrorState 1.0 ErrorState.qml
+UnavailableState 1.0 UnavailableState.qml
+DegradedState 1.0 DegradedState.qml
+ProgressState 1.0 ProgressState.qml
+CancellationState 1.0 CancellationState.qml
+SelectionActionBar 1.0 SelectionActionBar.qml
+ConfirmationDialog 1.0 ConfirmationDialog.qml
+DestructiveActionDialog 1.0 DestructiveActionDialog.qml
+ResponsivePageLayout 1.0 ResponsivePageLayout.qml
+ResponsiveToolbar 1.0 ResponsiveToolbar.qml
+CapabilityGuard 1.0 CapabilityGuard.qml
+JobProgressCard 1.0 JobProgressCard.qml
+InlineValidation 1.0 InlineValidation.qml
+ConfirmActionDialog 1.0 ConfirmActionDialog.qml
 
 # content
 MichiAlbumTile 1.0 content/MichiAlbumTile.qml
@@ -41,7 +57,7 @@ MichiSection 1.0 layout/MichiSection.qml
 MichiSplitView 1.0 layout/MichiSplitView.qml
 MichiToolbar 1.0 layout/MichiToolbar.qml
 
-# states
+# states (legacy - use top-level components instead)
 MichiEmptyState 1.0 states/MichiEmptyState.qml
 MichiErrorState 1.0 states/MichiErrorState.qml
 MichiLoadingState 1.0 states/MichiLoadingState.qml
@@ -51,6 +67,62 @@ MichiUnavailableState 1.0 states/MichiUnavailableState.qml
 # settings
 SettingsCategoryPage 1.0 settings/SettingsCategoryPage.qml
 SettingsRow 1.0 settings/SettingsRow.qml
+
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+# notifications
+=======
+>>>>>>> Stashed changes
+# states (direct access aliases)
+ErrorState 1.0 ErrorState.qml
+UnavailableState 1.0 UnavailableState.qml
+LoadingState 1.0 LoadingState.qml
+ProgressState 1.0 ProgressState.qml
+
+# async / state management
+AsyncStateView 1.0 AsyncStateView.qml
+CancellationBanner 1.0 CancellationBanner.qml
+InlineError 1.0 InlineError.qml
+ConfirmationDialog 1.0 ConfirmationDialog.qml
+DestructiveActionDialog 1.0 DestructiveActionDialog.qml
+SortMenu 1.0 SortMenu.qml
+ContextActionMenu 1.0 ContextActionMenu.qml
+KeyboardShortcutHint 1.0 KeyboardShortcutHint.qml
+ResponsivePageLayout 1.0 ResponsivePageLayout.qml
+ResponsiveToolbar 1.0 ResponsiveToolbar.qml
+SelectionActionBar 1.0 SelectionActionBar.qml
+JobProgressCard 1.0 JobProgressCard.qml
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
+NotificationToast 1.0 NotificationToast.qml
+NotificationBanner 1.0 NotificationBanner.qml
+NotificationCenter 1.0 NotificationCenter.qml
+NotificationItem 1.0 NotificationItem.qml
+NotificationProgressItem 1.0 NotificationProgressItem.qml
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+ConnectionStatusBadge 1.0 ConnectionStatusBadge.qml
+ServiceHealthBadge 1.0 ServiceHealthBadge.qml
+CapabilityGuard 1.0 CapabilityGuard.qml
+
+# dialogs
+BaseDialog 1.0 dialogs/BaseDialog.qml
+ConfirmDialog 1.0 dialogs/ConfirmDialog.qml
+DestructiveDialog 1.0 dialogs/DestructiveDialog.qml
+InputDialog 1.0 dialogs/InputDialog.qml
+
+# capability
+CapabilityAwarePage 1.0 CapabilityAwarePage.qml
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 # dev (not for production)
 ComponentGallery 1.0 dev/ComponentGallery.qml

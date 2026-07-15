@@ -65,6 +65,10 @@ class EntityExtractor:
         if device:
             entities.append(device)
 
+        setting = self._extract_setting(text)
+        if setting:
+            entities.append(setting)
+
         fmt = self._extract_format(text)
         if fmt:
             entities.append(fmt)
@@ -106,6 +110,23 @@ class EntityExtractor:
             entities.append(filtr)
 
         return entities
+
+    def extract_all_candidates(self, text: str, context: dict[str, Any] | None = None) -> dict[str, list[ExtractedEntity]]:
+        result: dict[str, list[ExtractedEntity]] = {}
+        for entity_type in ("artist", "album", "track", "playlist", "genre"):
+            candidates = []
+            method_name = f"_extract_{entity_type}"
+            method = getattr(self, method_name, None)
+            if method:
+                entity = method(text)
+                if entity:
+                    candidates.append(entity)
+            if candidates:
+                result[entity_type] = candidates
+        return result
+
+    def _normalize_value(self, value: str) -> str:
+        return value.strip().title()
 
     def extract_ambiguation(self, text: str, entities: list[ExtractedEntity]) -> list[Ambiguity]:
         ambiguities: list[Ambiguity] = []
@@ -227,6 +248,17 @@ class EntityExtractor:
             return ExtractedEntity(
                 name=EntityType.DEVICE, value=m.group(1).lower(),
                 confidence=0.85, source_text=m.group(0),
+            )
+        return None
+
+    _SETTING_PATTERN = re.compile(r"\b(volumen|volume|ecualizador|equalizer|eq|salida|output|formato|formato\s+de\s+salida|tema|theme|idioma|languaje|language|repetir|repeat|aleatorio|shuffle|azar|brillo|brightness|notificaciones|notifications)\b", re.IGNORECASE)
+
+    def _extract_setting(self, text: str) -> ExtractedEntity | None:
+        m = self._SETTING_PATTERN.search(text)
+        if m:
+            return ExtractedEntity(
+                name=EntityType.SETTING, value=m.group(1).lower(),
+                confidence=0.80, source_text=m.group(0),
             )
         return None
 

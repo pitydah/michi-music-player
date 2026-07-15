@@ -1,9 +1,7 @@
-"""ServiceContainer — typed service registry with lifecycle management.
+"""ServiceContainer — typed service registry with full lifecycle management.
 
-All services are registered with a classification:
-  - REQUIRED: domain-critical; failure blocks domain, capability=False, logs error
-  - OPTIONAL: nice-to-have; failure tolerated, capability may degrade
-  - DEFERRED: created on first access, not at startup
+States: CREATED → BUILDING → BUILT → STARTING → READY → DEGRADED → FAILED → STOPPING → STOPPED.
+API: register, get, require, contains, start, health, cancel_all, shutdown.
 """
 from __future__ import annotations
 
@@ -16,6 +14,8 @@ logger = logging.getLogger("michi.service_container")
 
 class ContainerState(Enum):
     CREATED = "created"
+    BUILDING = "building"
+    BUILT = "built"
     STARTING = "starting"
     READY = "ready"
     DEGRADED = "degraded"
@@ -30,14 +30,14 @@ class ServicePriority(Enum):
     DEFERRED = "deferred"
 
 
-class ServiceRegistry:
-    """Typed container holding all backend service references."""
+class ServiceContainer:
+    """Typed container holding all backend service references with lifecycle."""
 
     def __init__(self):
         self._services: dict[str, Any] = {}
         self._priorities: dict[str, ServicePriority] = {}
+        self._dependencies: dict[str, tuple[str, ...]] = {}
         self._failures: dict[str, str] = {}
-        self._started = False
         self._state = ContainerState.CREATED
 
         self._define_priorities()
@@ -81,14 +81,29 @@ class ServiceRegistry:
     def _all_names(self) -> list[str]:
         return list(self._required_names() | self._optional_names() | self._deferred_names())
 
-    def register(self, name: str, service: Any) -> None:
+    def register(self, name: str, service: Any, required: bool | None = None, dependencies: tuple[str, ...] = ()) -> None:
         self._services[name] = service
+        if required is True:
+            self._priorities[name] = ServicePriority.REQUIRED
+        elif required is False:
+            self._priorities[name] = ServicePriority.OPTIONAL
+        if dependencies:
+            self._dependencies[name] = dependencies
 
     def get(self, name: str) -> Any:
         return self._services.get(name)
 
-    def has(self, name: str) -> bool:
+    def require(self, name: str) -> Any:
+        svc = self._services.get(name)
+        if svc is None:
+            raise KeyError(f"Required service '{name}' not registered")
+        return svc
+
+    def contains(self, name: str) -> bool:
         return name in self._services and self._services[name] is not None
+
+    def has(self, name: str) -> bool:
+        return self.contains(name)
 
     def priority(self, name: str) -> ServicePriority | None:
         return self._priorities.get(name)
@@ -227,8 +242,9 @@ class ServiceRegistry:
         return self._state
 
     def start(self):
+        if self._state == ContainerState.CREATED:
+            self._state = ContainerState.BUILDING
         self._state = ContainerState.STARTING
-        self._started = True
         required_failures = {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.REQUIRED}
         self._state = ContainerState.DEGRADED if required_failures else ContainerState.READY
 
@@ -236,10 +252,26 @@ class ServiceRegistry:
         return self._state in (ContainerState.READY, ContainerState.DEGRADED)
 
     def health(self) -> dict:
-        return {"state": self._state.value, "services": len(self._services), "failures": dict(self._failures)}
+        return {
+            "state": self._state.value,
+            "services": len(self._services),
+            "failures": dict(self._failures),
+            "required": len(self._required_names()),
+            "optional": len(self._optional_names()),
+        }
+
+    def cancel_all(self):
+        for name in list(self._services.keys()):
+            svc = self._services[name]
+            if hasattr(svc, 'cancel'):
+                try:
+                    svc.cancel()
+                except Exception as e:
+                    logger.debug("cancel %s: %s", name, e)
 
     def shutdown(self):
         self._state = ContainerState.STOPPING
+        self.cancel_all()
         self._failures.clear()
         self._state = ContainerState.STOPPED
 
@@ -247,7 +279,7 @@ class ServiceRegistry:
         self._failures[name] = error
         priority = self.priority(name)
         if priority == ServicePriority.REQUIRED:
-            logger.error("REQUIRED service '%s' FAILED: %s — domain blocked, capability=False", name, error)
+            logger.error("REQUIRED service '%s' FAILED: %s", name, error)
 
     def is_capable(self, name: str) -> bool:
         prio = self.priority(name)
@@ -269,3 +301,6 @@ class ServiceRegistry:
                 "capable": self.is_capable(name),
             }
         return result
+
+
+ServiceRegistry = ServiceContainer

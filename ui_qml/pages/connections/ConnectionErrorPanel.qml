@@ -8,11 +8,16 @@ Item {
     id: root
 
     property string errorText: ""
+    property string objectName: "connections.errorPanel"
 
     signal retryClicked()
     signal dismissClicked()
 
     implicitHeight: childrenRect.height
+
+    Accessible.role: Accessible.Alert
+    Accessible.name: "Error de conexión"
+    Accessible.description: root.errorText
 
     GlassMaterial {
         width: parent.width
@@ -35,6 +40,7 @@ Item {
                     color: MichiTheme.colors.statusError
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
+                    objectName: root.objectName + ".title"
                 }
             }
 
@@ -44,6 +50,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
                 width: parent.width
+                objectName: root.objectName + ".message"
             }
 
             Row {
@@ -53,12 +60,16 @@ Item {
                     text: "Reintentar"
                     variant: "primary"
                     onClicked: root.retryClicked()
+                    objectName: root.objectName + ".retryButton"
+                    Accessible.name: "Reintentar conexión"
                 }
 
                 MichiButton {
                     text: "Descartar"
                     variant: "ghost"
                     onClicked: root.dismissClicked()
+                    objectName: root.objectName + ".dismissButton"
+                    Accessible.name: "Descartar error"
                 }
             }
         }
