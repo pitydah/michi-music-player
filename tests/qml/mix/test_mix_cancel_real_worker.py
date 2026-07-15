@@ -1,4 +1,3 @@
-"""Test MixBridge cancelGeneration cancels real WorkerManager task, not just counter increment."""
 import pytest
 from unittest.mock import MagicMock
 
@@ -27,7 +26,7 @@ def mock_mqs():
 
 
 def test_cancel_generation_calls_worker_manager_cancel(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.loadMix("favorites")
     result = bridge.cancelGeneration()
     assert result["ok"]
@@ -35,7 +34,7 @@ def test_cancel_generation_calls_worker_manager_cancel(mock_wm, mock_mqs):
 
 
 def test_cancel_generation_increments_counter(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.loadMix("favorites")
     gen_before = bridge._generation
     result = bridge.cancelGeneration()
@@ -44,7 +43,7 @@ def test_cancel_generation_increments_counter(mock_wm, mock_mqs):
 
 
 def test_generation_counter_used_in_load_stale_check(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.loadMix("favorites")
     old_gen = bridge._generation
     bridge.cancelGeneration()
@@ -53,13 +52,13 @@ def test_generation_counter_used_in_load_stale_check(mock_wm, mock_mqs):
 
 
 def test_custom_mix_with_seed(mock_wm, mock_mqs):
-    bridge = MixBridge(worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs)
     result = bridge.loadMix("custom", seed='{"artist": "Genesis", "limit": 5}')
     assert result["ok"]
 
 
 def test_custom_mix_with_rules_empty(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs)
     result = bridge.loadMix("custom")
     assert result["ok"]
 
@@ -71,7 +70,7 @@ def test_cancel_generation_still_ok_without_wm():
 
 
 def test_cancel_twice_still_ok(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.cancelGeneration()
     result = bridge.cancelGeneration()
     assert result["ok"]

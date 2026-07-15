@@ -9,10 +9,18 @@ from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 class PlaybackBridge(QObject):
     stateChanged = Signal()
 
-    def __init__(self, player_service=None, playback_ctrl=None, nowplaying_bridge=None, parent=None):
+    def __init__(self, player_service=None, playback_ctrl=None, nowplaying_bridge=None,
+                 audio_quality_adapter=None, parent=None):
         super().__init__(parent)
+        assert player_service is not None or playback_ctrl is not None, \
+            "PlaybackBridge: player_service is REQUIRED"
         player = player_service or playback_ctrl
-        self._nowplaying = nowplaying_bridge or NowPlayingBridge(player_service=player)
+        if nowplaying_bridge is None:
+            from ui_qml_bridge.audio_quality_adapter import AudioQualityAdapter
+            aqa = audio_quality_adapter or AudioQualityAdapter()
+            self._nowplaying = NowPlayingBridge(player_service=player, audio_quality_adapter=aqa)
+        else:
+            self._nowplaying = nowplaying_bridge
         self._nowplaying.stateChanged.connect(self.stateChanged.emit)
         self._nowplaying.coverChanged.connect(self.stateChanged.emit)
 

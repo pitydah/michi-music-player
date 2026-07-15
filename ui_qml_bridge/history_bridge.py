@@ -30,6 +30,7 @@ class HistoryBridge(QObject):
                  capability_bridge=None, accessibility_bridge=None,
                  notification_bridge=None, job_bridge=None, parent=None):
         super().__init__(parent)
+        assert db is not None, "HistoryBridge: db is REQUIRED"
         self._db = db
         self._hqs = history_query_service or HistoryQueryService(db=db)
         self._qe = query_executor

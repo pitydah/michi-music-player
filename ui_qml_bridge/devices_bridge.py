@@ -17,11 +17,11 @@ STATE_PAIRING = "PAIRING"
 STATE_PLANNING = "PLANNING"
 STATE_TRANSFERRING = "TRANSFERRING"
 STATE_CANCELLING = "CANCELLING"
+STATE_CANCELLED = "CANCELLED"
 STATE_PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
-STATE_ERROR = "ERROR"
+STATE_FAILED = "FAILED"
 STATE_DEFERRED_PHYSICAL = "DEFERRED_PHYSICAL"
-STATE_UNAVAILABLE = "UNAVAILABLE"
-STATE_LOADING = "LOADING"
+STATE_METHOD_UNAVAILABLE = "METHOD_UNAVAILABLE"
 
 _AUDIO_EXTS = frozenset({
     ".mp3", ".flac", ".wav", ".ogg", ".opus", ".m4a", ".aac",
@@ -36,7 +36,7 @@ def _normalise_result(raw: Any) -> dict:
     if isinstance(raw, bool):
         return {"ok": raw}
     if raw is None:
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
     if isinstance(raw, str):
         return {"ok": False, "error": raw}
     return {"ok": False, "error": f"Unexpected result: {type(raw).__name__}"}
@@ -44,6 +44,14 @@ def _normalise_result(raw: Any) -> dict:
 
 def _typed_error(code: str, message: str = "") -> dict:
     return {"ok": False, "error": code, "message": message or code}
+
+
+def _method_unavailable(name: str = "") -> dict:
+    return {"ok": False, "error": "METHOD_UNAVAILABLE", "message": name or "Method not available"}
+
+
+def _require_confirm(action: str) -> dict:
+    return {"ok": False, "error": "CONFIRMATION_REQUIRED", "action": action}
 
 
 def _is_audio_extension(path: str) -> str | None:
@@ -99,7 +107,7 @@ class DevicesBridge(QObject):
 
     def _set_state(self):
         if self._error:
-            self.state = STATE_ERROR
+            self.state = STATE_FAILED
         elif self._server_active and (self._paired_devices or self._peers):
             self.state = STATE_READY
         elif self._server_active:
@@ -674,6 +682,22 @@ class DevicesBridge(QObject):
         self._qr_code_data = f"michi://pair/{uuid4().hex[:12]}"
         self.stateChanged.emit()
         return self._qr_code_data
+
+    @Slot(str, result=dict)
+    def confirmDestructive(self, action: str):
+        if action == "unpair":
+            return {"ok": True, "confirmed": True, "action": "unpair"}
+        if action == "clear_history":
+            return {"ok": True, "confirmed": True, "action": "clear_history"}
+        if action == "overwrite":
+            return {"ok": True, "confirmed": True, "action": "overwrite"}
+        if action == "replace":
+            return {"ok": True, "confirmed": True, "action": "replace"}
+        return _typed_error("UNKNOWN_ACTION", f"Accion destructiva desconocida: {action}")
+
+    @Slot(str, result=dict)
+    def retry(self, job_id: str):
+        return self.retryTransfer(job_id)
 
     def _refresh_transfer_jobs(self):
         if not self._dev_svc:

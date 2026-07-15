@@ -25,6 +25,7 @@ class MetadataBridge(QObject):
 
     def __init__(self, metadata_service=None, job_service=None, parent=None):
         super().__init__(parent)
+        assert metadata_service is not None, "MetadataBridge: metadata_service is REQUIRED"
         self._ms = metadata_service
         self._js = job_service
         self._current_filepath = ""

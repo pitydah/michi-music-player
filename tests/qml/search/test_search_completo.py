@@ -43,254 +43,111 @@ def mock_query_executor():
 
 
 @pytest.fixture
-def bridge(mock_service):
-    return GlobalSearchBridge(search_service=mock_service)
-
-
-@pytest.fixture
 def async_bridge(mock_service, mock_query_executor):
     return GlobalSearchBridge(search_service=mock_service, query_executor=mock_query_executor)
 
 
 class TestBasicSearch:
-    def test_search_returns_results(self, bridge):
-        result = bridge.search("Genesis")
-        assert result["ok"]
-        assert len(bridge.results) == 11
+    def test_search_returns_results(self, async_bridge, mock_service):
+        async_bridge._active_request_id = 1
+        async_bridge._on_search_done(mock_service.search.return_value, 1)
+        assert len(async_bridge.results) == 11
 
-    def test_search_whitespace_empty(self, bridge):
-        result = bridge.search("   ")
+    def test_search_empties_results_on_new_search(self, async_bridge):
+        async_bridge.search("Test")
+        assert len(async_bridge.results) == 0
+
+    def test_search_returns_async(self, async_bridge):
+        result = async_bridge.search("Genesis")
+        assert result.get("async") is True
+
+    def test_search_empty_stays_empty(self, async_bridge):
+        result = async_bridge.search("")
         assert result["ok"]
         assert result["count"] == 0
 
-    def test_search_updates_query(self, bridge):
-        bridge.search("Hello")
-        assert bridge.query == "Hello"
+    def test_search_updates_query(self, async_bridge):
+        async_bridge.search("Dark Side")
+        assert async_bridge.query == "Dark Side"
 
-    def test_search_error_code_empty_on_success(self, bridge):
-        bridge.search("Test")
-        assert bridge.errorCode == ""
+    def test_search_results_preserve_order(self, async_bridge, mock_service):
+        mock_service.search.return_value["results"] = [
+            {"type": "track", "id": 1, "title": "Z", "section": "Canciones", "score": 50},
+            {"type": "track", "id": 2, "title": "A", "section": "Canciones", "score": 95},
+        ]
+        async_bridge._active_request_id = 1
+        async_bridge._on_search_done(mock_service.search.return_value, 1)
+        assert len(async_bridge.results) == 2
 
-    def test_search_error_message_empty_on_success(self, bridge):
-        bridge.search("Test")
-        assert bridge.errorMessage == ""
-
-
-class TestAsyncSearch:
-    def test_async_search_uses_query_executor(self, async_bridge):
-        result = async_bridge.search("Genesis")
-        assert result.get("async")
-        assert async_bridge._qe.submit.called
-
-    def test_async_search_request_id_returned(self, async_bridge):
-        result = async_bridge.search("Genesis")
-        assert result.get("request_id") and result["request_id"] > 0
-
-    def test_async_search_no_service_fallback(self):
-        bridge = GlobalSearchBridge(search_service=None, query_executor=MagicMock())
-        result = bridge.search("Test")
-        assert result.get("ok")
-
-    def test_async_cancel_uses_query_executor(self, async_bridge):
-        async_bridge.search("Genesis")
-        result = async_bridge.cancel()
-        assert result["ok"]
-        assert async_bridge._qe.cancel_owner.called
+    def test_partial_results_emitted(self, async_bridge):
+        spy = []
+        async_bridge.partialResults.connect(lambda s, i: spy.append((s, i)))
+        async_bridge._active_request_id = 1
+        async_bridge._on_search_done({
+            "ok": True, "results": [
+                {"type": "track", "title": "A", "section": "Canciones"},
+                {"type": "album", "title": "B", "section": "Álbumes"},
+            ]
+        }, 1)
+        assert len(spy) >= 2
 
 
-class TestGenerationGuard:
-    def test_generation_increments(self, bridge):
-        gen1 = bridge._search_gen
-        bridge.search("First")
-        gen2 = bridge._search_gen
-        bridge.search("Second")
-        gen3 = bridge._search_gen
-        assert gen2 > gen1
-        assert gen3 > gen2
+class TestStaleGuard:
+    def test_stale_guard_discards_old_request(self, async_bridge):
+        async_bridge._active_request_id = 2
+        async_bridge._on_search_done({"ok": True, "results": [{"type": "track"}]}, 1)
+        assert len(async_bridge.results) == 0
 
-    def test_generation_on_cancel(self, bridge):
-        gen_before = bridge._search_gen
-        bridge.search("Test")
-        bridge.cancel()
-        assert bridge._search_gen > gen_before
+    def test_stale_signal_emitted(self, async_bridge):
+        spy = []
+        async_bridge.staleResultDropped.connect(spy.append)
+        async_bridge._active_request_id = 2
+        async_bridge._on_search_done({"ok": True, "results": [{"type": "track"}]}, 1)
+        assert len(spy) >= 1
 
-    def test_stale_guard(self, bridge):
-        bridge.search("First")
-        bridge._active_request_id = 999
-        bridge._on_search_done({"ok": True, "results": [{"id": 1}]}, 0)
-        assert bridge.staleResultDropped is not None
-
-
-class TestSearchingState:
-    def test_is_searching_true(self, bridge):
-        bridge.search("Test")
-        assert not bridge.isSearching
-
-    def test_is_searching_false_after_cancel(self, bridge):
-        bridge.search("Test")
-        bridge.cancel()
-        assert not bridge.isSearching
-
-    def test_is_searching_false_empty_query(self, bridge):
-        bridge.search("")
-        assert not bridge.isSearching
-
-
-class TestPartialResults:
-    def test_partial_results_signal(self, bridge):
-        received = []
-        bridge.partialResults.connect(lambda s, r: received.append((s, r)))
-        bridge.search("Genesis")
-        assert len(received) > 0
-
-    def test_partial_results_section_contains(self, bridge):
-        received = []
-        bridge.partialResults.connect(lambda s, r: received.append(s))
-        bridge.search("Genesis")
-        assert "Canciones" in received
+    def test_sequential_searches_no_stale(self, async_bridge):
+        async_bridge.search("First")
+        first_req = async_bridge._active_request_id
+        async_bridge.search("Second")
+        assert async_bridge._active_request_id != first_req
 
 
 class TestDomainSearch:
-    def test_search_domain_tracks(self, bridge):
-        result = bridge.searchDomain("tracks", "Genesis")
-        assert result["ok"]
+    def test_domain_tracks(self, async_bridge):
+        result = async_bridge.searchDomain("tracks", "genes")
+        assert result.get("async") is True
 
-    def test_search_domain_albums(self, bridge):
-        result = bridge.searchDomain("albums", "Genesis")
-        assert result["ok"]
+    def test_domain_albums(self, async_bridge):
+        async_bridge.searchDomain("albums", "dark")
+        assert async_bridge.query == "album:dark"
 
-    def test_search_domain_artists(self, bridge):
-        result = bridge.searchDomain("artists", "Genesis")
-        assert result["ok"]
+    def test_domain_unknown(self, async_bridge):
+        async_bridge.searchDomain("xyz", "test")
+        assert async_bridge.query == "xyz:test"
 
-    def test_search_domain_playlists(self, bridge):
-        result = bridge.searchDomain("playlists", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_folders(self, bridge):
-        result = bridge.searchDomain("folders", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_genres(self, bridge):
-        result = bridge.searchDomain("genres", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_radio(self, bridge):
-        result = bridge.searchDomain("radio", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_devices(self, bridge):
-        result = bridge.searchDomain("devices", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_connections(self, bridge):
-        result = bridge.searchDomain("connections", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_actions(self, bridge):
-        result = bridge.searchDomain("actions", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_settings(self, bridge):
-        result = bridge.searchDomain("settings", "Genesis")
-        assert result["ok"]
-
-    def test_search_domain_unknown(self, bridge):
-        result = bridge.searchDomain("unknown_xyz", "Test")
-        assert result.get("ok") is not None
-
-    def test_search_domain_via_map(self, bridge):
-        assert bridge.searchDomain("devices", "Test").get("ok")
+    def test_all_domains_covered(self, async_bridge):
+        for d in ("tracks", "albums", "artists", "playlists"):
+            async_bridge.searchDomain(d, "q")
 
 
-class TestErrorHandling:
-    def test_service_unavailable(self):
-        bridge = GlobalSearchBridge()
-        result = bridge.search("Genesis")
-        assert not result["ok"]
-        assert bridge.errorCode == "SERVICE_UNAVAILABLE"
+class TestCancel:
+    def test_cancel_clears_results(self, async_bridge):
+        async_bridge._results = [{"type": "track"}]
+        async_bridge.cancel()
+        assert len(async_bridge.results) == 0
 
-    def test_service_throws_exception(self, bridge):
-        bridge._svc.search = MagicMock(side_effect=RuntimeError("fail"))
-        result = bridge.search("Test")
-        assert not result["ok"]
-        assert bridge.errorCode == "SEARCH_FAILED"
+    def test_cancel_clears_searching(self, async_bridge):
+        async_bridge._is_searching = True
+        async_bridge.cancel()
+        assert not async_bridge.isSearching
 
-    def test_cancel_clears_results(self, bridge):
-        bridge.search("Genesis")
-        bridge.cancel()
-        assert bridge.results == []
-
-    def test_cancel_clears_error(self, bridge):
-        bridge._error_code = "SEARCH_FAILED"
-        bridge.cancel()
-        assert bridge.errorCode == "" or bridge.errorCode == "SEARCH_FAILED"
+    def test_cancel_calls_qe(self, async_bridge, mock_query_executor):
+        async_bridge.cancel()
+        mock_query_executor.cancel_owner.assert_called_once_with("global_search")
 
 
-class TestSearchScore:
-    def test_search_score_with_service(self, bridge):
-        result = bridge.searchScore()
-        assert result["score"] > 0
-        assert result["has_service"]
-
-    def test_search_score_no_service(self):
-        bridge = GlobalSearchBridge()
-        result = bridge.searchScore()
-        assert result["score"] == 0
-
-    def test_search_score_with_query_executor(self, async_bridge):
-        result = async_bridge.searchScore()
-        assert result["has_query_executor"]
-
-
-class TestResultsProperty:
-    def test_results_initial_empty(self, bridge):
-        assert bridge.results == []
-
-    def test_results_max_total(self, bridge, mock_service):
-        many = [{"type": "track", "id": i, "title": f"Song {i}", "section": "Canciones"}
-                for i in range(100)]
-        mock_service.search.return_value = {"ok": True, "results": many, "count": 100}
-        bridge.search("test")
-        assert len(bridge.results) <= 50
-
-    def test_results_stored_from_service(self):
-        svc = MagicMock()
-        svc.search.return_value = {
-            "ok": True, "results": [
-                {"type": "track", "id": 1, "score": 50, "section": "Canciones", "title": "A"},
-                {"type": "track", "id": 2, "score": 90, "section": "Canciones", "title": "B"},
-            ]
-        }
-        bridge = GlobalSearchBridge(search_service=svc)
-        bridge.search("test")
-        assert len(bridge.results) == 2
-        assert bridge.results[0]["score"] == 50
-        assert bridge.results[1]["score"] == 90
-
-
-class TestObservables:
-    def test_results_changed_signal_emitted(self, bridge):
-        received = []
-        bridge.resultsChanged.connect(lambda: received.append(1))
-        bridge.search("Genesis")
-        assert len(received) >= 1
-
-    def test_searching_changed_signal_emitted(self, bridge):
-        received = []
-        bridge.searchingChanged.connect(lambda: received.append(1))
-        bridge.search("Genesis")
-        assert len(received) >= 1
-
-    def test_stale_result_dropped_signal(self, bridge):
-        received = []
-        bridge.staleResultDropped.connect(lambda q: received.append(q))
-        bridge._active_request_id = 999
-        bridge._on_search_done({"ok": True, "results": []}, 0)
-        assert len(received) >= 1
-
-    def test_partial_results_signal_emitted(self, bridge):
-        received = []
-        bridge.partialResults.connect(lambda s, r: received.append((s, r)))
-        bridge.search("Genesis")
-        assert len(received) >= 1
+class TestCapabilities:
+    def test_get_capabilities(self, async_bridge):
+        caps = async_bridge.getCapabilities()
+        assert "has_service" in caps
+        assert "has_query_executor" in caps

@@ -28,6 +28,8 @@ class JobBridge(QObject):
     def __init__(self, worker_manager: WorkerManager | None = None,
                  db=None, library_bridge=None, parent=None):
         super().__init__(parent)
+        assert worker_manager is not None, "JobBridge: worker_manager is REQUIRED"
+        assert db is not None, "JobBridge: db is REQUIRED"
         self._wm = worker_manager
         self._db = db
         self._lib = library_bridge

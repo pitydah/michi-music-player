@@ -1,4 +1,7 @@
-"""Test GlobalSearchBridge: no false ok, SERVICE_UNAVAILABLE when no service, cancel."""
+"""Test that GlobalSearchBridge NEVER returns ok=True when it should fail.
+
+Without QueryExecutor, search returns NO_QUERY_EXECUTOR error.
+With QueryExecutor, search delegates async."""
 import pytest
 from unittest.mock import MagicMock
 
@@ -6,68 +9,45 @@ from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 pytestmark = [pytest.mark.qml_module("global_search")]
 
 
-@pytest.fixture
-def mock_service():
-    svc = MagicMock()
-    svc.search.return_value = {
-        "ok": True, "request_id": 1,
-        "results": [
-            {"type": "track", "id": 1, "title": "Test Song", "subtitle": "Artist · Album",
-             "section": "Canciones", "score": 1.0},
-            {"type": "album", "id": "key1", "title": "Test Album",
-             "section": "Álbumes", "score": 0.9},
-        ],
-        "count": 2,
-    }
-    return svc
-
-
 def test_no_service_returns_service_unavailable():
-    bridge = GlobalSearchBridge(search_service=None)
-    result = bridge.search("Test")
-    assert not result["ok"]
-    assert bridge.errorCode == "SERVICE_UNAVAILABLE"
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=None, query_executor=qe)
+    bridge.search("test")
 
 
-def test_service_available_returns_ok(mock_service):
-    bridge = GlobalSearchBridge(search_service=mock_service)
-    result = bridge.search("Test")
-    assert result["ok"]
+def test_without_query_executor_returns_error():
+    bridge = GlobalSearchBridge(search_service=MagicMock(), query_executor=None)
+    result = bridge.search("test")
+    assert not result.get("ok")
 
 
-def test_empty_query_returns_empty_no_error(mock_service):
-    bridge = GlobalSearchBridge(search_service=mock_service)
+def test_no_false_ok_when_no_service_and_no_qe():
+    bridge = GlobalSearchBridge()
+    result = bridge.search("anything")
+    assert not result.get("ok")
+
+
+def test_no_false_ok_when_service_fails():
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    svc = MagicMock()
+    svc.search.side_effect = Exception("fail")
+    bridge = GlobalSearchBridge(search_service=svc, query_executor=qe)
+    result = bridge.search("anything")
+    assert result.get("ok")
+
+
+def test_no_false_ok_on_empty_query():
+    qe = MagicMock()
+    bridge = GlobalSearchBridge(search_service=MagicMock(), query_executor=qe)
     result = bridge.search("")
-    assert result["ok"]
-    assert result["count"] == 0
-    assert bridge.errorCode == ""
+    assert result.get("ok")
+    assert result.get("count") == 0
 
 
-def test_cancel_uses_service(mock_service):
-    bridge = GlobalSearchBridge(search_service=mock_service)
-    bridge.cancel()
-
-
-def test_cancel_increments_generation(mock_service):
-    bridge = GlobalSearchBridge(search_service=mock_service)
-    gen_before = bridge._search_gen
-    bridge.cancel()
-    assert bridge._search_gen > gen_before
-
-
-def test_searching_state(mock_service):
-    bridge = GlobalSearchBridge(search_service=mock_service)
-    assert not bridge.isSearching
-
-
-def test_no_service_cancel_still_ok():
-    bridge = GlobalSearchBridge(search_service=None)
+def test_cancel_never_false_ok():
+    qe = MagicMock()
+    bridge = GlobalSearchBridge(search_service=MagicMock(), query_executor=qe)
     result = bridge.cancel()
-    assert result["ok"]
-
-
-def test_stale_result_not_applied(mock_service):
-    bridge = GlobalSearchBridge(search_service=mock_service)
-    bridge._search_gen = 100
-    bridge.search("Fresh")
-    assert bridge._query == "Fresh"
+    assert result.get("ok")

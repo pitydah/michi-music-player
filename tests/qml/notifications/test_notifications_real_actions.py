@@ -99,5 +99,5 @@ class TestRealActions:
     def test_undo_action_no_registry(self):
         empty = NotificationBridge()
         result = empty.undoAction("track_add_to_queue")
-        assert result.get("ok") is True
-        assert result.get("undo") == "track_add_to_queue"
+        assert result.get("ok") is False
+        assert result.get("error") == "UNSUPPORTED_UNDO"

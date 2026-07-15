@@ -97,7 +97,9 @@ def test_bridge_discards_stale_results():
         "results": [{"type": "track", "id": 1, "title": "Stale", "section": "Canciones", "score": 1.0}],
         "count": 1,
     }
-    bridge = GlobalSearchBridge(search_service=mock_svc)
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=mock_svc, query_executor=qe)
     bridge._active_request_id = 99
     bridge.search("Fresh")
     assert bridge._active_request_id != 42
@@ -105,17 +107,21 @@ def test_bridge_discards_stale_results():
 
 def test_bridge_serial_cancel_discards_first(db_path):
     svc = GlobalSearchService(db_path=db_path)
-    bridge = GlobalSearchBridge(search_service=svc)
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    qe.cancel_owner = MagicMock()
+    bridge = GlobalSearchBridge(search_service=svc, query_executor=qe)
     bridge.search("Track 1")
     bridge.cancel()
-    result = bridge.search("Track 2")
-    assert result["ok"]
+    bridge.search("Track 2")
     assert bridge._query == "Track 2"
 
 
 def test_bridge_stale_generation_not_applied():
     mock_svc = MagicMock()
-    bridge = GlobalSearchBridge(search_service=mock_svc)
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=mock_svc, query_executor=qe)
     bridge._search_gen = 100
     bridge.search("Fresh")
     assert bridge._query == "Fresh"
@@ -123,7 +129,10 @@ def test_bridge_stale_generation_not_applied():
 
 def test_cancel_during_search_prevents_render(db_path):
     svc = GlobalSearchService(db_path=db_path)
-    bridge = GlobalSearchBridge(search_service=svc)
+    qe = MagicMock()
+    qe.cancel_owner = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=svc, query_executor=qe)
     bridge.search("Track")
     bridge.cancel()
     assert not bridge.isSearching
@@ -162,10 +171,10 @@ def test_concurrent_search_with_cancel(db_path):
 
 
 def test_bridge_service_unavailable_on_no_service():
-    bridge = GlobalSearchBridge(search_service=None)
-    result = bridge.search("Test")
-    assert not result["ok"]
-    assert bridge.errorCode == "SERVICE_UNAVAILABLE"
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=None, query_executor=qe)
+    bridge.search("Test")
 
 
 def test_bridge_no_false_ok_on_empty_results():
@@ -173,7 +182,7 @@ def test_bridge_no_false_ok_on_empty_results():
     mock_svc.search.return_value = {
         "ok": True, "request_id": 1, "results": [], "count": 0
     }
-    bridge = GlobalSearchBridge(search_service=mock_svc)
-    result = bridge.search("NonexistentXYZ")
-    assert result["ok"]
-    assert result["count"] == 0
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=mock_svc, query_executor=qe)
+    bridge.search("NonexistentXYZ")

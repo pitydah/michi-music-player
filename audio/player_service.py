@@ -7,8 +7,6 @@ HybridAudioManager delegates to the active backend (GStreamer or MPD).
 from PySide6.QtCore import QObject, Signal, QTimer
 
 from audio.player import PlaybackState
-from audio.backends.hybrid_audio_manager import HybridAudioManager
-from audio.backends.gstreamer_backend import GStreamerBackend
 from audio.backends.mpd_backend import MpdBackend
 from audio.mpd.mpd_service_manager import MpdServiceManager
 from audio.mpd.mpd_config_builder import build_mpd_config
@@ -30,7 +28,7 @@ class PlayerService(QObject):
     finished = Signal()
     backend_changed = Signal(str, str)
 
-    def __init__(self, engine, parent=None):
+    def __init__(self, engine=None, parent=None):
         super().__init__(parent)
         self._engine = engine
         self._retry_url = None
@@ -43,18 +41,25 @@ class PlayerService(QObject):
         self._retry_timer.setSingleShot(True)
         self._retry_timer.timeout.connect(self._do_retry)
 
-        self._gst_backend = GStreamerBackend(engine)
+        self._gst_backend = None
         self._mpd_backend = None
         self._mpd_service = None
-        self._hybrid = HybridAudioManager(default_backend=self._gst_backend)
-        self._active_backend_id = "gstreamer"
+        self._active_backend_id = ""
 
-        self._engine.position_changed.connect(lambda s: self.position_changed.emit(s))
-        self._engine.duration_changed.connect(lambda s: self.duration_changed.emit(s))
-        self._engine.state_changed.connect(self._on_state)
-        self._engine.queue_changed.connect(lambda q: self.queue_changed.emit(q))
-        self._engine.finished.connect(lambda: self.finished.emit())
-        self._engine.error_occurred.connect(self._on_error)
+        from audio.backends.hybrid_audio_manager import HybridAudioManager
+        if engine is not None:
+            from audio.backends.gstreamer_backend import GStreamerBackend
+            self._gst_backend = GStreamerBackend(engine)
+            self._hybrid = HybridAudioManager(default_backend=self._gst_backend)
+            self._active_backend_id = "gstreamer"
+            self._engine.position_changed.connect(lambda s: self.position_changed.emit(s))
+            self._engine.duration_changed.connect(lambda s: self.duration_changed.emit(s))
+            self._engine.state_changed.connect(self._on_state)
+            self._engine.queue_changed.connect(lambda q: self.queue_changed.emit(q))
+            self._engine.finished.connect(lambda: self.finished.emit())
+            self._engine.error_occurred.connect(self._on_error)
+        else:
+            self._hybrid = HybridAudioManager()
 
     def _on_state(self, state):
         s_map = {PlaybackState.PLAYING: "playing",
@@ -209,7 +214,7 @@ class PlayerService(QObject):
     def enqueue_next(self, paths):
         if not paths:
             return
-        if self._hybrid.active_id == "gstreamer":
+        if self._engine and self._hybrid.active_id == "gstreamer":
             self._engine.enqueue_next(paths)
         else:
             self._hybrid.enqueue_next(paths)
@@ -220,14 +225,14 @@ class PlayerService(QObject):
         if not clean:
             self.error_occurred.emit("No hay archivos válidos para reproducir")
             return
-        if self._hybrid.active_id == "gstreamer":
+        if self._engine and self._hybrid.active_id == "gstreamer":
             self._engine.enqueue(clean, play_now)
         else:
             self._hybrid.enqueue(clean, play_now)
 
     def play_queue(self, filepaths, start_index=0):
         self._retry_url = None
-        if self._hybrid.active_id == "gstreamer":
+        if self._engine and self._hybrid.active_id == "gstreamer":
             self._engine.set_queue(filepaths, start_index)
         else:
             self._hybrid.set_queue(filepaths, start_index)
@@ -245,18 +250,18 @@ class PlayerService(QObject):
         return paths, idx
 
     def reorder_queue(self, filepaths):
-        if self._hybrid.active_id == "gstreamer":
+        if self._engine and self._hybrid.active_id == "gstreamer":
             self._engine.reorder_queue(filepaths)
         else:
             self._hybrid.active.set_queue(filepaths)
 
     def toggle_shuffle(self):
-        if self._hybrid.active_id == "gstreamer":
+        if self._engine and self._hybrid.active_id == "gstreamer":
             return self._engine.toggle_shuffle()
         return False
 
     def toggle_repeat(self):
-        if self._hybrid.active_id == "gstreamer":
+        if self._engine and self._hybrid.active_id == "gstreamer":
             return self._engine.toggle_repeat()
         return "none"
 
@@ -267,7 +272,7 @@ class PlayerService(QObject):
         self._current_title = title or ""
         self._current_artist = artist or ""
         self._current_album = album or ""
-        if self._hybrid.active_id == "gstreamer" or url.startswith(("http://", "https://", "icy://")):
+        if self._engine and (self._hybrid.active_id == "gstreamer" or url.startswith(("http://", "https://", "icy://"))):
             self._engine.play_url(url)
         else:
             self._hybrid.play(url)
@@ -296,10 +301,11 @@ class PlayerService(QObject):
         return get("audio/profile") or "standard"
 
     def set_output_device_id(self, device_id):
-        self._engine.set_output_device_id(device_id)
+        if self._engine:
+            self._engine.set_output_device_id(device_id)
 
     def get_output_device_id(self):
-        return self._engine.get_output_device_id()
+        return self._engine.get_output_device_id() if self._engine else ""
 
     def get_audio_devices(self):
         from audio.output_device_manager import list_devices
@@ -311,25 +317,32 @@ class PlayerService(QObject):
     def get_audio_diagnostics(self):
         if self._hybrid.active_id == "mpd" and self._mpd_backend:
             return self._mpd_backend.get_diagnostics()
-        return self._engine.get_audio_diagnostics()
+        if self._engine:
+            return self._engine.get_audio_diagnostics()
+        from audio.backends.types import AudioDiagnostics
+        return AudioDiagnostics(backend_id="none", profile="none")
 
     def test_output_device(self, device_id):
         return True, "OK"
 
     def set_dsd_mode(self, mode):
-        self._engine.set_dsd_mode(mode)
+        if self._engine:
+            self._engine.set_dsd_mode(mode)
 
     def set_gapless_enabled(self, enabled):
-        self._engine.set_gapless_enabled(enabled)
+        if self._engine:
+            self._engine.set_gapless_enabled(enabled)
 
     def set_replaygain_mode(self, mode):
-        self._engine.set_replaygain_mode(mode)
+        if self._engine:
+            self._engine.set_replaygain_mode(mode)
 
     def set_transmit_device(self, device):
-        self._engine.set_transmit_device(device)
+        if self._engine:
+            self._engine.set_transmit_device(device)
 
     def get_transmit_device(self):
-        return self._engine.get_transmit_device()
+        return self._engine.get_transmit_device() if self._engine else None
 
     def get_playback_snapshot(self):
         return self._hybrid.get_snapshot()
@@ -338,32 +351,40 @@ class PlayerService(QObject):
         if self._is_mpd_active():
             self.error_occurred.emit("EQ no disponible en modo MPD Hi-Fi")
             return
-        self._engine.set_eq_graphic(bands)
+        if self._engine:
+            self._engine.set_eq_graphic(bands)
 
     def set_eq_parametric(self, bands):
         if self._is_mpd_active():
             self.error_occurred.emit("EQ no disponible en modo MPD Hi-Fi")
             return
-        self._engine.set_eq_parametric(bands)
+        if self._engine:
+            self._engine.set_eq_parametric(bands)
 
     def set_eq_bypass(self, bypass):
         if self._is_mpd_active():
             return
-        self._engine.set_eq_bypass(bypass)
+        if self._engine:
+            self._engine.set_eq_bypass(bypass)
 
     def set_eq_preamp(self, db):
         if self._is_mpd_active():
             return
-        self._engine.set_eq_preamp(db)
+        if self._engine:
+            self._engine.set_eq_preamp(db)
 
     def get_eq_state(self):
-        return self._engine.get_eq_state()
+        if self._engine:
+            return self._engine.get_eq_state()
+        from audio.player import EqState
+        return EqState()
 
     def set_spectrum_enabled(self, enabled):
         if self._is_mpd_active():
             self.error_occurred.emit("Spectrum no disponible en modo MPD Hi-Fi")
             return
-        self._engine.set_spectrum_enabled(enabled)
+        if self._engine:
+            self._engine.set_spectrum_enabled(enabled)
 
     def get_bitperfect_report(self):
         """Build a BitperfectReport from current diagnostics and profile."""

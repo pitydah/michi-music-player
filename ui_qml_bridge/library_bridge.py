@@ -33,7 +33,10 @@ class LibraryBridge(QObject):
 
     def __init__(self, db=None, search_engine=None, playback_ctrl=None,
                  query_service=None, query_executor=None, worker_manager=None,
-                 job_bridge=None, track_action_service=None, parent=None):
+                 job_bridge=None, track_action_service=None,
+                 library_sources_service=None, parent=None):
+        assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
+        assert track_action_service is not None, "LibraryBridge: track_action_service is REQUIRED"
         super().__init__(parent)
         self._db = db
         self._search_engine = search_engine
@@ -42,6 +45,7 @@ class LibraryBridge(QObject):
         self._qe = query_executor
         self._job_bridge = job_bridge
         self._tas = track_action_service
+        self._lss = library_sources_service
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True

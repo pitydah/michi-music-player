@@ -1,7 +1,10 @@
-"""ServiceBundle — LEGACY_ONLY. Use ServiceContainer instead.
+"""LEGACY_ONLY: ServiceBundle — single source of references to all backend services for QML.
 
-Kept for legacy test compatibility only.
-New code MUST use ServiceContainer.
+LEGACY_ONLY: Do NOT use in new code. Use ServiceContainer instead.
+BridgeFactory now receives ServiceContainer directly.
+
+Contains existing service references only. No service creation.
+No database opening. No backend construction.
 """
 from __future__ import annotations
 
@@ -25,8 +28,6 @@ if TYPE_CHECKING:
 
 @dataclass
 class ServiceBundle:
-    """LEGACY_ONLY: Use ServiceContainer from core.service_container instead."""
-
     player_service: PlayerService | None = None
     db: Any | None = None
     db_connection: Any | None = None
@@ -60,6 +61,12 @@ class ServiceBundle:
 
     def has(self, name: str) -> bool:
         return getattr(self, name, None) is not None
+
+    def contains(self, name: str) -> bool:
+        return getattr(self, name, None) is not None
+
+    def get(self, name: str) -> Any:
+        return getattr(self, name, None)
 
     def require(self, name: str) -> Any:
         val = getattr(self, name, None)

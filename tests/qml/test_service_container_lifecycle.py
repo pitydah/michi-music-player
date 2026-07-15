@@ -1,5 +1,10 @@
 """Test ServiceContainer lifecycle — states, start, shutdown, health."""
-from core.service_container import ServiceRegistry as ServiceContainer, ContainerState
+from core.service_container import ServiceContainer, ContainerState
+
+
+def _register_all_required(sc):
+    for name in sc._required_names():
+        sc.register(name, object())
 
 
 def test_initial_state():
@@ -9,14 +14,14 @@ def test_initial_state():
 
 def test_start_transitions_to_ready():
     sc = ServiceContainer()
-    sc.register("test_svc", object())
+    _register_all_required(sc)
     sc.start()
     assert sc.state == ContainerState.READY
 
 
 def test_ready_returns_true_after_start():
     sc = ServiceContainer()
-    sc.register("test_svc", object())
+    _register_all_required(sc)
     assert not sc.ready()
     sc.start()
     assert sc.ready()
@@ -24,7 +29,7 @@ def test_ready_returns_true_after_start():
 
 def test_shutdown_transitions_to_stopped():
     sc = ServiceContainer()
-    sc.register("test_svc", object())
+    _register_all_required(sc)
     sc.start()
     sc.shutdown()
     assert sc.state == ContainerState.STOPPED
@@ -32,19 +37,11 @@ def test_shutdown_transitions_to_stopped():
 
 def test_health_after_start():
     sc = ServiceContainer()
-    sc.register("connection_factory", object())
-    sc.register("worker_manager", object())
-    sc.register("query_executor", object())
-    sc.register("job_service", object())
-    sc.register("settings_service", object())
-    sc.register("library_query_service", object())
-    sc.register("playlist_service", object())
-    sc.register("queue_service", object())
-    sc.register("metadata_service", object())
+    _register_all_required(sc)
     sc.start()
     h = sc.health()
     assert h["state"] == "ready"
-    assert h["services"] >= 9
+    assert h["services"] >= 20
 
 
 def test_register_and_get():

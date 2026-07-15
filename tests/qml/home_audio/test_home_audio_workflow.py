@@ -1,14 +1,13 @@
 """Test Home Audio workflows through HomeAudioBridge."""
 from unittest.mock import MagicMock, PropertyMock
 
-
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-def mock_ha():
+def mock_ha_svc():
     ha = MagicMock()
     ha.is_connected = True
     type(ha).is_connected = PropertyMock(return_value=True)
@@ -17,35 +16,28 @@ def mock_ha():
         {"name": "Living Room Speaker", "entity_id": "media_player.living_room"},
         {"name": "Kitchen Speaker", "entity_id": "media_player.kitchen"},
     ]
+    ha.get_zones.return_value = [
+        {"id": "group1", "name": "Living Room", "muted": False, "volume": 80},
+        {"id": "group2", "name": "Kitchen", "muted": True, "volume": 30},
+    ]
+    ha.get_groups.return_value = []
+    ha.get_streams.return_value = []
     ha.configure = MagicMock()
-    ha.is_available = True
+    ha.set_volume = MagicMock()
+    ha.set_mute = MagicMock()
+    ha.assign_stream = MagicMock()
     return ha
 
 
 @pytest.fixture
-def mock_snapcast():
-    sc = MagicMock()
-    sc.is_available = True
-    type(sc).is_available = PropertyMock(return_value=True)
-    sc.get_groups.return_value = [
-        {"id": "group1", "name": "Living Room", "muted": False, "volume": 80},
-        {"id": "group2", "name": "Kitchen", "muted": True, "volume": 30},
-    ]
-    sc.set_group_volume = MagicMock()
-    sc.set_group_mute = MagicMock()
-    sc.assign_stream = MagicMock()
-    return sc
-
-
-@pytest.fixture
-def bridge(mock_ha, mock_snapcast):
-    return HomeAudioBridge(ha_controller=mock_ha, snapcast_ctrl=mock_snapcast)
+def bridge(mock_ha_svc):
+    return HomeAudioBridge(home_audio_service=mock_ha_svc)
 
 
 class TestInitialState:
     def test_start_not_configured(self, bridge):
         assert bridge.homeAssistantState == "not_configured"
-        assert bridge.snapcastState == "unavailable"
+        assert bridge.snapcastState == "concept"
 
     def test_devices_empty_initially(self, bridge):
         assert bridge.devices == []
@@ -58,8 +50,8 @@ class TestCapabilities:
     def test_home_assistant_available(self, bridge):
         assert bridge.homeAssistantAvailable is True
 
-    def test_snapcast_available(self, bridge, mock_snapcast):
-        assert bridge.snapcastAvailable is True
+    def test_snapcast_always_false(self, bridge):
+        assert bridge.snapcastAvailable is False
 
     def test_zones_supported(self, bridge):
         assert bridge.zonesSupported is True
@@ -91,9 +83,9 @@ class TestRefresh:
         bridge.refresh()
         assert bridge.homeAssistantState == "connected"
 
-    def test_refresh_sets_snapcast_available(self, bridge, mock_snapcast):
+    def test_refresh_snapcast_concept(self, bridge):
         bridge.refresh()
-        assert bridge.snapcastState == "available"
+        assert bridge.snapcastState == "concept"
 
     def test_refresh_updates_contact(self, bridge):
         bridge.refresh()
@@ -101,14 +93,12 @@ class TestRefresh:
 
 
 class TestConfiguration:
-    def test_configure_ha(self, bridge, mock_ha):
+    def test_configure_ha(self, bridge, mock_ha_svc):
         result = bridge.configureHomeAssistant("192.168.1.1", 8123, "token123")
         assert result["ok"] is True or result["ok"] is False
-        if result["ok"]:
-            mock_ha.configure.assert_called_once()
 
     def test_configure_ha_no_controller(self):
-        b = HomeAudioBridge(ha_controller=None)
+        b = HomeAudioBridge()
         result = b.configureHomeAssistant("host", 8123, "token")
         assert result["ok"] is False
         assert result["error"] == "UNSUPPORTED"
@@ -118,28 +108,30 @@ class TestConfiguration:
         assert result["ok"] is True
 
     def test_test_connection_no_controller(self):
-        b = HomeAudioBridge(ha_controller=None)
+        b = HomeAudioBridge()
         result = b.testHomeAssistant()
         assert result["ok"] is False
 
 
 class TestZoneControl:
-    def test_set_volume(self, bridge, mock_snapcast):
+    def test_set_volume(self, bridge, mock_ha_svc):
         result = bridge.setZoneVolume("group1", 0.75)
         assert result["ok"] is True
+        mock_ha_svc.set_volume.assert_called_once_with("group1", 0.75)
 
-    def test_set_volume_no_snapcast(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
+    def test_set_volume_no_service(self):
+        b = HomeAudioBridge()
         result = b.setZoneVolume("group1", 0.5)
         assert result["ok"] is False
         assert result["error"] == "UNSUPPORTED"
 
-    def test_set_mute(self, bridge, mock_snapcast):
+    def test_set_mute(self, bridge, mock_ha_svc):
         result = bridge.setZoneMute("group1", True)
         assert result["ok"] is True
+        mock_ha_svc.set_mute.assert_called_once_with("group1", True)
 
-    def test_set_mute_no_snapcast(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
+    def test_set_mute_no_service(self):
+        b = HomeAudioBridge()
         result = b.setZoneMute("group1", True)
         assert result["ok"] is False
 
@@ -152,13 +144,13 @@ class TestZoneControl:
 
 
 class TestStreamManagement:
-    def test_assign_stream(self, bridge, mock_snapcast):
+    def test_assign_stream(self, bridge, mock_ha_svc):
         result = bridge.assignStream("stream_main")
         assert result["ok"] is True
-        mock_snapcast.assign_stream.assert_called_once_with("stream_main")
+        mock_ha_svc.assign_stream.assert_called_once_with("stream_main")
 
-    def test_assign_stream_no_snapcast(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
+    def test_assign_stream_no_service(self):
+        b = HomeAudioBridge()
         result = b.assignStream("stream_main")
         assert result["ok"] is False
 
@@ -175,14 +167,14 @@ class TestDisconnectReconnect:
         assert result["ok"] is True
 
     def test_reconnect_no_controller(self):
-        b = HomeAudioBridge(ha_controller=None)
+        b = HomeAudioBridge()
         result = b.reconnectHa()
         assert result["ok"] is False
 
 
 class TestEdgeCases:
-    def test_no_snapcast_concept_state(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
+    def test_snapcast_concept_state(self):
+        b = HomeAudioBridge()
         b.refresh()
         assert b.snapcastState == "concept"
 

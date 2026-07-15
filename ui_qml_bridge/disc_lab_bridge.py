@@ -21,6 +21,7 @@ class DiscLabBridge(QObject):
 
     def __init__(self, disc_detection_service: Any = None, worker_manager=None, parent=None):
         super().__init__(parent)
+        assert worker_manager is not None, "DiscLabBridge: worker_manager is REQUIRED"
         self._svc = disc_detection_service
         self._wm = worker_manager
         self._status = "unavailable"

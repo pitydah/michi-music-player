@@ -1,4 +1,7 @@
-"""OutputProfilesBridge — QML bridge for audio output profiles."""
+"""OutputProfilesBridge — QML bridge for audio output profiles.
+Create, edit, duplicate, delete, backend, device, sample rate, bit depth,
+channels, exclusive, bit-perfect, DSP, fallback, applied state.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -6,12 +9,15 @@ from PySide6.QtCore import QObject, Signal, Property, Slot
 
 class OutputProfilesBridge(QObject):
     dataChanged = Signal()
+    appliedStateChanged = Signal(str)
 
     def __init__(self, player_service=None, parent=None):
+        assert player_service is not None, "OutputProfilesBridge: player_service is REQUIRED"
         super().__init__(parent)
         self._player = player_service
         self._profiles: list[dict] = []
         self._active_id = ""
+        self._applied_state = "idle"
 
     @Property("QVariantList", notify=dataChanged)
     def profiles(self):
@@ -20,6 +26,10 @@ class OutputProfilesBridge(QObject):
     @Property(str, notify=dataChanged)
     def activeProfileId(self):
         return self._active_id
+
+    @Property(str, notify=appliedStateChanged)
+    def appliedState(self):
+        return self._applied_state
 
     @Slot(result=dict)
     def refresh(self):
@@ -36,6 +46,13 @@ class OutputProfilesBridge(QObject):
                         "allows_eq": v.get("allows_eq", False),
                         "bitperfect": v.get("bitperfect", False),
                         "dsd_mode": v.get("dsd_mode", "pcm"),
+                        "exclusive": v.get("exclusive", False),
+                        "sample_rate": v.get("sample_rate", 0),
+                        "bit_depth": v.get("bit_depth", 0),
+                        "channels": v.get("channels", 0),
+                        "device": v.get("device", ""),
+                        "dsp": v.get("allows_eq", False),
+                        "fallback": v.get("fallback", False),
                     })
                 else:
                     self._profiles.append({
@@ -44,6 +61,13 @@ class OutputProfilesBridge(QObject):
                         "allows_eq": getattr(v, 'allows_eq', False),
                         "bitperfect": getattr(v, 'bitperfect', False),
                         "dsd_mode": getattr(v, 'dsd_mode', 'pcm'),
+                        "exclusive": getattr(v, 'exclusive', False),
+                        "sample_rate": getattr(v, 'sample_rate', 0),
+                        "bit_depth": getattr(v, 'bit_depth', 0),
+                        "channels": getattr(v, 'channels', 0),
+                        "device": getattr(v, 'device', ""),
+                        "dsp": getattr(v, 'allows_eq', False),
+                        "fallback": getattr(v, 'fallback', False),
                     })
             if hasattr(self._player, 'get_active_profile_id'):
                 self._active_id = self._player.get_active_profile_id() or ""
@@ -78,12 +102,16 @@ class OutputProfilesBridge(QObject):
                             "active_profile": self._active_id, "fallback": False, "requires_restart": False}
             except Exception:
                 pass
+            self._applied_state = "applying"
+            self.appliedStateChanged.emit(self._applied_state)
             player_result = self._player.set_profile(profile_id)
             if isinstance(player_result, dict):
                 ok = player_result.get("ok", False)
                 fallback = player_result.get("fallback", False)
                 err_msg = player_result.get("message", player_result.get("error", ""))
                 if not ok:
+                    self._applied_state = "rejected"
+                    self.appliedStateChanged.emit(self._applied_state)
                     self.dataChanged.emit()
                     return {
                         "ok": False,
@@ -98,6 +126,8 @@ class OutputProfilesBridge(QObject):
                         "requires_restart": player_result.get("requires_restart", False),
                     }
             self._active_id = profile_id
+            self._applied_state = "applied"
+            self.appliedStateChanged.emit(self._applied_state)
             self.dataChanged.emit()
             return {
                 "ok": True,
@@ -109,6 +139,8 @@ class OutputProfilesBridge(QObject):
                 "requires_restart": False,
             }
         except Exception as e:
+            self._applied_state = "rejected"
+            self.appliedStateChanged.emit(self._applied_state)
             return {"ok": False, "error_code": "PROFILE_FAILED", "message": str(e),
                     "requested_profile": profile_id, "active_profile": self._active_id,
                     "requested_backend": backend, "active_backend": self._resolve_backend(self._active_id),
@@ -158,6 +190,19 @@ class OutputProfilesBridge(QObject):
         try:
             self._player.update_profile(data)
             self.refresh()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=dict)
+    def rollbackProfile(self):
+        if not self._player or not hasattr(self._player, 'rollback_profile'):
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            self._player.rollback_profile()
+            self.refresh()
+            self._applied_state = "idle"
+            self.appliedStateChanged.emit(self._applied_state)
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}

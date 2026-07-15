@@ -18,7 +18,7 @@ class AudioLabBridge(QObject):
     def __init__(self, audio_lab_service=None, job_service=None,
                  process_controller=None, confirmation_service=None,
                  navigation_bridge=None, capability_bridge=None,
-                 db_conn=None, player_service=None, parent=None):
+                 notification_bridge=None, parent=None):
         super().__init__(parent)
         self._svc = audio_lab_service
         self._jobs = job_service
@@ -26,9 +26,8 @@ class AudioLabBridge(QObject):
         self._confirm = confirmation_service
         self._nav = navigation_bridge
         self._cap = capability_bridge
+        self._notify = notification_bridge
         self._active_jobs: dict[str, dict] = {}
-        self._db_conn = db_conn
-        self._player_service = player_service
 
     @Property(bool, notify=dataChanged)
     def serviceAvailable(self):
@@ -44,89 +43,131 @@ class AudioLabBridge(QObject):
             return {}
         return self._svc.capability_map()
 
-    @Slot(str, result=dict)
-    def previewAnalysis(self, filepath: str):
-        if not self._svc or not self._svc.analysis:
+    def _run_async(self, job_id: str, run_fn, on_done):
+        if self._pc and hasattr(self._pc, 'run_in_thread'):
+            self._pc.run_in_thread(job_id, run_fn, on_done=on_done)
+        else:
+            result = run_fn()
+            on_done(result)
+
+    def _job_preview(self, module_attr: str, method: str, filepath: str, *args):
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, module_attr, None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.analysis.analyze_file(filepath)
-            preview = {
-                "filepath": result.get("filepath", filepath),
-                "format": result.get("format", ""),
-                "sample_rate": result.get("sample_rate", 0),
-                "bit_depth": result.get("bit_depth", 0),
-                "channels": result.get("channels", 0),
-                "bitrate": result.get("bitrate", 0),
-                "duration": result.get("duration", 0.0),
-                "codec": result.get("codec", ""),
-                "status": result.get("status", "unknown"),
-                "ok": result.get("status") not in ("error",),
-            }
-            return preview
+            fn = getattr(module, method)
+            result = fn(filepath, *args)
+            return {"ok": True, "result": result}
         except Exception as e:
             return {"ok": False, "error_code": "PREVIEW_FAILED", "detail": str(e)}
 
-    @Slot(str, result=dict)
-    def validateAnalysis(self, filepath: str):
-        if not self._svc or not self._svc.analysis:
+    def _job_validate(self, module_attr: str, method: str, filepath: str):
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, module_attr, None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.analysis.analyze_file(filepath)
-            valid = result.get("status") not in ("error", "unsupported", "disabled")
-            return {"ok": valid, "filepath": filepath, "status": result.get("status")}
+            fn = getattr(module, method)
+            result = fn(filepath)
+            return {"ok": True, "result": result}
         except Exception as e:
             return {"ok": False, "error_code": "VALIDATE_FAILED", "detail": str(e)}
 
-    @Slot(str, result=str)
-    def startAnalysis(self, filepath: str):
-        if not self._svc or not self._svc.analysis:
+    def _start_job(self, job_prefix: str, job_type: str, filepath: str,
+                   run_fn, result_builder):
+        if not self._svc:
             return ""
-        job_id = f"analysis_{uuid.uuid4().hex[:8]}"
-        self._active_jobs[job_id] = {"type": "analysis", "filepath": filepath, "status": "running"}
-
-        def _run():
-            return self._svc.analysis.analyze_file(filepath)
+        module = getattr(self._svc, job_type, None)
+        if not module:
+            return ""
+        job_id = f"{job_prefix}_{uuid.uuid4().hex[:8]}"
+        self._active_jobs[job_id] = {"type": job_type, "filepath": filepath, "status": "running"}
 
         def _done(result):
-            self._active_jobs[job_id]["status"] = "completed"
-            self._active_jobs[job_id]["result"] = result
-            self.jobCompleted.emit(job_id, "analysis", result)
+            d = result_builder(result)
+            self._active_jobs[job_id]["status"] = d.get("status", "completed")
+            self._active_jobs[job_id]["result"] = d
+            if d.get("status") == "completed":
+                self.jobCompleted.emit(job_id, job_type, d)
+            else:
+                self.jobFailed.emit(job_id, d.get("error", "unknown"))
             self.dataChanged.emit()
 
-        if self._pc and hasattr(self._pc, 'run_in_thread'):
-            self._pc.run_in_thread(job_id, _run, on_done=_done)
-        elif self._svc._wm:
-            self._svc._wm.run_task(job_id, _run, on_done=_done, cancellable=True, owner="audio_lab")
-        else:
-            result = _run()
-            _done(result)
+        self._run_async(job_id, run_fn, _done)
         self.dataChanged.emit()
         return job_id
 
     @Slot(str, result=dict)
+    def previewAnalysis(self, filepath: str):
+        r = self._job_preview("analysis", "analyze_file", filepath)
+        if not r.get("ok"):
+            return r
+        result = r["result"]
+        return {
+            "filepath": result.get("filepath", filepath),
+            "format": result.get("format", ""),
+            "sample_rate": result.get("sample_rate", 0),
+            "bit_depth": result.get("bit_depth", 0),
+            "channels": result.get("channels", 0),
+            "bitrate": result.get("bitrate", 0),
+            "duration": result.get("duration", 0.0),
+            "codec": result.get("codec", ""),
+            "status": result.get("status", "unknown"),
+            "ok": result.get("status") not in ("error",),
+        }
+
+    @Slot(str, result=dict)
+    def validateAnalysis(self, filepath: str):
+        r = self._job_validate("analysis", "analyze_file", filepath)
+        if not r.get("ok"):
+            return r
+        result = r["result"]
+        valid = result.get("status") not in ("error", "unsupported", "disabled")
+        return {"ok": valid, "filepath": filepath, "status": result.get("status")}
+
+    @Slot(str, result=str)
+    def startAnalysis(self, filepath: str):
+        return self._start_job(
+            "analysis", "analysis", filepath,
+            lambda: self._svc.analysis.analyze_file(filepath),
+            lambda r: {"filepath": filepath, "format": r.get("format", ""),
+                        "status": "completed" if r.get("status") not in ("error",) else "failed",
+                        "error": r.get("status", "")},
+        )
+
+    @Slot(str, str, result=dict)
     def previewConversion(self, filepath: str, target_format: str = "flac"):
-        if not self._svc or not self._svc.conversion:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "conversion", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
             from core.audio_lab.audio_conversion_service import ConversionProfile
             profile = ConversionProfile(format=target_format.upper())
-            result = self._svc.conversion.preview(filepath, profile)
+            result = module.preview(filepath, profile)
             return result
         except Exception as e:
             return {"ok": False, "error_code": "PREVIEW_FAILED", "detail": str(e)}
 
     @Slot(str, str, result=str)
     def startConversion(self, filepath: str, target_format: str = "flac"):
-        if not self._svc or not self._svc.conversion:
+        if not self._svc:
+            return ""
+        module = getattr(self._svc, "conversion", None)
+        if not module:
             return ""
         from core.audio_lab.audio_conversion_service import ConversionProfile
         profile = ConversionProfile(format=target_format.upper())
-        job_id = self._svc.conversion.convert(filepath, profile)
+        job_id = module.convert(filepath, profile)
         self._active_jobs[job_id] = {"type": "conversion", "filepath": filepath, "status": "running"}
-        self._svc.conversion.conversionCompleted.connect(
+        module.conversionCompleted.connect(
             lambda jid, target: self._on_job_done(jid, "conversion", {"target": target})
         )
-        self._svc.conversion.conversionFailed.connect(
+        module.conversionFailed.connect(
             lambda jid, err: self._on_job_failed(jid, "conversion", err)
         )
         self.dataChanged.emit()
@@ -148,10 +189,13 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def previewNormalization(self, filepath: str):
-        if not self._svc or not self._svc.normalization:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "normalization", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.normalization.measure_loudness(filepath)
+            result = module.measure_loudness(filepath)
             return {
                 "ok": result.status == "completed",
                 "filepath": result.filepath,
@@ -164,10 +208,13 @@ class AudioLabBridge(QObject):
 
     @Slot(str, str, result=dict)
     def startNormalization(self, filepath: str, confirmation_token: str = ""):
-        if not self._svc or not self._svc.normalization:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "normalization", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            needs_confirm = self._svc.normalization.normalize_file(
+            needs_confirm = module.normalize_file(
                 filepath, destructive=True, confirmation_token=confirmation_token or None
             )
             if isinstance(needs_confirm, dict) and needs_confirm.get("requires_confirmation"):
@@ -178,10 +225,13 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def previewReplayGain(self, filepath: str):
-        if not self._svc or not self._svc.replaygain:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "replaygain", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.replaygain.analyze_track(filepath)
+            result = module.analyze_track(filepath)
             return {
                 "ok": result.status == "completed",
                 "filepath": result.filepath,
@@ -193,10 +243,13 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def validateReplayGain(self, filepath: str):
-        if not self._svc or not self._svc.replaygain:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "replaygain", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.replaygain.analyze_track(filepath)
+            result = module.analyze_track(filepath)
             return {
                 "ok": result.status == "completed",
                 "filepath": result.filepath,
@@ -207,45 +260,35 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=str)
     def startReplayGain(self, filepath: str):
+        return self._start_job(
+            "rg", "replaygain", filepath,
+            lambda: self._run_replaygain(filepath),
+            lambda r: {"track_gain": getattr(r, "track_gain", 0),
+                        "track_peak": getattr(r, "track_peak", 0),
+                        "status": "completed" if getattr(r, "status", "") == "completed" else "failed",
+                        "error": getattr(r, "error", "")},
+        )
+
+    def _run_replaygain(self, filepath: str):
         if not self._svc or not self._svc.replaygain:
-            return ""
-        job_id = f"rg_{uuid.uuid4().hex[:8]}"
-        self._active_jobs[job_id] = {"type": "replaygain", "filepath": filepath, "status": "running"}
-
-        def _run():
-            result = self._svc.replaygain.analyze_track(filepath)
-            if result.status == "completed":
-                self._svc.replaygain.write_tags(
-                    filepath, result.track_gain, result.track_peak,
-                    album_gain=result.album_gain, album_peak=result.album_peak
-                )
-            return result
-
-        def _done(result):
-            d = {"track_gain": result.track_gain, "track_peak": result.track_peak, "status": result.status}
-            self._active_jobs[job_id]["status"] = "completed" if result.status == "completed" else "failed"
-            if result.status == "completed":
-                self.jobCompleted.emit(job_id, "replaygain", d)
-            else:
-                self.jobFailed.emit(job_id, result.error)
-            self.dataChanged.emit()
-
-        if self._pc and hasattr(self._pc, 'run_in_thread'):
-            self._pc.run_in_thread(job_id, _run, on_done=_done)
-        elif self._svc._wm:
-            self._svc._wm.run_task(job_id, _run, on_done=_done, cancellable=True, owner="audio_lab")
-        else:
-            result = _run()
-            _done(result)
-        self.dataChanged.emit()
-        return job_id
+            return {"status": "failed", "error": "SERVICE_UNAVAILABLE"}
+        result = self._svc.replaygain.analyze_track(filepath)
+        if result.status == "completed":
+            self._svc.replaygain.write_tags(
+                filepath, result.track_gain, result.track_peak,
+                album_gain=result.album_gain, album_peak=result.album_peak
+            )
+        return result
 
     @Slot(str, result=dict)
     def previewIntegrity(self, filepath: str):
-        if not self._svc or not self._svc.integrity:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "integrity", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.integrity.check(filepath, quick=True)
+            result = module.check(filepath, quick=True)
             return {
                 "ok": result.is_valid,
                 "filepath": result.filepath,
@@ -264,37 +307,22 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=str)
     def startIntegrity(self, filepath: str):
-        if not self._svc or not self._svc.integrity:
-            return ""
-        job_id = f"integrity_{uuid.uuid4().hex[:8]}"
-        self._active_jobs[job_id] = {"type": "integrity", "filepath": filepath, "status": "running"}
-
-        def _run():
-            return self._svc.integrity.check(filepath, quick=False)
-
-        def _done(result):
-            d = {"is_valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
-            self._active_jobs[job_id]["status"] = "completed"
-            self._active_jobs[job_id]["result"] = d
-            self.jobCompleted.emit(job_id, "integrity", d)
-            self.dataChanged.emit()
-
-        if self._pc and hasattr(self._pc, 'run_in_thread'):
-            self._pc.run_in_thread(job_id, _run, on_done=_done)
-        elif self._svc._wm:
-            self._svc._wm.run_task(job_id, _run, on_done=_done, cancellable=True, owner="audio_lab")
-        else:
-            result = _run()
-            _done(result)
-        self.dataChanged.emit()
-        return job_id
+        return self._start_job(
+            "integrity", "integrity", filepath,
+            lambda: self._svc.integrity.check(filepath, quick=False),
+            lambda r: {"is_valid": r.is_valid, "issues": r.issues, "checksum": r.checksum,
+                        "status": "completed"},
+        )
 
     @Slot(str, str, result=dict)
     def previewComparison(self, file_a: str, file_b: str):
-        if not self._svc or not self._svc.comparison:
+        if not self._svc:
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
+        module = getattr(self._svc, "comparison", None)
+        if not module:
             return {"ok": False, "error_code": "SERVICE_UNAVAILABLE"}
         try:
-            result = self._svc.comparison.compare(file_a, file_b)
+            result = module.compare(file_a, file_b)
             return {
                 "ok": not result.error,
                 "identical": result.identical,
@@ -309,13 +337,16 @@ class AudioLabBridge(QObject):
 
     @Slot(str, str, result=str)
     def startComparison(self, file_a: str, file_b: str):
-        if not self._svc or not self._svc.comparison:
+        if not self._svc:
+            return ""
+        module = getattr(self._svc, "comparison", None)
+        if not module:
             return ""
         job_id = f"compare_{uuid.uuid4().hex[:8]}"
         self._active_jobs[job_id] = {"type": "comparison", "status": "running"}
 
         def _run():
-            return self._svc.comparison.compare(file_a, file_b)
+            return module.compare(file_a, file_b)
 
         def _done(result):
             d = {"identical": result.identical, "dimensions": len(result.dimensions)}
@@ -324,13 +355,7 @@ class AudioLabBridge(QObject):
             self.jobCompleted.emit(job_id, "comparison", d)
             self.dataChanged.emit()
 
-        if self._pc and hasattr(self._pc, 'run_in_thread'):
-            self._pc.run_in_thread(job_id, _run, on_done=_done)
-        elif self._svc._wm:
-            self._svc._wm.run_task(job_id, _run, on_done=_done, cancellable=True, owner="audio_lab")
-        else:
-            result = _run()
-            _done(result)
+        self._run_async(job_id, _run, _done)
         self.dataChanged.emit()
         return job_id
 
@@ -340,8 +365,6 @@ class AudioLabBridge(QObject):
             self._active_jobs[job_id]["status"] = "cancelled"
             if self._pc and hasattr(self._pc, 'cancel'):
                 self._pc.cancel(job_id)
-            elif self._svc and self._svc._wm and hasattr(self._svc._wm, 'cancel'):
-                self._svc._wm.cancel(job_id)
             self.dataChanged.emit()
             return {"ok": True, "job_id": job_id}
         if self._jobs and hasattr(self._jobs, 'cancel'):

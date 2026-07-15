@@ -30,6 +30,7 @@ class PlaylistsBridge(QObject):
                  accessibility_bridge=None, notification_bridge=None,
                  job_bridge=None, parent=None):
         super().__init__(parent)
+        assert db is not None, "PlaylistsBridge: db is REQUIRED"
         self._db = db
         self._sel_ctx = selection_context
         self._player = player_service

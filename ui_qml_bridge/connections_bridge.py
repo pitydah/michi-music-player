@@ -1,32 +1,16 @@
-"""ConnectionsBridge — connects QML Connections page to real MichiLink services.
-
-States: not_configured, scanning, detected, pairing_required, paired,
-connected, contract_ok, contract_partial, contract_mismatch, error,
-service_unavailable.
-All network operations: async, timeout, retry, cancel, status, last contact,
-auth, disconnect, reconnect, capabilities, compatibility, errors, retry.
-Without controller: SERVICE_UNAVAILABLE.
-Does NOT declare connection from saved config alone.
-Returns dict ok/error from all actions.
-"""
 from __future__ import annotations
 
 import logging
-import threading
-import time
 from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 if TYPE_CHECKING:
     from ui_qml_bridge.navigation_bridge import NavigationBridge
 
 logger = logging.getLogger("michi.connections")
 
-_DEMO_ENABLED = False
-_DEFAULT_TIMEOUT_MS = 10000
-_MAX_RETRIES = 3
-_RETRY_DELAY_MS = 1000
+_SERVICE_UNAVAILABLE = "service_unavailable"
 
 
 def _normalise(raw: Any) -> dict:
@@ -35,43 +19,23 @@ def _normalise(raw: Any) -> dict:
     if isinstance(raw, bool):
         return {"ok": raw}
     if raw is None:
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
     return {"ok": False, "error": f"Unexpected: {type(raw).__name__}"}
 
 
-class _AsyncOp:
-    def __init__(self, name: str, timeout_ms: int = _DEFAULT_TIMEOUT_MS):
-        self.name = name
-        self.timeout_ms = timeout_ms
-        self.cancelled = False
-        self.finished = False
-        self.result: dict | None = None
-        self.started_at = time.monotonic()
-        self.deadline = self.started_at + timeout_ms / 1000.0
-        self._lock = threading.Lock()
-
-    def is_expired(self) -> bool:
-        return time.monotonic() > self.deadline
-
-    def cancel(self):
-        with self._lock:
-            self.cancelled = True
-
-    def is_cancelled(self) -> bool:
-        with self._lock:
-            return self.cancelled
-
-
-_SERVICE_UNAVAILABLE = "service_unavailable"
+def _method_unavailable(name: str = "") -> dict:
+    return {"ok": False, "error": "METHOD_UNAVAILABLE", "message": name or "Method not available"}
 
 
 class ConnectionsBridge(QObject):
     stateChanged = Signal()
 
     def __init__(self, michi_link_ctrl=None,
-                 navigation_bridge: NavigationBridge | None = None, parent=None):
+                 navigation_bridge: NavigationBridge | None = None,
+                 connection_service=None, parent=None):
         super().__init__(parent)
         self._ctrl = michi_link_ctrl
+        self._connection_service = connection_service
         self._nav_bridge = navigation_bridge
         self._state = _SERVICE_UNAVAILABLE if michi_link_ctrl is None else "not_configured"
         self._alias = ""
@@ -82,10 +46,6 @@ class ConnectionsBridge(QObject):
         self._last_contact = 0.0
         self._capabilities: dict = {}
         self._discovered: list[dict] = []
-        self._async_op: _AsyncOp | None = None
-        self._retry_count = 0
-        self._retry_timer: QTimer | None = None
-        self._lock = threading.Lock()
 
     @Property(str, notify=stateChanged)
     def microServerState(self) -> str:
@@ -119,34 +79,19 @@ class ConnectionsBridge(QObject):
     def capabilities(self) -> list[dict]:
         caps = self._capabilities
         return [
-            {"key": "can_continue_playback", "label": "Continuar reproducción",
+            {"key": "can_continue_playback", "label": "Continuar reproduccion",
              "enabled": caps.get("can_continue_playback", False)},
-            {"key": "can_import", "label": "Importar música",
+            {"key": "can_import", "label": "Importar musica",
              "enabled": caps.get("can_import", False)},
-            {"key": "can_send_genre_playlist", "label": "Enviar playlist de género",
+            {"key": "can_send_genre_playlist", "label": "Enviar playlist de genero",
              "enabled": caps.get("can_send_genre_playlist", False)},
-            {"key": "can_send_genre_mix", "label": "Enviar mix de género",
+            {"key": "can_send_genre_mix", "label": "Enviar mix de genero",
              "enabled": caps.get("can_send_genre_mix", False)},
         ]
 
     @Property(float, notify=stateChanged)
     def lastContact(self) -> float:
         return self._last_contact
-
-    def _cancel_op(self):
-        with self._lock:
-            if self._async_op:
-                self._async_op.cancel()
-                self._async_op = None
-        if self._retry_timer:
-            self._retry_timer.stop()
-            self._retry_timer = None
-
-    def _set_state(self, state: str, error: str = ""):
-        self._state = state
-        if error:
-            self._last_error = error
-        self.stateChanged.emit()
 
     @Property("QVariantList", notify=stateChanged)
     def externalServers(self) -> list[dict]:
@@ -160,74 +105,137 @@ class ConnectionsBridge(QObject):
     def compatible(self) -> bool:
         return self._contract in ("contract_ok", "contract_partial")
 
-    @Slot(result=dict)
-    def scanForServers(self):
-        if self._ctrl is None:
-            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
-        self._cancel_op()
-        self._retry_count = 0
-        self._set_state("scanning")
-        return self._do_scan()
-
-    def _do_scan(self) -> dict:
-        self._cancel_op()
-        op = _AsyncOp("scan")
-        self._async_op = op
-        if self._ctrl and hasattr(self._ctrl, 'discover_servers'):
-            try:
-                servers = self._ctrl.discover_servers()
-                if op.is_cancelled():
-                    self._last_error = "Cancelado"
-                    self._set_state("error", "Cancelado")
-                    return {"ok": False, "error": "CANCELLED"}
-                self._discovered = []
-                for s in (servers or []):
-                    self._discovered.append({
-                        "name": getattr(s, 'name', '') or str(s),
-                        "host": getattr(s, 'host', '') or '',
-                        "type": "Michi Micro Server",
-                        "status": "detected",
-                    })
-            except Exception as e:
-                logger.debug("Micro server scan failed", exc_info=True)
-                self._last_error = str(e)
-                self._set_state("error", str(e))
-                return {"ok": False, "error": str(e)}
-        op.finished = True
-        self._update_state()
+    def _set_state(self, state: str, error: str = ""):
+        self._state = state
+        if error:
+            self._last_error = error
         self.stateChanged.emit()
-        return {"ok": True, "count": len(self._discovered)}
 
-    @Slot(str, int, str, result=dict)
-    def connectManual(self, host: str, port: int, alias: str):
-        self._cancel_op()
-        self._retry_count = 0
+    def _reflect_from_service(self):
+        svc = self._connection_service
+        if svc is None:
+            return
         try:
-            from core.settings_manager import set_ as settings_set
-            settings_set("michi_link/micro_host", host)
-            settings_set("michi_link/micro_port", port)
-            settings_set("michi_link/micro_alias", alias)
-            self._alias = alias
-            self._state = "detected"
-            self.stateChanged.emit()
-            return {"ok": True}
+            self._state = getattr(svc, 'state', self._state)
+            self._alias = getattr(svc, 'alias', self._alias)
+            self._contract = getattr(svc, 'contract', self._contract)
+            self._last_error = getattr(svc, 'last_error', self._last_error)
+            self._latency_ms = getattr(svc, 'latency_ms', self._latency_ms)
+            self._server_version = getattr(svc, 'server_version', self._server_version)
+            self._last_contact = getattr(svc, 'last_contact', self._last_contact)
+            self._capabilities = getattr(svc, 'capabilities', self._capabilities)
+            self._discovered = getattr(svc, 'discovered', self._discovered)
+        except Exception as e:
+            logger.debug("reflect_from_service failed: %s", e)
+
+    @Slot(result=dict)
+    def discover(self):
+        svc = self._connection_service
+        if svc is None:
+            if self._ctrl is None:
+                return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+            return self._do_discover_legacy()
+        try:
+            result = svc.discover()
+            self._reflect_from_service()
+            return result
         except Exception as e:
             self._set_state("error", str(e))
             return {"ok": False, "error": str(e)}
 
+    def _do_discover_legacy(self) -> dict:
+        if not hasattr(self._ctrl, 'discover_servers'):
+            return _method_unavailable("discover_servers")
+        try:
+            servers = self._ctrl.discover_servers()
+            self._discovered = []
+            for s in (servers or []):
+                self._discovered.append({
+                    "name": getattr(s, 'name', '') or str(s),
+                    "host": getattr(s, 'host', '') or '',
+                    "type": "Michi Micro Server",
+                    "status": "detected",
+                })
+            self._set_state("scanning" if self._discovered else "not_configured")
+            self.stateChanged.emit()
+            return {"ok": True, "count": len(self._discovered)}
+        except Exception as e:
+            self._set_state("error", str(e))
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, int, str, result=dict)
+    def connectManual(self, host: str, port: int, alias: str):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.connect_manual(host, port, alias)
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
+        self._alias = alias
+        self._state = "detected"
+        self.stateChanged.emit()
+        return {"ok": True}
+
     @Slot(result=dict)
-    def requestPair(self):
+    def authenticate(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.authenticate()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
+        return _method_unavailable("authenticate")
+
+    @Slot(result=dict)
+    def pair(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.pair()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
         self._set_state("pairing_required")
         return {"ok": True}
 
     @Slot(result=dict)
+    def trust(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.trust()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
+        return _method_unavailable("trust")
+
+    @Slot(result=dict)
     def confirmPair(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.confirm_pair()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
         try:
             if self._ctrl and hasattr(self._ctrl, 'get_capabilities'):
                 caps = self._ctrl.get_capabilities()
                 self._capabilities = caps
                 self._state = "connected"
-                self._last_contact = time.time()
+                self._last_contact = __import__('time').time()
                 self._contract = "contract_ok" if caps.get("contract_ok", False) else "contract_partial"
             else:
                 self._state = "paired"
@@ -239,11 +247,29 @@ class ConnectionsBridge(QObject):
 
     @Slot(result=dict)
     def rejectPair(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.reject_pair()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
         self._set_state("not_configured")
         return {"ok": True}
 
     @Slot(result=dict)
     def diagnose(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.diagnose()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
         try:
             if self._ctrl and hasattr(self._ctrl, 'get_connection_state'):
                 state = self._ctrl.get_connection_state()
@@ -251,7 +277,7 @@ class ConnectionsBridge(QObject):
                 self._capabilities = self._ctrl.get_capabilities()
                 self._server_version = state.get("micro_server_name", "")
                 self._alias = state.get("micro_server_name", "")
-                self._last_contact = time.time()
+                self._last_contact = __import__('time').time()
             self.stateChanged.emit()
             return {"ok": True}
         except Exception as e:
@@ -259,89 +285,147 @@ class ConnectionsBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
+    def connect(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.connect()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
+        self._set_state("connected")
+        self._last_contact = __import__('time').time()
+        self.stateChanged.emit()
+        return {"ok": True}
+
+    @Slot(result=dict)
     def disconnect(self):
-        self._cancel_op()
-        self._set_state("not_configured")
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.disconnect()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
+        self._state = "not_configured"
         self._alias = ""
         self._contract = ""
         self._last_error = ""
         self._last_contact = 0.0
+        self.stateChanged.emit()
         return {"ok": True}
 
     @Slot(result=dict)
-    def forgetServer(self):
-        try:
-            from core.settings_manager import set_ as settings_set
-            settings_set("michi_link/micro_host", "")
-            settings_set("michi_link/micro_port", 0)
-        except Exception as e:
-            logger.debug("Forget server failed: %s", e)
+    def forget(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.forget()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
         self.disconnect()
         return {"ok": True}
 
-    @Slot(str, int, str, result=dict)
-    def addManualServer(self, host: str = "", port: int = 0, alias: str = ""):
-        if not host:
-            return {"ok": False, "error": "EMPTY_HOST"}
-        try:
-            from core.settings_manager import set_ as settings_set
-            settings_set("michi_link/micro_host", host)
-            if port > 0:
-                settings_set("michi_link/micro_port", port)
-            if alias:
-                settings_set("michi_link/micro_alias", alias)
-            self._state = "detected"
-            self.stateChanged.emit()
-            return {"ok": True}
-        except Exception as e:
-            self._set_state("error", str(e))
-            return {"ok": False, "error": str(e)}
+    @Slot(result=dict)
+    def compatibility(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.compatibility()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": True, "compatible": self.compatible}
+
+    @Slot(result=dict)
+    def latency(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.latency()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": True, "latency_ms": self._latency_ms}
 
     @Slot(result=dict)
     def reconnect(self):
-        self._cancel_op()
-        self._retry_count = 0
-        self._set_state("scanning")
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.reconnect()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
         if self._ctrl and hasattr(self._ctrl, 'reconnect'):
             try:
                 raw = self._ctrl.reconnect()
                 result = _normalise(raw)
                 if result.get("ok"):
                     self._state = "connected"
-                    self._last_contact = time.time()
-                    self.stateChanged.emit()
-                else:
-                    self._retry_with_backoff()
+                    self._last_contact = __import__('time').time()
+                self.stateChanged.emit()
                 return result
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "UNSUPPORTED"}
 
-    def _retry_with_backoff(self):
-        if self._retry_count >= _MAX_RETRIES:
-            return
-        self._retry_count += 1
-        delay = _RETRY_DELAY_MS * (2 ** (self._retry_count - 1))
-        self._retry_timer = QTimer(self)
-        self._retry_timer.setSingleShot(True)
-        self._retry_timer.timeout.connect(self._do_retry)
-        self._retry_timer.start(delay)
-
-    def _do_retry(self):
-        self._retry_timer = None
-        if self._ctrl and hasattr(self._ctrl, 'reconnect'):
+    @Slot(result=dict)
+    def retry(self):
+        svc = self._connection_service
+        if svc is not None:
             try:
-                raw = self._ctrl.reconnect()
-                result = _normalise(raw)
-                if result.get("ok"):
-                    self._state = "connected"
-                    self._last_contact = time.time()
-                else:
-                    self._retry_with_backoff()
-                self.stateChanged.emit()
+                result = svc.retry()
+                self._reflect_from_service()
+                return result
             except Exception as e:
                 self._set_state("error", str(e))
+                return {"ok": False, "error": str(e)}
+        return self.reconnect()
+
+    @Slot(result=dict)
+    def cancel(self):
+        svc = self._connection_service
+        if svc is not None:
+            try:
+                result = svc.cancel()
+                self._reflect_from_service()
+                return result
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": True}
+
+    # ── Legacy slots (kept for backward compat) ──
+
+    @Slot(result=dict)
+    def scanForServers(self):
+        return self.discover()
+
+    @Slot(str, int, str, result=dict)
+    def addManualServer(self, host: str = "", port: int = 0, alias: str = ""):
+        if not host:
+            return {"ok": False, "error": "EMPTY_HOST"}
+        return self.connectManual(host, port, alias)
+
+    @Slot(str, result=dict)
+    def requestPair(self):
+        return self.pair()
+
+    @Slot(result=dict)
+    def forgetServer(self):
+        return self.forget()
 
     @Slot(str, result=dict)
     def openHomeAudio(self, route: str = "home_audio"):
@@ -356,11 +440,13 @@ class ConnectionsBridge(QObject):
 
     @Slot(result=dict)
     def refresh(self):
-        self._update_state()
+        self._reflect_from_service()
+        if not self._connection_service:
+            self._update_state_legacy()
         self.stateChanged.emit()
         return {"ok": True}
 
-    def _update_state(self):
+    def _update_state_legacy(self):
         if not self._ctrl:
             self._state = _SERVICE_UNAVAILABLE
             return
@@ -375,7 +461,7 @@ class ConnectionsBridge(QObject):
             self._contract = "contract_ok" if caps.get("contract_ok", False) else (
                 "contract_partial" if self._state == "connected" else "")
             if self._state == "connected":
-                self._last_contact = time.time()
+                self._last_contact = __import__('time').time()
         except Exception as e:
             logger.debug("MichiLink state check failed", exc_info=True)
             self._state = "error"

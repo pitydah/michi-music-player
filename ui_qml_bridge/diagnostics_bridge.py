@@ -1,4 +1,4 @@
-"""DiagnosticsBridge — real runtime diagnostics via async jobs.
+"""DiagnosticsBridge — real runtime diagnostics via DiagnosticsService + async jobs.
 
 Diagnostics MUST NOT: query SQL from getters, walk storage from UI thread,
 run pytest from QML, or run benchmarks from QML.
@@ -17,14 +17,12 @@ class DiagnosticsBridge(QObject):
     dataChanged = Signal()
     diagnosticsUpdated = Signal(list)
 
-    def __init__(self, player_service=None, db=None, radio_manager=None,
-                 sync_manager=None, worker_manager=None, query_executor=None,
+    def __init__(self, diagnostics_service=None, player_service=None,
+                 worker_manager=None, query_executor=None,
                  library_bridge=None, parent=None):
         super().__init__(parent)
+        self._ds = diagnostics_service
         self._player = player_service
-        self._db = db
-        self._radio = radio_manager
-        self._sync = sync_manager
         self._wm = worker_manager
         self._qe = query_executor
         self._lib = library_bridge
@@ -59,15 +57,19 @@ class DiagnosticsBridge(QObject):
         self.diagnosticsUpdated.emit(self._jobs)
 
         checks = [
-            ("database.integrity", self._check_db_integrity),
-            ("library.status", self._check_library_status),
-            ("player.status", self._check_player_status),
-            ("storage.paths", self._check_storage_paths),
-            ("services.availability", self._check_services_availability),
+            ("diagnostics.player_api", self._check_player_api),
+            ("diagnostics.sync_server", self._check_sync_server),
+            ("diagnostics.pairing", self._check_pairing),
+            ("diagnostics.playback", self._check_playback),
+            ("diagnostics.queue", self._check_queue),
+            ("diagnostics.continue_readiness", self._check_continue_readiness),
         ]
 
-        for job_id, check_fn in checks:
-            self._schedule_job(job_id, check_fn)
+        if self._ds:
+            for job_id, check_fn in checks:
+                self._schedule_job(job_id, check_fn)
+
+        self._schedule_job("services.availability", self._check_services_availability)
 
     def _schedule_job(self, job_id: str, check_fn):
         started = time.time()
@@ -106,63 +108,71 @@ class DiagnosticsBridge(QObject):
             on_done=_on_done, on_error=_on_error,
         )
 
-    def _check_db_integrity(self) -> dict:
-        if not self._db:
-            return {"status": "FAIL", "value": False, "message": "Base de datos no disponible"}
+    def _check_player_api(self) -> dict:
+        if not self._ds:
+            return {"status": "FAIL", "value": False, "message": "DiagnosticsService no disponible"}
         try:
-            conn = getattr(self._db, 'conn', None)
-            if conn is None:
-                return {"status": "FAIL", "value": False, "message": "Conexión BD no disponible"}
-            row = conn.execute("PRAGMA integrity_check").fetchone()
-            if row and row[0] == "ok":
-                count = conn.execute(
-                    "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL"
-                ).fetchone()
-                total = count[0] if count else 0
-                return {"status": "PASS", "value": total, "message": f"Integridad OK · {total} pistas"}
-            return {"status": "WARN", "value": False, "message": f"Integridad: {row[0] if row else 'desconocida'}"}
+            result = self._ds.check_player_api()
+            ok = result.get("status") == "ok"
+            return {"status": "PASS" if ok else "WARN", "value": ok,
+                    "message": f"Player API: {result.get('status', 'unknown')}"}
         except Exception as e:
             return {"status": "FAIL", "value": False, "message": str(e)}
 
-    def _check_library_status(self) -> dict:
-        if not self._db:
-            return {"status": "FAIL", "value": False, "message": "Base de datos no disponible"}
+    def _check_sync_server(self) -> dict:
+        if not self._ds:
+            return {"status": "FAIL", "value": False, "message": "DiagnosticsService no disponible"}
         try:
-            conn = getattr(self._db, 'conn', None)
-            if conn is None:
-                return {"status": "FAIL", "value": False, "message": "Conexión BD no disponible"}
-            count = conn.execute(
-                "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL"
-            ).fetchone()
-            total = count[0] if count else 0
-            if total == 0:
-                return {"status": "WARN", "value": 0, "message": "Biblioteca vacía"}
-            missing = conn.execute(
-                "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL AND "
-                "(title IS NULL OR title = '' OR artist IS NULL OR artist = '')"
-            ).fetchone()
-            missing_count = missing[0] if missing else 0
-            if missing_count > 0:
-                return {"status": "WARN", "value": total,
-                        "message": f"{total} pistas · {missing_count} con metadatos incompletos"}
-            return {"status": "PASS", "value": total, "message": f"{total} pistas · OK"}
+            result = self._ds.check_sync_server()
+            ok = result.get("status") == "ok"
+            return {"status": "PASS" if ok else "WARN", "value": ok,
+                    "message": f"Sync server: {result.get('status', 'unknown')}"}
         except Exception as e:
             return {"status": "FAIL", "value": False, "message": str(e)}
 
-    def _check_player_status(self) -> dict:
-        if not self._player:
-            return {"status": "WARN", "value": False, "message": "Player no disponible"}
+    def _check_pairing(self) -> dict:
+        if not self._ds:
+            return {"status": "FAIL", "value": False, "message": "DiagnosticsService no disponible"}
         try:
-            backend = "unknown"
-            if hasattr(self._player, 'get_active_backend_id'):
-                backend = self._player.get_active_backend_id()
-            volume = -1
-            if hasattr(self._player, 'get_volume'):
-                volume = self._player.get_volume()
-            return {"status": "PASS", "value": True,
-                    "message": f"Backend: {backend} · Vol: {volume}"}
+            result = self._ds.check_pairing()
+            ok = result.get("status") == "ok"
+            return {"status": "PASS" if ok else "WARN", "value": ok,
+                    "message": f"Pairing: {result.get('paired', 0)} dispositivos"}
         except Exception as e:
-            return {"status": "WARN", "value": False, "message": str(e)}
+            return {"status": "FAIL", "value": False, "message": str(e)}
+
+    def _check_playback(self) -> dict:
+        if not self._ds:
+            return {"status": "FAIL", "value": False, "message": "DiagnosticsService no disponible"}
+        try:
+            result = self._ds.check_playback(self._player)
+            ok = result.get("status") == "ok"
+            return {"status": "PASS" if ok else "WARN", "value": ok,
+                    "message": f"Playback: {result.get('state', 'unknown')}"}
+        except Exception as e:
+            return {"status": "FAIL", "value": False, "message": str(e)}
+
+    def _check_queue(self) -> dict:
+        if not self._ds:
+            return {"status": "FAIL", "value": False, "message": "DiagnosticsService no disponible"}
+        try:
+            result = self._ds.check_queue(self._player)
+            ok = result.get("status") == "ok"
+            return {"status": "PASS" if ok else "WARN", "value": ok,
+                    "message": f"Queue: {result.get('queue_length', 0)} pistas"}
+        except Exception as e:
+            return {"status": "FAIL", "value": False, "message": str(e)}
+
+    def _check_continue_readiness(self) -> dict:
+        if not self._ds:
+            return {"status": "FAIL", "value": False, "message": "DiagnosticsService no disponible"}
+        try:
+            result = self._ds.check_continue_readiness(self._player)
+            ok = result.get("status") == "ready"
+            return {"status": "PASS" if ok else "WARN", "value": ok,
+                    "message": f"Continue: {result.get('status', 'unknown')}"}
+        except Exception as e:
+            return {"status": "FAIL", "value": False, "message": str(e)}
 
     def _check_storage_paths(self) -> dict:
         try:
@@ -174,7 +184,7 @@ class DiagnosticsBridge(QObject):
 
     def _check_services_availability(self) -> dict:
         services = {
-            "db": self._db is not None,
+            "diagnostics_service": self._ds is not None,
             "player": self._player is not None,
             "worker_manager": self._wm is not None,
             "query_executor": self._qe is not None,

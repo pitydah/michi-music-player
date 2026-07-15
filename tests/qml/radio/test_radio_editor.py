@@ -6,8 +6,32 @@ from ui_qml_bridge.radio_bridge import RadioBridge
 
 
 @pytest.fixture
+def mock_stations():
+    stations = []
+    for i, (name, url, codec, country, fav) in enumerate([
+        ("Jazz FM", "http://jazz.stream", "MP3", "US", True),
+        ("Rock FM", "http://rock.stream", "AAC", "UK", False),
+    ]):
+        s = MagicMock()
+        s.id = i + 1
+        s.name = name
+        s.url = url
+        s.codec = codec
+        s.country = country
+        s.tags = []
+        s.favorite = fav
+        s.bitrate = 128
+        s.image_path = ""
+        stations.append(s)
+    return stations
+
+
+@pytest.fixture
 def mock_radio_mgr(mock_stations):
     mgr = MagicMock()
+    mgr.get_all.return_value = mock_stations
+    mgr.add.return_value = mock_stations[0]
+    mgr.toggle_favorite.return_value = True
     return mgr
 
 
@@ -15,19 +39,13 @@ def mock_radio_mgr(mock_stations):
 def mock_player():
     return MagicMock()
 
+
 class TestAddStation:
     def test_add_station_success(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.addStation("New FM", "http://new.stream", "AAC", "FR")
         assert result["ok"]
         mock_radio_mgr.add.assert_called_once()
-
-        result = bridge.addStation("Test", "", "MP3", "")
-        assert not result["ok"]
-        assert result["error"] == "EMPTY_URL"
-
-        assert not result["ok"]
-        assert result["error"] == "NO_RADIO_MANAGER"
 
     def test_add_station_returns_id(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -50,6 +68,18 @@ class TestAddStation:
         result = bridge.addStation("", "http://stream.url", "MP3", "")
         assert result["ok"]
 
+    def test_add_station_empty_url_fails(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        result = bridge.addStation("Test", "", "MP3", "")
+        assert not result["ok"]
+        assert result["error"] == "EMPTY_URL"
+
+    def test_add_station_no_manager(self):
+        bridge = RadioBridge(radio_manager=None, player_service=None)
+        result = bridge.addStation("Test", "http://test.stream", "MP3", "")
+        assert not result["ok"]
+        assert result["error"] == "NO_RADIO_MANAGER"
+
 
 class TestEditStation:
     def test_edit_station_success(self, mock_radio_mgr, mock_player):
@@ -57,7 +87,10 @@ class TestEditStation:
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.editStation(1, "Edited FM", "http://edited.stream", "AAC", "FR")
         assert result["ok"]
-        mock_radio_mgr.update.assert_called_once_with(1, name="Edited FM", url="http://edited.stream")
+        mock_radio_mgr.update.assert_called_once_with(
+            1, name="Edited FM", url="http://edited.stream",
+            codec="AAC", country="FR",
+        )
 
     def test_edit_station_without_manager(self):
         bridge = RadioBridge(radio_manager=None, player_service=None)
@@ -89,7 +122,10 @@ class TestEditStation:
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.editStation(1, "Full Edit", "http://full.stream", "OGG", "BR")
         assert result["ok"]
-        mock_radio_mgr.update.assert_called_once_with(1, name="Full Edit", url="http://full.stream")
+        mock_radio_mgr.update.assert_called_once_with(
+            1, name="Full Edit", url="http://full.stream",
+            codec="OGG", country="BR",
+        )
 
 
 class TestDeleteStation:

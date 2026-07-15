@@ -68,6 +68,7 @@ class LyricsBridge(QObject):
 
     def __init__(self, worker_manager: WorkerManager | None = None, nowplaying_bridge: NowPlayingBridge | None = None, parent=None):
         super().__init__(parent)
+        assert worker_manager is not None, "LyricsBridge: worker_manager is REQUIRED"
         self._wm = worker_manager
         self._np_bridge = nowplaying_bridge
 

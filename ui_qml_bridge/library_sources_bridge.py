@@ -13,10 +13,10 @@ logger = logging.getLogger("michi.library_sources_bridge")
 class LibrarySourcesBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, service: LibrarySourcesService | None = None,
+    def __init__(self, service: LibrarySourcesService,
                  job_bridge=None, parent=None):
         super().__init__(parent)
-        self._svc = service or LibrarySourcesService()
+        self._svc = service
         self._jb = job_bridge
         self._status = "ready"
         self._exclusions: list[str] = []

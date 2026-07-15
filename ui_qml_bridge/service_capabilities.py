@@ -15,7 +15,7 @@ CAPABILITY_STATES = {
 }
 
 
-def compute_capabilities(services: "ServiceContainer") -> dict[str, str]:
+def compute_capabilities(container: "ServiceContainer") -> dict[str, str]:
     """Return dict of capability_name -> state string.
 
     States: AVAILABLE, DEGRADED, UNAVAILABLE, DEFERRED_PHYSICAL.
@@ -23,25 +23,25 @@ def compute_capabilities(services: "ServiceContainer") -> dict[str, str]:
     DEFERRED_PHYSICAL indicates hardware dependency is deferred vs error.
     """
     return {
-        "library": "available" if services.contains("library_query_service") else "unavailable",
-        "playback": "available" if services.contains("playback_service") else "unavailable",
-        "nowplaying": "available" if services.contains("playback_service") else "unavailable",
-        "mix": "available" if services.contains("library_query_service") else "unavailable",
-        "lyrics": "available" if services.contains("worker_manager") else "unavailable",
-        "connections_michilink": "available" if services.contains("connection_service") else "unavailable",
-        "home_audio": "available" if services.contains("home_audio_service") else "unavailable",
-        "snapcast": "available" if services.contains("home_audio_service") else "unavailable",
-        "devices_sync": "available" if services.contains("device_sync_service") else "unavailable",
-        "radio": "available" if services.contains("radio_service") else "unavailable",
-        "playlists": "available" if services.contains("playlist_service") else "unavailable",
-        "eq": "available" if services.contains("playback_service") else "unavailable",
+        "library": "available" if container.contains("connection_factory") else "unavailable",
+        "playback": "available" if container.contains("playback_service") else "unavailable",
+        "nowplaying": "available" if container.contains("playback_service") else "unavailable",
+        "mix": "available" if container.contains("connection_factory") else "unavailable",
+        "lyrics": "available" if container.contains("worker_manager") else "unavailable",
+        "connections_michilink": "available" if container.contains("connection_service") else "unavailable",
+        "home_audio": "available" if container.contains("home_audio_service") else ("deferred_physical" if container.contains("home_audio_service") else "unavailable"),
+        "snapcast": "available" if container.contains("home_audio_service") else "unavailable",
+        "devices_sync": "available" if container.contains("device_sync_service") else "unavailable",
+        "radio": "available" if container.contains("radio_service") else "unavailable",
+        "playlists": "available" if container.contains("connection_factory") else "unavailable",
+        "eq": "available" if container.contains("playback_service") else "unavailable",
         "settings": "available",
         "audio_lab": "available",
         "metadata": "available",
-        "smart_tagging": "available" if services.contains("smart_tagging_service") else "unavailable",
-        "disc_lab": "available" if services.contains("metadata_service") else "unavailable",
-        "library_doctor": "available" if services.contains("library_doctor_service") else "unavailable",
-        "diagnostics": "available" if services.contains("database") else "unavailable",
+        "smart_tagging": "available" if container.contains("smart_tagging_service") else "unavailable",
+        "disc_lab": "available" if container.contains("library_doctor_service") else ("deferred_physical" if container.contains("connection_factory") else "unavailable"),
+        "library_doctor": "available" if container.contains("connection_factory") else "unavailable",
+        "diagnostics": "available" if container.contains("connection_factory") else "unavailable",
         "michi_ai": "available",
         "theme": "available",
         "navigation": "available",
@@ -50,5 +50,5 @@ def compute_capabilities(services: "ServiceContainer") -> dict[str, str]:
         "command_palette": "available",
         "cover": "available",
         "notifications": "available",
-        "global_search": "available" if services.contains("global_search_service") else "unavailable",
+        "global_search": "available" if container.contains("global_search_service") else "unavailable",
     }

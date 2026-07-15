@@ -6,14 +6,37 @@ from ui_qml_bridge.radio_bridge import RadioBridge
 
 
 @pytest.fixture
+def mock_stations():
+    stations = []
+    for i, (name, url) in enumerate([
+        ("Jazz FM", "http://jazz.stream"),
+        ("Rock FM", "http://rock.stream"),
+    ]):
+        s = MagicMock()
+        s.id = i + 1
+        s.name = name
+        s.url = url
+        s.codec = "MP3"
+        s.country = "US"
+        s.tags = []
+        s.favorite = False
+        s.bitrate = 128
+        s.image_path = ""
+        stations.append(s)
+    return stations
+
+
+@pytest.fixture
 def mock_radio_mgr(mock_stations):
     mgr = MagicMock()
+    mgr.get_all.return_value = mock_stations
     return mgr
 
 
 @pytest.fixture
 def mock_player():
     return MagicMock()
+
 
 class TestConnectionFailure:
     def test_play_station_player_fails(self, mock_radio_mgr):
@@ -24,11 +47,13 @@ class TestConnectionFailure:
         assert not result["ok"]
         assert "error" in result
 
+    def test_play_empty_url(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.playStation("")
         assert not result["ok"]
         assert result["error"] == "EMPTY_URL"
 
+    def test_reconnect_no_last(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.reconnectLast()
         assert not result["ok"]
@@ -69,6 +94,7 @@ class TestUnavailableCodec:
         s.tags = []
         s.favorite = False
         s.bitrate = 0
+        s.image_path = ""
         mock_radio_mgr.get_all.return_value = [s]
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         codec = bridge.getCodec()
@@ -82,9 +108,6 @@ class TestNoManager:
         assert result["ok"]
         assert result["count"] == 0
         assert len(bridge.stations) == 0
-
-        assert not result["ok"]
-        assert result["error"] == "NO_PLAYER_SERVICE"
 
     def test_no_manager_edit_fails(self):
         bridge = RadioBridge(radio_manager=None, player_service=None)

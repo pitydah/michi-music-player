@@ -26,6 +26,8 @@ class SmartTaggingBridge(QObject):
 
     def __init__(self, service=None, worker_manager=None, query_service=None, parent=None):
         super().__init__(parent)
+        assert service is not None, "SmartTaggingBridge: service is REQUIRED"
+        assert worker_manager is not None, "SmartTaggingBridge: worker_manager is REQUIRED"
         self._service = service
         self._wm = worker_manager
         self._qs = query_service

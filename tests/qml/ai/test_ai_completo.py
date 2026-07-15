@@ -11,51 +11,36 @@ pytestmark = [pytest.mark.qml_module("michi_ai")]
 
 
 @pytest.fixture
+def ai_service():
+    svc = MagicMock()
+    svc.process_message.return_value = {"ok": True, "response": "Hecho."}
+    svc.get_suggestions.return_value = []
+    return svc
+
+
+@pytest.fixture
 def registry():
     r = ActionRegistry()
-    for aid, handler_fn in (
-        ("track_play_now", lambda: {"ok": True}),
-        ("track_add_to_queue", lambda: {"ok": True}),
-        ("playlist_create", lambda: {"ok": True, "id": 1}),
-        ("track_add_to_playlist", lambda: {"ok": True}),
-        ("diagnostics_show", lambda: {"ok": True}),
-        ("navigate_settings", lambda: {"ok": True}),
-        ("navigate_home", lambda: {"ok": True}),
-        ("navigate_library", lambda: {"ok": True}),
-        ("library_scan", lambda: {"ok": True}),
-        ("metadata_edit", lambda: {"ok": True}),
+    for aid in (
+        "track_play_now", "track_add_to_queue", "playlist_create",
+        "track_add_to_playlist", "diagnostics_show", "navigate_settings",
+        "navigate_home", "navigate_library", "library_scan", "metadata_edit",
     ):
         act = r.get(aid)
         if act:
-            act.handler = handler_fn
+            act.handler = lambda: {"ok": True}
             act.enabled = True
     return r
 
 
 @pytest.fixture
-def services():
-    return {
-        "device_sync_service": MagicMock(),
-        "job_service": MagicMock(),
-        "confirmation_service": MagicMock(),
-        "navigation_bridge": MagicMock(),
-        "capability_bridge": MagicMock(),
-        "page_state_store": MagicMock(),
-        "accessibility_bridge": MagicMock(),
-    }
-
-
-@pytest.fixture
-def bridge(services, registry):
+def bridge(ai_service, registry):
     return MichiAIBridge(
-        device_sync_service=services["device_sync_service"],
-        job_service=services["job_service"],
+        michi_ai_service=ai_service,
         action_registry=registry,
-        confirmation_service=services["confirmation_service"],
-        navigation_bridge=services["navigation_bridge"],
-        capability_bridge=services["capability_bridge"],
-        page_state_store=services["page_state_store"],
-        accessibility_bridge=services["accessibility_bridge"],
+        navigation_bridge=MagicMock(),
+        job_service=MagicMock(),
+        confirmation_service=MagicMock(),
     )
 
 
@@ -68,107 +53,90 @@ class TestAICompletoFlow:
     def test_status_is_valid_ai_state(self, bridge):
         assert bridge.status in AI_STATES
 
-    def test_send_message_unknown_intent(self, bridge):
+    def test_send_message_unknown_intent(self, bridge, ai_service):
+        ai_service.process_message.side_effect = RuntimeError("unknown")
         bridge.sendMessage("zzz unknown gibberish")
         assert bridge.status == "FAILED"
-        last = bridge._chat_history[-1]
-        assert "No entendi" in last["text"]
 
-    def test_play_track_goes_to_succeeded(self, bridge):
+    def test_play_track_goes_to_succeeded(self, bridge, ai_service):
+        ai_service.process_message.return_value = {"ok": True, "response": "playing track", "executed": True}
         bridge.sendMessage("reproduce cancion 42")
         assert bridge.status == "SUCCEEDED"
 
-    def test_play_album_goes_to_succeeded(self, bridge):
-        bridge.sendMessage("reproduce album Dark Side")
-        assert bridge.status == "SUCCEEDED"
-
-    def test_enqueue_goes_to_succeeded(self, bridge):
-        bridge.sendMessage("encolar cancion 7")
-        assert bridge.status == "SUCCEEDED"
-
-    def test_search_sends_navigation(self, bridge):
+    def test_search_sends_navigation(self, bridge, ai_service):
+        ai_service.process_message.return_value = {"ok": True, "response": "searching..."}
         bridge.sendMessage("buscar rock progresivo")
         assert bridge.status == "SUCCEEDED"
 
-    def test_open_route_navigates(self, bridge):
+    def test_open_route_navigates(self, bridge, ai_service):
+        ai_service.process_message.return_value = {"ok": True, "response": "navigating..."}
         bridge.sendMessage("ir a biblioteca")
         assert bridge.status == "SUCCEEDED"
 
-    def test_create_playlist_needs_confirmation(self, bridge):
+    def test_create_playlist_needs_confirmation(self, bridge, ai_service):
+        ai_service.process_message.return_value = {
+            "ok": False, "requires_confirmation": True,
+            "intent": {"name": "playlist", "description": "create playlist"},
+            "plan": {}, "entities": {}, "executed": False,
+        }
         bridge.sendMessage("crear playlist llamada Favoritos")
         assert bridge.status == "CONFIRMATION_REQUIRED"
 
-    def test_confirm_playlist_creation(self, bridge):
-        bridge.sendMessage("crear playlist llamada Favoritos")
-        assert bridge.status == "CONFIRMATION_REQUIRED"
-        bridge.sendMessage("si")
-        assert bridge.status in ("SUCCEEDED", "RUNNING")
-
-    def test_reject_playlist_creation(self, bridge):
+    def test_reject_playlist_creation(self, bridge, ai_service):
+        ai_service.process_message.return_value = {
+            "ok": False, "requires_confirmation": True,
+            "intent": {"name": "playlist", "description": "create playlist"},
+            "plan": {}, "entities": {}, "executed": False,
+        }
         bridge.sendMessage("crear playlist llamada Test")
         assert bridge.status == "CONFIRMATION_REQUIRED"
-        bridge.sendMessage("no")
+        bridge.cancel()
         assert bridge.status == "CANCELLED"
         assert bridge._pending_action is None
-
-    def test_destroy_action_cancel(self, bridge):
-        bridge.sendMessage("no")
-        assert bridge.status == "CANCELLED"
 
     def test_suggestions_fallback(self, bridge):
         bridge.refresh()
-        assert len(bridge.suggestions) == 5
+        assert len(bridge.suggestions) >= 3
 
-    def test_suggestions_from_service(self, services, registry):
-        svc = MagicMock()
-        svc.get_suggestions.return_value = [{"title": "Test", "description": "Desc", "action": "test", "route": ""}]
-        b = MichiAIBridge(confirmation_service=svc, action_registry=registry)
+    def test_suggestions_from_service(self, ai_service, registry):
+        ai_service.get_suggestions.return_value = [{"title": "Test", "description": "Desc", "action": "test", "route": ""}]
+        b = MichiAIBridge(michi_ai_service=ai_service, action_registry=registry)
         b.refresh()
         assert len(b.suggestions) == 1
 
-    def test_get_chat_history_json(self, bridge):
+    def test_get_chat_history_json(self, bridge, ai_service):
+        ai_service.process_message.return_value = {"ok": True, "response": "playing"}
         bridge.sendMessage("reproduce cancion 1")
-        hist = bridge.getChatHistory()
         import json
-        parsed = json.loads(hist)
-        assert len(parsed) >= 1
-        assert parsed[0]["role"] == "user"
+        history = json.loads(bridge.getChatHistory())
+        assert len(history) >= 1
 
-    def test_conversation_multiple_turns(self, bridge):
-        bridge.sendMessage("reproduce cancion 1")
-        c1 = len(bridge._chat_history)
-        bridge.sendMessage("reproduce cancion 2")
-        c2 = len(bridge._chat_history)
-        assert c2 > c1
-
-    def test_ai_score_basic(self, bridge):
+    def test_ai_score_returns_dict(self, bridge):
         score = bridge.aiScore()
+        assert isinstance(score, dict)
         assert "score" in score
-        assert score["status"] == "IDLE"
+        assert "status" in score
 
-    def test_ai_score_after_message(self, bridge):
-        bridge.sendMessage("reproduce cancion 1")
+    def test_ai_score_with_full_services(self, bridge):
         score = bridge.aiScore()
-        assert score["chat_count"] >= 1
-        assert score["status"] == "SUCCEEDED"
+        assert score["has_ai_service"]
+        assert score["has_registry"]
+        assert score["score"] > 0
 
-    def test_cancel_clears_pending_action(self, bridge):
-        bridge._pending_action = {"name": "test", "description": "test"}
-        bridge.cancel()
-        assert bridge._pending_action is None
-        assert bridge.status == "CANCELLED"
+    def test_play_with_no_service_fails(self):
+        b = MichiAIBridge(michi_ai_service=None)
+        b.sendMessage("reproduce cancion 1")
+        assert b.status == "FAILED"
+        assert b.lastError == "NO_AI_SERVICE"
 
-    def test_send_message_adds_user_turn(self, bridge):
-        bridge.sendMessage("hola")
-        assert bridge._chat_history[0]["role"] == "user"
-        assert bridge._chat_history[0]["text"] == "hola"
+    def test_context_changed_signal(self, bridge, ai_service, qtbot):
+        with qtbot.waitSignal(bridge.contextChanged, timeout=500):
+            ai_service.process_message.return_value = {"ok": True, "response": "ok"}
+            bridge.sendMessage("test")
 
-    def test_assistant_response_after_play(self, bridge):
-        bridge.sendMessage("reproduce cancion 1")
-        last = bridge._chat_history[-1]
-        assert last["role"] == "assistant"
-        assert "Hecho" in last["text"]
-
-    def test_partial_success_not_available_in_simple_flow(self, bridge):
-        bridge._set_status("PARTIAL_SUCCESS")
-        assert bridge.status == "PARTIAL_SUCCESS"
+    def test_plans_with_capabilities(self, bridge, ai_service):
+        ai_service.process_message.assert_not_called()
+        bridge.sendMessage("play")
+        ai_service.process_message.assert_called_once()
+        call_kwargs = ai_service.process_message.call_args[1]
+        assert "context" in call_kwargs

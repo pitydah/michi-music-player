@@ -1,7 +1,7 @@
-"""ServiceContainer — typed service registry with full lifecycle management.
+"""ServiceContainer — canonical service registry with full lifecycle management.
 
-States: CREATED → BUILDING → BUILT → STARTING → READY → DEGRADED → FAILED → STOPPING → STOPPED.
-API: register, get, require, contains, start, health, cancel_all, shutdown.
+States: CREATED -> BUILDING -> BUILT -> STARTING -> READY -> DEGRADED -> FAILED -> STOPPING -> STOPPED.
+API: register, get, require, contains, build_order, validate, start, health, cancel_all, shutdown.
 """
 from __future__ import annotations
 
@@ -10,10 +10,6 @@ from enum import Enum
 from typing import Any
 
 logger = logging.getLogger("michi.service_container")
-
-
-class BuildError(Exception):
-    pass
 
 
 class ContainerState(Enum):
@@ -36,16 +32,63 @@ class ServicePriority(Enum):
     DEFERRED = "deferred"
 
 
+BUILTIN_DEPENDENCIES: dict[str, set[str]] = {
+    "playlist_service": {"library_query_service", "connection_factory"},
+    "history_query_service": {"connection_factory"},
+    "global_search_service": {"connection_factory", "library_query_service"},
+    "playback_service": {"queue_service", "worker_manager"},
+    "queue_service": {"playlist_service", "worker_manager"},
+    "track_action_service": {"queue_service", "playback_service"},
+    "audio_lab_service": {"worker_manager", "library_query_service", "metadata_service"},
+    "metadata_service": {"worker_manager", "library_mutation_service"},
+    "library_doctor_service": {"library_query_service", "library_mutation_service", "worker_manager"},
+    "device_sync_service": {"worker_manager", "library_query_service"},
+    "connection_service": {"worker_manager"},
+    "home_audio_service": {"worker_manager", "playback_service"},
+    "diagnostics_service": {"worker_manager", "library_query_service", "settings_service"},
+    "michi_ai_service": {
+        "global_search_service", "playback_service", "playlist_service",
+        "diagnostics_service", "settings_service", "action_registry",
+    },
+    "notification_service": {"action_registry", "job_service"},
+    "confirmation_service": {"action_registry"},
+    "settings_coordinator": {"settings_service"},
+}
+
+SERVICE_ORDER_INDEX: dict[str, int] = {
+    name: i for i, name in enumerate([
+        "paths", "settings_manager",
+        "database", "connection_factory",
+        "track_repository", "album_repository", "artist_repository",
+        "event_bus", "runtime_persistence", "process_controller",
+        "worker_manager", "query_executor", "job_service",
+        "confirmation_service",
+        "settings_coordinator", "settings_service",
+        "playback_service", "queue_service", "track_action_service",
+        "library_query_service", "library_sources_service", "library_mutation_service",
+        "playlist_service", "history_query_service", "global_search_service",
+        "mix_query_service", "mix_service",
+        "metadata_service", "smart_tagging_service",
+        "library_doctor_service", "audio_lab_service",
+        "device_sync_service", "connection_service",
+        "home_audio_service", "radio_service", "lyrics_service",
+        "diagnostics_service", "notification_service",
+        "action_registry",
+        "michi_ai_service",
+        "theme_service", "accessibility_service",
+    ])
+}
+
+
 class ServiceContainer:
-    """Typed container holding all backend service references with lifecycle."""
+    """Typed container holding all backend service references with full lifecycle."""
 
     def __init__(self):
         self._services: dict[str, Any] = {}
         self._priorities: dict[str, ServicePriority] = {}
-        self._dependencies: dict[str, tuple[str, ...]] = {}
+        self._dependencies: dict[str, set[str]] = {}
         self._failures: dict[str, str] = {}
         self._state = ContainerState.CREATED
-
         self._define_priorities()
 
     def _define_priorities(self):
@@ -72,26 +115,24 @@ class ServiceContainer:
             "mix_query_service", "mix_service",
             "track_action_service", "playback_service",
             "queue_service", "metadata_service",
-            "process_controller", "runtime_persistence",
-            "theme_service", "accessibility_service",
-            "action_registry", "confirmation_service",
-            "notification_service", "diagnostics_service",
         }
 
     @staticmethod
     def _optional_names() -> set[str]:
         return {
+            "theme_service", "accessibility_service",
             "audio_lab_service", "smart_tagging_service",
             "library_doctor_service", "device_sync_service",
             "connection_service", "home_audio_service",
             "radio_service", "lyrics_service",
+            "diagnostics_service", "notification_service",
+            "action_registry", "confirmation_service",
+            "runtime_persistence", "process_controller",
         }
 
     @staticmethod
     def _capability_gated_names() -> set[str]:
-        return {
-            "michi_ai_service",
-        }
+        return {"michi_ai_service"}
 
     @staticmethod
     def _deferred_physical_names() -> set[str]:
@@ -110,14 +151,14 @@ class ServiceContainer:
             | self._deferred_names()
         )
 
-    def register(self, name: str, service: Any, required: bool | None = None, dependencies: tuple[str, ...] = ()) -> None:
+    def register(self, name: str, service: Any, priority: ServicePriority | None = None, dependencies: tuple[str, ...] = ()) -> None:
         self._services[name] = service
-        if required is True:
-            self._priorities[name] = ServicePriority.REQUIRED
-        elif required is False:
+        if priority is not None:
+            self._priorities[name] = priority
+        elif name not in self._priorities:
             self._priorities[name] = ServicePriority.OPTIONAL
         if dependencies:
-            self._dependencies[name] = dependencies
+            self._dependencies[name] = set(dependencies)
 
     def get(self, name: str) -> Any:
         return self._services.get(name)
@@ -136,6 +177,52 @@ class ServiceContainer:
 
     def priority(self, name: str) -> ServicePriority | None:
         return self._priorities.get(name)
+
+    def build_order(self) -> list[str]:
+        deps = {}
+        for name in self._all_names():
+            deps[name] = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
+        for _name, dep_set in deps.items():
+            dep_set.intersection_update(self._all_names())
+        ordered = []
+        seen = set()
+        def visit(n: str, path: set):
+            if n in seen:
+                return
+            if n in path:
+                raise ValueError(f"Circular dependency: {' -> '.join(path | {n})}")
+            for d in deps.get(n, set()):
+                visit(d, path | {n})
+            seen.add(n)
+            ordered.append(n)
+        all_sorted = sorted(self._all_names(), key=lambda x: SERVICE_ORDER_INDEX.get(x, 999))
+        for svc in all_sorted:
+            visit(svc, set())
+        remaining = [s for s in all_sorted if s not in ordered]
+        ordered.extend(remaining)
+        return ordered
+
+    def validate(self) -> list[str]:
+        errors = []
+        for name in self._required_names():
+            svc = self._services.get(name)
+            if svc is None:
+                errors.append(f"REQUIRED '{name}' is None or missing")
+        deps = {}
+        for name in self._all_names():
+            deps[name] = set(self._dependencies.get(name, BUILTIN_DEPENDENCIES.get(name, set())))
+            deps[name].intersection_update(self._all_names())
+        for name, dep_set in deps.items():
+            if self.priority(name) != ServicePriority.REQUIRED:
+                continue
+            for dep in dep_set:
+                if dep not in self._services or self._services[dep] is None:
+                    errors.append(f"'{name}' depends on '{dep}' which is missing")
+        for fname in self._failures:
+            prio = self.priority(fname)
+            if prio == ServicePriority.REQUIRED:
+                errors.append(f"REQUIRED '{fname}' has FAILED: {self._failures[fname]}")
+        return errors
 
     @property
     def database(self):
@@ -303,38 +390,53 @@ class ServiceContainer:
         return self._state
 
     def start(self):
-        if self._state in (ContainerState.READY, ContainerState.DEGRADED, ContainerState.FAILED):
+        errors = self.validate()
+        if errors:
+            logger.error("Container start blocked by %d validation error(s)", len(errors))
+            for e in errors:
+                logger.error("  %s", e)
+            self._state = ContainerState.FAILED
             return self
+        if self._state == ContainerState.CREATED:
+            self._state = ContainerState.BUILDING
         self._state = ContainerState.STARTING
-        missing = self.validate_required_present()
-        if missing:
-            for m in missing:
-                self._failures[m] = "NOT_REGISTERED"
+        order = self.build_order()
+        started_required = 0
+        for name in order:
+            if name not in self._services or self._services[name] is None:
+                prio = self.priority(name)
+                if prio == ServicePriority.REQUIRED:
+                    self._failures[name] = "missing"
+                continue
+            svc = self._services[name]
+            if hasattr(svc, 'start') and callable(svc.start):
+                try:
+                    svc.start()
+                except Exception as e:
+                    err = str(e)
+                    self._failures[name] = err
+                    prio = self.priority(name)
+                    if prio == ServicePriority.REQUIRED:
+                        logger.error("REQUIRED '%s' start failed: %s", name, err)
+            else:
+                if self.priority(name) == ServicePriority.REQUIRED:
+                    started_required += 1
+        has_missing_required = any(
+            name not in self._services or self._services[name] is None
+            for name in self._required_names()
+        )
+        has_required_failure = any(
+            self.priority(n) == ServicePriority.REQUIRED
+            for n in self._failures
+        )
+        if has_missing_required or has_required_failure:
             self._state = ContainerState.FAILED
-            logger.error("Bootstrap: REQUIRED services missing: %s", missing)
-            return self
-        none_req = self.validate_no_none_required()
-        if none_req:
-            for n in none_req:
-                self._failures[n] = "IS_NONE"
-            self._state = ContainerState.FAILED
-            logger.error("Bootstrap: REQUIRED services are None: %s", none_req)
-            return self
-        try:
-            self.validate_acyclic_graph()
-        except ValueError as e:
-            self._state = ContainerState.FAILED
-            logger.error("Bootstrap: %s", e)
-            return self
-        self.build_start_order()
-        required_failures = {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.REQUIRED}
-        if required_failures:
-            self._state = ContainerState.FAILED
-        elif {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.OPTIONAL}:
-            self._state = ContainerState.DEGRADED
         else:
-            self._state = ContainerState.READY
-        return self
+            has_optional_failure = any(
+                self.priority(n) == ServicePriority.OPTIONAL
+                for n in self._failures
+            )
+            self._state = ContainerState.DEGRADED if has_optional_failure else ContainerState.READY
 
     def ready(self) -> bool:
         return self._state in (ContainerState.READY, ContainerState.DEGRADED)
@@ -361,6 +463,25 @@ class ServiceContainer:
 
     def shutdown(self):
         self._state = ContainerState.STOPPING
+        order = self.build_order()
+        all_ordered = list(reversed(order))
+        for name in self._services:
+            if name not in all_ordered:
+                all_ordered.append(name)
+        for name in all_ordered:
+            if name not in self._services:
+                continue
+            svc = self._services[name]
+            if hasattr(svc, 'shutdown') and callable(svc.shutdown):
+                try:
+                    svc.shutdown()
+                except Exception as e:
+                    logger.debug("shutdown %s: %s", name, e)
+            elif hasattr(svc, 'stop') and callable(svc.stop):
+                try:
+                    svc.stop()
+                except Exception as e:
+                    logger.debug("stop %s: %s", name, e)
         self.cancel_all()
         self._failures.clear()
         self._state = ContainerState.STOPPED
@@ -393,78 +514,3 @@ class ServiceContainer:
                 "capable": self.is_capable(name),
             }
         return result
-
-    def validate_required_present(self) -> list[str]:
-        missing = []
-        for name in self._required_names():
-            if name not in self._services:
-                missing.append(name)
-        return missing
-
-    def validate_dependencies_present(self) -> list[str]:
-        broken = []
-        for name, deps in self._dependencies.items():
-            for dep in deps:
-                if dep not in self._services:
-                    broken.append(f"{name} -> {dep}")
-        return broken
-
-    def validate_no_none_required(self) -> list[str]:
-        bad = []
-        for name in self._required_names():
-            svc = self._services.get(name)
-            if svc is None:
-                bad.append(name)
-        return bad
-
-    def validate_acyclic_graph(self) -> list[str]:
-        all_deps: dict[str, set[str]] = {}
-        for name in self._all_names():
-            all_deps[name] = set(self._dependencies.get(name, ()))
-        for name in self._all_names():
-            if name not in all_deps:
-                all_deps[name] = set()
-        order = self._topological_sort(all_deps)
-        return order
-
-    def _topological_sort(self, deps: dict[str, set[str]]) -> list[str]:
-        visited = set()
-        temp_mark = set()
-        order = []
-
-        def visit(node: str, path: set):
-            if node in visited:
-                return
-            if node in temp_mark:
-                raise ValueError(f"Circular dependency detected: {node}")
-            temp_mark.add(node)
-            for dep in deps.get(node, set()):
-                if dep in deps:
-                    visit(dep, path | {node})
-            temp_mark.discard(node)
-            visited.add(node)
-            order.append(node)
-
-        for node in deps:
-            visit(node, set())
-        remaining = [n for n in self._all_names() if n not in order]
-        order.extend(remaining)
-        return order
-
-    def build_start_order(self) -> list[str]:
-        order = self.validate_acyclic_graph()
-        required_order = [s for s in order if s in self._required_names()]
-        optional_order = [s for s in order if s not in self._required_names()]
-        return required_order + optional_order
-
-    def total_required(self) -> int:
-        return len(self._required_names())
-
-    def total_optional(self) -> int:
-        return len(self._optional_names())
-
-    def total_services(self) -> int:
-        return len(self._services)
-
-
-ServiceRegistry = ServiceContainer
