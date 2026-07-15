@@ -123,7 +123,7 @@ Rectangle {
         }
 
         Rectangle {
-            visible: root.dirty; width: 8; height: 8; radius: 4
+            visible: root.dirty; width: 8; height: 8; radius: MichiTheme.radiusXs
             color: "#FBBF24"; Layout.alignment: Qt.AlignVCenter
         }
 

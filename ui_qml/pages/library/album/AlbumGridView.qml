@@ -29,14 +29,14 @@ Item {
 
                 Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: 140; height: 140; radius: 8
+                    width: 140; height: 140; radius: MichiTheme.radiusSm
                     color: MichiTheme.colors.borderInner
 
                     Text {
                         anchors.centerIn: parent
                         text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
                         color: MichiTheme.colors.textMuted
-                        font.pixelSize: 24
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: FontWeight.Bold
                     }
 

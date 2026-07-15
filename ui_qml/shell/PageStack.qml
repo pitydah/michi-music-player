@@ -11,7 +11,12 @@ Item {
     property string lastError: ""
     property string lastLoadedRoute: ""
     property bool loading: false
+    property string status: "idle"
     property string _prevRoute: ""
+
+    objectName: "pageStack"
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Contenedor de páginas"
 
     function loadRoute(route) {
         var source = registry ? registry.getSource(route) : getFallbackSource(route)
@@ -20,6 +25,7 @@ Item {
         currentRoute = route
         lastError = ""
         loading = true
+        status = "loading"
         callOnPage("routeLeave", _prevRoute)
         pageLoader.source = ""
         pageLoader.source = source
@@ -80,15 +86,21 @@ Item {
         onStatusChanged: {
             if (status === Loader.Ready) {
                 loading = false
+                root.status = "ready"
                 lastLoadedRoute = currentRoute
                 callOnPage("routeEnter", currentRoute)
+                if (pageLoader.item && pageLoader.item.hasOwnProperty("forceActiveFocus")) {
+                    pageLoader.item.forceActiveFocus()
+                }
             } else if (status === Loader.Error) {
                 loading = false
+                root.status = "error"
                 lastError = "Failed to load: " + source
                 console.warn("[PageStack] Failed to load:", source)
                 source = "../pages/PlaceholderPage.qml"
             } else if (status === Loader.Loading) {
                 loading = true
+                root.status = "loading"
             }
         }
     }

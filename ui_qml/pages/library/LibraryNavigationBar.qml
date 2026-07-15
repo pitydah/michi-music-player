@@ -27,8 +27,10 @@ Item {
             background: Rectangle { color: "transparent" }
 
             Repeater {
-                model: ["Canciones", "Álbumes", "Artistas", "Carpetas"]
+                model: ["Canciones", "Álbumes", "Artistas", "Carpetas", "Fuentes"]
                 TabButton {
+                    objectName: "library.tabButton." + modelData.toLowerCase()
+                    Accessible.name: modelData
                     text: modelData
                     font.pixelSize: MichiTheme.typography.bodySize
                     contentItem: Text {
@@ -40,7 +42,7 @@ Item {
                     background: Rectangle {
                         color: "transparent"
                         Rectangle {
-                            anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1
+                            anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: MichiTheme.radiusXs
                             color: MichiTheme.colors.accentBlue
                             visible: tabBar.currentIndex === index
                         }

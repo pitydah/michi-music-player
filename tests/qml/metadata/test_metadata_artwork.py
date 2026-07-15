@@ -6,6 +6,8 @@ import time
 import pytest
 from PySide6.QtCore import QCoreApplication
 
+pytestmark = [pytest.mark.qml_module("metadata")]
+
 
 def _process_events(duration=1.0):
     deadline = time.time() + duration
@@ -22,9 +24,6 @@ class TestMetadataArtwork:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-import pytest
-pytestmark = [pytest.mark.qml_module("metadata")]
-
         return MetadataBridge(worker_manager=None)
 
     def test_has_artwork_no_file(self, bridge):

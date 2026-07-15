@@ -244,6 +244,71 @@ class RadioBridge(QObject):
                 pass
         return ""
 
+    @Slot(str, result="QVariantList")
+    def parsePlaylistFile(self, content: str) -> list:
+        import re
+        stations = []
+
+        if not content or not content.strip():
+            return stations
+
+        stripped = content.strip()
+
+        # XSPF detection: <track> elements with <location>
+        if "<track" in stripped and "<location>" in stripped:
+            track_re = re.compile(r"<track>([\s\S]*?)</track>", re.IGNORECASE)
+            for match in track_re.finditer(stripped):
+                track_body = match.group(1)
+                title_m = re.search(r"<title>([^<]*)</title>", track_body, re.IGNORECASE)
+                loc_m = re.search(r"<location>([^<]*)</location>", track_body, re.IGNORECASE)
+                url = loc_m.group(1).strip() if loc_m else ""
+                if url:
+                    stations.append({
+                        "name": title_m.group(1).strip() if title_m else "Imported",
+                        "url": url,
+                        "selected": True,
+                    })
+            return stations
+
+        # PLS detection: [playlist] or File1=/Title1= pattern
+        if stripped.startswith("[playlist]") or re.search(r"^File\d+=", stripped, re.MULTILINE):
+            name_map = {}
+            file_map = {}
+            for line in stripped.splitlines():
+                line = line.strip()
+                m = re.match(r"^File(\d+)=(.+)$", line)
+                if m:
+                    file_map[int(m.group(1))] = m.group(2).strip()
+                m = re.match(r"^Title(\d+)=(.+)$", line)
+                if m:
+                    name_map[int(m.group(1))] = m.group(2).strip()
+            for key in sorted(file_map):
+                stations.append({
+                    "name": name_map.get(key, "Imported"),
+                    "url": file_map[key],
+                    "selected": True,
+                })
+            return stations
+
+        # Default: M3U / EXTINF parsing
+        current_name = ""
+        for line in stripped.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            extinf_m = re.match(r"^#EXTINF:-1,(.+)$", line)
+            if extinf_m:
+                current_name = extinf_m.group(1).strip()
+            elif not line.startswith("#") and re.match(r"^https?://", line):
+                stations.append({
+                    "name": current_name or "Imported",
+                    "url": line,
+                    "selected": True,
+                })
+                current_name = ""
+
+        return stations
+
     @Slot(result=int)
     def getBitrate(self):
         return 0

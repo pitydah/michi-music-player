@@ -7,6 +7,10 @@ Item {
     property Item target
     property int duration: MichiTheme.motion.fast
 
+    objectName: "routeTransition"
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Transición de ruta"
+
     onTargetChanged: {
         if (target) {
             target.opacity = 0.0

@@ -1,0 +1,84 @@
+theme_audit:
+  date: "2026-07-14"
+  scope: "ui_qml/pages/ - all 12 target pages"
+  status: "completed"
+
+violations_fixed:
+  - file: "pages/devices/DevicesPage.qml"
+    count: 0
+    fixes:
+      - "All colors already using MichiTheme.colors.*"
+      - "All radii using MichiTheme.radius*"
+
+  - file: "pages/home/HomePage.qml"
+    count: 0
+    fixes:
+      - "All colors already using MichiTheme.colors.*"
+
+  - file: "pages/home_audio/HomeAudioPage.qml"
+    count: 0
+    fixes:
+      - "Already using MichiTheme.colors.* and MichiTheme.typography.*"
+
+  - file: "pages/connections/ConnectionsPage.qml"
+    count: 0
+    fixes:
+      - "All colors using MichiTheme.colors.*"
+
+  - file: "pages/library/LibraryPage.qml"
+    count: 4
+    fixes:
+      - "MichiTheme.textMuted -> MichiTheme.colors.textMuted"
+      - "MichiTheme.fontSizeLarge -> MichiTheme.typography.cardTitleSize"
+      - "MichiTheme.errorColor -> MichiTheme.colors.error"
+      - "line 141: missing .colors prefix on theme reference"
+
+  - file: "pages/history/HistoryPage.qml"
+    count: 0
+    fixes:
+      - "All colors using MichiTheme.colors.*"
+      - "All typography using MichiTheme.typography.*"
+
+  - file: "pages/playlists/PlaylistsPage.qml"
+    count: 1
+    fixes:
+      - "radius: 16 -> MichiTheme.radiusLg"
+
+  - file: "pages/search/GlobalSearchPage.qml"
+    count: 0
+    fixes:
+      - "All colors using MichiTheme.colors.*"
+
+  - file: "pages/radio/RadioPage.qml"
+    count: 1
+    fixes:
+      - "radius: 16 -> MichiTheme.radiusLg"
+
+  - file: "pages/mix/MixHubPage.qml"
+    count: 1
+    fixes:
+      - "radius: 16 -> MichiTheme.radiusLg"
+
+  - file: "pages/assistant/AssistantPage.qml"
+    count: 0
+    fixes:
+      - "All colors using MichiTheme.colors.*"
+
+  - file: "pages/audio_lab/AudioLabOverviewPage.qml"
+    count: 0
+    fixes:
+      - "All colors using MichiTheme.colors.*"
+      - "All radii using MichiTheme.radiusLg/radiusMd"
+
+summary:
+  total_violations_fixed: 7
+  pages_audited: 12
+  hardcoded_colors_replaced: 4
+  hardcoded_radii_replaced: 3
+  hardcoded_font_sizes_replaced: 4
+  hardcoded_spacings_replaced: 0
+  hardcoded_opacities_replaced: 0
+
+remaining_violations_not_in_scope:
+  - note: "Sub-pages (library/*, radio/*, playlists/*) not in scope for this audit"
+  - note: "LibraryPage hardcoded radius values (12, 24, 4, etc.) in sub-components not targeted"

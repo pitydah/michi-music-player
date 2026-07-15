@@ -43,7 +43,13 @@ Rectangle {
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                     anchors.rightMargin: MichiTheme.spacing.xs
                     horizontalAlignment: modelData.right ? Text.AlignRight : Text.AlignLeft
-                    text: modelData.label
+                    text: {
+                        var indicator = ""
+                        if (root.bridge && root.bridge.activeSortKey === modelData.key) {
+                            indicator = root.bridge.activeSortAscending ? " ▲" : " ▼"
+                        }
+                        return modelData.label + indicator
+                    }
                     color: root.bridge && root.bridge.activeSortKey === modelData.key ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                     font.weight: root.bridge && root.bridge.activeSortKey === modelData.key ? MichiTheme.typography.weightSemiBold : MichiTheme.typography.weightMedium

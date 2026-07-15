@@ -161,8 +161,8 @@ Item {
 
         Item { width: parent.width; height: 180; visible: (root.trackModel ? root.trackModel.count : root.songs.length) === 0
             Column { anchors.centerIn: parent; spacing: MichiTheme.spacing.lg
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: 12; color: MichiTheme.colors.accentSurface
-                    Text { anchors.centerIn: parent; text: "BL"; color: MichiTheme.colors.accentBlue; font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 } }
+                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: MichiTheme.radiusMd; color: MichiTheme.colors.accentSurface
+                    Text { anchors.centerIn: parent; text: "BL"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 } }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Biblioteca vacía"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Agrega carpetas con música o refresca la biblioteca."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
                 Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm

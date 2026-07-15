@@ -11,7 +11,7 @@ Rectangle {
 
     width: visible ? implicitWidth + 8 : 0
     height: 18
-    radius: 3
+    radius: MichiTheme.radiusXs
     visible: sourceName !== ""
     color: {
         if (offline) return Qt.rgba(1, 0.3, 0.3, 0.15)
@@ -29,7 +29,7 @@ Rectangle {
             if (permissionError) return MichiTheme.colors.warning
             return MichiTheme.colors.accentBlue
         }
-        font.pixelSize: 9
+        font.pixelSize: MichiTheme.typography.badgeSize
         font.weight: MichiTheme.typography.weightSemiBold
     }
 }

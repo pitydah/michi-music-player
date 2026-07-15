@@ -28,7 +28,7 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Rectangle {
-                    width: 60; height: 60; radius: 6
+                    width: 60; height: 60; radius: MichiTheme.radiusSm
                     anchors.verticalCenter: parent.verticalCenter
                     color: MichiTheme.colors.borderInner
 
@@ -36,7 +36,7 @@ Item {
                         anchors.centerIn: parent
                         text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
                         color: MichiTheme.colors.textMuted
-                        font.pixelSize: 18
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: FontWeight.Bold
                     }
 

@@ -512,6 +512,12 @@ class MetadataBridge(QObject):
         self._set_status("CANCELLED")
         return {"ok": True}
 
+    @Slot(str, result=str)
+    def fileName(self, path: str) -> str:
+        if not path:
+            return ""
+        return Path(path).name
+
     @Slot()
     def refresh(self):
         if self._current_filepath:

@@ -6,6 +6,8 @@ import time
 import pytest
 from PySide6.QtCore import QCoreApplication
 
+pytestmark = [pytest.mark.qml_module("metadata")]
+
 
 def _process_events(duration=2.0):
     deadline = time.time() + duration
@@ -51,9 +53,6 @@ class TestMetadataBatchEdit:
 
     def test_batch_sync_fallback(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
-import pytest
-pytestmark = [pytest.mark.qml_module("metadata")]
-
         bridge = MetadataBridge(worker_manager=None)
         result = bridge.batchSetField(["/fake/file.flac"], "title", "Sync")
         assert result.get("ok") is None or result.get("ok") is not None

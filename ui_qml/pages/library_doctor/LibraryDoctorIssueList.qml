@@ -8,6 +8,7 @@ Item {
     id: root
 
     property var doc: null
+    property var bridge: null
     property string _filterText: ""
 
     Column {
@@ -29,7 +30,7 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
                     Rectangle {
-                        width: 16; height: 16; radius: 2; anchors.verticalCenter: parent.verticalCenter
+                        width: 16; height: 16; radius: MichiTheme.radiusXs; anchors.verticalCenter: parent.verticalCenter
                         color: modelData.selected ? MichiTheme.colors.accentBlue : "transparent"
                         border.color: modelData.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                         MouseArea {
@@ -55,7 +56,7 @@ Item {
                     }
 
                     Text {
-                        width: parent.width * 0.15; text: modelData.filepath ? modelData.filepath.split("/").pop() : ""
+                        width: parent.width * 0.15; text: modelData.filepath ? (root.bridge ? root.bridge.fileName(modelData.filepath) : "") : ""
                         color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideLeft; anchors.verticalCenter: parent.verticalCenter
                     }

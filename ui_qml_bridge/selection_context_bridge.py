@@ -1,7 +1,12 @@
-"""SelectionContextBridge — shared selection state for tracks/albums/playlists."""
+"""SelectionContextBridge — shared selection state for tracks/albums/playlists.
+
+Delegates to SelectionController for storage and operations to avoid duplicate implementations.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+from .selection_controller import SelectionController
 
 
 class SelectionContextBridge(QObject):
@@ -9,18 +14,22 @@ class SelectionContextBridge(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._selected_ids: list[str] = []
+        self._ctrl = SelectionController(parent)
         self._selected_data: dict = {}
-        self._selection_count = 0
         self._primary_id = ""
+
+        self._ctrl.selectionChanged.connect(self._on_ctrl_changed)
+
+    def _on_ctrl_changed(self):
+        self.selectionChanged.emit()
 
     @Property(bool, notify=selectionChanged)
     def hasSelection(self):
-        return self._selection_count > 0
+        return self._ctrl.hasSelection
 
     @Property(int, notify=selectionChanged)
     def selectionCount(self):
-        return self._selection_count
+        return self._ctrl.count
 
     @Property(str, notify=selectionChanged)
     def primaryId(self):
@@ -32,9 +41,12 @@ class SelectionContextBridge(QObject):
 
     @Slot(str, result=dict)
     def setSelectedId(self, item_id: str):
-        self._selected_ids = [item_id]
         self._primary_id = item_id
-        self._selection_count = 1
+        try:
+            self._ctrl.replace([int(item_id)])
+        except (ValueError, TypeError):
+            self._ctrl.replace([])
+        self._selected_data = {"id": item_id}
         self.selectionChanged.emit()
         return {"ok": True}
 
@@ -42,15 +54,17 @@ class SelectionContextBridge(QObject):
     def setSelected(self, data: dict):
         self._selected_data = data
         self._primary_id = str(data.get("id", data.get("track_id", "")))
-        self._selection_count = 1
+        try:
+            self._ctrl.replace([int(self._primary_id)])
+        except (ValueError, TypeError):
+            self._ctrl.replace([])
         self.selectionChanged.emit()
         return {"ok": True}
 
     @Slot(result=dict)
     def clearSelection(self):
-        self._selected_ids = []
+        self._ctrl.clear()
         self._selected_data = {}
-        self._selection_count = 0
         self._primary_id = ""
         self.selectionChanged.emit()
         return {"ok": True}
@@ -61,7 +75,7 @@ class SelectionContextBridge(QObject):
 
     @Property(str, notify=selectionChanged)
     def selectedFilepath(self):
-        return ""  # filepath no longer exposed publicly
+        return ""
 
     @Property(str, notify=selectionChanged)
     def selectedTitle(self):
