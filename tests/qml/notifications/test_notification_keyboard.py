@@ -1,63 +1,92 @@
-"""Tests for keyboard navigation in notification components."""
+"""Test keyboard navigation through notifications in NotificationBridge.
+
+Tests logical keyboard navigation patterns (next/prev, escape, enter)
+applied through bridge methods that keyboard events would trigger.
+"""
+from __future__ import annotations
+
+from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtQml import QQmlEngine
 
-QML_DIR = None
-
-
-@pytest.fixture(scope="module")
-def qml_dir():
-    import pathlib
-    return pathlib.Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
+from ui_qml_bridge.notification_bridge import NotificationBridge
 
 
 @pytest.fixture
-def engine(qapp):
-    return QQmlEngine(qapp)
+def bridge():
+    return NotificationBridge()
 
 
-class TestNotificationKeyboard:
-    def test_toast_escape_dismiss(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationToast.qml").read_text()
-        assert "Keys.onEscapePressed" in content
-        assert "dismiss()" in content
+@pytest.fixture
+def mock_registry():
+    r = MagicMock()
+    r.execute.return_value = {"ok": True}
+    return r
 
-    def test_notification_item_enter_activates(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationItem.qml").read_text()
-        assert "Keys.onReturnPressed" in content
-        assert "actionRequested" in content
 
-    def test_notification_center_listview_keynav(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationCenter.qml").read_text()
-        assert "keyNavigationEnabled" in content
-        assert "focus: true" in content
+class TestKeyboardNavigation:
+    def test_enter_executes_current_action(self, mock_registry):
+        b = NotificationBridge(action_registry=mock_registry)
+        b.showAction("Abrir ajustes", "navigate_settings")
+        result = b.executeCurrentAction()
+        assert result["ok"] is True
 
-    def test_notification_item_accessible(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationItem.qml").read_text()
-        assert "Accessible.role" in content
-        assert "Accessible.name" in content
-        assert "Accessible.description" in content
+    def test_enter_no_action_returns_false(self, bridge):
+        bridge.showMessage("Mensaje sin accion")
+        result = bridge.executeCurrentAction()
+        assert result["ok"] is False
 
-    def test_notification_center_accessible(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationCenter.qml").read_text()
-        assert "Accessible.role" in content
-        assert "Accessible.name" in content
+    def test_enter_no_current_returns_error(self, bridge):
+        result = bridge.executeCurrentAction()
+        assert result["ok"] is False
+        assert result["error"] == "NO_CURRENT_NOTIFICATION"
 
-    def test_toast_accessible(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationToast.qml").read_text()
-        assert "Accessible.role" in content
-        assert "Accessible.name" in content
+    def test_escape_dismisses_current(self, bridge):
+        bridge.showMessage("Dismiss con Escape")
+        assert bridge.currentNotification is not None
+        bridge.dismiss()
+        assert bridge.currentNotification is None
 
-    def test_progress_item_accessible(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationProgressItem.qml").read_text()
-        assert "Accessible" in content
+    def test_escape_does_nothing_on_empty(self, bridge):
+        bridge.dismiss()
+        assert bridge.currentNotification is None
 
-    def test_banner_accessible(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationBanner.qml").read_text()
-        assert "Accessible.role" in content
-        assert "Accessible.name" in content
+    def test_next_notification_after_enter_and_dismiss(self, mock_registry):
+        b = NotificationBridge(action_registry=mock_registry)
+        b.showMessage("First")
+        b.showAction("Second con accion", "navigate_home")
+        b.dismiss()
+        assert b.currentNotification is not None
+        result = b.executeCurrentAction()
+        assert result["ok"] is True
 
-    def test_notification_item_has_keynav(self, qml_dir):
-        content = (qml_dir / "components" / "NotificationItem.qml").read_text()
-        assert "Keys" in content
+    def test_drain_queue_with_escape(self, bridge):
+        bridge.showMessage("A")
+        bridge.showMessage("B")
+        bridge.showMessage("C")
+
+        for _ in range(3):
+            if bridge.currentNotification:
+                bridge.dismiss()
+            else:
+                break
+
+        assert bridge.currentNotification is None
+
+    def test_focus_navigation_between_items(self, bridge):
+        bridge.showMessage("Item A")
+        bridge.showMessage("Item B")
+        bridge.showMessage("Item C")
+        assert bridge.queueLength == 2
+        assert bridge.currentNotification is not None
+
+    def test_execute_action_by_id_from_queue(self, mock_registry):
+        b = NotificationBridge(action_registry=mock_registry)
+        b.showAction("Actionable", "navigate_diagnostics")
+        nid = b.currentNotification["id"]
+        result = b.executeNotificationAction(str(nid))
+        assert result["ok"] is True
+
+    def test_execute_action_by_id_not_found(self, bridge):
+        result = bridge.executeNotificationAction("nonexistent")
+        assert result["ok"] is False

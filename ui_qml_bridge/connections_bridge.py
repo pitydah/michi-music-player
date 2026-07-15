@@ -148,6 +148,18 @@ class ConnectionsBridge(QObject):
             self._last_error = error
         self.stateChanged.emit()
 
+    @Property("QVariantList", notify=stateChanged)
+    def externalServers(self) -> list[dict]:
+        return []
+
+    @Property(str, notify=stateChanged)
+    def protocol(self) -> str:
+        return "michi-link"
+
+    @Property(bool, notify=stateChanged)
+    def compatible(self) -> bool:
+        return self._contract in ("contract_ok", "contract_partial")
+
     @Slot(result=dict)
     def scanForServers(self):
         if self._ctrl is None:

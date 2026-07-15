@@ -1,9 +1,11 @@
-"""Test history actions: clear, remove, retention, export, query filter chain."""
+"""Test history actions: play event, remove event, clear filtered/all."""
 import pytest
 import sqlite3
 import time
+from unittest.mock import MagicMock
 
 from core.history_query_service import HistoryQueryService
+from ui_qml_bridge.history_bridge import HistoryBridge
 
 
 @pytest.fixture
@@ -26,15 +28,16 @@ def db_conn():
         )
     """)
     now = time.time()
-    for i in range(20):
+    for i in range(10):
         conn.execute(
-            "INSERT INTO play_history (track_id, played_at, device) VALUES (?, ?, ?)",
-            (str(i + 1), now - i * 86400, "mobile" if i % 2 == 0 else "local")
+            "INSERT INTO play_history (id, track_id, played_at, device) VALUES (?, ?, ?, ?)",
+            (i + 1, str(i + 1), now - i * 3600, "local")
         )
-    for i in range(20):
+    for i in range(10):
         conn.execute(
-            "INSERT INTO media_items (id, filepath, title, artist, album) VALUES (?, ?, ?, ?, ?)",
-            (i + 1, f"/path/track_{i}.flac", f"Title {i}", f"Artist {i}", f"Album {i}")
+            "INSERT INTO media_items (id, filepath, title, artist, album, album_key, duration) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (i + 1, f"/path/track_{i}.flac", f"Title {i}", f"Artist {i}", f"Album {i}", f"key_{i}", 200 + i)
         )
     conn.commit()
     return conn
@@ -46,63 +49,110 @@ class DbWrap:
 
 
 @pytest.fixture
-def svc(db_conn):
+def hqs(db_conn):
     return HistoryQueryService(db=DbWrap(db_conn))
 
 
-def test_clear_history_empty(svc):
-    svc.clear_history()
-    assert svc.count_history() == 0
+@pytest.fixture
+def bridge(hqs):
+    return HistoryBridge(history_query_service=hqs)
 
 
-def test_clear_history_then_new_entry(svc):
-    svc.clear_history()
-    svc.record_play("new_track", device="test")
-    assert svc.count_history() == 1
+@pytest.fixture
+def mock_playback():
+    pb = MagicMock()
+    pb.play = MagicMock(return_value=None)
+    return pb
 
 
-def test_remove_nonexistent(svc):
-    result = svc.remove_history_item("nonexistent")
+def test_play_event_bridge(bridge, mock_playback):
+    bridge._playback_svc = mock_playback
+    mock_playback.play.return_value = {"ok": True}
+    result = bridge.playHistoryItem("1")
     assert result["ok"]
 
 
-def test_bulk_remove(svc):
-    svc.remove_history_item("1")
-    svc.remove_history_item("2")
-    svc.remove_history_item("3")
-    assert svc.count_history() == 17
+def test_play_event_no_service_returns_error(bridge):
+    result = bridge.playHistoryItem("1")
+    assert not result["ok"]
 
 
-def test_retention_removes_old(svc):
-    import time
-import pytest
-pytestmark = [pytest.mark.qml_module("history")]
+def test_play_event_with_action_registry(bridge):
+    reg = MagicMock()
+    reg.execute = MagicMock(return_value={"ok": True})
+    bridge._action_registry = reg
+    bridge._playback_svc = None
+    result = bridge.playHistoryItem("1")
+    assert result["ok"]
+    reg.execute.assert_called_with("track_play_now")
 
-    old_time = time.time() - 10000000
-    svc._db.conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)", ("very_old", old_time))
-    svc._db.conn.commit()
-    result = svc.apply_retention(days=365, max_age_days=30)
+
+def test_remove_event_by_id(bridge, hqs):
+    result = bridge.removeHistoryEvent("1")
+    assert result["ok"]
+    assert hqs.count_history() == 9
+
+
+def test_remove_event_by_id_second_event(bridge, hqs):
+    bridge.removeHistoryEvent("3")
+    assert hqs.count_history() == 9
+
+
+def test_remove_nonexistent_event(bridge):
+    result = bridge.removeHistoryEvent("999")
     assert result["ok"]
 
 
-def test_filter_artist(svc):
-    page = svc.fetch_history(artist="Artist 1")
-    for item in page:
-        assert item.get("artist") == "Artist 1"
+def test_remove_invalid_event_id(bridge):
+    result = bridge.removeHistoryEvent("invalid")
+    assert not result["ok"]
 
 
-def test_filter_device(svc):
-    page = svc.fetch_history(device="mobile")
-    for item in page:
-        assert item.get("device") == "mobile"
+def test_remove_history_item(bridge, hqs):
+    result = bridge.removeHistoryItem("5")
+    assert result["ok"]
+    assert hqs.count_history() == 9
 
 
-def test_filter_chain(svc):
-    page = svc.fetch_history(artist="Artist 1", device="local")
-    for item in page:
-        assert item.get("device") == "local"
+def test_remove_history_item_then_refresh(bridge, hqs):
+    bridge.removeHistoryItem("1")
+    result = bridge.refresh()
+    assert result["ok"]
+    assert result["count"] == 9
 
 
-def test_search_by_title(svc):
-    page = svc.fetch_history(search="Title 5")
-    assert len(page) >= 1
+def test_clear_all_history(bridge, hqs):
+    result = bridge.clearHistory()
+    assert result["ok"]
+    assert hqs.count_history() == 0
+
+
+def test_clear_history_then_refresh_empty(bridge, hqs):
+    bridge.clearHistory()
+    result = bridge.refresh()
+    assert result["ok"]
+    assert result["count"] == 0
+
+
+def test_clear_history_then_new_entry_possible(bridge, hqs):
+    bridge.clearHistory()
+    hqs.record_play("new_track", device="test")
+    assert hqs.count_history() == 1
+
+
+def test_clear_filtered_no_filters(bridge, hqs):
+    if hasattr(hqs, 'clear_filtered_history'):
+        result = hqs.clear_filtered_history({})
+        assert result["ok"]
+        assert hqs.count_history() == 0
+
+
+def test_remove_multiple_events_sequentially(bridge, hqs):
+    for eid in ["1", "2", "3"]:
+        bridge.removeHistoryEvent(eid)
+    assert hqs.count_history() == 7
+
+
+def test_bridge_reflects_changes_after_clear(bridge, hqs):
+    bridge.clearHistory()
+    assert bridge.historyCount == 0

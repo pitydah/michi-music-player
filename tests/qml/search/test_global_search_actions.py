@@ -73,7 +73,7 @@ def test_no_search_service():
     bridge = GlobalSearchBridge(search_service=None)
     result = bridge.search("Test")
     assert not result.get("ok")
-    assert "SERVICE_UNAVAILABLE" in result.get("error", "")
+    assert result.get("error_code") == "SERVICE_UNAVAILABLE"
 
 
 def test_results_property(bridge):

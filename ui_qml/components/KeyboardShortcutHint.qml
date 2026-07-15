@@ -1,27 +1,31 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls as QQC2
 import "../theme"
 
-Item {
+Rectangle {
     id: root
 
-    property string shortcut: ""
     property string label: ""
-    property string objectName: "keyboardShortcutHint"
+    property string shortcut: ""
+    property string description: ""
+    property string variant: "info"
+    property int shortcutSize: MichiTheme.typography.badgeSize
 
-    implicitWidth: row.implicitWidth + MichiTheme.spacing.sm * 2
-    implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2
+    objectName: "KeyboardShortcutHint"
 
     Accessible.role: Accessible.StaticText
-    Accessible.name: root.label + (root.shortcut !== "" ? " atajo: " + root.shortcut : "")
+    Accessible.name: label + (shortcut ? " " + shortcut : "")
+    Accessible.description: description || label + " atajo de teclado " + shortcut
 
-    Rectangle {
-        anchors.fill: parent
-        radius: MichiTheme.radiusXs
-        color: MichiTheme.colors.surfaceCard
-        border.width: MichiTheme.borderWidth
-        border.color: MichiTheme.colors.borderSubtle
-    }
+    implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2
+    implicitWidth: row.implicitWidth + MichiTheme.spacing.sm * 2
+    radius: MichiTheme.radiusSm
+    color: MichiTheme.colors.surfaceCard
+
+    border.width: MichiTheme.borderWidth
+    border.color: MichiTheme.colors.borderInner
+
+    visible: label !== "" || shortcut !== ""
 
     Row {
         id: row
@@ -29,28 +33,38 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         Text {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.label
-            color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.captionSize
-            visible: root.label !== ""
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: root.shortcutSize
+            font.weight: MichiTheme.typography.weightMedium
+            visible: text !== ""
         }
 
         Rectangle {
-            height: implicitHeight + MichiTheme.spacing.xs
-            width: implicitWidth + MichiTheme.spacing.sm
+            anchors.verticalCenter: parent.verticalCenter
+            height: rowItem.implicitHeight + MichiTheme.spacing.xs
+            width: rowItem.implicitWidth + MichiTheme.spacing.sm * 2
             radius: MichiTheme.radiusXs
             color: MichiTheme.colors.surfaceSubtle
             border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderSubtle
+            border.color: MichiTheme.colors.borderInner
             visible: root.shortcut !== ""
 
             Text {
+                id: rowItem
                 anchors.centerIn: parent
                 text: root.shortcut
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-                font.family: "monospace"
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: root.shortcutSize
+                font.weight: MichiTheme.typography.weightMedium
             }
+        }
+
+        QQC2.ToolTip {
+            visible: root.hovered && root.description !== ""
+            text: root.description || root.label + " (" + root.shortcut + ")"
+            delay: 600
         }
     }
 }

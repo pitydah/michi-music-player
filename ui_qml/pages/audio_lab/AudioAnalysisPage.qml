@@ -14,134 +14,200 @@ Item {
     property var analysisResult: null
     property string analysisError: ""
 
-    objectName: "audioAnalysis.page"
+    property int _state: 0
+    property var _analysisResult: null
+    property var _compareResult: null
+    property string _errorMessage: ""
+    property bool _compareMode: false
+
+    objectName: "AudioAnalysisPage"
     focus: true
 
-    Accessible.role: Accessible.Panel
+    Accessible.role: Accessible.Pane
     Accessible.name: "Análisis técnico"
 
-    function startAnalysis() {
-        if (!root.labService) return
-        root.pageState = "ANALYSING"
-        root.analysisError = ""
-        root.analysisResult = null
-        var result = root.labService.analyzeFile("/dummy")
-        if (result && result.status !== "error") {
-            root.analysisResult = result
-            root.pageState = "COMPLETED"
+    readonly property int stateIdle: 0
+    readonly property int stateAnalyzing: 1
+    readonly property int stateCancelling: 2
+    readonly property int stateCompleted: 3
+    readonly property int stateFailed: 4
+
+    function _startAnalysis() {
+        if (!root.labService || !root.labService.analyzeFile) {
+            root._errorMessage = "Servicio de análisis no disponible"
+            root._state = root.stateFailed
+            return
+        }
+        if (!inputSelection.selectedFiles || inputSelection.selectedFiles.length === 0) {
+            root._errorMessage = "Selecciona archivos para analizar"
+            root._state = root.stateFailed
+            return
+        }
+        root._state = root.stateAnalyzing
+        root._errorMessage = ""
+        var filepath = typeof inputSelection.selectedFiles[0] === "string"
+            ? inputSelection.selectedFiles[0]
+            : inputSelection.selectedFiles[0].filepath || ""
+        var result = root.labService.analyzeFile(filepath)
+        if (result && result.status === "unsupported") {
+            root._analysisResult = null
+            root._errorMessage = result.explanation || "Backend no disponible"
+            root._state = root.stateFailed
+        } else if (result && result.error) {
+            root._analysisResult = null
+            root._errorMessage = result.error
+            root._state = root.stateFailed
         } else {
-            root.analysisError = result ? (result.error || "UNKNOWN") : "NO_BRIDGE"
-            root.pageState = "FAILED"
+            root._analysisResult = result
+            root._state = root.stateCompleted
         }
     }
 
-    function cancelAnalysis() {
-        root.pageState = "INPUT_READY"
-        root.analysisResult = null
+    function _cancelAnalysis() {
+        root._state = root.stateCancelling
+        root._state = root.stateIdle
     }
 
-    FocusScope {
-        id: focusScope
+    function _startCompare() {
+        root._compareMode = !root._compareMode
+    }
+
+    Flickable {
         anchors.fill: parent
-        objectName: "audioAnalysis.focusScope"
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            contentHeight: column.height + MichiTheme.spacing.xxl
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
+            Text {
+                text: "Análisis técnico"
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
+                objectName: "analysisPageTitle"
+            }
+            Text {
+                text: "Formato, codec, bitrate, sample rate, bit depth, canales, encoder, tags, loudness, peak"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
+                objectName: "analysisPageSubtitle"
+            }
 
-            Column {
-                id: column
-                width: parent.width
-                spacing: MichiTheme.spacing.lg
+            AudioInputSelection { id: inputSelection }
 
-                Text {
-                    text: "Análisis técnico"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.role: Accessible.Heading
-                    Accessible.name: "Análisis técnico"
+            AudioSelectionSummary { width: parent.width }
+
+            SectionHeader { text: "Acciones"; width: parent.width; objectName: "analysisActionsHeader"; Accessible.name: "Acciones" }
+
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar selección"
+                    variant: "primary"
+                    enabled: root._state !== root.stateAnalyzing && root._state !== root.stateCancelling && root.labService !== null && inputSelection.selectedFiles.length > 0
+                    objectName: "analyzeBtn"
+                    Accessible.name: "Analizar selección"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._startAnalysis()
                 }
-
-                Text {
-                    text: "Formato, codec, bitrate, sample rate, bit depth, canales, loudness, peak, checksum."
-                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
+                MichiButton {
+                    text: "Cancelar"
+                    variant: "danger"
+                    visible: root._state === root.stateAnalyzing
+                    objectName: "cancelAnalysisBtn"
+                    Accessible.name: "Cancelar análisis"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._cancelAnalysis()
                 }
-
-                AudioInputSelection {}
-
-                SectionHeader { text: "Resultado del análisis"; width: parent.width; objectName: "analysis.section.result" }
-
-                AudioTechnicalReport {
-                    width: parent.width
-                    analysisResult: root.analysisResult
+                MichiButton {
+                    text: root._compareMode ? "Salir de comparación" : "Comparar con otro archivo"
+                    variant: "secondary"
+                    objectName: "compareToggleBtn"
+                    Accessible.name: text
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._startCompare()
                 }
+                MichiButton {
+                    text: "Volver"
+                    variant: "ghost"
+                    objectName: "analysisBackBtn"
+                    Accessible.name: "Volver"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: { if (root.nav) root.nav.back() }
+                }
+            }
 
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: root.pageState === "FAILED" ? "danger" : "base"
-                    objectName: "analysis.resultArea"
-                    height: root.analysisResult ? 100 : 80
-                    visible: root.pageState === "COMPLETED" || root.pageState === "FAILED"
+            SectionHeader { text: "Resultado del análisis"; width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: "Resultados" }
 
-                    Column {
-                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                        visible: root.analysisResult !== null
-                        Repeater {
-                            model: root.analysisResult ? Object.keys(root.analysisResult).filter(function(k) { return k !== "filepath" }).slice(0, 8) : []
-                            Row {
-                                spacing: MichiTheme.spacing.sm
-                                Text { text: modelData + ": "; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: 120 }
-                                Text { text: root.analysisResult ? String(root.analysisResult[modelData]) : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
-                            }
-                        }
-                        Text { text: "Error: " + root.analysisError; color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; visible: root.pageState === "FAILED" }
-                    }
-
+            GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"
+                objectName: "analysisResultPanel"
+                visible: root._state === root.stateCompleted || root._state === root.stateFailed
+                Column {
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
-                        anchors.centerIn: parent
-                        text: root.pageState === "ANALYSING" ? "Analizando..." : (root.pageState === "FAILED" ? "Error en el análisis" : "Selecciona archivos para analizar")
-                        color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                        visible: root.analysisResult === null && root.pageState !== "ANALYSING"
+                        text: root._analysisResult ? "Análisis completado" : "Error: " + root._errorMessage
+                        color: root._analysisResult ? MichiTheme.colors.success : MichiTheme.colors.error
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     }
-
-                    MichiProgressBar { width: 200; anchors.centerIn: parent; indeterminate: true; visible: root.pageState === "ANALYSING" }
-                }
-
-                Row {
-                    spacing: MichiTheme.spacing.sm
-                    MichiButton {
-                        text: root.pageState === "ANALYSING" ? "Cancelar" : "Analizar selección"
-                        variant: root.pageState === "ANALYSING" ? "danger" : "primary"
-                        objectName: root.pageState === "ANALYSING" ? "analysis.cancelBtn" : "analysis.startBtn"
-                        enabled: root.pageState !== "COMPLETED"
-                        onClicked: {
-                            if (root.pageState === "ANALYSING") root.cancelAnalysis()
-                            else root.startAnalysis()
+                    Repeater {
+                        model: root._analysisResult ? Object.keys(root._analysisResult) : []
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: modelData + ": "; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: 140 }
+                            Text { text: root._analysisResult ? String(root._analysisResult[modelData]) : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
                         }
-                        Accessible.name: root.pageState === "ANALYSING" ? "Cancelar análisis" : "Iniciar análisis"
-                    }
-                    MichiButton {
-                        text: "Comparar con otro archivo"
-                        variant: "secondary"
-                        objectName: "analysis.compareBtn"
-                        enabled: root.analysisResult !== null
-                        onClicked: { if (root.nav) root.nav.navigate("audio_lab_comparison") }
-                        Accessible.name: "Comparar con otro archivo"
-                    }
-                    MichiButton {
-                        text: "Volver"; variant: "ghost"
-                        objectName: "analysis.backBtn"
-                        onClicked: { if (root.nav) root.nav.back() }
-                        Accessible.name: "Volver"
                     }
                 }
+                height: childrenRect.height + MichiTheme.spacing.lg * 2
+            }
+
+            GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
+                visible: root._state === root.stateIdle || root._state === root.stateAnalyzing
+                objectName: "analysisPlaceholder"
+                height: 80
+                Text {
+                    anchors.centerIn: parent
+                    text: root._state === root.stateAnalyzing ? "Analizando..." : "Selecciona archivos para analizar"
+                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                }
+            }
+
+            AudioTechnicalReport {
+                width: parent.width
+                analysisResult: root._analysisResult
+            }
+
+            AudioWaveformSummary {
+                width: parent.width
+                waveformData: root._analysisResult && root._analysisResult.waveform ? root._analysisResult.waveform : null
+            }
+
+            ComparisonPanel {
+                width: parent.width
+                visible: root._compareMode
+                objectName: "analysisComparisonPanel"
+            }
+
+            StatusBadge {
+                visible: root.labService === null
+                text: "Bridge no disponible"
+                kind: "disconnected"
+                objectName: "analysisBridgeStatus"
+                Accessible.name: "Bridge de análisis no disponible"
             }
         }
     }

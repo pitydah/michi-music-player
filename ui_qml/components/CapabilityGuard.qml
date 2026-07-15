@@ -1,69 +1,127 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls as QQC2
 import "../theme"
+import "states"
 
-FocusScope {
+Item {
     id: root
 
-    enum CapabilityState {
-        AVAILABLE,
-        UNAVAILABLE,
-        DEGRADED,
-        LOADING
-    }
-
     property string capabilityName: ""
-    property int state: CapabilityGuard.AVAILABLE
-    property string unavailableReason: "No disponible"
-    property string degradedReason: "Funcionamiento limitado"
-    property string objectName: "capabilityGuard"
+    property bool checking: false
+    property bool available: false
+    property bool degraded: false
+    property bool deferredPhysical: false
 
-    property Component availableContent: null
-    property Component unavailableContent: null
-    property Component degradedContent: null
-    property Component loadingContent: null
+    default property alias availableContent: availableHost.children
+    property alias unavailableContent: unavailableHost.children
+    property alias degradedContent: degradedHost.children
+    property alias loadingContent: loadingHost.children
+    property alias deferredPhysicalContent: deferredPhysicalHost.children
 
-    default property alias content: fallback.children
+    signal primaryActionRequested()
+    signal secondaryActionRequested()
 
-    activeFocusOnTab: true
+    objectName: "CapabilityGuard_" + (capabilityName || "unknown")
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: root.capabilityName !== "" ? root.capabilityName : "Capacidad"
+    Accessible.role: Accessible.Grouping
+    Accessible.name: capabilityName || "Guardia de capacidad"
     Accessible.description: {
-        switch (root.state) {
-            case CapabilityGuard.UNAVAILABLE: return root.unavailableReason
-            case CapabilityGuard.DEGRADED: return root.degradedReason
-            case CapabilityGuard.LOADING: return "Cargando"
-            default: return "Disponible"
-        }
+        if (root.checking) return "Verificando disponibilidad de " + capabilityName
+        if (root.available) return capabilityName + " disponible"
+        if (root.deferredPhysical) return capabilityName + " requiere hardware físico"
+        if (root.degraded) return capabilityName + " funciona con limitaciones"
+        return capabilityName + " no disponible"
     }
 
-    Keys.onEscapePressed: {
-        if (root.state !== CapabilityGuard.AVAILABLE) {
-            root.state = CapabilityGuard.AVAILABLE
+    function checkCapability(bridge) {
+        if (!bridge || typeof bridge.has !== "function") {
+            root.checking = false
+            root.available = false
+            root.degraded = false
+            root.deferredPhysical = false
+            return
         }
-    }
+        root.checking = true
+        root.available = false
+        root.degraded = false
+        root.deferredPhysical = false
 
-    Loader {
-        anchors.fill: parent
-        sourceComponent: {
-            switch (root.state) {
-                case CapabilityGuard.LOADING:
-                    return root.loadingContent
-                case CapabilityGuard.UNAVAILABLE:
-                    return root.unavailableContent
-                case CapabilityGuard.DEGRADED:
-                    return root.degradedContent
-                default:
-                    return root.availableContent
-            }
+        var caps = bridge.capabilities || {}
+        var state = caps[root.capabilityName]
+        if (state === undefined) {
+            var hasCap = bridge.has(root.capabilityName)
+            state = hasCap ? "available" : "unavailable"
         }
-        onLoaded: item.objectName = root.objectName + "/active"
+        root.available = state === "available"
+        root.degraded = state === "degraded"
+        root.deferredPhysical = state === "deferred_physical"
+        root.checking = false
     }
 
     Item {
-        id: fallback
+        id: availableHost
         anchors.fill: parent
-        visible: children.length > 0 && root.state === CapabilityGuard.AVAILABLE && root.availableContent === null
+        visible: root.available && !root.degraded && !root.checking && !root.deferredPhysical
+    }
+
+    Item {
+        id: degradedHost
+        anchors.fill: parent
+        visible: root.degraded && !root.checking && !root.available && !root.deferredPhysical
+        z: 5
+
+        UnavailableState {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
+            title: root.capabilityName + " con limitaciones"
+            message: "Algunas funciones de " + root.capabilityName + " no están disponibles."
+            iconText: "\u26A0"
+        }
+    }
+
+    Item {
+        id: deferredPhysicalHost
+        anchors.fill: parent
+        visible: root.deferredPhysical && !root.checking && !root.available && !root.degraded
+        z: 5
+
+        UnavailableState {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
+            title: root.capabilityName + " requiere hardware"
+            message: "Esta función necesita hardware físico especializado."
+            iconText: "\u2699"
+        }
+    }
+
+    Item {
+        id: loadingHost
+        anchors.fill: parent
+        visible: root.checking
+
+        Loader {
+            anchors.centerIn: parent
+            active: root.checking
+            sourceComponent: Component {
+                LoadingState {
+                    title: "Verificando disponibilidad"
+                    message: "Comprobando " + root.capabilityName + "..."
+                }
+            }
+        }
+    }
+
+    Item {
+        id: unavailableHost
+        anchors.fill: parent
+        visible: !root.available && !root.degraded && !root.checking && !root.deferredPhysical
+
+        UnavailableState {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
+            title: root.capabilityName + " no disponible"
+            message: "Esta funcionalidad requiere servicios adicionales que no están activos."
+            iconText: "\u26A0"
+        }
     }
 }

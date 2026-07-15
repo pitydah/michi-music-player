@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -8,85 +7,118 @@ import "../../components"
 Item {
     id: root
 
-    property var action: null
+    property string actionName: ""
+    property string actionDescription: ""
+    property var affectedItems: []
     property bool destructive: false
-    property int affectedCount: 0
+    property bool visible: false
 
-    signal confirmTriggered()
-    signal rejectTriggered()
+    signal confirm()
+    signal reject()
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Vista previa de acción"
+    implicitHeight: visible ? contentColumn.height + MichiTheme.spacing.xl * 2 : 0
+    width: parent ? parent.width : 400
 
-    implicitHeight: column.height + MichiTheme.spacing.lg * 2
-    visible: root.action !== null
+    Accessible.role: Accessible.Dialog
+    Accessible.name: "Vista previa de acción" + (destructive ? " - Acción destructiva" : "")
+    Accessible.description: actionDescription
+
+    visible: root.visible
+    opacity: root.visible ? 1.0 : 0.0
+    Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
 
     GlassMaterial {
-        anchors.fill: parent
         radius: MichiTheme.radiusMd
-        variant: root.destructive ? "status" : "base"
-        border.color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.borderCard
+        variant: root.destructive ? "danger" : "base"
 
         Column {
-            id: column
+            id: contentColumn
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
 
             Row {
-                spacing: MichiTheme.spacing.sm
                 width: parent.width
+                spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: root.action ? root.action.description || root.action.name || "" : ""
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.cardTitleSize
-                    font.weight: MichiTheme.typography.weightSemiBold
-                    elide: Text.ElideRight
-                    width: parent.width - 80
+                    text: root.destructive ? "⚠" : "▶"
+                    color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.accentBlue
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    anchors.verticalCenter: parent.verticalCenter
                 }
 
-                StatusBadge {
-                    text: root.destructive ? "Destructivo" : "Seguro"
-                    kind: root.destructive ? "error" : "success"
+                Column {
+                    width: parent.width - 30
+                    spacing: MichiTheme.spacing.xs
+
+                    Text {
+                        text: root.destructive ? "Acción destructiva" : root.actionName
+                        color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+
+                    Text {
+                        text: root.actionDescription
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                        visible: root.actionDescription !== ""
+                    }
                 }
             }
 
-            Text {
-                text: root.affectedCount > 0 ? root.affectedCount + " elemento(s) afectado(s)" : ""
-                color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: text !== ""
-            }
+            Repeater {
+                model: root.affectedItems
+                visible: root.affectedItems.length > 0
 
-            Text {
-                text: root.destructive ? "Esta acción no se puede deshacer. Revisa los cambios antes de confirmar." : "Revisa los cambios antes de confirmar."
-                color: MichiTheme.colors.warning
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: root.destructive
-                wrapMode: Text.WordWrap
-                width: parent.width
+                Rectangle {
+                    width: parent.width
+                    height: 28
+                    radius: MichiTheme.radiusXs
+                    color: MichiTheme.colors.surfaceSubtle
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: MichiTheme.spacing.sm
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        elide: Text.ElideRight
+                        width: parent.width - MichiTheme.spacing.md
+                    }
+                }
             }
 
             Row {
-                spacing: MichiTheme.spacing.sm
                 width: parent.width
+                spacing: MichiTheme.spacing.sm
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    text: "Confirmar"
+                    id: confirmBtn
+                    text: root.destructive ? "Sí, continuar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
-                    objectName: "assistant.preview.confirm"
-                    Accessible.name: "Confirmar acción"
-                    Accessible.description: root.destructive ? "Acción destructiva" : ""
-                    onClicked: root.confirmTriggered()
+                    objectName: "actionPreviewConfirm"
+                    Accessible.name: root.destructive ? "Sí, continuar" : "Confirmar"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    onClicked: root.confirm()
                 }
 
                 MichiButton {
-                    text: "Rechazar"
+                    text: "Cancelar"
                     variant: "ghost"
-                    objectName: "assistant.preview.reject"
-                    onClicked: root.rejectTriggered()
+                    objectName: "actionPreviewReject"
+                    Accessible.name: "Cancelar"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    onClicked: root.reject()
                 }
             }
         }

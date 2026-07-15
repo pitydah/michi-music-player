@@ -1,104 +1,104 @@
-# Connections Bridge Contract
+# ConnectionsBridge Integration Contract
 
 ## Context Property
-`ConnectionsBridge` registered as `connections` context property.
-
-## Class Name
-`ConnectionsBridge` (`ui_qml_bridge/connections_bridge.py`)
-
-## Constructor Dependencies
-| Parameter | Type | Default |
-|-----------|------|---------|
-| `michi_link_ctrl` | `Any (MichiLinkController) \| None` | `None` |
-| `navigation_bridge` | `NavigationBridge \| None` | `None` |
-| `parent` | `QObject \| None` | `None` |
+- `connectionsBridge` → `ConnectionsBridge` instance
 
 ## Properties
-| Name | Type | Notify | Description |
-|------|------|--------|-------------|
-| `microServerState` | `str` | `stateChanged` | Current connection state string |
-| `microServerAlias` | `str` | `stateChanged` | Human-readable server alias/name |
-| `microServerContract` | `str` | `stateChanged` | Contract status: "contract_ok", "contract_partial", or "" |
-| `lastError` | `str` | `stateChanged` | Last error message |
-| `latencyMs` | `int` | `stateChanged` | Connection latency in milliseconds |
-| `serverVersion` | `str` | `stateChanged` | Server version string |
-| `discoveredServers` | `QVariantList` | `stateChanged` | List of discovered servers with name, host, type, status |
-| `capabilities` | `QVariantList` | `stateChanged` | List of capability dicts with key, label, enabled |
-| `lastContact` | `float` | `stateChanged` | Unix timestamp of last successful contact |
+| Property | Type | Notify Signal |
+|---|---|---|
+| `microServerState` | `str` | `stateChanged` |
+| `microServerAlias` | `str` | `stateChanged` |
+| `microServerContract` | `str` | `stateChanged` |
+| `lastError` | `str` | `stateChanged` |
+| `latencyMs` | `int` | `stateChanged` |
+| `serverVersion` | `str` | `stateChanged` |
+| `discoveredServers` | `QVariantList` | `stateChanged` |
+| `capabilities` | `QVariantList` | `stateChanged` |
+| `lastContact` | `float` | `stateChanged` |
+
+Discovered server schema: `{name: str, host: str, type: str, status: str}`
+Capability schema: `{key: str, label: str, enabled: bool}`
 
 ## Slots
-| Name | Parameters | Return | Description |
-|------|-----------|--------|-------------|
-| `scanForServers` | — | `dict` | Start server discovery scan |
-| `connectManual` | `host: str, port: int, alias: str` | `dict` | Configure manual server connection |
-| `requestPair` | — | `dict` | Transition to pairing_required state |
-| `confirmPair` | — | `dict` | Confirm pairing; fetch capabilities, set contract status |
-| `rejectPair` | — | `dict` | Reject pairing; return to not_configured |
-| `diagnose` | — | `dict` | Re-check connection state and capabilities |
-| `disconnect` | — | `dict` | Disconnect and reset state to not_configured |
-| `forgetServer` | — | `dict` | Clear saved server config and disconnect |
-| `addManualServer` | `host: str="", port: int=0, alias: str=""` | `dict` | Save server config and set state to detected |
-| `reconnect` | — | `dict` | Attempt reconnection with exponential backoff (max 3 retries) |
-| `openHomeAudio` | `route: str="home_audio"` | `dict` | Navigate to home_audio route |
-| `refresh` | — | `dict` | Refresh state from controller |
+| Slot | Returns | Parameters |
+|---|---|---|
+| `scanForServers` | `dict` | none |
+| `connectManual` | `dict` | `host: str`, `port: int`, `alias: str` |
+| `requestPair` | `dict` | none |
+| `confirmPair` | `dict` | none |
+| `rejectPair` | `dict` | none |
+| `diagnose` | `dict` | none |
+| `disconnect` | `dict` | none |
+| `forgetServer` | `dict` | none |
+| `addManualServer` | `dict` | `host: str = ""`, `port: int = 0`, `alias: str = ""` |
+| `reconnect` | `dict` | none |
+| `openHomeAudio` | `dict` | `route: str = "home_audio"` |
+| `refresh` | `dict` | none |
+
+All slots return `dict` with `ok: bool`.
 
 ## Signals
-| Name | Payload | Description |
-|------|---------|-------------|
-| `stateChanged` | — | Emitted when any state property changes |
+| Signal | Payload |
+|---|---|
+| `stateChanged` | (none) |
 
 ## Models Exposed
-None. All data returned as `QVariantList` properties or slot return dicts.
+None.
 
-## Error Handling
-- All slots return `dict` with `ok: bool`
-- Error format: `{"ok": false, "error": "<CODE>"}`
-- Null controller returns `"SERVICE_UNAVAILABLE"`
-- Network cancel returns `"CANCELLED"`
+## Error Types/Codes
+- `"CANCELLED"` — async operation was cancelled
+- `"EMPTY_HOST"` — no host provided for `addManualServer`
+- `"UNSUPPORTED"` — reconnect not available in controller
+- Exception messages propagated
 
-## Error Codes
-- `SERVICE_UNAVAILABLE` — michi_link_ctrl is None
-- `CANCELLED` — operation was cancelled
-- `EMPTY_HOST` — host string is empty
-- `UNSUPPORTED` — capability not available on controller
-- `CONNECTION_FAILED` — testHomeAssistant connection failed
+## States
+- `"not_configured"` — initial/after disconnect
+- `"scanning"` — actively discovering servers
+- `"detected"` — server found (from scan or manual add)
+- `"pairing_required"` — pairing requested
+- `"paired"` — pairing confirmed (no capabilities yet)
+- `"connected"` — fully connected with capabilities
+- `"error"` — operation failed
 
-## States (microServerState)
-| State | Meaning |
-|-------|---------|
-| `service_unavailable` | Controller is None |
-| `not_configured` | No server configured |
-| `scanning` | Discovery in progress |
-| `detected` | Server found or manually configured |
-| `pairing_required` | Awaiting user pairing confirmation |
-| `paired` | Paired but contract not yet verified |
-| `connected` | Fully connected with contract |
-| `error` | Connection or operation error |
+## Contract States
+- `"contract_ok"` — `capabilities.contract_ok == True`
+- `"contract_partial"` — connected but `contract_ok == False`
+- `""` (empty) — not connected
 
-Contract sub-states: `"contract_ok"`, `"contract_partial"`, `"contract_mismatch"` (docstring only, not all implemented).
+## Lifecycle Expectations
+- Constructor takes optional `michi_link_ctrl`, `navigation_bridge`.
+- `_cancel_op()` cancels any pending async operation or retry timer.
+- `_retry_with_backoff()`: max 3 retries, exponential backoff (1s, 2s, 4s).
+- `_update_state()` called by `refresh()` and `diagnose()` to sync from controller capabilities.
+- State persisted to QSettings via `core.settings_manager.set_()` for host/port/alias.
 
-## Lifecycle
-- Created by `BridgeFactory.create_connections_bridge()` with michi_link_ctrl + navigation_bridge
-- Initial state: `"service_unavailable"` if no controller, `"not_configured"` if controller exists
-- No background timers for status polling; QML must call `refresh()` or `diagnose()`
-- `_AsyncOp` provides thread-safe cancellation for async operations
+## Behavior When Service Is Missing/Null
+- No `_ctrl` (MichiLinkController): `_do_scan()` still sets `_state` but may register no servers. `reconnect` returns `UNSUPPORTED`.
 
-## Behavior When Service Is Null/Missing
-- Without `michi_link_ctrl`: all operations return `"SERVICE_UNAVAILABLE"`, state is `"service_unavailable"`
-- Without `navigation_bridge`: `openHomeAudio` returns `"UNSUPPORTED"`
-
-## Integration
-- **JobService**: Not used
-- **ActionRegistry**: Not directly used
-- **NavigationBridge**: Used for `openHomeAudio()` slot
-- **CapabilityBridge**: Registered as `connections` capability; requires `michi_link_controller`
+## Destructive Actions and Confirmations
+- `forgetServer()` — clears saved settings and disconnects. No confirmation required.
+- `rejectPair()` — returns to `not_configured`. No confirmation required.
 
 ## Cancellation Contract
-- `_cancel_op()` cancels active async operation via `_AsyncOp.cancel()`
-- `scanForServers()` cancels any previous operation before starting new one
-- Timer-based retry `_retry_timer` is stopped on cancel/disconnect
+- `_cancel_op()`: cancels `_async_op` and stops retry timer.
+- `_AsyncOp.cancel()`: sets `cancelled = True`; checked in `_do_scan()` after controller call.
+- State transitions: scanning → error with `"Cancelado"` message.
 
-## Destructive Action Handling
-- `forgetServer()` clears saved config from settings
-- `disconnect()` resets runtime state without clearing config
-- `rejectPair()` returns to not_configured without saving
+## Integration with JobService
+NOT IMPLEMENTED.
+
+## Integration with ActionRegistry
+NOT IMPLEMENTED.
+
+## Integration with NavigationBridge
+- `openHomeAudio(route)`: calls `_nav_bridge.navigate(route)`.
+
+## Integration with PageStateStore
+NOT IMPLEMENTED.
+
+## Integration with CapabilityBridge
+- MANUALLY EXPOSED via `capabilities` property (static list of 4 keys: `can_continue_playback`, `can_import`, `can_send_genre_playlist`, `can_send_genre_mix`).
+- NOT using the shared `CapabilityBridge` — capability state is read from `MichiLinkController.get_capabilities()`.
+
+## Integration with AccessibilityBridge
+NOT IMPLEMENTED.

@@ -1,43 +1,45 @@
 import QtQuick
-import QtQuick.Controls
 import "../theme"
 
 Item {
     id: root
 
     property string title: "No disponible"
-    property string message: "Esta función no está disponible en el estado actual."
-    property string explanation: ""
-    property string actionText: ""
-    property string objectName: "unavailableState"
+    property string message: "Esta función no está disponible en este momento."
+    property string details: ""
+    property string iconText: ""
+    property string primaryActionText: ""
+    property string secondaryActionText: ""
 
-    signal actionRequested()
+    signal primaryActionRequested()
+    signal secondaryActionRequested()
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.title
-    Accessible.description: root.message + (root.explanation !== "" ? ". " + root.explanation : "")
+    objectName: "UnavailableState"
 
-    Keys.onReturnPressed: {
-        if (actionText !== "") root.actionRequested()
-    }
-    Keys.onSpacePressed: {
-        if (actionText !== "") root.actionRequested()
-    }
+    Accessible.role: Accessible.AlertMessage
+    Accessible.name: title
+    Accessible.description: message + (details ? ". " + details : "")
+
+    implicitWidth: childrenColumn.implicitWidth
+    implicitHeight: childrenColumn.implicitHeight
 
     Column {
+        id: childrenColumn
         anchors.centerIn: parent
-        spacing: MichiTheme.spacing.lg
-        width: Math.min(implicitWidth, 400)
+        width: Math.min(implicitWidth, parent.width * 0.85)
+        spacing: MichiTheme.spacing.md
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "\u26D4"
-            font.pixelSize: MichiTheme.typography.heroTitleSize
+            text: root.iconText || "\u26A0"
             color: MichiTheme.colors.textMuted
+            font.pixelSize: 36
+            visible: true
         }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.min(implicitWidth, 460)
             text: root.title
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
@@ -48,6 +50,7 @@ Item {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.min(Math.max(implicitWidth, 240), 460)
             text: root.message
             color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.bodySize
@@ -57,7 +60,8 @@ Item {
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: root.explanation
+            width: Math.min(Math.max(implicitWidth, 240), 460)
+            text: root.details
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             horizontalAlignment: Text.AlignHCenter
@@ -65,12 +69,23 @@ Item {
             visible: text !== ""
         }
 
-        MichiButton {
+        Row {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: root.actionText
-            variant: "primary"
-            visible: text !== ""
-            onClicked: root.actionRequested()
+            spacing: MichiTheme.spacing.sm
+            visible: root.primaryActionText !== "" || root.secondaryActionText !== ""
+
+            MichiButton {
+                text: root.primaryActionText
+                visible: text !== ""
+                onClicked: root.primaryActionRequested()
+            }
+
+            MichiButton {
+                text: root.secondaryActionText
+                variant: "ghost"
+                visible: text !== ""
+                onClicked: root.secondaryActionRequested()
+            }
         }
     }
 }

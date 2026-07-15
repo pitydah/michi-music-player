@@ -1,103 +1,104 @@
-# Notification Bridge Contract
+# NotificationBridge Integration Contract
 
 ## Context Property
-`NotificationBridge` registered as `notification` context property.
-
-## Class Name
-`NotificationBridge` (`ui_qml_bridge/notification_bridge.py`)
-
-## Constructor Dependencies
-| Parameter | Type | Default |
-|-----------|------|---------|
-| `action_registry` | `ActionRegistry \| None` | `None` |
-| `job_bridge` | `JobBridge \| None` | `None` |
-| `notification_service` | `NotificationService \| None` | `None` |
-| `navigation_bridge` | `NavigationBridge \| None` | `None` |
-| `diagnostics_service` | `Any \| None` | `None` |
-| `parent` | `QObject \| None` | `None` |
+- `notificationBridge` → `NotificationBridge` instance
 
 ## Properties
-| Name | Type | Notify | Description |
-|------|------|--------|-------------|
-| `currentNotification` | `QVariant` | `notificationChanged` | Currently displayed notification dict or None |
-| `queueLength` | `int` | `notificationCountChanged` | Number of queued notifications |
-| `persistentNotifications` | `QVariantList` | `notificationChanged` | List of persistent (non-dismissable by timeout) notifications |
+| Property | Type | Notify Signal |
+|---|---|---|
+| `currentNotification` | `QVariant` (dict or None) | `notificationChanged` |
+| `queueLength` | `int` | `notificationCountChanged` |
+| `persistentNotifications` | `QVariantList` | `notificationChanged` |
+
+Notification dict schema: `{id: str, text: str, kind: str, timestamp: float, action: str, persistent: bool, progress: int, job_id: str, _dedup_key: str, _priority: int, _timeout_ms: int}`
 
 ## Slots
-| Name | Parameters | Return | Description |
-|------|-----------|--------|-------------|
-| `showMessage` | `text: str, kind: str="info", persistent: bool=None` | `dict` | Queue a text notification; persistent auto-true for errors |
-| `showAction` | `text: str, action: str, kind: str="info"` | `dict` | Queue an action notification (persistent, high priority) |
-| `showProgress` | `text: str, job_id: str, progress: int, kind: str="info"` | `dict` | Queue or update a progress notification |
-| `dismiss` | `notification_id: str=""` | `dict` | Dismiss current or specified notification |
-| `clear` | — | `void` | Clear all notifications, queue, dedup map, persistent map |
-| `executeCurrentAction` | — | `dict` | Execute the action attached to the current notification |
-| `executeNotificationAction` | `notification_id: str` | `dict` | Execute action on a specific notification |
-| `updateProgress` | `job_id: str, progress: float, text: str=""` | `dict` | Update progress on an active job notification |
-| `openJob` | `job_id: str` | `dict` | Navigate to job detail view |
-| `cancelJobById` | `job_id: str` | `dict` | Cancel a job by ID via JobBridge |
-| `retry` | `notification_id: str` | `dict` | Retry the action in a notification |
-| `retryJob` | `job_id: str` | `dict` | Retry a job via JobBridge |
-| `undoAction` | `undo_key: str` | `dict` | Execute undo for a given action key |
-| `showTrack` | `track_id: int, album_key: str=""` | `dict` | Navigate to album detail or execute track_open_album action |
-| `showDevice` | `device_id: str` | `dict` | Navigate to home_audio section |
-| `openDiagnostics` | — | `dict` | Navigate to diagnostics section |
-| `openSettings` | — | `dict` | Navigate to settings.general section |
-| `notificationScore` | — | `dict` | Return capability score (0-100) with sub-metrics |
+| Slot | Returns | Parameters |
+|---|---|---|
+| `showMessage` | `dict` | `text: str`, `kind: str = "info"` |
+| `showAction` | `dict` | `text: str`, `action: str`, `kind: str = "info"` |
+| `showProgress` | `dict` | `text: str`, `job_id: str`, `progress: int`, `kind: str = "info"` |
+| `dismiss` | (none) | none |
+| `clear` | (none) | none |
+| `executeCurrentAction` | `dict` | none |
+| `executeNotificationAction` | `dict` | `notification_id: str` |
+| `openJob` | `dict` | `job_id: str` |
+| `cancelJobById` | `dict` | `job_id: str` |
+| `retry` | `dict` | `notification_id: str` |
+| `retryJob` | `dict` | `job_id: str` |
+| `undoAction` | `dict` | `undo_key: str` |
+| `showTrack` | `dict` | `track_id: int`, `album_key: str = ""` |
+| `showDevice` | `dict` | `device_id: str` |
+| `openDiagnostics` | `dict` | none |
+| `openSettings` | `dict` | none |
+| `updateProgress` | `dict` | `job_id: str`, `progress: float`, `text: str = ""` |
+| `notificationScore` | `dict` | none |
+
+All slots returning `dict` include `ok: bool`. Error responses include `error` string.
 
 ## Signals
-| Name | Payload | Description |
-|------|---------|-------------|
-| `notificationChanged` | — | Current or persistent notification state changed |
-| `notificationCountChanged` | — | Queue length changed |
-| `actionExecuted` | `str action_id, dict result` | An action was executed from a notification |
+| Signal | Payload |
+|---|---|
+| `notificationChanged` | (none) |
+| `notificationCountChanged` | (none) |
+| `actionExecuted` | `action_id: str, result: dict` |
 
 ## Models Exposed
-None. Notifications are dict-based with fields: `id, text, kind, timestamp, action, persistent, progress, job_id`.
+None.
 
-## Error Handling
-- All public slots return `dict` with `ok: bool`
-- Error codes: `"NO_CURRENT_NOTIFICATION"`, `"NO_ACTION"`, `"NOT_FOUND"`, `"NO_NAVIGATION_TARGET"`, `"UNSUPPORTED"`, `"INVALID_TRACK"`
-- Action execution delegates to `_execute_action()` which falls through `action_registry`
-
-## Error Codes
-- `NO_CURRENT_NOTIFICATION` — no current notification to act on
-- `NO_ACTION` — notification has no action_id
-- `NOT_FOUND` — notification_id doesn't match any in queue/persistent
-- `UNSUPPORTED` — required bridge/service not available
-- `NO_ACTION_REGISTRY` — action_registry not injected
-- `NO_NAVIGATION_TARGET` — no navigation bridge or action fallback
+## Error Types/Codes
+- `"NO_CURRENT_NOTIFICATION"` — no current notification for action
+- `"NO_ACTION"` — notification has no action_id
+- `"NOT_FOUND"` — notification_id not found
+- `"INVALID_TRACK"` — track_id malformed
+- `"NO_NAVIGATION_TARGET"` — no bridge for openJob
+- `"UNSUPPORTED"` — job bridge missing for cancel/retry
+- `"NO_ACTION_REGISTRY"` — fallback for action execution
 
 ## States
-- `currentNotification` is `None` when idle, a dict when active
-- Notifications have `kind`: `"info"`, `"success"`, `"warning"`, `"error"`
-- Queue priority sorting: high priority first, then insertion order
+None exposed. Internal queue state managed via `_current`, `_queue`, `_persistent_map`.
 
-## Lifecycle
-- Created by `BridgeFactory.create_notification_bridge()` with action_registry + job_bridge
-- Subscribes to `NotificationService.on()` if provided (service notifications forwarded to bridge)
-- Internal `_timeout_timer` auto-advances non-persistent notifications after 5s
-- Queue auto-prunes at max 20 items; `_next()` pops highest-priority item
+## Lifecycle Expectations
+- `_next()` sorts queue by priority (descending), promotes highest to `_current`.
+- Non-persistent notifications auto-dismiss after `_DEFAULT_TIMEOUT_MS` (5000ms).
+- Persistent notifications (kind="error", showAction, showProgress) stay until explicitly dismissed.
+- Max queue length: 20; overflow discards from front.
+- Deduplication by `_dedup_key`: if same key exists, updates text/timestamp instead of creating duplicate.
 
-## Behavior When Service Is Null/Missing
-- All services optional; bridge works standalone
-- Without `notification_service`: bridge acts as standalone notification queue
-- Without `action_registry`: built-in action routing (openJob, cancelJob, undo, openTrack, openAlbum, openDevice, openDiagnostics, openSettings) still works
-- Without `job_bridge`: job-related actions return `"UNSUPPORTED"`
-- Without `navigation_bridge`: navigation falls back to action_registry
+## Behavior When Services Are Missing/Null
+- `_action_registry` None: `_execute_action` falls through to `NO_ACTION_REGISTRY` for unknown actions.
+- `_job_bridge` None: `openJob` falls back to `NavigationBridge`; `cancelJobById`/`retryJob` return `UNSUPPORTED`.
+- `_navigation_bridge` None: navigation actions fall back to `ActionRegistry`.
 
-## Integration
-- **JobService**: `openJob`, `cancelJobById`, `retryJob` delegate to `job_bridge`
-- **ActionRegistry**: `_execute_action` falls through to registry for unrecognized action IDs
-- **NavigationBridge**: Used for `openJob`, `showTrack`, `showDevice`, `openDiagnostics`, `openSettings`
-- **CapabilityBridge**: `has_notification_service` checked in wiring assertions
+## Destructive Actions and Confirmations
+None in bridge itself — destructive actions delegated via `ActionRegistry`.
 
 ## Cancellation Contract
-- `dismiss()` clears the current notification
-- `clear()` empties entire system
-- Progress updates use dedup key `progress:{job_id}`
-- Timeout timer stopped on `dismiss`/`clear`
+- `dismiss()` clears current notification, stops timeout timer, advances queue.
+- `clear()` empties entire queue and all maps.
 
-## Destructive Action Handling
-- `clear()` is destructive with no undo
-- `undoAction()` provides limited undo via `action_registry.execute("undo_<key>")`
+## Integration with JobService
+- `openJob(job_id)`: navigates to JobBridge (via `navigateToJob`).
+- `cancelJobById(job_id)`: calls `JobBridge.cancelJob(job_id)`.
+- `retryJob(job_id)`: calls `JobBridge.retryJob(job_id)`.
+- `updateProgress(job_id, progress, text)`: updates or creates progress notification deduplicated by `progress:{job_id}`.
+
+## Integration with ActionRegistry
+- `_execute_action(action_id)`: delegates unknown action IDs to `ActionRegistry.execute()`.
+- Action ID conventions: `"navigate_jobs"`, `"navigate_home_audio"`, `"navigate_diagnostics"`, `"navigate_settings"`, `"track_open_album"`.
+
+## Integration with NavigationBridge
+- `openJob` → `navigation_bridge.navigate("audio_lab.jobs")`
+- `showTrack` (with album) → `navigation_bridge.navigateWithParams("library.album_detail", ...)`
+- `showDevice` → `navigation_bridge.navigate("home_audio")`
+- `openDiagnostics` → `navigation_bridge.navigate("diagnostics")`
+- `openSettings` → `navigation_bridge.navigate("settings.general")`
+
+## Integration with PageStateStore
+NOT IMPLEMENTED.
+
+## Integration with CapabilityBridge
+NOT IMPLEMENTED.
+
+## Integration with AccessibilityBridge
+NOT IMPLEMENTED — basic `QAccessible` announcement attempted in `_announce()`.

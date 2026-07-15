@@ -6,292 +6,332 @@ import "../../components"
 
 Item {
     id: root
+    objectName: "settingsAboutPage"
 
-    property string state: "READY"
+    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
-    objectName: "settings.about"
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Acerca de"
-    Accessible.description: "Información de la aplicación, licencia y créditos"
+    property int pageState: AsyncStateView.READY
+    property string errorMessage: ""
+    property string errorDetails: ""
+    property string appVersion: "1.0.0"
+    property string osInfo: "Desconocido"
+    property string pythonVersion: "Desconocido"
+    property string qtVersion: "Desconocido"
+    property string gstreamerVersion: "Desconocido"
 
-    signal closeRequested()
-    signal checkUpdates()
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Acerca de Michi Music Player"
 
-    states: [
-        State { name: "LOADING"; PropertyChanges { target: loader; sourceComponent: loadingComp } },
-        State { name: "READY"; PropertyChanges { target: loader; sourceComponent: readyComp } },
-        State { name: "ERROR"; PropertyChanges { target: loader; sourceComponent: errorComp } }
-    ]
-    state: "READY"
+    function refresh() {
+        if (pageState === AsyncStateView.ERROR) return
+        _loadSystemInfo()
+    }
 
-    FocusScope {
-        id: focusScope
+    function _loadSystemInfo() {
+        if (!root.bridge) return
+        root.appVersion = root.bridge.getValue("about/version") || "1.0.0"
+        root.osInfo = root.bridge.getValue("about/os") || "Desconocido"
+        root.pythonVersion = root.bridge.getValue("about/python_version") || "Desconocido"
+        root.qtVersion = root.bridge.getValue("about/qt_version") || "Desconocido"
+        root.gstreamerVersion = root.bridge.getValue("about/gstreamer_version") || "Desconocido"
+    }
+
+    function _checkForUpdates() {
+        if (!root.bridge) return
+        root.bridge.setValue("updates/check_now", true)
+        if (root.notif) root.notif.showMessage("Buscando actualizaciones...", "info")
+    }
+
+    function _openUrl(url) {
+        if (!root.bridge) return
+        root.bridge.setValue("about/open_url", url)
+    }
+
+    Component.onCompleted: root.refresh()
+
+    AsyncStateView {
+        id: stateView
         anchors.fill: parent
-        activeFocusOnTab: true
+        state: root.pageState
+        title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
+        message: root.errorMessage
+        details: root.errorDetails
+        retryAvailable: root.pageState === AsyncStateView.ERROR
+        onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
-        Keys.onEscapePressed: root.closeRequested()
-
-        Loader {
-            id: loader
+        readyContent: ScrollView {
+            id: scrollView
             anchors.fill: parent
-        }
-    }
-
-    Component {
-        id: loadingComp
-        LoadingState {
-            objectName: "settings.about.loading"
-            title: "Cargando información"
-        }
-    }
-
-    Component {
-        id: errorComp
-        ErrorState {
-            objectName: "settings.about.error"
-            title: "Información no disponible"
-            retryText: "Reintentar"
-            onRetryRequested: root.state = "READY"
-        }
-    }
-
-    Component {
-        id: readyComp
-        Flickable {
-            anchors.fill: parent
-            contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            objectName: "settings.about.flickable"
+            objectName: "settings.about.scrollView"
+            Accessible.role: Accessible.ScrollArea
+            Accessible.name: "Acerca de"
 
-            Keys.onEscapePressed: root.closeRequested()
-
-            Column {
-                id: column
-                width: parent.width
+            ColumnLayout {
+                width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
+                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
                 spacing: MichiTheme.spacing.lg
                 topPadding: MichiTheme.spacing.xl
-                leftPadding: MichiTheme.spacing.xl
-                rightPadding: MichiTheme.spacing.xl
+                bottomPadding: MichiTheme.spacing.xl
 
-                Text {
-                    text: "Acerca de"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
-                    font.weight: MichiTheme.typography.weightBold
-                    Accessible.name: "Acerca de Michi"
+                PageHeader {
+                    title: "Acerca de"
+                    subtitle: "Información de Michi Music Player"
                 }
 
-                Rectangle {
-                    width: 80; height: 80; radius: MichiTheme.radiusXl
-                    color: MichiTheme.colors.accentSurface
-                    border.color: MichiTheme.colors.borderFocus
-                    border.width: 1
+                GlassCard {
+                    id: appInfoCard
+                    Layout.fillWidth: true
+                    title: ""
+                    interactive: false
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: "MM"
-                        color: MichiTheme.colors.accentBlue
-                        font.pixelSize: MichiTheme.typography.heroTitleSize
-                        font.weight: MichiTheme.typography.weightBold
-                        font.letterSpacing: 2.0
-                        opacity: 0.50
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.sm
+
+                        Label {
+                            text: "Michi Music Player"
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.pageTitleSize
+                            font.weight: MichiTheme.typography.weightBold
+                        }
+
+                        Label {
+                            text: "Versión " + root.appVersion
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.cardTitleSize
+                        }
+
+                        Label {
+                            text: "Reproductor de música premium para Linux/KDE con GStreamer, CoverFlow 3D y gestión avanzada de metadatos."
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                            topPadding: MichiTheme.spacing.sm
+                        }
+
+                        Label {
+                            text: "Stack: Python " + root.pythonVersion + " · PySide6 " + root.qtVersion + " · GStreamer " + root.gstreamerVersion
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.captionSize
+                            topPadding: MichiTheme.spacing.sm
+                        }
+
+                        Label {
+                            text: "Licencia: GPL-3.0-or-later (derivado de Miro Player)"
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.captionSize
+                        }
+
+                        Label {
+                            text: "Autor: Cristian · © 2026 Michi Music Player"
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.captionSize
+                        }
                     }
                 }
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.xs
+                GlassCard {
+                    id: linksCard
+                    Layout.fillWidth: true
+                    title: "Enlaces"
+                    interactive: false
 
-                    Text {
-                        text: "Michi Music Player"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                    }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
 
-                    Text {
-                        text: "Versión 2.5.0"
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                    }
+                        MichiButton {
+                            text: "Página principal"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://michi-music-player.org")
+                            Accessible.name: "Página principal de Michi"
+                        }
 
-                    Text {
-                        text: "Basado en Miro Player (GPL-3.0)"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.captionSize
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        MichiButton {
+                            text: "GitHub"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://github.com/pitydah/michi-music-player")
+                            Accessible.name: "Repositorio de GitHub"
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        MichiButton {
+                            text: "Reportar un problema"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/issues")
+                            Accessible.name: "Reportar un problema en GitHub"
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        MichiButton {
+                            text: "Ver NOTICE (créditos)"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/blob/main/NOTICE")
+                            Accessible.name: "Ver archivo NOTICE con créditos"
+                        }
                     }
                 }
 
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
+                GlassCard {
+                    id: updatesCard
+                    Layout.fillWidth: true
+                    title: "Actualizaciones"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
+
+                        MichiButton {
+                            text: "Buscar actualizaciones"
+                            variant: "primary"
+                            Layout.fillWidth: true
+                            onClicked: root._checkForUpdates()
+                            Accessible.name: "Buscar actualizaciones"
+                        }
+                    }
                 }
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                GlassCard {
+                    id: systemInfoCard
+                    Layout.fillWidth: true
+                    title: "Información del sistema"
+                    interactive: false
 
-                    Text {
-                        text: "Información del sistema"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    Repeater {
-                        model: [
-                            { label: "Sistema operativo", value: "Linux 6.x" },
-                            { label: "Arquitectura", value: "x86_64" },
-                            { label: "Qt", value: "6.7" },
-                            { label: "PySide6", value: "6.7.2" },
-                            { label: "GStreamer", value: "1.28" },
-                            { label: "Backend de audio", value: "GStreamer + MPD" }
-                        ]
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.sm
 
                         RowLayout {
-                            width: parent.width
-                            spacing: MichiTheme.spacing.md
-
-                            Text {
-                                text: modelData.label + ":"
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "Sistema operativo"
                                 color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.osInfo
+                                color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
                             }
+                        }
 
-                            Text {
-                                text: modelData.value
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "Python"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.pythonVersion
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
-                                font.weight: MichiTheme.typography.weightMedium
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "Qt / PySide6"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.qtVersion
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "GStreamer"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.gstreamerVersion
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
                             }
                         }
                     }
                 }
 
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
-                }
+                GlassCard {
+                    id: dependenciesCard
+                    Layout.fillWidth: true
+                    title: "Dependencias principales"
+                    interactive: false
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.xs
 
-                    Text {
-                        text: "Licencia"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
+                        Repeater {
+                            model: [
+                                "PySide6 — Qt 6 bindings para Python",
+                                "GStreamer 1.28 — Motor de audio",
+                                "SQLite 3 (WAL + FTS5) — Base de datos",
+                                "mutagen — Lectura/escritura de metadatos",
+                                "numpy + librosa — Análisis de audio",
+                                "shazamio — Reconocimiento musical",
+                                "PyAudio — Captura de audio en tiempo real",
+                                "requests — Cliente HTTP"
+                            ]
 
-                    Text {
-                        text: "GNU General Public License v3.0 o posterior"
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        wrapMode: Text.WordWrap
-                        width: parent.width
-                    }
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "Créditos"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    Text {
-                        text: "Desarrollado por pitydah\nBasado en Miro Player por C. H. y contribuyentes."
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        wrapMode: Text.WordWrap
-                        width: parent.width
-                        lineHeight: 1.5
-                    }
-                }
-
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "Enlaces"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.md
-
-                        Text {
-                            text: "Repositorio"
-                            color: MichiTheme.colors.accentBlue
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            Accessible.name: "Repositorio GitHub"
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: Qt.openUrlExternally("https://github.com/pitydah/michi-music-player")
+                            Label {
+                                text: "• " + modelData
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.captionSize
+                                topPadding: 2
                             }
                         }
-
-                        Item { Layout.fillWidth: true }
-
-                        MichiButton {
-                            id: updatesBtn
-                            objectName: "settings.about.checkUpdates"
-                            text: "Buscar actualizaciones"
-                            variant: "primary"
-                            Accessible.name: "Buscar actualizaciones"
-                            KeyNavigation.tab: closeBtn
-                            onClicked: root.checkUpdates()
-                        }
-                    }
-
-                    Text {
-                        text: "Documentación · Reportar un problema · Licencia"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.captionSize
                     }
                 }
 
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
-                }
-
-                Text {
-                    text: "© 2026 Michi Music Player. GPL-3.0-or-later."
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.captionSize
-                    horizontalAlignment: Text.AlignHCenter
-                    width: parent.width
-                }
-
-                MichiButton {
-                    id: closeBtn
-                    objectName: "settings.about.close"
-                    text: "Cerrar"
-                    variant: "ghost"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    Accessible.name: "Cerrar acerca de"
-                    KeyNavigation.tab: updatesBtn
-                    onClicked: root.closeRequested()
-                }
+                Item { Layout.fillHeight: true }
             }
         }
     }
+
+    Keys.onEscapePressed: root.closeRequested()
+
+    signal closeRequested()
 }

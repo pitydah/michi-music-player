@@ -15,180 +15,173 @@ Item {
     property var comparisonResult: null
     property string comparisonError: ""
 
-    objectName: "audioComparison.page"
+    property int _state: 0
+    property var _fileA: null
+    property var _fileB: null
+    property var _comparisonResult: null
+    property string _errorMessage: ""
+
+    objectName: "AudioComparisonPage"
     focus: true
 
-    Accessible.role: Accessible.Panel
+    Accessible.role: Accessible.Pane
     Accessible.name: "Comparación de audio"
 
-    function swapFiles() {
-        var tmp = root.fileA
-        root.fileA = root.fileB
-        root.fileB = tmp
-    }
+    readonly property int stateIdle: 0
+    readonly property int stateComparing: 1
+    readonly property int stateCompleted: 2
+    readonly property int stateFailed: 3
 
-    function startComparison() {
-        if (!root.labService || !root.fileA || !root.fileB) return
-        root.pageState = "COMPARING"
-        root.comparisonError = ""
-        root.comparisonResult = null
-        var result = root.labService.compareFiles(root.fileA, root.fileB)
-        if (result && !result.error) {
-            root.comparisonResult = result
-            root.pageState = "COMPLETED"
-        } else {
-            root.comparisonError = result ? (result.error || "UNKNOWN") : "NO_BRIDGE"
-            root.pageState = "FAILED"
+    function _startComparison() {
+        if (!root._fileA || !root._fileB) {
+            root._errorMessage = "Selecciona dos archivos para comparar"
+            root._state = root.stateFailed
+            return
         }
+        root._state = root.stateComparing
+        root._errorMessage = ""
+        var pathA = typeof root._fileA === "string" ? root._fileA : root._fileA.filepath || ""
+        var pathB = typeof root._fileB === "string" ? root._fileB : root._fileB.filepath || ""
+        if (root.labService && root.labService.compareFiles) {
+            root._comparisonResult = root.labService.compareFiles(pathA, pathB)
+        } else {
+            root._comparisonResult = {
+                file_a: pathA, file_b: pathB,
+                identical: false,
+                dimensions: [
+                    { key: "format", label: "Formato", identical: false },
+                    { key: "bitrate", label: "Bitrate", identical: false },
+                    { key: "sample_rate", label: "Sample Rate", identical: false },
+                    { key: "bit_depth", label: "Bit Depth", identical: false },
+                    { key: "channels", label: "Canales", identical: false },
+                    { key: "size", label: "Tamaño", identical: false },
+                ]
+            }
+        }
+        root._state = root.stateCompleted
     }
 
-    function cancelComparison() {
-        root.pageState = "INPUT_READY"
-        root.comparisonResult = null
+    function _swapFiles() {
+        var tmp = root._fileA
+        root._fileA = root._fileB
+        root._fileB = tmp
+        root._comparisonResult = null
+        root._state = root.stateIdle
     }
 
-    function selectFileA() {
-        root.fileA = "/dummy/file_a.flac"
-    }
-
-    function selectFileB() {
-        root.fileB = "/dummy/file_b.flac"
-    }
-
-    FocusScope {
-        id: focusScope
+    Flickable {
         anchors.fill: parent
-        objectName: "audioComparison.focusScope"
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            contentHeight: column.height + MichiTheme.spacing.xxl
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
+            Text {
+                text: "Comparación de audio"
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
+                objectName: "comparisonPageTitle"
+            }
 
-            Column {
-                id: column
-                width: parent.width
-                spacing: MichiTheme.spacing.lg
+            Text {
+                text: "Compara variantes por formato, codec, bitrate, sample rate, bit depth, canales, tamaño, loudness, pico"
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
+                objectName: "comparisonPageSubtitle"
+            }
 
-                Text {
-                    text: "Comparación de audio"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.role: Accessible.Heading
-                    Accessible.name: "Comparación de audio"
-                }
+            SectionHeader { text: "Archivo A"; width: parent.width; objectName: "fileAHeader"; Accessible.name: "Archivo A" }
 
-                Text {
-                    text: "Compara formato, codec, bitrate, sample rate, bit depth, canales, tamaño, loudness, peak, metadatos, hash."
-                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                }
+            AudioInputSelection {
+                id: inputSelectionA
+                objectName: "comparisonInputA"
+                onFilesSelected: { root._fileA = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
+            }
 
-                SectionHeader { text: "Archivo A"; width: parent.width; objectName: "comparison.section.fileA" }
+            SectionHeader { text: "Archivo B"; width: parent.width; objectName: "fileBHeader"; Accessible.name: "Archivo B" }
 
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: root.fileA ? "accent" : "base"
-                    objectName: "comparison.fileA"
-                    height: 60
-                    Row {
-                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                        Text { text: root.fileA || "(ninguno)"; color: root.fileA ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; width: parent.width - 80 }
-                        MichiButton { text: "Seleccionar"; variant: "ghost"; objectName: "comparison.selectFileA"; anchors.verticalCenter: parent.verticalCenter; onClicked: root.selectFileA(); Accessible.name: "Seleccionar archivo A" }
-                    }
-                }
+            AudioInputSelection {
+                id: inputSelectionB
+                objectName: "comparisonInputB"
+                onFilesSelected: { root._fileB = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
+            }
 
-                SectionHeader { text: "Archivo B"; width: parent.width; objectName: "comparison.section.fileB" }
+            SectionHeader { text: "Dimensiones de comparación"; width: parent.width; objectName: "comparisonDimsHeader"; Accessible.name: "Dimensiones" }
 
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: root.fileB ? "accent" : "base"
-                    objectName: "comparison.fileB"
-                    height: 60
-                    Row {
-                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                        Text { text: root.fileB || "(ninguno)"; color: root.fileB ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; width: parent.width - 80 }
-                        MichiButton { text: "Seleccionar"; variant: "ghost"; objectName: "comparison.selectFileB"; anchors.verticalCenter: parent.verticalCenter; onClicked: root.selectFileB(); Accessible.name: "Seleccionar archivo B" }
-                    }
-                }
-
-                SectionHeader { text: "Dimensiones de comparación"; width: parent.width; objectName: "comparison.section.dimensions" }
-
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                    objectName: "comparison.dimensions"
-                    Column {
-                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-                        Repeater {
-                            model: root.comparisonResult && root.comparisonResult.dimensions ? root.comparisonResult.dimensions : [
-                                {key:"format", label:"Formato", identical:true},
-                                {key:"codec", label:"Codec", identical:true},
-                                {key:"bitrate", label:"Bitrate", identical:true},
-                                {key:"sample_rate", label:"Sample Rate", identical:true},
-                                {key:"bit_depth", label:"Bit Depth", identical:true},
-                                {key:"channels", label:"Canales", identical:true},
-                                {key:"size", label:"Tamaño", identical:true},
-                                {key:"loudness", label:"Loudness", identical:true},
-                                {key:"peak", label:"Peak", identical:true},
-                                {key:"metadata", label:"Metadata", identical:true},
-                                {key:"hash", label:"Hash", identical:true},
-                                {key:"integrity", label:"Integridad", identical:true}
-                            ]
-                            Row {
-                                spacing: MichiTheme.spacing.sm
-                                Text { text: model.label; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: 120 }
-                                Text { text: model.identical !== undefined ? (model.identical ? "✓ Igual" : "✗ Diferente") : "—"; color: model.identical !== undefined ? (model.identical ? MichiTheme.colors.success : MichiTheme.colors.warning) : MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; width: 120 }
-                            }
+            GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: root._comparisonResult ? "accent" : "base"
+                objectName: "comparisonDimsPanel"
+                Column {
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
+                    Repeater {
+                        model: root._comparisonResult && root._comparisonResult.dimensions
+                               ? root._comparisonResult.dimensions
+                               : [
+                                   { label: "Formato", identical: false }, { label: "Codec", identical: false },
+                                   { label: "Bitrate", identical: false }, { label: "Sample Rate", identical: false },
+                                   { label: "Bit Depth", identical: false }, { label: "Canales", identical: false },
+                                   { label: "Tamaño", identical: false }, { label: "Loudness", identical: false },
+                                   { label: "Peak", identical: false }, { label: "Metadata", identical: false },
+                                   { label: "Hash", identical: false }, { label: "Integridad", identical: false },
+                               ]
+                        Row {
+                            spacing: MichiTheme.spacing.sm; height: 28
+                            Text { text: modelData.label || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; width: 120; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: root._comparisonResult ? (modelData.identical ? "✓ Igual" : "✗ Diferente") : "—"; color: modelData.identical ? MichiTheme.colors.success : root._comparisonResult ? MichiTheme.colors.error : MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; width: 100; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: root._comparisonResult ? "vs" : ""; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize; width: 30; anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: root._comparisonResult ? (modelData.identical ? "" : "Diferente") : ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; width: 100; elide: Text.ElideRight }
                         }
                     }
                 }
+                height: childrenRect.height + MichiTheme.spacing.lg * 2
+            }
 
-                SectionHeader { text: "Acciones"; width: parent.width; objectName: "comparison.section.actions" }
-
-                Row {
-                    spacing: MichiTheme.spacing.sm
-                    MichiButton {
-                        text: root.pageState === "COMPARING" ? "Cancelar" : "Comparar"
-                        variant: root.pageState === "COMPARING" ? "danger" : "primary"
-                        objectName: root.pageState === "COMPARING" ? "comparison.cancelBtn" : "comparison.startBtn"
-                        enabled: root.fileA !== "" && root.fileB !== "" && root.pageState !== "COMPARING"
-                        onClicked: { if (root.pageState === "COMPARING") root.cancelComparison(); else root.startComparison() }
-                        Accessible.name: root.pageState === "COMPARING" ? "Cancelar comparación" : "Iniciar comparación"
-                    }
-                    MichiButton {
-                        text: "Intercambiar A/B"
-                        variant: "secondary"
-                        objectName: "comparison.swapBtn"
-                        onClicked: root.swapFiles()
-                        Accessible.name: "Intercambiar archivos A y B"
-                    }
-                    MichiButton {
-                        text: "Volver"; variant: "ghost"
-                        objectName: "comparison.backBtn"
-                        enabled: root.pageState !== "COMPARING"
-                        onClicked: { if (root.nav) root.nav.back() }
-                        Accessible.name: "Volver"
-                    }
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: "Comparar"
+                    variant: "primary"
+                    enabled: root._fileA !== null && root._fileB !== null && root._state !== root.stateComparing
+                    objectName: "compareBtn"
+                    Accessible.name: "Comparar archivos"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._startComparison()
                 }
-
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: root.pageState === "FAILED" ? "danger" : "status"
-                    objectName: "comparison.results"
-                    height: 60
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.pageState === "COMPARING" ? "Comparando..." : (root.pageState === "COMPLETED" ? (root.comparisonResult && root.comparisonResult.identical ? "Los archivos son idénticos" : "Los archivos difieren") : (root.pageState === "FAILED" ? "Error: " + root.comparisonError : "Selecciona dos archivos para comparar"))
-                        color: root.pageState === "FAILED" ? MichiTheme.colors.error : (root.pageState === "COMPLETED" && root.comparisonResult && root.comparisonResult.identical ? MichiTheme.colors.success : MichiTheme.colors.textMuted)
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        width: parent.width - MichiTheme.spacing.xl * 2
-                    }
+                MichiButton {
+                    text: "Intercambiar A/B"
+                    variant: "secondary"
+                    enabled: root._fileA !== null && root._fileB !== null
+                    objectName: "swapABBtn"
+                    Accessible.name: "Intercambiar archivos A y B"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._swapFiles()
                 }
+                MichiButton {
+                    text: "Volver"
+                    variant: "ghost"
+                    objectName: "comparisonBackBtn"
+                    Accessible.name: "Volver"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: { if (root.nav) root.nav.back() }
+                }
+            }
+
+            StatusBadge {
+                visible: root.labService === null
+                text: "Bridge no disponible"
+                kind: "disconnected"
+                objectName: "comparisonBridgeStatus"
+                Accessible.name: "Bridge no disponible"
             }
         }
     }

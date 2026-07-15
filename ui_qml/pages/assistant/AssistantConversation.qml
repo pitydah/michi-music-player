@@ -1,119 +1,152 @@
 import QtQuick
 import QtQuick.Controls
 import "../../theme"
-import "../../materials"
 
 Item {
     id: root
 
-    property var model: []
+    property var chatHistory: []
     property bool aiThinking: false
-    property bool atBottom: true
+    property alias flickable: flickable
 
     signal requestScrollToBottom()
 
+    implicitHeight: 300
+    width: parent ? parent.width : 400
+
     Accessible.role: Accessible.List
-    Accessible.name: "Conversación con Michi AI"
+    Accessible.name: "Historial de conversación"
 
-    onModelChanged: {
-        if (atBottom) {
-            Qt.callLater(scrollToBottom)
-        }
-    }
-
-    onAiThinkingChanged: {
-        if (aiThinking) {
-            Qt.callLater(scrollToBottom)
-        }
-    }
-
-    function scrollToBottom() {
-        listView.positionViewAtEnd()
-    }
-
-    function appendMessage(role, text) {
-        var msgs = root.model
-        msgs.push({ role: role, text: text })
-        root.model = msgs
-    }
-
-    ListView {
-        id: listView
+    Flickable {
+        id: flickable
         anchors.fill: parent
+        contentHeight: column.height + MichiTheme.spacing.md
         clip: true
-        spacing: MichiTheme.spacing.md
         boundsBehavior: Flickable.StopAtBounds
-        objectName: "assistant.conversation.list"
+        activeFocusOnTab: true
+        objectName: "conversationFlickable"
+        Accessible.name: "Historial de mensajes"
 
-        model: root.model
-
-        delegate: ChatBubble {
-            width: listView.width
-            messageText: modelData.text || ""
-            role: modelData.role || "assistant"
-            objectName: "assistant.conversation.bubble." + index
-        }
-
-        onContentYChanged: {
-            root.atBottom = contentY >= contentHeight - height - 40
-        }
-
-        footer: Item {
+        Column {
+            id: column
             width: parent.width
-            height: root.aiThinking ? 48 : 0
-            clip: true
+            spacing: MichiTheme.spacing.md
+            padding: MichiTheme.spacing.sm
 
-            Rectangle {
-                id: thinkingIndicator
-                anchors.centerIn: parent
-                width: 120
-                height: 32
-                radius: MichiTheme.radiusPill
-                color: MichiTheme.colors.surfaceCard
-                border.width: MichiTheme.borderWidth
-                border.color: MichiTheme.colors.borderSubtle
-                visible: root.aiThinking
+            Repeater {
+                id: messageRepeater
+                model: root.chatHistory
 
-                Row {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.sm
+                Rectangle {
+                    width: parent.width - MichiTheme.spacing.md
+                    radius: MichiTheme.radiusSm
+                    color: model.role === "user" ? MichiTheme.colors.accentSelection : MichiTheme.colors.surfaceCard
+                    border.color: model.role === "user" ? MichiTheme.colors.borderActive : MichiTheme.colors.borderSubtle
+                    border.width: MichiTheme.borderWidth
+                    objectName: "message_" + index
+                    Accessible.name: (model.role === "user" ? "Tú" : "Michi AI") + ": " + (model.text || "")
+                    Accessible.role: Accessible.ListItem
 
-                    Repeater {
-                        model: 3
-                        Rectangle {
-                            width: 6
-                            height: 6
-                            radius: MichiTheme.radiusXs
-                            color: MichiTheme.colors.accentBlue
-                            opacity: 0.6
+                    anchors.left: model.role === "user" ? undefined : parent.left
+                    anchors.right: model.role === "user" ? parent.right : undefined
+                    anchors.leftMargin: model.role === "user" ? MichiTheme.spacing.xl : 0
+                    anchors.rightMargin: model.role === "assistant" ? MichiTheme.spacing.xl : 0
 
-                            SequentialAnimation on opacity {
-                                running: root.aiThinking
-                                loops: Animation.Infinite
-                                PropertyAnimation { from: 0.3; to: 1.0; duration: 400 }
-                                PropertyAnimation { from: 1.0; to: 0.3; duration: 400 }
-                                PauseAnimation { duration: index * 200 }
+                    implicitHeight: messageContent.height + MichiTheme.spacing.md
+
+                    Column {
+                        id: messageContent
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.sm
+                        spacing: MichiTheme.spacing.xs
+
+                        Text {
+                            text: model.role === "user" ? "Tú" : "Michi AI"
+                            color: model.role === "user" ? MichiTheme.colors.accentBlue : MichiTheme.colors.experimental
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            font.weight: MichiTheme.typography.weightSemiBold
+                        }
+
+                        Text {
+                            text: model.text || ""
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                            lineHeight: 1.4
+                            textFormat: Text.RichText
+                            onLinkActivated: function(link) {
+                                Qt.openUrlExternally(link)
                             }
                         }
                     }
 
-                    Text {
-                        text: "Pensando..."
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        font.weight: MichiTheme.typography.weightMedium
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.IBeamCursor
+                    }
+                }
+            }
+
+            Item {
+                id: thinkingIndicator
+                width: parent.width
+                implicitHeight: 36
+                visible: root.aiThinking
+
+                Rectangle {
+                    width: 120
+                    height: 32
+                    radius: MichiTheme.radiusPill
+                    color: MichiTheme.colors.surfaceCard
+                    border.color: MichiTheme.colors.borderSubtle
+                    border.width: MichiTheme.borderWidth
+
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: MichiTheme.spacing.xs
+
+                        Repeater {
+                            model: 3
+                            Rectangle {
+                                width: 6
+                                height: 6
+                                radius: 3
+                                color: MichiTheme.colors.experimental
+
+                                SequentialAnimation on opacity {
+                                    loops: Animation.Infinite
+                                    running: root.aiThinking
+                                    PauseAnimation { duration: index * 200 }
+                                    NumberAnimation { from: 0.3; to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
+                                    NumberAnimation { from: 1.0; to: 0.3; duration: 400; easing.type: Easing.InOutQuad }
+                                    PauseAnimation { duration: (2 - index) * 200 }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    ScrollBar {
-        id: scrollBar
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
+    ScrollBar.vertical: ScrollBar {
+        policy: ScrollBar.AsNeeded
         width: 6
-        policy: listView.contentHeight > listView.height ? ScrollBar.AlwaysOn : ScrollBar.Off
+    }
+
+    onRequestScrollToBottom: {
+        var timer = Qt.createQmlObject('import QtQuick; Timer { interval: 50; repeat: false; onTriggered: parent.flickable.contentY = parent.flickable.contentHeight - parent.flickable.height }', root)
+        timer.start()
+    }
+
+    Connections {
+        target: root
+        function onChatHistoryChanged() {
+            if (root.chatHistory.length > 0) {
+                root.requestScrollToBottom()
+            }
+        }
     }
 }

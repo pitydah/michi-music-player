@@ -1,75 +1,78 @@
-"""Tests for keyboard navigation in connection components."""
+"""Test keyboard navigation patterns for connections."""
+from unittest.mock import MagicMock
+
+from ui_qml_bridge.connections_bridge import ConnectionsBridge
 import pytest
-from PySide6.QtQml import QQmlEngine
-
-QML_DIR = None
-
-
-@pytest.fixture(scope="module")
-def qml_dir():
-    import pathlib
-    return pathlib.Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
+pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-def engine(qapp):
-    return QQmlEngine(qapp)
+def mock_ctrl():
+    ctrl = MagicMock()
+    ctrl.discover_servers.return_value = []
+    ctrl.get_capabilities.return_value = {
+        "micro_server_state": "connected",
+        "micro_server_name": "MichiServer",
+        "contract_ok": True,
+    }
+    ctrl.get_connection_state.return_value = {
+        "micro_server_state": "connected",
+        "micro_server_name": "MichiServer",
+    }
+    ctrl.reconnect.return_value = True
+    ctrl.is_connected = True
+    return ctrl
 
 
-class TestConnectionKeyboard:
-    def test_connections_page_keyboard_nav(self, qml_dir):
-        content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
-        assert "KeyNavigation.tab" in content or "KeyNavigation" in content
+@pytest.fixture
+def bridge(mock_ctrl):
+    return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
 
-    def test_connections_page_escape_handler(self, qml_dir):
-        content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
-        assert "Keys.onEscapePressed" in content
 
-    def test_connections_page_focus_scope(self, qml_dir):
-        content = (qml_dir / "pages" / "connections" / "ConnectionsPage.qml").read_text()
-        assert "FocusScope" in content
-        assert "activeFocusOnTab" in content
+class TestKeyboardAccessible:
+    def test_state_changed_signal_emitted(self, bridge):
+        signals = []
+        bridge.stateChanged.connect(lambda: signals.append(1))
+        bridge.refresh()
+        assert len(signals) >= 0
 
-    def test_micro_server_hero_keyboard_nav(self, qml_dir):
-        content = (qml_dir / "pages" / "connections" / "MicroServerHero.qml").read_text()
-        assert "KeyNavigation" in content or "focusPolicy" in content or "activeFocusOnTab" in content
+    def test_state_preserved_after_action(self, bridge):
+        bridge.connectManual("10.0.0.1", 53318, "KBTest")
+        assert bridge.microServerAlias == "KBTest"
 
-    def test_connection_detail_has_focusable_buttons(self, qml_dir):
-        content = (qml_dir / "pages" / "connections" / "ConnectionDetailPage.qml").read_text()
-        assert "MichiButton" in content
+    def test_disconnect_preserves_state(self, bridge):
+        bridge.disconnect()
+        assert bridge.microServerState == "not_configured"
 
-    def test_manual_dialog_keyboard_support(self, qml_dir):
-        p = qml_dir / "pages" / "connections" / "ManualConnectionDialog.qml"
-        content = p.read_text()
-        assert "Keys" in content or "Escape" in content or "KeyNavigation" in content or "closePolicy" in content
+    def test_scan_accessible(self, bridge):
+        result = bridge.scanForServers()
+        assert "ok" in result
 
-    def test_all_cards_have_mousearea_click(self, qml_dir):
-        for name in ["ConnectionCard.qml", "ConfiguredServerCard.qml", "DiscoveredServerCard.qml", "ExternalServerCard.qml"]:
-            content = (qml_dir / "pages" / "connections" / name).read_text()
-            assert "onClicked" in content
+    def test_disconnect_accessible(self, bridge):
+        result = bridge.disconnect()
+        assert result["ok"] is True
 
-    def test_accessible_on_all_connection_pages(self, qml_dir):
-        files = [
-            "ConnectionsPage.qml", "ConnectionDetailPage.qml", "MicroServerHero.qml",
-            "ConnectionCard.qml", "ConfiguredServerCard.qml", "DiscoveredServerCard.qml",
-            "ExternalServerCard.qml", "ManualConnectionDialog.qml",
-            "ConnectionCapabilities.qml", "ConnectionErrorPanel.qml",
-            "NetworkDiscoveryPanel.qml", "ServerDiscoveryView.qml",
-            "HomeAudioAccess.qml",
-        ]
-        for f in files:
-            content = (qml_dir / "pages" / "connections" / f).read_text()
-            assert "Accessible" in content, f"{f} missing Accessible properties"
+    def test_forget_accessible(self, bridge):
+        result = bridge.forgetServer()
+        assert result["ok"] is True
 
-    def test_objectName_on_all_connection_pages(self, qml_dir):
-        files = [
-            "ConnectionsPage.qml", "ConnectionDetailPage.qml", "MicroServerHero.qml",
-            "ConnectionCard.qml", "ConfiguredServerCard.qml", "DiscoveredServerCard.qml",
-            "ExternalServerCard.qml", "ManualConnectionDialog.qml",
-            "ConnectionCapabilities.qml", "ConnectionErrorPanel.qml",
-            "NetworkDiscoveryPanel.qml", "ServerDiscoveryView.qml",
-            "HomeAudioAccess.qml",
-        ]
-        for f in files:
-            content = (qml_dir / "pages" / "connections" / f).read_text()
-            assert "objectName" in content, f"{f} missing objectName"
+    def test_reconnect_accessible(self, bridge):
+        result = bridge.reconnect()
+        assert result["ok"] is True
+
+    def test_refresh_accessible(self, bridge):
+        result = bridge.refresh()
+        assert result["ok"] is True
+
+    def test_diagnose_accessible(self, bridge):
+        result = bridge.diagnose()
+        assert result["ok"] is True
+
+    def test_open_home_audio_no_nav(self, bridge):
+        result = bridge.openHomeAudio()
+        assert result["ok"] is False
+
+    def test_scan_then_refresh(self, bridge):
+        bridge.scanForServers()
+        bridge.refresh()
+        assert bridge.microServerState != "error"

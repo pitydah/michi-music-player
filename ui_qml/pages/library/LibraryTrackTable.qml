@@ -12,11 +12,30 @@ Item {
     property var notif: null
     property var actionRegistry: null
     property var selectionController: null
+    property bool _fetchingMore: false
     property bool _shiftPressed: false
     property int _lastClickedIndex: -1
 
     signal trackPlayRequested(int trackId)
-    signal trackContextMenuRequested(int trackId, int x, int y)
+    signal trackContextMenuRequested(int trackId, string title, string artist, string album)
+
+    function getTrackId(index) {
+        if (!root.trackModel) return 0
+        var idx = root.trackModel.index(index, 0)
+        var role = root.trackModel.TrackIdRole || 256
+        return root.trackModel.data(idx, role) || 0
+    }
+
+    function getTrackData(index, roleName) {
+        if (!root.trackModel || !root.trackModel.roleNames) return ""
+        var roleMap = root.trackModel.roleNames()
+        var role = 256
+        for (var r in roleMap) {
+            if (roleMap[r] === roleName) { role = parseInt(r); break }
+        }
+        var idx = root.trackModel.index(index, 0)
+        return root.trackModel.data(idx, role) || ""
+    }
 
     property bool _loading: root.trackModel ? !root.trackModel.initialized : true
     property bool _empty: root.trackModel && root.trackModel.initialized && root.trackModel.count === 0
@@ -86,24 +105,34 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             cacheBuffer: 200
             focus: true
-            visible: !root._loading && !root._error
-            objectName: "library.trackList"
             keyNavigationWraps: false
 
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Shift) root._shiftPressed = true
                 if (event.key === Qt.Key_Escape) {
+                    root._selectedIds = []
                     if (root.selectionController) root.selectionController.clear()
+                    updateSelectionBar()
                 }
                 if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
                     selectAll()
                 }
+                if (event.key === Qt.Key_Down) {
+                    incrementCurrentIndex()
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Up) {
+                    decrementCurrentIndex()
+                    event.accepted = true
+                }
                 if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    if (root.trackModel && root.selectionController && root.selectionController.count > 0) {
-                        var first = root.selectionController.selectedIds[0]
+                    var curIdx = listView.currentIndex
+                    if (curIdx >= 0) {
+                        var tid = getTrackId(curIdx)
                         if (root.bridge && root.bridge.playTrackById)
-                            root.bridge.playTrackById(first)
+                            root.bridge.playTrackById(tid)
                     }
+                    event.accepted = true
                 }
             }
 
@@ -137,7 +166,7 @@ Item {
                 trackFavorite: model.favorite || false
                 trackMissing: model.missing || false
                 trackQuality: model.bitDepth || model.bitrate || 0
-                isSelected: root.selectionController ? root.selectionController.contains(model.trackId || 0) : false
+                isSelected: root._selectedIds.indexOf(model.trackId || 0) !== -1
                 isShiftPressed: root._shiftPressed
                 lastClickedIndex: root._lastClickedIndex
                 rowIndex: index
@@ -153,18 +182,21 @@ Item {
                 }
 
                 onRightClicked: function(mx, my) {
-                    if (root.selectionController) {
-                        root.selectionController.replace([model.trackId || 0])
-                    }
-                    contextMenu.x = mx; contextMenu.y = my
-                    contextMenu.open()
+                    root._selectedIds = [model.trackId || 0]
+                    updateSelectionBar()
+                    root.trackContextMenuRequested(model.trackId || 0, model.title || "", model.artist || "", model.album || "")
                 }
 
                 onSelectionToggled: function(id, ctrl, shift) {
                     if (!root.selectionController) return
                     if (ctrl && shift) {
-                        var visibleIds = root.trackModel ? root.trackModel.visibleIds() : []
-                        root.selectionController.selectRangeByRows(root._lastClickedIndex, index, visibleIds)
+                        var start = Math.min(root._lastClickedIndex, index)
+                        var end = Math.max(root._lastClickedIndex, index)
+                        for (var i = start; i <= end; i++) {
+                            var tid = getTrackId(i)
+                            if (root._selectedIds.indexOf(tid) === -1)
+                                root._selectedIds.push(tid)
+                        }
                     } else if (ctrl) {
                         root.selectionController.toggle(id)
                     } else {
@@ -216,23 +248,29 @@ Item {
         }
     }
 
-    LibraryTrackContextMenu {
-        id: contextMenu
-        bridge: root.bridge
-        selectionController: root.selectionController
-        trackModel: root.trackModel
-        objectName: "library.trackContextMenu"
+    function selectAll() {
+        root._selectedIds = []
+        if (root.trackModel) {
+            for (var i = 0; i < root.trackModel.count; i++) {
+                var tid = getTrackId(i)
+                if (tid > 0) root._selectedIds.push(tid)
+            }
+        }
+        updateSelectionBar()
     }
 
-    function selectAll() {
-        if (root.selectionController && root.trackModel) {
-            var ids = root.trackModel.visibleIds()
-            root.selectionController.selectAllLoaded(ids)
+    function updateSelectionBar() {
+        if (typeof selectionBar !== "undefined" && selectionBar) {
+            selectionBar.selectedCount = root._selectedIds.length
+            selectionBar.selectedIds = root._selectedIds
+            selectionBar.visible = root._selectedIds.length > 0
         }
     }
 
     function clearSelection() {
-        if (root.selectionController) root.selectionController.clear()
+        root._selectedIds = []
+        if (typeof selectionBar !== "undefined" && selectionBar)
+            selectionBar.visible = false
     }
 
     function formatDuration(secs) {

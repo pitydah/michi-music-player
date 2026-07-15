@@ -1,153 +1,188 @@
-"""Test device pairing flow."""
-from __future__ import annotations
-
+"""Test pairing flow: discover → pair → trust."""
 from unittest.mock import MagicMock
 
 import pytest
 
-from core.device_sync_service import DeviceSyncService, DeviceIdentity, DeviceProtocol
+from core.device_sync_service import (
+    DeviceSyncService,
+    DeviceIdentity,
+    DeviceProtocol,
+)
 from ui_qml_bridge.devices_bridge import DevicesBridge
+
 
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-def svc():
+def temp_music(tmp_path):
+    music = tmp_path / "Music"
+    music.mkdir()
+    (music / "track.flac").write_bytes(b"fLaC" + b"\x00" * 2000)
+    (music / "track.mp3").write_bytes(b"\xff\xfb" + b"\x00" * 2000)
+    return tmp_path
+
+
+@pytest.fixture
+def dev_svc():
     return DeviceSyncService()
 
 
 @pytest.fixture
-def bridge(svc):
+def mock_sync_mgr():
     mgr = MagicMock()
     mgr.start.return_value = True
     mgr.stop.return_value = True
-    mgr.is_active = True
-    mgr.get_all_peers.return_value = [
-        {"alias": "Android Phone", "device": "android", "ip": "192.168.1.50", "port": 53318},
-        {"alias": "HiBy R6", "device": "dedicated", "ip": "192.168.1.51", "port": 53318},
-    ]
+    mgr.get_all_peers.return_value = []
     mgr.get_paired_devices.return_value = []
-    return DevicesBridge(sync_manager=mgr, device_sync_service=svc)
+    mgr.is_active = MagicMock(return_value=False)
+    return mgr
 
 
-class TestPairingDiscovery:
-    def test_peers_available(self, bridge):
-        bridge.refresh()
-        assert len(bridge.peers) == 2
+@pytest.fixture
+def bridge(dev_svc, mock_sync_mgr):
+    return DevicesBridge(
+        sync_manager=mock_sync_mgr,
+        device_sync_service=dev_svc,
+    )
 
-    def test_discover_empty(self, bridge, svc):
+
+class TestPairingFlow:
+    """Test the complete pairing flow: discover → pair → trust."""
+
+    def test_discover_devices_populates(self, bridge, dev_svc, temp_music):
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.USB_MASS_STORAGE,
+            vendor="Test", model="Player", serial="disc1",
+            mount_point=str(temp_music),
+        )
+        dev_svc._discovered[f"{identity.protocol.value}:{identity.serial}"] = identity
         result = bridge.discoverDevices()
         assert result["ok"] is True
 
-    def test_discover_with_devices(self, bridge, svc, tmp_path):
-        music = tmp_path / "Music"
-        music.mkdir()
-        (music / "track.flac").write_bytes(b"fLaC" + b"\x00" * 100)
-        identity = DeviceIdentity(
-            protocol=DeviceProtocol.USB_MASS_STORAGE,
-            vendor="SanDisk", model="Clip", serial="disc1",
-            mount_point=str(tmp_path),
-        )
-        key = f"{identity.protocol.value}:{identity.serial}"
-        svc._discovered[key] = identity
+    def test_discover_empty(self, bridge):
         result = bridge.discoverDevices()
         assert result["ok"] is True
-        assert result["count"] >= 1
 
-    def test_identify_device(self, svc, tmp_path):
-        identity = DeviceIdentity(
-            protocol=DeviceProtocol.USB_MASS_STORAGE,
-            vendor="FiiO", model="M11", serial="id1",
-            mount_point=str(tmp_path),
-        )
-        key = f"{identity.protocol.value}:{identity.serial}"
-        svc._discovered[key] = identity
-        result = svc.identify(str(tmp_path))
-        assert result is not None
-        assert result.vendor == "FiiO"
-
-    def test_identify_unknown(self, svc):
-        assert svc.identify("/nonexistent") is None
-
-
-class TestPairingAction:
-    def test_pair_device(self, bridge, svc, tmp_path):
+    def test_pair_device(self, bridge, dev_svc, temp_music):
         identity = DeviceIdentity(
             protocol=DeviceProtocol.USB_MASS_STORAGE,
             vendor="Test", model="Player", serial="pair1",
-            mount_point=str(tmp_path),
+            mount_point=str(temp_music),
         )
-        svc._discovered[f"{identity.protocol.value}:{identity.serial}"] = identity
-        result = bridge.pairDevice(str(tmp_path))
+        dev_svc._discovered[f"{identity.protocol.value}:{identity.serial}"] = identity
+        result = bridge.pairDevice(str(temp_music))
         assert result["ok"] is True
 
-    def test_pair_not_found(self, bridge):
+    def test_pair_device_not_found(self, bridge):
         result = bridge.pairDevice("/nonexistent")
         assert result["ok"] is False
 
-    def test_pair_no_service(self):
-        b = DevicesBridge()
-        result = b.pairDevice("/media/test")
-        assert result["ok"] is False
-
-    def test_pair_duplicate(self, svc):
+    def test_pair_device_duplicate(self, dev_svc):
         identity = DeviceIdentity(
             protocol=DeviceProtocol.USB_MASS_STORAGE,
-            vendor="Test", model="Player", serial="dup",
-            mount_point="/media/dup",
+            vendor="Test", model="Device", serial="dup",
+            mount_point="/media/test",
         )
-        svc.pair(identity)
-        result = svc.pair(identity)
+        dev_svc.pair(identity)
+        result = dev_svc.pair(identity)
         assert result["ok"] is False
         assert result["error"] == "ALREADY_PAIRED"
 
-    def test_unpair_paired_device(self, bridge, svc, tmp_path):
+    def test_unpair_device(self, bridge, dev_svc, temp_music):
         identity = DeviceIdentity(
             protocol=DeviceProtocol.USB_MASS_STORAGE,
             vendor="Test", model="Player", serial="unpair1",
-            mount_point=str(tmp_path),
+            mount_point=str(temp_music),
         )
         key = f"{identity.protocol.value}:{identity.serial}"
-        svc.pair(identity)
+        dev_svc.pair(identity)
         result = bridge.unpairDevice(key)
         assert result["ok"] is True
 
+    def test_unpair_not_paired(self, bridge):
+        result = bridge.unpairDevice("nonexistent")
+        assert result["ok"] is False
 
-class TestQRCode:
-    def test_generate_qr(self, bridge):
-        qr = bridge.generateQRCode()
-        assert qr.startswith("michi://pair/")
-        assert len(qr) > len("michi://pair/")
-
-    def test_qr_data_property(self, bridge):
-        qr = bridge.generateQRCode()
-        assert bridge.qrCodeData == qr
-
-    def test_qr_generates_unique(self, bridge):
-        qr1 = bridge.generateQRCode()
-        qr2 = bridge.generateQRCode()
-        assert qr1 != qr2
-
-    def test_qr_initial_empty(self):
-        b = DevicesBridge()
-        assert b.qrCodeData == ""
-
-
-class TestManualConnection:
-    def test_connect_to_peer_ip(self, bridge):
-        mgr = bridge._sync_mgr
-        mgr.connect.return_value = {"ok": True}
-        result = bridge.connectToPeer("192.168.1.50", 53318)
+    def test_trust_device(self, bridge, dev_svc, temp_music):
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.GENERIC_DEDICATED,
+            vendor="HiBy", model="R6", serial="trust1",
+            mount_point=str(temp_music),
+        )
+        key = f"{identity.protocol.value}:{identity.serial}"
+        dev_svc.pair(identity)
+        result = bridge.trustDevice(key)
         assert result["ok"] is True
-        mgr.connect.assert_called_once_with("192.168.1.50", 53318)
 
-    def test_connect_no_manager(self):
-        b = DevicesBridge()
-        result = b.connectToPeer("192.168.1.50", 53318)
+    def test_untrust_device(self, bridge, dev_svc, temp_music):
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.GENERIC_DEDICATED,
+            vendor="HiBy", model="R6", serial="untrust1",
+            mount_point=str(temp_music),
+        )
+        key = f"{identity.protocol.value}:{identity.serial}"
+        dev_svc.pair(identity)
+        dev_svc.trust(key)
+        result = bridge.untrustDevice(key)
+        assert result["ok"] is True
+
+    def test_trust_not_paired(self, bridge):
+        result = bridge.trustDevice("nonexistent")
         assert result["ok"] is False
 
-    def test_connect_invalid_port(self, bridge):
-        mgr = bridge._sync_mgr
-        mgr.connect.return_value = {"ok": False, "error": "Connection refused"}
-        result = bridge.connectToPeer("192.168.1.50", 0)
-        assert result["ok"] is False
+    def test_authorize_device(self, bridge, dev_svc, temp_music):
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.ANDROID_MTP,
+            vendor="Android", model="Phone", serial="auth1",
+            mount_point=str(temp_music),
+        )
+        key = f"{identity.protocol.value}:{identity.serial}"
+        dev_svc.pair(identity)
+        result = bridge.authorizeDevice(key)
+        assert result["ok"] is True
+
+    def test_unauthorize_device(self, bridge, dev_svc, temp_music):
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.ANDROID_MTP,
+            vendor="Android", model="Phone", serial="unauth1",
+            mount_point=str(temp_music),
+        )
+        key = f"{identity.protocol.value}:{identity.serial}"
+        dev_svc.pair(identity)
+        dev_svc.authorize(key)
+        result = bridge.unauthorizeDevice(key)
+        assert result["ok"] is True
+
+    def test_get_paired_after_pair(self, bridge, dev_svc, temp_music):
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.USB_MASS_STORAGE,
+            vendor="Test", model="Device", serial="list_pair",
+            mount_point=str(temp_music),
+        )
+        dev_svc.pair(identity)
+        paired = dev_svc.get_paired()
+        assert len(paired) >= 1
+        assert any(p.get("vendor") == "Test" for p in paired)
+
+    def test_pairing_round_trip(self, bridge, dev_svc, temp_music):
+        """Full round-trip: discover → pair → trust → unauthorize → unpair."""
+        identity = DeviceIdentity(
+            protocol=DeviceProtocol.ANDROID_MTP,
+            vendor="Google", model="Pixel", serial="roundtrip",
+            mount_point=str(temp_music),
+        )
+        key = f"{identity.protocol.value}:{identity.serial}"
+        dev_svc._discovered[key] = identity
+        pair_result = dev_svc.pair(identity)
+        assert pair_result["ok"] is True
+
+        trust_result = bridge.trustDevice(key)
+        assert trust_result["ok"] is True
+
+        unauth_result = bridge.unauthorizeDevice(key)
+        assert unauth_result["ok"] is True
+
+        unpair_result = bridge.unpairDevice(key)
+        assert unpair_result["ok"] is True
+        assert dev_svc.is_paired(key) is False

@@ -22,7 +22,45 @@ def _get_app_version() -> str:
         from importlib.metadata import version
         return version("michi-music-player")
     except Exception:
-        return "0.2.0-alpha.1"
+        pass
+
+    # Device Sync
+    try:
+        from core.device_sync_service import DeviceSyncService
+        bundle.device_sync_service = DeviceSyncService()
+    except Exception as e:
+        logger.debug("QML: DeviceSyncService init failed: %s", e)
+
+    # Job Service
+    try:
+        from core.job_service import JobService
+        bundle.job_service = JobService()
+    except Exception as e:
+        logger.debug("QML: JobService init failed: %s", e)
+
+    # Confirmation Service
+    try:
+        from core.confirmation_service import ConfirmationService
+        bundle.confirmation_service = ConfirmationService()
+    except Exception as e:
+        logger.debug("QML: ConfirmationService init failed: %s", e)
+
+    # Audio Lab Service
+    try:
+        from core.audio_lab.audio_lab_service import AudioLabService
+        als = AudioLabService(db=bundle.db, worker_manager=bundle.worker_manager)
+        als.setup()
+        bundle.audio_lab_service = als
+    except Exception as e:
+        logger.debug("QML: AudioLabService init failed: %s", e)
+
+    logger.info("QML: Services available: %s", bundle.available_services)
+    return bundle
+
+
+def _qt_message_handler(mode, context, message):
+    if "ERROR" in str(mode) or "FATAL" in str(mode):
+        logger.error("Qt: %s — %s (%s:%d)", message, context.file or "", context.function or "", context.line or 0)
 
 
 def main():

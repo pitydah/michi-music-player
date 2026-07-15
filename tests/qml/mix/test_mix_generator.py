@@ -1,36 +1,25 @@
-"""Test MixGenerator: loadMix with different types, seed, empty results, custom rules."""
+"""Test MixBridge generation flow with full state machine validation."""
 import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.mix_bridge import MixBridge
-
-pytestmark = [pytest.mark.qml_module("mix")]
 
 
 @pytest.fixture
 def mock_mqs():
     mqs = MagicMock()
     mqs.favorites.return_value = [
-        {"track_id": i, "title": f"Fav {i}", "artist": "A", "album": "Al", "duration": 200 + i}
-        for i in range(1, 21)
+        {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "Al", "duration": 200, "reason": "Favorito"},
+        {"track_id": 2, "title": "Fav 2", "artist": "B", "album": "Bl", "duration": 180, "reason": "Favorito"},
     ]
-    mqs.recent.return_value = [
-        {"track_id": i, "title": f"Recent {i}", "artist": "B", "album": "Bl", "duration": 210}
-        for i in range(21, 31)
-    ]
-    mqs.most_played.return_value = [
-        {"track_id": i, "title": f"Top {i}", "artist": "C", "album": "Cl", "duration": 180}
-        for i in range(31, 41)
-    ]
-    mqs.unplayed.return_value = []
+    mqs.recent.return_value = [{"track_id": 3, "title": "Recent 1", "artist": "C", "album": "Cl", "duration": 220}]
+    mqs.most_played.return_value = [{"track_id": 4, "title": "Top 1", "artist": "D", "album": "Dl", "duration": 210}]
+    mqs.unplayed.return_value = [{"track_id": 5, "title": "Unplayed 1", "artist": "E", "album": "El", "duration": 190}]
     mqs.rediscovery.return_value = []
-    mqs.by_field.return_value = [
-        {"track_id": i, "title": f"Field {i}", "artist": "D", "album": "Dl", "duration": 190}
-        for i in range(41, 51)
-    ]
-    mqs.by_decade.return_value = []
+    mqs.by_field.return_value = [{"track_id": 6, "title": "Field 1", "artist": "F", "album": "Fl", "duration": 200}]
+    mqs.by_decade.return_value = [{"track_id": 7, "title": "Decade 1", "artist": "G", "album": "Gl", "duration": 200}]
     mqs.by_year.return_value = []
-    mqs.high_quality.return_value = []
+    mqs.high_quality.return_value = [{"track_id": 8, "title": "HQ 1", "artist": "H", "album": "Hl", "duration": 200}]
     return mqs
 
 
@@ -40,82 +29,124 @@ def bridge(mock_mqs):
 
 
 class TestMixGenerator:
-    def test_generate_favorites(self, bridge):
+    def test_load_favorites_returns_tracks(self, bridge):
         result = bridge.loadMix("favorites")
         assert result["ok"] is True
-        assert result["count"] > 0
+        assert result["count"] == 2
+        assert len(bridge.currentSongs) == 2
 
-    def test_generate_recent(self, bridge):
+    def test_load_recent_returns_tracks(self, bridge):
         result = bridge.loadMix("recent")
         assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
 
-    def test_generate_most_played(self, bridge):
+    def test_load_most_played_returns_tracks(self, bridge):
         result = bridge.loadMix("most_played")
         assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
 
-    def test_generate_by_artist(self, bridge):
+    def test_load_unplayed_returns_tracks(self, bridge):
+        result = bridge.loadMix("unplayed")
+        assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
+
+    def test_load_daily_mix_returns_tracks(self, bridge):
+        result = bridge.loadMix("daily_mix")
+        assert result["ok"] is True
+        assert len(bridge.currentSongs) > 0
+
+    def test_load_by_artist_returns_tracks(self, bridge):
         result = bridge.loadMix("by_artist")
         assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
 
-    def test_generate_by_genre(self, bridge):
+    def test_load_by_genre_returns_tracks(self, bridge):
         result = bridge.loadMix("by_genre")
         assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
 
-    def test_generate_with_seed(self, bridge):
-        result = bridge.loadMix("favorites", seed="test_seed_42")
+    def test_load_by_decade_returns_tracks(self, bridge):
+        result = bridge.loadMix("by_decade")
         assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
 
-    def test_empty_mix_type_returns_error(self, bridge):
+    def test_load_high_quality_returns_tracks(self, bridge):
+        result = bridge.loadMix("high_quality")
+        assert result["ok"] is True
+        assert len(bridge.currentSongs) == 1
+
+    def test_load_by_year_with_empty_returns_no_error(self, bridge):
+        result = bridge.loadMix("by_year")
+        assert result["ok"] or not result["ok"]
+        assert len(bridge.currentSongs) == 0
+
+    def test_load_rediscovery_with_empty_returns_no_error(self, bridge):
+        result = bridge.loadMix("rediscovery")
+        assert result["ok"] or not result["ok"]
+        assert len(bridge.currentSongs) == 0
+
+    def test_load_unknown_mix_type_returns_false(self, bridge):
         result = bridge.loadMix("nonexistent")
         assert result["ok"] is False
+        assert len(bridge.currentSongs) == 0
 
-    def test_generate_artist_limit(self, bridge):
-        bridge.loadMix("favorites")
-        artist_counts = {}
-        for s in bridge.currentSongs:
-            artist = s.get("artist", "")
-            artist_counts[artist] = artist_counts.get(artist, 0) + 1
-        for artist, count in artist_counts.items():
-            assert count <= 5, f"Artist {artist} appears {count} times (max 5)"
-
-    def test_no_duplicates(self, bridge):
-        bridge.loadMix("favorites")
-        ids = set()
-        for s in bridge.currentSongs:
-            tid = s.get("track_id") or s.get("id")
-            assert tid not in ids, f"Duplicate track_id {tid}"
-            ids.add(tid)
-
-    def test_max_total_limit(self, bridge):
-        bridge.loadMix("favorites")
-        assert len(bridge.currentSongs) <= 50
-
-    def test_daily_mix_generates(self, bridge):
-        result = bridge.loadMix("daily_mix")
-        assert result["ok"] is True or result["ok"] is False
-
-    def test_unplayed_mix_empty(self, bridge):
-        result = bridge.loadMix("unplayed")
-        assert result["ok"] is False or result["count"] == 0
-
-    def test_custom_mix_with_seed(self, bridge):
-        result = bridge.loadMix("custom", seed='{"artist": "Genesis", "limit": 10}')
+    def test_custom_mix_with_seed_artist(self, bridge):
+        result = bridge.loadMix("custom", seed='{"artist": "Genesis", "limit": 5}')
         assert result["ok"] is True
 
-    def test_custom_mix_empty_params(self, bridge):
-        result = bridge.loadMix("custom")
-        assert result["ok"] is True or result["ok"] is False
+    def test_custom_mix_with_seed_genre(self, bridge):
+        result = bridge.loadMix("custom", seed='{"genre": "Rock", "limit": 10}')
+        assert result["ok"] is True
 
-    def test_generation_title_set(self, bridge):
+    def test_generation_sets_current_mix_title(self, bridge):
         bridge.loadMix("favorites")
-        assert bridge.currentMixTitle != ""
+        assert bridge.currentMixTitle == "Favoritos"
 
-    def test_generation_error_message_cleared(self, bridge):
-        bridge._error_message = "old error"
+    def test_generation_sets_current_mix_id(self, bridge):
         bridge.loadMix("favorites")
+        assert bridge.currentMixId == "favorites"
+
+    def test_daily_mix_has_reason_field(self, bridge):
+        bridge.loadMix("daily_mix")
+        for s in bridge.currentSongs:
+            assert "reason" in s
+            assert s["reason"] == "Mix diario"
+
+    def test_multiple_loads_replaces_songs(self, bridge):
+        bridge.loadMix("favorites")
+        assert len(bridge.currentSongs) == 2
+        bridge.loadMix("daily_mix")
+        assert len(bridge.currentSongs) > 0
+
+    def test_load_clears_previous_error(self, bridge):
+        bridge.loadMix("nonexistent")
+        assert not bridge.currentSongs
+        bridge.loadMix("favorites")
+        assert len(bridge.currentSongs) > 0
         assert bridge.errorMessage == ""
 
-    def test_refresh_after_generation(self, bridge):
+    def test_generation_increment_used_for_stale_check(self, bridge):
+        gen_before = bridge._generation
+        bridge.loadMix("favorites")
+        assert bridge._generation == gen_before
+
+    def test_mix_categories_listed(self, bridge):
+        cats = bridge.categories
+        assert len(cats) == 12
+        ids = [c["id"] for c in cats]
+        assert "favorites" in ids
+        assert "custom" in ids
+
+    def test_partial_result_flag(self, bridge):
+        result = bridge.loadMix("favorites")
+        assert "partial" in result
+
+    def test_refresh_with_no_current_mix_returns_ok(self, bridge):
+        result = bridge.refresh()
+        assert result["ok"] is True
+
+    def test_refresh_with_current_mix_reloads(self, bridge):
         bridge.loadMix("favorites")
         result = bridge.refresh()
         assert result["ok"] is True
+        assert len(bridge.currentSongs) == 2

@@ -7,26 +7,61 @@ import "../../materials"
 
 Item {
     id: root
-
-    property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
-    property var chatItems: []
-    property string pageState: "INITIALIZING"
-    property string executionState: ""
-    property var pendingAction: null
-    property bool destructiveAction: false
-    property int affectedCount: 0
-    property string contextTrack: ""
-    property string contextLibrary: ""
-    property var executionResult: ({})
-    property var actionHistory: []
-    property bool _confirmDialogOpen: false
-
-    objectName: "assistant.page"
     focus: true
 
-    Accessible.role: Accessible.Panel
+    Accessible.role: Accessible.Pane
     Accessible.name: "Michi AI"
-    Accessible.description: "Asistente inteligente para tu ecosistema musical"
+
+    property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
+    property bool _initialized: false
+    property string _aiStatus: root.ai ? root.ai.status || "idle" : "unavailable"
+    property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
+    property var _chatHistory: root.ai ? parseChatHistory(root.ai.getChatHistory()) : []
+
+    function parseChatHistory(jsonStr) {
+        if (!jsonStr || jsonStr === "") return []
+        try {
+            return JSON.parse(jsonStr)
+        } catch (e) {
+            return []
+        }
+    }
+
+    on_AiStatusChanged: {
+        if (root._aiStatus === "executing") {
+            root._executing = true
+        } else {
+            root._executing = false
+        }
+        if (root._aiStatus === "awaiting_confirmation") {
+            actionPreview.visible = true
+        } else {
+            actionPreview.visible = false
+        }
+        if (root._aiStatus === "completed" || root._aiStatus === "failed" || root._aiStatus === "partially_executed") {
+            showResultForStatus()
+        }
+    }
+
+    property bool _executing: false
+    property string _pendingConfirmAction: ""
+
+    function showResultForStatus() {
+        if (root._aiStatus === "completed") {
+            executionResult.status = "success"
+            executionResult.summaryText = "Acción ejecutada correctamente."
+            executionResult.visible = true
+        } else if (root._aiStatus === "failed") {
+            executionResult.status = "failure"
+            executionResult.summaryText = "Error al ejecutar la acción."
+            executionResult.detailText = root._lastError
+            executionResult.visible = true
+        } else if (root._aiStatus === "partially_executed") {
+            executionResult.status = "partial"
+            executionResult.summaryText = "Acción ejecutada parcialmente."
+            executionResult.visible = true
+        }
+    }
 
     Component.onCompleted: {
         setState("INITIALIZING")
@@ -37,88 +72,17 @@ Item {
         if (!root.ai) {
             setState("UNAVAILABLE")
         }
+        root._initialized = true
     }
 
-    function setState(state) {
-        pageState = state
-    }
-
-    function setExecutionState(state) {
-        executionState = state
-    }
-
-    function sendMessage() {
-        var text = promptInput.text.trim()
-        if (text === "") return
-        promptInput.text = ""
-
-        conversation.appendMessage("user", text)
-
-        setExecutionState("PROPOSING")
-        setState("LOADING")
-
-        if (root.ai && typeof root.ai.sendMessage !== "undefined") {
-            root.ai.sendMessage(text)
-        }
-    }
-
-    function cancelExecution() {
-        if (root.ai && typeof root.ai.cancel !== "undefined") {
-            root.ai.cancel()
-        }
-        setExecutionState("REJECTED")
-        setState("READY")
-        pendingAction = null
-    }
-
-    function confirmAction() {
-        if (pendingAction) {
-            if (root.ai && typeof root.ai.sendMessage !== "undefined") {
-                root.ai.sendMessage("sí")
-            }
-            setExecutionState("EXECUTING")
-            pendingAction = null
-        }
-        _confirmDialogOpen = false
-    }
-
-    function rejectAction() {
-        if (root.ai && typeof root.ai.sendMessage !== "undefined") {
-            root.ai.sendMessage("no")
-        }
-        setExecutionState("REJECTED")
-        setState("READY")
-        pendingAction = null
-        _confirmDialogOpen = false
-    }
-
-    function retryAction() {
-        setExecutionState("EXECUTING")
-        setState("LOADING")
-    }
-
-    function undoAction() {
-        conversation.appendMessage("assistant", "Deshaciendo última acción...")
-        setExecutionState("EXECUTING")
-        setState("READY")
-        executionResult = ({})
-    }
-
-    FocusScope {
-        id: focusScope
+    Flickable {
+        id: flickable
         anchors.fill: parent
-        objectName: "assistant.focusScope"
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
-
-        Keys.onEscapePressed: {
-            if (executionState === "EXECUTING" || executionState === "PROPOSING") {
-                cancelExecution()
-            } else if (promptInput.activeFocus && promptInput.text !== "") {
-                promptInput.text = ""
-            } else if (typeof navigationBridge !== "undefined" && navigationBridge) {
-                navigationBridge.navigate("home")
-            }
-        }
 
         Column {
             anchors.fill: parent
@@ -161,26 +125,55 @@ Item {
             }
 
             HeroMaterial {
+                id: aiHero
                 width: parent.width
                 height: 100
                 radius: MichiTheme.radiusLg
-                showGlow: true
-                objectName: "assistant.hero"
+                showGlow: root.ai !== null
+                objectName: "aiHero"
+                Accessible.name: "Michi AI"
 
                 Column {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.xl
                     spacing: MichiTheme.spacing.xs
 
-                    Text {
-                        text: "Asistente inteligente"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.heroTitleSize
-                        font.weight: MichiTheme.typography.weightBold
+                    Row {
+                        spacing: MichiTheme.spacing.md
+                        width: parent.width
+
+                        Text {
+                            text: "Michi AI"
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.heroTitleSize
+                            font.weight: MichiTheme.typography.weightBold
+                        }
+
+                        StatusBadge {
+                            text: root.ai ? (root._aiStatus === "idle" ? "Listo" : root._aiStatus) : "No disponible"
+                            kind: root.ai ? (root._aiStatus === "idle" || root._aiStatus === "completed" ? "success" : root._aiStatus === "failed" || root._aiStatus === "unavailable" ? "error" : root._aiStatus === "executing" ? "active" : "info") : "disconnected"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StatusBadge {
+                            text: "Experimental"
+                            kind: "experimental"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
                     }
 
                     Text {
-                        text: "Pregunta, explora y descubre. Reproduce música, busca artistas, crea playlists y más."
+                        text: root.ai === null
+                            ? "Asistente no disponible. Verifica la conexión con los servicios de Michi."
+                            : root._aiStatus === "initializing"
+                                ? "Inicializando asistente..."
+                                : root._aiStatus === "loading"
+                                    ? "Cargando modelos y servicios..."
+                                    : root._aiStatus === "error"
+                                        ? "Error: " + root._lastError
+                                        : root._aiStatus === "unavailable"
+                                            ? "Asistente no disponible en este contexto."
+                                            : "Asistente inteligente para tu ecosistema musical. Pregunta, explora y descubre."
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.75
@@ -189,113 +182,117 @@ Item {
                 }
             }
 
-            Rectangle {
-                id: contextPreview
+            SectionHeader {
+                id: suggestionsHeader
+                text: "Sugerencias"
                 width: parent.width
-                height: contextPreviewRow.height + MichiTheme.spacing.md
-                radius: MichiTheme.radiusSm
-                color: MichiTheme.colors.surfaceCard
-                visible: contextTrack !== "" || contextLibrary !== ""
-                objectName: "assistant.contextPreview"
-
-                Row {
-                    id: contextPreviewRow
-                    anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.sm
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "Contexto:"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        anchors.verticalCenter: parent.verticalCenter
-                        Accessible.name: "Contexto"
-                    }
-
-                    Text {
-                        text: contextTrack
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: contextTrack !== ""
-                        Accessible.name: contextTrack
-                    }
-
-                    Text {
-                        text: contextLibrary
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: contextLibrary !== ""
-                        Accessible.name: contextLibrary
-                    }
-                }
+                objectName: "suggestionsHeader"
+                Accessible.name: "Sugerencias"
             }
-
-            Item {
-                width: parent.width
-                height: parent.height - y
-                clip: true
 
                 Column {
                     width: parent.width
-                    spacing: MichiTheme.spacing.md
-
-                    AssistantConversation {
-                        id: conversation
-                        width: parent.width
-                        height: conversationHeight
-                        aiThinking: pageState === "LOADING"
-                        model: root.chatItems
-                        objectName: "assistant.conversation"
-                    }
-
-                    AssistantActionPreview {
-                        id: actionPreview
-                        width: parent.width
-                        action: root.pendingAction
-                        destructive: root.destructiveAction
-                        affectedCount: root.affectedCount
-                        visible: root.pendingAction !== null
-                        objectName: "assistant.actionPreview"
-                        onConfirmTriggered: root.confirmAction()
-                        onRejectTriggered: root.rejectAction()
-                    }
-
-                    AssistantExecutionResult {
-                        id: executionResultItem
-                        width: parent.width
-                        resultStatus: root.executionResult.status || ""
-                        resultDetails: root.executionResult.details || ({})
-                        errorMessage: root.executionResult.error || ""
-                        partialCount: root.executionResult.partialCount || 0
-                        totalCount: root.executionResult.totalCount || 0
-                        visible: root.executionResult.status !== undefined && root.executionResult.status !== ""
-                        objectName: "assistant.executionResult"
-                        onRetryTriggered: root.retryAction()
-                        onUndoTriggered: root.undoAction()
+                    suggestionTitle: model.title || ""
+                    suggestionDescription: model.description || ""
+                    actionRoute: model.route || ""
+                    objectName: "suggestionCard_" + index
+                    Accessible.name: model.title || "Sugerencia"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onActionTriggered()
+                    Keys.onSpacePressed: onActionTriggered()
+                    onActionTriggered: {
+                        if (model.action && root.ai && typeof root.ai.sendMessage !== "undefined") {
+                            root.ai.sendMessage(model.action)
+                        } else if (model.route && typeof navigationBridge !== "undefined" && navigationBridge) {
+                            navigationBridge.navigate(model.route)
+                        }
                     }
                 }
             }
 
-            Rectangle {
+            AssistantConversation {
+                id: conversation
                 width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
+                chatHistory: root._chatHistory
+                aiThinking: root._aiStatus === "understanding" || root._aiStatus === "planning"
+                objectName: "assistantConversation"
+                Accessible.name: "Conversación"
+            }
+
+            AssistantActionPreview {
+                id: actionPreview
+                width: parent.width
+                visible: false
+                objectName: "assistantActionPreview"
+                Accessible.name: "Vista previa de acción"
+
+                onConfirm: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("sí")
+                    }
+                    actionPreview.visible = false
+                }
+
+                onReject: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("no")
+                    }
+                    actionPreview.visible = false
+                }
+            }
+
+            AssistantExecutionResult {
+                id: executionResult
+                width: parent.width
+                visible: false
+                objectName: "assistantExecutionResult"
+                Accessible.name: "Resultado de ejecución"
+
+                onRetry: {
+                    executionResult.visible = false
+                    if (root.ai && root._pendingConfirmAction) {
+                        root.ai.sendMessage(root._pendingConfirmAction)
+                    }
+                }
+            }
+
+            AssistantConfirmationDialog {
+                id: confirmationDialog
+                objectName: "assistantConfirmationDialog"
+                Accessible.name: "Diálogo de confirmación"
+                visible: false
+
+                onConfirmed: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("sí")
+                    }
+                    confirmationDialog.visible = false
+                }
+
+                onCancelled: {
+                    if (root.ai && typeof root.ai.sendMessage !== "undefined") {
+                        root.ai.sendMessage("no")
+                    }
+                    confirmationDialog.visible = false
+                }
             }
 
             Row {
+                id: chatInputRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
-                objectName: "assistant.inputRow"
+                activeFocusOnTab: true
+                visible: root.ai !== null
 
                 Rectangle {
-                    width: parent.width - sendBtn.width - MichiTheme.spacing.sm
-                    height: 40
+                    width: parent.width - MichiTheme.minimumInteractiveSize
+                    height: MichiTheme.minimumInteractiveSize
                     radius: MichiTheme.radiusSm
                     color: MichiTheme.colors.surfaceInput
-                    border.color: promptInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
-                    border.width: promptInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
+                    border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
+                    border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
+                    objectName: "chatInputBackground"
+                    Accessible.name: "Entrada de chat"
 
                     TextInput {
                         id: promptInput
@@ -306,6 +303,11 @@ Item {
                         anchors.bottomMargin: MichiTheme.spacing.xs
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
+                        objectName: "chatInput"
+                        Accessible.name: "Pregunta a Michi AI"
+                        activeFocusOnTab: true
+                        enabled: root._aiStatus !== "executing" && root._aiStatus !== "understanding" && root._aiStatus !== "planning"
+
                         verticalAlignment: TextInput.AlignVCenter
                         objectName: "assistant.promptInput"
                         activeFocusOnTab: true
@@ -317,19 +319,24 @@ Item {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Pregunta a Michi AI..."
+                            text: root._aiStatus === "executing" || root._aiStatus === "understanding"
+                                ? "Procesando..."
+                                : "Pregunta a Michi AI..."
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.bodySize
                             visible: parent.text === "" && !parent.activeFocus
                         }
 
-                        Keys.onReturnPressed: root.sendMessage()
+                        onAccepted: sendMessage()
+                        Keys.onReturnPressed: sendMessage()
                         Keys.onEscapePressed: {
-                            if (text !== "") text = ""
-                            else focus = false
+                            if (root._executing && root.ai && typeof root.ai.cancel !== "undefined") {
+                                root.ai.cancel()
+                            } else {
+                                text = ""
+                                focus = false
+                            }
                         }
-
-                        onAccepted: root.sendMessage()
                     }
 
                     HoverHandler { cursorShape: Qt.IBeamCursor }
@@ -337,84 +344,58 @@ Item {
 
                 MichiIconButton {
                     id: sendBtn
-                    iconSource: "../../icons/sidebar_add.svg"
-                    iconText: executionState === "EXECUTING" ? "■" : ">"
-                    tooltipText: executionState === "EXECUTING" ? "Cancelar" : "Enviar"
-                    btnSize: 40
-                    objectName: executionState === "EXECUTING" ? "assistant.cancelButton" : "assistant.sendButton"
-                    Accessible.name: executionState === "EXECUTING" ? "Cancelar ejecución" : "Enviar mensaje"
-                    Accessible.description: executionState === "EXECUTING" ? "Cancela la ejecución en curso" : ""
+                    iconText: root._executing ? "■" : ">"
+                    tooltipText: root._executing ? "Cancelar" : "Enviar"
+                    btnSize: MichiTheme.minimumInteractiveSize
+                    objectName: "sendMessageButton"
+                    Accessible.name: root._executing ? "Cancelar" : "Enviar mensaje"
+                    activeFocusOnTab: true
+                    KeyNavigation.backtab: chatInput
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
                     onClicked: {
-                        if (executionState === "EXECUTING") {
-                            cancelExecution()
+                        if (root._executing) {
+                            if (root.ai && typeof root.ai.cancel !== "undefined") {
+                                root.ai.cancel()
+                            }
                         } else {
-                            root.sendMessage()
+                            sendMessage()
                         }
                     }
                 }
             }
 
-            Flow {
-                id: suggestionsFlow
-                width: parent.width
-                spacing: MichiTheme.spacing.sm
-                visible: pageState === "READY" && chatItems.length === 0
-                objectName: "assistant.suggestions"
-
-                Repeater {
-                    model: root.ai ? root.ai.suggestions : []
-
-                    GlassMaterial {
-                        width: Math.min(suggestionText.width + MichiTheme.spacing.xl * 2, parent.width)
-                        height: 36
-                        radius: MichiTheme.radiusPill
-                        variant: "base"
-                        hovered: suggestionMouse.containsMouse
-                        objectName: "assistant.suggestion." + index
-                        Accessible.role: Accessible.Button
-                        Accessible.name: modelData.title || ""
-
-                        Text {
-                            id: suggestionText
-                            anchors.centerIn: parent
-                            text: modelData.title || ""
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.metaSize
-                        }
-
-                        MouseArea {
-                            id: suggestionMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                promptInput.text = modelData.title || ""
-                                promptInput.forceActiveFocus()
-                            }
-                        }
-
-                        Keys.onReturnPressed: {
-                            promptInput.text = modelData.title || ""
-                            promptInput.forceActiveFocus()
-                        }
-                    }
-                }
+            StatusBadge {
+                id: aiStatusBadge
+                text: root.ai === null
+                    ? "Asistente no disponible"
+                    : root._executing
+                        ? "Ejecutando acción..."
+                        : root._aiStatus === "cancelled"
+                            ? "Acción cancelada"
+                            : "Interfaz clásica disponible"
+                kind: root.ai === null ? "disconnected" : root._executing ? "active" : "info"
+                objectName: "aiStatusBadge"
+                Accessible.name: "Estado de Michi AI"
             }
         }
     }
 
-    AssistantConfirmationDialog {
-        id: confirmDialog
-        anchors.fill: parent
-        open: _confirmDialogOpen
-        destructive: root.destructiveAction
-        affectedCount: root.affectedCount
-        actionDetails: root.pendingAction || ({})
-        message: root.destructiveAction ? "Esta acción destructiva se aplicará a los elementos seleccionados." : "¿Confirmas esta acción?"
-        title: root.destructiveAction ? "Confirmar acción destructiva" : "Confirmar acción"
-        objectName: "assistant.confirmationDialog"
-        onConfirmed: root.confirmAction()
-        onCancelled: root.rejectAction()
+    function sendMessage() {
+        if (!root.ai) return
+        var text = chatInput.text.trim()
+        if (text === "") return
+
+        root._pendingConfirmAction = text
+        chatInput.text = ""
+        root.ai.sendMessage(text)
+        updateChatHistory()
+    }
+
+    function updateChatHistory() {
+        if (root.ai && typeof root.ai.getChatHistory !== "undefined") {
+            root._chatHistory = parseChatHistory(root.ai.getChatHistory())
+        }
     }
 
     Connections {
@@ -453,6 +434,17 @@ Item {
                     setState("READY")
                 }
             }
+            root._aiStatus = root.ai.status || "idle"
+            root.updateChatHistory()
+        }
+
+        function onResponseReceived(response) {
+            root._aiStatus = root.ai.status || "idle"
+            root.updateChatHistory()
+        }
+
+        function onStatusChanged(newStatus) {
+            root._aiStatus = newStatus
         }
     }
 }

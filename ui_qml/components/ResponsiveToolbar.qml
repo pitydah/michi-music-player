@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../theme"
 import "foundations"
@@ -8,19 +8,21 @@ FocusScope {
     id: root
 
     property string title: ""
-    property var primaryActions: []
-    property var secondaryActions: []
-    property int overflowBreakpoint: MichiTheme.breakpointCompact
-    property int visiblePrimaryCount: 0
-    property string objectName: "responsiveToolbar"
+    property alias searchContent: searchHost.data
+    property alias primaryActions: primaryHost.data
+    property alias secondaryActions: secondaryHost.data
+    property alias overflowContent: overflowHost.data
+    property int overflowThreshold: 600
 
-    readonly property bool compactMode: root.width < root.overflowBreakpoint
-
-    implicitHeight: Math.max(MichiTheme.toolbarHeight, contentRow.implicitHeight + MichiTheme.spacing.sm * 2)
-    activeFocusOnTab: true
+    objectName: "ResponsiveToolbar"
 
     Accessible.role: Accessible.ToolBar
-    Accessible.name: root.title !== "" ? root.title : "Barra de herramientas"
+    Accessible.name: title !== "" ? title : "Barra de herramientas"
+
+    implicitHeight: root.compactMode ? childrenColumn.implicitHeight : MichiTheme.toolbarHeight
+    activeFocusOnTab: true
+
+    readonly property bool compactMode: root.width < root.overflowThreshold
 
     Keys.onRightPressed: function(event) {
         root.nextItemInFocusChain(true).forceActiveFocus()
@@ -31,16 +33,15 @@ FocusScope {
         event.accepted = true
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: "transparent"
+    Column {
+        id: childrenColumn
+        width: parent.width
+        spacing: MichiTheme.spacing.sm
 
         RowLayout {
-            id: contentRow
-            anchors.fill: parent
-            anchors.leftMargin: MichiTheme.spacing.lg
-            anchors.rightMargin: MichiTheme.spacing.sm
-            spacing: MichiTheme.spacing.xs
+            width: parent.width
+            height: MichiTheme.toolbarHeight
+            spacing: MichiTheme.spacing.sm
 
             Text {
                 text: root.title
@@ -48,46 +49,33 @@ FocusScope {
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
                 visible: text !== ""
+            }
+
+            Item {
+                id: searchHost
                 Layout.fillWidth: true
+                height: childrenRect.height
+                Layout.alignment: Qt.AlignVCenter
             }
 
-            Repeater {
-                model: {
-                    if (root.compactMode) return []
-                    return root.primaryActions.slice(0, root.visiblePrimaryCount > 0 ? root.visiblePrimaryCount : root.primaryActions.length)
-                }
-                delegate: MichiButton {
-                    text: modelData.text || ""
-                    variant: modelData.variant || "ghost"
-                    iconSource: modelData.iconSource || ""
-                    onClicked: modelData.action ? modelData.action() : undefined
-                    objectName: root.objectName + "/action/" + (modelData.text || index)
-                }
+            Row {
+                id: secondaryHost
+                spacing: MichiTheme.spacing.xs
+                Layout.alignment: Qt.AlignVCenter
+                visible: !root.compactMode
             }
 
-            Menu {
-                id: overflowMenu
-                title: "Más acciones"
-                objectName: root.objectName + "/overflowMenu"
-
-                Instantiator {
-                    model: root.compactMode ? root.primaryActions : root.secondaryActions
-                    MenuItem {
-                        text: modelData.text || ""
-                        onTriggered: modelData.action ? modelData.action() : undefined
-                        objectName: root.objectName + "/menuItem/" + (modelData.text || index)
-                    }
-                    onObjectAdded: function(index, object) { overflowMenu.insertItem(index, object) }
-                    onObjectRemoved: function(index, object) { overflowMenu.removeItem(object) }
-                }
+            Row {
+                id: primaryHost
+                spacing: MichiTheme.spacing.xs
+                Layout.alignment: Qt.AlignVCenter
             }
 
-            MichiIconButton {
-                id: overflowButton
-                iconText: "\u22EF"
-                tooltipText: "Más acciones"
-                visible: (root.compactMode && root.primaryActions.length > 0) || root.secondaryActions.length > 0
-                onClicked: overflowMenu.popup()
+            Row {
+                id: overflowHost
+                spacing: MichiTheme.spacing.xs
+                Layout.alignment: Qt.AlignVCenter
+                visible: root.compactMode
             }
         }
     }

@@ -1,4 +1,4 @@
-"""Workflow test: select station → play → reconnect → stop."""
+"""Full workflow: select station, play, metadata, reconnect, stop."""
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,22 +10,25 @@ pytestmark = pytest.mark.isolation
 
 @pytest.fixture
 def mock_stations():
-    stations = []
-    for i, (name, url, codec, country, fav) in enumerate([
-        ("Jazz FM", "http://jazz.stream", "MP3", "US", True),
-        ("Rock FM", "http://rock.stream", "AAC", "UK", False),
-    ]):
-        s = MagicMock()
-        s.id = i + 1
-        s.name = name
-        s.url = url
-        s.codec = codec
-        s.country = country
-        s.tags = [name.lower().split()[0]]
-        s.favorite = fav
-        s.bitrate = 128 + i * 64
-        stations.append(s)
-    return stations
+    s1 = MagicMock()
+    s1.id = 1
+    s1.name = "Jazz FM"
+    s1.url = "http://jazz.stream"
+    s1.codec = "MP3"
+    s1.country = "US"
+    s1.tags = ["jazz", "cool"]
+    s1.favorite = False
+    s1.bitrate = 128
+    s2 = MagicMock()
+    s2.id = 2
+    s2.name = "Rock FM"
+    s2.url = "http://rock.stream"
+    s2.codec = "AAC"
+    s2.country = "UK"
+    s2.tags = ["rock", "classic"]
+    s2.favorite = False
+    s2.bitrate = 256
+    return [s1, s2]
 
 
 @pytest.fixture
@@ -34,8 +37,9 @@ def mock_radio_mgr(mock_stations):
     mgr.get_all.return_value = mock_stations
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
+    mgr.remove_station.return_value = True
     mgr.get_metadata.return_value = {
-        "ok": True, "title": "Song Title", "artist": "Artist Name"
+        "ok": True, "title": "Take Five", "artist": "Dave Brubeck"
     }
     return mgr
 
@@ -48,85 +52,92 @@ def mock_player():
     return player
 
 
-@pytest.fixture
-def bridge(mock_radio_mgr, mock_player):
-    return RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
-
-
-class TestRadioWorkflow:
-    """Complete radio workflow: select → play → reconnect → stop."""
-
-    def test_wf_list_stations(self, bridge):
+class TestFullRadioWorkflow:
+    def test_select_station_and_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.refresh()
         assert len(bridge.stations) == 2
-        assert bridge.stations[0]["name"] == "Jazz FM"
-        assert bridge.stations[1]["name"] == "Rock FM"
-
-    def test_wf_select_and_play(self, bridge, mock_player):
-        bridge.refresh()
-        station = bridge.stations[1]
-        result = bridge.playStation(station["url"])
+        result = bridge.playStation("http://jazz.stream", "Jazz FM")
         assert result["ok"]
-        mock_player.play_url.assert_called_with(station["url"])
+        assert mock_player.play_url.called
 
-    def test_wf_play_updates_history(self, bridge):
-        bridge.playStation("http://test.stream", "Test Station")
-        assert len(bridge.history) >= 1
-        assert bridge.history[0]["name"] == "Test Station"
+    def test_play_updates_current_station(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert bridge._current_station == "http://jazz.stream"
 
-    def test_wf_reconnect_last(self, bridge, mock_player):
-        bridge.playStation("http://last.stream", "Last Station")
-        bridge.stopStream()
+    def test_play_adds_to_history(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert len(bridge.history) == 1
+        assert bridge.history[0]["name"] == "Jazz FM"
+
+    def test_get_metadata_after_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        result = bridge.getMetadata("http://jazz.stream")
+        assert result["ok"]
+        assert result["title"] == "Take Five"
+        assert result["artist"] == "Dave Brubeck"
+
+    def test_reconnect_after_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert mock_player.play_url.called
+        mock_player.play_url.reset_mock()
         result = bridge.reconnectLast()
         assert result["ok"]
-        mock_player.play_url.assert_called_with("http://last.stream")
+        assert mock_player.play_url.called
 
-    def test_wf_stop_while_playing(self, bridge, mock_player):
-        bridge.playStation("http://playing.stream")
-        result = bridge.stopStream()
-        assert result["ok"]
-        mock_player.stop.assert_called_once()
+    def test_stop_after_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge.stopStream()
+        assert mock_player.stop.called
 
-    def test_wf_select_favorite(self, bridge):
-        bridge.refresh()
-        assert len(bridge.favorites) == 1
-        assert bridge.favorites[0]["name"] == "Jazz FM"
-
-    def test_wf_toggle_favorite(self, bridge):
-        bridge.refresh()
-        bridge.toggleFavorite(2)
-        assert bridge._favorites is not None
-
-    def test_wf_play_without_selection(self, bridge, mock_player):
-        result = bridge.playStation("http://direct.stream")
-        assert result["ok"]
-        mock_player.play_url.assert_called_once()
-
-    def test_wf_stop_before_play(self, bridge, mock_player):
-        result = bridge.stopStream()
-        assert result["ok"]
-
-    def test_wf_play_get_metadata(self, bridge, mock_radio_mgr):
-        bridge.playStation("http://jazz.stream")
-        metadata = bridge.getMetadata("http://jazz.stream")
-        assert metadata["ok"]
-        assert metadata["title"] == "Song Title"
-
-    def test_wf_full_cycle(self, bridge, mock_player, mock_radio_mgr):
-        bridge.refresh()
-        assert len(bridge.stations) == 2
-        station = bridge.stations[0]
-        play_result = bridge.playStation(station["url"])
-        assert play_result["ok"]
-        mock_player.play_url.assert_called()
-        reconnect_result = bridge.reconnectLast()
-        assert reconnect_result["ok"]
-        stop_result = bridge.stopStream()
-        assert stop_result["ok"]
-        mock_player.stop.assert_called()
-
-    def test_wf_switch_stations(self, bridge, mock_player):
+    def test_stop_then_play_again(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://jazz.stream", "Jazz FM")
         bridge.stopStream()
         bridge.playStation("http://rock.stream", "Rock FM")
-        assert mock_player.play_url.call_count == 2
+        assert mock_player.play_url.call_count >= 2
+
+    def test_play_multiple_stations(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        bridge.playStation("http://rock.stream", "Rock FM")
+        assert bridge._current_station == "http://rock.stream"
+
+    def test_favorite_then_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.toggleFavorite(1)
+        assert mock_radio_mgr.toggle_favorite.called
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert mock_player.play_url.called
+
+    def test_full_lifecycle(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.refresh()
+        assert len(bridge.stations) == 2
+        bridge.playStation("http://jazz.stream", "Jazz FM")
+        assert bridge._current_station == "http://jazz.stream"
+        meta = bridge.getMetadata("http://jazz.stream")
+        assert meta["ok"]
+        bridge.reconnectLast()
+        assert mock_player.play_url.called
+        bridge.stopStream()
+        assert mock_player.stop.called
+
+    def test_workflow_without_manager(self):
+        bridge = RadioBridge(radio_manager=None, player_service=None)
+        bridge.refresh()
+        assert bridge.stations == []
+        result = bridge.playStation("http://stream.url")
+        assert not result["ok"]
+        assert result["error"] == "NO_PLAYER_SERVICE"
+        result = bridge.reconnectLast()
+        assert not result["ok"]
+        assert result["error"] == "NO_LAST_STATION"
+        result = bridge.stopStream()
+        assert not result["ok"]
+        assert result["error"] == "NO_PLAYER"

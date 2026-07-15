@@ -1,12 +1,12 @@
 import QtQuick
-import QtQuick.Controls
 import "../theme"
+import "states"
 
 Item {
     id: root
 
     enum State {
-        INITIALIZING,
+        INITIALIZING = 0,
         LOADING,
         READY,
         EMPTY,
@@ -16,49 +16,121 @@ Item {
     }
 
     property int state: AsyncStateView.INITIALIZING
-    property string objectName: "asyncStateView"
+    property string title: ""
+    property string message: ""
+    property string details: ""
+    property string iconName: ""
+    property string primaryActionText: ""
+    property string secondaryActionText: ""
+    property string errorCode: ""
+    property string errorSource: ""
+    property bool retryAvailable: true
+    property bool reducedMotion: false
 
-    property Component loadingContent: null
-    property Component emptyContent: null
-    property Component errorContent: null
-    property Component unavailableContent: null
-    property Component degradedContent: null
-    property Component readyContent: null
+    property alias readyContent: readyHost.children
+    property alias degradedOverlay: degradedHost.children
 
-    default property alias content: ready.content
+    signal primaryActionRequested()
+    signal secondaryActionRequested()
+    signal retryRequested()
 
-    Accessible.role: Accessible.Panel
+    objectName: "AsyncStateView"
+
+    Accessible.role: Accessible.Grouping
     Accessible.name: {
-        switch (root.state) {
-            case AsyncStateView.LOADING: return "Cargando"
-            case AsyncStateView.EMPTY: return "Sin contenido"
-            case AsyncStateView.ERROR: return "Error"
-            case AsyncStateView.UNAVAILABLE: return "No disponible"
-            case AsyncStateView.DEGRADED: return "Degradado"
-            default: return "Contenido"
-        }
+        if (state === AsyncStateView.LOADING) return "Cargando"
+        if (state === AsyncStateView.ERROR) return "Error" + (title ? ": " + title : "")
+        if (state === AsyncStateView.EMPTY) return "Sin contenido" + (title ? ": " + title : "")
+        if (state === AsyncStateView.UNAVAILABLE) return "No disponible"
+        if (state === AsyncStateView.DEGRADED) return "Funcionamiento degradado"
+        return ""
     }
+    Accessible.description: message + (details ? ". " + details : "")
 
-    Loader {
-        id: activeLoader
+    Item {
+        id: readyHost
         anchors.fill: parent
-        sourceComponent: {
-            switch (root.state) {
-                case AsyncStateView.LOADING: return root.loadingContent
-                case AsyncStateView.EMPTY: return root.emptyContent
-                case AsyncStateView.ERROR: return root.errorContent
-                case AsyncStateView.UNAVAILABLE: return root.unavailableContent
-                case AsyncStateView.DEGRADED: return root.degradedContent
-                case AsyncStateView.READY: return readyContent
-                default: return null
-            }
-        }
-        onLoaded: item.objectName = root.objectName + "/active"
+        visible: root.state === AsyncStateView.READY || root.state === AsyncStateView.DEGRADED
     }
 
     Item {
-        id: ready
+        id: stateLayer
         anchors.fill: parent
-        visible: root.state === AsyncStateView.READY
+        visible: root.state !== AsyncStateView.READY
+
+        Item {
+            id: degradedHost
+            anchors.fill: parent
+            visible: root.state === AsyncStateView.DEGRADED
+            z: 10
+        }
+
+        Loader {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth, parent.width * 0.85)
+            active: root.state !== AsyncStateView.READY
+
+            sourceComponent: {
+                switch (root.state) {
+                    case AsyncStateView.INITIALIZING:
+                    case AsyncStateView.LOADING:
+                        return loadingComp
+                    case AsyncStateView.ERROR:
+                        return errorComp
+                    case AsyncStateView.EMPTY:
+                        return emptyComp
+                    case AsyncStateView.UNAVAILABLE:
+                        return unavailableComp
+                    default:
+                        return null
+                }
+            }
+
+            Component {
+                id: loadingComp
+                LoadingState {
+                    title: root.title || "Cargando"
+                    message: root.message || "Espera mientras se prepara el contenido."
+                    reducedMotion: root.reducedMotion
+                }
+            }
+
+            Component {
+                id: errorComp
+                ErrorState {
+                    title: root.title
+                    message: root.message || "No se pudo completar la operación."
+                    details: root.details
+                    errorCode: root.errorCode
+                    errorSource: root.errorSource
+                    showRetry: root.retryAvailable
+                    reducedMotion: root.reducedMotion
+                    onRetryRequested: root.retryRequested()
+                    onPrimaryActionRequested: root.primaryActionRequested()
+                    onSecondaryActionRequested: root.secondaryActionRequested()
+                }
+            }
+
+            Component {
+                id: emptyComp
+                EmptyState {
+                    title: root.title || "Sin contenido"
+                    subtitle: root.message || "No hay elementos para mostrar."
+                    iconText: root.iconName
+                    showAction: root.primaryActionText !== ""
+                    actionText: root.primaryActionText
+                    onActionClicked: root.primaryActionRequested()
+                }
+            }
+
+            Component {
+                id: unavailableComp
+                UnavailableState {
+                    title: root.title
+                    message: root.message || "Esta función no está disponible."
+                    details: root.details
+                }
+            }
+        }
     }
 }

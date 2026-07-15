@@ -1,9 +1,8 @@
 import QtQuick
-import QtQuick.Controls
 import "../theme"
 import "foundations"
 
-FocusScope {
+Item {
     id: root
 
     enum Mode {
@@ -13,79 +12,74 @@ FocusScope {
         WIDE
     }
 
-    readonly property alias mode: modeHelper.mode
+    property int availableWidth: width
+    property alias header: headerHost.children
+    default property alias content: contentHost.children
+    property alias footer: footerHost.children
+    property int topMargin: responsive.pageMargin
+    property int bottomMargin: responsive.pageMargin
+    property bool constrainWidth: true
+
     readonly property alias responsive: responsive
-    property alias header: headerHost.data
-    property alias footer: footerHost.data
-    default property alias content: contentFlickable.contentItem
 
-    property string objectName: "responsivePageLayout"
-    activeFocusOnTab: true
+    readonly property int mode: {
+        if (availableWidth < 600) return ResponsivePageLayout.NARROW
+        if (availableWidth < MichiTheme.breakpointCompact) return ResponsivePageLayout.COMPACT
+        if (availableWidth < MichiTheme.breakpointWide) return ResponsivePageLayout.STANDARD
+        return ResponsivePageLayout.WIDE
+    }
 
-    Accessible.role: Accessible.Panel
+    readonly property bool narrow: mode === ResponsivePageLayout.NARROW
+    readonly property bool compact: mode === ResponsivePageLayout.COMPACT
+    readonly property bool standard: mode === ResponsivePageLayout.STANDARD
+    readonly property bool wide: mode === ResponsivePageLayout.WIDE
+
+    objectName: "ResponsivePageLayout"
+
+    Accessible.role: Accessible.Grouping
     Accessible.name: "Página"
 
-    Keys.onEscapePressed: {
-        var headerItems = headerHost.children
-        for (var i = 0; i < headerItems.length; i++) {
-            if (typeof headerItems[i].focus !== "undefined") {
-                headerItems[i].focus = true
-                break
-            }
-        }
-    }
+    MichiResponsive { id: responsive; availableWidth: root.availableWidth }
 
-    MichiResponsive { id: responsive; availableWidth: root.width }
-
-    QtObject {
-        id: modeHelper
-        readonly property int mode: {
-            if (root.width < MichiTheme.breakpointCompact) return ResponsivePageLayout.NARROW
-            if (root.width < MichiTheme.breakpointRegular) return ResponsivePageLayout.COMPACT
-            if (root.width < MichiTheme.breakpointWide) return ResponsivePageLayout.STANDARD
-            return ResponsivePageLayout.WIDE
-        }
-        readonly property int pageMargin: {
-            if (mode === ResponsivePageLayout.NARROW) return MichiTheme.spacing.md
-            if (mode === ResponsivePageLayout.COMPACT) return MichiTheme.spacing.lg
-            if (mode === ResponsivePageLayout.STANDARD) return MichiTheme.spacing.xl
-            return MichiTheme.spacing.page
-        }
-    }
-
-    Column {
+    Flickable {
+        id: viewport
         anchors.fill: parent
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        contentWidth: width
+        contentHeight: Math.max(height, layout.implicitHeight + topMargin + bottomMargin)
+        interactive: contentHeight > height
 
-        Item {
-            id: headerHost
-            width: parent.width
-            height: childrenRect.height
-            visible: children.length > 0
-        }
-
-        Flickable {
-            id: contentFlickable
-            width: parent.width
-            height: parent.height - headerHost.height - footerHost.height
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            contentWidth: width
-            contentHeight: contentItem.childrenRect.height + modeHelper.pageMargin * 2
+        Column {
+            id: layout
+            x: Math.max(narrow ? 0 : responsive.pageMargin,
+                        (viewport.width - width) / 2)
+            y: topMargin
+            width: root.constrainWidth
+                   ? Math.min(viewport.width - (responsive.pageMargin * (narrow ? 0 : 2)),
+                              responsive.contentMaximumWidth)
+                   : viewport.width
+            spacing: MichiTheme.spacing.lg
 
             Item {
-                id: contentArea
-                x: modeHelper.pageMargin
-                y: modeHelper.pageMargin
-                width: Math.min(root.width - modeHelper.pageMargin * 2, responsive.contentMaximumWidth)
+                id: headerHost
+                width: parent.width
                 height: childrenRect.height
+                visible: children.length > 0
             }
-        }
 
-        Item {
-            id: footerHost
-            width: parent.width
-            height: childrenRect.height
-            visible: children.length > 0
+            Column {
+                id: contentHost
+                width: parent.width
+                spacing: MichiTheme.spacing.lg
+            }
+
+            Item {
+                id: footerHost
+                width: parent.width
+                height: childrenRect.height
+                visible: children.length > 0
+            }
         }
     }
 }

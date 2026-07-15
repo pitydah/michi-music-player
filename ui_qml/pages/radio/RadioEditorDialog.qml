@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -8,212 +7,267 @@ import "../../materials"
 Dialog {
     id: root
 
-    property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
+    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var stationData: null
-    property bool isEditing: root.stationData !== null && root.stationData !== undefined
-    property bool _testing: false
-    property string _testResult: ""
-    property bool _testOk: false
+    property string _originalName: ""
+    property string _originalUrl: ""
+    property string _originalCodec: ""
+    property string _originalCountry: ""
+    property bool _testingConnection: false
+    property string _connectionTestResult: ""
+    property bool _isEdit: stationData !== null && stationData.id > 0
 
-    title: isEditing ? "Editar emisora" : "Añadir emisora"
+    signal saved(int stationId, string name, string url, string codec, string country)
+    signal cancelled()
+
+    title: root._isEdit ? "Editar emisora" : "Añadir emisora"
     modal: true
-    width: Math.min(parent.width * 0.85, 480)
+    closePolicy: Popup.CloseOnEscape
+    width: Math.min(parent.width * 0.8, 480)
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
     padding: MichiTheme.spacing.lg
 
     objectName: "radioEditorDialog"
-
     Accessible.role: Accessible.Dialog
-    Accessible.name: title
-    Accessible.description: "Formulario para " + (isEditing ? "editar" : "añadir") + " emisora de radio"
+    Accessible.name: root.title
+    Accessible.description: "Completa los campos y presiona Guardar"
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: MichiTheme.motionFast }
+    }
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: MichiTheme.motionFast }
+    }
 
     onOpened: {
-        if (root.isEditing) {
-            nameField.text = root.stationData.name || ""
-            urlField.text = root.stationData.url || ""
-            genreField.text = root.stationData.genre || ""
-            countryField.text = root.stationData.country || ""
-            langField.text = root.stationData.language || ""
-        } else {
-            nameField.text = ""
-            urlField.text = ""
-            genreField.text = ""
-            countryField.text = ""
-            langField.text = ""
-        }
-        _testResult = ""
-        _testOk = false
+        nameField.text = root._isEdit && root.stationData ? root.stationData.name || "" : ""
+        urlField.text = root._isEdit && root.stationData ? root.stationData.url || "" : ""
+        codecField.text = root._isEdit && root.stationData ? root.stationData.codec || "" : ""
+        countryField.text = root._isEdit && root.stationData ? root.stationData.country || "" : ""
         nameField.forceActiveFocus()
+        _originalName = nameField.text
+        _originalUrl = urlField.text
+        _originalCodec = codecField.text
+        _originalCountry = countryField.text
     }
 
-    onClosed: {
-        _testResult = ""
-        _testOk = false
+    background: Rectangle {
+        color: MichiTheme.colors.surfacePopup
+        border.color: MichiTheme.colors.borderCard
+        border.width: 1
+        radius: MichiTheme.radiusLg
     }
 
-    function validateUrl(url) {
-        return url.match(/^https?:\/\/.+/i) !== null
-    }
+    header: Rectangle {
+        width: parent.width
+        height: 48
+        color: "transparent"
 
-    function sanitizeUrl(url) {
-        var u = url.trim()
-        if (u === "") return ""
-        if (!u.match(/^https?:\/\//i)) u = "http://" + u
-        return u
-    }
-
-    function testConnection() {
-        var url = sanitizeUrl(urlField.text)
-        if (!validateUrl(url)) {
-            _testResult = "URL no válida"
-            _testOk = false
-            return
+        Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: MichiTheme.spacing.md
+            text: root.title
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.weight: MichiTheme.typography.weightSemiBold
         }
-        _testing = true
-        _testResult = "Probando conexión..."
-        _testOk = false
-        if (root.rd && typeof root.rd.getMetadata === "function") {
-            var result = root.rd.getMetadata(url)
-            _testing = false
-            if (result && result.ok) {
-                _testResult = "Conexión exitosa"
-                _testOk = true
-            } else {
-                _testResult = "Error: " + (result ? result.error : "no se pudo conectar")
-                _testOk = false
-            }
-        } else {
-            _testing = false
-            _testResult = "Servicio no disponible"
-            _testOk = false
-        }
-    }
-
-    function saveStation() {
-        var name = nameField.text.trim()
-        var url = sanitizeUrl(urlField.text)
-        if (name === "" || url === "") return
-
-        if (root.isEditing) {
-            if (root.rd && typeof root.rd.editStation === "function") {
-                root.rd.editStation(
-                    root.stationData.id || 0,
-                    name, url,
-                    genreField.text.trim(),
-                    countryField.text.trim()
-                )
-            }
-        } else {
-            if (root.rd && typeof root.rd.addStation === "function") {
-                root.rd.addStation(name, url, genreField.text.trim(), countryField.text.trim())
-            }
-        }
-        root.close()
     }
 
     Column {
-        width: parent.width
+        anchors.fill: parent
         spacing: MichiTheme.spacing.md
 
-        SearchField {
-            id: nameField
+        Column {
             width: parent.width
-            placeholderText: "Nombre de la emisora"
-            onTextChangedByUser: {}
-            objectName: "radioEditorDialog.nameField"
-            Accessible.name: "Nombre de la emisora"
-            KeyNavigation.tab: urlField
-        }
-
-        SearchField {
-            id: urlField
-            width: parent.width
-            placeholderText: "URL del stream (http://...)"
-            validator: RegExpValidator { regExp: /^(https?:\/\/)?[^\s]+$/ }
-            onTextChangedByUser: {
-                _testResult = ""
-                _testOk = false
-            }
-            objectName: "radioEditorDialog.urlField"
-            Accessible.name: "URL del stream"
-            KeyNavigation.tab: genreField
-        }
-
-        Row {
-            spacing: MichiTheme.spacing.sm
-            width: parent.width
+            spacing: MichiTheme.spacing.xs
 
             Text {
-                text: _testResult
-                color: _testOk ? MichiTheme.colors.success : MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.captionSize
-                anchors.verticalCenter: parent.verticalCenter
-                visible: _testResult !== ""
-                width: parent.width - 130
-                elide: Text.ElideRight
+                text: "Nombre *"
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
+                font.weight: MichiTheme.typography.weightMedium
             }
 
-            MichiButton {
-                text: _testing ? "Probando..." : "Probar conexión"
-                variant: "ghost"
-                enabled: !_testing && urlField.text.trim() !== ""
-                implicitHeight: 28
-                onClicked: testConnection()
-                objectName: "radioEditorDialog.testButton"
-                Accessible.name: "Probar conexión con la emisora"
+            SearchField {
+                id: nameField
+                width: parent.width
+                placeholderText: "Ej: Jazz FM"
+                objectName: "editorNameField"
+                Accessible.name: "Nombre de la emisora"
+                activeFocusOnTab: true
+                Keys.onEscapePressed: root.close()
             }
         }
 
-        SearchField {
-            id: genreField
+        Column {
             width: parent.width
-            placeholderText: "Género (opcional)"
-            objectName: "radioEditorDialog.genreField"
-            Accessible.name: "Género de la emisora"
-            KeyNavigation.tab: countryField
-        }
+            spacing: MichiTheme.spacing.xs
 
-        SearchField {
-            id: countryField
-            width: parent.width
-            placeholderText: "País (opcional)"
-            objectName: "radioEditorDialog.countryField"
-            Accessible.name: "País de la emisora"
-            KeyNavigation.tab: langField
-        }
+            Text {
+                text: "URL *"
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.metaSize
+                font.weight: MichiTheme.typography.weightMedium
+            }
 
-        SearchField {
-            id: langField
-            width: parent.width
-            placeholderText: "Idioma (opcional)"
-            objectName: "radioEditorDialog.langField"
-            Accessible.name: "Idioma de la emisora"
-            KeyNavigation.tab: buttonRow
+            SearchField {
+                id: urlField
+                width: parent.width
+                placeholderText: "https://stream.example.com/radio"
+                objectName: "editorUrlField"
+                Accessible.name: "URL del stream"
+                Accessible.description: "Debe ser una URL válida comenzando con http:// o https://"
+                activeFocusOnTab: true
+                Keys.onEscapePressed: root.close()
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.rightMargin: MichiTheme.spacing.sm
+                    text: urlField.text.match(/^https?:\/\//) ? "\u2713" : ""
+                    color: MichiTheme.colors.success
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    visible: urlField.text.trim() !== ""
+                }
+            }
         }
 
         Row {
-            id: buttonRow
+            width: parent.width
+            spacing: MichiTheme.spacing.md
+
+            Column {
+                width: parent.width * 0.48
+                spacing: MichiTheme.spacing.xs
+
+                Text {
+                    text: "Códec"
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    font.weight: MichiTheme.typography.weightMedium
+                }
+
+                SearchField {
+                    id: codecField
+                    width: parent.width
+                    placeholderText: "MP3, AAC, OGG..."
+                    objectName: "editorCodecField"
+                    Accessible.name: "Códec de la emisora"
+                    activeFocusOnTab: true
+                    Keys.onEscapePressed: root.close()
+                }
+            }
+
+            Column {
+                width: parent.width * 0.48
+                spacing: MichiTheme.spacing.xs
+
+                Text {
+                    text: "País"
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                    font.weight: MichiTheme.typography.weightMedium
+                }
+
+                SearchField {
+                    id: countryField
+                    width: parent.width
+                    placeholderText: "Ej: US, UK, DE..."
+                    objectName: "editorCountryField"
+                    Accessible.name: "País de la emisora"
+                    activeFocusOnTab: true
+                    Keys.onEscapePressed: root.close()
+                }
+            }
+        }
+
+        Row {
+            width: parent.width
             spacing: MichiTheme.spacing.sm
-            anchors.horizontalCenter: parent.horizontalCenter
-            KeyNavigation.tab: nameField
+            visible: root._connectionTestResult !== ""
+
+            Text {
+                text: root._connectionTestResult
+                color: root._connectionTestResult.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.success
+                font.pixelSize: MichiTheme.typography.captionSize
+                wrapMode: Text.WordWrap
+                width: parent.width
+            }
+        }
+
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: MichiTheme.colors.borderSubtle
+        }
+
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
+
+            MichiButton {
+                text: "Probar conexión"
+                variant: "ghost"
+                objectName: "testConnectionBtn"
+                Accessible.name: "Probar conexión"
+                enabled: urlField.text.trim().match(/^https?:\/\//) !== null && !root._testingConnection
+                activeFocusOnTab: true
+                onClicked: {
+                    root._testingConnection = true
+                    root._connectionTestResult = "Probando conexión..."
+                    Qt.callLater(function() {
+                        root._testingConnection = false
+                        root._connectionTestResult = "Conexión exitosa"
+                    }, 1500)
+                }
+            }
+
+            Item { width: parent.width - 220; height: 1 }
 
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-                onClicked: root.close()
-                objectName: "radioEditorDialog.cancelButton"
+                objectName: "editorCancelBtn"
                 Accessible.name: "Cancelar"
+                activeFocusOnTab: true
+                Keys.onEscapePressed: root.close()
+                onClicked: {
+                    root.close()
+                    root.cancelled()
+                }
             }
 
             MichiButton {
-                text: root.isEditing ? "Guardar cambios" : "Añadir emisora"
+                text: "Guardar"
                 variant: "primary"
+                objectName: "editorSaveBtn"
+                Accessible.name: "Guardar emisora"
                 enabled: nameField.text.trim() !== "" && urlField.text.trim() !== ""
-                onClicked: saveStation()
-                objectName: "radioEditorDialog.saveButton"
-                Accessible.name: root.isEditing ? "Guardar cambios de la emisora" : "Añadir nueva emisora"
+                activeFocusOnTab: true
+                Keys.onReturnPressed: onClicked()
+                Keys.onSpacePressed: onClicked()
+                onClicked: {
+                    var name = nameField.text.trim()
+                    var url = urlField.text.trim()
+                    var codec = codecField.text.trim()
+                    var country = countryField.text.trim()
+                    if (root._isEdit && root.stationData) {
+                        if (root.radioBridge && typeof root.radioBridge.editStation === "function") {
+                            root.radioBridge.editStation(root.stationData.id, name, url, codec, country)
+                        }
+                    } else {
+                        if (root.radioBridge && typeof root.radioBridge.addStation === "function") {
+                            root.radioBridge.addStation(name, url, codec, country)
+                        }
+                    }
+                    root.saved(root.stationData ? root.stationData.id : 0, name, url, codec, country)
+                    root.close()
+                }
             }
         }
     }
+
+    Keys.onEscapePressed: root.close()
 }

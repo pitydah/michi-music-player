@@ -1,112 +1,118 @@
-"""Negative tests for History: null bridge, invalid inputs, edge cases, error states."""
+"""Test history negative paths: missing service, empty history, export cancellation."""
 import pytest
-from unittest.mock import MagicMock
 
 from ui_qml_bridge.history_bridge import HistoryBridge
 
-pytestmark = [pytest.mark.qml_module("history")]
+
+def test_bridge_without_db_or_service():
+    bridge = HistoryBridge(db=None, history_query_service=None)
+    result = bridge.refresh()
+    assert result["ok"]
+    assert result["count"] == 0
 
 
-class TestHistoryNegative:
+def test_remove_history_item_no_db(bridge_no_db):
+    result = bridge_no_db.removeHistoryItem("1")
+    assert not result["ok"]
 
-    def test_null_bridge_safe(self):
-        bridge = HistoryBridge()
-        assert bridge.historyModel is not None
-        assert bridge.historyCount == 0
-        assert bridge.historyQueryService is None
 
-    def test_remove_nonexistent_track(self):
-        hqs = MagicMock()
-        hqs.remove_history_item.return_value = {"ok": False, "error": "NOT_FOUND"}
-        bridge = HistoryBridge(history_query_service=hqs)
-        result = bridge.removeHistoryItem("99999")
-        assert result["ok"] is False
-        assert result["error"] == "NOT_FOUND"
+def test_remove_history_event_no_service(bridge_no_db):
+    result = bridge_no_db.removeHistoryEvent("1")
+    assert not result["ok"]
 
-    def test_remove_invalid_event_id(self):
-        hqs = MagicMock()
-        hqs.remove_event_by_id.side_effect = ValueError("invalid")
-        bridge = HistoryBridge(history_query_service=hqs)
-        result = bridge.removeHistoryEvent("abc")
-        assert result["ok"] is False
-        assert result["error"] == "INVALID_ID"
 
-    def test_export_db_exception(self):
-        db = MagicMock()
-        db.conn.execute.side_effect = Exception("DB locked")
-        bridge = HistoryBridge(db=db)
-        result = bridge.exportHistory("/tmp/test.json", "json")
-        assert result["ok"] is False
-        assert "error" in result
+def test_clear_history_no_db(bridge_no_db):
+    result = bridge_no_db.clearHistory()
+    assert not result["ok"]
 
-    def test_clear_db_exception(self):
-        db = MagicMock()
-        db.conn.execute.side_effect = Exception("DB error")
-        bridge = HistoryBridge(db=db)
-        result = bridge.clearHistory()
-        assert result["ok"] is False
 
-    def test_remove_db_exception(self):
-        db = MagicMock()
-        db.conn.execute.side_effect = Exception("DB error")
-        bridge = HistoryBridge(db=db)
-        result = bridge.removeHistoryItem("42")
-        assert result["ok"] is False
+def test_export_no_db_no_service(bridge_no_db, tmp_path):
+    out = tmp_path / "fail.json"
+    result = bridge_no_db.exportHistory(str(out))
+    assert not result["ok"]
+    assert result["error"] == "NO_DB"
 
-    def test_play_empty_track_id(self):
-        bridge = HistoryBridge()
-        result = bridge.playHistoryItem("")
-        assert result["ok"] is False
 
-    def test_get_statistics_db_exception(self):
-        db = MagicMock()
-        db.conn.execute.side_effect = Exception("DB error")
-        bridge = HistoryBridge(db=db)
-        result = bridge.getStatistics()
-        assert result["ok"] is False
+def test_play_item_no_backend(bridge_no_db):
+    result = bridge_no_db.playHistoryItem("1")
+    assert not result["ok"]
 
-    def test_apply_retention_invalid_json(self):
-        hqs = MagicMock()
-        hqs.apply_retention.return_value = {"ok": True, "deleted_count": 0}
-        bridge = HistoryBridge(history_query_service=hqs)
-        result = bridge.applyRetention("not valid json")
-        assert result["ok"] is True
 
-    def test_set_history_enabled_no_service(self):
-        bridge = HistoryBridge()
-        result = bridge.setHistoryEnabled(False)
-        assert result["ok"] is True
+def test_statistics_no_db(bridge_no_db):
+    result = bridge_no_db.getStatistics()
+    assert not result["ok"]
 
-    def test_set_history_limit_no_service(self):
-        bridge = HistoryBridge()
-        result = bridge.setHistoryLimit(500)
-        assert result["ok"] is True
 
-    def test_play_with_action_registry(self):
-        ar = MagicMock()
-        ar.execute.return_value = {"ok": True}
-        bridge = HistoryBridge(action_registry=ar)
-        result = bridge.playHistoryItem("42")
-        assert result["ok"] is True
+def test_export_empty_path_no_bridge(bridge_no_db):
+    result = bridge_no_db.exportHistory("")
+    assert not result["ok"]
 
-    def test_export_with_service_empty_result(self):
-        hqs = MagicMock()
-        hqs.export_history.return_value = {"ok": True, "count": 0}
-        bridge = HistoryBridge(history_query_service=hqs)
-        result = bridge.exportHistory("/tmp/empty.json", "json")
-        assert result["ok"] is True
-        assert result["count"] == 0
 
-    def test_model_refresh_on_remove(self):
-        hqs = MagicMock()
-        hqs.remove_history_item.return_value = {"ok": True, "deleted": 1}
-        bridge = HistoryBridge(history_query_service=hqs)
-        model_spy = MagicMock()
-        bridge._model = model_spy
-        result = bridge.removeHistoryItem("42")
-        assert result["ok"] is True
+def test_apply_retention_no_service(bridge_no_db):
+    result = bridge_no_db.applyRetention('{"max_age_days": 30}')
+    assert not result["ok"]
 
-    def test_negative_events_model_null(self):
-        bridge = HistoryBridge()
-        assert bridge.historyModel is not None
-        assert len(bridge.historyModel) == 0 or bridge.historyModel.rowCount() == 0
+
+def test_empty_history_display(bridge_empty):
+    result = bridge_empty.refresh()
+    assert result["ok"]
+    assert result["count"] == 0
+
+
+def test_remove_from_empty_history(bridge_empty):
+    result = bridge_empty.removeHistoryItem("1")
+    assert not result["ok"]
+
+
+def test_clear_empty_history(bridge_empty):
+    result = bridge_empty.clearHistory()
+    assert not result["ok"]
+    assert result["error"] == "NO_DB"
+
+
+def test_export_empty_history_fails(bridge_empty, tmp_path):
+    out = tmp_path / "empty_export.json"
+    result = bridge_empty.exportHistory(str(out))
+    assert not result["ok"]
+
+
+def test_export_cancel_partial_file(bridge_empty, tmp_path):
+    out = tmp_path / "partial.json"
+    with open(str(out), "w") as f:
+        f.write("partial data")
+    result = bridge_empty.cancelExport("test", str(out))
+    assert result["ok"]
+    assert result["cancelled"]
+    assert not out.exists()
+
+
+def test_export_cancel_no_file(bridge_empty):
+    result = bridge_empty.cancelExport("test")
+    assert result["ok"]
+    assert result["cancelled"]
+
+
+def test_set_history_enabled_no_service(bridge_no_db):
+    result = bridge_no_db.setHistoryEnabled(False)
+    assert result["ok"]
+
+
+def test_set_history_limit_no_service(bridge_no_db):
+    result = bridge_no_db.setHistoryLimit(100)
+    assert result["ok"]
+
+
+def test_bridge_refresh_called_multiple_times(bridge_no_db):
+    for _ in range(5):
+        result = bridge_no_db.refresh()
+        assert result["ok"]
+
+
+@pytest.fixture
+def bridge_no_db():
+    return HistoryBridge(db=None, history_query_service=None)
+
+
+@pytest.fixture
+def bridge_empty():
+    return HistoryBridge(db=None, history_query_service=None)

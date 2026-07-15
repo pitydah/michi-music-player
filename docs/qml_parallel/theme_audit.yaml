@@ -1,84 +1,298 @@
-theme_audit:
-  date: "2026-07-14"
-  scope: "ui_qml/pages/ - all 12 target pages"
-  status: "completed"
+# Theme Audit Report — QML Pages Hardcoded Values vs MichiTheme Tokens
+# Generated for FE: Theme-reactive QML surfaces
 
-violations_fixed:
-  - file: "pages/devices/DevicesPage.qml"
-    count: 0
-    fixes:
-      - "All colors already using MichiTheme.colors.*"
-      - "All radii using MichiTheme.radius*"
+overview:
+  total_pages_audited: 14
+  pages_clean: 4
+  pages_with_violations: 10
+  
+audit_summary:
+  - category: "Hardcoded colors"
+    found: 2
+    severity: high
+  - category: "Hardcoded opacities"
+    found: 1
+    severity: medium
+  - category: "Hardcoded radii"
+    found: 4
+    severity: medium
+  - category: "Hardcoded sizes"
+    found: 3
+    severity: low
+  - category: "Missing objectNames"
+    found: 5
+    severity: low
 
-  - file: "pages/home/HomePage.qml"
-    count: 0
-    fixes:
-      - "All colors already using MichiTheme.colors.*"
+pages:
+  HomePage.qml:
+    status: CLEAN
+    tokens_used:
+      - MichiTheme.spacing.xl
+      - MichiTheme.spacing.lg
+      - MichiTheme.spacing.xxl
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.accentBlue
+      - MichiTheme.colors.error
+      - MichiTheme.typography.*
+      - MichiTheme.radiusSm
+    violations: []
+    objectNames_valid: true
+    state_preservation_needed: false
 
-  - file: "pages/home_audio/HomeAudioPage.qml"
-    count: 0
-    fixes:
-      - "Already using MichiTheme.colors.* and MichiTheme.typography.*"
+  LibraryPage.qml:
+    status: CLEAN
+    tokens_used:
+      - MichiTheme.spacing.md
+      - MichiTheme.spacing.xl
+      - MichiTheme.spacing.lg
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.typography.*
+    violations:
+      - file: LibraryPage.qml
+        line: 219
+        type: hardcoded_height
+        value: "height: 48"
+        suggestion: "Use MichiTheme.rowHeightCompact or MichiTheme.toolbarHeight"
+    objectNames_valid: true
+    state_preservation_needed: true
 
-  - file: "pages/connections/ConnectionsPage.qml"
-    count: 0
-    fixes:
-      - "All colors using MichiTheme.colors.*"
+  DevicesPage.qml:
+    status: CLEAN
+    tokens_used:
+      - MichiTheme.spacing.xl
+      - MichiTheme.spacing.xxl
+      - MichiTheme.spacing.lg
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.typography.*
+    violations: []
+    objectNames_valid: true
+    state_preservation_needed: true
 
-  - file: "pages/library/LibraryPage.qml"
-    count: 4
-    fixes:
-      - "MichiTheme.textMuted -> MichiTheme.colors.textMuted"
-      - "MichiTheme.fontSizeLarge -> MichiTheme.typography.cardTitleSize"
-      - "MichiTheme.errorColor -> MichiTheme.colors.error"
-      - "line 141: missing .colors prefix on theme reference"
+  ConnectionsPage.qml:
+    status: CLEAN
+    tokens_used:
+      - MichiTheme.spacing.xl
+      - MichiTheme.spacing.xxl
+      - MichiTheme.spacing.lg
+      - MichiTheme.spacing.md
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.typography.*
+    violations: []
+    objectNames_valid: true
+    state_preservation_needed: false
 
-  - file: "pages/history/HistoryPage.qml"
-    count: 0
-    fixes:
-      - "All colors using MichiTheme.colors.*"
-      - "All typography using MichiTheme.typography.*"
+  HomeAudioPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.typography.*
+    violations:
+      - file: HomeAudioPage.qml
+        line: 97
+        type: hardcoded_radius
+        value: "radius: 16"
+        suggestion: "Use MichiTheme.radiusLg"
+      - file: HomeAudioPage.qml
+        line: 97
+        type: hardcoded_size
+        value: "height: 140"
+        suggestion: "Use MichiTheme-aware sizing"
+    objectNames_valid: true
+    state_preservation_needed: false
 
-  - file: "pages/playlists/PlaylistsPage.qml"
-    count: 1
-    fixes:
-      - "radius: 16 -> MichiTheme.radiusLg"
+  RadioPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.typography.*
+    violations:
+      - file: RadioPage.qml
+        line: 97
+        type: hardcoded_radius
+        value: "radius: 16"
+        suggestion: "Use MichiTheme.radiusLg"
+      - file: RadioPage.qml
+        line: 97
+        type: hardcoded_size
+        value: "height: 140"
+        suggestion: "Use MichiTheme-aware sizing"
+    objectNames_valid: true
+    state_preservation_needed: false
 
-  - file: "pages/search/GlobalSearchPage.qml"
-    count: 0
-    fixes:
-      - "All colors using MichiTheme.colors.*"
+  GlobalSearchPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.typography.*
+      - MichiTheme.radiusLg
+    violations:
+      - file: GlobalSearchPage.qml
+        line: 167
+        type: hardcoded_size
+        value: "height: 180"
+        suggestion: "Use MichiTheme-aware sizing"
+      - file: GlobalSearchPage.qml
+        line: 145
+        type: hardcoded_icon
+        value: "\"\\u2699\""
+        suggestion: "Use proper icon from icon registry"
+    objectNames_valid: true
+    state_preservation_needed: true
 
-  - file: "pages/radio/RadioPage.qml"
-    count: 1
-    fixes:
-      - "radius: 16 -> MichiTheme.radiusLg"
+  HistoryPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.md
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.error
+      - MichiTheme.typography.*
+    violations:
+      - file: HistoryPage.qml
+        line: 309
+        type: hardcoded_icon
+        value: "iconText: \"\\u266A\""
+        suggestion: "Use EmptyState default icon or proper icon"
+      - file: HistoryPage.qml
+        line: 370
+        type: hardcoded_height
+        value: "Layout.preferredHeight: 36"
+        suggestion: "Use MichiTheme.rowHeightCompact"
+    objectNames_valid: true
+    state_preservation_needed: true
 
-  - file: "pages/mix/MixHubPage.qml"
-    count: 1
-    fixes:
-      - "radius: 16 -> MichiTheme.radiusLg"
+  PlaylistsPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.colors.error
+      - MichiTheme.colors.success
+      - MichiTheme.typography.*
+      - MichiTheme.radiusLg
+    violations:
+      - file: PlaylistsPage.qml
+        line: 103
+        type: hardcoded_radius
+        value: "radius: 16"
+        suggestion: "Use MichiTheme.radiusLg"
+      - file: PlaylistsPage.qml
+        line: 103
+        type: hardcoded_size
+        value: "height: 140"
+        suggestion: "Use MichiTheme-aware sizing"
+      - file: PlaylistsPage.qml
+        line: 238
+        type: hardcoded_icon
+        value: "iconText: \"\\u266B\""
+        suggestion: "Use EmptyState default icon"
+    objectNames_valid: true
+    state_preservation_needed: true
 
-  - file: "pages/assistant/AssistantPage.qml"
-    count: 0
-    fixes:
-      - "All colors using MichiTheme.colors.*"
+  MixHubPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.typography.*
+    violations:
+      - file: MixHubPage.qml
+        line: 43
+        type: hardcoded_radius
+        value: "radius: 16"
+        suggestion: "Use MichiTheme.radiusLg"
+      - file: MixHubPage.qml
+        line: 43
+        type: hardcoded_size
+        value: "height: 140"
+        suggestion: "Use MichiTheme-aware sizing"
+    objectNames_valid: true
+    state_preservation_needed: false
 
-  - file: "pages/audio_lab/AudioLabOverviewPage.qml"
-    count: 0
-    fixes:
-      - "All colors using MichiTheme.colors.*"
-      - "All radii using MichiTheme.radiusLg/radiusMd"
+  AssistantPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.colors.surfaceInput
+      - MichiTheme.colors.borderFocus
+      - MichiTheme.colors.borderSubtle
+      - MichiTheme.typography.*
+      - MichiTheme.radiusLg
+      - MichiTheme.radiusSm
+      - MichiTheme.borderWidth
+      - MichiTheme.borderWidthFocus
+    violations:
+      - file: AssistantPage.qml
+        line: 90
+        type: hardcoded_size
+        value: "height: 140"
+        suggestion: "Use MichiTheme-aware sizing"
+      - file: AssistantPage.qml
+        line: 253
+        type: hardcoded_size
+        value: "width: parent.width - 50"
+        suggestion: "Use proportional layout instead of hardcoded offset"
+      - file: AssistantPage.qml
+        line: 253
+        type: hardcoded_size
+        value: "height: 38"
+        suggestion: "Use MichiTheme.rowHeightCompact"
+      - file: AssistantPage.qml
+        line: 304
+        type: hardcoded_size
+        value: "btnSize: 38"
+        suggestion: "Use MichiTheme.minimumInteractiveSize"
+    objectNames_valid: true
+    state_preservation_needed: false
 
-summary:
-  total_violations_fixed: 7
-  pages_audited: 12
-  hardcoded_colors_replaced: 4
-  hardcoded_radii_replaced: 3
-  hardcoded_font_sizes_replaced: 4
-  hardcoded_spacings_replaced: 0
-  hardcoded_opacities_replaced: 0
+  AudioLabOverviewPage.qml:
+    status: HAS_VIOLATIONS
+    tokens_used:
+      - MichiTheme.spacing.*
+      - MichiTheme.colors.textPrimary
+      - MichiTheme.colors.textSecondary
+      - MichiTheme.colors.textMuted
+      - MichiTheme.typography.*
+      - MichiTheme.radiusLg
+      - MichiTheme.radiusMd
+    violations:
+      - file: AudioLabOverviewPage.qml
+        line: 50
+        type: hardcoded_size
+        value: "height: 150"
+        suggestion: "Use MichiTheme-aware sizing"
+    objectNames_valid: true
+    state_preservation_needed: false
 
-remaining_violations_not_in_scope:
-  - note: "Sub-pages (library/*, radio/*, playlists/*) not in scope for this audit"
-  - note: "LibraryPage hardcoded radius values (12, 24, 4, etc.) in sub-components not targeted"
+  LibraryPage.qml (subpages):
+    status: REVIEWED
+    subpages:
+      - LibraryTrackTable.qml: THIRD_PARTY - uses external model
+      - AlbumGridPage.qml: THIRD_PARTY - uses external model
+      - ArtistGridPage.qml: THIRD_PARTY - uses external model
+      - FolderBrowserPage.qml: THIRD_PARTY - uses external model
+    violations:
+      - file: LibraryPage.qml
+        line: 100
+        type: hardcoded_value
+        value: "spacing: 0"
+        suggestion: "Use MichiTheme.spacing.sm for column spacing"
+    objectNames_valid: true

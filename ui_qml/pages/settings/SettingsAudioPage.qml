@@ -6,289 +6,460 @@ import "../../components"
 
 Item {
     id: root
+    objectName: "settingsAudioPage"
 
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : (typeof settingsBridge !== "undefined" ? settingsBridge : null)
-    property string state: "READY"
+    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
-    objectName: "settings.audio"
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Audio"
-    Accessible.description: "Configuración avanzada de audio, frecuencias y búfer"
+    property int pageState: AsyncStateView.READY
+    property string errorMessage: ""
+    property string errorDetails: ""
+    property bool expertMode: false
+    property var audioDevices: []
 
-    signal closeRequested()
-    signal openDiagnostics()
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ajustes de audio avanzados"
 
-    states: [
-        State { name: "LOADING"; PropertyChanges { target: loader; sourceComponent: loadingComp } },
-        State { name: "READY"; PropertyChanges { target: loader; sourceComponent: readyComp } },
-        State { name: "ERROR"; PropertyChanges { target: loader; sourceComponent: errorComp } }
-    ]
-    state: root.bridge ? "READY" : "ERROR"
+    function refresh() {
+        if (pageState === AsyncStateView.ERROR) return
+        _loadDevices()
+        root.expertMode = _loadValue("audio/expert_mode", false) === true
+    }
 
-    FocusScope {
-        id: focusScope
+    function _loadDevices() {
+        if (!root.bridge) return
+        var devs = root.bridge.getValue("audio/output_devices")
+        root.audioDevices = devs || []
+    }
+
+    function _loadValue(key, fallback) {
+        if (!root.bridge) return fallback
+        var v = root.bridge.getValue(key)
+        return v !== null && v !== undefined ? v : fallback
+    }
+
+    function _saveValue(key, value) {
+        if (!root.bridge) return
+        root.bridge.setValue(key, value)
+    }
+
+    function _runDiagnostics() {
+        if (!root.bridge) return
+        root.bridge.setValue("audio/run_diagnostics", true)
+        if (root.notif) root.notif.showMessage("Diagnóstico de audio iniciado", "info")
+    }
+
+    Component.onCompleted: root.refresh()
+
+    AsyncStateView {
+        id: stateView
         anchors.fill: parent
-        activeFocusOnTab: true
+        state: root.pageState
+        title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
+        message: root.errorMessage
+        details: root.errorDetails
+        retryAvailable: root.pageState === AsyncStateView.ERROR
+        onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
-        Keys.onEscapePressed: root.closeRequested()
-
-        Loader {
-            id: loader
+        readyContent: ScrollView {
+            id: scrollView
             anchors.fill: parent
-        }
-    }
-
-    Component {
-        id: loadingComp
-        LoadingState {
-            objectName: "settings.audio.loading"
-            title: "Cargando audio"
-        }
-    }
-
-    Component {
-        id: errorComp
-        ErrorState {
-            objectName: "settings.audio.error"
-            title: "Audio no disponible"
-            message: "No se pudo conectar con el servicio de audio."
-            retryText: "Reintentar"
-            onRetryRequested: root.state = root.bridge ? "READY" : "ERROR"
-        }
-    }
-
-    Component {
-        id: readyComp
-        Flickable {
-            anchors.fill: parent
-            contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            objectName: "settings.audio.flickable"
+            objectName: "settings.audio.scrollView"
+            Accessible.role: Accessible.ScrollArea
+            Accessible.name: "Ajustes de audio"
 
-            Keys.onEscapePressed: root.closeRequested()
-
-            Column {
-                id: column
-                width: parent.width
+            ColumnLayout {
+                width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
+                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
                 spacing: MichiTheme.spacing.lg
                 topPadding: MichiTheme.spacing.xl
-                leftPadding: MichiTheme.spacing.xl
-                rightPadding: MichiTheme.spacing.xl
+                bottomPadding: MichiTheme.spacing.xl
 
-                Text {
-                    text: "Audio"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
-                    font.weight: MichiTheme.typography.weightBold
-                    Accessible.name: "Sección Audio"
+                PageHeader {
+                    title: "Audio avanzado"
+                    subtitle: "Dispositivos, calidad y motor de audio"
                 }
 
-                Text {
-                    text: "Configuración avanzada de audio y motor de reproducción"
-                    color: MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                }
+                GlassCard {
+                    id: deviceCard
+                    Layout.fillWidth: true
+                    title: "Dispositivo de salida"
+                    interactive: false
 
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
-                }
-
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "Dispositivo"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
 
-                        Text {
-                            text: "Dispositivo de salida"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
-                        }
+                            spacing: MichiTheme.spacing.md
 
-                        ComboBox {
-                            id: outputDeviceCombo
-                            objectName: "settings.audio.outputDevice"
-                            model: ["Predeterminado", "ALSA: hw:0", "PulseAudio", "PipeWire"]
-                            currentIndex: 0
-                            Accessible.name: "Dispositivo de salida de audio"
-                            KeyNavigation.tab: sampleRateCombo
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Dispositivo de salida"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Dispositivo de audio seleccionado"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            ComboBox {
+                                id: outputDevice
+                                objectName: "settings.audio.outputDevice"
+                                model: root.audioDevices.length > 0 ? root.audioDevices : ["Auto"]
+                                currentIndex: {
+                                    var dev = root._loadValue("audio/output_device_id", "auto")
+                                    for (var i = 0; i < model.count; i++)
+                                        if (String(model[i]) === dev || model[i] === dev) return i
+                                    return 0
+                                }
+                                onActivated: root._saveValue("audio/output_device_id", currentText)
+                                Accessible.role: Accessible.ComboBox
+                                Accessible.name: "Dispositivo de salida de audio"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
                     }
                 }
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                GlassCard {
+                    id: qualityCard
+                    Layout.fillWidth: true
+                    title: "Calidad de audio"
+                    interactive: false
 
-                    Text {
-                        text: "Calidad"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
 
-                        Text {
-                            text: "Frecuencia de muestreo"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Frecuencia de muestreo"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Sample rate de salida"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            ComboBox {
+                                id: sampleRate
+                                objectName: "settings.audio.sampleRate"
+                                model: ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"]
+                                currentIndex: {
+                                    var sr = String(root._loadValue("audio/sample_rate", 0))
+                                    for (var i = 0; i < model.count; i++)
+                                        if (model[i] === sr || model[i].startsWith(sr)) return i
+                                    return 0
+                                }
+                                onActivated: root._saveValue("audio/sample_rate", parseInt(currentText))
+                                Accessible.role: Accessible.ComboBox
+                                Accessible.name: "Frecuencia de muestreo"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
 
-                        ComboBox {
-                            id: sampleRateCombo
-                            objectName: "settings.audio.sampleRate"
-                            model: ["44100 Hz", "48000 Hz", "88200 Hz", "96000 Hz", "192000 Hz"]
-                            currentIndex: 1
-                            Accessible.name: "Frecuencia de muestreo"
-                            KeyNavigation.tab: bitDepthCombo
-                        }
-                    }
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
-                    RowLayout {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.md
-
-                        Text {
-                            text: "Profundidad de bits"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Profundidad de bits"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Bit depth de salida"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            ComboBox {
+                                id: bitDepth
+                                objectName: "settings.audio.bitDepth"
+                                model: ["Auto", "16", "24", "32"]
+                                currentIndex: {
+                                    var bd = String(root._loadValue("audio/bit_depth", "auto"))
+                                    for (var i = 0; i < model.count; i++)
+                                        if (model[i].toLowerCase() === bd.toLowerCase()) return i
+                                    return 0
+                                }
+                                onActivated: root._saveValue("audio/bit_depth", currentText.toLowerCase())
+                                Accessible.role: Accessible.ComboBox
+                                Accessible.name: "Profundidad de bits"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
 
-                        ComboBox {
-                            id: bitDepthCombo
-                            objectName: "settings.audio.bitDepth"
-                            model: ["16 bits", "24 bits", "32 bits float"]
-                            currentIndex: 1
-                            Accessible.name: "Profundidad de bits"
-                            KeyNavigation.tab: bufferSizeSpinBox
-                        }
-                    }
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
-                    RowLayout {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.md
-
-                        Text {
-                            text: "Tamaño de búfer (ms)"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Tamaño de buffer"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: bufferSlider.value + " ms"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            MichiSlider {
+                                id: bufferSlider
+                                objectName: "settings.audio.buffer"
+                                implicitWidth: 200
+                                from: 50
+                                to: 1000
+                                value: root._loadValue("audio/buffer_ms", 100)
+                                stepSize: 50
+                                accessibleName: "Tamaño de buffer"
+                                onPressedChanged: {
+                                    if (!pressed) root._saveValue("audio/buffer_ms", value)
+                                }
+                                Accessible.description: "Tamaño del buffer de audio"
+                            }
                         }
 
-                        SpinBox {
-                            id: bufferSizeSpinBox
-                            objectName: "settings.audio.bufferSize"
-                            from: 50; to: 5000; value: 200
-                            stepSize: 50
-                            editable: true
-                            Accessible.name: "Tamaño de búfer"
-                            KeyNavigation.tab: expertModeSwitch
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Calidad de resample"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Calidad del conversor de frecuencia de muestreo"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            ComboBox {
+                                id: resampleQuality
+                                objectName: "settings.audio.resampleQuality"
+                                model: ListModel {
+                                    ListElement { text: "Baja"; value: "low" }
+                                    ListElement { text: "Media"; value: "medium" }
+                                    ListElement { text: "Alta"; value: "high" }
+                                    ListElement { text: "Máxima"; value: "best" }
+                                }
+                                textRole: "text"
+                                valueRole: "value"
+                                currentIndex: {
+                                    var rq = root._loadValue("audio/resample_quality", "medium")
+                                    for (var i = 0; i < model.count; i++)
+                                        if (model.get(i).value === rq) return i
+                                    return 1
+                                }
+                                onActivated: root._saveValue("audio/resample_quality", currentValue)
+                                Accessible.role: Accessible.ComboBox
+                                Accessible.name: "Calidad de resample"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
                     }
                 }
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                GlassCard {
+                    id: normalizationCard
+                    Layout.fillWidth: true
+                    title: "Normalización"
+                    interactive: false
 
-                    Text {
-                        text: "Modo experto"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
 
-                        Text {
-                            text: "Activar modo experto"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
-                        }
-
-                        Switch {
-                            id: expertModeSwitch
-                            objectName: "settings.audio.expertMode"
-                            checked: false
-                            Accessible.name: "Activar modo experto de audio"
-                            Accessible.description: "Muestra opciones avanzadas de configuración de audio"
-                            KeyNavigation.tab: diagnosticsBtn
-                        }
-                    }
-
-                    Column {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.sm
-                        visible: expertModeSwitch.checked
-
-                        Text {
-                            text: "Opciones avanzadas visibles en modo experto."
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.captionSize
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Normalización de volumen"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                id: volumeNormalization
+                                objectName: "settings.audio.volumeNormalization"
+                                checked: root._loadValue("audio/replaygain_enabled", false)
+                                onClicked: root._saveValue("audio/replaygain_enabled", checked)
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Normalización de volumen"
+                                Accessible.description: "Aplicar normalización de volumen basada en ReplayGain"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
                     }
                 }
 
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
-                }
+                GlassCard {
+                    id: expertCard
+                    Layout.fillWidth: true
+                    title: "Opciones avanzadas"
+                    interactive: false
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "Diagnóstico"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
 
-                        Text {
-                            text: "Ejecutar diagnóstico de audio"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Modo experto"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                id: expertModeToggle
+                                objectName: "settings.audio.expertMode"
+                                checked: root.expertMode
+                                onClicked: {
+                                    root.expertMode = checked
+                                    root._saveValue("audio/expert_mode", checked)
+                                }
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Modo experto"
+                                Accessible.description: "Mostrar opciones avanzadas de configuración de audio"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: MichiTheme.colors.borderSubtle
+                            visible: root.expertMode
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+                            visible: root.expertMode
+
+                            Label {
+                                text: "Configuración avanzada del motor de audio"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.captionSize
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: MichiTheme.spacing.md
+                                Label {
+                                    text: "Permitir resample"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                    Layout.fillWidth: true
+                                }
+                                Switch {
+                                    id: allowResample
+                                    objectName: "settings.audio.allowResample"
+                                    checked: root._loadValue("audio/allow_resample", true)
+                                    onClicked: root._saveValue("audio/allow_resample", checked)
+                                    Accessible.role: Accessible.CheckBox
+                                    Accessible.name: "Permitir resample"
+                                    focusPolicy: Qt.StrongFocus
+                                }
+                            }
+
+                            Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: MichiTheme.spacing.md
+                                Label {
+                                    text: "Fallback automático"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                    Layout.fillWidth: true
+                                }
+                                Switch {
+                                    id: allowFallback
+                                    objectName: "settings.audio.allowFallback"
+                                    checked: root._loadValue("audio/allow_fallback", true)
+                                    onClicked: root._saveValue("audio/allow_fallback", checked)
+                                    Accessible.role: Accessible.CheckBox
+                                    Accessible.name: "Fallback automático"
+                                    Accessible.description: "Degradar perfil si falla la configuración actual"
+                                    focusPolicy: Qt.StrongFocus
+                                }
+                            }
+                        }
+                    }
+                }
+
+                GlassCard {
+                    id: diagnosticsCard
+                    Layout.fillWidth: true
+                    title: "Diagnóstico"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
 
                         MichiButton {
-                            id: diagnosticsBtn
-                            objectName: "settings.audio.diagnostics"
-                            text: "Abrir diagnóstico"
+                            id: runDiagnosticsBtn
+                            text: "Ejecutar diagnóstico de audio"
                             variant: "primary"
-                            Accessible.name: "Abrir diagnóstico de audio"
-                            Accessible.description: "Ejecuta pruebas de diagnóstico del motor de audio"
-                            KeyNavigation.tab: outputDeviceCombo
-                            onClicked: root.openDiagnostics()
+                            Layout.fillWidth: true
+                            onClicked: root._runDiagnostics()
+                            Accessible.name: "Ejecutar diagnóstico de audio"
                         }
                     }
                 }
+
+                Item { Layout.fillHeight: true }
             }
         }
     }
+
+    Keys.onEscapePressed: root.closeRequested()
+
+    signal closeRequested()
 }

@@ -1,59 +1,73 @@
 import QtQuick
-import QtQuick.Controls
 import "../theme"
 
 Item {
     id: root
 
-    property real progress: 0.0
-    property bool indeterminate: false
+    property real progress: 0
+    property real from: 0
+    property real to: 100
     property string statusText: ""
-    property bool cancelEnabled: false
-    property string cancelText: "Cancelar"
-    property string objectName: "progressState"
+    property string title: ""
+    property string cancelText: ""
+    property bool showCancel: false
+    property bool indeterminate: false
+    property bool reducedMotion: false
 
     signal cancelRequested()
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: root.statusText !== "" ? root.statusText : "Progreso"
-    Accessible.description: !root.indeterminate ? Math.round(root.progress * 100) + "%" : "Indeterminado"
+    objectName: "ProgressState"
+
+    Accessible.role: Accessible.ProgressBar
+    Accessible.name: title || "Progreso"
+    Accessible.description: statusText + " " + Math.round((root.progress - root.from) / Math.max(1, root.to - root.from) * 100) + "%"
+
+    implicitWidth: childrenColumn.implicitWidth
+    implicitHeight: childrenColumn.implicitHeight
 
     Column {
+        id: childrenColumn
         anchors.centerIn: parent
+        width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
         spacing: MichiTheme.spacing.md
-        width: Math.min(implicitWidth, 320)
-
-        MichiProgressBar {
-            id: progressBar
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: parent.width
-            value: root.progress * 100
-            indeterminate: root.indeterminate
-            accessibleName: root.Accessible.name
-        }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: root.statusText
-            color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.bodySize
-            wrapMode: Text.WordWrap
+            text: root.title
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.cardTitleSize
+            font.weight: MichiTheme.typography.weightSemiBold
             visible: text !== ""
         }
 
+        MichiProgressBar {
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width
+            value: root.progress
+            from: root.from
+            to: root.to
+            indeterminate: root.indeterminate
+            reducedMotion: root.reducedMotion
+            accessibleName: root.title || "Progreso"
+        }
+
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: !root.indeterminate ? Math.round(root.progress * 100) + "%" : ""
-            color: MichiTheme.colors.textMuted
+            text: {
+                if (root.indeterminate) return root.statusText || "Procesando\u2026"
+                var pct = Math.round((root.progress - root.from) / Math.max(1, root.to - root.from) * 100)
+                return (root.statusText ? root.statusText + " \u2014 " : "") + pct + "%"
+            }
+            color: MichiTheme.colors.textSecondary
             font.pixelSize: MichiTheme.typography.captionSize
-            visible: !root.indeterminate
+            horizontalAlignment: Text.AlignHCenter
         }
 
         MichiButton {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: root.cancelText
+            text: root.cancelText || "Cancelar"
             variant: "ghost"
-            visible: root.cancelEnabled
+            visible: root.showCancel
             onClicked: root.cancelRequested()
         }
     }

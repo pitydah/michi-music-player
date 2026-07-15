@@ -1,72 +1,79 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
     id: root
 
-    property int selectedCount: 0
-    property string clearText: "Limpiar selección"
-    property var actionModels: []
-    property string objectName: "selectionActionBar"
+    property int count: 0
+    property var actions: []
+    property bool visible_b: false
 
-    signal clearRequested()
-    signal actionTriggered(int index)
-
-    height: root.selectedCount > 0 ? 56 : 0
-    color: MichiTheme.colors.surfaceToolbar
-    radius: MichiTheme.radiusMd
-    border.width: MichiTheme.borderWidth
-    border.color: MichiTheme.colors.borderCard
-    visible: root.selectedCount > 0
-    clip: true
-    focus: root.selectedCount > 0
+    objectName: "SelectionActionBar"
 
     Accessible.role: Accessible.ToolBar
-    Accessible.name: root.selectedCount + " elementos seleccionados"
+    Accessible.name: count > 0 ? count + " elementos seleccionados" : "Barra de selección"
+    Accessible.description: "Acciones disponibles para elementos seleccionados"
 
-    Keys.onEscapePressed: {
-        root.clearRequested()
-    }
+    height: root.visible_b ? 56 : 0
+    radius: MichiTheme.radiusMd
+    color: MichiTheme.colors.surfaceCardElevated
+    border.width: MichiTheme.borderWidth
+    border.color: MichiTheme.colors.borderCard
+    visible: root.visible_b && count > 0
+    clip: true
+    z: 100
 
     Behavior on height {
         NumberAnimation {
-            duration: MichiTheme.motion.normal
+            duration: MichiTheme.motionFast
             easing.type: Easing.OutCubic
         }
     }
 
-    RowLayout {
+    Row {
+        id: contentRow
         anchors.fill: parent
         anchors.leftMargin: MichiTheme.spacing.lg
         anchors.rightMargin: MichiTheme.spacing.sm
-        spacing: MichiTheme.spacing.xs
+        spacing: MichiTheme.spacing.sm
 
         Text {
-            text: root.selectedCount + " seleccionado" + (root.selectedCount !== 1 ? "s" : "")
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.count + " seleccionado" + (root.count !== 1 ? "s" : "")
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
+        }
+
+        Item {
+            width: 1
+            height: 1
             Layout.fillWidth: true
         }
 
         Repeater {
-            model: root.actionModels
-            delegate: MichiButton {
-                text: modelData.text || ""
-                variant: modelData.variant || "ghost"
-                iconSource: modelData.iconSource || ""
-                onClicked: root.actionTriggered(index)
-                Accessible.name: modelData.accessibleName || modelData.text || ""
+            model: root.actions
+
+            delegate: MichiIconButton {
+                anchors.verticalCenter: parent.verticalCenter
+                iconText: modelData.icon || ""
+                tooltipText: modelData.label || modelData.text || ""
+                accessibleName: modelData.label || modelData.text || ""
+                enabled: modelData.enabled !== false
+                onClicked: {
+                    if (modelData.callback) modelData.callback()
+                    if (modelData.action) modelData.action()
+                }
             }
         }
 
-        MichiButton {
-            text: root.clearText
-            variant: "ghost"
-            onClicked: root.clearRequested()
-            Accessible.name: root.clearText
+        MichiIconButton {
+            anchors.verticalCenter: parent.verticalCenter
+            iconText: "\u00D7"
+            tooltipText: "Deseleccionar todo"
+            accessibleName: "Limpiar selección"
+            onClicked: root.count = 0
         }
     }
 }

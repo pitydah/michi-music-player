@@ -1,0 +1,1381 @@
+# Page Inventory — Michi QML Parallel Migration
+# Last updated: 2026-07-14
+#
+# State legend:
+#   MISSING                       Route registered, QML file does not exist
+#   SHELL_ONLY                    QML file exists, no bridge connection, no real logic
+#   STATIC                        QML renders static content, no interactive controls
+#   PARTIAL                       Has onClicked handlers calling bridge methods, but limited
+#   FUNCTIONAL                    Full bridge integration, real actions, state management
+#   PARITY                        Feature parity with widget equivalent
+#   RETIRED_WIDGET_READY          Widget page removed, QML is the sole UI
+
+pages:
+
+  # ============================================================================
+  # CORE — Navigation/Primary
+  # ============================================================================
+
+  - route: home
+    file: ui_qml/pages/home/HomePage.qml
+    state: FUNCTIONAL
+    bridge: HomeBridge
+    models: [homeBridge]
+    actions:
+      - navigate to library
+      - navigate to connections
+      - navigate to home_audio
+      - navigate to assistant
+    keyboard:
+      - Keys.onReturnPressed in ContinueCard
+      - Keys.onSpacePressed in ContinueCard
+      - Keys.onReturnPressed in LibraryStatusCard
+      - Keys.onSpacePressed in LibraryStatusCard
+      - Keys.onReturnPressed in EcosystemCard
+      - Keys.onSpacePressed in EcosystemCard
+      - Keys.onReturnPressed in AssistantCard
+      - Keys.onSpacePressed in AssistantCard
+      - Keys.onReturnPressed in JobsCard
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on Hero, StatusBadge, cards
+    widget_equivalent: ui/hubs/home_page.py
+    missing:
+      - dynamic data (albums/artists/tracks hardcoded to 0)
+      - ContinueCard does not show real playback state
+      - no error/loading states
+
+  - route: playback
+    file: ui_qml/pages/PlaybackPage.qml
+    state: FUNCTIONAL
+    bridge: PlaybackBridge / NowPlayingBridge
+    models: [nowplayingBridge, notificationBridge, navigationBridge]
+    actions:
+      - toggle play/pause
+      - previous / next track
+      - toggle shuffle
+      - toggle repeat
+      - seek to position
+      - set volume
+      - toggle mute
+      - navigate to lyrics
+      - navigate to metadata_inspector
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - no keyboard shortcuts
+      - no error state rendering (error banner uses hidden property)
+
+  - route: library
+    file: ui_qml/pages/library/LibraryPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge, notificationBridge, selectionContextBridge, actionRegistry]
+    actions:
+      - search library
+      - filter by format/genre/year
+      - refresh data
+      - clear filters
+      - show artist detail
+      - show album detail
+      - navigate sub-views (tracks/albums/artists/folders)
+    keyboard:
+      - Keys.onReturnPressed in LibraryNavigationBar
+      - Keys.onEscapePressed in LibraryNavigationBar
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on NavigationBar, FilterBar, StatusHeader
+      - Accessible in LibraryTrackRow (external)
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing:
+      - selection bar always hidden
+      - no loading/error states with proper visuals
+      - enum State defined but actual rendering uses Loader with hardcoded colors
+
+  - route: queue
+    file: ui_qml/pages/queue/QueuePage.qml
+    state: FUNCTIONAL
+    bridge: QueueBridge
+    models: [queueBridge, nowplayingBridge, navigationBridge, notificationBridge]
+    actions:
+      - refresh queue
+      - view queue items
+      - navigate from queue
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - no drag-to-reorder
+      - no remove-from-queue action
+      - no clear queue action
+
+  - route: playlists
+    file: ui_qml/pages/playlists/PlaylistsPage.qml
+    state: FUNCTIONAL
+    bridge: PlaylistsBridge
+    models: [playlistsBridge, selectionContextBridge]
+    actions:
+      - create playlist
+      - delete playlist (single + batch)
+      - duplicate playlist
+      - shuffle/play playlist
+      - import M3U
+      - add selected track to playlist
+      - search playlists
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - KeyNavigation chain throughout
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, cards, dialogs
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - no context menu dialog (uses inline handler)
+      - no export M3U
+      - no favorites pinning
+
+  - route: playlist_detail
+    file: ui_qml/pages/playlists/PlaylistDetailPage.qml
+    state: FUNCTIONAL
+    bridge: PlaylistsBridge
+    models: [playlistsBridge]
+    actions:
+      - play playlist
+      - shuffle playlist
+      - rename playlist
+      - duplicate playlist
+      - delete playlist
+      - export M3U
+      - play from index
+      - remove track from playlist
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - KeyNavigation chain throughout
+      - Keys.onEscapePressed for dialogs
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, dialogs, track list
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - track list refresh not working (splice on model instead of bridge)
+      - no drag-to-reorder
+
+  - route: history
+    file: ui_qml/pages/history/HistoryPage.qml
+    state: FUNCTIONAL
+    bridge: HistoryBridge
+    models: [historyBridge]
+    actions:
+      - switch view (timeline/table)
+      - remove history item
+      - clear all history
+      - export history
+      - configure retention
+      - play from history
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - KeyNavigation chain throughout
+      - Keys.onEscapePressed for dialogs
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, dialogs, views
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - no filters wired (HistoryFilterBar emits but no bridge filter call)
+
+  - route: mix
+    file: ui_qml/pages/MixHubPage.qml
+    state: FUNCTIONAL
+    bridge: MixBridge
+    models: [mixBridge, navigationBridge]
+    actions:
+      - load mix category
+      - navigate to mix_detail
+    keyboard:
+      - Keys.onReturnPressed on cards
+      - Keys.onSpacePressed on cards
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on cards, header
+    widget_equivalent: ui/hubs/mix_hub_page.py
+    missing:
+      - no detail view state (empty mix list not handled)
+      - no generation progress
+
+  - route: mix_detail
+    file: ui_qml/pages/MixDetailPage.qml
+    state: FUNCTIONAL
+    bridge: MixBridge
+    models: [mixBridge]
+    actions:
+      - go back
+      - play mix
+      - enqueue mix
+      - regenerate mix
+      - cancel generation
+      - save as playlist
+      - explain mix
+      - play from index
+      - enqueue track
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - Keys.onReturnPressed on track items
+      - Keys.onSpacePressed on track items
+      - KeyNavigation on track list
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, track items
+    widget_equivalent: ui/hubs/mix_hub_page.py
+    missing:
+      - LibraryTrackTable has bridge: null (no real data)
+      - no play/shuffle controls
+      - no action buttons
+
+  - route: search
+    file: ui_qml/pages/search/GlobalSearchPage.qml
+    state: FUNCTIONAL
+    bridge: GlobalSearchBridge
+    models: [globalSearchBridge]
+    actions:
+      - global search
+      - view grouped results
+      - filter results by type
+      - clear/retry search
+    keyboard:
+      - Keys.onReturnPressed on search field
+      - Keys.onEscapePressed on search field
+      - KeyNavigation on result flickable
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on inputs, results, sections
+    widget_equivalent: ui/search_controller.py
+    missing:
+      - no result item click handlers to play/navigate
+      - no pagination
+
+  - route: radio
+    file: ui_qml/pages/RadioPage.qml
+    state: FUNCTIONAL
+    bridge: RadioBridge
+    models: [radioBridge, notificationBridge]
+    actions:
+      - filter favorites/stations
+      - play station
+      - add station
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - no edit/delete station
+      - no station detail view
+
+  - route: lyrics
+    file: ui_qml/pages/LyricsPage.qml
+    state: FUNCTIONAL
+    bridge: LyricsBridge
+    models: [lyricsBridge, nowplayingBridge]
+    actions:
+      - search current track lyrics
+      - manual search (dialog)
+      - view synced lyrics
+      - attribution display
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/audio_lab/lyrics_page.py
+    missing:
+      - no edit/correct lyrics
+      - no auto-scroll during playback
+
+  - route: connections
+    file: ui_qml/pages/connections/ConnectionsPage.qml
+    state: FUNCTIONAL
+    bridge: ConnectionsBridge
+    models: [connectionsBridge, navigationBridge]
+    actions:
+      - refresh server list
+      - scan for servers
+      - add manual server
+      - request pair with discovered server
+      - navigate to home_audio
+    keyboard:
+      - Keys.onReturnPressed on buttons
+      - Keys.onSpacePressed on buttons
+      - KeyNavigation chain throughout
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on cards, panels, buttons
+    widget_equivalent: ui/hubs/connections_hub_page.py
+    missing:
+      - no external server edit/remove
+      - no detail view wiring
+
+  - route: connections.detail
+    file: ui_qml/pages/connections/ConnectionDetailPage.qml
+    state: FUNCTIONAL
+    bridge: null
+    models: []
+    actions:
+      - backClicked (signal only)
+      - reconnectClicked (signal only)
+      - disconnectClicked (signal only)
+      - forgetServerClicked (signal only)
+      - editClicked (signal only)
+      - retryClicked (signal only)
+    keyboard:
+      - KeyNavigation on all buttons
+      - Keys.onReturnPressed on back button
+      - Keys.onSpacePressed on back button
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, cards, status badges
+    widget_equivalent: ui/hubs/connections_hub_page.py
+    missing:
+      - no bridge connection
+      - signals not wired to bridge methods
+      - no real data population
+
+  - route: connections.wizard
+    file: ui_qml/pages/connections/ConnectionSetupWizard.qml
+    state: FUNCTIONAL
+    bridge: null
+    models: []
+    actions:
+      - scanRequested (signal only)
+      - connectRequested (signal only)
+      - cancelRequested (signal only)
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - KeyNavigation chain throughout
+      - Keys.onReturnPressed in TextFields
+      - Keys.onEscapePressed in TextFields
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, text fields, steps
+      - Accessible.description on text fields
+    widget_equivalent: ui/hubs/connections_hub_page.py
+    missing:
+      - no bridge connection
+      - signals not wired to bridge
+
+  - route: home_audio
+    file: ui_qml/pages/home_audio/HomeAudioPage.qml
+    state: FUNCTIONAL
+    bridge: HomeAudioBridge
+    models: [homeAudioBridge]
+    actions:
+      - refresh devices
+      - configure Home Assistant
+      - open diagnostics
+      - switch mode (assistant/stream)
+    keyboard:
+      - Keys.onReturnPressed/Keys.onSpacePressed on mode selector
+      - Keys.onReturnPressed/Keys.onSpacePressed on buttons
+      - KeyNavigation chain throughout
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all panels, cards, buttons
+    widget_equivalent: ui/hubs/home_audio_page.py
+    missing:
+      - no group editor
+      - no multiroom status
+      - no playback transfer
+
+  - route: home_audio.zone_detail
+    file: ui_qml/pages/home_audio/ZoneDetailPage.qml
+    state: FUNCTIONAL
+    bridge: null
+    models: []
+    actions:
+      - backClicked (signal only)
+      - zoneDetailVolumeChanged (signal only)
+      - muteToggled (signal only)
+      - sourceChanged (signal only)
+      - reconnectClicked (signal only)
+      - groupClicked (signal only)
+      - ungroupClicked (signal only)
+      - renameRequested (signal only)
+      - deleteRequested (signal only)
+    keyboard:
+      - Keys.onReturnPressed on back button
+      - Keys.onSpacePressed on back button
+      - KeyNavigation chain throughout
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, sliders, cards
+      - Accessible.description on sliders
+    widget_equivalent: ui/hubs/home_audio_page.py
+    missing:
+      - no bridge connection
+      - signals not wired
+
+  - route: settings
+    file: ui_qml/pages/SettingsPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridgeV2 / SettingsBridge
+    models: [settingsBridgeV2, notificationBridge]
+    actions:
+      - browse categories/sections/entries
+      - search settings
+      - reset category
+      - reset all
+    keyboard:
+      - Keys.onReturnPressed on list items
+      - Keys.onSpacePressed on list items
+    accessibility:
+      - Accessible.name on search, list items, buttons
+      - Accessible.role on list items
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no SettingsRow implementation visible (imported component)
+      - no real entry editing controls
+      - responsive layouts but no entry interaction
+
+  - route: settings.library_sources
+    file: ui_qml/pages/settings/LibrarySourcesPage.qml
+    state: FUNCTIONAL
+    bridge: LibrarySourcesBridge
+    models: [librarySourcesBridge, notificationBridge]
+    actions:
+      - add source folder
+      - remove source
+      - scan source
+      - toggle source enabled
+      - refresh sources
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no error state for unavailable sources
+      - no batch scan
+
+  # Settings sub-pages (all registered in route_registry but files don't exist)
+  - route: settings.general
+    file: ui_qml/pages/settings/SettingsGeneralPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridgeV2
+    models: [settingsBridgeV2]
+    actions:
+      - set language
+      - set base theme (light/dark)
+      - configure startup behavior
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no real save confirmation
+      - some settings read-only
+
+  - route: settings.appearance
+    file: ui_qml/pages/settings/SettingsAppearancePage.qml
+    state: FUNCTIONAL
+    bridge: ThemeBridge
+    models: [themeBridge]
+    actions:
+      - set theme mode
+      - set accent color
+      - set font scale
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no real-time preview
+      - no custom accent picker
+
+  - route: settings.playback
+    file: ui_qml/pages/settings/SettingsPlaybackPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridgeV2
+    models: [settingsBridgeV2]
+    actions:
+      - set crossfade
+      - set gapless playback
+      - set replaygain mode
+      - set buffer size
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no per-device profile selection
+
+  - route: settings.library
+    file: ui_qml/pages/settings/SettingsLibraryPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridgeV2
+    models: [settingsBridgeV2]
+    actions:
+      - set library scan behavior
+      - configure embedded art extraction
+      - set metadata fetch preferences
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no scan path management (handled by sources page)
+
+  - route: settings.accessibility
+    file: ui_qml/pages/settings/SettingsAccessibilityPage.qml
+    state: FUNCTIONAL
+    bridge: ThemeBridge
+    models: [themeBridge]
+    actions:
+      - toggle high contrast
+      - toggle reduce motion
+      - set notification verbosity
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no screen reader testing
+      - some toggles cosmetic only
+
+  - route: settings.audio
+    file: ui_qml/pages/settings/SettingsAudioPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridgeV2
+    models: [settingsBridgeV2]
+    actions:
+      - set audio output device
+      - set buffer/period config
+      - toggle bit-perfect mode
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no device hotplug detection
+      - no per-profile device binding
+
+  - route: settings.about
+    file: ui_qml/pages/settings/SettingsAboutPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridgeV2
+    models: [settingsBridgeV2]
+    actions:
+      - view version info
+      - view licenses
+      - open contributor links
+    keyboard:
+      - KeyNavigation.tab between controls
+      - Keys.onReturnPressed on buttons
+      - Keys.onEscapePressed for back
+    accessibility:
+      - Accessible.role/name on root
+      - objectName on all controls
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no license detail viewer
+      - no update check
+
+  # ============================================================================
+  # DEVICES & SYNC
+  # ============================================================================
+
+  - route: devices.list
+    file: ui_qml/pages/DevicesPage.qml
+    state: FUNCTIONAL
+    bridge: DevicesBridge
+    models: [devicesBridge]
+    actions:
+      - refresh
+      - start/stop server
+      - view paired devices
+      - view detected peers
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/devices_page.py
+    missing:
+      - no pairing action
+      - no sync trigger
+
+  - route: devices.detail
+    file: ui_qml/pages/devices/DeviceDetailPage.qml
+    state: FUNCTIONAL
+    bridge: DevicesBridge
+    models: [devicesBridge, jobBridge]
+    actions:
+      - backClicked
+      - authorizeClicked
+      - unauthorizeClicked
+      - trustClicked
+      - untrustClicked
+      - unpairClicked
+      - syncClicked
+      - editProfileClicked
+      - startTransferClicked
+      - cancelTransferClicked
+    keyboard:
+      - Keys.onEscapePressed for back
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - Keys.onTabPressed for focus
+      - KeyNavigation chain throughout
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, cards, panels
+    widget_equivalent: ui/devices_page.py
+    missing:
+      - bridge methods used via loadDeviceDetail but signals still primary
+
+  # ============================================================================
+  # TOOLS
+  # ============================================================================
+
+  - route: ai
+    file: ui_qml/pages/assistant/AssistantPage.qml
+    state: FUNCTIONAL
+    bridge: MichiAIBridge
+    models: [michiAiBridge, navigationBridge]
+    actions:
+      - send chat message
+      - receive AI response
+      - trigger suggestion action
+      - navigate via suggestion
+    keyboard:
+      - Keys.onReturnPressed on suggestion cards
+      - Keys.onSpacePressed on suggestion cards
+      - Keys.onReturnPressed on chat input
+      - Keys.onEscapePressed on chat input
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all sections, buttons, input
+    widget_equivalent: ui/ai_assistant_panel.py
+    missing:
+      - chat bubbles use Qt.createQmlObject (fragile)
+      - no streaming response
+      - no chat history persistence
+
+  - route: assistant
+    (alias for ai — same page)
+
+  - route: audio_lab
+    file: ui_qml/pages/audio_lab/AudioLabOverviewPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - navigate to sub-pages (analysis/conversion/normalization/replaygain/integrity/comparison/jobs/profiles)
+      - view backend info
+      - view selection summary
+    keyboard:
+      - Keys.onReturnPressed on all cards
+      - Keys.onSpacePressed on all cards
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all cards, sections, badges
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - no actual audio analysis execution
+      - selection summary not wired to real selection
+
+  - route: audio_lab.overview
+    (alias — same as audio_lab)
+
+  - route: audio_lab.analysis
+    file: ui_qml/pages/audio_lab/AudioAnalysisPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - start analysis
+      - cancel analysis
+      - toggle compare mode
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, panels
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - analysis result display is basic
+      - no file selection dialog
+
+  - route: audio_lab.conversion
+    file: ui_qml/pages/audio_lab/AudioConversionPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge / ConversionBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - select format
+      - configure codec options
+      - preview conversion
+      - start conversion
+      - cancel conversion
+      - retry conversion
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - Keys.onReturnPressed on checkboxes
+      - Keys.onSpacePressed on checkboxes
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, combo boxes, sliders, fields
+    widget_equivalent: ui/audio_lab/conversion_page.py
+    missing:
+      - no progress
+      - no real conversionBridge wiring for file selection
+
+  - route: audio_lab.normalization
+    file: ui_qml/pages/audio_lab/AudioNormalizationPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - set target LUFS
+      - set true peak limit
+      - set gate threshold
+      - measure loudness
+      - apply normalization
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, sliders, panels
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - measure loudness is simulated
+      - apply normalization is simulated
+      - no real file analysis
+
+  - route: audio_lab.replaygain
+    file: ui_qml/pages/audio_lab/ReplayGainPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - select mode (track/album)
+      - configure preamp/headroom
+      - analyze ReplayGain
+      - write tags
+      - clear tags
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, sliders, cards
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - analysis is simulated
+      - tag writing is simulated
+
+  - route: audio_lab.integrity
+    file: ui_qml/pages/audio_lab/AudioIntegrityPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - full integrity check
+      - quick integrity check
+      - repair file
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+      - Keys.onReturnPressed on checkboxes
+      - Keys.onSpacePressed on checkboxes
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, checkboxes, panels
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - integrity check uses labService directly
+      - repair is simulated
+
+  - route: audio_lab.comparison
+    file: ui_qml/pages/audio_lab/AudioComparisonPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - select file A
+      - select file B
+      - compare files
+      - swap A/B
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, sections
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - no real diff rendering
+      - comparison simulated when bridge unavailable
+
+  - route: audio_lab.jobs
+    file: ui_qml/pages/audio_lab/AudioBatchJobsPage.qml
+    state: FUNCTIONAL
+    bridge: JobBridge
+    models: [jobBridge, navigationBridge]
+    actions:
+      - cancel job
+      - retry job
+      - view job detail
+      - clear completed
+      - clear failed
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, job items
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing: []
+
+  - route: audio_lab.profiles
+    file: ui_qml/pages/audio_lab/AudioConversionProfileEditor.qml
+    state: FUNCTIONAL
+    bridge: null
+    models: [navigationBridge]
+    actions:
+      - load preset profile
+      - edit profile
+      - save profile
+      - delete profile
+      - navigate back
+    keyboard:
+      - Keys.onReturnPressed on all buttons
+      - Keys.onSpacePressed on all buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on all buttons, combo boxes, fields
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - no bridge connection
+      - no real profile persistence
+
+  - route: diagnostics
+    file: ui_qml/pages/DiagnosticsPage.qml
+    state: FUNCTIONAL
+    bridge: DiagnosticsBridge
+    models: [diagnosticsBridge]
+    actions:
+      - refresh diagnostics
+      - copy diagnostics
+      - routeEnter auto-refresh
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/audio_lab/diagnostics_page.py
+    missing:
+      - no output selection
+
+  - route: disc_lab
+    file: ui_qml/pages/DiscLabPage.qml
+    state: FUNCTIONAL
+    bridge: DiscLabBridge
+    models: [discLabBridge, notificationBridge]
+    actions:
+      - detect drive
+      - scan disc
+      - view detected tracks
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/audio_lab/michi_disc_lab_page.py
+    missing:
+      - Rip CD disabled
+      - no drive selection
+      - no metadata lookup after scan
+
+  - route: equalizer
+    file: ui_qml/pages/EqPage.qml
+    state: FUNCTIONAL
+    bridge: EqBridge
+    models: [eqBridge, notificationBridge]
+    actions:
+      - toggle bypass
+      - set preamp
+      - apply preset
+      - toggle band (via GlassCard click)
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/eq_panel.py
+    missing:
+      - no graphic EQ slider bands
+      - no parametric mode
+
+  - route: equalizer.detail
+    file: ui_qml/pages/equalizer/EqualizerPage.qml
+    state: FUNCTIONAL
+    bridge: EqBridge
+    models: [eqBridge, notificationBridge]
+    actions:
+      - bypass EQ
+      - reset EQ
+      - set preamp
+      - adjust graphic EQ band
+      - browse/apply presets
+      - view backend status
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/eq_panel.py
+    missing:
+      - band gain changed handler calls setGraphicBand but method name may differ
+      - no parametric mode
+
+  - route: library_doctor
+    file: ui_qml/pages/LibraryDoctorPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryDoctorBridge
+    models: [libraryDoctorBridge, notificationBridge, selectionContextBridge, navigationBridge]
+    actions:
+      - scan library
+      - refresh results
+      - view issues by type
+      - navigate to metadata_inspector from issue
+      - select file via selectionContextBridge
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/library/library_doctor_page.py
+    missing:
+      - read-only (no auto-repair)
+      - no fix preview
+
+  - route: tagging
+    file: ui_qml/pages/SmartTaggingPage.qml
+    state: FUNCTIONAL
+    bridge: SmartTaggingBridge
+    models: [smartTaggingBridge, selectionContextBridge, notificationBridge]
+    actions:
+      - select audio file (FileDialog / selection context)
+      - scan track
+      - view suggestions (field/current/suggested)
+      - apply suggestions (simulated)
+      - clear file selection
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/metadata_editor.py
+    missing:
+      - apply is simulated (shows toast only)
+      - no individual suggestion accept
+      - no undo
+
+  - route: metadata.inspector
+    file: ui_qml/pages/metadata/MetadataInspectorPage.qml
+    state: FUNCTIONAL
+    bridge: MetadataBridge
+    models: [metadataBridge, selectionContextBridge, navigationBridge]
+    actions:
+      - inspect track
+      - view field list
+      - start/cancel edit
+      - save changes (applyChanges)
+      - navigate to smart tagging
+      - view artwork status
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/metadata_editor.py
+    missing:
+      - edit fields limited to title/artist/album
+      - no real artwork editing
+      - no batch mode
+
+  - route: metadata.editor
+    file: ui_qml/pages/metadata/MetadataEditorPage.qml
+    state: PARTIAL
+    bridge: MetadataBridge
+    models: [metadataBridge, selectionContextBridge]
+    actions:
+      - switch mode (single/batch)
+      - load from selection
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/metadata_editor.py
+    missing:
+      - single/batch editor defined as Components but MetadataSingleEditor/BatchEditor may not exist
+      - no real save
+
+  - route: outputs
+    file: ui_qml/pages/OutputProfilesPage.qml
+    state: FUNCTIONAL
+    bridge: SettingsBridge
+    models: [settingsBridge, notificationBridge]
+    actions:
+      - set active profile
+      - view profile details
+      - view DSD/bit-perfect badges
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/settings_pages.py
+    missing:
+      - no profile creation
+      - no profile editor
+
+  # ============================================================================
+  # NAVIGATION SUB-PAGES (library sub-views)
+  # ============================================================================
+
+  - route: library.tracks
+    file: ui_qml/pages/library/tracks/TracksPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - track table navigation
+    keyboard:
+      - Keys.onPressed/released in LibraryTrackTable
+    accessibility:
+      - Accessible in LibraryTrackRow
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing:
+      - no sort controls
+      - no column header interactions
+
+  - route: library.albums
+    file: ui_qml/pages/library/AlbumGridPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - view album grid/list
+      - switch view mode
+      - click album (to detail)
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.album_detail
+    file: ui_qml/pages/library/AlbumDetailPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge, notificationBridge]
+    actions:
+      - load album data
+      - play album
+      - shuffle album
+      - enqueue album
+      - view tracks
+      - play track
+      - go back
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/album_detail_view.py
+    missing:
+      - no album art fallback
+      - no favorite toggle
+      - no context menu on tracks
+
+  - route: library.artists
+    file: ui_qml/pages/library/ArtistGridPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - view artist grid
+      - click artist (to detail)
+    keyboard: []
+    accessibility:
+      - Accessible in ArtistCard
+    widget_equivalent: ui/artist_detail_view.py
+    missing: []
+
+  - route: library.artist_detail
+    file: ui_qml/pages/library/ArtistDetailPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge, notificationBridge]
+    actions:
+      - load artist data
+      - play all artist tracks
+      - enqueue artist tracks
+      - view albums list
+      - view tracks list
+      - play track
+      - go back
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/artist_detail_view.py
+    missing:
+      - shuffle button not wired
+      - no bio/genre detail from external sources
+
+  - route: library.folders
+    file: ui_qml/pages/library/FolderBrowserPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - navigate folder tree
+      - view folder contents
+      - play folder
+      - scan folder
+      - folder breadcrumb navigation
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/folder_browser.py
+    missing:
+      - no context menu on files
+      - no multi-select
+
+  - route: library.sources
+    file: ui_qml/pages/library/SourcesPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - view source list
+      - add source (FolderDialog)
+      - remove source
+      - edit source
+      - toggle source enabled
+      - scan source
+      - reload sources
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing:
+      - edit dialog (SourceEditorDialog) may not be fully wired
+      - no scan progress per source
+
+  - route: library.genres
+    file: ui_qml/pages/library/GenresPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - view genre list
+      - select genre
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/genres/
+    missing: []
+
+  - route: library.genre_detail
+    file: ui_qml/pages/library/GenreDetailPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - load genre filter
+      - go back
+      - play all filtered
+      - play track by ID
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/genres/genre_detail_page.py
+    missing:
+      - no album grid filtered by genre
+
+  - route: library.composers
+    file: ui_qml/pages/library/ComposersPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - view composer list
+      - select composer
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.composer_detail
+    file: ui_qml/pages/library/ComposerDetailPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - load composer filter
+      - go back
+      - play track by ID
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing:
+      - no track list for composer
+
+  - route: library.favorites
+    file: ui_qml/pages/library/FavoritesPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - reload favorites filter
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing:
+      - no unfavorite action
+
+  - route: library.most_played
+    file: ui_qml/pages/library/MostPlayedPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - reload sorted by play_count
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.recent
+    file: ui_qml/pages/library/RecentPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - reload sorted by date_added
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.unplayed
+    file: ui_qml/pages/library/UnplayedPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - reload unplayed filter
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.years
+    file: ui_qml/pages/library/YearsPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - view year list
+      - select year
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.missing
+    file: ui_qml/pages/library/MissingPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - reload missing filter
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing: []
+
+  - route: library.source_detail
+    file: ui_qml/pages/library/SourceDetailPage.qml
+    state: FUNCTIONAL
+    bridge: LibraryBridge
+    models: [libraryBridge]
+    actions:
+      - load source detail
+      - go back
+      - scan source
+      - cancel scan
+      - rescan source
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/library_hub_page.py
+    missing:
+      - no path editing
+
+  # ============================================================================
+  # NOW PLAYING
+  # ============================================================================
+
+  - route: nowplaying
+    file: ui_qml/pages/nowplaying/NowPlayingPage.qml
+    state: FUNCTIONAL
+    bridge: NowPlayingBridge
+    models: [nowplayingBridge, navigationBridge, notificationBridge]
+    actions:
+      - play/pause
+      - previous/next
+      - shuffle/repeat
+      - seek
+      - volume/mute
+      - navigate to lyrics
+      - navigate to queue
+      - view quality info
+      - view queue preview
+      - view lyrics pane
+      - view technical info
+      - view output selector
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/hubs/playback_hub_page.py
+    missing:
+      - error banner not wired from sub-components
+
+  # ============================================================================
+  # EXPERIMENTAL / PLACEHOLDER
+  # ============================================================================
+
+  - route: placeholder
+    file: ui_qml/pages/PlaceholderPage.qml
+    state: SHELL_ONLY
+    bridge: null
+    models: []
+    actions:
+      - none (static placeholder)
+    keyboard:
+      - KeyNavigation on buttons
+    accessibility:
+      - Accessible.role/name on root
+      - Accessible.name on buttons
+    widget_equivalent: null
+    missing:
+      - "Abrir en ventana clásica" button navigates to home instead
+
+  - route: audio_lab (assistant/)
+    file: ui_qml/pages/assistant/AudioLabPage.qml
+    state: FUNCTIONAL
+    bridge: AudioLabBridge
+    models: [audioLabBridge, navigationBridge]
+    actions:
+      - navigate to sub-tools
+      - view library stats
+    keyboard: []
+    accessibility: []
+    widget_equivalent: ui/audio_lab/audio_lab_page.py
+    missing:
+      - duplicate of audio_lab overview in assistant dir

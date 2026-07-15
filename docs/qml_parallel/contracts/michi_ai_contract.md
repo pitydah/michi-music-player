@@ -1,117 +1,100 @@
-# Michi AI Bridge Contract
+# MichiAIBridge Integration Contract
 
 ## Context Property
-`MichiAIBridge` registered as `michi_ai` context property.
-
-## Class Name
-`MichiAIBridge` (`ui_qml_bridge/michi_ai_bridge.py`)
-
-## Constructor Dependencies
-| Parameter | Type | Default |
-|-----------|------|---------|
-| `ai_controller` | `AIController \| None` | `None` |
-| `context_service` | `ContextService \| None` | `None` |
-| `plan_builder` | `PlanBuilder \| None` | `None` |
-| `tool_registry` | `ToolRegistry \| None` | `None` |
-| `action_registry` | `ActionRegistry \| None` | `None` |
-| `navigation_bridge` | `NavigationBridge \| None` | `None` |
-| `track_action_service` | `Any \| None` | `None` |
-| `playlist_service` | `Any \| None` | `None` |
-| `global_search_service` | `Any \| None` | `None` |
-| `settings_service` | `Any \| None` | `None` |
-| `diagnostics_service` | `Any \| None` | `None` |
-| `worker_manager` | `WorkerManager \| None` | `None` |
-| `parent` | `QObject \| None` | `None` |
+- `michiAIBridge` / `aiBridge` → `MichiAIBridge` instance
 
 ## Properties
-| Name | Type | Notify | Description |
-|------|------|--------|-------------|
-| `status` | `str` | `statusChanged` | Current state: idle/understanding/planning/awaiting_confirmation/executing/completed/cancelled/failed |
-| `lastError` | `str` | `contextChanged` | Last error message |
-| `suggestions` | `QVariantList` | `contextChanged` | Contextual suggestions (max 5) with title, description, action, route |
+| Property | Type | Notify Signal |
+|---|---|---|
+| `status` | `str` | `statusChanged` |
+| `lastError` | `str` | `contextChanged` |
+| `suggestions` | `QVariantList` | `contextChanged` |
+
+Suggestion schema: `{title: str, description: str, action: str, route: str}`
 
 ## Slots
-| Name | Parameters | Return | Description |
-|------|-----------|--------|-------------|
-| `refresh` | — | `void` | Rebuild suggestions from context service |
-| `cancel` | — | `void` | Cancel current task; reset to cancelled state |
-| `sendMessage` | `text: str` | `void` | Process natural language input; route to action or await confirmation |
-| `getChatHistory` | — | `str` | Return JSON string of chat history |
-| `aiScore` | — | `dict` | Return capability score (0-100) with sub-metrics |
+| Slot | Returns | Parameters |
+|---|---|---|
+| `refresh` | (none) | none |
+| `cancel` | (none) | none |
+| `sendMessage` | (none) | `text: str` |
+| `getChatHistory` | `str` (JSON) | none |
+| `aiScore` | `dict` | none |
 
 ## Signals
-| Name | Payload | Description |
-|------|---------|-------------|
-| `contextChanged` | — | Suggestions, chat history, or error changed |
-| `responseReceived` | `str` | Assistant response text emitted |
-| `statusChanged` | `str` | State machine transitioned |
+| Signal | Payload |
+|---|---|
+| `contextChanged` | (none) |
+| `responseReceived` | `response: str` |
+| `statusChanged` | `new_status: str` |
 
 ## Models Exposed
-None. Chat history returned as JSON string.
+None. Chat history exposed as JSON string via `getChatHistory()` slot.
 
-## VALID_STATES
-idle, understanding, planning, awaiting_confirmation, executing, completed, cancelled, failed
+## Error Types/Codes
+- `"NO_SEARCH_SERVICE"` — global search not injected
+- `"NO_TRACK_ACTION_SERVICE"` / `"NO_TRACK_ACTION_SERVICE"` — TrackActionService missing
+- `"TRACK_NOT_FOUND"` — search returned no tracks
+- `"NO_ENQUEUE_METHOD"` — enqueue_track not available on TAS
+- `"SIN_QUERY"` — blank search query
+- `"NO_NAVIGATION_SERVICE"` — NavigationBridge missing
+- `"NO_PLAYLIST_SERVICE"` — no playlist service
+- `"NO_CREATE_METHOD"` — create method not available
+- `"NO_PLAYLIST_ID"` — playlist ID not found in text
+- `"NO_DIAGNOSTICS_SERVICE"` — diagnostics service missing
+- `"NO_SETTINGS_SERVICE"` — settings service missing
+- Error codes from `_dispatch_action` fallthrough
 
-## Error Handling
-- Internal error codes used in response text (not dict returns)
-- `_dispatch_action` returns dict; failures are converted to chat responses
-- Error in response: `"Error al <description>: <error message>"`
-- All exceptions caught per action dispatch
+## Valid States
+`"idle"`, `"understanding"`, `"planning"`, `"awaiting_confirmation"`, `"executing"`, `"completed"`, `"cancelled"`, `"failed"`.
 
-## Recognized Actions (10)
-| Action | Requires Confirmation | Description |
-|--------|----------------------|-------------|
-| `reproducir canción` | No | Play a track by name or ID |
-| `reproducir álbum` | No | Play an album |
-| `encolar` | No | Enqueue tracks |
-| `buscar` | No | Search library |
-| `abrir ruta` | No | Navigate to section |
-| `crear playlist` | Yes | Create new playlist |
-| `agregar canciones` | Yes | Add songs to playlist |
-| `mostrar no escuchadas` | No | Show unplayed tracks |
-| `diagnosticar biblioteca` | No | Run quick diagnostics |
-| `abrir ajustes` | No | Navigate to settings |
+## Lifecycle Expectations
+- Constructor takes optional: `ai_controller`, `context_service`, `plan_builder`, `tool_registry`, `action_registry`, `navigation_bridge`, `track_action_service`, `playlist_service`, `global_search_service`, `settings_service`, `diagnostics_service`, `worker_manager`.
+- `refresh()` builds suggestions from `ContextService.get_suggestions()` or returns 5 static defaults.
+- `sendMessage(text)` resolves user intent via pattern matching in Spanish.
+- Chat history is stored in-memory as list of `{role, text}` dicts (no persistence).
+- `status` transitions through valid states via `_set_status()`.
 
-## States
-| State | Meaning |
-|-------|---------|
-| `idle` | No active conversation |
-| `understanding` | Processing user message |
-| `planning` | Building execution plan |
-| `awaiting_confirmation` | Waiting for user yes/no on destructive action |
-| `executing` | Dispatching action to service |
-| `completed` | Action succeeded |
-| `cancelled` | User cancelled or system cancelled |
-| `failed` | Action execution failed |
+## Behavior When Service Is Missing/Null
+Most services gracefully degrade — individual `_action_*` methods check and return appropriate error codes.
 
-## Lifecycle
-- Created by `BridgeFactory.create_michi_ai_bridge()` — attempts to create AIController, ContextService, PlanBuilder, ToolRegistry internally, silently catching import failures
-- No auto-refresh; `refresh()` must be called to populate suggestions
-- Chat history stored in-memory as list of dicts
+## Destructive Actions and Confirmations
+The following actions require `requires_confirmation=True`:
+- Creating a playlist (`crear playlist`)
+- Adding songs to a playlist (`agregar canciones`)
+- Changing a setting (`cambiar ajuste seguro`)
 
-## Behavior When Service Is Null/Missing
-- Without `context_service`: fallback hardcoded suggestions shown (5 default items)
-- Without `track_action_service`: play/enqueue operations return error
-- Without `global_search_service`: search operations fail
-- Without `playlist_service`: playlist creation/delegation fails
-- Without `navigation_bridge`: route navigation fails
-- Without `diagnostics_service`: diagnostic action fails
-- Without `settings_service`: setting changes fail
-- Without `worker_manager`: task cancellation no-op
-
-## Integration
-- **JobService**: Uses `worker_manager` for task cancellation
-- **ActionRegistry**: Not directly used in action dispatch
-- **NavigationBridge**: Used for `abrir ruta` and `abrir ajustes` actions
-- **CapabilityBridge**: Registered as `michi_ai` bridge with no explicit capability gate; `aiScore` checks all dependencies
+When confirmation required:
+1. State transitions to `"awaiting_confirmation"`
+2. Response asks "¿Confirmas que quieres...?"
+3. User replies "sí"/"confirmar"/"yes" to confirm → `_execute_action` called
+4. User replies "no"/"cancelar"/"cancel" to reject → status `"cancelled"`
 
 ## Cancellation Contract
-- `cancel()` cancels task via `_wm.cancel_task(task_id)` and resets state to "cancelled"
-- `_pending_action` cleared on cancel
-- No generation counter; single pending action at a time
+- `cancel()`: cancels task via `_wm.cancel_task(_current_task_id)` if WorkerManager available. Clears `_pending_action` and `_last_error`. Sets status to `"cancelled"`.
+- User saying "no"/"cancelar"/"cancel" during `awaiting_confirmation`: sets `_pending_action = None`, status `"cancelled"`, sends "Acción cancelada." response.
 
-## Destructive Action Handling
-- Actions requiring confirmation: `crear playlist`, `agregar canciones`, `cambiar ajuste seguro`
-- Confirmation flow: user sends message → bridge responds with "¿Confirmas?" → user says sí/no
-- `_pending_action` stores the action awaiting confirmation
-- `_resolve_action` intercepts "sí"/"no" to confirm or cancel pending action
+## Integration with JobService
+- Uses `WorkerManager` (`_wm`) via `cancel_task` for cancellation.
+- NOT using JobBridge — direct WorkerManager integration.
+
+## Integration with ActionRegistry
+- `_dispatch_action` delegates `"abrir ajustes"` to `NavigationBridge.navigate("settings")`.
+- `_action_change_setting` uses `SettingsService.set_()` to change settings.
+- ActionRegistry passed as constructor dependency but not directly used in current code.
+
+## Integration with NavigationBridge
+- `_action_open_route()`: maps Spanish keywords to routes (`biblioteca`→`library`, `inicio`→`home`, etc.) and calls `_nav.navigate(target)`.
+- `_execute_action("abrir ajustes")`: calls `_nav.navigate("settings")`.
+
+## Integration with PageStateStore
+NOT IMPLEMENTED.
+
+## Integration with CapabilityBridge
+NOT IMPLEMENTED.
+
+## Integration with AccessibilityBridge
+NOT IMPLEMENTED.
+
+## Recognized Intents (Spanish)
+`reproducir canción`, `reproducir álbum`, `encolar`, `buscar`, `abrir ruta`, `crear playlist`, `agregar canciones`, `mostrar no escuchadas`, `diagnosticar biblioteca`, `abrir ajustes`, `cambiar ajuste seguro`.

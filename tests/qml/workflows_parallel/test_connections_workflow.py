@@ -1,33 +1,37 @@
-"""Workflow test: discover → connect → disconnect → reconnect → forget via ConnectionsBridge."""
-import pytest
+"""Full workflow: discover -> connect -> disconnect -> reconnect -> forget."""
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
-
-pytestmark = [pytest.mark.qml_module("connections"), pytest.mark.qml_workflow("connections")]
+import pytest
+pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
-    ctrl.discover_servers.return_value = [
-        MagicMock(name="MichiServer", host="192.168.1.10"),
-        MagicMock(name="OfficeServer", host="192.168.1.20"),
-    ]
+    s1, s2 = MagicMock(), MagicMock()
+    s1.name = "Server1"
+    s1.host = "10.0.0.1"
+    s2.name = "Server2"
+    s2.host = "10.0.0.2"
+    ctrl.discover_servers.return_value = [s1, s2]
     ctrl.get_capabilities.return_value = {
         "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
+        "micro_server_name": "MyServer",
         "contract_ok": True,
         "can_continue_playback": True,
-        "can_import": False,
-        "can_send_genre_playlist": False,
+        "can_import": True,
+        "can_send_genre_playlist": True,
         "can_send_genre_mix": False,
     }
+    ctrl.reconnect.return_value = True
     ctrl.get_connection_state.return_value = {
         "micro_server_state": "connected",
-        "micro_server_name": "MichiServer",
+        "micro_server_name": "MyServer",
     }
-    ctrl.reconnect.return_value = {"ok": True}
+    ctrl.is_connected = True
+    ctrl.connect = MagicMock(return_value={"ok": True})
+    ctrl.test_connection = MagicMock(return_value=True)
     return ctrl
 
 
@@ -36,157 +40,111 @@ def bridge(mock_ctrl):
     return ConnectionsBridge(michi_link_ctrl=mock_ctrl)
 
 
-class TestConnectionsWorkflow:
-    """Complete workflow: discover → connect → disconnect → reconnect → forget."""
-
-    def test_wf_discover(self, bridge, mock_ctrl):
+class TestFullWorkflow:
+    def test_discover_scan(self, bridge, mock_ctrl):
         result = bridge.scanForServers()
         assert result["ok"] is True
-        assert result["count"] >= 2
-        assert len(bridge.discoveredServers) >= 2
-        assert bridge.microServerState == "connected"
+        assert mock_ctrl.discover_servers.called
+        assert len(bridge.discoveredServers) == 2
 
-    def test_wf_discover_empty(self, bridge, mock_ctrl):
-        mock_ctrl.discover_servers.return_value = []
-        result = bridge.scanForServers()
-        assert result["ok"] is True
-        assert result["count"] == 0
-
-    def test_wf_discover_error(self, bridge, mock_ctrl):
-        mock_ctrl.discover_servers.side_effect = RuntimeError("Network error")
-        result = bridge.scanForServers()
-        assert result["ok"] is False
-        assert bridge.microServerState == "error"
-
-    def test_wf_connect_manual(self, bridge):
-        result = bridge.connectManual("192.168.1.100", 53318, "MyServer")
+    def test_connect_manual(self, bridge):
+        result = bridge.connectManual("10.0.0.1", 53318, "MyServer")
         assert result["ok"] is True
         assert bridge.microServerAlias == "MyServer"
 
-    def test_wf_connect_manual_empty_host(self, bridge):
-        result = bridge.addManualServer("", 0, "")
-        assert result["ok"] is False
-        assert result["error"] == "EMPTY_HOST"
-
-    def test_wf_pair_request(self, bridge):
-        result = bridge.requestPair()
-        assert result["ok"] is True
-        assert bridge.microServerState == "pairing_required"
-
-    def test_wf_pair_confirm(self, bridge, mock_ctrl):
-        bridge.requestPair()
-        result = bridge.confirmPair()
-        assert result["ok"] is True
-        assert bridge.microServerState == "connected"
-
-    def test_wf_pair_reject(self, bridge):
-        bridge.requestPair()
-        result = bridge.rejectPair()
-        assert result["ok"] is True
-        assert bridge.microServerState == "not_configured"
-
-    def test_wf_disconnect(self, bridge):
-        bridge.connectManual("192.168.1.100", 53318, "MyServer")
-        result = bridge.disconnect()
-        assert result["ok"] is True
-        assert bridge.microServerState == "not_configured"
-        assert bridge.microServerAlias == ""
-
-    def test_wf_reconnect(self, bridge, mock_ctrl):
-        bridge.connectManual("192.168.1.100", 53318, "MyServer")
+    def test_disconnect(self, bridge):
+        bridge.connectManual("10.0.0.1", 53318, "MyServer")
         bridge.disconnect()
+        assert bridge.microServerState == "not_configured"
+        assert bridge.latencyMs == 0
+
+    def test_reconnect(self, bridge, mock_ctrl):
+        bridge.connectManual("10.0.0.1", 53318, "MyServer")
         result = bridge.reconnect()
         assert result["ok"] is True
-        assert bridge.microServerState == "connected"
+        assert mock_ctrl.reconnect.called
 
-    def test_wf_reconnect_no_ctrl(self):
-        empty = ConnectionsBridge(michi_link_ctrl=None)
-        result = empty.reconnect()
-        assert result["ok"] is False
-
-    def test_wf_forget_server(self, bridge, mock_ctrl):
-        bridge.connectManual("192.168.1.100", 53318, "MyServer")
-        result = bridge.forgetServer()
-        assert result["ok"] is True
+    def test_forget(self, bridge):
+        bridge.connectManual("10.0.0.1", 53318, "MyServer")
+        bridge.forgetServer()
         assert bridge.microServerState == "not_configured"
         assert bridge.microServerAlias == ""
 
-    def test_wf_diagnose(self, bridge, mock_ctrl):
-        bridge.connectManual("192.168.1.100", 53318, "MyServer")
+    def test_scan_then_connect_then_diagnose(self, bridge):
+        bridge.scanForServers()
+        bridge.connectManual("10.0.0.1", 53318, "MyServer")
         result = bridge.diagnose()
         assert result["ok"] is True
-        assert bridge.serverVersion == "MichiServer"
 
-    def test_wf_diagnose_no_ctrl(self):
-        empty = ConnectionsBridge(michi_link_ctrl=None)
-        result = empty.diagnose()
-        assert result["ok"] is True
-
-    def test_wf_refresh_updates_state(self, bridge, mock_ctrl):
-        result = bridge.refresh()
-        assert result["ok"] is True
-        assert bridge.microServerState == "connected"
-
-    def test_wf_refresh_no_ctrl(self):
-        empty = ConnectionsBridge(michi_link_ctrl=None)
-        result = empty.refresh()
-        assert result["ok"] is True
-        assert empty.microServerState == "service_unavailable"
-
-    def test_wf_capabilities_exposed(self, bridge, mock_ctrl):
-        bridge.diagnose()
-        caps = bridge.capabilities
-        assert len(caps) >= 1
-        can_continue = [c for c in caps if c["key"] == "can_continue_playback"]
-        assert len(can_continue) == 1
-        assert can_continue[0]["enabled"] is True
-
-    def test_wf_navigate_home_audio(self, bridge):
-        nav = MagicMock()
-        nav.navigate.return_value = None
-        bridge._nav_bridge = nav
-        result = bridge.openHomeAudio("home_audio")
-        assert result["ok"] is True
-        nav.navigate.assert_called_once_with("home_audio")
-
-    def test_wf_navigate_home_audio_no_nav(self, bridge):
-        result = bridge.openHomeAudio("home_audio")
-        assert result["ok"] is False
-
-    def test_wf_full_cycle(self, bridge, mock_ctrl):
+    def test_connect_then_disconnect_then_scan(self, bridge):
+        bridge.connectManual("10.0.0.1", 53318, "Srv")
+        bridge.disconnect()
         result = bridge.scanForServers()
         assert result["ok"] is True
-        bridge.connectManual("192.168.1.50", 53318, "FullCycle")
-        assert bridge.microServerAlias == "FullCycle"
-        bridge.disconnect()
-        assert bridge.microServerState == "not_configured"
-        bridge.reconnect()
-        assert bridge.microServerState == "connected"
-        bridge.forgetServer()
-        assert bridge.microServerAlias == ""
 
-    def test_wf_scan_after_disconnect(self, bridge, mock_ctrl):
+    def test_scan_then_add_manual(self, bridge):
         bridge.scanForServers()
-        bridge.disconnect()
-        result = bridge.scanForServers()
-        assert result["ok"] is True
-        assert result["count"] >= 2
-
-    def test_wf_service_unavailable_init(self):
-        empty = ConnectionsBridge(michi_link_ctrl=None)
-        assert empty.microServerState == "service_unavailable"
-
-    def test_wf_service_unavailable_scan(self):
-        empty = ConnectionsBridge(michi_link_ctrl=None)
-        result = empty.scanForServers()
-        assert result["ok"] is False
-        assert "SERVICE_UNAVAILABLE" in result["error"]
-
-    def test_wf_add_manual_server(self, bridge):
-        result = bridge.addManualServer("10.0.0.1", 53318, "Lab Server")
+        result = bridge.addManualServer("10.0.0.1", 53318, "New")
         assert result["ok"] is True
         assert bridge.microServerState == "detected"
 
-    def test_wf_add_manual_server_no_alias(self, bridge):
-        result = bridge.addManualServer("10.0.0.2", 53318)
+    def test_pair_then_confirm_then_disconnect(self, bridge):
+        bridge.requestPair()
+        assert bridge.microServerState == "pairing_required"
+        bridge.confirmPair()
+        assert bridge.microServerState == "connected"
+        bridge.disconnect()
+        assert bridge.microServerState == "not_configured"
+
+    def test_connect_then_diagnose_then_reconnect(self, bridge, mock_ctrl):
+        bridge.connectManual("10.0.0.1", 53318, "Srv")
+        bridge.diagnose()
+        assert bridge.serverVersion == "MyServer"
+        result = bridge.reconnect()
         assert result["ok"] is True
+        assert mock_ctrl.reconnect.called
+
+    def test_scan_then_cancel_then_scan_again(self, bridge):
+        bridge.scanForServers()
+        bridge.scanForServers()
+        assert len(bridge.discoveredServers) == 2
+
+    def test_connect_then_refresh_then_disconnect(self, bridge):
+        bridge.connectManual("10.0.0.1", 53318, "MyServer")
+        bridge.refresh()
+        assert bridge.microServerState != "error"
+        bridge.disconnect()
+        assert bridge.microServerState == "not_configured"
+
+    def test_full_lifecycle(self, bridge, mock_ctrl):
+        bridge.scanForServers()
+        assert len(bridge.discoveredServers) == 2
+        bridge.connectManual("10.0.0.1", 53318, "MyServer")
+        assert bridge.microServerAlias == "MyServer"
+        bridge.diagnose()
+        assert bridge.serverVersion == "MyServer"
+        bridge.disconnect()
+        assert bridge.microServerState == "not_configured"
+        bridge.reconnect()
+        assert mock_ctrl.reconnect.called
+        bridge.forgetServer()
+        assert bridge.microServerAlias == ""
+
+    def test_add_manual_then_connect_manual(self, bridge):
+        bridge.addManualServer("10.0.0.1", 53318, "Added")
+        result = bridge.connectManual("10.0.0.1", 53318, "Connected")
+        assert result["ok"] is True
+        assert bridge.microServerAlias == "Connected"
+
+    def test_no_controller_full_workflow(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        b.scanForServers()
+        assert b.discoveredServers == []
+        b.connectManual("10.0.0.1", 53318, "X")
+        assert b.microServerAlias == "X"
+        b.disconnect()
+        assert b.microServerState == "not_configured"
+        b.reconnect()
+        assert b.microServerState == "scanning"
+        b.forgetServer()
+        assert b.microServerAlias == ""

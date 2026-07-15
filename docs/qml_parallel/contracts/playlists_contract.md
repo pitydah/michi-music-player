@@ -1,103 +1,93 @@
-# Playlists Bridge Contract
+# PlaylistsBridge Integration Contract
 
 ## Context Property
-`PlaylistsBridge` registered as `playlists` context property.
-
-## Class Name
-`PlaylistsBridge` (`ui_qml_bridge/playlists_bridge.py`)
-
-## Constructor Dependencies
-| Parameter | Type | Default |
-|-----------|------|---------|
-| `db` | `Any (LibraryDB) \| None` | `None` |
-| `selection_context` | `SelectionContext \| None` | `None` |
-| `player_service` | `Any \| None` | `None` |
-| `playlist_service` | `Any (PlaylistService) \| None` | `None` |
-| `parent` | `QObject \| None` | `None` |
+- `playlistsBridge` → `PlaylistsBridge` instance
 
 ## Properties
-| Name | Type | Notify | Description |
-|------|------|--------|-------------|
-| `playlists` | `QVariantList` | `dataChanged` | List of playlist dicts with id, title, track_count, duration, cover_key, is_smart, updated_at, description |
+| Property | Type | Notify Signal |
+|---|---|---|
+| `playlists` | `QVariantList` | `dataChanged` |
+
+Playlist schema: `{id: int, title: str, track_count: int, duration: str, cover_key: str, is_smart: bool, updated_at: str, description: str}`
 
 ## Slots
-| Name | Parameters | Return | Description |
-|------|-----------|--------|-------------|
-| `refresh` | — | `void` | Reload all playlists from DB |
-| `createPlaylist` | `name: str` | `dict` | Create a new playlist; returns id |
-| `deletePlaylist` | `pid: int` | `dict` | Delete a playlist |
-| `renamePlaylist` | `pid: int, name: str` | `dict` | Rename a playlist |
-| `getPlaylistDetail` | `pid: int` | `dict` | Get tracks for a playlist |
-| `addTrackToPlaylist` | `pid: int, filepath: str="", track_id: str=""` | `dict` | Add track by filepath or track_id; falls back to selection context |
-| `removeTrackFromPlaylist` | `pid: int, track_id: int` | `dict` | Remove a track from a playlist |
-| `addSelectedTrackToPlaylist` | `pid: int` | `dict` | Add currently selected track to playlist |
-| `batchAddTracks` | `pid: int, tracks: list` | `dict` | Batch add tracks from list of dicts |
-| `batchAddTrackIds` | `playlist_id: int, track_ids: list` | `dict` | Batch add tracks by ID list |
-| `duplicatePlaylist` | `pid: int` | `dict` | Duplicate a playlist with "(copia)" suffix |
-| `clearPlaylist` | `pid: int` | `dict` | Remove all tracks from a playlist |
-| `reorderTrack` | `pid: int, from_index: int, to_index: int` | `dict` | Reorder track within playlist |
-| `playPlaylistFromIndex` | `pid: int, index: int=0` | `dict` | Play playlist starting at index |
-| `playPlaylist` | `pid: int` | `dict` | Play entire playlist |
-| `saveQueueAsPlaylist` | `name: str` | `dict` | Save current playback queue as playlist |
-| `previewPlaylistImport` | `filepath: str` | `dict` | Preview M3U/PLS import |
-| `confirmPlaylistImport` | `filepath: str, name: str=""` | `dict` | Confirm and execute import |
-| `cancelPlaylistImport` | `import_id: str` | `dict` | Cancel pending import |
-| `importM3U` | `filepath: str` | `dict` | Import M3U playlist file |
-| `importM3U8` | `filepath: str` | `dict` | Import M3U8 playlist file |
-| `exportM3U` | `playlist_id: int, destination_path: str` | `dict` | Export playlist as M3U |
-| `exportM3U8` | `playlist_id: int, destination_path: str` | `dict` | Export playlist as M3U8 |
-| `playlistScore` | — | `dict` | Return capability score (0-100) with sub-metrics |
+| Slot | Returns | Parameters |
+|---|---|---|
+| `refresh` | (none) | none |
+| `createPlaylist` | `dict` | `name: str` |
+| `deletePlaylist` | `dict` | `pid: int` |
+| `renamePlaylist` | `dict` | `pid: int`, `name: str` |
+| `getPlaylistDetail` | `dict` | `pid: int` |
+| `addTrackToPlaylist` | `dict` | `pid: int`, `filepath: str = ""`, `track_id: str = ""` |
+| `removeTrackFromPlaylist` | `dict` | `pid: int`, `track_id: int` |
+| `addSelectedTrackToPlaylist` | `dict` | `pid: int` |
+| `batchAddTracks` | `dict` | `pid: int`, `tracks: list` |
+| `batchAddTrackIds` | `dict` | `playlist_id: int`, `track_ids: list` |
+| `duplicatePlaylist` | `dict` | `pid: int` |
+| `clearPlaylist` | `dict` | `pid: int` |
+| `reorderTrack` | `dict` | `pid: int`, `from_index: int`, `to_index: int` |
+| `playPlaylistFromIndex` | `dict` | `pid: int`, `index: int = 0` |
+| `playPlaylist` | `dict` | `pid: int` |
+| `saveQueueAsPlaylist` | `dict` | `name: str` |
+| `previewPlaylistImport` | `dict` | `filepath: str` |
+| `confirmPlaylistImport` | `dict` | `filepath: str`, `name: str = ""` |
+| `cancelPlaylistImport` | `dict` | `import_id: str` |
+| `importM3U` | `dict` | `filepath: str` |
+| `importM3U8` | `dict` | `filepath: str` |
+| `exportM3U` | `dict` | `playlist_id: int`, `destination_path: str` |
+| `exportM3U8` | `dict` | `playlist_id: int`, `destination_path: str` |
+| `playlistScore` | `dict` | none |
+
+Most slots return `dict` with `ok: bool`.
 
 ## Signals
-| Name | Payload | Description |
-|------|---------|-------------|
-| `dataChanged` | — | Playlist list changed |
+| Signal | Payload |
+|---|---|
+| `dataChanged` | (none) |
 
 ## Models Exposed
-None. Playlists and tracks returned as dicts/lists.
+None.
 
-## Error Handling
-- All slots return `dict` with `ok: bool`
-- Error codes: `"NO_DB"`, `"NO_SERVICE"`, `"NO_SELECTION"`, `"NO_VALID_TRACK"`, `"NO_TRACKS"`, `"EMPTY_NAME"`, `"UNSUPPORTED"`
+## Error Types/Codes
+- `"NO_DB"` — no DB connection or get_playlists not available
+- `"NO_SERVICE"` — playlist service not injected
+- `"NO_SELECTION"` — no track selected via SelectionController
+- `"NO_VALID_TRACK"` — no valid track identifier
+- `"NO_TRACKS"` — playlist is empty
+- `"EMPTY_NAME"` — name is empty
+- `"UNSUPPORTED"` — reorder not available
 
-## Error Codes
-- `NO_DB` — no database or playlist service
-- `NO_SERVICE` — playlist_service not available
-- `NO_SELECTION` — no selection context for adding tracks
-- `NO_VALID_TRACK` — filepath invalid or track_id non-numeric
-- `NO_TRACKS` — playlist is empty
-- `EMPTY_NAME` — playlist name is empty
-- `UNSUPPORTED` — operation not supported by backend
-- `NO_TRACKS` — enqueue source has no tracks
+## Lifecycle Expectations
+- Constructor takes optional `db`, `selection_context`, `player_service`, `playlist_service`.
+- `_can()` returns True if `_svc` is available OR `_db` has `get_playlists`.
+- Demo data only shown when `MICHI_QML_DEMO=1` env var set and no real playlists.
 
-## States
-- None explicit; `dataChanged` on any mutation
+## Behavior When Service Is Missing/Null
+- No `_svc`: CRUD delegates to `_db` methods (`create_playlist`, `delete_playlist`, `update_playlist`). `previewPlaylistImport`/`confirmPlaylistImport`/`exportM3U` return `NO_SERVICE`.
+- No `_db`: `_can()` returns False. Most operations return `NO_DB`.
 
-## Lifecycle
-- Created by `BridgeFactory.create_playlists_bridge()` with db + player_service
-- `setSelectionContext(ctx)` can be called after construction
-- Demo mode (MICHI_QML_DEMO=1) shows fake playlists when DB unavailable
-- `refresh()` must be called explicitly to populate initial data
-
-## Behavior When Service Is Null/Missing
-- Without `db`: `_can()` returns False, operations return `"NO_DB"`
-- Without `playlist_service`: falls back to `_db` methods (create, delete, update)
-- Without `player_service`: `playPlaylist`, `playPlaylistFromIndex`, `saveQueueAsPlaylist` fail
-- Without `selection_context`: `addTrackToPlaylist` requires explicit filepath/track_id
-
-## Integration
-- **JobService**: Not used
-- **ActionRegistry**: Not used
-- **NavigationBridge**: Not used
-- **CapabilityBridge**: Registered as `playlists` capability; requires `db`
+## Destructive Actions and Confirmations
+- `deletePlaylist(pid)` — deletes a playlist. No confirmation in bridge.
+- `clearPlaylist(pid)` — removes all tracks from playlist. No confirmation.
+- `removeTrackFromPlaylist(pid, track_id)` — removes track. No confirmation.
 
 ## Cancellation Contract
-- `cancelPlaylistImport(import_id)` cancels pending import
-- No generation counter; single import at a time
+- `cancelPlaylistImport(import_id)`: delegates to `_svc.import_cancel(import_id)` if available. Returns `{ok: true}` as no-op fallback.
 
-## Destructive Action Handling
-- `deletePlaylist(pid)` — permanent deletion
-- `clearPlaylist(pid)` — removes all tracks but keeps playlist
-- `removeTrackFromPlaylist(pid, track_id)` — removes single track
-- `duplicatePlaylist(pid)` — creates new playlist (additive, not destructive)
-- No undo available for any destructive operation
+## Integration with JobService
+NOT IMPLEMENTED.
+
+## Integration with ActionRegistry
+NOT IMPLEMENTED.
+
+## Integration with NavigationBridge
+NOT IMPLEMENTED.
+
+## Integration with PageStateStore
+NOT IMPLEMENTED.
+
+## Integration with CapabilityBridge
+NOT IMPLEMENTED.
+
+## Integration with AccessibilityBridge
+NOT IMPLEMENTED.

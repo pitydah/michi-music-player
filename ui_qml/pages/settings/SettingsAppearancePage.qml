@@ -6,277 +6,325 @@ import "../../components"
 
 Item {
     id: root
+    objectName: "settingsAppearancePage"
 
-    property var bridge: typeof themeBridge !== "undefined" ? themeBridge : null
-    property string state: "READY"
+    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var themeBridge: typeof themeBridge !== "undefined" ? themeBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
-    objectName: "settings.appearance"
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Apariencia"
-    Accessible.description: "Color de acento, tipografía y efectos visuales"
+    property int pageState: AsyncStateView.READY
+    property string errorMessage: ""
+    property string errorDetails: ""
 
-    signal closeRequested()
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ajustes de apariencia"
 
-    states: [
-        State { name: "LOADING"; PropertyChanges { target: loader; sourceComponent: loadingComp } },
-        State { name: "READY"; PropertyChanges { target: loader; sourceComponent: readyComp } },
-        State { name: "ERROR"; PropertyChanges { target: loader; sourceComponent: errorComp } }
-    ]
-    state: root.bridge ? "READY" : "ERROR"
+    function refresh() {
+        if (pageState === AsyncStateView.ERROR) return
+    }
 
-    FocusScope {
-        id: focusScope
+    function _loadValue(key, fallback) {
+        if (!root.bridge) return fallback
+        var v = root.bridge.getValue(key)
+        return v !== null && v !== undefined ? v : fallback
+    }
+
+    function _saveValue(key, value) {
+        if (!root.bridge) return
+        root.bridge.setValue(key, value)
+        if (root.themeBridge && typeof root.themeBridge.applySetting === "function")
+            root.themeBridge.applySetting(key, value)
+    }
+
+    Component.onCompleted: root.refresh()
+
+    AsyncStateView {
+        id: stateView
         anchors.fill: parent
-        activeFocusOnTab: true
+        state: root.pageState
+        title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
+        message: root.errorMessage
+        details: root.errorDetails
+        retryAvailable: root.pageState === AsyncStateView.ERROR
+        onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
-        Keys.onEscapePressed: root.closeRequested()
-
-        Loader {
-            id: loader
+        readyContent: ScrollView {
+            id: scrollView
             anchors.fill: parent
-        }
-    }
-
-    Component {
-        id: loadingComp
-        LoadingState {
-            objectName: "settings.appearance.loading"
-            title: "Cargando apariencia"
-        }
-    }
-
-    Component {
-        id: errorComp
-        ErrorState {
-            objectName: "settings.appearance.error"
-            title: "Apariencia no disponible"
-            message: "No se pudo conectar con ThemeBridge."
-            retryText: "Reintentar"
-            onRetryRequested: root.state = root.bridge ? "READY" : "ERROR"
-        }
-    }
-
-    Component {
-        id: readyComp
-        Flickable {
-            anchors.fill: parent
-            contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            objectName: "settings.appearance.flickable"
+            objectName: "settings.appearance.scrollView"
+            Accessible.role: Accessible.ScrollArea
+            Accessible.name: "Ajustes de apariencia"
 
-            Keys.onEscapePressed: root.closeRequested()
-
-            Column {
-                id: column
-                width: parent.width
+            ColumnLayout {
+                width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
+                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
                 spacing: MichiTheme.spacing.lg
                 topPadding: MichiTheme.spacing.xl
-                leftPadding: MichiTheme.spacing.xl
-                rightPadding: MichiTheme.spacing.xl
+                bottomPadding: MichiTheme.spacing.xl
 
-                Text {
-                    text: "Apariencia"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
-                    font.weight: MichiTheme.typography.weightBold
-                    Accessible.name: "Sección Apariencia"
+                PageHeader {
+                    title: "Apariencia"
+                    subtitle: "Tema, colores y disposición visual"
                 }
 
-                Text {
-                    text: "Personaliza el aspecto visual de Michi"
-                    color: MichiTheme.colors.textSecondary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                }
+                GlassCard {
+                    id: colorsCard
+                    Layout.fillWidth: true
+                    title: "Colores"
+                    interactive: false
 
-                Rectangle {
-                    width: parent.width; height: 1
-                    color: MichiTheme.colors.borderSubtle
-                }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
 
-                    Text {
-                        text: "Color de acento"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Color de acento"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Color principal para elementos interactivos"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
 
-                    Flow {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.sm
+                            RowLayout {
+                                spacing: MichiTheme.spacing.sm
 
-                        Repeater {
-                            model: ["#8FB7FF", "#FF7A00", "#4ADE80", "#F87171", "#A78BFA", "#FBBF24"]
-                            Rectangle {
-                                id: swatch
-                                width: 36; height: 36; radius: MichiTheme.radiusPill
-                                color: modelData
-                                border.width: root.bridge && root.bridge.accentColor === modelData ? 2 : 1
-                                border.color: root.bridge && root.bridge.accentColor === modelData ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
-                                objectName: "settings.appearance.accentColor." + modelData.replace("#", "")
-                                Accessible.name: "Color " + modelData
-                                Accessible.role: Accessible.Button
+                                Repeater {
+                                    model: [
+                                        { color: "#8FB7FF", name: "Azul" },
+                                        { color: "#A78BFA", name: "Morado" },
+                                        { color: "#FF7A00", name: "Naranja" },
+                                        { color: "#4ADE80", name: "Verde" },
+                                        { color: "#F87171", name: "Rojo" },
+                                        { color: "#F0F2F8", name: "Blanco" }
+                                    ]
 
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (root.bridge) root.bridge.accentColor = modelData
+                                    Rectangle {
+                                        width: 32
+                                        height: 32
+                                        radius: width / 2
+                                        color: modelData.color
+                                        border.width: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? 3 : 1
+                                        border.color: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? MichiTheme.colors.textPrimary : MichiTheme.colors.borderCard
+
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: "Color de acento " + modelData.name
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root._saveValue("appearance/accent_color", modelData.color)
+                                        }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
 
-                                Keys.onReturnPressed: {
-                                    if (root.bridge) root.bridge.accentColor = modelData
+                GlassCard {
+                    id: typographyCard
+                    Layout.fillWidth: true
+                    title: "Tipografía"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Escala de fuente"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
                                 }
-                                Keys.onSpacePressed: {
-                                    if (root.bridge) root.bridge.accentColor = modelData
+                                Label {
+                                    text: fontScaleSlider.value + "%"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
                                 }
-                                focus: true
-                                activeFocusOnTab: true
+                            }
+
+                            MichiSlider {
+                                id: fontScaleSlider
+                                objectName: "settings.appearance.fontScale"
+                                implicitWidth: 200
+                                from: 75
+                                to: 150
+                                value: root._loadValue("appearance/font_scale", 100)
+                                stepSize: 5
+                                accessibleName: "Escala de fuente"
+                                onMoved: root._saveValue("appearance/font_scale", value)
+                                onPressedChanged: {
+                                    if (!pressed) root._saveValue("appearance/font_scale", value)
+                                }
+                                Accessible.description: "Ajusta el tamaño de la fuente: " + value + "%"
                             }
                         }
                     }
                 }
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                GlassCard {
+                    id: visualCard
+                    Layout.fillWidth: true
+                    title: "Preferencias visuales"
+                    interactive: false
 
-                    Text {
-                        text: "Tipografía"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
 
-                        Text {
-                            text: "Escala de fuente"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Movimiento reducido"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                id: reducedMotion
+                                objectName: "settings.appearance.reducedMotion"
+                                checked: root._loadValue("appearance/reduced_motion", false)
+                                onClicked: root._saveValue("appearance/reduced_motion", checked)
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Movimiento reducido"
+                                Accessible.description: "Reducir animaciones y transiciones"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
 
-                        ComboBox {
-                            id: fontScaleCombo
-                            objectName: "settings.appearance.fontScale"
-                            model: ["Pequeña", "Normal", "Grande", "Muy grande"]
-                            currentIndex: 1
-                            Accessible.name: "Escala de fuente"
-                            KeyNavigation.tab: reduceMotionSwitch
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Transparencia reducida"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                id: reducedTransparency
+                                objectName: "settings.appearance.reducedTransparency"
+                                checked: root._loadValue("appearance/reduced_transparency", false)
+                                onClicked: root._saveValue("appearance/reduced_transparency", checked)
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Transparencia reducida"
+                                Accessible.description: "Reducir efectos de transparencia y desenfoque"
+                                focusPolicy: Qt.StrongFocus
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Modo compacto"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                id: compactMode
+                                objectName: "settings.appearance.compactMode"
+                                checked: root._loadValue("interface/compact_mode", false)
+                                onClicked: root._saveValue("interface/compact_mode", checked)
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Modo compacto"
+                                Accessible.description: "Reducir espacios y márgenes"
+                                focusPolicy: Qt.StrongFocus
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Carátula como fondo"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                id: coverAsBackdrop
+                                objectName: "settings.appearance.coverAsBackdrop"
+                                checked: root._loadValue("appearance/cover_as_backdrop", false)
+                                onClicked: root._saveValue("appearance/cover_as_backdrop", checked)
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Carátula como fondo"
+                                Accessible.description: "Usar la carátula del álbum actual como fondo"
+                                focusPolicy: Qt.StrongFocus
+                            }
                         }
                     }
                 }
 
-                Column {
-                    width: parent.width
-                    spacing: MichiTheme.spacing.md
+                GlassCard {
+                    id: menuCard
+                    Layout.fillWidth: true
+                    title: "Barra de menú"
+                    interactive: false
 
-                    Text {
-                        text: "Efectos"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-
-                    RowLayout {
-                        width: parent.width
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
 
-                        Text {
-                            text: "Reducir movimiento"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
+                        RowLayout {
                             Layout.fillWidth: true
-                        }
-
-                        Switch {
-                            id: reduceMotionSwitch
-                            objectName: "settings.appearance.reduceMotion"
-                            checked: root.bridge ? root.bridge.reduceMotion : false
-                            Accessible.name: "Reducir movimiento"
-                            Accessible.description: "Reducir animaciones y transiciones"
-                            KeyNavigation.tab: reduceTransparencySwitch
-                            onClicked: {
-                                if (root.bridge) root.bridge.reduceMotion = checked
+                            spacing: MichiTheme.spacing.md
+                            Label {
+                                text: "Mostrar barra de menú"
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
                             }
-                        }
-                    }
-
-                    RowLayout {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.md
-
-                        Text {
-                            text: "Reducir transparencia"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            Layout.fillWidth: true
-                        }
-
-                        Switch {
-                            id: reduceTransparencySwitch
-                            objectName: "settings.appearance.reduceTransparency"
-                            checked: false
-                            Accessible.name: "Reducir transparencia"
-                            Accessible.description: "Reducir efectos de transparencia y vidrio"
-                            KeyNavigation.tab: compactModeSwitch
-                        }
-                    }
-
-                    RowLayout {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.md
-
-                        Text {
-                            text: "Modo compacto"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            Layout.fillWidth: true
-                        }
-
-                        Switch {
-                            id: compactModeSwitch
-                            objectName: "settings.appearance.compactMode"
-                            checked: root.bridge ? root.bridge.compactMode : false
-                            Accessible.name: "Modo compacto"
-                            Accessible.description: "Interfaz más densa con menos espaciado"
-                            KeyNavigation.tab: coverBackdropSwitch
-                            onClicked: {
-                                if (root.bridge) root.bridge.compactMode = checked
+                            Switch {
+                                id: showMenubar
+                                objectName: "settings.appearance.showMenubar"
+                                checked: root._loadValue("interface/show_menubar", true)
+                                onClicked: root._saveValue("interface/show_menubar", checked)
+                                Accessible.role: Accessible.CheckBox
+                                Accessible.name: "Mostrar barra de menú"
+                                focusPolicy: Qt.StrongFocus
                             }
-                        }
-                    }
-
-                    RowLayout {
-                        width: parent.width
-                        spacing: MichiTheme.spacing.md
-
-                        Text {
-                            text: "Fondo de carátula"
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            Layout.fillWidth: true
-                        }
-
-                        Switch {
-                            id: coverBackdropSwitch
-                            objectName: "settings.appearance.coverBackdrop"
-                            checked: true
-                            Accessible.name: "Fondo de carátula"
-                            Accessible.description: "Usar la carátula como fondo decorativo"
-                            KeyNavigation.tab: fontScaleCombo
                         }
                     }
                 }
+
+                Item { Layout.fillHeight: true }
             }
         }
     }
+
+    Keys.onEscapePressed: root.closeRequested()
+
+    signal closeRequested()
 }

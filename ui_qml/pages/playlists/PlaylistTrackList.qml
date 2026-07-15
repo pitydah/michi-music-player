@@ -10,6 +10,8 @@ Item {
     property var tracks: []
     property int playlistId: -1
     property bool loading: false
+    property bool selectionMode: false
+    property var selectedTracks: []
     property string _errorMsg: ""
     property var _selectedTracks: []
     property bool selectionMode: false
@@ -18,6 +20,9 @@ Item {
     signal removeRequested(int trackId, int index)
     signal moveUpRequested(int index)
     signal moveDownRequested(int index)
+    signal toggleSelection(int trackId)
+    signal openAlbumRequested(var track)
+    signal openArtistRequested(var track)
     signal selectionChanged()
 
     function refresh() {
@@ -58,9 +63,8 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         Row {
-            width: parent.width
             spacing: MichiTheme.spacing.sm
-            visible: root.tracks.length > 0 || root.selectionMode
+            visible: root.tracks.length > 0
 
             Text {
                 text: root.tracks.length + " canciones"
@@ -69,49 +73,41 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
             }
 
-            Item { width: 1; height: 1; Layout.fillWidth: true }
-
-            MichiButton {
-                text: root.selectionMode ? "Cancelar selección" : "Seleccionar"
-                variant: "ghost"
-                highlighted: root.selectionMode
-                onClicked: {
-                    root.selectionMode = !root.selectionMode
-                    if (!root.selectionMode) root._selectedTracks = []
-                }
-                objectName: "playlist.tracklist.selectToggle"
-                Accessible.name: root.selectionMode ? "Cancelar selección múltiple" : "Activar selección múltiple"
+            Text {
+                text: root._getMissingCount() > 0 ? "(" + root._getMissingCount() + " faltantes)" : ""
+                color: MichiTheme.colors.warning
+                font.pixelSize: MichiTheme.typography.metaSize
+                visible: root._getMissingCount() > 0
+                anchors.verticalCenter: parent.verticalCenter
             }
+        }
 
-            MichiButton {
-                text: "Quitar seleccionadas"
-                variant: "danger"
-                visible: root.selectionMode && root._selectedTracks.length > 0
-                onClicked: root.removeSelected()
-                objectName: "playlist.tracklist.removeSelected"
-                Accessible.name: "Quitar canciones seleccionadas"
-                Accessible.description: "Quita " + root._selectedTracks.length + " canción(es)"
+        function _getMissingCount() {
+            var count = 0
+            for (var i = 0; i < root.tracks.length; i++) {
+                if (root.tracks[i].missing) count++
             }
+            return count
         }
 
         ListView {
             id: trackList
             width: parent.width
-            height: parent.height - 40
+            height: parent.height - 30
             model: root.tracks
             clip: true
             spacing: 1
-            objectName: "playlist.tracklist.list"
+            objectName: "playlistTrackListView"
+            Accessible.role: Accessible.List
+            Accessible.name: "Lista de canciones"
+            keyNavigationWraps: true
 
             delegate: Rectangle {
-                id: delegateRoot
                 width: trackList.width
                 height: 44
-                color: {
-                    if (root._selectedTracks.indexOf(index) >= 0) return MichiTheme.colors.accentFaint
-                    if (mouseArea.containsMouse) return MichiTheme.colors.surfaceHover
-                    return "transparent"
-                }
+                color: root.selectedTracks.indexOf(modelData.track_id || 0) >= 0
+                       ? MichiTheme.colors.accentFaint
+                       : mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                 radius: MichiTheme.radiusSm
 
                 objectName: "playlist.tracklist.item." + index
@@ -121,31 +117,24 @@ Item {
                 Row {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.sm
-                    spacing: MichiTheme.spacing.xs
+                    spacing: MichiTheme.spacing.sm
 
                     CheckBox {
                         width: 24
                         anchors.verticalCenter: parent.verticalCenter
                         visible: root.selectionMode
-                        checked: root._selectedTracks.indexOf(index) >= 0
-                        onCheckedChanged: root.toggleSelection(index)
+                        checked: root.selectedTracks.indexOf(modelData.track_id || 0) >= 0
+                        objectName: "trackCheckbox_" + index
+                        Accessible.name: "Seleccionar " + (modelData.title || "")
+                        onCheckedChanged: root.toggleSelection(modelData.track_id || 0)
                     }
 
                     Text {
-                        width: 20
-                        text: (index + 1) + "."
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: !root.selectionMode
-                    }
-
-                    Text {
-                        width: parent.width * 0.35 - 44
-                        text: modelData.title || ""
+                        width: parent.width * 0.30
+                        text: (index + 1) + ". " + (modelData.title || "")
                         color: modelData.missing ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: MichiTheme.typography.weightMedium
+                        font.weight: modelData.missing ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightMedium
                         elide: Text.ElideRight
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -166,77 +155,65 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        width: 36
-                        text: modelData.duration ? Math.floor(modelData.duration / 60) + ":" + (modelData.duration % 60).toString().padStart(2, "0") : ""
+                        width: 40
+                        text: modelData.missing ? "FALTANTE" : ""
+                        color: MichiTheme.colors.warning
+                        font.pixelSize: MichiTheme.typography.badgeSize
+                        font.weight: MichiTheme.typography.weightBold
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: modelData.missing
+                    }
+                    Text {
+                        width: 24
+                        text: "▶"
+                        color: MichiTheme.colors.accent
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        anchors.verticalCenter: parent.verticalCenter
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.playRequested(index)
+                        }
+                        visible: !modelData.missing
+                    }
+                    Text {
+                        width: 16
+                        text: "↑"
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    Item { width: 4; height: 1 }
-
-                    Text {
-                        text: "\u25B2"; color: MichiTheme.colors.accent
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        width: 20; height: 20
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        visible: index > 0 && !root.selectionMode
+                        visible: index > 0
                         MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: root.moveUpRequested(index)
                         }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Mover arriba"
                     }
                     Text {
-                        text: "\u25BC"; color: MichiTheme.colors.accent
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        width: 20; height: 20
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        visible: index < root.tracks.length - 1 && !root.selectionMode
+                        width: 16
+                        text: "↓"
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: index < root.tracks.length - 1
                         MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: root.moveDownRequested(index)
                         }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Mover abajo"
-                    }
-
-                    Text {
-                        text: "\u25B6"; color: MichiTheme.colors.accent
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        width: 20; height: 20
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        visible: !root.selectionMode
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.playRequested(index)
-                        }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Reproducir"
                     }
                     Text {
-                        text: "\u2716"; color: MichiTheme.colors.error
+                        width: 24
+                        text: "[X]"
+                        color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
-                        width: 20; height: 20
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
+                        anchors.verticalCenter: parent.verticalCenter
                         MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 var tid = modelData.track_id || 0
-                                if (tid && root.bridge && typeof root.bridge.removeTrackFromPlaylist !== "undefined") {
-                                    var result = root.bridge.removeTrackFromPlaylist(root.playlistId, tid)
-                                    if (result && result.ok) {
-                                        root.tracks.splice(index, 1)
-                                        root.removeRequested(tid, index)
-                                    } else {
-                                        root._errorMsg = result && result.error ? result.error : "Error al quitar"
-                                    }
-                                }
+                                if (tid) root.removeRequested(tid, index)
                             }
                         }
                         Accessible.role: Accessible.Button
@@ -248,7 +225,59 @@ Item {
                     id: mouseArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    acceptedButtons: Qt.NoButton
+                    acceptedButtons: Qt.RightButton
+                    onClicked: contextMenu.popup()
+                }
+
+                Menu {
+                    id: contextMenu
+                    objectName: "trackContextMenu_" + index
+                    Accessible.name: "Menú contextual"
+
+                    MenuItem {
+                        text: "Reproducir"
+                        objectName: "trackPlayMenuItem_" + index
+                        Accessible.name: "Reproducir"
+                        enabled: !modelData.missing
+                        onTriggered: root.playRequested(index)
+                    }
+                    MenuItem {
+                        text: "Ir al álbum"
+                        objectName: "trackOpenAlbumMenuItem_" + index
+                        Accessible.name: "Ir al álbum"
+                        onTriggered: root.openAlbumRequested(modelData)
+                    }
+                    MenuItem {
+                        text: "Ir al artista"
+                        objectName: "trackOpenArtistMenuItem_" + index
+                        Accessible.name: "Ir al artista"
+                        onTriggered: root.openArtistRequested(modelData)
+                    }
+                    MenuSeparator {}
+                    MenuItem {
+                        text: "Subir"
+                        objectName: "trackMoveUpMenuItem_" + index
+                        Accessible.name: "Subir"
+                        enabled: index > 0
+                        onTriggered: root.moveUpRequested(index)
+                    }
+                    MenuItem {
+                        text: "Bajar"
+                        objectName: "trackMoveDownMenuItem_" + index
+                        Accessible.name: "Bajar"
+                        enabled: index < root.tracks.length - 1
+                        onTriggered: root.moveDownRequested(index)
+                    }
+                    MenuSeparator {}
+                    MenuItem {
+                        text: "Quitar de playlist"
+                        objectName: "trackRemoveMenuItem_" + index
+                        Accessible.name: "Quitar de playlist"
+                        onTriggered: {
+                            var tid = modelData.track_id || 0
+                            if (tid) root.removeRequested(tid, index)
+                        }
+                    }
                 }
             }
 

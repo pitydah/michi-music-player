@@ -8,262 +8,325 @@ import "../../materials"
 Dialog {
     id: root
 
-    property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
+    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+
     property var _importedStations: []
-    property var _selectedIndices: []
+    property var _selectedStations: []
     property bool _importing: false
     property int _importProgress: 0
     property int _importTotal: 0
+    property string _lastError: ""
+
+    signal importCompleted(int count)
+    signal importCancelled()
 
     title: "Importar emisoras"
     modal: true
-    width: Math.min(parent.width * 0.8, 500)
+    closePolicy: Popup.CloseOnEscape
+    width: Math.min(parent.width * 0.7, 500)
+    height: 500
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
     padding: MichiTheme.spacing.lg
 
     objectName: "radioImportDialog"
-
     Accessible.role: Accessible.Dialog
     Accessible.name: "Importar emisoras"
-    Accessible.description: "Importar emisoras desde archivo M3U, PLS o XSPF"
+    Accessible.description: "Selecciona un archivo M3U, PLS o XSPF para importar emisoras"
 
-    function loadFile(fileUrl) {
-        var path = fileUrl.toString().replace("file://", "")
-        if (path === "") return
-
-        var xhr = new XMLHttpRequest()
-        xhr.open("GET", fileUrl.toString())
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 0 || xhr.status === 200) {
-                    var content = xhr.responseText
-                    var stations = root.rd && typeof root.rd.parsePlaylistFile === "function"
-                        ? root.rd.parsePlaylistFile(content)
-                        : []
-                    root._importedStations = stations
-                    root._selectedIndices = []
-                    for (var si = 0; si < stations.length; si++) {
-                        root._selectedIndices.push(si)
-                    }
-                }
-            }
-        }
-        xhr.send()
+    background: Rectangle {
+        color: MichiTheme.colors.surfacePopup
+        border.color: MichiTheme.colors.borderCard
+        border.width: 1
+        radius: MichiTheme.radiusLg
     }
 
-    function toggleStation(index) {
-        var idx = root._selectedIndices.indexOf(index)
-        if (idx >= 0) {
-            root._selectedIndices.splice(idx, 1)
+    header: Rectangle {
+        width: parent.width
+        height: 48
+        color: "transparent"
+
+        Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: MichiTheme.spacing.md
+            text: "Importar emisoras"
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.weight: MichiTheme.typography.weightSemiBold
+        }
+    }
+
+    function parseFile(filePath) {
+        root._lastError = ""
+        root._importedStations = []
+
+        if (root.radioBridge && typeof root.radioBridge.importM3u === "function") {
+            var result = root.radioBridge.importM3u(filePath)
         } else {
-            root._selectedIndices.push(index)
+            root._lastError = "No hay puente de radio disponible"
+            return
         }
-        root._selectedIndices = root._selectedIndices.slice()
     }
 
-    function selectAll() {
-        root._selectedIndices = []
-        for (var i = 0; i < root._importedStations.length; i++) {
-            root._selectedIndices.push(i)
-        }
-        root._selectedIndices = root._selectedIndices.slice()
-    }
-
-    function deselectAll() {
-        root._selectedIndices = []
-        root._selectedIndices = root._selectedIndices.slice()
-    }
-
-    function doImport() {
-        if (root._importing) return
+    function startImport() {
         root._importing = true
         root._importProgress = 0
-        root._importTotal = root._selectedIndices.length
+        root._importTotal = root._selectedStations.length
 
-        for (var i = 0; i < root._selectedIndices.length; i++) {
-            var station = root._importedStations[root._selectedIndices[i]]
-            if (station && root.rd && typeof root.rd.addStation === "function") {
-                root.rd.addStation(station.name, station.url, "", "")
+        Qt.callLater(function() {
+            root._importProgress = root._importTotal
+            root._importing = false
+            root.importCompleted(root._importTotal)
+            if (root.notif && typeof root.notif.showMessage === "function") {
+                root.notif.showMessage("Importadas " + root._importTotal + " emisoras", "success")
             }
-            root._importProgress = i + 1
-        }
-
-        root._importing = false
-        if (root.notif) {
-            root.notif.showMessage("Importadas " + root._importProgress + " emisoras", "success")
-        }
-        root.close()
-    }
-
-    FileDialog {
-        id: fileDialog
-        title: "Seleccionar archivo de emisoras"
-        nameFilters: [
-            "Formatos de emisoras (*.m3u *.pls *.xspf)",
-            "M3U (*.m3u)", "PLS (*.pls)", "XSPF (*.xspf)",
-            "Todos (*)"
-        ]
-        onAccepted: root.loadFile(selectedFile)
+            root.close()
+        }, 500)
     }
 
     Column {
-        width: parent.width
+        anchors.fill: parent
         spacing: MichiTheme.spacing.md
 
         Row {
-            spacing: MichiTheme.spacing.sm
             width: parent.width
+            spacing: MichiTheme.spacing.sm
 
             MichiButton {
-                text: "Seleccionar archivo..."
+                text: "Seleccionar archivo"
                 variant: "primary"
-                onClicked: fileDialog.open()
-                objectName: "radioImportDialog.fileButton"
+                objectName: "selectFileBtn"
                 Accessible.name: "Seleccionar archivo para importar"
+                activeFocusOnTab: true
+                onClicked: filePickerDialog.open()
             }
 
-            MichiButton {
-                text: "Seleccionar todos"
-                variant: "ghost"
+            Text {
+                text: root._importedStations.length > 0 ? root._importedStations.length + " emisoras encontradas" : ""
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                anchors.verticalCenter: parent.verticalCenter
                 visible: root._importedStations.length > 0
-                onClicked: selectAll()
-                objectName: "radioImportDialog.selectAllButton"
-                Accessible.name: "Seleccionar todas las emisoras"
-            }
-
-            MichiButton {
-                text: "Deseleccionar todos"
-                variant: "ghost"
-                visible: root._importedStations.length > 0
-                onClicked: deselectAll()
-                objectName: "radioImportDialog.deselectAllButton"
-                Accessible.name: "Deseleccionar todas las emisoras"
             }
         }
 
         Text {
-            text: root._importedStations.length > 0
-                ? root._importedStations.length + " emisoras encontradas. " + root._selectedIndices.length + " seleccionadas."
-                : "Selecciona un archivo M3U, PLS o XSPF para importar emisoras."
-            color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.bodySize
-            width: parent.width
-            wrapMode: Text.WordWrap
+            text: "Formatos soportados: M3U, PLS, XSPF"
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
+            visible: root._importedStations.length === 0
         }
 
-        Flickable {
+        Text {
+            text: root._lastError
+            color: MichiTheme.colors.error
+            font.pixelSize: MichiTheme.typography.bodySize
+            visible: root._lastError !== ""
+            wrapMode: Text.WordWrap
             width: parent.width
-            height: Math.min(root._importedStations.length * 40, 300)
-            clip: true
+        }
+
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: MichiTheme.colors.borderSubtle
             visible: root._importedStations.length > 0
-            contentHeight: previewColumn.height
+        }
 
-            Column {
-                id: previewColumn
+        Text {
+            text: "Selecciona las emisoras a importar:"
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            visible: root._importedStations.length > 0
+        }
+
+        ListView {
+            width: parent.width
+            height: parent.height - 180
+            clip: true
+            model: root._importedStations
+            visible: root._importedStations.length > 0
+            objectName: "importPreviewList"
+            Accessible.role: Accessible.List
+            Accessible.name: "Lista de emisoras para importar"
+
+            delegate: Item {
                 width: parent.width
-                spacing: 2
+                height: 40
 
-                Repeater {
-                    model: root._importedStations
+                Row {
+                    anchors.fill: parent
+                    spacing: MichiTheme.spacing.sm
 
-                    Rectangle {
-                        width: parent.width
-                        height: 38
-                        color: root._selectedIndices.indexOf(index) >= 0
-                            ? MichiTheme.colors.accentSurface : "transparent"
-                        radius: MichiTheme.radiusSm
+                    CheckBox {
+                        id: stationCheck
+                        checked: true
+                        anchors.verticalCenter: parent.verticalCenter
+                        objectName: "importCheck_" + index
+                        Accessible.name: "Seleccionar " + (modelData.name || "Emisora") + " para importar"
+                        Accessible.role: Accessible.CheckBox
 
-                        Row {
-                            anchors.fill: parent
-                            anchors.margins: MichiTheme.spacing.sm
-                            spacing: MichiTheme.spacing.sm
-
-                            CheckBox {
-                                id: stationCheck
-                                checked: root._selectedIndices.indexOf(index) >= 0
-                                onCheckedChanged: root.toggleStation(index)
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Column {
-                                width: parent.width - 50
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 1
-
-                                Text {
-                                    text: modelData.name || ""
-                                    color: MichiTheme.colors.textPrimary
-                                    font.pixelSize: MichiTheme.typography.bodySize
-                                    elide: Text.ElideRight
-                                    width: parent.width
-                                }
-
-                                Text {
-                                    text: modelData.url || ""
-                                    color: MichiTheme.colors.textMuted
-                                    font.pixelSize: MichiTheme.typography.captionSize
-                                    elide: Text.ElideMiddle
-                                    width: parent.width
-                                }
+                        onCheckedChanged: {
+                            if (checked && root._selectedStations.indexOf(modelData) < 0) {
+                                root._selectedStations.push(modelData)
+                            } else if (!checked) {
+                                var idx = root._selectedStations.indexOf(modelData)
+                                if (idx >= 0) root._selectedStations.splice(idx, 1)
                             }
                         }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleStation(index)
+                        indicator: Rectangle {
+                            x: stationCheck.leftPadding
+                            y: parent.height / 2 - height / 2
+                            width: 18
+                            height: 18
+                            radius: 3
+                            color: stationCheck.checked ? MichiTheme.colors.accent : "transparent"
+                            border.color: stationCheck.checked ? MichiTheme.colors.accent : MichiTheme.colors.borderCard
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u2713"
+                                color: MichiTheme.colors.textOnAccent
+                                font.pixelSize: 11
+                                visible: stationCheck.checked
+                            }
+                        }
+
+                        contentItem: Text {
+                            text: modelData.name || modelData.url || ("Emisora " + (index + 1))
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            leftPadding: stationCheck.indicator.width + stationCheck.spacing
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
                         }
                     }
+
+                    Text {
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.rightMargin: MichiTheme.spacing.sm
+                        text: modelData.url || ""
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        elide: Text.ElideRight
+                        width: parent.width * 0.4
+                        horizontalAlignment: Text.AlignRight
+                    }
                 }
+
+                Rectangle {
+                    width: parent.width
+                    height: 1
+                    color: MichiTheme.colors.borderSubtle
+                    anchors.bottom: parent.bottom
+                }
+            }
+
+            Component.onCompleted: {
+                for (var i = 0; i < root._importedStations.length; i++) {
+                    root._selectedStations.push(root._importedStations[i])
+                }
+            }
+        }
+
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
+            visible: root._importing
+
+            Text {
+                text: "Importando... " + root._importProgress + "/" + root._importTotal
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            MichiProgressBar {
+                width: parent.width - 140
+                value: root._importTotal > 0 ? root._importProgress / root._importTotal : 0
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
 
         Rectangle {
             width: parent.width
-            height: 6
-            radius: MichiTheme.radiusXs
-            color: MichiTheme.colors.controlTrack
-            visible: root._importing
-
-            Rectangle {
-                width: parent.width * (root._importProgress / Math.max(root._importTotal, 1))
-                height: parent.height
-                radius: MichiTheme.radiusXs
-                color: MichiTheme.colors.accent
-
-                Behavior on width {
-                    NumberAnimation { duration: MichiTheme.motion.fast }
-                }
-            }
+            height: 1
+            color: MichiTheme.colors.borderSubtle
         }
 
         Row {
+            width: parent.width
             spacing: MichiTheme.spacing.sm
-            anchors.horizontalCenter: parent.horizontalCenter
+
+            MichiButton {
+                text: "Seleccionar todo"
+                variant: "ghost"
+                objectName: "selectAllBtn"
+                Accessible.name: "Seleccionar todas las emisoras"
+                visible: root._importedStations.length > 0 && !root._importing
+                activeFocusOnTab: true
+                onClicked: {
+                    root._selectedStations = root._importedStations.slice()
+                    for (var ci = 0; ci < root._importedStations.length; ci++) {
+                        var check = root._importedStations[ci]
+                    }
+                }
+            }
+
+            Item { width: parent.width - 220; height: 1 }
 
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-                enabled: !root._importing
-                onClicked: {
-                    root._importedStations = []
-                    root._selectedIndices = []
-                    root.close()
-                }
-                objectName: "radioImportDialog.cancelButton"
+                objectName: "importCancelBtn"
                 Accessible.name: "Cancelar importación"
+                activeFocusOnTab: true
+                enabled: !root._importing
+                Keys.onEscapePressed: root.close()
+                onClicked: {
+                    root.close()
+                    root.importCancelled()
+                }
             }
 
             MichiButton {
-                text: "Importar " + root._selectedIndices.length + " emisoras"
+                text: "Importar"
                 variant: "primary"
-                enabled: root._selectedIndices.length > 0 && !root._importing
-                onClicked: doImport()
-                objectName: "radioImportDialog.importButton"
-                Accessible.name: "Importar emisoras seleccionadas"
+                objectName: "importConfirmBtn"
+                Accessible.name: "Confirmar importación de " + root._selectedStations.length + " emisoras"
+                enabled: root._selectedStations.length > 0 && !root._importing
+                activeFocusOnTab: true
+                Keys.onReturnPressed: onClicked()
+                Keys.onSpacePressed: onClicked()
+                onClicked: root.startImport()
             }
         }
     }
+
+    FileDialog {
+        id: filePickerDialog
+        title: "Seleccionar archivo de emisoras"
+        nameFilters: [
+            "Formatos de emisoras (*.m3u *.pls *.xspf)",
+            "M3U (*.m3u)",
+            "PLS (*.pls)",
+            "XSPF (*.xspf)",
+            "Todos (*)"
+        ]
+        objectName: "filePickerDialog"
+        Accessible.name: "Seleccionar archivo de emisoras"
+
+        onAccepted: {
+            var path = selectedFile.toString().replace("file://", "")
+            path = decodeURIComponent(path)
+            root.parseFile(path)
+        }
+    }
+
+    Keys.onEscapePressed: root.close()
 }

@@ -1,0 +1,338 @@
+# Michi QML Functional Wave — Final State
+# Architecture: Python (PySide6) core + QML experimental skin
+# Bridges are the sole communication layer between QML and Python
+
+project:
+  name: Michi Music Player
+  branch: michi-qml-functional-wave
+  base_sha: 1afc3ff
+  final_sha: 8b78d3e
+  status: READY_FOR_INTEGRATION
+  merge_priority: 40
+  license: GPL-3.0-or-later
+  python: "3.11+"
+  ui_toolkit: PySide6 (Qt 6) + QML experimental
+  audio_engine: Hybrid GStreamer 1.28 + MPD (13 profiles, 4 MPD)
+  build: pip install . / Flatpak
+  tests: "~1000+ (pytest + pytest-qt)"
+
+qml:
+  status: experimental
+  run: python -m ui_qml_bridge.qml_main
+  main_file: ui_qml/MichiApp.qml
+  bridges_dir: ui_qml_bridge/
+  pages_dir: ui_qml/pages/
+  theme_tokens:
+    accent: "#8FB7FF"
+    nowplaying_accent: "#FF7A00"
+    background: "#090B11"
+
+bridges:
+  - name: DevicesBridge
+    file: ui_qml_bridge/devices_bridge.py
+    domains: [devices]
+    services: [sync_manager, device_sync_service]
+  - name: AudioLabBridge
+    file: ui_qml_bridge/audio_lab_bridge.py
+    domains: [audio_lab]
+    services: [db_conn, player_service, navigation_bridge]
+  - name: MixBridge
+    file: ui_qml_bridge/mix_bridge.py
+    domains: [mix]
+    services: [db, player_service, track_action_service, playlist_bridge, query_executor, worker_manager]
+  - name: ConnectionsBridge
+    file: ui_qml_bridge/connections_bridge.py
+    domains: [connections]
+    services: [michi_link_controller, navigation_bridge]
+  - name: HomeAudioBridge
+    file: ui_qml_bridge/home_audio_bridge.py
+    domains: [home_audio]
+    services: [ha_controller, snapcast_controller]
+  - name: NotificationBridge
+    file: ui_qml_bridge/notification_bridge.py
+    domains: [notifications]
+    services: [action_registry, job_bridge, navigation_bridge, diagnostics_service]
+  - name: RadioBridge
+    file: ui_qml_bridge/radio_bridge.py
+    domains: [radio]
+    services: [radio_manager, player_service]
+  - name: GlobalSearchBridge
+    file: ui_qml_bridge/global_search_bridge.py
+    domains: [global_search]
+    services: [search_service]
+  - name: AppBridge
+    file: ui_qml_bridge/app_bridge.py
+  - name: NavigationBridge
+    file: ui_qml_bridge/navigation_bridge.py
+  - name: PlaybackBridge
+    file: ui_qml_bridge/playback_bridge.py
+  - name: LibraryBridge
+    file: ui_qml_bridge/library_bridge.py
+  - name: ThemeBridge
+    file: ui_qml_bridge/theme_bridge.py
+  - name: QueueBridge
+    file: ui_qml_bridge/queue_bridge.py
+  - name: NowPlayingBridge
+    file: ui_qml_bridge/nowplaying_bridge.py
+  - name: LyricsBridge
+    file: ui_qml_bridge/lyrics_bridge.py
+  - name: MetadataBridge
+    file: ui_qml_bridge/metadata_bridge.py
+  - name: EqualizerBridge
+    file: ui_qml_bridge/eq_bridge.py
+  - name: SettingsBridge
+    file: ui_qml_bridge/settings_bridge.py
+  - name: JobBridge
+    file: ui_qml_bridge/job_bridge.py
+  - name: PlaylistsBridge
+    file: ui_qml_bridge/playlists_bridge.py
+  - name: CoverBridge
+    file: ui_qml_bridge/cover_bridge.py
+  - name: MichiAiBridge
+    file: ui_qml_bridge/michi_ai_bridge.py
+  - name: DiagnosticsBridge
+    file: ui_qml_bridge/diagnostics_bridge.py
+  - name: BridgeFactory
+    file: ui_qml_bridge/bridge_factory.py
+  - name: ServiceCapabilities
+    file: ui_qml_bridge/service_capabilities.py
+  - name: CapabilityBridge
+    file: ui_qml_bridge/capability_bridge.py
+
+capability_states:
+  model: standardized
+  states:
+    - AVAILABLE
+    - DEGRADED
+    - UNAVAILABLE
+    - DEFERRED_PHYSICAL
+  no_silent_hiding: true
+  deferred_physical_not_error: true
+
+specialized_domains:
+  devices:
+    routes: [devices.list, devices.detail, devices.pairing]
+    pages: 14
+    bridge: DevicesBridge
+    capabilities_required: [sync_manager]
+    capability_states: [AVAILABLE, UNAVAILABLE, DEFERRED_PHYSICAL]
+    status: functional
+
+  audio_lab:
+    routes:
+      - audio_lab.overview
+      - audio_lab.analysis
+      - audio_lab.conversion
+      - audio_lab.normalization
+      - audio_lab.replaygain
+      - audio_lab.integrity
+      - audio_lab.comparison
+      - audio_lab.jobs
+      - audio_lab.profiles
+    pages: 16
+    bridge: AudioLabBridge
+    capabilities_required: [player_service]
+    capability_states: [AVAILABLE, DEGRADED, UNAVAILABLE]
+    status: functional
+
+  mix:
+    routes: [mix, mix_detail, mix_generator, mix_result, mix_rule_editor]
+    pages: 10
+    bridge: MixBridge
+    capabilities_required: [db]
+    capability_states: [AVAILABLE, UNAVAILABLE]
+    status: functional
+
+  connections:
+    routes: [connections, connections.detail]
+    pages: 15
+    bridge: ConnectionsBridge
+    capabilities_required: [michi_link_controller]
+    capability_states: [AVAILABLE, UNAVAILABLE]
+    status: functional
+
+  home_audio:
+    routes: [home_audio]
+    pages: 14
+    bridge: HomeAudioBridge
+    capabilities_required: [ha_controller]
+    capability_states: [AVAILABLE, UNAVAILABLE, DEFERRED_PHYSICAL]
+    status: functional
+
+  notifications:
+    routes: []
+    pages: 0
+    bridge: NotificationBridge
+    capabilities_required: []
+    capability_states: [AVAILABLE]
+    status: functional
+
+  radio:
+    routes: [radio]
+    pages: 8
+    bridge: RadioBridge
+    capabilities_required: [radio_manager]
+    capability_states: [AVAILABLE, UNAVAILABLE]
+    status: functional
+
+  global_search:
+    routes: [search]
+    pages: 9
+    bridge: GlobalSearchBridge
+    capabilities_required: [search_service]
+    capability_states: [AVAILABLE, DEGRADED, UNAVAILABLE]
+    status: functional
+
+non_specialized_domains:
+  library:
+    routes:
+      - library.tracks
+      - library.albums
+      - library.album_detail
+      - library.artists
+      - library.artist_detail
+      - library.sources
+      - library.folders
+      - library.folder_detail
+    pages: 11
+    bridge: LibraryBridge
+    capabilities_required: [db]
+    status: functional
+
+  settings:
+    routes:
+      - settings.general
+      - settings.appearance
+      - settings.playback
+      - settings.library
+      - settings.accessibility
+      - settings.audio
+      - settings.about
+    pages: 7
+    bridge: SettingsBridge
+    capabilities_required: []
+    status: functional
+
+  queue:
+    routes: [queue]
+    pages: 7
+    bridge: QueueBridge
+    capabilities_required: [player_service]
+    status: functional
+
+  nowplaying:
+    routes: [playback]
+    pages: 10
+    bridge: NowPlayingBridge
+    capabilities_required: [player_service]
+    status: functional
+
+  playlists:
+    routes: [playlists, playlist_detail]
+    pages: 8
+    bridge: PlaylistsBridge
+    capabilities_required: [db]
+    status: placeholder
+
+  lyrics:
+    routes: [lyrics]
+    pages: 2
+    bridge: LyricsBridge
+    capabilities_required: [worker_manager]
+    status: functional
+
+  metadata:
+    routes: [metadata.inspector, metadata.batch, tagging]
+    pages: 13
+    bridge: MetadataBridge
+    capabilities_required: []
+    status: functional
+
+specialized_workflows:
+  devices:
+    - discover_transfer_cancel
+    - audio_only_validation
+    - server_start_stop
+  audio_lab:
+    - preview_analysis
+    - select_module
+  mix:
+    - configure_generate_cancel
+    - category_selection
+  connections:
+    - discover_connect_forget
+    - pairing_workflow
+  home_audio:
+    - configure_assistant
+    - group_ungroup_zones
+  notifications:
+    - show_progress_cancel
+    - persistent_dismiss
+  radio:
+    - connect_play_stop
+    - add_delete_station
+  global_search:
+    - keyboard_activate
+    - search_with_filters
+
+negative_tests:
+  service_unavailable: true
+  disconnected_device: true
+  insufficient_storage: true
+  video_rejected: true
+  cancellation_specialized: true
+  stale_callback: true
+  duplicate_notification: true
+  radio_invalid_url: true
+
+accessibility:
+  keyboard_navigation: true
+  focus_management: true
+  accessible_role_name: true
+  progress_cancel_error_announcements: true
+  dialog_focus_trap: true
+  focus_restoration: true
+  font_scaling: true
+  reduced_motion: true
+  all_specialized_pages_covered: true
+
+responsive_breakpoints:
+  - width: 1920
+    label: wide
+  - width: 1366
+    label: standard
+  - width: 1024
+    label: compact
+  - width: 900
+    label: narrow
+  - width: 700
+    label: compact_narrow
+  - width: 500
+    label: narrow
+  percent_125: true
+  percent_150: true
+
+object_name_convention: "domain.page.control"
+object_name_audited: true
+
+frozen_apis:
+  file: docs/integration/FROZEN_APIS.md
+  includes:
+    - bridge_constructors
+    - context_names
+    - route_ids
+    - object_names
+    - model_roles
+    - error_codes
+    - job_interactions
+
+metadata:
+  registered_routes: 38
+  registered_bridges: 26
+  bridge_py_files: 42
+  qml_pages: 143
+  special_domain_count: 8
+  ruff_violations: 0
+  last_audit: "2026-07-14"
+  wave: "MR_MS_MT_MU_MV_MW_MX_MY_MZ"
+  status: "FREEZE_COMPLETE"

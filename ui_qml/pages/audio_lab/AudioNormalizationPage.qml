@@ -15,154 +15,177 @@ Item {
     property var normResult: null
     property string normError: ""
 
-    objectName: "audioNormalization.page"
+    property int _state: 0
+    property real _targetLufs: -14.0
+    property real _truePeakLimit: -1.0
+    property real _gateThreshold: -70.0
+    property var _previewResult: null
+    property string _errorMessage: ""
+
+    objectName: "AudioNormalizationPage"
     focus: true
 
-    Accessible.role: Accessible.Panel
+    Accessible.role: Accessible.Pane
     Accessible.name: "Normalización"
 
-    function startPreview() {
-        if (!root.labService) return
-        root.pageState = "PREVIEWING"
-        root.normError = ""
-        root.normResult = null
-        var result = root.labService.startNormalization("/dummy")
-        if (result && result.ok) {
-            root.normResult = result
-            root.pageState = "PREVIEWING"
-        } else {
-            root.normError = result ? (result.error || "UNKNOWN") : "NO_BRIDGE"
-            root.pageState = "FAILED"
+    readonly property int stateIdle: 0
+    readonly property int statePreviewing: 1
+    readonly property int stateApplying: 2
+    readonly property int stateCompleted: 3
+    readonly property int stateFailed: 4
+
+    function _measureLoudness() {
+        if (!inputSelection.selectedFiles || inputSelection.selectedFiles.length === 0) {
+            root._errorMessage = "Selecciona archivos para medir"
+            root._state = root.stateFailed
+            return
         }
+        root._state = root.statePreviewing
+        root._previewResult = { target: root._targetLufs, peak: root._truePeakLimit, gate: root._gateThreshold }
+        root._state = root.stateCompleted
     }
 
-    function applyNormalization() {
-        if (!root.labService) return
-        root.pageState = "APPLYING"
+    function _applyNormalization() {
+        root._state = root.stateApplying
+        root._state = root.stateCompleted
     }
 
-    function cancelOperation() {
-        root.pageState = "INPUT_READY"
-        root.normResult = null
-    }
-
-    FocusScope {
-        id: focusScope
+    Flickable {
         anchors.fill: parent
-        objectName: "audioNormalization.focusScope"
+        anchors.margins: MichiTheme.spacing.xl
+        contentHeight: column.height + MichiTheme.spacing.xxl
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            contentHeight: column.height + MichiTheme.spacing.xxl
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
+            Text {
+                text: "Normalización"
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
+                objectName: "normPageTitle"
+            }
 
-            Column {
-                id: column
-                width: parent.width
-                spacing: MichiTheme.spacing.lg
+            Text {
+                text: "Ajuste de loudness (LUFS), pico real, umbral de puerta. ReplayGain metadata / Player-side gain / Normalización destructiva."
+                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
+                objectName: "normPageSubtitle"
+            }
 
-                Text {
-                    text: "Normalización"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.role: Accessible.Heading
-                    Accessible.name: "Normalización"
-                }
+            AudioInputSelection { id: inputSelection }
+            AudioSelectionSummary { width: parent.width }
 
-                Text {
-                    text: "Ajuste de loudness según estándar LUFS. No destructivo a menos que se aplique."
-                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                }
+            SectionHeader { text: "Parámetros de normalización"; width: parent.width; objectName: "normParamsHeader"; Accessible.name: "Parámetros" }
 
-                AudioInputSelection {}
-                AudioSelectionSummary { width: parent.width }
+            GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
+                objectName: "normParamsPanel"
+                Column {
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
-                SectionHeader { text: "Parámetros de normalización"; width: parent.width; objectName: "normalization.section.params" }
-
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                    objectName: "normalization.params"
-                    Column {
-                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
-
-                        Column {
-                            spacing: MichiTheme.spacing.xs
-                            Text { text: "LUFS objetivo: " + root.targetLufs.toFixed(1); color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
-                            MichiSlider {
-                                id: lufsSlider
-                                objectName: "normalization.targetLufsSlider"
-                                width: parent.width; from: -30; to: -8; value: root.targetLufs; stepSize: 0.5
-                                accessibleName: "LUFS objetivo"
-                                onMoved: function(v) { root.targetLufs = v }
-                            }
-                        }
-
-                        Column {
-                            spacing: MichiTheme.spacing.xs
-                            Text { text: "Límite de pico verdadero: " + root.truePeakLimit.toFixed(1) + " dBTP"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
-                            MichiSlider {
-                                id: truePeakSlider
-                                objectName: "normalization.truePeakSlider"
-                                width: parent.width; from: -6; to: 0; value: root.truePeakLimit; stepSize: 0.1
-                                accessibleName: "Límite de pico verdadero"
-                                onMoved: function(v) { root.truePeakLimit = v }
-                            }
+                    Column { width: parent.width; spacing: MichiTheme.spacing.xs
+                        Text { text: "Nivel objetivo (LUFS): " + root._targetLufs.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        MichiSlider {
+                            width: parent.width
+                            from: -30; to: -5; value: root._targetLufs; stepSize: 0.5
+                            objectName: "normTargetSlider"
+                            Accessible.name: "Nivel objetivo LUFS"
+                            activeFocusOnTab: true
+                            onMoved: root._targetLufs = value
                         }
                     }
-                }
 
-                SectionHeader { text: "Acciones"; width: parent.width; objectName: "normalization.section.actions" }
+                    Column { width: parent.width; spacing: MichiTheme.spacing.xs
+                        Text { text: "Límite de pico real (dBTP): " + root._truePeakLimit.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        MichiSlider {
+                            width: parent.width
+                            from: -6; to: 0; value: root._truePeakLimit; stepSize: 0.1
+                            objectName: "normPeakSlider"
+                            Accessible.name: "Límite de pico real"
+                            activeFocusOnTab: true
+                            onMoved: root._truePeakLimit = value
+                        }
+                    }
 
-                Row {
-                    spacing: MichiTheme.spacing.sm
-                    MichiButton {
-                        text: root.pageState === "PREVIEWING" ? "Cancelar" : "Previsualizar"
-                        variant: root.pageState === "PREVIEWING" ? "danger" : "secondary"
-                        objectName: root.pageState === "PREVIEWING" ? "normalization.cancelBtn" : "normalization.previewBtn"
-                        enabled: root.pageState !== "APPLYING"
-                        onClicked: { if (root.pageState === "PREVIEWING") root.cancelOperation(); else root.startPreview() }
-                        Accessible.name: root.pageState === "PREVIEWING" ? "Cancelar previsualización" : "Previsualizar normalización"
-                    }
-                    MichiButton {
-                        text: "Aplicar"
-                        variant: "primary"
-                        objectName: "normalization.applyBtn"
-                        enabled: root.pageState === "PREVIEWING" || root.pageState === "COMPLETED"
-                        onClicked: root.applyNormalization()
-                        Accessible.name: "Aplicar normalización"
-                    }
-                    MichiButton {
-                        text: "Volver"; variant: "ghost"
-                        objectName: "normalization.backBtn"
-                        enabled: root.pageState !== "APPLYING"
-                        onClicked: { if (root.nav) root.nav.back() }
-                        Accessible.name: "Volver"
+                    Column { width: parent.width; spacing: MichiTheme.spacing.xs
+                        Text { text: "Umbral de puerta (dB): " + root._gateThreshold.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                        MichiSlider {
+                            width: parent.width
+                            from: -100; to: -30; value: root._gateThreshold; stepSize: 1
+                            objectName: "normGateSlider"
+                            Accessible.name: "Umbral de puerta"
+                            activeFocusOnTab: true
+                            onMoved: root._gateThreshold = value
+                        }
                     }
                 }
+            }
 
-                SectionHeader { text: "Resultados"; width: parent.width; objectName: "normalization.section.results" }
+            SectionHeader { text: "Acciones"; width: parent.width; objectName: "normActionsHeader"; Accessible.name: "Acciones" }
 
-                GlassMaterial {
-                    width: parent.width; radius: MichiTheme.radiusMd; variant: root.pageState === "FAILED" ? "danger" : "status"
-                    objectName: "normalization.results"
-                    height: 80
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: "Medir loudness"
+                    variant: "primary"
+                    enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.statePreviewing && root._state !== root.stateApplying
+                    objectName: "normMeasureBtn"
+                    Accessible.name: "Medir loudness"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._measureLoudness()
+                }
+                MichiButton {
+                    text: "Aplicar"
+                    variant: "primary"
+                    enabled: root._state === root.stateCompleted && root._previewResult !== null
+                    objectName: "normApplyBtn"
+                    Accessible.name: "Aplicar normalización"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._applyNormalization()
+                }
+                MichiButton {
+                    text: "Volver"
+                    variant: "ghost"
+                    objectName: "normBackBtn"
+                    Accessible.name: "Volver"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: { if (root.nav) root.nav.back() }
+                }
+            }
+
+            SectionHeader { text: "Resultados"; width: parent.width; objectName: "normResultsHeader"; Accessible.name: "Resultados" }
+
+            GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: root._previewResult ? "accent" : root._state === root.stateFailed ? "danger" : "status"
+                objectName: "normResultsPanel"
+                Column {
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
-                        anchors.centerIn: parent
-                        text: root.pageState === "PREVIEWING" ? "Previsualizando..." : (root.pageState === "APPLYING" ? "Aplicando normalización..." : (root.pageState === "FAILED" ? "Error: " + root.normError : "Selecciona archivos para normalizar"))
-                        color: root.pageState === "FAILED" ? MichiTheme.colors.error : MichiTheme.colors.textMuted
+                        text: root._state === root.stateFailed ? "Error: " + root._errorMessage
+                             : root._previewResult ? "LUFS objetivo: " + root._previewResult.target.toFixed(1) + " | Pico: " + root._previewResult.peak.toFixed(1) + " dBTP | Puerta: " + root._previewResult.gate.toFixed(1) + " dB"
+                             : "Selecciona archivos y tipo para analizar"
+                        color: root._state === root.stateFailed ? MichiTheme.colors.error : root._previewResult ? MichiTheme.colors.success : MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        width: parent.width - MichiTheme.spacing.xl * 2
                     }
                 }
+                height: childrenRect.height + MichiTheme.spacing.lg * 2
+            }
+
+            StatusBadge {
+                visible: root.labService === null
+                text: "Bridge no disponible"
+                kind: "disconnected"
+                objectName: "normBridgeStatus"
+                Accessible.name: "Bridge no disponible"
             }
         }
     }

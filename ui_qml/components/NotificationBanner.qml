@@ -1,135 +1,157 @@
 import QtQuick
+import QtQuick.Controls as QQC2
 import "../theme"
-import "../components"
 
-Item {
+Rectangle {
     id: root
 
     property string kind: "info"
     property string title: ""
     property string message: ""
     property string actionText: ""
+    property string actionId: ""
     property bool compact: false
-    property bool dismissible: true
-    property string objectName: "notificationBanner"
+    property bool showDismiss: true
+    property var bridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
-    signal actionClicked()
     signal dismissed()
+    signal actionTriggered()
 
-    implicitHeight: compact ? 40 : column.implicitHeight + MichiTheme.spacing.lg * 2
+    objectName: "NotificationBanner"
 
     Accessible.role: Accessible.Alert
-    Accessible.name: root.title
-    Accessible.description: root.message
+    Accessible.name: root.title || root.message || ""
+    Accessible.description: root.message !== root.title ? root.message : ""
 
-    Rectangle {
+    implicitHeight: contentRow.implicitHeight + MichiTheme.spacing.md * 2
+    radius: MichiTheme.radiusMd
+    color: {
+        switch (root.kind) {
+            case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.10)
+            case "warning": return Qt.rgba(1.0, 0.75, 0.14, 0.10)
+            case "error":   return Qt.rgba(1.0, 0.44, 0.44, 0.10)
+            default:        return Qt.rgba(0.561, 0.718, 1.0, 0.08)
+        }
+    }
+    border.width: MichiTheme.borderWidth
+    border.color: {
+        switch (root.kind) {
+            case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.25)
+            case "warning": return Qt.rgba(1.0, 0.75, 0.14, 0.25)
+            case "error":   return Qt.rgba(1.0, 0.44, 0.44, 0.25)
+            default:        return Qt.rgba(0.561, 0.718, 1.0, 0.20)
+        }
+    }
+
+    Row {
+        id: contentRow
         anchors.fill: parent
-        radius: MichiTheme.radiusMd
-        color: {
-            switch (root.kind) {
-                case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.10)
-                case "warning": return Qt.rgba(1.0, 0.75, 0.14, 0.10)
-                case "error": return Qt.rgba(1.0, 0.44, 0.44, 0.10)
-                default: return Qt.rgba(0.561, 0.718, 1.0, 0.08)
+        anchors.margins: MichiTheme.spacing.md
+        spacing: MichiTheme.spacing.sm
+
+        Rectangle {
+            id: iconDot
+            anchors.verticalCenter: parent.verticalCenter
+            width: 8
+            height: 8
+            radius: 4
+            color: {
+                switch (root.kind) {
+                    case "success": return MichiTheme.colors.success
+                    case "warning": return MichiTheme.colors.warning
+                    case "error":   return MichiTheme.colors.error
+                    default:        return MichiTheme.colors.accentBlue
+                }
             }
-        }
-        border.width: MichiTheme.borderWidth
-        border.color: {
-            switch (root.kind) {
-                case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.25)
-                case "warning": return Qt.rgba(1.0, 0.75, 0.14, 0.25)
-                case "error": return Qt.rgba(1.0, 0.44, 0.44, 0.25)
-                default: return Qt.rgba(0.561, 0.718, 1.0, 0.20)
-            }
+            visible: !root.compact
         }
 
-        Row {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.md
-            spacing: MichiTheme.spacing.sm
+        Column {
+            id: textColumn
+            width: parent.width - iconDot.width - (actionBtn.visible ? actionBtn.width + MichiTheme.spacing.sm : 0) - (root.showDismiss ? closeBtn.width + MichiTheme.spacing.sm : 0) - MichiTheme.spacing.md * 2
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: MichiTheme.spacing.xs
 
             Text {
-                text: {
-                    switch (root.kind) {
-                        case "success": return "✓"
-                        case "warning": return "!"
-                        case "error": return "✕"
-                        default: return "i"
-                    }
+                width: parent.width
+                text: root.title
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: root.compact ? MichiTheme.typography.bodySize : MichiTheme.typography.cardTitleSize
+                font.weight: root.title ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                elide: Text.ElideRight
+                visible: text !== ""
+            }
+
+            Text {
+                width: parent.width
+                text: root.message
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: root.compact ? MichiTheme.typography.captionSize : MichiTheme.typography.bodySize
+                elide: Text.ElideRight
+                maximumLineCount: root.compact ? 1 : 2
+                wrapMode: Text.WordWrap
+                visible: text !== "" && !root.compact
+            }
+        }
+
+        MichiButton {
+            id: actionBtn
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.actionText
+            variant: "ghost"
+            visible: root.actionText !== "" && root.actionId !== ""
+            onClicked: {
+                if (root.bridge && root.actionId) {
+                    root.bridge.execute(actionId)
                 }
-                color: {
-                    switch (root.kind) {
-                        case "success": return MichiTheme.colors.success
-                        case "warning": return MichiTheme.colors.warning
-                        case "error": return MichiTheme.colors.error
-                        default: return MichiTheme.colors.accentBlue
-                    }
-                }
+                root.actionTriggered()
+            }
+
+            Accessible.role: Accessible.Button
+            Accessible.name: root.actionText
+        }
+
+        QQC2.AbstractButton {
+            id: closeBtn
+            anchors.verticalCenter: parent.verticalCenter
+            implicitWidth: 24
+            implicitHeight: 24
+            visible: root.showDismiss
+            focusPolicy: Qt.StrongFocus
+
+            Accessible.role: Accessible.Button
+            Accessible.name: "Descartar"
+            Accessible.description: "Cerrar este banner"
+
+            contentItem: Text {
+                text: "\u00D7"
+                color: closeBtn.hovered ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.cardTitleSize
-                font.weight: MichiTheme.typography.weightBold
-                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
 
-            Column {
-                id: column
-                width: root.dismissible ? parent.width - dismissBtn.width - MichiTheme.spacing.sm * 2 : parent.width
-                spacing: MichiTheme.spacing.xs
-                anchors.verticalCenter: parent.verticalCenter
-
-                Text {
-                    text: root.title
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.cardTitleSize
-                    font.weight: MichiTheme.typography.weightMedium
-                    visible: root.title !== "" && !root.compact
-                    elide: Text.ElideRight
-                    width: parent.width
-                }
-
-                Text {
-                    text: root.message
-                    color: MichiTheme.colors.textSecondary
-                    font.pixelSize: root.compact ? MichiTheme.typography.captionSize : MichiTheme.typography.bodySize
-                    wrapMode: Text.WordWrap
-                    width: parent.width
-                    elide: root.compact ? Text.ElideRight : Text.ElideNone
-                    maximumLineCount: root.compact ? 1 : 3
-                    visible: text !== ""
-                }
-
-                Text {
-                    text: root.actionText
-                    color: MichiTheme.colors.accentBlue
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: MichiTheme.typography.weightMedium
-                    visible: root.actionText !== ""
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.actionClicked()
-                    }
-                    Accessible.role: Accessible.Button
-                    Accessible.name: root.actionText
-                }
+            background: Rectangle {
+                radius: MichiTheme.radiusSm
+                color: closeBtn.hovered ? MichiTheme.colors.surfaceHover : "transparent"
+                border.width: closeBtn.activeFocus ? MichiTheme.focusWidth : 0
+                border.color: MichiTheme.colors.borderFocus
             }
 
-            Text {
-                id: dismissBtn
-                text: "✕"
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                anchors.verticalCenter: parent.verticalCenter
-                visible: root.dismissible
+            onClicked: {
+                root.dismissed()
+                root.visible = false
+            }
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.dismissed()
-                }
-
-                Accessible.role: Accessible.Button
-                Accessible.name: "Descartar"
+            Keys.onEscapePressed: {
+                root.dismissed()
+                root.visible = false
             }
         }
+    }
+
+    Keys.onEscapePressed: {
+        root.dismissed()
+        root.visible = false
     }
 }

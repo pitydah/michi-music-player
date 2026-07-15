@@ -4,172 +4,274 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
-Item {
+Drawer {
     id: root
 
-    property bool open: false
     property var bridge: null
-    property var _typeFilters: ({})
+
+    property var _typeFilters: {
+        "track": true,
+        "album": true,
+        "artist": true,
+        "playlist": true,
+        "folder": true,
+        "genre": true,
+        "radio": true,
+        "device": false,
+        "server": false,
+        "action": false,
+        "setting": false,
+    }
     property int _yearFrom: 0
     property int _yearTo: 0
-    property string _qualityFilter: ""
+    property string _qualityFilter: "any"
 
-    signal applied(var filters)
-    signal reset()
+    signal filtersApplied(var typeFilters, int yearFrom, int yearTo, string quality)
+    signal filtersReset()
+
+    edge: Qt.RightEdge
+    width: Math.min(parent.width * 0.35, 320)
+    height: parent.height
+    modal: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     objectName: "searchFiltersDrawer"
-    visible: open
-
     Accessible.role: Accessible.Dialog
     Accessible.name: "Filtros de búsqueda"
+    Accessible.description: "Filtrar resultados por tipo, año y calidad"
 
-    Rectangle {
-        anchors.fill: parent
-        color: MichiTheme.colors.surfaceOverlay
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: root.open = false
-        }
-    }
-
-    Rectangle {
-        id: drawer
-        width: 300
-        height: parent.height
-        anchors.right: parent.right
+    background: Rectangle {
         color: MichiTheme.colors.surfacePopup
         border.color: MichiTheme.colors.borderCard
         border.width: 1
+    }
 
-        Column {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.lg
-            spacing: MichiTheme.spacing.lg
+    Column {
+        anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.lg
+        spacing: MichiTheme.spacing.md
+
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
 
             Text {
                 text: "Filtros"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
-                font.weight: MichiTheme.typography.weightBold
-                Accessible.role: Accessible.Heading
-                Accessible.name: "Filtros de búsqueda"
+                font.weight: MichiTheme.typography.weightSemiBold
+                anchors.verticalCenter: parent.verticalCenter
             }
 
-            SectionHeader {
-                text: "Tipo de resultado"
-                width: parent.width
+            Item { width: parent.width - 120; height: 1 }
+
+            MichiButton {
+                text: "Cerrar"
+                variant: "ghost"
+                anchors.verticalCenter: parent.verticalCenter
+                objectName: "searchFiltersClose"
+                Accessible.name: "Cerrar filtros"
+                onClicked: root.close()
+                Keys.onEscapePressed: root.close()
             }
+        }
 
-            Column {
-                spacing: MichiTheme.spacing.sm
-                width: parent.width
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: MichiTheme.colors.borderSubtle
+        }
 
-                Repeater {
-                    model: ["track", "album", "artist", "playlist", "folder", "genre", "radio", "device", "server", "action", "setting"]
+        Text {
+            text: "Tipo de resultado"
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightMedium
+        }
+
+        Column {
+            width: parent.width
+            spacing: MichiTheme.spacing.xs
+            objectName: "filterTypeSection"
+            Accessible.role: Accessible.Grouping
+            Accessible.name: "Filtrar por tipo"
+
+            Repeater {
+                model: [
+                    {key: "track", label: "Canciones"},
+                    {key: "album", label: "Álbumes"},
+                    {key: "artist", label: "Artistas"},
+                    {key: "playlist", label: "Playlists"},
+                    {key: "folder", label: "Carpetas"},
+                    {key: "genre", label: "Géneros"},
+                    {key: "radio", label: "Radio"},
+                    {key: "device", label: "Dispositivos"},
+                    {key: "server", label: "Servidores"},
+                    {key: "action", label: "Acciones"},
+                    {key: "setting", label: "Ajustes"},
+                ]
+
+                Row {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.sm
 
                     CheckBox {
-                        id: cb
-                        text: modelData.charAt(0).toUpperCase() + modelData.slice(1)
-                        checked: root._typeFilters[modelData] !== false
-                        onCheckedChanged: root._typeFilters[modelData] = checked
-                        objectName: "searchFilter.type." + modelData
-                        Accessible.name: "Filtrar por " + text
+                        id: typeCheck
+                        checked: root._typeFilters[modelData.key] !== false
+                        objectName: "filterCheck_" + modelData.key
+                        Accessible.name: "Filtrar por " + modelData.label
+                        Accessible.role: Accessible.CheckBox
+
+                        onCheckedChanged: root._typeFilters[modelData.key] = checked
+
+                        indicator: Rectangle {
+                            x: typeCheck.leftPadding
+                            y: parent.height / 2 - height / 2
+                            width: 18
+                            height: 18
+                            radius: 3
+                            color: typeCheck.checked ? MichiTheme.colors.accent : "transparent"
+                            border.color: typeCheck.checked ? MichiTheme.colors.accent : MichiTheme.colors.borderCard
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\u2713"
+                                color: MichiTheme.colors.textOnAccent
+                                font.pixelSize: 11
+                                visible: typeCheck.checked
+                            }
+                        }
+
+                        contentItem: Text {
+                            text: modelData.label
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            leftPadding: typeCheck.indicator.width + typeCheck.spacing
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
                 }
             }
+        }
 
-            SectionHeader {
-                text: "Año"
-                width: parent.width
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: MichiTheme.colors.borderSubtle
+        }
+
+        Text {
+            text: "Rango de año"
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightMedium
+        }
+
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
+
+            SearchField {
+                id: yearFromField
+                width: parent.width * 0.45
+                placeholderText: "Desde"
+                objectName: "filterYearFrom"
+                Accessible.name: "Año desde"
+                text: root._yearFrom > 0 ? String(root._yearFrom) : ""
+                onTextChangedByUser: root._yearFrom = parseInt(text) || 0
             }
 
-            Row {
-                spacing: MichiTheme.spacing.sm
-                width: parent.width
-
-                TextField {
-                    id: yearFromField
-                    width: parent.width * 0.45
-                    placeholderText: "Desde"
-                    validator: IntValidator { bottom: 1900; top: 2100 }
-                    onTextChanged: root._yearFrom = parseInt(text) || 0
-                    objectName: "searchFilter.yearFrom"
-                    Accessible.name: "Año desde"
-                }
-
-                Text {
-                    text: "-"
-                    color: MichiTheme.colors.textMuted
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                TextField {
-                    id: yearToField
-                    width: parent.width * 0.45
-                    placeholderText: "Hasta"
-                    validator: IntValidator { bottom: 1900; top: 2100 }
-                    onTextChanged: root._yearTo = parseInt(text) || 0
-                    objectName: "searchFilter.yearTo"
-                    Accessible.name: "Año hasta"
-                }
+            Text {
+                text: "\u2013"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
+                anchors.verticalCenter: parent.verticalCenter
             }
 
-            SectionHeader {
-                text: "Calidad"
-                width: parent.width
+            SearchField {
+                id: yearToField
+                width: parent.width * 0.45
+                placeholderText: "Hasta"
+                objectName: "filterYearTo"
+                Accessible.name: "Año hasta"
+                text: root._yearTo > 0 ? String(root._yearTo) : ""
+                onTextChangedByUser: root._yearTo = parseInt(text) || 0
             }
+        }
 
-            ComboBox {
-                id: qualityCombo
-                width: parent.width
-                model: ["Cualquiera", "≥ 128 kbps", "≥ 192 kbps", "≥ 320 kbps", "FLAC / Lossless"]
-                onCurrentTextChanged: {
-                    var map = {
-                        "Cualquiera": "", "≥ 128 kbps": "128",
-                        "≥ 192 kbps": "192", "≥ 320 kbps": "320",
-                        "FLAC / Lossless": "lossless"
-                    }
-                    root._qualityFilter = map[currentText] || ""
-                }
-                objectName: "searchFilter.quality"
-                Accessible.name: "Filtro de calidad"
-            }
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: MichiTheme.colors.borderSubtle
+        }
 
-            Item { height: MichiTheme.spacing.sm; width: 1 }
+        Text {
+            text: "Calidad"
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightMedium
+        }
 
-            Row {
-                spacing: MichiTheme.spacing.md
-                anchors.horizontalCenter: parent.horizontalCenter
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
+
+            Repeater {
+                model: [
+                    {key: "any", label: "Cualquiera"},
+                    {key: "low", label: "Baja"},
+                    {key: "standard", label: "Estándar"},
+                    {key: "high", label: "Alta"},
+                    {key: "lossless", label: "Lossless"},
+                ]
 
                 MichiButton {
-                    text: "Aplicar"
-                    variant: "primary"
-                    onClicked: {
-                        root.applied({
-                            typeFilters: root._typeFilters,
-                            yearFrom: root._yearFrom,
-                            yearTo: root._yearTo,
-                            quality: root._qualityFilter
-                        })
-                        root.open = false
-                    }
-                    objectName: "searchFilter.apply"
-                    Accessible.name: "Aplicar filtros"
+                    text: modelData.label
+                    variant: root._qualityFilter === modelData.key ? "primary" : "ghost"
+                    implicitHeight: 28
+                    objectName: "filterQuality_" + modelData.key
+                    Accessible.name: "Calidad " + modelData.label + (root._qualityFilter === modelData.key ? " (activo)" : "")
+                    onClicked: root._qualityFilter = modelData.key
                 }
+            }
+        }
 
-                MichiButton {
-                    text: "Restablecer"
-                    variant: "ghost"
-                    onClicked: {
-                        root._typeFilters = {}
-                        root._yearFrom = 0
-                        root._yearTo = 0
-                        root._qualityFilter = ""
-                        root.reset()
+        Item { width: 1; height: MichiTheme.spacing.md }
+
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
+
+            MichiButton {
+                text: "Aplicar filtros"
+                variant: "primary"
+                objectName: "applyFiltersBtn"
+                Accessible.name: "Aplicar filtros"
+                onClicked: {
+                    root.filtersApplied(root._typeFilters, root._yearFrom, root._yearTo, root._qualityFilter)
+                    root.close()
+                }
+            }
+
+            MichiButton {
+                text: "Restablecer"
+                variant: "ghost"
+                objectName: "resetFiltersBtn"
+                Accessible.name: "Restablecer filtros"
+                onClicked: {
+                    root._typeFilters = {
+                        "track": true, "album": true, "artist": true,
+                        "playlist": true, "folder": true, "genre": true,
+                        "radio": true, "device": false, "server": false,
+                        "action": false, "setting": false
                     }
-                    objectName: "searchFilter.reset"
-                    Accessible.name: "Restablecer filtros"
+                    root._yearFrom = 0
+                    root._yearTo = 0
+                    root._qualityFilter = "any"
+                    yearFromField.text = ""
+                    yearToField.text = ""
+                    root.filtersReset()
                 }
             }
         }

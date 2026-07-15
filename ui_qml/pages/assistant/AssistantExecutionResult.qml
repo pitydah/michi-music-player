@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -8,118 +7,125 @@ import "../../components"
 Item {
     id: root
 
-    property string resultStatus: ""
-    property var resultDetails: ({})
-    property string errorMessage: ""
-    property int partialCount: 0
-    property int totalCount: 0
+    property string status: "" // success, partial, failure
+    property string summaryText: ""
+    property string detailText: ""
+    property bool detailsExpanded: false
+    property bool visible: false
 
-    signal retryTriggered()
-    signal undoTriggered()
+    signal retry()
+    signal undo()
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Resultado de ejecución"
+    implicitHeight: visible ? contentColumn.height + MichiTheme.spacing.xl * 2 : 0
+    width: parent ? parent.width : 400
 
-    implicitHeight: column.height + MichiTheme.spacing.lg * 2
-    visible: resultStatus !== ""
+    Accessible.role: Accessible.Dialog
+    Accessible.name: "Resultado de ejecución" + (status === "success" ? " - Éxito" : status === "failure" ? " - Error" : " - Parcial")
+
+    visible: root.visible
+    opacity: root.visible ? 1.0 : 0.0
+    Behavior on opacity { NumberAnimation { duration: MichiTheme.motionFast } }
 
     GlassMaterial {
-        anchors.fill: parent
         radius: MichiTheme.radiusMd
-        variant: resultStatus === "success" ? "accent" : resultStatus === "partial" ? "status" : "base"
-        border.color: resultStatus === "failed" ? MichiTheme.colors.error : MichiTheme.colors.borderCard
+        variant: status === "failure" ? "danger" : status === "partial" ? "warning" : "base"
 
         Column {
-            id: column
+            id: contentColumn
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
 
             Row {
-                spacing: MichiTheme.spacing.sm
                 width: parent.width
+                spacing: MichiTheme.spacing.sm
 
                 Text {
-                    text: resultStatus === "success" ? "Completado" :
-                          resultStatus === "partial" ? "Completado parcialmente" :
-                          resultStatus === "failed" ? "Error" : resultStatus
-                    color: resultStatus === "success" ? MichiTheme.colors.success :
-                           resultStatus === "failed" ? MichiTheme.colors.error :
-                           MichiTheme.colors.textPrimary
+                    text: status === "success" ? "✓" : status === "partial" ? "⚠" : "✗"
+                    color: status === "success" ? MichiTheme.colors.success : status === "partial" ? MichiTheme.colors.warning : MichiTheme.colors.error
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    text: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : "Error"
+                    color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
 
             Text {
-                text: resultStatus === "success" ? "La acción se completó correctamente." :
-                      resultStatus === "partial" ? partialCount + " de " + totalCount + " acciones completadas." :
-                      resultStatus === "failed" ? errorMessage || "Ocurrió un error durante la ejecución." : ""
+                width: parent.width
+                text: root.summaryText
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
-                width: parent.width
+                lineHeight: 1.4
             }
 
             Rectangle {
-                visible: resultDetails && Object.keys(resultDetails).length > 0
                 width: parent.width
-                height: detailsColumn.height + MichiTheme.spacing.sm
-                radius: MichiTheme.radiusSm
-                color: MichiTheme.colors.surfaceInput
+                height: 28
+                radius: MichiTheme.radiusXs
+                color: MichiTheme.colors.surfaceSubtle
+                visible: root.detailText !== ""
 
-                Column {
-                    id: detailsColumn
+                MouseArea {
                     anchors.fill: parent
-                    anchors.margins: MichiTheme.spacing.sm
-                    spacing: MichiTheme.spacing.xs
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.detailsExpanded = !root.detailsExpanded
+                }
 
-                    Repeater {
-                        model: resultDetails ? Object.keys(resultDetails) : []
-
-                        Row {
-                            width: parent.width
-                            spacing: MichiTheme.spacing.xs
-                            Text {
-                                text: modelData + ":"
-                                color: MichiTheme.colors.textMuted
-                                font.pixelSize: MichiTheme.typography.metaSize
-                                width: parent.width * 0.35
-                                elide: Text.ElideRight
-                            }
-                            Text {
-                                text: resultDetails[modelData] || ""
-                                color: MichiTheme.colors.textPrimary
-                                font.pixelSize: MichiTheme.typography.metaSize
-                                width: parent.width * 0.60
-                                elide: Text.ElideRight
-                            }
-                        }
-                    }
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: MichiTheme.spacing.sm
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.detailsExpanded ? "Ocultar detalles" : "Ver detalles"
+                    color: MichiTheme.colors.accentBlue
+                    font.pixelSize: MichiTheme.typography.captionSize
+                    font.weight: MichiTheme.typography.weightMedium
                 }
             }
 
-            Row {
-                spacing: MichiTheme.spacing.sm
+            Text {
                 width: parent.width
+                text: root.detailText
+                color: MichiTheme.colors.textMeta
+                font.pixelSize: MichiTheme.typography.captionSize
+                wrapMode: Text.WordWrap
+                lineHeight: 1.3
+                visible: root.detailsExpanded && root.detailText !== ""
+            }
+
+            Row {
+                width: parent.width
+                spacing: MichiTheme.spacing.sm
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
-                    text: "Reintentar"
-                    variant: "secondary"
-                    objectName: "assistant.result.retry"
-                    Accessible.name: "Reintentar acción"
-                    visible: resultStatus === "failed" || resultStatus === "partial"
-                    onClicked: root.retryTriggered()
+                    text: status === "failure" ? "Reintentar" : "Deshacer"
+                    variant: status === "failure" ? "primary" : "ghost"
+                    visible: (status === "failure" || status === "partial")
+                    objectName: "executionResultRetry"
+                    Accessible.name: text
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    onClicked: {
+                        if (status === "failure") root.retry()
+                        else root.undo()
+                    }
                 }
 
                 MichiButton {
-                    text: "Deshacer"
+                    text: "Cerrar"
                     variant: "ghost"
-                    objectName: "assistant.result.undo"
-                    Accessible.name: "Deshacer cambios"
-                    visible: resultStatus === "success" || resultStatus === "partial"
-                    onClicked: root.undoTriggered()
+                    objectName: "executionResultClose"
+                    Accessible.name: "Cerrar"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    onClicked: root.visible = false
                 }
             }
         }

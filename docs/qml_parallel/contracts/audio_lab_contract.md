@@ -1,108 +1,99 @@
-# Audio Lab Bridge Contract
+# AudioLabBridge Integration Contract
 
 ## Context Property
-`AudioLabBridge` registered as `audio_lab` context property.
-
-## Class Name
-`AudioLabBridge` (`ui_qml_bridge/audio_lab_bridge.py`)
-
-## Constructor Dependencies
-| Parameter | Type | Default |
-|-----------|------|---------|
-| `db_conn` | `Any (DB connection) \| None` | `None` |
-| `navigation_bridge` | `NavigationBridge \| None` | `None` |
-| `player_service` | `Any \| None` | `None` |
-| `worker_manager` | `WorkerManager \| None` | `None` |
-| `audio_lab_service` | `AudioLabService \| None` | `None` |
-| `audio_lab_state` | `AudioLabState \| None` | `None` |
-| `parent` | `QObject \| None` | `None` |
+- `audioLabBridge` → `AudioLabBridge` instance
 
 ## Properties
-| Name | Type | Notify | Description |
-|------|------|--------|-------------|
-| `modules` | `QVariantList` | `dataChanged` | Available modules with id, title, desc, status |
-| `totalTracks` | `int` | `dataChanged` | Total tracks in library |
-| `missingMetadata` | `int` | `dataChanged` | Tracks missing metadata |
-| `missingCovers` | `int` | `dataChanged` | Tracks missing album art |
-| `backendInfo` | `QVariantMap` | `dataChanged` | Active backend info |
-| `pipelineInfo` | `QVariantMap` | `dataChanged` | Pipeline device, sample_rate, bit_depth, channels |
-| `dspInfo` | `QVariantMap` | `dataChanged` | EQ enabled, preamp |
-| `selectedProfile` | `str` | `dataChanged` (read/write) | Currently selected AudioLab profile |
+| Property | Type | Notify Signal |
+|---|---|---|
+| `modules` | `QVariantList` | `dataChanged` |
+| `totalTracks` | `int` | `dataChanged` |
+| `missingMetadata` | `int` | `dataChanged` |
+| `missingCovers` | `int` | `dataChanged` |
+| `backendInfo` | `QVariantMap` | `dataChanged` |
+| `pipelineInfo` | `QVariantMap` | `dataChanged` |
+| `dspInfo` | `QVariantMap` | `dataChanged` |
+
+Module schema: `{id: str, title: str, desc: str, status: str}` — status: `"available"` or `"experimental"`.
+BackendInfo schema: `{backend: str, available: bool}`
+DspInfo schema: `{eq_enabled: bool, preamp: float}`
+PipelineInfo schema: `{device: str, sample_rate: int, bit_depth: int, channels: int}`
 
 ## Slots
-| Name | Parameters | Return | Description |
-|------|-----------|--------|-------------|
-| `refresh` | — | `dict` | Refresh all stats, backend, pipeline info |
-| `navigateTo` | `module_id: str` | `dict` | Navigate to an Audio Lab sub-section |
-| `capabilities` | — | `QVariantMap` | Return service capability map |
-| `inputs` | — | `QVariantList` | Return current inputs from state |
-| `profiles` | — | `QVariantList` | Return available profiles |
-| `preview` | — | `QVariantMap` | Return preview data |
-| `startAnalysis` | `filepath: str` | `dict` | Submit analysis job |
-| `startConversion` | `filepath: str` | `dict` | Submit conversion job |
-| `startReplayGain` | `filepath: str` | `dict` | Submit ReplayGain job |
-| `startNormalization` | `filepath: str` | `dict` | Submit normalization job |
-| `startIntegrity` | `filepath: str` | `dict` | Submit integrity check job |
-| `startComparison` | `file_a: str, file_b: str` | `dict` | Submit comparison job |
-| `cancelJob` | `job_id: str` | `dict` | Cancel a job |
-| `retryJob` | `job_id: str` | `dict` | Retry a failed/cancelled job |
-| `clearInputs` | — | `dict` | Clear all inputs |
-| `results` | — | `QVariantList` | Return results from state |
-| `errors` | — | `QVariantList` | Return errors from state |
-| `probeFile` | `filepath: str` | `dict` | Probe a file (legacy) |
-| `analyzeFile` | `filepath: str` | `dict` | Analyze a file (legacy) |
-| `integrityCheck` | `filepath: str, quick: bool=False` | `dict` | Quick integrity check (legacy) |
-| `compareFiles` | `file_a: str, file_b: str` | `dict` | Compare two files (legacy) |
+| Slot | Returns | Parameters |
+|---|---|---|
+| `refresh` | `dict` | none |
+| `navigateTo` | `dict` | `module_id: str` |
+| `probeFile` | `dict` | `filepath: str` |
+| `analyzeFile` | `dict` | `filepath: str` |
+| `integrityCheck` | `dict` | `filepath: str`, `quick: bool = False` |
+| `compareFiles` | `dict` | `file_a: str`, `file_b: str` |
+
+All slots return `dict`.
 
 ## Signals
-| Name | Payload | Description |
-|------|---------|-------------|
-| `dataChanged` | — | Properties changed |
+| Signal | Payload |
+|---|---|
+| `dataChanged` | (none) |
 
 ## Models Exposed
-None. All data via `QVariantList`/`QVariantMap` properties.
+None.
 
-## Error Handling
-- Canonical API returns `dict` with `ok: bool`
-- Error format: `{"ok": false, "error": "<CODE>"}`
-- Legacy slots return varied dict formats with filepath, status, error
+## Error Types/Codes
+- `"UNSUPPORTED"` — module route not recognized
+- `"UNSUPPORTED"` (format) — file probe/analyze failed
+- Error messages propagated from service exceptions.
 
-## Error Codes
-- `NO_SERVICE` — audio_lab_service is None or probe unavailable
-- `NO_STATE` — audio_lab_state is None
-- `UNSUPPORTED` — navigation route not found
-- `NOT_FAILED` — job not in failed/cancelled state for retry
+## Module IDs
+`diagnostics`, `health`, `metadata_doctor`, `conversion`, `vinyl`, `analyzer`, `overview`, `analysis`, `normalization`, `replaygain`, `integrity`, `comparison`, `jobs`, `profiles`.
 
-## States
-- `selectedProfile` writable property
-- Module statuses: `"available"`, `"experimental"`
-- Legacy services (diagnostics, health, metadata_doctor) availability depends on backend + DB
+## Routes (for navigateTo)
+| Module ID | Route |
+|---|---|
+| `diagnostics` | `diagnostics` |
+| `health` | `library_doctor` |
+| `metadata_doctor` | `metadata_inspector` |
+| `overview` | `audio_lab_overview` |
+| `analysis` | `audio_lab_analysis` |
+| `conversion` | `audio_lab_conversion` |
+| `normalization` | `audio_lab_normalization` |
+| `replaygain` | `audio_lab_replaygain` |
+| `integrity` | `audio_lab_integrity` |
+| `comparison` | `audio_lab_comparison` |
+| `jobs` | `audio_lab_jobs` |
+| `profiles` | `audio_lab_profiles` |
 
-## Lifecycle
-- Created by `BridgeFactory.create_audio_lab_bridge()` with db_conn, worker_manager, player_service
-- `_svc()` and `_state()` return None if service/state not injected or unavailable
-- Legacy slots create ad-hoc services if primary not available
-- `refresh()` repopulates all stats from DB + backend
+## Lifecycle Expectations
+- Constructor takes optional `db_conn`, `navigation_bridge`, `player_service`, `worker_manager`.
+- `modules` property conditionally includes items based on backend availability (`_check_backend()`) and DB availability.
+- `refresh()` populates `_backend_info`, `_dsp_info`, `_pipeline_info`, `_health`/`_stats` from real services.
+- `compute_health(db_conn)` called from `core.audio_lab.library_health`.
 
-## Behavior When Service Is Null/Missing
-- Without `audio_lab_service`: canonical job APIs return `"NO_SERVICE"`, capabilities empty
-- Without `audio_lab_state`: inputs/profiles/preview/results/errors return empty
-- Legacy slots (`probeFile`, `analyzeFile`, `integrityCheck`, `compareFiles`) create ad-hoc services
-- Without `player_service`: backend info unavailable, diagnostics module hidden
-- Without `db_conn`: health/doctor modules hidden
+## Behavior When Service Is Missing/Null
+- No `_player` or no `get_active_backend_id()`: backend-dependent modules (`diagnostics`, `metadata_doctor`) excluded from `modules`. `backendInfo` shows `available: false`.
+- No `_conn`: health-dependent modules (`health`, `metadata_doctor`) excluded. `stats` empty.
+- No `_nav`: `navigateTo` returns `UNSUPPORTED`.
 
-## Integration
-- **JobService**: Not directly; uses `audio_lab_service.jobs` for job management
-- **ActionRegistry**: Not used
-- **NavigationBridge**: Used for `navigateTo()` route mapping
-- **CapabilityBridge**: Registered as `audio_lab` capability; requires `db_connection`
+## Destructive Actions and Confirmations
+None — all operations are read-only analysis/probe/check.
 
 ## Cancellation Contract
-- `cancelJob(job_id)` cancels via `svc.jobs.cancel()` + removes from state
-- `retryJob(job_id)` checks job is in failed/cancelled state
-- Legacy slots have no cancellation mechanism
+NOT IMPLEMENTED — no cancellation mechanism for long-running tasks.
 
-## Destructive Action Handling
-- `clearInputs()` clears all pending input state
-- Job cancellation is reversible via retry
-- No file deletion or permanent data loss
+## Integration with JobService
+NOT IMPLEMENTED — `worker_manager` is accepted in constructor but not used.
+
+## Integration with ActionRegistry
+NOT IMPLEMENTED.
+
+## Integration with NavigationBridge
+- `navigateTo(module_id)`: resolves module ID to route via `route_map`, calls `_nav.navigate(route)`.
+
+## Integration with PageStateStore
+NOT IMPLEMENTED.
+
+## Integration with CapabilityBridge
+NOT IMPLEMENTED — availability is self-detected from `_player` and `_conn`.
+
+## Integration with AccessibilityBridge
+NOT IMPLEMENTED.

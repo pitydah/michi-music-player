@@ -1,106 +1,141 @@
-"""Test keyboard navigation patterns for RadioPage and related components."""
+"""Test RadioBridge keyboard navigation patterns (bridge-level focus/activation)."""
 from unittest.mock import MagicMock
 
 import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
 
-pytestmark = [pytest.mark.qml_module("radio"),
-              pytest.mark.qml_dimension("accessibility")]
-
 
 @pytest.fixture
 def mock_stations():
-    stations = []
-    for i, (name, url, codec, country, fav) in enumerate([
-        ("Jazz FM", "http://jazz.stream", "MP3", "US", True),
-        ("Rock FM", "http://rock.stream", "AAC", "UK", False),
-        ("News Talk", "http://news.stream", "AAC", "US", True),
-    ]):
-        s = MagicMock()
-        s.id = i + 1
-        s.name = name
-        s.url = url
-        s.codec = codec
-        s.country = country
-        s.tags = [name.lower().split()[0]]
-        s.favorite = fav
-        s.bitrate = 128
-        stations.append(s)
-    return stations
+    s1 = MagicMock()
+    s1.id = 1
+    s1.name = "Station A"
+    s1.url = "http://a.stream"
+    s1.codec = "MP3"
+    s1.country = "US"
+    s1.tags = ["pop"]
+    s1.favorite = False
+    s1.bitrate = 128
+    s2 = MagicMock()
+    s2.id = 2
+    s2.name = "Station B"
+    s2.url = "http://b.stream"
+    s2.codec = "AAC"
+    s2.country = "UK"
+    s2.tags = ["rock"]
+    s2.favorite = False
+    s2.bitrate = 256
+    return [s1, s2]
 
 
 @pytest.fixture
 def mock_radio_mgr(mock_stations):
     mgr = MagicMock()
     mgr.get_all.return_value = mock_stations
+    mgr.add.return_value = mock_stations[0]
+    mgr.toggle_favorite.return_value = True
+    mgr.remove_station.return_value = True
     return mgr
 
 
 @pytest.fixture
 def mock_player():
-    return MagicMock()
+    player = MagicMock()
+    player.play_url.return_value = True
+    player.stop.return_value = True
+    return player
 
 
-@pytest.fixture
-def bridge(mock_radio_mgr, mock_player):
-    return RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+class TestKeyboardNavigation:
+    def test_play_then_stop(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "Station A")
+        assert mock_player.play_url.called
+        bridge.stopStream()
+        assert mock_player.stop.called
 
+    def test_toggle_favorite_then_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.toggleFavorite(1)
+        assert mock_radio_mgr.toggle_favorite.called
+        bridge.playStation("http://a.stream", "Station A")
+        assert mock_player.play_url.called
 
-class TestRadioKeyboard:
-    """Test keyboard navigation patterns for radio."""
-
-    def test_navigate_favorites_then_all(self, bridge):
-        bridge.refresh()
-        assert len(bridge.favorites) == 2
-        assert len(bridge.stations) == 3
-
-    def test_search_field_focusable(self, bridge):
-        bridge.search(query="Jazz")
-        assert len(bridge._stations) >= 0
-
-    def test_escape_closes_add_form(self, bridge):
-        pass
-
-    def test_enter_on_search_submits(self, bridge):
-        bridge.refresh()
-        result = bridge.search(query="Rock")
+    def test_edit_after_play(self, mock_radio_mgr, mock_player):
+        mock_radio_mgr.update.return_value = True
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "Station A")
+        result = bridge.editStation(1, "Edited A", "http://edited.stream", "MP3", "US")
         assert result["ok"]
-        assert any(r["name"] == "Rock FM" for r in result["results"])
 
-    def test_tab_through_station_list(self, bridge):
+    def test_delete_after_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "Station A")
         bridge.refresh()
-        assert len(bridge.stations) == 3
-
-    def test_accessible_names_on_stations(self, bridge):
-        bridge.refresh()
-        for s in bridge.stations:
-            assert s["name"] is not None
-            assert isinstance(s["name"], str)
-
-    def test_escape_closes_detail(self, bridge):
-        pass
-
-    def test_enter_activates_station(self, bridge):
-        bridge.refresh()
-        station = bridge.stations[1]
-        assert station["name"] == "Rock FM"
-
-    def test_arrow_keys_navigate_stations(self, bridge):
-        bridge.refresh()
-        assert len(bridge.stations) >= 2
-
-    def test_keyboard_focus_visible(self, bridge):
-        pass
-
-    def test_accessible_descriptions(self, bridge):
-        bridge.refresh()
-        for s in bridge.stations:
-            assert s.get("url") is not None
-
-    def test_filter_visible_stations(self, bridge):
-        bridge.refresh()
-        result = bridge.search(query="Jazz")
+        result = bridge.deleteStation("http://a.stream")
         assert result["ok"]
-        filtered = [r for r in result["results"] if r["name"] == "Jazz FM"]
-        assert len(filtered) == 1
+
+    def test_play_after_stop(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "Station A")
+        bridge.stopStream()
+        bridge.playStation("http://b.stream", "Station B")
+        assert mock_player.play_url.call_count >= 2
+
+    def test_play_retry_scenario(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "Station A")
+        bridge.stopStream()
+        result = bridge.retryCurrent()
+        assert result["ok"]
+
+    def test_focus_equivalent_to_refresh(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        result = bridge.refresh()
+        assert result["ok"]
+        assert len(bridge.stations) == 2
+
+    def test_sequential_play_different_stations(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "A")
+        bridge.playStation("http://b.stream", "B")
+        bridge.playStation("http://a.stream", "A")
+        assert len(bridge.history) == 3
+
+    def test_enter_equivalent_to_play(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "Station A")
+        assert isinstance(bridge._current_station, str)
+        assert bridge._current_station == "http://a.stream"
+
+    def test_tab_between_sections(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.refresh()
+        assert len(bridge.stations) == 2
+        assert len(bridge.favorites) == 0
+
+    def test_escape_equivalent_to_stop(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "A")
+        bridge.cancelStream()
+        assert mock_player.stop.called
+
+    def test_play_history_retained(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.playStation("http://a.stream", "A")
+        bridge.playStation("http://b.stream", "B")
+        assert len(bridge.history) == 2
+
+    def test_full_keyboard_workflow(self, mock_radio_mgr, mock_player):
+        bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
+        bridge.refresh()
+        assert len(bridge.stations) == 2
+        bridge.playStation("http://a.stream", "Station A")
+        assert bridge._current_station == "http://a.stream"
+        bridge.stopStream()
+        assert mock_player.stop.called
+        bridge.playStation("http://b.stream", "Station B")
+        assert bridge._current_station == "http://b.stream"
+        bridge.cancelStream()
+        assert mock_player.stop.called

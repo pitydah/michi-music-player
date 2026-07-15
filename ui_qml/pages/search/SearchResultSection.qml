@@ -8,120 +8,137 @@ Item {
 
     property string sectionType: ""
     property string sectionTitle: ""
+    property var sectionItems: []
     property int resultCount: 0
-    property var items: []
-    property bool loading: false
-    property bool isError: false
-    property string errorMessage: ""
+    property bool isLoading: false
+    property bool sectionEmpty: false
     property var bridge: null
 
-    signal itemClicked(string type, string id, string title, var data)
+    signal itemClicked(string type, string id, string title, string subtitle)
     signal retryRequested()
-    signal activateRequested()
 
-    implicitHeight: childrenRect.height
-    objectName: "searchResultSection." + sectionType
+    implicitHeight: sectionColumn.height
+
+    objectName: "searchResultSection_" + sectionType
 
     Accessible.role: Accessible.Grouping
-    Accessible.name: sectionTitle + " - " + resultCount + " resultados"
+    Accessible.name: sectionTitle + " - " + (resultCount > 0 ? resultCount + " resultados" : "sin resultados")
+
+    function getTypeIcon() {
+        switch (root.sectionType) {
+            case "track": return "\u266A"
+            case "album": return "\u25C9"
+            case "artist": return "\u266B"
+            case "playlist": return "\u2630"
+            case "folder": return "\u25A0"
+            case "genre": return "\u266C"
+            case "radio": return "\u25E2"
+            case "device": return "\u25D8"
+            case "server": return "\u25CB"
+            case "action": return "\u2192"
+            case "setting": return "\u2699"
+            default: return "\u25CF"
+        }
+    }
 
     Column {
+        id: sectionColumn
         width: parent.width
-        spacing: MichiTheme.spacing.sm
+        spacing: MichiTheme.spacing.xs
 
-        SectionHeader {
-            text: sectionTitle + (resultCount > 0 ? " (" + resultCount + ")" : "")
+        Item {
             width: parent.width
-            objectName: "searchResultSection.header." + sectionType
-        }
+            height: 28
+            objectName: root.objectName + "_header"
+            Accessible.role: Accessible.Heading
+            Accessible.name: root.sectionTitle
 
-        Loader {
-            width: parent.width
-            height: active ? childrenRect.height : 0
-            active: loading
+            Row {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: MichiTheme.spacing.sm
 
-            sourceComponent: Item {
-                implicitHeight: 40
-                Row {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-
-                    BusyIndicator {
-                        running: true
-                        implicitWidth: 20
-                        implicitHeight: 20
-                    }
-                    Text {
-                        text: "Buscando..."
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+                Text {
+                    text: root.getTypeIcon()
+                    color: MichiTheme.colors.accent
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    anchors.verticalCenter: parent.verticalCenter
                 }
+                Text {
+                    text: root.sectionTitle
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Text {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                text: "(" + root.resultCount + ")"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize
+                visible: root.resultCount > 0 && !root.isLoading
             }
         }
 
         Loader {
             width: parent.width
-            height: active ? childrenRect.height : 0
-            active: isError
-
-            sourceComponent: Item {
-                implicitHeight: 40
-                Row {
-                    anchors.centerIn: parent
-                    spacing: MichiTheme.spacing.md
-
-                    Text {
-                        text: "\u26A0"
-                        color: MichiTheme.colors.error
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Text {
-                        text: errorMessage !== "" ? errorMessage : "Error al cargar"
-                        color: MichiTheme.colors.error
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    MichiButton {
-                        text: "Reintentar"
-                        variant: "ghost"
-                        implicitHeight: 28
-                        onClicked: root.retryRequested()
-                    }
-                }
+            sourceComponent: {
+                if (root.isLoading) return loadingComp
+                if (root.sectionEmpty) return emptyComp
+                return listComp
             }
         }
 
-        Repeater {
-            model: loading || isError ? 0 : root.items
-
-            SearchResultRow {
+        Component {
+            id: loadingComp
+            LoadingState {
+                title: "Buscando..."
+                message: ""
                 width: parent.width
-                resultType: modelData.type || ""
-                resultId: modelData.id || ""
-                resultTitle: modelData.title || ""
-                resultSubtitle: modelData.subtitle || ""
-                resultSection: root.sectionType
-                resultScore: modelData.score || 0.0
-                bridge: root.bridge
-                objectName: "searchResultRow." + root.sectionType + "." + index
-
-                onClicked: root.itemClicked(modelData.type || "", modelData.id || "", modelData.title || "", modelData)
-                onPlayRequested: root.itemClicked(modelData.type || "", modelData.id || "", modelData.title || "", modelData)
-                onActivateRequested: root.activateRequested()
+                objectName: root.objectName + "_loading"
+                Accessible.name: "Cargando resultados para " + root.sectionTitle
             }
         }
 
-        Text {
-            width: parent.width
-            visible: !loading && !isError && items.length === 0
-            text: "Sin resultados"
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.bodySize
-            horizontalAlignment: Text.AlignHCenter
-            objectName: "searchResultSection.empty." + sectionType
+        Component {
+            id: emptyComp
+            EmptyState {
+                title: ""
+                subtitle: "Sin resultados"
+                width: parent.width
+                objectName: root.objectName + "_empty"
+                Accessible.name: "Sin resultados para " + root.sectionTitle
+            }
+        }
+
+        Component {
+            id: listComp
+            Column {
+                width: parent.width
+                spacing: MichiTheme.spacing.xs
+                objectName: root.objectName + "_list"
+
+                Repeater {
+                    model: root.sectionItems
+
+                    SearchResultRow {
+                        width: parent.width
+                        rowType: modelData.type || root.sectionType
+                        rowId: modelData.id || ""
+                        rowTitle: modelData.title || ""
+                        rowSubtitle: modelData.subtitle || ""
+                        bridge: root.bridge
+                        objectName: root.objectName + "_row_" + index
+                        Accessible.name: (modelData.title || "Resultado") + " - " + (root.sectionTitle || "")
+                        onClicked: root.itemClicked(modelData.type || root.sectionType, modelData.id || "", modelData.title || "", modelData.subtitle || "")
+                        Keys.onReturnPressed: root.itemClicked(modelData.type || root.sectionType, modelData.id || "", modelData.title || "", modelData.subtitle || "")
+                        Keys.onSpacePressed: root.itemClicked(modelData.type || root.sectionType, modelData.id || "", modelData.title || "", modelData.subtitle || "")
+                    }
+                }
+            }
         }
     }
 }

@@ -1,78 +1,76 @@
-# Global Search Bridge Contract
+# GlobalSearchBridge Integration Contract
 
 ## Context Property
-`GlobalSearchBridge` registered as `global_search` context property.
-
-## Class Name
-`GlobalSearchBridge` (`ui_qml_bridge/global_search_bridge.py`)
-
-## Constructor Dependencies
-| Parameter | Type | Default |
-|-----------|------|---------|
-| `search_service` | `Any (SearchService) \| None` | `None` |
-| `parent` | `QObject \| None` | `None` |
+- `globalSearchBridge` → `GlobalSearchBridge` instance
 
 ## Properties
-| Name | Type | Notify | Description |
-|------|------|--------|-------------|
-| `query` | `str` | `resultsChanged` | Current search query text |
-| `results` | `QVariantList` | `resultsChanged` | Search results (max 50 items) |
-| `isSearching` | `bool` | `searchingChanged` | Whether a search is in progress |
-| `errorCode` | `str` | `resultsChanged` | Last error code |
-| `errorMessage` | `str` | `resultsChanged` | Last error message |
+| Property | Type | Notify Signal |
+|---|---|---|
+| `query` | `str` | `resultsChanged` |
+| `results` | `QVariantList` | `resultsChanged` |
+| `isSearching` | `bool` | `searchingChanged` |
+| `errorCode` | `str` | `resultsChanged` |
+| `errorMessage` | `str` | `resultsChanged` |
 
 ## Slots
-| Name | Parameters | Return | Description |
-|------|-----------|--------|-------------|
-| `search` | `query: str` | `dict` | Execute search; stale-result-safe via request counter |
-| `cancel` | — | `dict` | Cancel active search; clear results |
-| `searchDomain` | `domain: str, query: str` | `dict` | Scoped search within a domain prefix |
+| Slot | Returns | Parameters |
+|---|---|---|
+| `search` | `dict` | `query: str` |
+| `cancel` | `dict` | none |
+| `searchDomain` | `dict` | `domain: str`, `query: str` |
+
+All slots return `dict` with `ok: bool`.
 
 ## Signals
-| Name | Payload | Description |
-|------|---------|-------------|
-| `resultsChanged` | — | Results, query, error state changed |
-| `searchingChanged` | — | isSearching flag changed |
+| Signal | Payload |
+|---|---|
+| `resultsChanged` | (none) |
+| `searchingChanged` | (none) |
 
 ## Models Exposed
-None. Results returned as `QVariantList` of dicts.
+None.
+
+## Error Types/Codes
+- `"SEARCH_FAILED"` — search service returned error
+- `"SERVICE_UNAVAILABLE"` — no SearchService injected
+- `"UNKNOWN_DOMAIN"` — domain not in `DOMAIN_MAP`
 
 ## DOMAIN_MAP
-track, album, artist, playlist, folder, genre, device, server, action, setting
+`track`, `album`, `artist`, `playlist`, `folder`, `genre`, `device`, `server`, `action`, `setting`.
 
-## Error Handling
-- Error codes: `"SEARCH_FAILED"`, `"SERVICE_UNAVAILABLE"`, `"UNKNOWN_DOMAIN"`
-- Callback pattern: `_on_done(result)` processes async result
-- Stale request detection via `_active_request_id` counter
+## Lifecycle Expectations
+- Constructor takes optional `search_service`.
+- `search(query)`: increments `_request_counter`, sets `_active_request_id` for stale-guard.
+- Empty query clears results immediately.
+- Results capped at `_MAX_TOTAL = 50`.
+- Search service called with `owner="global_search"`, `timeout_ms=5000`.
 
-## Error Codes
-- `SEARCH_FAILED` — search service returned error or exception
-- `SERVICE_UNAVAILABLE` — no search service injected
-- `UNKNOWN_DOMAIN` — domain not in DOMAIN_MAP
+## Stale Result Guard
+- `_active_request_id` is checked in `_on_done` callback; stale responses discarded.
 
-## States
-- `isSearching`: true while search is in progress, false when done/cancelled
-- `errorCode`, `errorMessage`: cleared on new search, set on failure
+## Behavior When Service Is Missing/Null
+- No `_svc` or `_svc.search` not callable: returns `SERVICE_UNAVAILABLE` with Spanish error message.
 
-## Lifecycle
-- Created by `BridgeFactory.create_global_search_bridge()` with search_service=None
-- Auto-cancels stale searches via request ID counter
-- No background polling; QML initiates searches
-
-## Behavior When Service Is Null/Missing
-- Without `search_service`: all searches return `{"ok": false, "error": "SERVICE_UNAVAILABLE"}`
-- Results remain empty
-
-## Integration
-- **JobService**: Not used
-- **ActionRegistry**: Not used
-- **NavigationBridge**: Not used
-- **CapabilityBridge**: Registered as `global_search` capability (via `has_fts5` check)
+## Destructive Actions and Confirmations
+None — read-only search.
 
 ## Cancellation Contract
-- `cancel()` sets `_active_request_id = 0` (invalidates all pending callbacks)
-- Calls `_svc.cancel(owner="global_search")` if available
-- Stale results from previous requests are discarded by comparing request IDs
+- `cancel()`: sets `_active_request_id = 0` (invalidates all pending callbacks), calls `_svc.cancel(owner="global_search")` if available. Clears results and sets `isSearching=False`. Increments `_search_gen`.
 
-## Destructive Action Handling
-- None. Search is read-only.
+## Integration with JobService
+NOT IMPLEMENTED — search is synchronous (blocking) with no WorkerManager integration.
+
+## Integration with ActionRegistry
+NOT IMPLEMENTED.
+
+## Integration with NavigationBridge
+NOT IMPLEMENTED.
+
+## Integration with PageStateStore
+NOT IMPLEMENTED.
+
+## Integration with CapabilityBridge
+NOT IMPLEMENTED.
+
+## Integration with AccessibilityBridge
+NOT IMPLEMENTED.

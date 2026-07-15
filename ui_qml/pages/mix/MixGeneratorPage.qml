@@ -8,389 +8,689 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "mixGenerator.page"
-
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 
-    property string state: "IDLE"
-    property string mixType: ""
-    property string seed: ""
-    property string exclusions: ""
-    property int targetDuration: 30
-    property int targetLimit: 25
-    property int variety: 50
-    property int familiarity: 50
-    property int progressCurrent: 0
-    property int progressTotal: 100
-    property string _errorMsg: ""
+    property string _state: "IDLE"
+    property string _mixType: "daily_mix"
+    property string _seedValue: ""
+    property string _seedArtist: ""
+    property string _qualityFilter: ""
+    property string _genreFilter: ""
+    property int _yearFrom: 0
+    property int _yearTo: 0
+    property int _durationMinutes: 30
+    property int _trackLimit: 25
+    property int _variety: 50
+    property int _familiarity: 50
+    property bool _avoidRecent: true
+    property var _exclusions: []
+    property var _resultSongs: []
+    property int _progressCurrent: 0
+    property int _progressTotal: 0
+    property string _errorMessage: ""
+    property string _statusMessage: ""
 
-    signal backClicked()
-    signal generationComplete(var result)
+    signal backRequested()
+    signal showResults(var songs, string mixType)
+
+    objectName: "MixGeneratorPage"
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Generador de Mix"
 
-    FocusScope {
-        id: focusScope
-        anchors.fill: parent
-        activeFocusOnTab: true
-        objectName: "mixGenerator.focusScope"
+    function reset() {
+        root._state = "IDLE"
+        root._errorMessage = ""
+        root._statusMessage = ""
+        root._resultSongs = []
+        root._progressCurrent = 0
+        root._progressTotal = 0
+    }
 
-        Keys.onEscapePressed: {
-            if (root.state === "GENERATING" || root.state === "CANCELLING") {
-                root._cancelGeneration()
-            } else {
-                root.backClicked()
-            }
+    function validate() {
+        root._state = "VALIDATING"
+        root._errorMessage = ""
+        root._statusMessage = "Validando configuración..."
+
+        if (!root.mx) {
+            root._state = "FAILED"
+            root._errorMessage = "Servicio de mix no disponible"
+            return false
         }
 
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            contentHeight: column.height + MichiTheme.spacing.xxl
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            focus: true
-            objectName: "mixGenerator.flickable"
+        if (root._mixType === "custom" && root._seedValue === "" && root._seedArtist === "") {
+            root._state = "FAILED"
+            root._errorMessage = "Selecciona un artista o introduce parámetros para el mix personalizado"
+            return false
+        }
 
-            Column {
-                id: column
-                width: parent.width
-                spacing: MichiTheme.spacing.lg
+        return true
+    }
 
-                Row {
-                    spacing: MichiTheme.spacing.sm
-                    width: parent.width
+    function generate() {
+        if (!validate()) return
+        root._state = "GENERATING"
+        root._statusMessage = "Generando mix..."
+        root._resultSongs = []
 
-                    MichiButton {
-                        text: "< Volver"
-                        variant: "ghost"
-                        onClicked: root.backClicked()
-                        objectName: "mixGenerator.backButton"
-                        Accessible.name: "Volver"
-                        KeyNavigation.tab: mixTypeCombo
-                    }
+        if (root.mx && typeof root.mx.loadMix === "function") {
+            var params = {}
+            if (root._seedValue) params.seed = root._seedValue
+            if (root._seedArtist) params.seed_artist = root._seedArtist
+            if (root._qualityFilter) params.quality = root._qualityFilter
+            if (root._genreFilter) params.genre = root._genreFilter
+            if (root._yearFrom > 0) params.year_from = root._yearFrom
+            if (root._yearTo > 0) params.year_to = root._yearTo
+            if (root._trackLimit > 0) params.limit = root._trackLimit
+            if (root._avoidRecent) params.avoid_recent = true
+            if (root._variety !== 50) params.variety = root._variety
+            if (root._familiarity !== 50) params.familiarity = root._familiarity
 
-                    Text {
-                        text: "Generar Mix"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.pageTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                        anchors.verticalCenter: parent.verticalCenter
-                        Accessible.role: Accessible.Heading
-                        Accessible.name: "Generar Mix"
-                    }
+            var seed = JSON.stringify(params)
+            var result = root.mx.loadMix(root._mixType, seed)
+
+            if (result && result.ok) {
+                if (root.mx.currentSongs && root.mx.currentSongs.length > 0) {
+                    root._resultSongs = root.mx.currentSongs
+                    root._state = "READY"
+                    root._statusMessage = "Mix generado: " + root._resultSongs.length + " canciones"
+                } else {
+                    root._state = "NO_CANDIDATES"
+                    root._statusMessage = ""
                 }
+            } else {
+                root._state = "FAILED"
+                root._errorMessage = (result && result.error) || "Error al generar el mix"
+            }
+        } else {
+            root._state = "FAILED"
+            root._errorMessage = "Bridge no disponible"
+        }
+    }
 
-                GlassMaterial {
-                    width: parent.width
-                    implicitHeight: configColumn.height + MichiTheme.spacing.xl * 2
-                    radius: MichiTheme.radiusMd
-                    variant: root.state === "GENERATING" ? "accent" : "elevated"
-                    objectName: "mixGenerator.panel"
+    function cancelGeneration() {
+        if (root._state !== "GENERATING") return
+        root._state = "CANCELLING"
+        root._statusMessage = "Cancelando generación..."
 
-                    Column {
-                        id: configColumn
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
-                        spacing: MichiTheme.spacing.md
+        if (root.mx && typeof root.mx.cancelGeneration === "function") {
+            root.mx.cancelGeneration()
+        }
+        root._state = "CANCELLED"
+        root._statusMessage = "Generación cancelada"
+        root._resultSongs = []
+    }
 
-                        Text {
-                            text: "Configuración del mix"
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.sectionTitleSize
-                            font.weight: MichiTheme.typography.weightSemiBold
-                        }
+    function retry() {
+        root.reset()
+        root.generate()
+    }
 
-                        Text {
-                            text: "Estado: " + root.state
-                            color: root.state === "FAILED" || root.state === "NO_CANDIDATES"
-                                ? MichiTheme.colors.error
-                                : (root.state === "READY" ? MichiTheme.colors.success : MichiTheme.colors.textMuted)
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            visible: root.state !== "IDLE"
-                        }
+    Flickable {
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+        contentHeight: contentColumn.height + MichiTheme.spacing.xxl
+        clip: true; boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
 
-                        Row {
-                            spacing: MichiTheme.spacing.md
-                            width: parent.width
+        Column {
+            id: contentColumn; width: parent.width; spacing: MichiTheme.spacing.lg
 
-                            Column {
-                                spacing: MichiTheme.spacing.sm
-                                width: parent.width * 0.48
+            Row {
+                spacing: MichiTheme.spacing.sm; width: parent.width
 
-                                Text {
-                                    text: "Tipo de mix"
-                                    color: MichiTheme.colors.textPrimary
-                                    font.pixelSize: MichiTheme.typography.bodySize
-                                }
-
-                                ComboBox {
-                                    id: mixTypeCombo
-                                    width: parent.width
-                                    model: ["favorites", "recent", "most_played", "unplayed", "rediscovery", "daily_mix", "by_artist", "by_genre", "by_decade", "high_quality"]
-                                    currentIndex: 0
-                                    enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                                    objectName: "mixGenerator.mixType"
-                                    Accessible.name: "Tipo de mix"
-                                    onCurrentTextChanged: root.mixType = currentText
-                                    KeyNavigation.tab: seedField
-                                }
-                            }
-
-                            Column {
-                                spacing: MichiTheme.spacing.sm
-                                width: parent.width * 0.48
-
-                                Text {
-                                    text: "Seed (opcional)"
-                                    color: MichiTheme.colors.textPrimary
-                                    font.pixelSize: MichiTheme.typography.bodySize
-                                }
-
-                                TextField {
-                                    id: seedField
-                                    width: parent.width
-                                    placeholderText: "Deterministic seed"
-                                    enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                                    objectName: "mixGenerator.seedField"
-                                    Accessible.name: "Seed determinista"
-                                    onTextChanged: root.seed = text
-                                    KeyNavigation.tab: durationSpin
-                                }
-                            }
-                        }
-
-                        Row {
-                            spacing: MichiTheme.spacing.md
-                            width: parent.width
-
-                            Column {
-                                spacing: MichiTheme.spacing.sm
-                                width: parent.width * 0.30
-
-                                Text {
-                                    text: "Duración (min)"
-                                    color: MichiTheme.colors.textPrimary
-                                    font.pixelSize: MichiTheme.typography.bodySize
-                                }
-
-                                SpinBox {
-                                    id: durationSpin
-                                    from: 5; to: 480; value: root.targetDuration
-                                    enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                                    onValueChanged: root.targetDuration = value
-                                    objectName: "mixGenerator.durationSpin"
-                                    Accessible.name: "Duración en minutos"
-                                    KeyNavigation.tab: limitSpin
-                                }
-                            }
-
-                            Column {
-                                spacing: MichiTheme.spacing.sm
-                                width: parent.width * 0.30
-
-                                Text {
-                                    text: "Límite canciones"
-                                    color: MichiTheme.colors.textPrimary
-                                    font.pixelSize: MichiTheme.typography.bodySize
-                                }
-
-                                SpinBox {
-                                    id: limitSpin
-                                    from: 5; to: 200; value: root.targetLimit
-                                    enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                                    onValueChanged: root.targetLimit = value
-                                    objectName: "mixGenerator.limitSpin"
-                                    Accessible.name: "Límite de canciones"
-                                    KeyNavigation.tab: varietySlider
-                                }
-                            }
-
-                            Column {
-                                spacing: MichiTheme.spacing.sm
-                                width: parent.width * 0.30
-
-                                Text {
-                                    text: "Exclusiones"
-                                    color: MichiTheme.colors.textPrimary
-                                    font.pixelSize: MichiTheme.typography.bodySize
-                                }
-
-                                TextField {
-                                    width: parent.width
-                                    placeholderText: "artist, genre, ..."
-                                    enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                                    onTextChanged: root.exclusions = text
-                                    objectName: "mixGenerator.exclusionsField"
-                                    Accessible.name: "Exclusiones"
-                                    KeyNavigation.tab: familiaritySlider
-                                }
-                            }
-                        }
-
-                        Text {
-                            text: "Variedad: " + root.variety + "%"
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                        }
-
-                        MichiSlider {
-                            id: varietySlider
-                            width: parent.width
-                            from: 0; to: 100
-                            value: root.variety
-                            enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                            accessibleName: "Variedad del mix"
-                            onMoved: root.variety = value
-                            KeyNavigation.tab: familiaritySlider
-                        }
-
-                        Text {
-                            text: "Familiaridad: " + root.familiarity + "%"
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                        }
-
-                        MichiSlider {
-                            id: familiaritySlider
-                            width: parent.width
-                            from: 0; to: 100
-                            value: root.familiarity
-                            enabled: root.state !== "GENERATING" && root.state !== "CANCELLING"
-                            accessibleName: "Familiaridad del mix"
-                            onMoved: root.familiarity = value
-                            KeyNavigation.tab: actionRow
-                        }
-                    }
-                }
-
-                MixGenerationProgress {
-                    visible: root.state === "GENERATING"
-                    progress: root.progressCurrent
-                    total: root.progressTotal
-                    statusText: "Generando mix..."
-                    cancellable: true
-                    onCancelRequested: root._cancelGeneration()
+                MichiButton {
+                    text: "Volver"; variant: "ghost"
+                    objectName: "generatorBackButton"
+                    Accessible.name: "Volver a Mix"
+                    activeFocusOnTab: true
+                    onClicked: root.backRequested()
+                    KeyNavigation.tab: mixTypeCombo
                 }
 
                 Text {
-                    text: root._errorMsg
-                    color: MichiTheme.colors.error
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    visible: root._errorMsg !== ""
-                    wrapMode: Text.WordWrap
+                    text: "Generar Mix"; color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            InlineError {
+                id: errorBanner
+                width: parent.width
+                message: root._errorMessage
+                showDismiss: true
+                onDismissed: root._errorMessage = ""
+                visible: root._state === "FAILED" || root._state === "NO_CANDIDATES"
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.lg; width: parent.width
+
+                Column {
+                    spacing: MichiTheme.spacing.md; width: parent.width * 0.48
+
+                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Tipo de Mix"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
+
+                        ComboBox {
+                            id: mixTypeCombo; width: parent.width
+                            objectName: "mixTypeCombo"
+                            Accessible.name: "Tipo de Mix"
+                            model: [
+                                { text: "Mix diario", value: "daily_mix" },
+                                { text: "Favoritos", value: "favorites" },
+                                { text: "Recientes", value: "recent" },
+                                { text: "No escuchadas", value: "unplayed" },
+                                { text: "Más escuchadas", value: "most_played" },
+                                { text: "Por artista", value: "by_artist" },
+                                { text: "Por álbum", value: "by_album" },
+                                { text: "Por género", value: "by_genre" },
+                                { text: "Por década", value: "by_decade" },
+                                { text: "Por año", value: "by_year" },
+                                { text: "Alta calidad", value: "high_quality" },
+                                { text: "Redescubrimiento", value: "rediscovery" },
+                                { text: "Personalizado", value: "custom" }
+                            ]
+                            textRole: "text"
+                            valueRole: "value"
+                            currentIndex: 0
+                            onCurrentValueChanged: root._mixType = currentValue
+                            activeFocusOnTab: true
+                            KeyNavigation.tab: seedField
+                            KeyNavigation.backtab: generatorBackButton
+                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                        }
+                    }
+
+                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Seed (opcional)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
+
+                        TextField {
+                            id: seedField; width: parent.width
+                            objectName: "seedField"
+                            Accessible.name: "Seed opcional para el mix"
+                            placeholderText: "Parámetros en JSON (ej: {\"artist\":\"Genesis\"})"
+                            text: root._seedValue
+                            onTextChanged: root._seedValue = text
+                            activeFocusOnTab: true
+                            KeyNavigation.tab: seedArtistField
+                            KeyNavigation.backtab: mixTypeCombo
+                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                        }
+                    }
+
+                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Artista semilla"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
+
+                        TextField {
+                            id: seedArtistField; width: parent.width
+                            objectName: "seedArtistField"
+                            Accessible.name: "Artista semilla para el mix"
+                            placeholderText: "Nombre del artista"
+                            text: root._seedArtist
+                            onTextChanged: root._seedArtist = text
+                            activeFocusOnTab: true
+                            KeyNavigation.tab: exclusionsField
+                            KeyNavigation.backtab: seedField
+                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                        }
+                    }
+
+                    Column { spacing: MichiTheme.spacing.sm; width: parent.width
+                        Text { text: "Exclusiones (separadas por coma)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
+
+                        TextField {
+                            id: exclusionsField; width: parent.width
+                            objectName: "exclusionsField"
+                            Accessible.name: "Exclusiones separadas por coma"
+                            placeholderText: "artista1, artista2, género1"
+                            onTextChanged: {
+                                root._exclusions = text.split(",").map(function(x) { return x.trim() }).filter(function(x) { return x !== "" })
+                            }
+                            activeFocusOnTab: true
+                            KeyNavigation.tab: qualityCombo
+                            KeyNavigation.backtab: seedArtistField
+                            enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                        }
+                    }
+                }
+
+                Column {
+                    spacing: MichiTheme.spacing.md; width: parent.width * 0.48
+
+                    Row { spacing: MichiTheme.spacing.md; width: parent.width
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Duración (min)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            SpinBox {
+                                id: durationSpin; width: parent.width; from: 5; to: 480; stepSize: 5; value: root._durationMinutes
+                                objectName: "durationSpin"
+                                Accessible.name: "Duración del mix en minutos"
+                                onValueChanged: root._durationMinutes = value
+                                activeFocusOnTab: true
+                                KeyNavigation.tab: trackLimitSpin
+                                KeyNavigation.backtab: exclusionsField
+                                enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                            }
+                        }
+
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Límite pistas"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            SpinBox {
+                                id: trackLimitSpin; width: parent.width; from: 5; to: 200; value: root._trackLimit
+                                objectName: "trackLimitSpin"
+                                Accessible.name: "Límite máximo de pistas"
+                                onValueChanged: root._trackLimit = value
+                                activeFocusOnTab: true
+                                KeyNavigation.tab: qualityCombo
+                                KeyNavigation.backtab: durationSpin
+                                enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                            }
+                        }
+                    }
+
+                    Row { spacing: MichiTheme.spacing.md; width: parent.width
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Variedad"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            Row { spacing: MichiTheme.spacing.sm
+                                Slider {
+                                    id: varietySlider; width: 120; from: 0; to: 100; value: root._variety
+                                    objectName: "varietySlider"
+                                    Accessible.name: "Variedad del mix"
+                                    onValueChanged: root._variety = value
+                                    activeFocusOnTab: true
+                                    KeyNavigation.tab: familiaritySlider
+                                    KeyNavigation.backtab: trackLimitSpin
+                                    enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                                }
+                                Text { text: root._variety; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                        }
+
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Familiaridad"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            Row { spacing: MichiTheme.spacing.sm
+                                Slider {
+                                    id: familiaritySlider; width: 120; from: 0; to: 100; value: root._familiarity
+                                    objectName: "familiaritySlider"
+                                    Accessible.name: "Familiaridad del mix"
+                                    onValueChanged: root._familiarity = value
+                                    activeFocusOnTab: true
+                                    KeyNavigation.tab: avoidRecentCheck
+                                    KeyNavigation.backtab: varietySlider
+                                    enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                                }
+                                Text { text: root._familiarity; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
+                            }
+                        }
+                    }
+
+                    Row { spacing: MichiTheme.spacing.md; width: parent.width
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Calidad mínima"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            ComboBox {
+                                id: qualityCombo; width: parent.width
+                                objectName: "qualityCombo"
+                                Accessible.name: "Filtro de calidad mínima"
+                                model: [
+                                    { text: "Cualquiera", value: "" },
+                                    { text: ">= 192 kbps", value: "192" },
+                                    { text: ">= 320 kbps", value: "320" },
+                                    { text: "Lossless (FLAC)", value: "lossless" }
+                                ]
+                                textRole: "text"; valueRole: "value"
+                                currentIndex: 0
+                                onCurrentValueChanged: root._qualityFilter = currentValue
+                                activeFocusOnTab: true
+                                KeyNavigation.tab: genreCombo
+                                KeyNavigation.backtab: familiaritySlider
+                                enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                            }
+                        }
+
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Género"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            ComboBox {
+                                id: genreCombo; width: parent.width
+                                objectName: "genreCombo"
+                                Accessible.name: "Filtro de género"
+                                model: [
+                                    { text: "Cualquiera", value: "" },
+                                    { text: "Rock", value: "rock" },
+                                    { text: "Pop", value: "pop" },
+                                    { text: "Jazz", value: "jazz" },
+                                    { text: "Clásica", value: "classical" },
+                                    { text: "Electrónica", value: "electronic" },
+                                    { text: "Hip Hop", value: "hip hop" },
+                                    { text: "R&B", value: "rnb" },
+                                    { text: "Metal", value: "metal" },
+                                    { text: "Folk", value: "folk" },
+                                    { text: "Blues", value: "blues" },
+                                    { text: "Country", value: "country" },
+                                    { text: "Latina", value: "latin" },
+                                    { text: "Reggae", value: "reggae" }
+                                ]
+                                textRole: "text"; valueRole: "value"
+                                currentIndex: 0
+                                onCurrentValueChanged: root._genreFilter = currentValue
+                                activeFocusOnTab: true
+                                KeyNavigation.tab: yearFromSpin
+                                KeyNavigation.backtab: qualityCombo
+                                enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                            }
+                        }
+                    }
+
+                    Row { spacing: MichiTheme.spacing.md; width: parent.width
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Año desde"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            SpinBox {
+                                id: yearFromSpin; width: parent.width; from: 1900; to: 2030; value: root._yearFrom
+                                objectName: "yearFromSpin"
+                                Accessible.name: "Año inicial del filtro"
+                                onValueChanged: root._yearFrom = value
+                                activeFocusOnTab: true
+                                KeyNavigation.tab: yearToSpin
+                                KeyNavigation.backtab: genreCombo
+                                enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                            }
+                        }
+
+                        Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                            Text { text: "Año hasta"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                            SpinBox {
+                                id: yearToSpin; width: parent.width; from: 1900; to: 2030; value: root._yearTo
+                                objectName: "yearToSpin"
+                                Accessible.name: "Año final del filtro"
+                                onValueChanged: root._yearTo = value
+                                activeFocusOnTab: true
+                                KeyNavigation.tab: avoidRecentCheck
+                                KeyNavigation.backtab: yearFromSpin
+                                enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                            }
+                        }
+                    }
+
+                    CheckBox {
+                        id: avoidRecentCheck
+                        text: "Evitar escuchadas recientemente"
+                        checked: root._avoidRecent
+                        objectName: "avoidRecentCheck"
+                        Accessible.name: "Evitar canciones escuchadas recientemente"
+                        onCheckedChanged: root._avoidRecent = checked
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: generateBtn
+                        KeyNavigation.backtab: yearToSpin
+                        enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
+                    }
+                }
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.md; width: parent.width
+
+                MichiButton {
+                    id: generateBtn
+                    text: {
+                        if (root._state === "VALIDATING") return "Validando..."
+                        if (root._state === "GENERATING") return "Generando..."
+                        if (root._state === "CANCELLING") return "Cancelando..."
+                        if (root._state === "CANCELLED") return "Regenerar"
+                        if (root._state === "NO_CANDIDATES") return "Reintentar"
+                        if (root._state === "FAILED") return "Reintentar"
+                        return "Generar Mix"
+                    }
+                    variant: root._state === "FAILED" ? "danger" : "primary"
+                    objectName: "generateBtn"
+                    Accessible.name: text
+                    activeFocusOnTab: true
+                    enabled: root._state !== "VALIDATING" && root._state !== "GENERATING" && root._state !== "CANCELLING"
+                    KeyNavigation.tab: cancelBtn
+                    KeyNavigation.backtab: avoidRecentCheck
+
+                    onClicked: {
+                        if (root._state === "CANCELLED" || root._state === "NO_CANDIDATES") {
+                            root.retry()
+                        } else {
+                            root.generate()
+                        }
+                    }
+                }
+
+                MichiButton {
+                    id: cancelBtn
+                    text: "Cancelar"
+                    variant: "danger"
+                    objectName: "cancelBtn"
+                    Accessible.name: "Cancelar generación"
+                    activeFocusOnTab: true
+                    visible: root._state === "GENERATING"
+                    KeyNavigation.tab: resultList
+                    KeyNavigation.backtab: generateBtn
+
+                    onClicked: root.cancelGeneration()
+                }
+            }
+
+            Column {
+                width: parent.width; spacing: MichiTheme.spacing.md
+                visible: root._state === "GENERATING" || root._state === "CANCELLING" || root._state === "CANCELLED"
+
+                GlassMaterial {
+                    width: parent.width; radius: MichiTheme.radiusMd; variant: "subtle"
+
+                    Column {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
+
+                        Text {
+                            text: root._statusMessage; color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                        }
+
+                        MichiProgressBar {
+                            width: parent.width
+                            from: 0; to: root._progressTotal > 0 ? root._progressTotal : 100
+                            value: root._progressCurrent
+                            indeterminate: root._state === "GENERATING" && root._progressTotal === 0
+                            accessibleName: "Progreso de generación"
+                        }
+
+                        Text {
+                            text: root._progressTotal > 0
+                                ? root._progressCurrent + " / " + root._progressTotal + " canciones"
+                                : "Buscando canciones..."
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                        }
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width; spacing: MichiTheme.spacing.md
+                visible: root._state === "NO_CANDIDATES"
+
+                GlassMaterial {
+                    width: parent.width; radius: MichiTheme.radiusMd; variant: "subtle"
+
+                    Column {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
+
+                        Text {
+                            text: "No se encontraron candidatos"; color: MichiTheme.colors.warning
+                            font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium
+                        }
+
+                        Text {
+                            text: "Prueba con una selección diferente o ajusta los filtros."
+                            color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
+                            wrapMode: Text.WordWrap; width: parent.width
+                        }
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width; spacing: MichiTheme.spacing.md
+                visible: root._state === "CANCELLED"
+
+                GlassMaterial {
+                    width: parent.width; radius: MichiTheme.radiusMd; variant: "subtle"
+
+                    Column {
+                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
+
+                        Text {
+                            text: "Generación cancelada"; color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium
+                        }
+
+                        Text {
+                            text: "Puedes ajustar los parámetros y generar de nuevo."
+                            color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                        }
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width; spacing: MichiTheme.spacing.md
+                visible: root._state === "READY"
+
+                SectionHeader {
+                    text: "Mix generado — " + root._resultSongs.length + " canciones"
                     width: parent.width
-                    Accessible.role: Accessible.Alert
-                    Accessible.name: root._errorMsg
+                }
+
+                ListView {
+                    id: resultList
+                    width: parent.width; height: Math.min(360, root._resultSongs.length * 48)
+                    model: root._resultSongs; clip: true; spacing: 2
+                    activeFocusOnTab: true
+                    objectName: "generatedSongsList"
+                    Accessible.name: "Canciones generadas"
+
+                    delegate: Rectangle {
+                        width: parent.width; height: 44
+                        color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
+                        radius: MichiTheme.radiusSm
+                        activeFocusOnTab: true
+                        objectName: "generatedSongItem_" + index
+                        Accessible.name: modelData.title + " - " + modelData.artist
+                        KeyNavigation.tab: index < root._resultSongs.length - 1
+                            ? resultList.itemAtIndex(index + 1)
+                            : showResultsBtn
+                        KeyNavigation.backtab: index > 0
+                            ? resultList.itemAtIndex(index - 1)
+                            : cancelBtn
+
+                        Keys.onReturnPressed: onClick()
+                        Keys.onSpacePressed: onClick()
+
+                        property bool _hovered: false
+
+                        signal onClick()
+
+                        Row {
+                            anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
+
+                            Text {
+                                width: parent.width * 0.35; text: modelData.title || ""
+                                color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
+                                elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                width: parent.width * 0.25; text: modelData.artist || ""
+                                color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
+                                elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                width: parent.width * 0.20; text: modelData.album || ""
+                                color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
+                                elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                width: 24; text: "P"; color: MichiTheme.colors.accentBlue
+                                font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (root.mx && typeof root.mx.playFromIndex === "function")
+                                            root.mx.playFromIndex(index)
+                                    }
+                                }
+                            }
+
+                            Text {
+                                width: 24; text: "+"; color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (root.mx && typeof root.mx.enqueueTrack === "function")
+                                            root.mx.enqueueTrack(index)
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent; hoverEnabled: true
+                            onEntered: modelData._hovered = true
+                            onExited: modelData._hovered = false
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent; visible: parent.count === 0
+                        text: "No hay canciones generadas"
+                        color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                    }
                 }
 
                 Row {
-                    id: actionRow
-                    spacing: MichiTheme.spacing.sm
+                    id: resultActionsRow
+                    spacing: MichiTheme.spacing.sm; width: parent.width
 
                     MichiButton {
-                        text: {
-                            if (root.state === "VALIDATING") return "Validando..."
-                            if (root.state === "GENERATING") return "Generando..."
-                            if (root.state === "CANCELLING") return "Cancelando..."
-                            if (root.state === "CANCELLED") return "Regenerar"
-                            if (root.state === "READY") return "Regenerar"
-                            if (root.state === "FAILED") return "Reintentar"
-                            return "Generar"
-                        }
-                        variant: "primary"
-                        enabled: root.state !== "GENERATING" && root.state !== "CANCELLING" && root.state !== "VALIDATING"
-                        onClicked: root._startGeneration()
-                        objectName: "mixGenerator.generateButton"
-                        Accessible.name: "Generar mix"
-                        KeyNavigation.tab: cancelBtn
+                        id: showResultsBtn
+                        text: "Ver resultados completos"; variant: "primary"
+                        objectName: "showResultsBtn"
+                        Accessible.name: "Ver resultados completos del mix"
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: regenerateFromResultBtn
+                        KeyNavigation.backtab: resultList
+                        onClicked: root.showResults(root._resultSongs, root._mixType)
                     }
 
                     MichiButton {
-                        id: cancelBtn
-                        text: "Cancelar"
-                        variant: "danger"
-                        visible: root.state === "GENERATING" || root.state === "VALIDATING"
-                        onClicked: root._cancelGeneration()
-                        objectName: "mixGenerator.cancelButton"
-                        Accessible.name: "Cancelar generación"
-                        KeyNavigation.tab: backButton
-                    }
-
-                    MichiButton {
-                        text: "Ver resultado"
-                        variant: "secondary"
-                        visible: root.state === "READY" || root.state === "CANCELLED"
-                        enabled: root.state === "READY"
-                        onClicked: {
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("mix_result")
-                        }
-                        objectName: "mixGenerator.viewResultButton"
-                        Accessible.name: "Ver resultado del mix"
-                        KeyNavigation.tab: backButton
+                        id: regenerateFromResultBtn
+                        text: "Regenerar"; variant: "ghost"
+                        objectName: "regenerateFromResultBtn"
+                        Accessible.name: "Regenerar mix"
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: showResultsBtn
+                        KeyNavigation.backtab: showResultsBtn
+                        onClicked: root.retry()
                     }
                 }
-
-                StatusBadge {
-                    text: {
-                        if (root.state === "NO_CANDIDATES") return "No se encontraron candidatos"
-                        if (root.state === "FAILED") return "Error en la generación"
-                        if (root.state === "CANCELLED") return "Generación cancelada"
-                        if (root.state === "READY") return "Mix generado correctamente"
-                        return ""
-                    }
-                    kind: {
-                        if (root.state === "NO_CANDIDATES") return "warning"
-                        if (root.state === "FAILED") return "error"
-                        if (root.state === "CANCELLED") return "disconnected"
-                        if (root.state === "READY") return "success"
-                        return "info"
-                    }
-                    visible: ["NO_CANDIDATES", "FAILED", "CANCELLED", "READY"].indexOf(root.state) >= 0
-                }
             }
-        }
-    }
 
-    function _startGeneration() {
-        if (!root.mx) {
-            root._errorMsg = "Bridge no disponible"
-            return
-        }
-        root.state = "VALIDATING"
-        root._errorMsg = ""
-
-        try {
-            var result = root.mx.loadMix(root.mixType || "favorites", root.seed)
-            if (result && result.ok) {
-                root.state = "READY"
-                root.generationComplete(result)
-            } else if (result && result.partial) {
-                root.state = "READY"
-                root._errorMsg = "Resultado parcial: " + (result.count || 0) + " canciones"
-                root.generationComplete(result)
-            } else {
-                root.state = "NO_CANDIDATES"
-                root._errorMsg = result && result.error ? result.error : "No se encontraron candidatos"
+            StatusBadge {
+                visible: root.mx === null
+                text: "Bridge no disponible — funcionalidad limitada"
+                kind: "disconnected"
             }
-        } catch (e) {
-            root.state = "FAILED"
-            root._errorMsg = "Error: " + e.message
-        }
-    }
-
-    function _cancelGeneration() {
-        if (!root.mx) return
-        root.state = "CANCELLING"
-        try {
-            var result = root.mx.cancelGeneration()
-            root.state = "CANCELLED"
-            root._errorMsg = result && result.ok ? "Generación cancelada" : "Error al cancelar"
-        } catch (e) {
-            root.state = "CANCELLED"
-            root._errorMsg = "Cancelado"
         }
     }
 }

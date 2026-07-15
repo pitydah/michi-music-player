@@ -8,273 +8,228 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "mixResult.page"
-
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
-    property var _songs: root.mx ? root.mx.currentSongs : []
-    property string _mixTitle: root.mx ? root.mx.currentMixTitle : "Mix"
-    property string _errorMsg: ""
+    property var _songs: []
+    property string _mixType: ""
+    property bool _loading: false
+    property string _errorMessage: ""
 
-    signal backClicked()
-    signal playAllClicked()
-    signal enqueueAllClicked()
-    signal savePlaylistClicked()
+    signal backRequested()
+    signal playAllRequested()
+    signal enqueueAllRequested()
+    signal saveAsPlaylistRequested()
+    signal regenerateRequested()
+    signal playTrackAtIndex(int index)
+
+    objectName: "MixResultPage"
 
     Accessible.role: Accessible.Pane
-    Accessible.name: "Resultado del mix"
+    Accessible.name: "Resultados del Mix"
 
-    FocusScope {
-        id: focusScope
-        anchors.fill: parent
+    ListView {
+        id: trackList
+        anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
+        clip: true; spacing: 2
+        model: root._songs
         activeFocusOnTab: true
-        objectName: "mixResult.focusScope"
+        objectName: "mixResultTrackList"
+        Accessible.name: "Lista de canciones del mix"
+        headerPositioning: ListView.OverlayHeader
+        focus: true
 
-        Keys.onEscapePressed: root.backClicked()
+        header: Column {
+            width: trackList.width; spacing: MichiTheme.spacing.md
+            z: 2
 
-        Column {
-            anchors.fill: parent
-            anchors.margins: MichiTheme.spacing.xl
-            spacing: MichiTheme.spacing.lg
+            Rectangle {
+                width: parent.width; height: 1
+                color: MichiTheme.colors.borderSubtle
+            }
 
             Row {
-                spacing: MichiTheme.spacing.sm
-                width: parent.width
+                spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
-                    text: "< Volver"
-                    variant: "ghost"
-                    onClicked: root.backClicked()
-                    objectName: "mixResult.backButton"
-                    Accessible.name: "Volver"
-                    KeyNavigation.tab: titleText
+                    text: "Volver"; variant: "ghost"
+                    objectName: "resultBackBtn"
+                    Accessible.name: "Volver al generador"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: playAllBtn
+                    onClicked: root.backRequested()
                 }
 
                 Text {
-                    id: titleText
-                    text: root._mixTitle
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
-                    font.weight: MichiTheme.typography.weightSemiBold
+                    text: "Mix — " + root._songs.length + " canciones"; color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
-                    Accessible.role: Accessible.Heading
-                    Accessible.name: root._mixTitle
                 }
-            }
-
-            Text {
-                text: root._errorMsg
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.bodySize
-                visible: root._errorMsg !== ""
-                wrapMode: Text.WordWrap
-                width: parent.width
-                Accessible.role: Accessible.Alert
             }
 
             Row {
-                spacing: MichiTheme.spacing.sm
-                objectName: "mixResult.actions"
+                spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
-                    text: "Reproducir todo"
-                    variant: "primary"
-                    onClicked: {
-                        if (root.mx && typeof root.mx.playMix !== "undefined")
-                            root.mx.playMix()
-                        root.playAllClicked()
-                    }
-                    objectName: "mixResult.playAllButton"
-                    Accessible.name: "Reproducir todas las canciones"
-                    KeyNavigation.tab: enqueueBtn
+                    id: playAllBtn
+                    text: "Reproducir todo"; variant: "primary"
+                    objectName: "playAllBtn"
+                    Accessible.name: "Reproducir todas las canciones del mix"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: enqueueAllBtn
+                    KeyNavigation.backtab: resultBackBtn
+                    enabled: root._songs.length > 0
+                    onClicked: root.playAllRequested()
                 }
 
                 MichiButton {
-                    id: enqueueBtn
-                    text: "Agregar a cola"
-                    variant: "secondary"
-                    onClicked: {
-                        if (root.mx && typeof root.mx.enqueueMix !== "undefined")
-                            root.mx.enqueueMix()
-                        root.enqueueAllClicked()
-                    }
-                    objectName: "mixResult.enqueueButton"
-                    Accessible.name: "Agregar todas a la cola"
-                    KeyNavigation.tab: saveBtn
+                    id: enqueueAllBtn
+                    text: "Agregar a cola"; variant: "secondary"
+                    objectName: "enqueueAllBtn"
+                    Accessible.name: "Agregar todas las canciones a la cola"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: saveAsPlaylistBtn
+                    KeyNavigation.backtab: playAllBtn
+                    enabled: root._songs.length > 0
+                    onClicked: root.enqueueAllRequested()
                 }
 
                 MichiButton {
-                    id: saveBtn
-                    text: "Guardar como playlist"
-                    variant: "ghost"
-                    onClicked: root.savePlaylistClicked()
-                    objectName: "mixResult.saveButton"
+                    id: saveAsPlaylistBtn
+                    text: "Guardar como playlist"; variant: "ghost"
+                    objectName: "saveAsPlaylistBtn"
                     Accessible.name: "Guardar mix como playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: regenerateBtn
+                    KeyNavigation.backtab: enqueueAllBtn
+                    enabled: root._songs.length > 0
+                    onClicked: root.saveAsPlaylistRequested()
+                }
+
+                MichiButton {
+                    id: regenerateBtn
+                    text: "Regenerar"; variant: "ghost"
+                    objectName: "regenerateBtn"
+                    Accessible.name: "Regenerar mix"
+                    activeFocusOnTab: true
                     KeyNavigation.tab: trackList
+                    KeyNavigation.backtab: saveAsPlaylistBtn
+                    enabled: !root._loading
+                    onClicked: root.regenerateRequested()
                 }
             }
 
-            Text {
-                text: root._songs.length + " canciones"
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: root._songs.length > 0
+            Rectangle {
+                width: parent.width; height: 1
+                color: MichiTheme.colors.borderSubtle
             }
+        }
 
-            ListView {
-                id: trackList
-                width: parent.width
-                height: parent.height - 220
-                model: root._songs
-                clip: true
-                spacing: 1
-                focus: true
-                objectName: "mixResult.trackList"
+        delegate: Rectangle {
+            width: trackList.width; height: 48
+            color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
+            radius: MichiTheme.radiusSm
+            activeFocusOnTab: true
+            objectName: "mixTrackItem_" + index
+            Accessible.name: modelData.title + " - " + modelData.artist + (modelData.album ? " - " + modelData.album : "")
+            KeyNavigation.tab: index < root._songs.length - 1
+                ? trackList.itemAtIndex(index + 1)
+                : null
+            KeyNavigation.backtab: index > 0
+                ? trackList.itemAtIndex(index - 1)
+                : regenerateBtn
 
-                delegate: Rectangle {
-                    width: parent.width
-                    height: 40
-                    color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                    radius: MichiTheme.radiusSm
-                    objectName: "mixResult.trackItem." + index
+            Keys.onReturnPressed: onPlay()
+            Keys.onSpacePressed: onPlay()
 
-                    Accessible.role: Accessible.ListItem
-                    Accessible.name: modelData.title + " - " + (modelData.artist || "") + " - " + (modelData.album || "")
+            property bool _hovered: false
 
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.sm
-                        spacing: MichiTheme.spacing.sm
+            signal onPlay()
 
-                        Text {
-                            width: parent.width * 0.38
-                            text: modelData.title || ""
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            elide: Text.ElideRight
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+            Row {
+                anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
 
-                        Text {
-                            width: parent.width * 0.22
-                            text: modelData.artist || ""
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            elide: Text.ElideRight
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+                Text {
+                    width: 24; text: index + 1; color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
+                    horizontalAlignment: Text.AlignRight
+                }
 
-                        Text {
-                            width: parent.width * 0.15
-                            text: modelData.album || ""
-                            color: MichiTheme.colors.textSecondary
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            elide: Text.ElideRight
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+                Text {
+                    width: parent.width * 0.30; text: modelData.title || ""
+                    color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
+                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                }
 
-                        Text {
-                            width: 30
-                            text: modelData.reason || ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            elide: Text.ElideRight
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
+                Text {
+                    width: parent.width * 0.20; text: modelData.artist || ""
+                    color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
+                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                }
 
-                        Item {
-                            width: 72
-                            height: parent.height
+                Text {
+                    width: parent.width * 0.20; text: modelData.album || ""
+                    color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
+                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                }
 
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 4
-
-                                Text {
-                                    text: "▶"
-                                    color: MichiTheme.colors.accent
-                                    font.pixelSize: MichiTheme.typography.metaSize
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    Accessible.name: "Reproducir"
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (root.mx && typeof root.mx.playFromIndex !== "undefined")
-                                                root.mx.playFromIndex(index)
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    text: "+"
-                                    color: MichiTheme.colors.textSecondary
-                                    font.pixelSize: MichiTheme.typography.metaSize
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    Accessible.name: "Agregar a cola"
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (root.mx && typeof root.mx.enqueueTrack !== "undefined")
-                                                root.mx.enqueueTrack(index)
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    text: "◎"
-                                    color: MichiTheme.colors.textMuted
-                                    font.pixelSize: MichiTheme.typography.metaSize
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    Accessible.name: "Abrir álbum"
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (modelData.album_key && typeof navigationBridge !== "undefined" && navigationBridge)
-                                                navigationBridge.navigateWithParams("library.album_detail", { album_key: modelData.album_key })
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
+                Text {
+                    width: 24; text: "P"; color: MichiTheme.colors.accentBlue
+                    font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
-                        id: mouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.NoButton
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.playTrackAtIndex(index)
                     }
                 }
 
                 Text {
-                    anchors.centerIn: parent
-                    visible: parent.count === 0
-                    text: "Mix vacío. Genera un mix para ver resultados."
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.bodySize
+                    width: 24; text: "+"; color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (root.mx && typeof root.mx.enqueueTrack === "function")
+                                root.mx.enqueueTrack(index)
+                        }
+                    }
                 }
             }
 
-            MixFeedbackControls {
-                width: parent.width
-                visible: root._songs.length > 0
+            MouseArea {
+                anchors.fill: parent; hoverEnabled: true
+                onEntered: modelData._hovered = true
+                onExited: modelData._hovered = false
+                onClicked: {
+                    if (modelData._onClick) modelData._onClick()
+                }
             }
+        }
 
-            MixExplanationDrawer {
-                id: explanationDrawer
-                width: parent.width
-                visible: false
-            }
+        Text {
+            anchors.centerIn: parent; visible: root._songs.length === 0
+            text: "No hay canciones en este mix"
+            color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
         }
     }
 
-    Component.onCompleted: {
-        if (root.mx) {
-            root._songs = root.mx.currentSongs || []
-            root._mixTitle = root.mx.currentMixTitle || "Mix"
-            root._errorMsg = root.mx.errorMessage || ""
-        }
+    LoadingState {
+        anchors.centerIn: parent
+        visible: root._loading
+        title: "Cargando mix..."
+    }
+
+    ErrorState {
+        anchors.centerIn: parent
+        visible: root._errorMessage !== ""
+        title: "Error"
+        message: root._errorMessage
+        showRetry: true
+        onRetryRequested: root.regenerateRequested()
+    }
+
+    StatusBadge {
+        anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+        anchors.margins: MichiTheme.spacing.md
+        visible: root.mx === null
+        text: "Bridge no disponible"
+        kind: "disconnected"
     }
 }

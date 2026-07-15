@@ -1,60 +1,117 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls as QQC2
 import "../theme"
 
-Item {
+Rectangle {
     id: root
 
     property string message: ""
-    property bool dismissible: true
-    property string objectName: "inlineError"
+    property string actionText: ""
+    property bool showDismiss: true
+    property bool autoHide: false
+    property int autoHideDuration: 5000
 
     signal dismissed()
+    signal actionTriggered()
 
-    implicitHeight: visible ? Math.max(36, row.implicitHeight + MichiTheme.spacing.sm * 2) : 0
-    visible: root.message !== ""
+    objectName: "InlineError"
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.message
+    Accessible.role: Accessible.AlertMessage
+    Accessible.name: "Error"
+    Accessible.description: message
 
-    Keys.onEscapePressed: {
-        if (root.dismissible) root.dismissed()
+    implicitHeight: visible ? row.implicitHeight + MichiTheme.spacing.sm * 2 : 0
+    radius: MichiTheme.radiusSm
+    color: MichiTheme.colors.badgeDangerBg
+    border.color: MichiTheme.colors.error
+    border.width: MichiTheme.borderWidth
+    visible: message !== ""
+    clip: true
+
+    Behavior on implicitHeight {
+        NumberAnimation {
+            duration: MichiTheme.motionFast
+            easing.type: Easing.OutCubic
+        }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        radius: MichiTheme.radiusSm
-        color: MichiTheme.colors.error
-        clip: true
+    Timer {
+        id: hideTimer
+        interval: root.autoHideDuration
+        running: root.autoHide && root.visible
+        onTriggered: {
+            root.message = ""
+            root.dismissed()
+        }
+    }
 
-        Row {
-            id: row
-            anchors.fill: parent
-            anchors.leftMargin: MichiTheme.spacing.md
-            anchors.rightMargin: MichiTheme.spacing.sm
-            spacing: MichiTheme.spacing.sm
+    Row {
+        id: row
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: MichiTheme.spacing.sm
+        spacing: MichiTheme.spacing.sm
 
-            Text {
-                width: parent.width - (root.dismissible ? 36 : 0)
-                text: root.message
-                color: MichiTheme.colors.textOnError
-                font.pixelSize: MichiTheme.typography.metaSize
-                elide: Text.ElideRight
-                verticalAlignment: Text.AlignVCenter
-                anchors.verticalCenter: parent.verticalCenter
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: "\u26A0"
+            color: MichiTheme.colors.error
+            font.pixelSize: MichiTheme.typography.bodySize
+        }
+
+        Text {
+            id: messageText
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.max(1, parent.width
+                - (dismissBtn.implicitWidth + (actionBtn.visible ? actionBtn.implicitWidth : 0) + parent.spacing * 4))
+            text: root.message
+            color: MichiTheme.colors.textPrimary
+            font.pixelSize: MichiTheme.typography.captionSize
+            wrapMode: Text.WordWrap
+            elide: Text.ElideRight
+            maximumLineCount: 2
+        }
+
+        QQC2.AbstractButton {
+            id: actionBtn
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.actionText !== ""
+            focusPolicy: Qt.StrongFocus
+
+            Accessible.role: Accessible.Button
+            Accessible.name: root.actionText
+
+            contentItem: Text {
+                text: root.actionText
+                color: MichiTheme.colors.accentBlue
+                font.pixelSize: MichiTheme.typography.captionSize
+                font.weight: MichiTheme.typography.weightMedium
             }
 
-            Text {
-                text: "Cerrar"
-                color: MichiTheme.colors.textOnError
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: root.dismissible
-                anchors.verticalCenter: parent.verticalCenter
+            background: Item {}
+            onClicked: root.actionTriggered()
+        }
 
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.dismissed()
-                }
+        QQC2.AbstractButton {
+            id: dismissBtn
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.showDismiss
+            focusPolicy: Qt.StrongFocus
+
+            Accessible.role: Accessible.Button
+            Accessible.name: "Descartar error"
+
+            contentItem: Text {
+                text: "\u00D7"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
+            }
+
+            background: Item {}
+            onClicked: {
+                root.message = ""
+                root.dismissed()
             }
         }
     }

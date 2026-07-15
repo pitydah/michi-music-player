@@ -9,11 +9,11 @@ Item {
     property var model: null
     property var bridge: null
 
-    signal playRequested(int eventId, int trackId, string title)
-    signal queueRequested(int eventId, int trackId)
+    signal playRequested(int trackId, string title)
+    signal removeRequested(int eventId, int trackId)
     signal openTrackRequested(int trackId)
-    signal openAlbumRequested(string albumKey)
-    signal removeRequested(int eventId)
+    signal openAlbumRequested(int trackId)
+    signal addToQueueRequested(int trackId)
 
     ListView {
         id: timelineView
@@ -21,11 +21,14 @@ Item {
         clip: true
         spacing: 1
         model: root.model
+        objectName: "historyTimelineList"
+        Accessible.role: Accessible.List
+        Accessible.name: "Línea de tiempo del historial"
+        keyNavigationWraps: true
 
         delegate: Rectangle {
-            id: delegateRoot
             width: timelineView.width
-            height: 56
+            height: 52
             color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
             radius: MichiTheme.radiusSm
 
@@ -44,7 +47,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     Text {
-                        text: modelData.title || model.title || ""
+                        text: model.title || modelData.title || ""
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: MichiTheme.typography.weightMedium
@@ -53,106 +56,59 @@ Item {
                     }
 
                     Text {
-                        text: (modelData.artist || model.artist || "") + " · " + (modelData.album || model.album || "")
+                        text: (model.artist || modelData.artist || "") + " · " +
+                              (model.album || modelData.album || "")
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         width: parent.width
-                        visible: (modelData.artist || model.artist || modelData.album || model.album) !== ""
-                    }
-
-                    Text {
-                        text: (modelData.playedAt || model.played_at || "") + (modelData.device || model.device ? " [" + (modelData.device || model.device) + "]" : "")
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        elide: Text.ElideRight
-                        width: parent.width
-                        visible: text !== ""
+                        visible: (model.artist || modelData.artist || model.album || modelData.album) !== ""
                     }
                 }
 
-                Row {
-                    width: 140
+                Column {
+                    width: 100
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 4
-                    layoutDirection: Qt.RightToLeft
-
+                    spacing: 1
                     Text {
-                        text: "\u2716"; color: MichiTheme.colors.error
+                        text: model.playedAt || modelData.playedAt || ""
+                        color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
-                        width: 24; height: 24
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.removeRequested(
-                                modelData.eventId || modelData.id || model.eventId || model.id || 0)
-                        }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Eliminar registro"
+                        elide: Text.ElideRight
+                        width: parent.width
                     }
-
                     Text {
-                        text: "\uD83D\uDCC2"; color: MichiTheme.colors.accent
+                        text: model.device || modelData.device ? "[" + (model.device || modelData.device) + "]" : ""
+                        color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
-                        width: 24; height: 24
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.openAlbumRequested(
-                                modelData.albumKey || modelData.album || model.albumKey || model.album || "")
-                        }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Abrir álbum"
+                        visible: (model.device || modelData.device) !== ""
                     }
+                }
 
-                    Text {
-                        text: "\uD83C\uDFB5"; color: MichiTheme.colors.accent
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        width: 24; height: 24
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.openTrackRequested(
-                                modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0)
-                        }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Abrir pista"
+                Text {
+                    text: "▶"
+                    color: MichiTheme.colors.accent
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.playRequested(
+                            model.trackId || modelData.track_id || model.track_id || 0,
+                            model.title || modelData.title || "")
                     }
-
-                    Text {
-                        text: "\uD83D\uDD0A"; color: MichiTheme.colors.accent
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        width: 24; height: 24
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.queueRequested(
-                                modelData.eventId || modelData.id || model.eventId || model.id || 0,
-                                modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0)
-                        }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Agregar a la cola"
-                    }
-
-                    Text {
-                        text: "\u25B6"; color: MichiTheme.colors.accent
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        width: 24; height: 24
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignHCenter
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.playRequested(
-                                modelData.eventId || modelData.id || model.eventId || model.id || 0,
-                                modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0,
-                                modelData.title || model.title || "")
-                        }
-                        Accessible.role: Accessible.Button
-                        Accessible.name: "Reproducir"
+                }
+                Text {
+                    text: "☰"
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: contextMenu.popup()
                     }
                 }
             }
@@ -161,7 +117,53 @@ Item {
                 id: mouseArea
                 anchors.fill: parent
                 hoverEnabled: true
-                acceptedButtons: Qt.NoButton
+                acceptedButtons: Qt.RightButton
+                onClicked: contextMenu.popup()
+            }
+
+            Menu {
+                id: contextMenu
+                objectName: "historyContextMenu"
+                Accessible.name: "Menú contextual"
+
+                MenuItem {
+                    text: "Reproducir"
+                    objectName: "playEventMenuItem"
+                    Accessible.name: "Reproducir"
+                    onTriggered: root.playRequested(
+                        model.trackId || modelData.track_id || model.track_id || 0,
+                        model.title || modelData.title || "")
+                }
+                MenuItem {
+                    text: "Añadir a la cola"
+                    objectName: "addToQueueMenuItem"
+                    Accessible.name: "Añadir a la cola"
+                    onTriggered: root.addToQueueRequested(
+                        model.trackId || modelData.track_id || model.track_id || 0)
+                }
+                MenuItem {
+                    text: "Abrir pista"
+                    objectName: "openTrackMenuItem"
+                    Accessible.name: "Abrir pista"
+                    onTriggered: root.openTrackRequested(
+                        model.trackId || modelData.track_id || model.track_id || 0)
+                }
+                MenuItem {
+                    text: "Abrir álbum"
+                    objectName: "openAlbumMenuItem"
+                    Accessible.name: "Abrir álbum"
+                    onTriggered: root.openAlbumRequested(
+                        model.trackId || modelData.track_id || model.track_id || 0)
+                }
+                MenuSeparator {}
+                MenuItem {
+                    text: "Eliminar evento"
+                    objectName: "removeEventMenuItem"
+                    Accessible.name: "Eliminar evento"
+                    onTriggered: root.removeRequested(
+                        model.id || modelData.id || model.eventId || modelData.event_id || 0,
+                        model.trackId || modelData.track_id || model.track_id || 0)
+                }
             }
         }
 
