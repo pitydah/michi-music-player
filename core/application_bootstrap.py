@@ -359,44 +359,103 @@ class ApplicationBootstrap:
         if ar is None:
             return
         from ui_qml_bridge.action_registry import ActionDescriptor
-        ps = self.container.get("playback_service")
 
-        def _play():
-            if ps and hasattr(ps, 'play'):
-                ps.play()
+        def _handler(service_name: str, method: str, *default_args):
+            svc = self.container.get(service_name)
+            def _call(*args):
+                if svc and hasattr(svc, method):
+                    try:
+                        return getattr(svc, method)(*default_args, *args)
+                    except Exception:
+                        pass
+            return _call
 
-        def _pause():
-            if ps and hasattr(ps, 'pause'):
-                ps.pause()
-
-        def _next():
-            if ps and hasattr(ps, 'next'):
-                ps.next()
-
-        def _prev():
-            if ps and hasattr(ps, 'prev'):
-                ps.prev()
-
-        def _stop():
-            if ps and hasattr(ps, 'stop'):
-                ps.stop()
-
-        def _queue_add():
-            pass
-
-        def _favorite():
-            pass
-
-        ar.register(ActionDescriptor(action_id="play", title="Play", category="playback", handler=_play))
-        ar.register(ActionDescriptor(action_id="pause", title="Pause", category="playback", handler=_pause))
-        ar.register(ActionDescriptor(action_id="next", title="Next", category="playback", handler=_next))
-        ar.register(ActionDescriptor(action_id="previous", title="Previous", category="playback", handler=_prev))
-        ar.register(ActionDescriptor(action_id="stop", title="Stop", category="playback", handler=_stop))
-        ar.register(ActionDescriptor(action_id="queue_add", title="Add to queue", category="queue", handler=_queue_add))
-        ar.register(ActionDescriptor(action_id="favorite", title="Toggle favorite", category="track", handler=_favorite))
-        ar.register(ActionDescriptor(action_id="settings.open", title="Open Settings", category="navigation", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="playlist.create", title="Create Playlist", category="playlist", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="mix.generate", title="Generate Mix", category="mix", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="play", title="Play", category="playback",
+                                     handler=_handler("playback_service", "play")))
+        ar.register(ActionDescriptor(action_id="pause", title="Pause", category="playback",
+                                     handler=_handler("playback_service", "pause")))
+        ar.register(ActionDescriptor(action_id="next", title="Next", category="playback",
+                                     handler=_handler("playback_service", "next")))
+        ar.register(ActionDescriptor(action_id="previous", title="Prev", category="playback",
+                                     handler=_handler("playback_service", "previous")))
+        ar.register(ActionDescriptor(action_id="stop", title="Stop", category="playback",
+                                     handler=_handler("playback_service", "stop")))
+        ar.register(ActionDescriptor(action_id="track.play", title="Play", category="playback",
+                                     handler=_handler("playback_service", "play_file")))
+        ar.register(ActionDescriptor(action_id="track.play_next", title="Play next", category="queue",
+                                     handler=_handler("queue_service", "play_next")))
+        ar.register(ActionDescriptor(action_id="track.enqueue", title="Enqueue", category="queue",
+                                     handler=_handler("queue_service", "enqueue")))
+        ar.register(ActionDescriptor(action_id="track.favorite.toggle", title="Toggle favorite",
+                                     category="track", handler=_handler("track_action_service", "toggle_favorite")))
+        ar.register(ActionDescriptor(action_id="album.play", title="Play album", category="playback",
+                                     handler=_handler("album_service", "play_album")))
+        ar.register(ActionDescriptor(action_id="album.enqueue", title="Enqueue album", category="queue",
+                                     handler=_handler("album_service", "queue_album")))
+        ar.register(ActionDescriptor(action_id="album.add_to_playlist", title="Add to playlist",
+                                     category="playlist",
+                                     handler=_handler("playlist_service", "add_to_playlist")))
+        ar.register(ActionDescriptor(action_id="artist.play", title="Play artist", category="playback",
+                                     handler=_handler("artist_service", "play_artist")))
+        ar.register(ActionDescriptor(action_id="artist.shuffle", title="Shuffle", category="playback",
+                                     handler=_handler("playback_service", "shuffle")))
+        ar.register(ActionDescriptor(action_id="queue.remove", title="Remove", category="queue",
+                                     handler=_handler("queue_service", "remove")))
+        ar.register(ActionDescriptor(action_id="queue.clear", title="Clear", category="queue",
+                                     handler=_handler("queue_service", "clear")))
+        ar.register(ActionDescriptor(action_id="queue.save_playlist", title="Save as playlist",
+                                     category="queue",
+                                     handler=_handler("queue_service", "save_as_playlist")))
+        ar.register(ActionDescriptor(action_id="playlist.create", title="Create", category="playlist",
+                                     handler=_handler("playlist_service", "create_playlist")))
+        ar.register(ActionDescriptor(action_id="playlist.rename", title="Rename", category="playlist",
+                                     handler=_handler("playlist_service", "rename_playlist")))
+        ar.register(ActionDescriptor(action_id="playlist.delete", title="Delete", category="playlist",
+                                     handler=_handler("playlist_service", "delete_playlist")))
+        ar.register(ActionDescriptor(action_id="playlist.add", title="Add track", category="playlist",
+                                     handler=_handler("playlist_service", "add_track")))
+        ar.register(ActionDescriptor(action_id="playlist.remove", title="Remove track", category="playlist",
+                                     handler=_handler("playlist_service", "remove_track")))
+        ar.register(ActionDescriptor(action_id="playlist.import", title="Import M3U", category="playlist",
+                                     handler=_handler("playlist_service", "import_m3u")))
+        ar.register(ActionDescriptor(action_id="playlist.export", title="Export M3U", category="playlist",
+                                     handler=_handler("playlist_service", "export_m3u")))
+        ar.register(ActionDescriptor(action_id="history.play", title="Play", category="history",
+                                     handler=_handler("playback_service", "play_file")))
+        ar.register(ActionDescriptor(action_id="history.remove", title="Remove", category="history",
+                                     handler=_handler("history_query_service", "remove_entry")))
+        ar.register(ActionDescriptor(action_id="mix.generate", title="Generate", category="mix",
+                                     handler=_handler("mix_service", "generate")))
+        ar.register(ActionDescriptor(action_id="mix.cancel", title="Cancel", category="mix",
+                                     handler=_handler("mix_service", "cancel")))
+        ar.register(ActionDescriptor(action_id="mix.play", title="Play mix", category="playback",
+                                     handler=_handler("playback_service", "play_list")))
+        ar.register(ActionDescriptor(action_id="mix.enqueue", title="Enqueue mix", category="queue",
+                                     handler=_handler("queue_service", "enqueue")))
+        ar.register(ActionDescriptor(action_id="device.discover", title="Discover", category="devices",
+                                     handler=_handler("device_sync_service", "discover")))
+        ar.register(ActionDescriptor(action_id="device.sync.start", title="Start sync", category="devices",
+                                     handler=_handler("device_sync_service", "start_sync")))
+        ar.register(ActionDescriptor(action_id="device.sync.cancel", title="Cancel sync", category="devices",
+                                     handler=_handler("device_sync_service", "cancel_sync")))
+        ar.register(ActionDescriptor(action_id="connection.discover", title="Discover", category="connections",
+                                     handler=_handler("connection_service", "discover")))
+        ar.register(ActionDescriptor(action_id="connection.connect", title="Connect", category="connections",
+                                     handler=_handler("connection_service", "connect")))
+        ar.register(ActionDescriptor(action_id="connection.disconnect", title="Disconnect", category="connections",
+                                     handler=_handler("connection_service", "disconnect")))
+        ar.register(ActionDescriptor(action_id="home_audio.volume", title="Volume", category="home_audio",
+                                     handler=_handler("home_audio_service", "set_volume")))
+        ar.register(ActionDescriptor(action_id="home_audio.mute", title="Mute", category="home_audio",
+                                     handler=_handler("home_audio_service", "mute")))
+        ar.register(ActionDescriptor(action_id="radio.play", title="Play", category="radio",
+                                     handler=_handler("radio_service", "play_station")))
+        ar.register(ActionDescriptor(action_id="radio.stop", title="Stop", category="radio",
+                                     handler=_handler("radio_service", "stop")))
+        ar.register(ActionDescriptor(action_id="settings.open", title="Settings", category="navigation",
+                                     handler=_handler("settings_service", "open")))
+        ar.register(ActionDescriptor(action_id="diagnostics.open", title="Diagnostics", category="navigation",
+                                     handler=_handler("diagnostics_service", "check_all")))
 
     def _build_michi_ai(self):
         try:

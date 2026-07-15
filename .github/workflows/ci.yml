@@ -2,13 +2,13 @@ name: CI
 
 "on":
   push:
-    branches: [main, michi-core-convergence, qml-production-parity-x10-v2, qml-real-functions-x10-v3]
+    branches: [main, qml-real-functional-convergence-x10-v4r, qml-real-functions-x10-v3]
   pull_request:
-    branches: [main, michi-core-convergence, qml-production-parity-x10-v2, qml-real-functions-x10-v3]
+    branches: [main, qml-real-functional-convergence-x10-v4r, qml-real-functions-x10-v3]
   workflow_dispatch:
 
 jobs:
-  qml-validation:
+  qml-product-validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,26 +24,24 @@ jobs:
       - name: Ruff lint
         run: ruff check . --output-format concise
       - name: QML compile
-        run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v13.py
-        continue-on-error: true
+        run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v15.py
       - name: QML productive runtime
-        run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v13.py
-        continue-on-error: true
+        run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v15.py
       - name: QML tests
-        run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v13.xml
-      - name: Evidence V13
-        run: python scripts/qml_evidence_v13_collect.py --junit artifacts/qml-v13.xml --expected-sha $(git rev-parse HEAD)
-      - name: Gate V13
-        run: python scripts/qml_productive_gate_v13.py
+        run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v15.xml
+      - name: Evidence V15
+        run: python scripts/qml_evidence_v15_collect.py --junit artifacts/qml-v15.xml --expected-sha $(git rev-parse HEAD)
+      - name: Gate V15
+        run: python scripts/qml_productive_gate_v15.py
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: qml-evidence-v13
+          name: qml-evidence-v15
           path: artifacts/
 
   wheel-verify:
     runs-on: ubuntu-latest
-    needs: [qml-validation]
+    needs: [qml-product-validation]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -504,7 +504,10 @@ class BridgeFactory(QObject):
 
     def validate_required_dependencies(self) -> list[str]:
         missing = []
-        required_keys = ["playback_service", "connection_factory", "worker_manager"]
+        required_keys = [
+            "playback_service", "connection_factory", "worker_manager",
+            "settings_service", "queue_service", "action_registry",
+        ]
         for key in required_keys:
             if not self._container.contains(key):
                 missing.append(key)
@@ -513,7 +516,8 @@ class BridgeFactory(QObject):
     def create_all(self) -> dict[str, QObject]:
         missing = self.validate_required_dependencies()
         if missing:
-            logger.warning("BridgeFactory: missing required dependencies: %s", missing)
+            logger.error("BridgeFactory: MISSING REQUIRED dependencies: %s", missing)
+            raise RuntimeError(f"BridgeFactory cannot start: missing {missing}")
 
         # 1. Infraestructura
         self.create_page_state_store()

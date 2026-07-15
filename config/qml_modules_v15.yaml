@@ -1,0 +1,42 @@
+# QML Modules V15 — Evidence collection configuration
+version: v15
+modules:
+  home: {title: "Inicio", primary_route: home, status: functional}
+  library: {title: "Biblioteca", primary_route: library, status: functional}
+  queue: {title: "Cola", primary_route: queue, status: functional}
+  playlists: {title: "Playlists", primary_route: playlists, status: functional}
+  history: {title: "Historial", primary_route: history, status: functional}
+  mix: {title: "Mix", primary_route: mix, status: functional}
+  search: {title: "Busqueda", primary_route: search, status: functional}
+  radio: {title: "Radio", primary_route: radio, status: functional}
+  lyrics: {title: "Letras", primary_route: lyrics, status: functional}
+  audio_lab: {title: "Audio Lab", primary_route: audio_lab, status: functional}
+  equalizer: {title: "Ecualizador", primary_route: equalizer, status: functional}
+  outputs: {title: "Salidas", primary_route: outputs, status: functional}
+  devices: {title: "Dispositivos", primary_route: devices.list, status: functional}
+  connections: {title: "Conexiones", primary_route: connections, status: functional}
+  home_audio: {title: "Home Audio", primary_route: home_audio, status: functional}
+  metadata: {title: "Metadatos", primary_route: metadata.inspector, status: functional}
+  tagging: {title: "Smart Tagging", primary_route: tagging, status: functional}
+  doctor: {title: "Library Doctor", primary_route: library_doctor, status: functional}
+  diagnostics: {title: "Diagnostico", primary_route: diagnostics, status: functional}
+  assistant: {title: "Michi AI", primary_route: assistant, status: functional}
+  disc_lab: {title: "Disc Lab", primary_route: disc_lab, status: experimental}
+  settings: {title: "Ajustes", primary_route: settings, status: functional}
+  playback: {title: "Reproduccion", primary_route: playback, status: functional}
+  nowplaying: {title: "Now Playing", primary_route: nowplaying, status: functional}
+capability_gate:
+  audio_lab: audio_lab_service
+  metadata: metadata_service
+  tagging: smart_tagging_service
+  doctor: library_doctor_service
+  equalizer: equalizer_service
+  outputs: output_profile_service
+  devices: device_sync_service
+  connections: connection_service
+  home_audio: home_audio_service
+  diagnostics: diagnostics_service
+  assistant: michi_ai_service
+  disc_lab: disc_lab_service
+  mix: mix_service
+  lyrics: lyrics_service
