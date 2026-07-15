@@ -169,7 +169,7 @@ class HomeAudioBridge(QObject):
 
     def _call_svc(self, method: str, *args, **kwargs):
         if not self._ha_svc:
-            return {"ok": False, "error": "UNSUPPORTED"}
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         fn = getattr(self._ha_svc, method, None)
         if not fn:
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
@@ -177,7 +177,9 @@ class HomeAudioBridge(QObject):
             raw = fn(*args, **kwargs)
             self._last_contact = time.time()
             self._offline = False
-            return {"ok": True, "result": raw} if raw is not None else {"ok": True}
+            if raw is None:
+                return {"ok": False, "error": "METHOD_FAILED"}
+            return {"ok": True, "result": raw}
         except Exception as e:
             logger.debug("HomeAudio %s failed", method, exc_info=True)
             self._last_error = str(e)
@@ -193,7 +195,7 @@ class HomeAudioBridge(QObject):
             self._ha_state = "not_configured"
             self._snapcast_state = "concept"
             self.stateChanged.emit()
-            return {"ok": True}
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         try:
             connected_raw = getattr(self._ha_svc, 'is_connected', False)
             connected = connected_raw() if callable(connected_raw) else bool(connected_raw)

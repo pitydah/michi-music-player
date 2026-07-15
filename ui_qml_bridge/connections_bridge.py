@@ -174,10 +174,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        self._alias = alias
-        self._state = "detected"
-        self.stateChanged.emit()
-        return {"ok": True}
+        return _method_unavailable("connectManual")
 
     @Slot(result=dict)
     def authenticate(self):
@@ -203,8 +200,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        self._set_state("pairing_required")
-        return {"ok": True}
+        return _method_unavailable("pair")
 
     @Slot(result=dict)
     def trust(self):
@@ -230,20 +226,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        try:
-            if self._ctrl and hasattr(self._ctrl, 'get_capabilities'):
-                caps = self._ctrl.get_capabilities()
-                self._capabilities = caps
-                self._state = "connected"
-                self._last_contact = __import__('time').time()
-                self._contract = "contract_ok" if caps.get("contract_ok", False) else "contract_partial"
-            else:
-                self._state = "paired"
-            self.stateChanged.emit()
-            return {"ok": True}
-        except Exception as e:
-            self._set_state("error", str(e))
-            return {"ok": False, "error": str(e)}
+        return _method_unavailable("confirmPair")
 
     @Slot(result=dict)
     def rejectPair(self):
@@ -256,8 +239,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        self._set_state("not_configured")
-        return {"ok": True}
+        return _method_unavailable("rejectPair")
 
     @Slot(result=dict)
     def diagnose(self):
@@ -270,19 +252,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        try:
-            if self._ctrl and hasattr(self._ctrl, 'get_connection_state'):
-                state = self._ctrl.get_connection_state()
-                self._state = state.get("micro_server_state", "not_configured")
-                self._capabilities = self._ctrl.get_capabilities()
-                self._server_version = state.get("micro_server_name", "")
-                self._alias = state.get("micro_server_name", "")
-                self._last_contact = __import__('time').time()
-            self.stateChanged.emit()
-            return {"ok": True}
-        except Exception as e:
-            self._set_state("error", str(e))
-            return {"ok": False, "error": str(e)}
+        return _method_unavailable("diagnose")
 
     @Slot(result=dict)
     def connect(self):
@@ -295,10 +265,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        self._set_state("connected")
-        self._last_contact = __import__('time').time()
-        self.stateChanged.emit()
-        return {"ok": True}
+        return _method_unavailable("connect")
 
     @Slot(result=dict)
     def disconnect(self):
@@ -311,13 +278,7 @@ class ConnectionsBridge(QObject):
             except Exception as e:
                 self._set_state("error", str(e))
                 return {"ok": False, "error": str(e)}
-        self._state = "not_configured"
-        self._alias = ""
-        self._contract = ""
-        self._last_error = ""
-        self._last_contact = 0.0
-        self.stateChanged.emit()
-        return {"ok": True}
+        return _method_unavailable("disconnect")
 
     @Slot(result=dict)
     def forget(self):
@@ -442,9 +403,9 @@ class ConnectionsBridge(QObject):
     def refresh(self):
         self._reflect_from_service()
         if not self._connection_service:
-            self._update_state_legacy()
+            self._state = _SERVICE_UNAVAILABLE
         self.stateChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": _SERVICE_UNAVAILABLE}
 
     def _update_state_legacy(self):
         if not self._ctrl:

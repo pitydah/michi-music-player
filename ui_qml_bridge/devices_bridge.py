@@ -364,7 +364,7 @@ class DevicesBridge(QObject):
             if hasattr(self._dev_svc, 'get_profile'):
                 prof = self._dev_svc.get_profile(key)
                 return {"ok": True, "profile": prof}
-            return {"ok": True, "profile": {}}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -494,7 +494,7 @@ class DevicesBridge(QObject):
             if fn:
                 est = fn(device_key, playlist_or_path)
                 return {"ok": True, "estimate": est}
-            return {"ok": True, "estimate": {}}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -594,7 +594,7 @@ class DevicesBridge(QObject):
             if audio_type is None:
                 return _typed_error("UNSUPPORTED_FORMAT", "Formato no soportado. Solo audio.")
             if not os.path.exists(path):
-                return {"ok": True, "warning": "FILE_NOT_FOUND", "type": "audio", "transcode_policy": "copy"}
+                return {"ok": False, "error": "FILE_NOT_FOUND"}
             return {"ok": True, "type": "audio", "transcode_policy": "copy"}
         except Exception as e:
             return {"ok": False, "error": str(e)}

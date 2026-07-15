@@ -40,11 +40,16 @@ class HomeAudioAdapter(QObject):
     def configure(self, host: str = "", port: int = 0, access_token: str = ""):
         """Configure and test HA connection."""
         if not self._client:
+            self._is_connected = False
             return
         base_url = f"http://{host}:{port}" if host else ""
         if base_url:
-            self._client.configure(base_url=base_url, token=access_token)
-            self._is_connected = True
+            try:
+                self._client.configure(base_url=base_url, token=access_token)
+                result = self._client.test_connection()
+                self._is_connected = bool(result)
+            except Exception:
+                self._is_connected = False
         else:
             self._is_connected = False
 
