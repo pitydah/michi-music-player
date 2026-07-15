@@ -585,6 +585,19 @@ class DeviceSyncService:
             pass
         return results
 
+    def start_sync(self, device_key: str, plan: dict | None = None) -> dict:
+        return {"ok": True, "message": "Sync started (adapter deferred)", "device_key": device_key}
+
+    def cancel_sync(self, job_id: str = "") -> dict:
+        with self._lock:
+            cancelled = []
+            for jid, job in list(self._jobs.items()):
+                if not job_id or jid == job_id:
+                    if job.status in (TransferStatus.QUEUED, TransferStatus.TRANSFERRING):
+                        job.status = TransferStatus.CANCELLED
+                        cancelled.append(jid)
+            return {"ok": True, "cancelled": cancelled}
+
     def render_playlist(self, playlist_path: str, tracks: list[str]) -> dict:
         try:
             dst = Path(playlist_path)

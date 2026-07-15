@@ -155,7 +155,7 @@ class OutputProfilesBridge(QObject):
             self.refresh()
             if isinstance(result, dict) and result.get("ok"):
                 return result
-            return {"ok": True}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -168,7 +168,7 @@ class OutputProfilesBridge(QObject):
             if self._active_id == profile_id:
                 self._active_id = "standard"
             self.refresh()
-            return {"ok": True}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -179,7 +179,7 @@ class OutputProfilesBridge(QObject):
         try:
             self._player.create_profile(data)
             self.refresh()
-            return {"ok": True}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -190,7 +190,7 @@ class OutputProfilesBridge(QObject):
         try:
             self._player.update_profile(data)
             self.refresh()
-            return {"ok": True}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -203,6 +203,6 @@ class OutputProfilesBridge(QObject):
             self.refresh()
             self._applied_state = "idle"
             self.appliedStateChanged.emit(self._applied_state)
-            return {"ok": True}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}

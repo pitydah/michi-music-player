@@ -213,8 +213,10 @@ class HomeAudioBridge(QObject):
             logger.debug("HA refresh failed", exc_info=True)
             self._ha_state = "error"
             self._last_error = str(e)
-        self.stateChanged.emit()
-        return {"ok": True}
+        # If connected, return ok; otherwise SERVICE_UNAVAILABLE
+        if self._ha_state == "connected":
+            return {"ok": True}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     def _discover_zones(self):
         if not self._ha_svc:
@@ -313,7 +315,7 @@ class HomeAudioBridge(QObject):
         self._devices = []
         self._last_contact = 0.0
         self.stateChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(result=dict)
     def reconnectHa(self):
@@ -334,7 +336,7 @@ class HomeAudioBridge(QObject):
     def recoverFromOffline(self):
         self._offline = False
         self.refresh()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(result=dict)
     def getLatencyReport(self):

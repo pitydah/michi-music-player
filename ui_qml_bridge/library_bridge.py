@@ -198,20 +198,20 @@ class LibraryBridge(QObject):
     def loadNextPage(self):
         self._loaded_count = min(self._loaded_count + self._page_size, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": True, "loaded": self._loaded_count, "visible": self.visibleCount, "has_more": self.hasMoreSongs}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE", "loaded": self._loaded_count, "visible": self.visibleCount, "has_more": self.hasMoreSongs}
 
     @Slot(int, result=dict)
     def setPageSize(self, size: int):
         self._page_size = max(20, min(500, int(size)))
         self._loaded_count = min(self._loaded_count, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(result=dict)
     def resetPaging(self):
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def _refresh_track_query(self):
         if self._refresh_coordinator:

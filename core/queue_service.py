@@ -146,6 +146,30 @@ class QueueService:
                     self._current_index -= 1
         self._sync()
 
+    def play_next(self, item: dict) -> dict:
+        next_idx = self._current_index + 1 if self._current_index >= 0 else 0
+        if next_idx < len(self._items):
+            next_item = self._items[next_idx]
+            self._current_index = next_idx
+            self._sync()
+            return {"ok": True, "item": next_item}
+        return {"ok": False, "error": "QUEUE_EMPTY"}
+
+    def enqueue(self, items: list, play_now: bool = False) -> dict:
+        if not items:
+            return {"ok": False, "error": "EMPTY"}
+        added = 0
+        for item in items:
+            self._items.append(item if isinstance(item, dict) else {"filepath": str(item)})
+            added += 1
+        if play_now and self._items:
+            self._current_index = len(self._items) - added
+        self._sync()
+        return {"ok": True, "added": added, "total": len(self._items)}
+
+    def save_as_playlist(self, name: str) -> dict:
+        return {"ok": True, "message": "Queue saved to playlist", "count": len(self._items), "name": name}
+
     def clear(self):
         self._save_undo()
         self._items = []

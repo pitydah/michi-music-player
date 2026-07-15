@@ -32,7 +32,7 @@ class LibrarySourcesBridge(QObject):
     @Slot(result=dict)
     def refresh(self):
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(str, result=dict)
     def addSource(self, path: str):
@@ -69,7 +69,7 @@ class LibrarySourcesBridge(QObject):
             return {"ok": False, "error": "NO_JOB_SERVICE"}
         self._status = "idle"
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(result=dict)
     def scanAllSources(self):
@@ -113,7 +113,7 @@ class LibrarySourcesBridge(QObject):
     @Slot(result=dict)
     def refreshAvailability(self):
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(str, result=dict)
     def openSource(self, path: str):
@@ -123,7 +123,7 @@ class LibrarySourcesBridge(QObject):
             subprocess.Popen(["explorer", path])
         else:
             subprocess.Popen(["xdg-open", path])
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def root_paths(self) -> list[str]:
         return self._svc.root_paths()

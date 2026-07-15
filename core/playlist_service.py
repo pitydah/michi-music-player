@@ -76,6 +76,54 @@ class PlaylistService:
         except Exception:
             return []
 
+    def create_playlist(self, name: str) -> dict:
+        return self.create(name)
+
+    def rename_playlist(self, pid: int, name: str) -> dict:
+        return self.rename(pid, name)
+
+    def delete_playlist(self, pid: int) -> dict:
+        return self.delete(pid)
+
+    def add_to_playlist(self, pid: int, filepath: str) -> dict:
+        return self.add_track(pid, filepath)
+
+    def import_m3u(self, path: str) -> dict:
+        from core.playlist_io import parse_playlist_entries
+        entries = parse_playlist_entries(path)
+        valid = [e.resolved_path for e in entries if e.exists and not e.is_remote]
+        if not valid:
+            return {"ok": False, "error": "NO_VALID_TRACKS"}
+        name = path.split("/")[-1].rsplit(".", 1)[0][:80] or "Imported"
+        r = self.create(name)
+        if not r.get("ok"):
+            return r
+        pid = r["id"]
+        added = 0
+        for fp in valid:
+            self.add_track(pid, fp)
+            added += 1
+        return {"ok": True, "playlist_id": pid, "added": added}
+
+    def export_m3u(self, pid: int, output_path: str = "") -> dict:
+        from core.playlist_io import export_m3u
+        items = self.items(pid) if hasattr(self, 'items') else []
+        if not items:
+            return {"ok": False, "error": "EMPTY_PLAYLIST"}
+        filepaths = [i.get("filepath", i.get("path", "")) for i in items if i.get("filepath") or i.get("path")]
+        if not output_path:
+            name = "playlist"
+            for p in self.list():
+                if p.get("id") == pid:
+                    name = p.get("name", "playlist")
+                    break
+            output_path = f"{name}.m3u"
+        try:
+            export_m3u(output_path, filepaths)
+            return {"ok": True, "path": output_path, "count": len(filepaths)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def create(self, name: str) -> dict:
         if not self._can():
             return self._error("NO_DB")

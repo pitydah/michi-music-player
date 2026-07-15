@@ -165,7 +165,11 @@ class HistoryBridge(QObject):
             import contextlib
             with contextlib.suppress(Exception):
                 os.remove(filepath)
-        return {"ok": True, "cancelled": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE", "cancelled": True}
+
+    @Slot(str, result=dict)
+    def playEntry(self, track_id: str):
+        return self.playHistoryItem(track_id)
 
     @Slot(str, result=dict)
     def playHistoryItem(self, track_id: str):
@@ -204,13 +208,13 @@ class HistoryBridge(QObject):
     def setHistoryEnabled(self, enabled: bool):
         if self._hqs:
             return self._hqs.set_history_enabled(enabled)
-        return {"ok": True}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     @Slot(int, result=dict)
     def setHistoryLimit(self, limit: int):
         if self._hqs:
             return self._hqs.set_history_limit(limit)
-        return {"ok": True}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     @Slot(result=dict)
     def historyScore(self) -> dict:

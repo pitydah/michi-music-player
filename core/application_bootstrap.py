@@ -394,7 +394,7 @@ class ApplicationBootstrap:
                                      handler=_handler("album_service", "queue_album")))
         ar.register(ActionDescriptor(action_id="album.add_to_playlist", title="Add to playlist",
                                      category="playlist",
-                                     handler=_handler("playlist_service", "add_to_playlist")))
+                                     handler=_handler("playlist_service", "add_track")))
         ar.register(ActionDescriptor(action_id="artist.play", title="Play artist", category="playback",
                                      handler=_handler("artist_service", "play_artist")))
         ar.register(ActionDescriptor(action_id="artist.shuffle", title="Shuffle", category="playback",
@@ -423,7 +423,7 @@ class ApplicationBootstrap:
         ar.register(ActionDescriptor(action_id="history.play", title="Play", category="history",
                                      handler=_handler("playback_service", "play_file")))
         ar.register(ActionDescriptor(action_id="history.remove", title="Remove", category="history",
-                                     handler=_handler("history_query_service", "remove_entry")))
+                                     handler=_handler("history_query_service", "remove_history_item")))
         ar.register(ActionDescriptor(action_id="mix.generate", title="Generate", category="mix",
                                      handler=_handler("mix_service", "generate")))
         ar.register(ActionDescriptor(action_id="mix.cancel", title="Cancel", category="mix",

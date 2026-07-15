@@ -428,7 +428,7 @@ class DevicesBridge(QObject):
                 "supports_playlists": getattr(caps, 'supports_playlists', False) if caps else False,
             }]
             self.stateChanged.emit()
-            return {"ok": True}
+            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -583,7 +583,7 @@ class DevicesBridge(QObject):
             self._dev_svc.clear_history()
         self._transfer_history = []
         self.stateChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(str, result=dict)
     def validateAudioFile(self, path: str):

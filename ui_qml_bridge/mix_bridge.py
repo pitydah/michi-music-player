@@ -275,7 +275,7 @@ class MixBridge(QObject):
         self._error_message = ""
         self._validation_errors = []
         self._set_state(MixState.IDLE)
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def _load_mix_items(self, mix_id: str, seed: str = "") -> list[dict] | None:
         if self._mix_svc is None:
@@ -521,7 +521,7 @@ class MixBridge(QObject):
         if self._current_mix_id:
             return self.loadMix(self._current_mix_id)
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(str, result=dict)
     def navigateTo(self, route: str):

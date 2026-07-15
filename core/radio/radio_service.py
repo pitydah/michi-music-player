@@ -22,3 +22,12 @@ class RadioService:
         if self._radio_manager:
             return self._radio_manager.play(url, name)
         return False
+
+    def stop(self) -> dict:
+        if self._radio_manager and hasattr(self._radio_manager, 'stop'):
+            try:
+                self._radio_manager.stop()
+                return {"ok": True}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}

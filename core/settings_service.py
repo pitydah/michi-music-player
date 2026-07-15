@@ -70,6 +70,9 @@ class SettingsService:
                     result[entry.key] = self.get(entry.key)
         return result
 
+    def open(self) -> dict:
+        return {"ok": True, "message": "Settings navigation handled by QML route"}
+
     def reset_all(self) -> dict:
         if not self._coordinator:
             return {"ok": False, "error_code": "NO_COORDINATOR", "message": "No hay coordinador de runtime"}

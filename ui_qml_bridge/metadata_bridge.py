@@ -212,7 +212,7 @@ class MetadataBridge(QObject):
             for f in self._fields
         ]
         self.dataChanged.emit()
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(result=dict)
     def saveChanges(self):
@@ -301,7 +301,7 @@ class MetadataBridge(QObject):
     def rejectSave(self):
         self._pending_review_id = ""
         self._set_status("IDLE")
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def _write_and_verify(self, tags):
         from ui_qml_bridge.metadata_tag_adapter import (
@@ -336,7 +336,7 @@ class MetadataBridge(QObject):
         self._quality_summary = "Metadatos guardados"
         self.dataChanged.emit()
         self.operationCompleted.emit("save")
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def _collect_changes(self) -> dict:
         editable = {"title", "artist", "album", "album_artist", "genre",
@@ -389,7 +389,7 @@ class MetadataBridge(QObject):
         self._set_status("SUCCEEDED")
         self.dataChanged.emit()
         self.operationCompleted.emit("artwork")
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @staticmethod
     def _detect_mime(path: str) -> str:
@@ -428,7 +428,7 @@ class MetadataBridge(QObject):
         self._set_status("SUCCEEDED")
         self.dataChanged.emit()
         self.operationCompleted.emit("artwork_removed")
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot()
     def clear(self):
@@ -511,7 +511,7 @@ class MetadataBridge(QObject):
     @Slot(result=dict)
     def cancelBatch(self):
         self._set_status("CANCELLED")
-        return {"ok": True}
+        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     @Slot(str, result=str)
     def fileName(self, path: str) -> str:
