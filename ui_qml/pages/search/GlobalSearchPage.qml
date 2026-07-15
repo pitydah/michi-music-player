@@ -384,10 +384,6 @@ Item {
         visible: root._showOverlay
         bridge: root.bridge
 
-        onNavigateTo: function(type, id, title) {
-            root._showOverlay = false
-            root.onItemClicked(type, id, title, null)
-        }
         onCloseRequested: {
             root._showOverlay = false
         }

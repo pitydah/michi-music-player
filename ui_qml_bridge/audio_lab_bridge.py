@@ -168,6 +168,19 @@ class AudioLabBridge(QObject):
     def missingCovers(self):
         return self._stats.get("missing_covers", 0)
 
+    @Property("QVariantList", constant=True)
+    def tools(self):
+        return [
+            {"toolId": "analysis", "label": "Análisis técnico", "desc": "Formato, codec, bitrate, calidad", "cardVariant": "accent", "toolState": "READY"},
+            {"toolId": "conversion", "label": "Conversión", "desc": "FLAC, MP3, AAC, Opus, WAV", "cardVariant": "accent", "toolState": "READY"},
+            {"toolId": "normalization", "label": "Normalización", "desc": "Loudness, pico, ganancia", "cardVariant": "base", "toolState": "READY"},
+            {"toolId": "replaygain", "label": "ReplayGain", "desc": "Etiquetas de ganancia", "cardVariant": "base", "toolState": "READY"},
+            {"toolId": "integrity", "label": "Integridad", "desc": "Cabeceras, corrupción, checksum", "cardVariant": "status", "toolState": "READY"},
+            {"toolId": "comparison", "label": "Comparación", "desc": "Diferencias entre variantes", "cardVariant": "status", "toolState": "READY"},
+            {"toolId": "jobs", "label": "Trabajos", "desc": "Cola y estado de procesos", "cardVariant": "base", "toolState": "READY"},
+            {"toolId": "profiles", "label": "Perfiles", "desc": "Presets de conversión", "cardVariant": "base", "toolState": "READY"},
+        ]
+
     @Property("QVariantMap", notify=dataChanged)
     def backendInfo(self):
         return dict(self._backend_info)

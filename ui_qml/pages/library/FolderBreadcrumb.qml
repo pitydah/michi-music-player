@@ -8,7 +8,8 @@ Item {
     width: parent.width; height: 32
 
     property string path: ""
-    property var _parts: path ? path.split("/").filter(function(p) { return p !== "" }) : []
+    property var bridge: null
+    property var _parts: path && bridge ? bridge.splitPath(path) : []
 
     signal navigate(int index)
 

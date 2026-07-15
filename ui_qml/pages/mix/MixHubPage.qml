@@ -23,8 +23,20 @@ Item {
             root.mx.refresh()
     }
 
+    Loader {
+        anchors.fill: parent
+        active: !root.mx
+        sourceComponent: UnavailableState {
+            title: "Mix no disponible"
+            message: "El servicio de mezclas no está disponible en este momento."
+            explanation: "Mix Bridge no está configurado o el módulo no está activo."
+            objectName: "mix.unavailableState"
+        }
+    }
+
     FocusScope {
         id: focusScope
+        visible: !!root.mx
         anchors.fill: parent
         objectName: "mix.focusScope"
         activeFocusOnTab: true

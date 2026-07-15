@@ -65,8 +65,20 @@ Item {
         return items
     }
 
+    Loader {
+        anchors.fill: parent
+        active: !root.pl
+        sourceComponent: UnavailableState {
+            title: "Playlists no disponible"
+            message: "El servicio de listas de reproducción no está disponible en este momento."
+            explanation: "Playlists Bridge no está configurado o el módulo no está activo."
+            objectName: "playlists.unavailableState"
+        }
+    }
+
     FocusScope {
         id: focusScope
+        visible: !!root.pl
         anchors.fill: parent
         objectName: "playlists.focusScope"
         activeFocusOnTab: true

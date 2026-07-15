@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Initial SHA | `fbaeca33` |
-| Final SHA | `e2ad92d` |
+| Final SHA | `34d1d0c` |
 | Total commits | 367 |
 
 ## Modules Completed with Estimated %
@@ -215,6 +215,22 @@ See `ui_qml_bridge/route_registry.py` for the complete route table across catego
 - library_doctor: scan and fix buttons exist but bridge calls are placeholders
 - discs_lab: rip button disabled, no CDDB/MusicBrainz lookup
 - folders: health diagnostics and integrity checks not wired
+
+## Pendientes post-commit
+
+### Service construction issues (ad-hoc instantiation bypassing DI)
+
+| Bridge | File | Issue |
+|--------|------|-------|
+| AudioLabBridge | `audio_lab_bridge.py:380` | `AudioProbeService()` created ad-hoc in `probeFile()` fallback |
+| AudioLabBridge | `audio_lab_bridge.py:393` | `AudioAnalysisService()` created ad-hoc in `analyzeFile()` fallback |
+| AudioLabBridge | `audio_lab_bridge.py:408` | `AudioIntegrityService()` created ad-hoc in `integrityCheck()` fallback |
+| AudioLabBridge | `audio_lab_bridge.py:422` | `AudioComparisonService()` created ad-hoc in `compareFiles()` fallback |
+| LibraryBridge | `library_bridge.py:717` | `LibrarySourcesService(db=self._db)` created ad-hoc in `addFolder()` |
+| LibrarySourcesBridge | `library_sources_bridge.py:19` | `LibrarySourcesService()` fallback in `__init__` |
+| JobBridge | `job_bridge.py:155` | `LibrarySourcesService(db=self._db)` created ad-hoc in `_scan_all_sources()` |
+
+All of these should be migrated to constructor injection via `AppContext`/`AppServices`.
 
 ## Expected Conflicts with Main Front
 

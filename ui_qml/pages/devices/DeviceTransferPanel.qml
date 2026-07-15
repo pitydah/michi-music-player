@@ -7,6 +7,7 @@ import "../../components"
 Item {
     id: root
 
+    property var bridge: null
     property var transferJobs: []
     property var transferHistory: []
 
@@ -69,7 +70,7 @@ Item {
 
                                 Text {
                                     width: parent.width
-                                    text: modelData.source_path ? modelData.source_path.split("/").pop() : "Archivo"
+                                    text: modelData.source_path ? bridge.fileName(modelData.source_path) : "Archivo"
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                     font.weight: MichiTheme.typography.weightMedium
@@ -144,7 +145,7 @@ Item {
                     }
 
                     Accessible.role: Accessible.ListItem
-                    Accessible.name: (modelData.source_path ? modelData.source_path.split("/").pop() : "Transferencia") + " - " + (modelData.status || "queued")
+                    Accessible.name: (modelData.source_path ? bridge.fileName(modelData.source_path) : "Transferencia") + " - " + (modelData.status || "queued")
                 }
             }
 
@@ -181,7 +182,7 @@ Item {
 
                         Text {
                             width: parent.width - 180
-                            text: modelData.source_path ? modelData.source_path.split("/").pop() : (modelData.job_id || "")
+                            text: modelData.source_path ? bridge.fileName(modelData.source_path) : (modelData.job_id || "")
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.bodySize
                             font.weight: MichiTheme.typography.weightMedium
@@ -217,7 +218,7 @@ Item {
                     }
 
                     Accessible.role: Accessible.ListItem
-                    Accessible.name: (modelData.source_path ? modelData.source_path.split("/").pop() : "Historial") + " - " + (modelData.status || "")
+                    Accessible.name: (modelData.source_path ? bridge.fileName(modelData.source_path) : "Historial") + " - " + (modelData.status || "")
                 }
             }
 

@@ -40,7 +40,7 @@ Item {
 
     function navigateTo(path) {
         if (!path) return
-        root._breadcrumbs = path.split("/").filter(function(p) { return p !== "" })
+        root._breadcrumbs = root.bridge ? root.bridge.splitPath(path) : []
         root._currentPath = path
         reload()
     }
@@ -90,6 +90,7 @@ Item {
         FolderBreadcrumb {
             id: breadcrumb
             Layout.fillWidth: true; Layout.preferredHeight: 32
+            bridge: root.bridge
             path: root._currentPath
             Accessible.name: "Barra de navegación de carpeta"
             onNavigate: function(index) {
@@ -201,7 +202,7 @@ Item {
 
                 onPlayFolder: function(path) { root.playFolderRequested(path) }
                 onNavigateToFolder: function(path) {
-                    var parts = path.split("/").filter(function(p) { return p !== "" })
+                    var parts = root.bridge ? root.bridge.splitPath(path) : []
                     treeView.navigateTo(path)
                     root._breadcrumbs = parts
                     root._currentPath = path

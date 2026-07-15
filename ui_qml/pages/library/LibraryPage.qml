@@ -57,10 +57,11 @@ Item {
         SOURCE_OFFLINE,
         QUERY_ERROR,
         DATABASE_ERROR,
-        CANCELLED
+        CANCELLED,
+        UNAVAILABLE
     }
 
-    property int libraryState: LibraryPage.INITIALIZING
+    property int libraryState: root.lib ? LibraryPage.INITIALIZING : LibraryPage.UNAVAILABLE
 
     function _updateState() {
         if (!root.lib) return
@@ -79,8 +80,20 @@ Item {
         }
     }
 
+    Loader {
+        anchors.fill: parent
+        active: libraryState === LibraryPage.UNAVAILABLE
+        sourceComponent: UnavailableState {
+            title: "Biblioteca no disponible"
+            message: "El servicio de biblioteca no está disponible en este momento."
+            explanation: "Library Bridge no está configurado o el módulo no está activo."
+            objectName: "library.unavailableState"
+        }
+    }
+
     FocusScope {
         id: focusScope
+        visible: libraryState !== LibraryPage.UNAVAILABLE
         anchors.fill: parent
         objectName: "library.focusScope"
         activeFocusOnTab: true

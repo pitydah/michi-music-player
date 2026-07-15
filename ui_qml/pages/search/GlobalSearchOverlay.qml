@@ -13,7 +13,6 @@ Item {
     property bool _searching: false
     property int _debounceTimer: 0
 
-    signal navigateTo(string type, string id, string title)
     signal openFullSearch()
     signal closeRequested()
 
@@ -169,7 +168,28 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
+                                onClicked: {
+                                    var nav = typeof navigationBridge !== "undefined" ? navigationBridge : null
+                                    if (nav) {
+                                        var type = modelData.type || ""
+                                        var id = modelData.id || ""
+                                        var title = modelData.title || ""
+                                        if (type === "track") {
+                                            if (root.bridge && typeof root.bridge.playTrack === "function") {
+                                                root.bridge.playTrack(id)
+                                            }
+                                        } else if (type === "album") {
+                                            nav.navigateWithParams("album", {albumId: id, title: title})
+                                        } else if (type === "artist") {
+                                            nav.navigateWithParams("artist", {artistId: id, title: title})
+                                        } else if (type === "playlist") {
+                                            nav.navigateWithParams("playlist", {playlistId: id, title: title})
+                                        } else {
+                                            nav.navigateWithParams(type, {id: id, title: title})
+                                        }
+                                    }
+                                    root.closeRequested()
+                                }
                             }
                         }
                     }

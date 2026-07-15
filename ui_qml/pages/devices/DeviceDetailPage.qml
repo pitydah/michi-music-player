@@ -219,6 +219,7 @@ Item {
             DeviceTransferPanel {
                 id: transferPanel
                 width: parent.width
+                bridge: root.devicesBridge
                 transferJobs: root.transferJobs
                 transferHistory: root.transferHistory
                 onCancelTransfer: root.cancelTransfer(jobId)

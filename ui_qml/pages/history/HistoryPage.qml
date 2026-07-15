@@ -149,8 +149,20 @@ Item {
 
     Component.onCompleted: root.refresh()
 
+    Loader {
+        anchors.fill: parent
+        active: !root.bridge
+        sourceComponent: UnavailableState {
+            title: "Historial no disponible"
+            message: "El servicio de historial no está disponible en este momento."
+            explanation: "History Bridge no está configurado o el módulo no está activo."
+            objectName: "history.unavailableState"
+        }
+    }
+
     FocusScope {
         id: focusScope
+        visible: !!root.bridge
         anchors.fill: parent
         objectName: "history.focusScope"
         activeFocusOnTab: true

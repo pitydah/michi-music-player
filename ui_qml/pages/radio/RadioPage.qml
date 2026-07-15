@@ -286,14 +286,14 @@ Item {
 
                 Loader {
                     width: parent.width
-                    height: active ? childrenRect.height : 0
+                    height: active ? parent.height : 0
                     active: !root.rd
 
-                    sourceComponent: EmptyState {
-                        iconText: "\uD83D\uDCFB"
+                    sourceComponent: UnavailableState {
                         title: "Radio no disponible"
-                        subtitle: "El servicio de radio no está disponible en este momento."
-                        width: parent.width
+                        message: "El servicio de radio no está disponible en este momento."
+                        explanation: "Radio Bridge no está configurado o el módulo no está activo."
+                        objectName: "radio.unavailableState"
                     }
                 }
 

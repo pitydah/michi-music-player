@@ -433,6 +433,7 @@ Item {
                     DeviceTransferPanel {
                         id: transferPanel
                         width: parent.width
+                        bridge: root.devicesBridge
                         transferJobs: root.devicesBridge ? root.devicesBridge.transferJobs : []
                         transferHistory: root.devicesBridge ? root.devicesBridge.transferHistory : []
                         visible: root.devicesBridge && root.devicesBridge.serverActive

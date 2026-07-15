@@ -22,8 +22,20 @@ Item {
             root.ha.refresh()
     }
 
+    Loader {
+        anchors.fill: parent
+        active: !root.ha
+        sourceComponent: UnavailableState {
+            title: "Home Audio no disponible"
+            message: "El servicio de audio en el hogar no está disponible en este momento."
+            explanation: "Home Audio Bridge no está configurado o el módulo no está activo."
+            objectName: "homeAudio.unavailableState"
+        }
+    }
+
     FocusScope {
         id: focusScope
+        visible: !!root.ha
         anchors.fill: parent
         objectName: "homeAudio.focusScope"
         activeFocusOnTab: true

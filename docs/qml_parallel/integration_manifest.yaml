@@ -135,6 +135,11 @@ modules:
       - audio_lab.jobs
       - audio_lab.profiles
     composition_change_required: true
+    service_construction_issues:
+      - "AudioProbeService() created ad-hoc in probeFile() fallback — should be DI"
+      - "AudioAnalysisService() created ad-hoc in analyzeFile() fallback — should be DI"
+      - "AudioIntegrityService() created ad-hoc in integrityCheck() fallback — should be DI"
+      - "AudioComparisonService() created ad-hoc in compareFiles() fallback — should be DI"
 
   - module: history
     bridge: HistoryBridge
@@ -196,6 +201,8 @@ modules:
       - library.folders
       - library.sources
     composition_change_required: true
+    service_construction_issues:
+      - "LibrarySourcesService(db=self._db) created ad-hoc in addFolder() — should be injected"
 
   - module: albums
     bridge: LibraryBridge
@@ -248,6 +255,8 @@ modules:
     new_routes:
       - library.sources
     composition_change_required: true
+    service_construction_issues:
+      - "LibrarySourcesService() created ad-hoc in __init__ fallback (service or LibrarySourcesService()) — should be injected"
 
   - module: command_palette
     bridge: CommandPaletteBridge
@@ -369,6 +378,19 @@ modules:
       - settings.audio
       - settings.about
     composition_change_required: true
+
+  - module: job
+    bridge: JobBridge
+    source: ui_qml_bridge/job_bridge.py
+    required_dependencies:
+      - worker_manager
+    context_name: jobBridge
+    models:
+      - JobListModel
+    new_routes: []
+    composition_change_required: false
+    service_construction_issues:
+      - "LibrarySourcesService(db=self._db) created ad-hoc in _scan_all_sources() — should be injected"
 
   - module: home
     bridge: HomeBridge

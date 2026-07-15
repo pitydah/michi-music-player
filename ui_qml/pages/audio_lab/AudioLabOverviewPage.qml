@@ -111,16 +111,7 @@ Item {
 
                     Repeater {
                         id: toolsRepeater
-                        model: ListModel {
-                            ListElement { toolId: "analysis"; label: "Análisis técnico"; desc: "Formato, codec, bitrate, calidad"; cardVariant: "accent"; toolState: "READY" }
-                            ListElement { toolId: "conversion"; label: "Conversión"; desc: "FLAC, MP3, AAC, Opus, WAV"; cardVariant: "accent"; toolState: "READY" }
-                            ListElement { toolId: "normalization"; label: "Normalización"; desc: "Loudness, pico, ganancia"; cardVariant: "base"; toolState: "READY" }
-                            ListElement { toolId: "replaygain"; label: "ReplayGain"; desc: "Etiquetas de ganancia"; cardVariant: "base"; toolState: "READY" }
-                            ListElement { toolId: "integrity"; label: "Integridad"; desc: "Cabeceras, corrupción, checksum"; cardVariant: "status"; toolState: "READY" }
-                            ListElement { toolId: "comparison"; label: "Comparación"; desc: "Diferencias entre variantes"; cardVariant: "status"; toolState: "READY" }
-                            ListElement { toolId: "jobs"; label: "Trabajos"; desc: "Cola y estado de procesos"; cardVariant: "base"; toolState: "READY" }
-                            ListElement { toolId: "profiles"; label: "Perfiles"; desc: "Presets de conversión"; cardVariant: "base"; toolState: "READY" }
-                        }
+                        model: root.alab && root.alab.tools ? root.alab.tools : []
 
                         delegate: GlassCard {
                             width: (parent.width - MichiTheme.spacing.md) / 2

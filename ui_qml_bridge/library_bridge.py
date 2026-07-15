@@ -696,6 +696,12 @@ class LibraryBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(str, result="QVariantList")
+    def splitPath(self, path: str):
+        if not path:
+            return []
+        return [p for p in path.split("/") if p]
+
     @Slot(str, result=dict)
     def addFolder(self, folder_path: str):
         if not folder_path:

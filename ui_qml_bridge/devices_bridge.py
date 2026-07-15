@@ -76,6 +76,12 @@ class DevicesBridge(QObject):
         self._bridge_available = True
         self._set_state()
 
+    @Slot(str, result=str)
+    def fileName(self, path: str) -> str:
+        if not path:
+            return ""
+        return Path(path).name
+
     def _set_state(self):
         if self._error:
             self.state = STATE_ERROR
