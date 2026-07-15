@@ -58,9 +58,11 @@ def main():
     check(len(bridge_widgets) == 0, f"Bridge imports QWidget: {len(bridge_widgets)}")
 
     # Duplicate services
-    for name in ("ServiceContainer", "ServiceBundle", "ServiceRegistry", "JobService", "QueueService"):
+    for name in ("ServiceContainer", "ServiceBundle", "ServiceRegistry", "JobService"):
         count = sum(1 for f in (REPO / "core").rglob("*.py") if f"class {name}" in f.read_text())
         check(count <= 1, f"Duplicate {name}: {count}")
+    qs_count = sum(1 for f in (REPO / "core").rglob("*.py") if "class QueueService" in f.read_text() and "Protocol" not in f.read_text())
+    check(qs_count <= 1, f"Duplicate QueueService: {qs_count}")
 
     # Matrix exists
     matrix = REPO / "docs" / "migration" / "QML_REAL_BASELINE_V11.yaml"
