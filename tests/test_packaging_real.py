@@ -107,8 +107,8 @@ class TestQmlApp:
 
     def test_qml_app_no_qtwidgets_import(self):
         text = (MICH_PACKAGE / "qml_app.py").read_text()
-        lines = [l for l in text.splitlines()
-                 if not l.strip().startswith('"""') and '"""' not in l.strip().strip('"')]
+        lines = [ln for ln in text.splitlines()
+                 if not ln.strip().startswith('"""') and '"""' not in ln.strip().strip('"')]
         forbidden_imports = ["from PySide6.QtWidgets", "import PySide6.QtWidgets",
                              "from ui.window", "from ui.dialogs", "from ui.pages"]
         for token in forbidden_imports:
@@ -132,8 +132,8 @@ class TestWidgetsApp:
 
     def test_widgets_app_no_qqml_engine(self):
         text = (MICH_PACKAGE / "widgets_app.py").read_text()
-        lines = [l for l in text.splitlines()
-                 if not l.strip().startswith('"""') and '"""' not in l.strip().strip('"')]
+        lines = [ln for ln in text.splitlines()
+                 if not ln.strip().startswith('"""') and '"""' not in ln.strip().strip('"')]
         for line in lines:
             assert "QQmlApplicationEngine" not in line
             assert "QQmlEngine" not in line
@@ -253,9 +253,10 @@ class TestMichiCoreNoUiDir:
                             violations.append(f"{rel}: from {node.module}")
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
-                        if alias.name == "ui" or alias.name.startswith("ui."):
+                        if alias.name in ("ui",) or alias.name.startswith("ui."):
                             if not alias.name.startswith("ui_qml"):
                                 violations.append(f"{rel}: import {alias.name}")
+
         assert len(violations) == 0, "New (undocumented) core imports ui/ (AST):\n" + "\n".join(violations)
 
 
