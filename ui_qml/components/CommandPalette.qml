@@ -8,9 +8,12 @@ Item {
 
     property var cpb: typeof commandPaletteBridge !== "undefined" ? commandPaletteBridge : null
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var capb: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property alias shortcut: paletteShortcut
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
 >>>>>>> Stashed changes
@@ -47,7 +50,10 @@ Item {
     function closePalette() {
         root.open = false
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
     property var capb: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property alias shortcut: paletteShortcut
@@ -83,6 +89,9 @@ Item {
 
     function closePalette() {
         root.open = false
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         root._selectedIndex = -1
         root._filterText = ""
@@ -149,6 +158,10 @@ Item {
             root._recentActions.pop()
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -163,11 +176,17 @@ Item {
             anchors.fill: parent
             onClicked: root.closePalette()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Accessible.name: "Cerrar paleta de comandos"
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }
@@ -175,9 +194,12 @@ Item {
     Rectangle {
         anchors.centerIn: parent
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         width: 480
         height: Math.min(420, parent.height * 0.7)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         width: 480; height: 400
 >>>>>>> Stashed changes
@@ -185,8 +207,11 @@ Item {
         color: MichiTheme.colors.surfacePopup
         border.color: MichiTheme.colors.borderCard
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         border.width: MichiTheme.borderWidth
 =======
+=======
+>>>>>>> Stashed changes
 =======
         width: 480
         height: Math.min(420, parent.height * 0.7)
@@ -195,6 +220,9 @@ Item {
         border.color: MichiTheme.colors.borderCard
         border.width: MichiTheme.borderWidth
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         z: 9999
 
@@ -204,6 +232,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Rectangle {
                 width: parent.width
                 height: 40
@@ -212,6 +241,8 @@ Item {
                 border.color: searchField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                 border.width: searchField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             TextField {
                 id: searchField
@@ -375,15 +406,21 @@ Item {
                 repeat: false
                 onTriggered: searchCommands(root._filterText)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             }
 
             ListView {
                 id: listView
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 width: parent.width
                 height: parent.height - searchField.height - MichiTheme.spacing.lg - sectionBar.height - MichiTheme.spacing.sm
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Layout.fillWidth: true; Layout.fillHeight: true
                 model: root._results
@@ -557,6 +594,9 @@ Item {
                         hoverEnabled: true
                         cursorShape: modelData._unavailable ? Qt.ArrowCursor : Qt.PointingHandCursor
                         onClicked: {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             if (!modelData._unavailable) {
                                 listView.currentIndex = index
@@ -601,6 +641,10 @@ Item {
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -670,10 +714,13 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     function getVisibleSections() {
         var sections = []
         var seen = {}
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Shortcut {
         sequence: "Escape"
@@ -887,6 +934,9 @@ Item {
             searchField.forceActiveFocus()
         }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 }

@@ -9,7 +9,10 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "mixGenerator.page"
 
@@ -63,12 +66,19 @@ Item {
     property string _errorMessage: ""
     property string _statusMessage: ""
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     signal backRequested()
     signal showResults(var songs, string mixType)
 
     objectName: "MixGeneratorPage"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -76,6 +86,7 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Generador de Mix"
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     function reset() {
         root._state = "IDLE"
@@ -86,6 +97,8 @@ Item {
         root._progressTotal = 0
     }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     FocusScope {
         id: focusScope
@@ -1411,6 +1424,9 @@ Item {
                 kind: "disconnected"
             }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }

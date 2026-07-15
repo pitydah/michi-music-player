@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test transfer: select → plan → start → progress → cancel."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test device transfer with cancel."""
 from __future__ import annotations
@@ -8,12 +11,16 @@ from __future__ import annotations
 =======
 """Test transfer: select → plan → start → progress → cancel."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 from core.device_sync_service import (
     DeviceSyncService,
@@ -24,6 +31,8 @@ from ui_qml_bridge.devices_bridge import DevicesBridge
 
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from core.device_sync_service import DeviceSyncService, SyncDirection, TransferStatus
 from ui_qml_bridge.devices_bridge import DevicesBridge
@@ -38,6 +47,9 @@ from ui_qml_bridge.devices_bridge import DevicesBridge
 
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 pytestmark = pytest.mark.isolation
 
@@ -50,6 +62,7 @@ def temp_music(tmp_path):
     (music / "track.mp3").write_bytes(b"\xff\xfb" + b"\x00" * 2000)
     (music / "track.ogg").write_bytes(b"OggS" + b"\x00" * 2000)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     (music / "track.wav").write_bytes(b"RIFF" + b"\x00" * 2000)
     (music / "video.mp4").write_bytes(b"\x00" * 200)
     sub = music / "sub"
@@ -59,33 +72,49 @@ def temp_music(tmp_path):
 <<<<<<< HEAD
     (music / "video.mp4").write_bytes(b"\x00" * 200)
 =======
+<<<<<<< HEAD
+    (music / "video.mp4").write_bytes(b"\x00" * 200)
+>>>>>>> Stashed changes
+=======
     (music / "track.wav").write_bytes(b"RIFF" + b"\x00" * 2000)
     (music / "video.mp4").write_bytes(b"\x00" * 200)
     sub = music / "sub"
     sub.mkdir()
     (sub / "deep.flac").write_bytes(b"fLaC" + b"\x00" * 2000)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return tmp_path
 
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 def dev_svc():
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def svc():
 =======
 def dev_svc():
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return DeviceSyncService()
 
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 def mock_sync_mgr():
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def bridge(svc):
 >>>>>>> Stashed changes
@@ -159,11 +188,15 @@ class TestTransferFlow:
         src = str(temp_music / "Music" / "track.flac")
         dst = str(temp_music / "dest.flac")
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         result = bridge.startTransfer(src, dst)
         assert result["ok"] is True
         assert Path(dst).exists()
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     def test_start_transfer_non_audio_rejected(self, bridge, temp_music):
         src = str(temp_music / "Music" / "video.mp4")
@@ -173,6 +206,8 @@ class TestTransferFlow:
 
     def test_transfer_progress_tracking(self, dev_svc, temp_music):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_transfer_updates_jobs(self, bridge, temp_music):
 >>>>>>> Stashed changes
@@ -228,6 +263,9 @@ class TestTransferFlow:
         assert result["ok"] is True
         assert dev_svc.get_job(job.job_id).status == TransferStatus.CANCELLED
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     def test_cancel_nonexistent(self, bridge):
@@ -235,8 +273,11 @@ class TestTransferFlow:
         assert result["ok"] is False
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_cancel_twice(self, dev_svc, temp_music):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_cancel_no_service(self):
         b = DevicesBridge()
@@ -383,4 +424,7 @@ class TestTransferFlow:
         result = bridge.startTransfer("/src/track.flac", "/dst/track.flac")
         assert result["ok"] is False
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

@@ -1,11 +1,17 @@
 import QtQuick
 import QtQuick.Controls
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Layouts
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../../theme"
 import "../../materials"
@@ -15,10 +21,13 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var action: null
 >>>>>>> Stashed changes
@@ -76,6 +85,9 @@ Item {
         Column {
             id: contentColumn
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
@@ -83,7 +95,10 @@ Item {
 
             Row {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 spacing: MichiTheme.spacing.sm
 >>>>>>> Stashed changes
@@ -244,6 +259,9 @@ Item {
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     objectName: "actionPreviewReject"
                     Accessible.name: "Cancelar"
@@ -251,6 +269,10 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.reject()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

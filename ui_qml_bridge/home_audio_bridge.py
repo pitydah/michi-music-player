@@ -1,4 +1,4 @@
-"""HomeAudioBridge — connects QML Home Audio page to real HomeAudio/Snapcast controllers.
+"""HomeAudioBridge  connects QML Home Audio page to real HomeAudio/Snapcast controllers.
 
 All network operations: async, timeout, retry, cancel, status, last contact,
 auth, disconnect, reconnect, capabilities, server handoff, playback transfer,
@@ -18,7 +18,6 @@ logger = logging.getLogger("michi.home_audio")
 _DEFAULT_TIMEOUT_MS = 8000
 _MAX_RETRIES = 2
 _RETRY_DELAY_MS = 1500
-
 
 class HomeAudioBridge(QObject):
     stateChanged = Signal()
@@ -43,7 +42,7 @@ class HomeAudioBridge(QObject):
         self._server_handoff_available = False
         self._offline = False
 
-    # ── Capabilities ──
+    #  Capabilities
 
     @Property(bool, constant=True)
     def homeAssistantAvailable(self):
@@ -78,7 +77,7 @@ class HomeAudioBridge(QObject):
     def serverHandoffAvailable(self):
         return self._server_handoff_available
 
-    # ── State properties ──
+    #  State properties
 
     @Property(str, notify=stateChanged)
     def homeAssistantState(self):
@@ -128,7 +127,7 @@ class HomeAudioBridge(QObject):
     def offline(self):
         return self._offline
 
-    # ── Async helpers ──
+    #  Async helpers
 
     def _cancel_retry(self):
         if self._retry_timer:
@@ -155,7 +154,7 @@ class HomeAudioBridge(QObject):
         else:
             self._retry_with_backoff(target_state)
 
-    # ── Actions ──
+    #  Actions
 
     @Slot(result=dict)
     def refresh(self):
@@ -312,10 +311,7 @@ class HomeAudioBridge(QObject):
         self._cancel_retry()
         return self.testHomeAssistant()
 
-<<<<<<< Updated upstream
-    # ── Group operations ──
-=======
-<<<<<<< HEAD
+    #  Group operations
     @Slot(result=dict)
     def serverHandoff(self):
         if not self._server_handoff_available:
@@ -332,7 +328,6 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
->>>>>>> Stashed changes
 
     @Slot(str, result=dict)
     def groupZones(self, zone_ids: str = ""):
@@ -341,14 +336,13 @@ class HomeAudioBridge(QObject):
         if not self._snapcast_ctrl:
             return {"ok": False, "error": "UNSUPPORTED"}
         try:
-<<<<<<< Updated upstream
             if hasattr(self._snapcast_ctrl, 'group'):
                 self._snapcast_ctrl.group(zone_ids)
-=======
             if self._snapcast_ctrl and hasattr(self._snapcast_ctrl, 'playback_transfer'):
                 self._snapcast_ctrl.playback_transfer(target_zone_id)
-=======
-    # ── Group operations ──
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    #  Group operations
 
     @Slot(str, result=dict)
     def groupZones(self, zone_ids: str = ""):
@@ -359,15 +353,12 @@ class HomeAudioBridge(QObject):
         try:
             if hasattr(self._snapcast_ctrl, 'group'):
                 self._snapcast_ctrl.group(zone_ids)
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 self.refresh()
                 return {"ok": True}
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-<<<<<<< Updated upstream
     @Slot(str, result=dict)
     def ungroupZone(self, zone_id: str = ""):
         if not zone_id:
@@ -413,7 +404,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Latency ──
+    #  Latency
 
     @Slot(str, int, result=dict)
     def setLatency(self, zone_id: str = "", latency_ms: int = 0):
@@ -430,7 +421,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Source management ──
+    #  Source management
 
     @Slot(str, result=dict)
     def setSource(self, source: str = ""):
@@ -455,7 +446,7 @@ class HomeAudioBridge(QObject):
     def syncStatus(self):
         return {}
 
-    # ── Transfer playback ──
+    #  Transfer playback
 
     @Slot(str, str, result=dict)
     def transferPlayback(self, from_zone: str = "", to_zone: str = ""):
@@ -472,11 +463,9 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Handoff ──
+    #  Handoff
 
     @Slot(result=dict)
-=======
-<<<<<<< HEAD
     @Slot(result=dict)
     def recoverFromOffline(self):
         self._offline = False
@@ -486,7 +475,6 @@ class HomeAudioBridge(QObject):
     @Slot(result=dict)
     def getLatencyReport(self):
         return {"ok": True, "latency_ms": self._latency_ms, "offline": self._offline}
-=======
     @Slot(str, result=dict)
     def ungroupZone(self, zone_id: str = ""):
         if not zone_id:
@@ -532,7 +520,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Latency ──
+    #  Latency
 
     @Slot(str, int, result=dict)
     def setLatency(self, zone_id: str = "", latency_ms: int = 0):
@@ -549,7 +537,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Source management ──
+    #  Source management
 
     @Slot(str, result=dict)
     def setSource(self, source: str = ""):
@@ -574,7 +562,7 @@ class HomeAudioBridge(QObject):
     def syncStatus(self):
         return {}
 
-    # ── Transfer playback ──
+    #  Transfer playback
 
     @Slot(str, str, result=dict)
     def transferPlayback(self, from_zone: str = "", to_zone: str = ""):
@@ -591,10 +579,9 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    # ── Handoff ──
+    #  Handoff
 
     @Slot(result=dict)
->>>>>>> Stashed changes
     def handoffToServer(self):
         if not self._ha_ctrl:
             return {"ok": False, "error": "UNSUPPORTED"}
@@ -606,7 +593,3 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

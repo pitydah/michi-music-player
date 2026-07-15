@@ -1,9 +1,12 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test keyboard navigation patterns for connections."""
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for keyboard navigation in connection components."""
 >>>>>>> Stashed changes
@@ -134,6 +137,9 @@ class TestKeyboardAccessible:
         result = bridge.forgetServer()
         assert result["ok"] is True
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_reconnect_accessible(self, bridge):
         result = bridge.reconnect()
@@ -156,6 +162,10 @@ class TestKeyboardAccessible:
         bridge.refresh()
         assert bridge.microServerState != "error"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

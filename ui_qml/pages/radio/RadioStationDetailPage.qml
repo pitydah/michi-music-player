@@ -9,9 +9,12 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
 >>>>>>> Stashed changes
@@ -61,6 +64,9 @@ Item {
 
     implicitHeight: detailColumn.height + MichiTheme.spacing.xl * 2
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     objectName: "radioStationDetailPage"
 
@@ -91,6 +97,10 @@ Item {
         root.play()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -99,6 +109,7 @@ Item {
         width: parent.width
         height: root.implicitHeight
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         title: ""
         subtitle: ""
 
@@ -106,6 +117,8 @@ Item {
             id: detailColumn
             width: parent.width
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         objectName: "radioStationDetailPage.card"
 
@@ -119,6 +132,9 @@ Item {
             id: detailColumn
             width: parent.width
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
@@ -126,8 +142,11 @@ Item {
             Row {
                 width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 spacing: MichiTheme.spacing.md
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 spacing: MichiTheme.spacing.sm
                 objectName: "radioStationDetailPage.headerRow"
@@ -212,17 +231,23 @@ Item {
                         elide: Text.ElideRight
                         width: parent.parent.width - 80
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     }
                 }
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Rectangle {
                 width: parent.width
                 height: 1
                 color: MichiTheme.colors.borderSubtle
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Text {
                 text: stationData ? (stationData.genre || "") : ""
@@ -417,6 +442,9 @@ Item {
                             default: return ""
                         }
                     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     color: {
                         switch (root._state) {
@@ -492,6 +520,10 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -501,8 +533,11 @@ Item {
                     text: root._isFav ? "\u2605" : "\u2606"
                     variant: "ghost"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     objectName: "toggleFavBtn"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                     onClicked: {
@@ -649,6 +684,9 @@ Item {
                     Keys.onReturnPressed: onClicked()
                 }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 MichiButton {
                     text: "Reintentar"
@@ -660,6 +698,10 @@ Item {
                     onClicked: root.retry()
                     Keys.onReturnPressed: root.retry()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -247,7 +247,7 @@ class PlaybackController:
         self._win._ctx.set_window_title("Michi Music Player")
 
     def open_eq(self):
-        from ui.eq_panel import EqDialog
+        from legacy_widgets.ui.eq_panel import EqDialog
         dlg = EqDialog(self._win)
         # Load current EQ state from engine
         engine = self._win._ctx.player

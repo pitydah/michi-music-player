@@ -27,14 +27,20 @@ Item {
     property string _errorMsg: ""
     property string _state: "LOADING"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var _selectedTracks: []
     property bool _selectionMode: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
     property var _selectedTracks: []
     property bool _selectionMode: false
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     signal backRequested()
@@ -44,10 +50,13 @@ Item {
         root.playlistTitle = title
         root._confirmDelete = false
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         root._selectedTracks = []
         root._selectionMode = false
         root._state = "LOADING"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         root._state = "LOADING"
         root._errorMsg = ""
@@ -65,6 +74,9 @@ Item {
         root._selectedTracks = []
         root._selectionMode = false
         root._state = "LOADING"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         root.refresh()
     }
@@ -109,6 +121,10 @@ Item {
                 if (root.tracks[j].track_id === tid) {
                     root.tracks.splice(j, 1)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -116,6 +132,7 @@ Item {
                 }
             }
         }
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         root._selectedTracks = []
         root._selectionMode = false
@@ -133,6 +150,8 @@ Item {
                 return
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         if (plData) {
             root.playlistDescription = plData.description || ""
@@ -311,6 +330,9 @@ Item {
     Component.onCompleted: {
         if (root.playlistId >= 0) root.refresh()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
@@ -321,10 +343,13 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         activeFocusOnTab: true
         objectName: "playlistDetailFlickable"
         Accessible.name: "Detalle de playlist"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         focus: true
         objectName: "playlist.detail.flickable"
@@ -333,6 +358,9 @@ Item {
         objectName: "playlistDetailFlickable"
         Accessible.name: "Detalle de playlist"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         Column {
@@ -343,8 +371,11 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 width: parent.width
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 objectName: "playlist.detail.header"
 >>>>>>> Stashed changes
@@ -363,9 +394,12 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 Item { Layout.fillWidth: true; height: 1; width: 1 }
 
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 width: parent.width
 
@@ -385,6 +419,9 @@ Item {
                 Item { Layout.fillWidth: true; height: 1; width: 1 }
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 Text {
                     text: root.playlistTitle
@@ -393,7 +430,10 @@ Item {
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     Accessible.role: Accessible.Heading
 >>>>>>> Stashed changes
@@ -489,6 +529,9 @@ Item {
                 }
             }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             LoadingState {
                 width: parent.width
@@ -522,6 +565,10 @@ Item {
                 Accessible.name: "Error al cargar playlist"
                 onRetryRequested: root.refresh()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -530,8 +577,11 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 visible: root._state === "READY"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 objectName: "playlist.detail.toolbar"
 
@@ -758,6 +808,9 @@ Item {
                     id: deleteBtn
                     text: root._confirmDelete ? "Confirmar eliminar" : "Eliminar playlist"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     variant: root._confirmDelete ? "danger" : "ghost"
                     objectName: "deletePlaylistButton"
@@ -768,9 +821,12 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         if (!root._confirmDelete) root._confirmDelete = true
                         else { root.deletePlaylist(); root._confirmDelete = false }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         if (!root._confirmDelete) { root._confirmDelete = true }
                         else { root.deletePlaylist() }
@@ -778,6 +834,9 @@ Item {
                         if (!root._confirmDelete) root._confirmDelete = true
                         else { root.deletePlaylist(); root._confirmDelete = false }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     }
                     objectName: "playlist.detail.delete"
@@ -788,11 +847,17 @@ Item {
                 }
                 MichiButton {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     id: cancelDeleteBtn
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     text: "Cancelar"
                     variant: "ghost"
@@ -836,11 +901,14 @@ Item {
                 id: trackListRef
                 width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 height: Math.min(600, root.tracks.length * 44 + 30)
                 bridge: root.bridge
                 playlistId: root.playlistId
                 tracks: root.tracks
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 height: 400
                 visible: root._state === "READY"
@@ -884,6 +952,9 @@ Item {
                 bridge: root.bridge
                 playlistId: root.playlistId
                 tracks: root.tracks
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 selectionMode: root._selectionMode
                 selectedTracks: root._selectedTracks
@@ -898,6 +969,10 @@ Item {
                 onOpenAlbumRequested: function(track) { root.openTrackAlbum(track) }
                 onOpenArtistRequested: function(track) { root.openTrackArtist(track) }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -911,12 +986,18 @@ Item {
                 wrapMode: Text.WordWrap
                 width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 Accessible.name: root._errorMsg
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
                 Accessible.name: root._errorMsg
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             }
 
@@ -925,7 +1006,10 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     PlaylistEditorDialog {
         id: editorDialog
@@ -937,6 +1021,9 @@ Item {
         onSaved: {
             root.playlistTitle = editorDialog.playlistName
             root.playlistDescription = editorDialog.playlistDescription
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     Dialog {
@@ -978,6 +1065,10 @@ Item {
             root.renamePlaylist(name)
             root._errorMsg = ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -992,6 +1083,12 @@ Item {
         playlistId: root.playlistId
         playlistName: root.playlistTitle
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+        objectName: "playlist.detail.exportDialog"
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
         objectName: "playlist.detail.exportDialog"
@@ -1006,6 +1103,10 @@ Item {
         else if (exportDialog.opened) exportDialog.close()
         else root.backRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

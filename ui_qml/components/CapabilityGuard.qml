@@ -1,7 +1,10 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 >>>>>>> Stashed changes
@@ -132,6 +135,9 @@ Item {
     Item {
         id: availableHost
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         visible: root.available && !root.degraded && !root.checking && !root.deferredPhysical
     }
@@ -196,6 +202,10 @@ Item {
             iconText: "\u26A0"
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

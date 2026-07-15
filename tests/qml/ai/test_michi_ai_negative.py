@@ -1,12 +1,18 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test Michi AI negative scenarios: missing service, execution failure, rejected action, cancellation."""
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 """Test Michi AI negative scenarios: missing service, execution failure, rejected action, cancellation."""
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from __future__ import annotations
 
@@ -15,11 +21,14 @@ from unittest.mock import MagicMock
 import pytest
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
 >>>>>>> Stashed changes
@@ -283,6 +292,9 @@ class TestMichiAINegative:
         result = b._action_create_playlist({"_original": "crear playlist"})
         assert result["ok"] is False
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_add_songs_with_no_id_fails(self):
         b = MichiAIBridge()
@@ -324,6 +336,10 @@ class TestMichiAINegative:
         assert b._pending_action is None
         assert b._last_error == ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

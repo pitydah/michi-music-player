@@ -7,7 +7,11 @@ import "../../components"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "settingsAppearancePage"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -133,6 +137,142 @@ Item {
                                         }
                                     }
                                 }
+<<<<<<< Updated upstream
+=======
+
+                                Keys.onReturnPressed: {
+                                    if (root.bridge) root.bridge.accentColor = modelData
+                                }
+                                Keys.onSpacePressed: {
+                                    if (root.bridge) root.bridge.accentColor = modelData
+                                }
+                                focus: true
+                                activeFocusOnTab: true
+=======
+    objectName: "settingsAppearancePage"
+
+    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var themeBridge: typeof themeBridge !== "undefined" ? themeBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+
+    property int pageState: AsyncStateView.READY
+    property string errorMessage: ""
+    property string errorDetails: ""
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ajustes de apariencia"
+
+    function refresh() {
+        if (pageState === AsyncStateView.ERROR) return
+    }
+
+    function _loadValue(key, fallback) {
+        if (!root.bridge) return fallback
+        var v = root.bridge.getValue(key)
+        return v !== null && v !== undefined ? v : fallback
+    }
+
+    function _saveValue(key, value) {
+        if (!root.bridge) return
+        root.bridge.setValue(key, value)
+        if (root.themeBridge && typeof root.themeBridge.applySetting === "function")
+            root.themeBridge.applySetting(key, value)
+    }
+
+    Component.onCompleted: root.refresh()
+
+    AsyncStateView {
+        id: stateView
+        anchors.fill: parent
+        state: root.pageState
+        title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
+        message: root.errorMessage
+        details: root.errorDetails
+        retryAvailable: root.pageState === AsyncStateView.ERROR
+        onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
+
+        readyContent: ScrollView {
+            id: scrollView
+            anchors.fill: parent
+            clip: true
+            objectName: "settings.appearance.scrollView"
+            Accessible.role: Accessible.ScrollArea
+            Accessible.name: "Ajustes de apariencia"
+
+            ColumnLayout {
+                width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
+                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
+                spacing: MichiTheme.spacing.lg
+                topPadding: MichiTheme.spacing.xl
+                bottomPadding: MichiTheme.spacing.xl
+
+                PageHeader {
+                    title: "Apariencia"
+                    subtitle: "Tema, colores y disposición visual"
+                }
+
+                GlassCard {
+                    id: colorsCard
+                    Layout.fillWidth: true
+                    title: "Colores"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.md
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: "Color de acento"
+                                    color: MichiTheme.colors.textPrimary
+                                    font.pixelSize: MichiTheme.typography.bodySize
+                                }
+                                Label {
+                                    text: "Color principal para elementos interactivos"
+                                    color: MichiTheme.colors.textMuted
+                                    font.pixelSize: MichiTheme.typography.captionSize
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: MichiTheme.spacing.sm
+
+                                Repeater {
+                                    model: [
+                                        { color: "#8FB7FF", name: "Azul" },
+                                        { color: "#A78BFA", name: "Morado" },
+                                        { color: "#FF7A00", name: "Naranja" },
+                                        { color: "#4ADE80", name: "Verde" },
+                                        { color: "#F87171", name: "Rojo" },
+                                        { color: "#F0F2F8", name: "Blanco" }
+                                    ]
+
+                                    Rectangle {
+                                        width: 32
+                                        height: 32
+                                        radius: width / 2
+                                        color: modelData.color
+                                        border.width: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? 3 : 1
+                                        border.color: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? MichiTheme.colors.textPrimary : MichiTheme.colors.borderCard
+
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: "Color de acento " + modelData.name
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root._saveValue("appearance/accent_color", modelData.color)
+                                        }
+                                    }
+                                }
+>>>>>>> Stashed changes
                             }
                         }
                     }
@@ -166,6 +306,7 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                             }
 
@@ -350,6 +491,8 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
+=======
+>>>>>>> Stashed changes
                             }
 
                             MichiSlider {
@@ -446,6 +589,9 @@ Item {
                             }
                         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
@@ -515,6 +661,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -523,12 +673,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: menuCard
                     Layout.fillWidth: true
                     title: "Barra de menú"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -567,7 +720,10 @@ Item {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 GlassCard {
                     id: menuCard
@@ -606,12 +762,19 @@ Item {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

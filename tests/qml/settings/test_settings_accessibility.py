@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for SettingsAccessibilityPage — mono, balance, font scale, announcements."""
 from pathlib import Path
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from __future__ import annotations
 
@@ -27,6 +30,9 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
@@ -72,6 +78,10 @@ class FakeSettingsBridgeV2(QObject):
     def refresh(self):
         self.dataChanged.emit()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -80,8 +90,11 @@ class FakeSettingsBridgeV2(QObject):
 @pytest.fixture
 def engine(qapp):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     return QQmlEngine(qapp)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
@@ -248,6 +261,9 @@ class TestSettingsAccessibilityPage:
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None or True
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_playback_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
@@ -272,6 +288,10 @@ class TestSettingsAccessibilityPage:
             obj = comp.create()
             assert obj.metaObject().indexOfSignal("closeRequested()") >= 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

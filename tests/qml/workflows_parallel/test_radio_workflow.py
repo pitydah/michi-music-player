@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: select station, play, metadata, reconnect, stop."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: select station → play → reconnect → stop."""
 =======
 """Full workflow: select station, play, metadata, reconnect, stop."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
@@ -19,7 +25,10 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_stations():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     stations = []
     for i, (name, url, codec, country, fav) in enumerate([
@@ -37,6 +46,9 @@ def mock_stations():
         s.bitrate = 128 + i * 64
         stations.append(s)
     return stations
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     s1 = MagicMock()
@@ -59,6 +71,10 @@ def mock_stations():
     s2.bitrate = 256
     return [s1, s2]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -71,10 +87,13 @@ def mock_radio_mgr(mock_stations):
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     mgr.remove_station.return_value = True
     mgr.get_metadata.return_value = {
         "ok": True, "title": "Take Five", "artist": "Dave Brubeck"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     mgr.get_metadata.return_value = {
         "ok": True, "title": "Song Title", "artist": "Artist Name"
@@ -83,6 +102,9 @@ def mock_radio_mgr(mock_stations):
     mgr.get_metadata.return_value = {
         "ok": True, "title": "Take Five", "artist": "Dave Brubeck"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
     return mgr
@@ -97,10 +119,13 @@ def mock_player():
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestFullRadioWorkflow:
     def test_select_station_and_play(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 @pytest.fixture
 def bridge(mock_radio_mgr, mock_player):
@@ -209,6 +234,9 @@ class TestFullRadioWorkflow:
         bridge.playStation("http://jazz.stream", "Jazz FM")
         bridge.stopStream()
         bridge.playStation("http://rock.stream", "Rock FM")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert mock_player.play_url.call_count >= 2
 
@@ -252,6 +280,10 @@ class TestFullRadioWorkflow:
         assert not result["ok"]
         assert result["error"] == "NO_PLAYER"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

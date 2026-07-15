@@ -10,10 +10,13 @@ Dialog {
 
     property var bridge: null
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property int _retentionDays: 365
     property int _maxEntries: 0
     property bool _autoClean: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property int retentionDays: 365
     property int maxEntries: 10000
@@ -23,6 +26,9 @@ Dialog {
     property int _maxEntries: 0
     property bool _autoClean: false
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     property bool _applying: false
     property int _currentCount: 0
@@ -37,9 +43,12 @@ Dialog {
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     width: 380
     objectName: "historyRetentionDialog"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "history.retentionDialog"
     closePolicy: Dialog.CloseOnEscape
@@ -180,6 +189,9 @@ Dialog {
             }
         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         RowLayout {
             Layout.fillWidth: true
@@ -198,6 +210,10 @@ Dialog {
                 Accessible.name: "Máximo de entradas"
                 onValueChanged: root._maxEntries = value
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -240,6 +256,7 @@ Dialog {
             }
 
             Text {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                 text: "(0 = sin límite)"
                 color: MichiTheme.colors.textMuted
@@ -309,6 +326,8 @@ Dialog {
                 Keys.onSpacePressed: onClicked()
                 onClicked: { root.reject(); root.close() }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 text: "Los registros anteriores a " + root.retentionDays + " días serán eliminados permanentemente."
                 color: MichiTheme.colors.textMuted
@@ -491,6 +510,9 @@ Dialog {
         }
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     onOpened: {
         root.loadSettings()
@@ -499,6 +521,10 @@ Dialog {
 
     onClosed: {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

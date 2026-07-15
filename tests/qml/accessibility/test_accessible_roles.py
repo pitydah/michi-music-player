@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test buttons have Button role, etc.
 
@@ -13,6 +16,9 @@ Verifies Accessible.role conventions across all pages:
 =======
 from __future__ import annotations
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 from pathlib import Path
@@ -21,9 +27,12 @@ import pytest
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 PAGE_PATHS = [
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 PAGES = [
     "pages/devices/DevicesPage.qml",
@@ -224,4 +233,7 @@ class TestAccessibleRoles:
         content = qml_path.read_text()
         assert "Accessible." in content, f"{page_path} has no Accessible roles"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

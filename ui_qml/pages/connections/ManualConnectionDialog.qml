@@ -1,21 +1,30 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 import QtQuick.Layouts
 =======
 import QtQuick.Controls as QQC2
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
 import "../../materials"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 Item {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 Popup {
 >>>>>>> Stashed changes
@@ -539,6 +548,9 @@ Item {
             active: root.visible
             focusItem: hostField
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }

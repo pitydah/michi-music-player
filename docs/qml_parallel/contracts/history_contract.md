@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # HistoryBridge Integration Contract
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 # History Bridge Contract
 >>>>>>> Stashed changes
@@ -133,6 +136,9 @@ All slots return `dict` with `ok: bool`.
 ## Cancellation Contract
 - `cancelExport(export_id, filepath)`: removes the export file from disk if `filepath` provided and exists. Returns `cancelled: true`.
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED.
@@ -152,6 +158,10 @@ NOT IMPLEMENTED.
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

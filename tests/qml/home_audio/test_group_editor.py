@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test group creation/editing through HomeAudioBridge."""
 from unittest.mock import MagicMock, PropertyMock
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test GroupEditorPage selections, create group logic, accessibility."""
 from pathlib import Path
@@ -22,11 +25,15 @@ from unittest.mock import MagicMock, PropertyMock
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 def mock_ha():
     ha = MagicMock()
@@ -43,6 +50,8 @@ def mock_ha():
     ha.unjoin = MagicMock()
     return ha
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def engine(qapp):
     e = QQmlEngine(qapp)
@@ -253,6 +262,9 @@ class TestGroupNoController:
         assert result["ok"] is False
 
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 class TestGroupsProperty:
     def test_groups_populated(self, bridge):
@@ -268,6 +280,10 @@ class TestGroupsProperty:
         if bridge.zones:
             assert len(bridge.groups) == len(bridge.zones)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

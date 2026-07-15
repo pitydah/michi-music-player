@@ -86,7 +86,7 @@ class FileActions:
 
     def open_files(self, all_exts: frozenset):
         from PySide6.QtWidgets import QFileDialog
-        from ui.toast_notification import ToastNotification
+        from legacy_widgets.ui.toast_notification import ToastNotification
         exts = " ".join(f"*{e}" for e in sorted(all_exts))
         files, _ = QFileDialog.getOpenFileNames(
             self._win, "Abrir archivos", os.path.expanduser("~"),
@@ -118,7 +118,7 @@ class FileActions:
             for fp in filepaths:
                 self._db.add_to_playlist(pid, fp)
             self._rebuild_sidebar()
-            from ui.toast_notification import ToastNotification
+            from legacy_widgets.ui.toast_notification import ToastNotification
             ToastNotification.success(
                 f"Playlist \"{name}\" creada con {len(filepaths)} canciones", self._win)
 
@@ -155,8 +155,8 @@ class FileActions:
     def scan_path(self, path: str):
         from PySide6.QtCore import QThread
         from library.indexer import Indexer
-        from ui.loading_overlay import LoadingOverlay
-        from ui.toast_notification import ToastNotification
+        from legacy_widgets.ui.loading_overlay import LoadingOverlay
+        from legacy_widgets.ui.toast_notification import ToastNotification
 
         worker = Indexer.from_db_path(self._db_path, path)
         thread = QThread()

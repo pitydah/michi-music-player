@@ -21,16 +21,22 @@ Item {
     signal moveUpRequested(int index)
     signal moveDownRequested(int index)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     signal toggleSelection(int trackId)
     signal openAlbumRequested(var track)
     signal openArtistRequested(var track)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
     signal toggleSelection(int trackId)
     signal openAlbumRequested(var track)
     signal openArtistRequested(var track)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     signal selectionChanged()
 
@@ -73,9 +79,12 @@ Item {
 
         Row {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             spacing: MichiTheme.spacing.sm
             visible: root.tracks.length > 0
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             width: parent.width
             spacing: MichiTheme.spacing.sm
@@ -84,6 +93,9 @@ Item {
             spacing: MichiTheme.spacing.sm
             visible: root.tracks.length > 0
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
             Text {
@@ -94,6 +106,7 @@ Item {
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Text {
                 text: root._getMissingCount() > 0 ? "(" + root._getMissingCount() + " faltantes)" : ""
                 color: MichiTheme.colors.warning
@@ -101,6 +114,8 @@ Item {
                 visible: root._getMissingCount() > 0
                 anchors.verticalCenter: parent.verticalCenter
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Item { width: 1; height: 1; Layout.fillWidth: true }
 
@@ -124,8 +139,11 @@ Item {
                 if (root.tracks[i].missing) count++
             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             return count
 =======
+=======
+>>>>>>> Stashed changes
 =======
             Text {
                 text: root._getMissingCount() > 0 ? "(" + root._getMissingCount() + " faltantes)" : ""
@@ -143,6 +161,9 @@ Item {
             }
             return count
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
 
@@ -150,8 +171,11 @@ Item {
             id: trackList
             width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             height: parent.height - 30
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             height: parent.height - 40
 >>>>>>> Stashed changes
@@ -193,6 +217,9 @@ Item {
                        ? MichiTheme.colors.accentFaint
                        : mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 radius: MichiTheme.radiusSm
 
@@ -204,13 +231,19 @@ Item {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.sm
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     spacing: MichiTheme.spacing.sm
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     spacing: MichiTheme.spacing.xs
 =======
                     spacing: MichiTheme.spacing.sm
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                     CheckBox {
@@ -218,11 +251,14 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: root.selectionMode
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         checked: root.selectedTracks.indexOf(modelData.track_id || 0) >= 0
                         objectName: "trackCheckbox_" + index
                         Accessible.name: "Seleccionar " + (modelData.title || "")
                         onCheckedChanged: root.toggleSelection(modelData.track_id || 0)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         checked: root._selectedTracks.indexOf(index) >= 0
                         onCheckedChanged: root.toggleSelection(index)
@@ -252,6 +288,9 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: modelData.missing ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightMedium
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         elide: Text.ElideRight
                         anchors.verticalCenter: parent.verticalCenter
@@ -273,6 +312,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                         width: 40
                         text: modelData.missing ? "FALTANTE" : ""
@@ -299,6 +339,8 @@ Item {
                         width: 16
                         text: "↑"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         width: 36
                         text: modelData.duration ? Math.floor(modelData.duration / 60) + ":" + (modelData.duration % 60).toString().padStart(2, "0") : ""
@@ -346,6 +388,25 @@ Item {
                         font.weight: MichiTheme.typography.weightBold
                         anchors.verticalCenter: parent.verticalCenter
                         visible: modelData.missing
+<<<<<<< Updated upstream
+=======
+                    }
+                    Text {
+                        width: 24
+                        text: "▶"
+                        color: MichiTheme.colors.accent
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        anchors.verticalCenter: parent.verticalCenter
+>>>>>>> origin/michi-qml-functional-wave
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.playRequested(index)
+                        }
+<<<<<<< HEAD
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Reproducir"
+>>>>>>> Stashed changes
                     }
                     Text {
                         width: 24
@@ -417,6 +478,9 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             onClicked: {
                                 var tid = modelData.track_id || 0
@@ -433,6 +497,12 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                    acceptedButtons: Qt.NoButton
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
                     acceptedButtons: Qt.NoButton
@@ -492,6 +562,10 @@ Item {
                         }
                     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test Connection detail page behavior with mock connection."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for ConnectionDetailPage QML component."""
 >>>>>>> Stashed changes
@@ -223,6 +226,9 @@ class TestDetailActions:
         result = bridge.refresh()
         assert result["ok"] is True
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_scan_populates_discovered(self, bridge):
         bridge.scanForServers()
@@ -244,6 +250,10 @@ class TestDetailNoController:
         result = b.reconnect()
         assert result["ok"] is False
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

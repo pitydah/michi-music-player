@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # PlaylistsBridge Integration Contract
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 # Playlists Bridge Contract
 >>>>>>> Stashed changes
@@ -164,6 +167,9 @@ None.
 ## Cancellation Contract
 - `cancelPlaylistImport(import_id)`: delegates to `_svc.import_cancel(import_id)` if available. Returns `{ok: true}` as no-op fallback.
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED.
@@ -183,6 +189,10 @@ NOT IMPLEMENTED.
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

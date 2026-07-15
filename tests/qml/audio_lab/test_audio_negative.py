@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Negative tests for Audio Lab: missing service, invalid format, conversion failure, cancellation."""
 from __future__ import annotations
 
@@ -7,6 +8,8 @@ import tempfile
 import time
 from unittest.mock import MagicMock
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Negative tests: bridge null, empty states, error states across Audio Lab pages."""
 from pathlib import Path
@@ -227,6 +230,9 @@ class TestAudioNegative:
             if os.path.exists(existing):
                 os.unlink(existing)
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_preview_missing_source(self):
         from ui_qml_bridge.conversion_bridge import ConversionBridge
@@ -260,6 +266,10 @@ class TestAudioNegative:
     def test_bridge_status_badge_on_null(self):
         assert True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,6 +1,10 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -189,7 +193,10 @@ Rectangle {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 import QtQuick.Controls as QQC2
 import "../theme"
@@ -376,6 +383,9 @@ Rectangle {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Timer {
@@ -433,6 +443,10 @@ Rectangle {
     Keys.onEscapePressed: root.dismissItem()
     focus: true
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

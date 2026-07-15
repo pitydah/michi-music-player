@@ -17,7 +17,10 @@ Item {
     property var deviceSyncService: typeof window !== "undefined" && window.deviceSyncService ? window.deviceSyncService : null
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     readonly property bool bridgeAvailable: root.devicesBridge !== null
 
@@ -28,6 +31,9 @@ Item {
     Accessible.name: "Dispositivos y sincronización"
     Accessible.description: "Gestión de dispositivos y sincronización de música"
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     PageStateManager {
         id: pageState
@@ -36,6 +42,10 @@ Item {
         onScrollYChanged: pageState.save()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -47,9 +57,12 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     CapabilityGuard {
         id: deviceGuard
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Loader {
         id: stateLoader
@@ -101,6 +114,7 @@ Item {
                         else syncStatus.onStartServer()
                     }
                 }
+<<<<<<< Updated upstream
 
                 SectionHeader {
                     id: pairedHeader
@@ -191,6 +205,8 @@ Item {
                     Accessible.name: "Cola de transferencia"
                     activeFocusOnTab: true
                 }
+=======
+>>>>>>> Stashed changes
 =======
     CapabilityGuard {
         id: deviceGuard

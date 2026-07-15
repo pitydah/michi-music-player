@@ -38,9 +38,12 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     CapabilityGuard {
         id: connectionGuard
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     AsyncStateView {
 >>>>>>> Stashed changes
@@ -332,6 +335,9 @@ Item {
                     Keys.onSpacePressed: onServerSelected(0)
                 }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 HomeAudioAccess {
                     id: homeAudioAccess
@@ -346,6 +352,10 @@ Item {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

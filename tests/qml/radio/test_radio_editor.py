@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test RadioBridge add/edit station operations."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test RadioEditorDialog and RadioImportDialog logic for station management."""
 =======
 """Test RadioBridge add/edit station operations."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
@@ -13,6 +19,7 @@ import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
 @pytest.fixture
@@ -27,6 +34,8 @@ def mock_stations():
     s1.favorite = True
     return [s1]
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("radio"),
               pytest.mark.qml_dimension("editor")]
@@ -66,6 +75,9 @@ def mock_radio_mgr(mock_stations):
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return mgr
 
@@ -73,10 +85,13 @@ def mock_radio_mgr(mock_stations):
 @pytest.fixture
 def mock_player():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     player = MagicMock()
     player.play_url.return_value = True
     return player
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     return MagicMock()
 >>>>>>> Stashed changes
@@ -110,16 +125,22 @@ class TestAddStation:
     def test_add_station_empty_url_returns_error(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         result = bridge.addStation("Test", "", "MP3", "")
         assert not result["ok"]
         assert result["error"] == "EMPTY_URL"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_add_station_without_manager(self):
         bridge = RadioBridge(radio_manager=None, player_service=None)
         result = bridge.addStation("Test", "http://test.stream", "MP3", "")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_add_station_no_manager(self):
         b = RadioBridge(radio_manager=None, player_service=MagicMock())
@@ -320,6 +341,9 @@ class TestToggleFavorite:
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.toggleFavorite(1)
         assert result["ok"]
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert result["favorite"] is True
 
@@ -343,6 +367,10 @@ class TestToggleFavorite:
         assert not result["ok"]
         assert result["error"] == "NOT_IMPLEMENTED"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

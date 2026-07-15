@@ -1,10 +1,16 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../theme"
 
@@ -12,10 +18,13 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property real progress: 0
     property real from: 0
     property real to: 100
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property real progress: 0.0
     property bool indeterminate: false
@@ -136,16 +145,22 @@ Item {
             font.pixelSize: MichiTheme.typography.captionSize
             horizontalAlignment: Text.AlignHCenter
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
 
         MichiButton {
             anchors.horizontalCenter: parent.horizontalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             text: root.cancelText || "Cancelar"
             variant: "ghost"
             visible: root.showCancel
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             text: root.cancelText
             variant: "ghost"
@@ -155,6 +170,9 @@ Item {
             variant: "ghost"
             visible: root.showCancel
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             onClicked: root.cancelRequested()
         }

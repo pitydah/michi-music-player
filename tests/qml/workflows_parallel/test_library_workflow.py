@@ -1,8 +1,11 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Workflow: Browse albums → select → context menu → play — 8+ tests."""
 from __future__ import annotations
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: Search -> select -> context menu -> play -> queue update."""
 from __future__ import annotations
@@ -14,15 +17,21 @@ from pathlib import Path
 from __future__ import annotations
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from ui_qml_bridge.selection_controller import SelectionController
 from ui_qml_bridge.action_registry import ActionRegistry
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from ui_qml_bridge.library_bridge import LibraryBridge
 from ui_qml_bridge.selection_controller import SelectionController
@@ -32,15 +41,21 @@ pytestmark = [pytest.mark.qml_module("library"), pytest.mark.qml_workflow("libra
 from ui_qml_bridge.selection_controller import SelectionController
 from ui_qml_bridge.action_registry import ActionRegistry
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 
 class TestLibraryWorkflow:
     @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def registry(self):
         return ActionRegistry()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def tmp_songs(self):
         files = []
@@ -247,6 +262,9 @@ class TestLibraryWorkflow:
         nav.navigateWithParams("library.album_detail", {"album_key": "key123"})
         nav.navigateWithParams.assert_called_once()
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_artist_click_opens_detail(self):
         nav = MagicMock()
@@ -254,6 +272,10 @@ class TestLibraryWorkflow:
         nav.navigateWithParams("library.artist_detail", {"artist": "Artist"})
         nav.navigateWithParams.assert_called_once()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

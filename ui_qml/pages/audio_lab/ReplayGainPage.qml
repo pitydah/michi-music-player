@@ -17,6 +17,7 @@ Item {
     property string rgError: ""
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property int _state: 0
     property string _mode: "track"
     property real _preamp: 0.0
@@ -26,6 +27,8 @@ Item {
 
     objectName: "ReplayGainPage"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "replayGain.page"
 >>>>>>> Stashed changes
@@ -139,12 +142,19 @@ Item {
 
     Flickable {
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -155,6 +165,7 @@ Item {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Text {
                 text: "ReplayGain"
                 color: MichiTheme.colors.textPrimary
@@ -162,6 +173,8 @@ Item {
                 objectName: "replaygainPageTitle"
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             anchors.fill: parent
@@ -260,7 +273,10 @@ Item {
                     onClicked: root._startAnalysis()
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
             Text {
                 text: "ReplayGain"
@@ -357,6 +373,9 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startAnalysis()
                 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 MichiButton {
                     text: "Escribir etiquetas"
@@ -426,6 +445,10 @@ Item {
                 Keys.onSpacePressed: onClicked()
                 onClicked: { if (root.nav) root.nav.back() }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

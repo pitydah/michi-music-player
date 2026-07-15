@@ -1,8 +1,11 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import "../theme"
 import "dialogs"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,6 +14,9 @@ import "../theme"
 import "../theme"
 import "dialogs"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 Item {
@@ -21,7 +27,11 @@ Item {
     property string confirmText: "Confirmar"
     property string cancelText: "Cancelar"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string iconText: ""
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -170,6 +180,9 @@ Item {
             root.open = false
             root.cancelled()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }

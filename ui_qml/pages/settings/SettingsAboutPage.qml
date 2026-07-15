@@ -7,7 +7,11 @@ import "../../components"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "settingsAboutPage"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -381,6 +385,8 @@ Item {
                             text: "Autor: Cristian · © 2026 Michi Music Player"
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
+<<<<<<< Updated upstream
+=======
                         }
                     }
                 }
@@ -390,6 +396,175 @@ Item {
                     Layout.fillWidth: true
                     title: "Enlaces"
                     interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
+
+                        MichiButton {
+                            text: "Página principal"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://michi-music-player.org")
+                            Accessible.name: "Página principal de Michi"
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        MichiButton {
+                            text: "GitHub"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://github.com/pitydah/michi-music-player")
+                            Accessible.name: "Repositorio de GitHub"
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        MichiButton {
+                            text: "Reportar un problema"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/issues")
+                            Accessible.name: "Reportar un problema en GitHub"
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        MichiButton {
+                            text: "Ver NOTICE (créditos)"
+                            variant: "ghost"
+                            Layout.fillWidth: true
+                            onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/blob/main/NOTICE")
+                            Accessible.name: "Ver archivo NOTICE con créditos"
+                        }
+                    }
+                }
+
+                GlassCard {
+                    id: updatesCard
+                    Layout.fillWidth: true
+                    title: "Actualizaciones"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
+
+                        MichiButton {
+                            text: "Buscar actualizaciones"
+                            variant: "primary"
+                            Layout.fillWidth: true
+                            onClicked: root._checkForUpdates()
+                            Accessible.name: "Buscar actualizaciones"
+                        }
+                    }
+                }
+
+                GlassCard {
+                    id: systemInfoCard
+                    Layout.fillWidth: true
+                    title: "Información del sistema"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.sm
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "Sistema operativo"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.osInfo
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "Python"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.pythonVersion
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "Qt / PySide6"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.qtVersion
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: MichiTheme.spacing.sm
+                            Label {
+                                text: "GStreamer"
+                                color: MichiTheme.colors.textSecondary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: root.gstreamerVersion
+                                color: MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                Layout.fillWidth: true
+>>>>>>> origin/michi-qml-functional-wave
+                            }
+>>>>>>> Stashed changes
+                        }
+                    }
+                }
+
+<<<<<<< Updated upstream
+                GlassCard {
+                    id: linksCard
+                    Layout.fillWidth: true
+                    title: "Enlaces"
+                    interactive: false
+=======
+<<<<<<< HEAD
+                Rectangle {
+                    width: parent.width; height: 1
+                    color: MichiTheme.colors.borderSubtle
+                }
+>>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -595,7 +770,10 @@ Item {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 GlassCard {
                     id: dependenciesCard
@@ -634,12 +812,19 @@ Item {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

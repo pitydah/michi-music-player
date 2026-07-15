@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # RadioBridge Integration Contract
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 # Radio Bridge Contract
 >>>>>>> Stashed changes
@@ -157,6 +160,9 @@ None.
 - `cancelStream()`: calls `PlayerService.stop()`. Idempotent.
 - No async cancellation mechanism for import/export.
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED.
@@ -176,6 +182,10 @@ NOT IMPLEMENTED.
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

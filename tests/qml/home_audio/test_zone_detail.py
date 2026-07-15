@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test zone detail page with mock bridge."""
 from unittest.mock import MagicMock, PropertyMock
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test ZoneDetailPage properties, signals, volume control, mute."""
 from pathlib import Path
@@ -22,11 +25,15 @@ from unittest.mock import MagicMock, PropertyMock
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 def mock_ha():
     ha = MagicMock()
@@ -42,6 +49,8 @@ def mock_ha():
     ha.select_source = MagicMock()
     return ha
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def engine(qapp):
     e = QQmlEngine(qapp)
@@ -300,6 +309,9 @@ class TestZoneDetailNoController:
         result = b.deleteZone("zone1")
         assert result["ok"] is False
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_latency_unsupported(self):
         b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
@@ -311,6 +323,10 @@ class TestZoneDetailNoController:
         result = b.setSource("TV")
         assert result["ok"] is False
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

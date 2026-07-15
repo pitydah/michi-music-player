@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test playlist negative paths: missing service, empty playlists, import errors."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Negative tests for Playlists: null bridge, invalid inputs, edge cases, error states."""
 >>>>>>> Stashed changes
@@ -136,6 +139,9 @@ def test_import_confirm_no_service():
     result = bridge.confirmPlaylistImport("/path/to/file.m3u")
     assert not result["ok"]
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 def test_play_playlist_no_db():
@@ -300,6 +306,10 @@ def fake_db():
 def svc_with_db(fake_db):
     return PlaylistService(db=fake_db)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

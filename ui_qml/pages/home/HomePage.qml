@@ -93,6 +93,12 @@ Item {
         id: stateLoader
         anchors.fill: parent
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    }
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
     }
@@ -104,6 +110,10 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -119,10 +129,13 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             HomeHero {
                 objectName: "homeHero"
                 Accessible.name: "Hero de inicio"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Component {
         id: emptyComp
@@ -141,6 +154,8 @@ Item {
             HomeHero {
                 objectName: "homeHero"
                 Accessible.name: "Hero de inicio"
+<<<<<<< Updated upstream
+=======
             }
 
             StatusBadge {
@@ -215,7 +230,48 @@ Item {
                 onActivate: {
                     if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("playback")
+                }
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
+            }
+
+<<<<<<< Updated upstream
+            StatusBadge {
+                objectName: "homeStatusBadge"
+                text: {
+                    if (root.homeState === HomePage.LOADING) return "Cargando..."
+                    if (root.homeState === HomePage.ERROR) return "Error"
+                    if (!root.hb) return "Servicio no disponible"
+                    return "Ready"
+                }
+                kind: {
+                    if (root.homeState === HomePage.ERROR || !root.hb) return "error"
+                    if (root.homeState === HomePage.LOADING) return "info"
+                    return "success"
+                }
+                Accessible.name: "Estado: " + text
+                visible: root.homeState !== HomePage.READY || !root.hb
+            }
+
+            ContinueCard {
+                id: continueCard
+                width: parent.width
+                objectName: "continueCard"
+                Accessible.name: "Continuar reproducción"
+                trackTitle: root.hb ? root.hb.currentTrackTitle : "—"
+                trackArtist: root.hb ? root.hb.currentArtist : "—"
+                hasPlayback: root.hb ? root.hb.hasPlayback : false
+                activeFocusOnTab: true
+                KeyNavigation.tab: statusGrid
+                KeyNavigation.backtab: column
+                Keys.onReturnPressed: activate()
+                Keys.onSpacePressed: activate()
+                onActivate: {
+                    if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
+                        navigationBridge.navigate("playback")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Component {
         id: errorComp
@@ -256,6 +312,9 @@ Item {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("library")
                     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
 
@@ -453,6 +512,7 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Row {
                 id: statusGrid
                 width: parent.width
@@ -461,6 +521,8 @@ Item {
                 KeyNavigation.tab: actionRow
                 KeyNavigation.backtab: continueCard
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Component {
         id: readyComp
@@ -704,6 +766,9 @@ Item {
         Accessible.name: "Cargando panel de inicio"
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     EmptyState {
         objectName: "homeEmptyState"
@@ -725,6 +790,10 @@ Item {
         showRetry: true
         onRetryRequested: root.refresh()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

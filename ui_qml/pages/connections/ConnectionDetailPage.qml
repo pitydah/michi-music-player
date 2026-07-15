@@ -18,10 +18,13 @@ Item {
     property string lastError: ""
     property var caps: []
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string protocol: "michi-link"
     property double lastContact: 0
     property bool compatible: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string objectName: "connections.detailPage"
 =======
@@ -29,6 +32,9 @@ Item {
     property double lastContact: 0
     property bool compatible: false
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     signal backClicked()
@@ -39,8 +45,11 @@ Item {
     signal retryClicked()
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "connectionDetailPage"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Accessible.role: Accessible.Panel
     Accessible.name: "Detalle de " + root.serverName
@@ -145,6 +154,9 @@ Item {
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 MichiButton {
@@ -220,12 +232,15 @@ Item {
 
                         StatusBadge {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                             text: root.compatible ? "Compatible" : "Versión incompatible"
                             kind: root.compatible ? "success" : "warning"
                             visible: root.serverVersion !== ""
                         }
                     }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                             id: stateBadge
                             text: root.state === "connected" ? "Conectado" : root.state === "error" ? "Error" : root.state === "pairing_required" ? "Vinculación pendiente" : "Desconectado"
@@ -327,6 +342,9 @@ Item {
                     onDismissClicked: errorPanel.visible = false
                 }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 Row {
                     spacing: MichiTheme.spacing.sm
@@ -377,6 +395,10 @@ Item {
                         KeyNavigation.backtab: editBtn
                     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,4 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+"""Negative tests for CommandPalette — edge cases, failures, invalid inputs."""
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 """Negative tests for CommandPalette — edge cases, failures, invalid inputs."""
@@ -9,6 +15,10 @@
 from __future__ import annotations
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -18,9 +28,12 @@ from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 pytestmark = pytest.mark.isolation
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("command_palette"), pytest.mark.qml_dimension("negative")]
 >>>>>>> Stashed changes
@@ -303,4 +316,7 @@ class TestCommandPaletteCapabilityFiltering:
         result = b.executeCommand("disabled_action")
         assert result["ok"] is False
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test notification list, dismiss all, empty state logic in NotificationBridge."""
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for NotificationCenter QML component."""
 >>>>>>> Stashed changes
@@ -34,6 +37,9 @@ import pytest
 from ui_qml_bridge.notification_bridge import NotificationBridge
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @pytest.fixture
@@ -42,9 +48,12 @@ def bridge():
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestNotificationList:
     def test_queue_length_starts_zero(self, bridge):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 class TestNotificationCenter:
     def test_component_file_exists(self, qml_dir):
@@ -207,6 +216,9 @@ class TestDismissAll:
         bridge.clear()
         assert bridge.currentNotification is None
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 class TestEmptyState:
@@ -225,6 +237,10 @@ class TestEmptyState:
         assert score["has_current"] is False
         assert score["queue_length"] == 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

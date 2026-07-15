@@ -19,6 +19,7 @@ Item {
     property string convError: ""
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property int _state: 0
     property string _selectedFormat: "FLAC"
     property string _selectedCodec: "flac"
@@ -41,6 +42,8 @@ Item {
     property var _previewResult: null
     property string _errorMessage: ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var formatModel: ["FLAC", "MP3", "OGG", "Opus", "WAV", "AAC"]
     property var codecModel: {"FLAC":"flac","MP3":"libmp3lame","OGG":"libvorbis","Opus":"libopus","WAV":"pcm_s16le","AAC":"aac"}
@@ -304,12 +307,19 @@ Item {
 
     Flickable {
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -320,6 +330,7 @@ Item {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Text {
                 text: "Conversión de audio"
                 color: MichiTheme.colors.textPrimary
@@ -327,6 +338,8 @@ Item {
                 objectName: "conversionPageTitle"
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             anchors.fill: parent
@@ -606,6 +619,9 @@ Item {
                     if (item) {
                         root._selectedFormat = item.label
                         root._selectedCodec = item.codec
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     }
                 }
@@ -929,6 +945,7 @@ Item {
                 kind: "disconnected"
                 objectName: "convBridgeStatus"
                 Accessible.name: "Bridge de conversión no disponible"
+<<<<<<< Updated upstream
             }
 
             SectionHeader { text: "Previsualización"; width: parent.width; objectName: "previewHeader"; Accessible.name: "Previsualización" }
@@ -1049,6 +1066,8 @@ Item {
                 kind: "disconnected"
                 objectName: "convBridgeStatus"
                 Accessible.name: "Bridge de conversión no disponible"
+=======
+>>>>>>> Stashed changes
             }
         }
     }

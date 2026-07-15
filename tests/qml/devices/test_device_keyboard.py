@@ -1,10 +1,13 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test keyboard navigation for devices pages.
 
 Tests focus on the DevicesBridge and DeviceSyncService layers,
 verifying that slot-based navigation contracts work correctly.
 """
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test keyboard navigation for Devices pages."""
 from __future__ import annotations
@@ -16,6 +19,9 @@ Tests focus on the DevicesBridge and DeviceSyncService layers,
 verifying that slot-based navigation contracts work correctly.
 """
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
@@ -23,19 +29,26 @@ import pytest
 
 from ui_qml_bridge.devices_bridge import DevicesBridge
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from ui_qml_bridge.navigation_bridge import NavigationBridge
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 from ui_qml_bridge.navigation_bridge import NavigationBridge
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 pytestmark = pytest.mark.isolation
 
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 @pytest.fixture
 def mock_sync_mgr():
@@ -65,6 +78,9 @@ def bridge(mock_sync_mgr):
     return DevicesBridge(sync_manager=mock_sync_mgr)
 
 
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -313,12 +329,19 @@ class TestDeviceKeyboardNavigation:
         result = bridge.authorizeDevice("test_key")
         assert result["ok"] is False
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_refresh_server_state(self, bridge):
         """Verify refresh updates server state."""
         bridge.refresh()
         assert bridge.serverActive is True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

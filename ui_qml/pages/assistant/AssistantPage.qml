@@ -8,7 +8,10 @@ import "../../materials"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -39,6 +42,9 @@ Item {
     property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
 =======
     Accessible.description: "Asistente inteligente para tu ecosistema musical"
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     property bool _initialized: false
@@ -91,6 +97,10 @@ Item {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -108,9 +118,12 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Flickable {
         id: flickable
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     function setState(state) {
         pageState = state
@@ -256,10 +269,13 @@ Item {
                 height: 100
                 radius: MichiTheme.radiusLg
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 showGlow: root.ai !== null
                 objectName: "aiHero"
                 Accessible.name: "Michi AI"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 showGlow: true
                 objectName: "assistant.hero"
@@ -268,6 +284,9 @@ Item {
                 objectName: "aiHero"
                 Accessible.name: "Michi AI"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 Column {
@@ -275,6 +294,7 @@ Item {
                     anchors.margins: MichiTheme.spacing.xl
                     spacing: MichiTheme.spacing.xs
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                     Row {
                         spacing: MichiTheme.spacing.md
@@ -302,6 +322,8 @@ Item {
 
                     Text {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     Text {
                         text: "Asistente inteligente"
@@ -338,6 +360,9 @@ Item {
                     }
 
                     Text {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         text: root.ai === null
                             ? "Asistente no disponible. Verifica la conexión con los servicios de Michi."
@@ -351,6 +376,10 @@ Item {
                                             ? "Asistente no disponible en este contexto."
                                             : "Asistente inteligente para tu ecosistema musical. Pregunta, explora y descubre."
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -431,6 +460,9 @@ Item {
                         onRetryTriggered: root.retryAction()
                         onUndoTriggered: root.undoAction()
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     suggestionTitle: model.title || ""
                     suggestionDescription: model.description || ""
@@ -447,6 +479,10 @@ Item {
                             navigationBridge.navigate(model.route)
                         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -455,10 +491,13 @@ Item {
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             AssistantConversation {
                 id: conversation
                 width: parent.width
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Rectangle {
                 width: parent.width
@@ -468,6 +507,9 @@ Item {
             AssistantConversation {
                 id: conversation
                 width: parent.width
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 chatHistory: root._chatHistory
                 aiThinking: root._aiStatus === "understanding" || root._aiStatus === "planning"
@@ -532,6 +574,10 @@ Item {
                     confirmationDialog.visible = false
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -542,9 +588,12 @@ Item {
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 activeFocusOnTab: true
                 visible: root.ai !== null
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 objectName: "assistant.inputRow"
 >>>>>>> Stashed changes
@@ -567,12 +616,19 @@ Item {
                     height: MichiTheme.minimumInteractiveSize
                     radius: MichiTheme.radiusSm
                     color: MichiTheme.colors.surfaceInput
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                     border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
                     objectName: "chatInputBackground"
                     Accessible.name: "Entrada de chat"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -587,6 +643,11 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 =======
@@ -597,6 +658,10 @@ Item {
                         enabled: root._aiStatus !== "executing" && root._aiStatus !== "understanding" && root._aiStatus !== "planning"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -620,9 +685,12 @@ Item {
                         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         onAccepted: sendMessage()
                         Keys.onReturnPressed: sendMessage()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         Keys.onReturnPressed: root.sendMessage()
 >>>>>>> Stashed changes
@@ -650,6 +718,9 @@ Item {
                             }
                         }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     }
 
@@ -658,6 +729,7 @@ Item {
 
                 MichiIconButton {
                     id: sendBtn
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                     iconText: root._executing ? "■" : ">"
                     tooltipText: root._executing ? "Cancelar" : "Enviar"
@@ -669,6 +741,8 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     iconSource: "../../icons/sidebar_add.svg"
                     iconText: executionState === "EXECUTING" ? "■" : ">"
@@ -706,6 +780,9 @@ Item {
                         } else {
                             sendMessage()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         }
                     }
@@ -713,7 +790,10 @@ Item {
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Flow {
                 id: suggestionsFlow
@@ -761,6 +841,9 @@ Item {
                     }
                 }
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             StatusBadge {
                 id: aiStatusBadge
@@ -775,6 +858,10 @@ Item {
                 objectName: "aiStatusBadge"
                 Accessible.name: "Estado de Michi AI"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -783,7 +870,10 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     AssistantConfirmationDialog {
         id: confirmDialog
@@ -797,6 +887,9 @@ Item {
         objectName: "assistant.confirmationDialog"
         onConfirmed: root.confirmAction()
         onCancelled: root.rejectAction()
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     function sendMessage() {
@@ -815,6 +908,10 @@ Item {
             root._chatHistory = parseChatHistory(root.ai.getChatHistory())
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

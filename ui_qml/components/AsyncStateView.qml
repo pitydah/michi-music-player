@@ -1,8 +1,11 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import "../theme"
 import "states"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 import "../theme"
@@ -10,6 +13,9 @@ import "../theme"
 import "../theme"
 import "states"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 Item {
@@ -17,13 +23,19 @@ Item {
 
     enum State {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         INITIALIZING = 0,
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         INITIALIZING,
 =======
         INITIALIZING = 0,
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         LOADING,
         READY,
@@ -34,6 +46,7 @@ Item {
     }
 
     property int state: AsyncStateView.INITIALIZING
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     property string title: ""
     property string message: ""
@@ -46,6 +59,8 @@ Item {
     property bool retryAvailable: true
     property bool reducedMotion: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string objectName: "asyncStateView"
 >>>>>>> Stashed changes
@@ -123,6 +138,9 @@ Item {
     Item {
         id: stateLayer
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         visible: root.state !== AsyncStateView.READY
 
@@ -201,6 +219,10 @@ Item {
             }
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

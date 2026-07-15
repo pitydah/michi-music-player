@@ -8,8 +8,11 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string deviceKey: ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var bridge: null
 >>>>>>> Stashed changes
@@ -43,6 +46,9 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Panel de transferencia"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     GlassMaterial {
@@ -56,8 +62,11 @@ Item {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             spacing: MichiTheme.spacing.sm
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             spacing: MichiTheme.spacing.md
 >>>>>>> Stashed changes
@@ -90,8 +99,11 @@ Item {
                     Rectangle {
                         anchors.fill: parent
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         anchors.margins: MichiTheme.spacing.xs
 =======
+=======
+>>>>>>> Stashed changes
 =======
             spacing: MichiTheme.spacing.sm
 
@@ -124,6 +136,9 @@ Item {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.xs
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         color: MichiTheme.colors.surface
                         radius: MichiTheme.radiusSm
@@ -142,19 +157,26 @@ Item {
 
                                 Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                     text: modelData.file_name || modelData.name || "Archivo"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                     width: parent.width
                                     text: modelData.source_path ? bridge.fileName(modelData.source_path) : "Archivo"
 =======
                                     text: modelData.file_name || modelData.name || "Archivo"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                     font.weight: MichiTheme.typography.weightMedium
                                     elide: Text.ElideRight
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                                     width: parent.width
                                 }
@@ -163,6 +185,8 @@ Item {
                                     text: formatBytes(modelData.transferred_bytes || modelData.transferredBytes || 0)
                                           + " / " + formatBytes(modelData.total_bytes || modelData.totalBytes || 0)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                 }
 
@@ -180,6 +204,9 @@ Item {
                                     text: formatBytes(modelData.transferred_bytes || modelData.transferredBytes || 0)
                                           + " / " + formatBytes(modelData.total_bytes || modelData.totalBytes || 0)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.metaSize
@@ -189,12 +216,15 @@ Item {
                                     width: parent.width
                                     height: 4
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                     value: (modelData.total_bytes || modelData.totalBytes || 1) > 0
                                            ? (modelData.transferred_bytes || modelData.transferredBytes || 0)
                                              / (modelData.total_bytes || modelData.totalBytes || 1)
                                            : 0
                                     accessibleName: "Progreso de transferencia"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                     value: modelData.total_bytes > 0 ? (modelData.transferred_bytes || 0) / modelData.total_bytes : 0
                                     accessibleName: "Progreso de transferencia"
@@ -205,6 +235,9 @@ Item {
                                              / (modelData.total_bytes || modelData.totalBytes || 1)
                                            : 0
                                     accessibleName: "Progreso de transferencia"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                 }
 
@@ -214,6 +247,10 @@ Item {
                                     font.pixelSize: MichiTheme.typography.captionSize
                                     visible: (modelData.estimated_seconds || modelData.estimatedSeconds || 0) > 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -227,15 +264,21 @@ Item {
                                 StatusBadge {
                                     text: {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                         var s = modelData.status || modelData.state || "queued"
                                         switch (s) {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                         switch (modelData.status || "queued") {
 =======
                                         var s = modelData.status || modelData.state || "queued"
                                         switch (s) {
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                             case "transferring": return "Transfiriendo"
                                             case "completed": return "Completado"
@@ -246,15 +289,21 @@ Item {
                                     }
                                     kind: {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                         var s = modelData.status || modelData.state || "queued"
                                         switch (s) {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                         switch (modelData.status || "queued") {
 =======
                                         var s = modelData.status || modelData.state || "queued"
                                         switch (s) {
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                             case "transferring": return "info"
                                             case "completed": return "success"
@@ -264,14 +313,20 @@ Item {
                                         }
                                     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                     objectName: "transferJobStatus_" + index
                                     Accessible.name: text
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
                                     objectName: "transferJobStatus_" + index
                                     Accessible.name: text
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                 }
 
@@ -279,13 +334,19 @@ Item {
                                     text: "Cancelar"
                                     variant: "ghost"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                     visible: modelData.status === "queued" || modelData.status === "transferring"
                                     onClicked: root.cancelTransfer(modelData.job_id || "")
                                     objectName: "devices.transferPanel.cancelBtn." + (modelData.job_id || index)
                                     Accessible.name: "Cancelar transferencia " + (modelData.source_path || "")
                                     Accessible.description: "Detiene la transferencia en curso"
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
                                     visible: {
@@ -301,6 +362,10 @@ Item {
                                     objectName: "cancelTransferButton_" + index
                                     Accessible.name: "Cancelar transferencia"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -310,13 +375,19 @@ Item {
                                     text: "Reintentar"
                                     variant: "ghost"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                     visible: modelData.status === "failed" || modelData.status === "cancelled"
                                     onClicked: root.retryTransfer(modelData.job_id || "")
                                     objectName: "devices.transferPanel.retryBtn." + (modelData.job_id || index)
                                     Accessible.name: "Reintentar transferencia " + (modelData.source_path || "")
                                     Accessible.description: "Vuelve a intentar la transferencia fallida"
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
                                     visible: {
@@ -329,6 +400,10 @@ Item {
                                     objectName: "retryTransferButton_" + index
                                     Accessible.name: "Reintentar transferencia"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -337,13 +412,19 @@ Item {
                         }
                     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 
                     Accessible.role: Accessible.ListItem
                     Accessible.name: (modelData.source_path ? bridge.fileName(modelData.source_path) : "Transferencia") + " - " + (modelData.status || "queued")
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
             }
@@ -354,8 +435,11 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.transferJobs.length === 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 Accessible.name: "No hay transferencias activas"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 objectName: "devices.transferPanel.noActive"
 >>>>>>> Stashed changes
@@ -413,6 +497,9 @@ Item {
                     Keys.onSpacePressed: clicked()
                 }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 MichiButton {
                     text: "Cancelar todo"
@@ -426,6 +513,10 @@ Item {
                     Keys.onSpacePressed: clicked()
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -435,21 +526,32 @@ Item {
 
     function formatBytes(bytes) {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         if (!bytes || bytes < 1) return "0 B"
         if (bytes < 1024) return bytes + " B"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         if (!bytes || bytes < 1024) return (bytes || 0) + " B"
 =======
         if (!bytes || bytes < 1) return "0 B"
         if (bytes < 1024) return bytes + " B"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
         if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB"
         return (bytes / 1073741824).toFixed(2) + " GB"
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 =======
@@ -462,6 +564,10 @@ Item {
         return (seconds / 3600).toFixed(1) + "h restantes"
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test keyboard navigation through notifications in NotificationBridge.
 
 Tests logical keyboard navigation patterns (next/prev, escape, enter)
@@ -8,6 +9,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for keyboard navigation in notification components."""
 >>>>>>> Stashed changes
@@ -133,6 +136,9 @@ class TestKeyboardNavigation:
         result = b.executeCurrentAction()
         assert result["ok"] is True
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_drain_queue_with_escape(self, bridge):
         bridge.showMessage("A")
@@ -165,6 +171,10 @@ class TestKeyboardNavigation:
         result = bridge.executeNotificationAction("nonexistent")
         assert result["ok"] is False
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

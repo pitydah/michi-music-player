@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test command palette keyboard navigation."""
 
 from __future__ import annotations
@@ -6,6 +7,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for CommandPalette — keyboard navigation, shortcuts, accessibility."""
 >>>>>>> Stashed changes
@@ -34,12 +37,21 @@ from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
 pytestmark = pytest.mark.isolation
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 
 @pytest.fixture
 def registry():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    return ActionRegistry()
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
     return ActionRegistry()
@@ -54,6 +66,10 @@ def registry():
     r.register(ActionDescriptor("a5", "Action Five", "category_c", "icon5"))
     return r
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -66,10 +82,13 @@ def bridge(registry):
 
 class TestCommandPaletteKeyboard:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_up_down_navigation(self, bridge):
         results = bridge.searchCommands("")
         assert len(results) >= 5
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_search_debounce_character_accumulation(self, bridge):
         bridge.searchCommands("")
@@ -108,7 +127,10 @@ class TestCommandPaletteKeyboard:
         result = bridge.executeCommand("a2")
         assert result["ok"] is False
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
     def test_up_down_navigation(self, bridge):
         results = bridge.searchCommands("")
@@ -141,6 +163,9 @@ class TestCommandPaletteKeyboard:
         action.enabled = False
         result = bridge.executeCommand("a2")
         assert result["ok"] is False
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     def test_execute_cycles_sections(self, bridge):
@@ -171,6 +196,10 @@ class TestCommandPaletteKeyboard:
         all_results = bridge.commands
         assert len(all_results) >= 5
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

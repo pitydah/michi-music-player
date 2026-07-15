@@ -7,7 +7,11 @@ import "../../components"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "settingsAccessibilityPage"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -216,6 +220,9 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -246,6 +253,10 @@ Item {
                                 }
                                 Accessible.description: "Balance entre canal izquierdo y derecho"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -255,12 +266,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: visionCard
                     Layout.fillWidth: true
                     title: "Visión"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -507,7 +521,10 @@ Item {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 GlassCard {
                     id: visionCard
@@ -754,12 +771,19 @@ Item {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

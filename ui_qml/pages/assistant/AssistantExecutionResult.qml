@@ -1,11 +1,17 @@
 import QtQuick
 import QtQuick.Controls
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Layouts
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../../theme"
 import "../../materials"
@@ -15,12 +21,15 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string status: "" // success, partial, failure
     property string summaryText: ""
     property string detailText: ""
     property bool detailsExpanded: false
     property bool visible: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string resultStatus: ""
     property var resultDetails: ({})
@@ -78,6 +87,9 @@ Item {
         Column {
             id: contentColumn
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
@@ -85,7 +97,10 @@ Item {
 
             Row {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 spacing: MichiTheme.spacing.sm
 >>>>>>> Stashed changes
@@ -105,8 +120,11 @@ Item {
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     anchors.verticalCenter: parent.verticalCenter
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
@@ -125,15 +143,21 @@ Item {
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
             }
 
             Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 width: parent.width
                 text: root.summaryText
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 text: resultStatus === "success" ? "La acción se completó correctamente." :
                       resultStatus === "partial" ? partialCount + " de " + totalCount + " acciones completadas." :
@@ -272,6 +296,9 @@ Item {
                 MichiButton {
                     text: "Cerrar"
                     variant: "ghost"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     objectName: "executionResultClose"
                     Accessible.name: "Cerrar"
@@ -279,6 +306,10 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.visible = false
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

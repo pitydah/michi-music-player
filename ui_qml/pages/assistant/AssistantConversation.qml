@@ -2,19 +2,28 @@ import QtQuick
 import QtQuick.Controls
 import "../../theme"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import "../../materials"
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var chatHistory: []
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var model: []
 >>>>>>> Stashed changes
@@ -120,6 +129,9 @@ Item {
                     anchors.leftMargin: model.role === "user" ? MichiTheme.spacing.xl : 0
                     anchors.rightMargin: model.role === "assistant" ? MichiTheme.spacing.xl : 0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     implicitHeight: messageContent.height + MichiTheme.spacing.md
 
@@ -147,6 +159,10 @@ Item {
                             onLinkActivated: function(link) {
                                 Qt.openUrlExternally(link)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -155,13 +171,19 @@ Item {
                     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     Text {
                         text: "Pensando..."
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         font.weight: MichiTheme.typography.weightMedium
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
                     MouseArea {
@@ -209,6 +231,10 @@ Item {
                             }
                         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -219,10 +245,13 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     ScrollBar.vertical: ScrollBar {
         policy: ScrollBar.AsNeeded
         width: 6
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     ScrollBar {
         id: scrollBar
@@ -235,6 +264,9 @@ Item {
     ScrollBar.vertical: ScrollBar {
         policy: ScrollBar.AsNeeded
         width: 6
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
@@ -251,6 +283,10 @@ Item {
             }
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

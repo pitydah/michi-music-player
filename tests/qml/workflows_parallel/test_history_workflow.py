@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: filter -> play event -> remove event -> export.
 
 Tests the complete history lifecycle across bridges:
@@ -13,6 +14,8 @@ import sqlite3
 import time
 import json
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: filter → play → export → remove via HistoryBridge."""
 import pytest
@@ -292,6 +295,9 @@ class TestHistoryWorkflow:
         result = bridge.playHistoryItem("5")
         assert result["ok"]
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_workflow_remove_nonexistent_then_export(self, bridge, hqs, tmp_path):
         bridge.removeHistoryEvent("999")
@@ -311,6 +317,10 @@ class TestHistoryWorkflow:
         assert result["ok"]
         assert result["count"] == 3
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

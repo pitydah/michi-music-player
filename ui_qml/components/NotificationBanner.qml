@@ -1,6 +1,10 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -16,6 +20,9 @@ import "../theme"
 
 Rectangle {
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     id: root
 
@@ -24,7 +31,11 @@ Rectangle {
     property string message: ""
     property string actionText: ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string actionId: ""
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -168,7 +179,10 @@ Rectangle {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
     property string actionId: ""
     property bool compact: false
@@ -310,6 +324,9 @@ Rectangle {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Keys.onEscapePressed: {
@@ -317,6 +334,10 @@ Rectangle {
         root.visible = false
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

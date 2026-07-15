@@ -1,12 +1,18 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 =======
 import QtQuick.Controls as QQC2
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import QtQuick.Layouts
 import "../../theme"
@@ -40,11 +46,15 @@ Item {
     signal renameRequested(string zoneId, string newName)
     signal deleteRequested(string zoneId)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     objectName: "zoneDetailPage"
 =======
 >>>>>>> Stashed changes
 
+=======
+
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Accessible.role: Accessible.Pane
     Accessible.name: "Detalle de zona: " + root.zoneName
@@ -107,7 +117,11 @@ Item {
 
                 MichiButton {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     id: backBtn
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -326,9 +340,75 @@ Item {
                                 }
                             }
                         }
+=======
+                    id: backBtn
+                    text: "< Volver"
+                    variant: "ghost"
+                    onClicked: root.backClicked()
+                    objectName: "zoneDetailBackButton"
+                    Accessible.name: "Volver a Home Audio"
+                    KeyNavigation.tab: zoneNameText
+                    Keys.onReturnPressed: root.backClicked()
+                    Keys.onSpacePressed: root.backClicked()
+                }
+
+                Text {
+                    id: zoneNameText
+                    text: root.zoneName
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    Accessible.name: "Zona: " + root.zoneName
+                    objectName: "zoneDetailName"
+                    KeyNavigation.tab: statusBar
+                    KeyNavigation.backtab: backBtn
+                }
+
+                Row {
+                    id: statusBar
+                    spacing: MichiTheme.spacing.sm
+                    objectName: "zoneDetailStatusBar"
+
+                    StatusBadge {
+                        text: root.zoneOnline ? "En línea" : "Desconectado"
+                        kind: root.zoneOnline ? "success" : "error"
+                        Accessible.name: "Estado de conexión: " + text
+                    }
+
+                    StatusBadge {
+                        text: {
+                            switch (root.zoneStatus) {
+                                case "playing": return "Reproduciendo"
+                                case "paused": return "En pausa"
+                                default: return "En espera"
+                            }
+                        }
+                        kind: root.zoneStatus === "playing" ? "active" : "disconnected"
+                        Accessible.name: "Estado de reproducción: " + text
+>>>>>>> origin/michi-qml-functional-wave
                     }
                 }
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                LatencyControl {
+                    id: latencyCtrl
+                    width: parent.width
+                    currentLatencyMs: root.zoneLatencyMs
+                    onLatencyChanged: function(ms) {
+                        root.zoneLatencyMs = ms
+                    }
+                }
+
+                MultiroomStatus {
+                    id: multiroomStatus
+                    width: parent.width
+                    zoneId: root.zoneId
+                    zoneDevices: root.zoneDevices
+                }
+
+>>>>>>> Stashed changes
                 Row {
                     id: actionRow
                     spacing: MichiTheme.spacing.sm
@@ -583,6 +663,9 @@ Item {
             }
         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         degradedOverlay: Rectangle {
             color: Qt.rgba(1, 0.75, 0.14, 0.05)
@@ -599,6 +682,10 @@ Item {
                 font.pixelSize: MichiTheme.typography.captionSize
                 font.weight: MichiTheme.typography.weightMedium
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

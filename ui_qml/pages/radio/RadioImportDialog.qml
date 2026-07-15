@@ -9,8 +9,11 @@ Dialog {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
 >>>>>>> Stashed changes
@@ -54,6 +57,9 @@ Dialog {
     width: Math.min(parent.width * 0.7, 500)
     height: 500
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -61,7 +67,10 @@ Dialog {
 
     objectName: "radioImportDialog"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 
 >>>>>>> Stashed changes
@@ -237,17 +246,23 @@ Dialog {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root._importedStations.length > 0
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             }
         }
 
         Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             text: "Formatos soportados: M3U, PLS, XSPF"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             visible: root._importedStations.length === 0
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             text: root._importedStations.length > 0
                 ? root._importedStations.length + " emisoras encontradas. " + root._selectedIndices.length + " seleccionadas."
@@ -359,7 +374,10 @@ Dialog {
                     }
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
             text: "Formatos soportados: M3U, PLS, XSPF"
             color: MichiTheme.colors.textMuted
@@ -466,6 +484,9 @@ Dialog {
                         horizontalAlignment: Text.AlignRight
                     }
                 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 Rectangle {
@@ -500,6 +521,10 @@ Dialog {
                 value: root._importTotal > 0 ? root._importProgress / root._importTotal : 0
                 anchors.verticalCenter: parent.verticalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -509,9 +534,12 @@ Dialog {
         Rectangle {
             width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             height: 1
             color: MichiTheme.colors.borderSubtle
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             height: 6
             radius: MichiTheme.radiusXs
@@ -545,6 +573,9 @@ Dialog {
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
             MichiButton {
@@ -564,6 +595,10 @@ Dialog {
 
             Item { width: parent.width - 220; height: 1 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -572,8 +607,11 @@ Dialog {
                 text: "Cancelar"
                 variant: "ghost"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 objectName: "importCancelBtn"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 enabled: !root._importing
                 onClicked: {
@@ -607,7 +645,10 @@ Dialog {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 objectName: "importCancelBtn"
                 Accessible.name: "Cancelar importación"
@@ -633,6 +674,9 @@ Dialog {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     FileDialog {
@@ -657,6 +701,10 @@ Dialog {
 
     Keys.onEscapePressed: root.close()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

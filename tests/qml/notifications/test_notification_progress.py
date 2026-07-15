@@ -1,9 +1,12 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test progress notifications — progress updates, updateProgress, cancel."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for NotificationProgressItem QML component."""
 >>>>>>> Stashed changes
@@ -64,7 +67,10 @@ class TestUpdateProgress:
         result = bridge.updateProgress("j_upd", 0.75, "75% completado")
         assert result["ok"] is True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 """Test progress notifications — progress updates, updateProgress, cancel."""
 from __future__ import annotations
@@ -126,6 +132,9 @@ class TestUpdateProgress:
         bridge.showProgress("Iniciando", "j_upd", 0)
         result = bridge.updateProgress("j_upd", 0.75, "75% completado")
         assert result["ok"] is True
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert bridge.currentNotification["progress"] >= 75
 
@@ -184,6 +193,10 @@ class TestProgressEdgeCases:
         assert bridge.queueLength == 1
         assert bridge.currentNotification["job_id"] == "j_a"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

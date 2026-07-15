@@ -2,12 +2,18 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 import QtQuick.Controls as QQC2
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
@@ -17,9 +23,12 @@ Dialog {
 
     property var bridge: null
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string _exportFormat: "json"
     property string _exportPath: ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property int _exportJobId: 0
 >>>>>>> Stashed changes
@@ -43,6 +52,9 @@ Dialog {
     property string _status: ""
     property int _estimatedSize: 0
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     signal exportCompleted(string path, int count)
@@ -50,7 +62,10 @@ Dialog {
 
     title: "Exportar historial"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     standardButtons: Dialog.Ok | Dialog.Cancel
 >>>>>>> Stashed changes
@@ -448,6 +463,9 @@ Dialog {
                 }
             }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }
@@ -456,9 +474,12 @@ Dialog {
         id: saveDialog
         fileMode: FileDialog.SaveFile
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         nameFilters: root._exportFormat === "json" ? ["JSON files (*.json)", "All files (*)"]
                                                     : ["CSV files (*.csv)", "All files (*)"]
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         nameFilters: ["JSON (*.json)", "CSV (*.csv)", "All files (*)"]
 >>>>>>> Stashed changes
@@ -469,7 +490,10 @@ Dialog {
             root._exportPath = selectedFile.toString().replace("file://", "")
             pathInput.text = root._exportPath
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
         nameFilters: root._exportFormat === "json" ? ["JSON files (*.json)", "All files (*)"]
                                                     : ["CSV files (*.csv)", "All files (*)"]
@@ -479,6 +503,9 @@ Dialog {
         onAccepted: {
             root._exportPath = selectedFile.toString().replace("file://", "")
             pathInput.text = root._exportPath
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             root._estimateSize()
         }
@@ -521,6 +548,10 @@ Dialog {
         } else {
             root.close()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

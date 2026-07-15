@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test GlobalSearchBridge negative cases: stale requests, empty results, error, null bridge."""
 import pytest
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test negative/error cases for global search to ensure robustness."""
 >>>>>>> Stashed changes
@@ -320,6 +323,9 @@ class TestNullBridge:
         bridge = GlobalSearchBridge(search_service=None)
         assert not bridge.isSearching
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_no_service_cancel_then_search_empty(self):
         bridge = GlobalSearchBridge(search_service=None)
@@ -359,6 +365,10 @@ class TestNullBridge:
         assert not result["ok"]
         assert bridge.errorCode == "SERVICE_UNAVAILABLE"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

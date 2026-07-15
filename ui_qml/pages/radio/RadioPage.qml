@@ -104,9 +104,12 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     CapabilityGuard {
         id: radioGuard
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     FocusScope {
         id: focusScope

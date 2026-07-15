@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from pathlib import Path
 >>>>>>> Stashed changes
@@ -129,4 +132,7 @@ class TestLibraryPageResponsive:
         mock_library_page.width = 700
         assert mock_library_page.width < 768
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

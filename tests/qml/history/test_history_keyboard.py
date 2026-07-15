@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test history keyboard navigation via bridge action patterns."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests keyboard navigation, focus, and accessibility for History QML pages."""
 >>>>>>> Stashed changes
@@ -151,6 +154,9 @@ def test_clear_all_requires_confirmation_pattern(bridge):
     bridge.clearHistory()
     assert bridge.historyCount == 0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 def test_remove_item_keyboard_accessible(bridge, hqs):
@@ -212,6 +218,10 @@ def test_pagination_keys_work(bridge):
     result = bridge.refresh()
     assert result["count"] >= 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

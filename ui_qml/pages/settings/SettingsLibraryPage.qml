@@ -2,12 +2,18 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import Qt.labs.platform
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 import Qt.labs.platform
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
@@ -15,7 +21,11 @@ import "../../components"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "settingsLibraryPage"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -147,8 +157,11 @@ Item {
                                 height: 48
                                 radius: MichiTheme.radiusSm
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                 color: MichiTheme.colors.surfaceCard
 =======
+=======
+>>>>>>> Stashed changes
 =======
     objectName: "settingsLibraryPage"
 
@@ -280,6 +293,9 @@ Item {
                                 radius: MichiTheme.radiusSm
                                 color: MichiTheme.colors.surfaceCard
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                                 RowLayout {
@@ -288,11 +304,14 @@ Item {
                                     spacing: MichiTheme.spacing.sm
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                     Label {
                                         text: modelData
                                         color: MichiTheme.colors.textPrimary
                                         font.pixelSize: MichiTheme.typography.bodySize
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                     Text {
                                         text: modelData.path || ""
@@ -304,11 +323,15 @@ Item {
                                         color: MichiTheme.colors.textPrimary
                                         font.pixelSize: MichiTheme.typography.bodySize
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                         elide: Text.ElideMiddle
                                         Layout.fillWidth: true
                                     }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                                     MichiButton {
                                         text: "Eliminar"
@@ -322,6 +345,8 @@ Item {
                                 Accessible.role: Accessible.ListItem
                                 Accessible.name: modelData
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                     Text {
                                         text: modelData.available ? "" : "(no disponible)"
@@ -343,17 +368,23 @@ Item {
                                 Accessible.role: Accessible.ListItem
                                 Accessible.name: modelData
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             }
 
                             Item {
                                 anchors.centerIn: parent
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                                 visible: foldersList.count === 0
                                 Label {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textSecondary
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                                 visible: sourcesList.count === 0
                                 Text {
@@ -365,13 +396,19 @@ Item {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textSecondary
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                             }
                         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     }
 
@@ -384,6 +421,28 @@ Item {
                             id: addFolderBtn
                             text: "Añadir carpeta de música"
                             variant: "primary"
+<<<<<<< Updated upstream
+=======
+                            Accessible.name: "Añadir carpeta musical"
+                            KeyNavigation.tab: watchSwitch
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        MichiButton {
+                            id: rescanBtn
+                            objectName: "settings.library.rescan"
+                            text: "Reescanear"
+                            variant: "secondary"
+                            Accessible.name: "Reescanear biblioteca"
+                            KeyNavigation.tab: clearRescanBtn
+=======
+
+                        MichiButton {
+                            id: addFolderBtn
+                            text: "Añadir carpeta de música"
+                            variant: "primary"
+>>>>>>> Stashed changes
                             Layout.fillWidth: true
                             onClicked: folderDialog.open()
                             Accessible.name: "Añadir carpeta de música"
@@ -595,6 +654,7 @@ Item {
                             Layout.fillWidth: true
                             onClicked: root._rescanLibrary()
                             Accessible.name: "Reescanear biblioteca"
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                         }
 
@@ -830,6 +890,8 @@ Item {
                             Layout.fillWidth: true
                             onClicked: root._rescanLibrary()
                             Accessible.name: "Reescanear biblioteca"
+=======
+>>>>>>> Stashed changes
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -1010,11 +1072,15 @@ Item {
 =======
                 Item { Layout.fillHeight: true }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             }
         }
     }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     FolderDialog {
         id: folderDialog
@@ -1025,6 +1091,8 @@ Item {
         }
     }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     ConfirmActionDialog {
         id: confirmClearRescanDialog
@@ -1046,6 +1114,9 @@ Item {
             if (folderPath) root._addFolder(folderPath)
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     ConfirmActionDialog {
@@ -1063,6 +1134,10 @@ Item {
 
     signal closeRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

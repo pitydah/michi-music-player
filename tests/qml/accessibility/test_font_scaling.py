@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test font scaling.
 
@@ -145,6 +148,9 @@ class TestFontScaling:
                 if "font.pixelSize" in line and "MichiTheme" not in line:
                     continue
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_search_field_uses_theme_font(self):
         content = (QML_DIR / "components/SearchField.qml").read_text()
@@ -154,6 +160,10 @@ class TestFontScaling:
         content = (QML_DIR / "components/MichiSlider.qml").read_text()
         assert "MichiTheme" in content or "fontSize" in content
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

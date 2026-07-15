@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # DevicesBridge Integration Contract
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 # Devices Bridge Contract
 >>>>>>> Stashed changes
@@ -120,6 +123,9 @@ None.
 ## Cancellation Contract
 NOT YET IMPLEMENTED — no cancellation mechanism exists.
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED — no reference to `JobBridge` or `WorkerManager`.
@@ -139,6 +145,10 @@ NOT IMPLEMENTED.
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -21,6 +21,7 @@ Item {
     property var editingProfile: null
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property bool _editing: false
     property string _profileName: ""
     property string _profileFormat: "FLAC"
@@ -31,6 +32,8 @@ Item {
     property int _profileChannels: 2
     property string _validationError: ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var formatModel: ["FLAC", "MP3", "OGG", "Opus", "WAV", "AAC"]
     property var codecMap: {"FLAC":"flac","MP3":"libmp3lame","OGG":"libvorbis","Opus":"libopus","WAV":"pcm_s16le","AAC":"aac"}
@@ -183,12 +186,19 @@ Item {
 
     Flickable {
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -199,6 +209,7 @@ Item {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Text {
                 text: root._editing ? "Editar perfil: " + root._profileName : "Perfiles de conversión"
                 color: MichiTheme.colors.textPrimary
@@ -206,6 +217,8 @@ Item {
                 objectName: "profileEditorTitle"
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             anchors.fill: parent
@@ -373,6 +386,9 @@ Item {
                                 var item = root._formatOptions[currentIndex]
                                 if (item) { root._profileFormat = item.label; root._profileCodec = item.codec }
                             }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         }
                     }
@@ -427,6 +443,10 @@ Item {
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._profileChannels = root._channelsOptions[currentIndex]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -434,6 +454,7 @@ Item {
                     }
                 }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -449,6 +470,8 @@ Item {
                     onClicked: root._saveProfile()
                 }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 SectionHeader { text: "Configuración"; width: parent.width; objectName: "profiles.section.config" }
 
@@ -558,6 +581,9 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._saveProfile()
                 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 MichiButton {
                     text: "Eliminar perfil"
@@ -583,6 +609,10 @@ Item {
                         root._validationError = ""
                         if (root.nav) root.nav.back()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

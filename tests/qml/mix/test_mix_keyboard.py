@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test MixBridge keyboard navigation support and accessible properties."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test Mix pages keyboard navigation via QML component loading."""
 from pathlib import Path
@@ -262,6 +265,9 @@ class TestMixKeyboard:
             result = bridge.playFromIndex(i)
             assert result["ok"] is True, f"Failed at index {i}"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_mix_categories_accessible(self, bridge):
         cats = bridge.categories
@@ -270,6 +276,10 @@ class TestMixKeyboard:
             assert "id" in c
             assert "desc" in c
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

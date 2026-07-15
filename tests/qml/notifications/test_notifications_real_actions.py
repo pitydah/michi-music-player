@@ -86,9 +86,12 @@ class TestRealActions:
         assert result.get("ok") is True
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_undo_action(self, bridge, mock_registry):
         result = bridge.undoAction("track_add_to_queue")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_undo_action_no_handler(self, bridge):
         bridge._action_registry = None
@@ -98,6 +101,9 @@ class TestRealActions:
 =======
     def test_undo_action(self, bridge, mock_registry):
         result = bridge.undoAction("track_add_to_queue")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert result.get("ok") is True
         mock_registry.execute.assert_called_once_with("undo_track_add_to_queue")
@@ -108,6 +114,10 @@ class TestRealActions:
         assert result.get("ok") is True
         assert result.get("undo") == "track_add_to_queue"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

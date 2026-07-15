@@ -36,6 +36,7 @@ Item {
         var gen = root._requestGen
         root._query = text
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
         if (root._debounceTimer) {
             root._debounceTimer = 0
@@ -47,12 +48,21 @@ Item {
             root._debounceTimer = 0
         }
 =======
+<<<<<<< HEAD
+        if (root._debounceTimer) {
+            root._debounceTimer = 0
+        }
+>>>>>>> Stashed changes
+=======
 
         if (root._debounceTimer) {
             root._debounceTimer = 0
         }
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         if (!text || text.trim() === "") {
             root._results = []
@@ -60,8 +70,11 @@ Item {
             return
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         root._searching = true
 >>>>>>> Stashed changes
@@ -127,6 +140,7 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     function openFullSearchFromOverlay() {
         root.openFullSearch()
         root.closeRequested()
@@ -143,6 +157,8 @@ Item {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.5)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Rectangle {
         anchors.fill: parent
@@ -164,23 +180,33 @@ Item {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.5)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         MouseArea {
             anchors.fill: parent
             onClicked: root.closeRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             cursorShape: Qt.ArrowCursor
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
             cursorShape: Qt.ArrowCursor
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }
 
     Rectangle {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         id: overlay
         width: parent.width * 0.6
@@ -188,6 +214,8 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         y: MichiTheme.spacing.xl
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         id: overlayPanel
         width: parent.width * 0.65
@@ -201,6 +229,9 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         y: MichiTheme.spacing.xl
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         color: MichiTheme.colors.surfacePopup
         radius: MichiTheme.radiusLg
@@ -208,10 +239,13 @@ Item {
         border.width: 1
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         objectName: "searchOverlayPanel"
         Accessible.role: Accessible.Grouping
         Accessible.name: "Panel de búsqueda rápida"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         PropertyAnimation {
             target: overlayPanel
@@ -227,6 +261,9 @@ Item {
         Accessible.role: Accessible.Grouping
         Accessible.name: "Panel de búsqueda rápida"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         Column {
@@ -242,11 +279,14 @@ Item {
                     id: searchField
                     width: parent.width - 80
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     placeholderText: "Búsqueda rápida (Ctrl+F)..."
                     objectName: "quickSearchInput"
                     Accessible.name: "Búsqueda rápida"
                     Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     placeholderText: "Buscar canciones, álbumes, artistas..."
                     fieldFocused: true
@@ -402,6 +442,105 @@ Item {
                         }
                     }
                 }
+=======
+                    placeholderText: "Búsqueda rápida (Ctrl+F)..."
+                    objectName: "quickSearchInput"
+                    Accessible.name: "Búsqueda rápida"
+                    Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
+                    onSearchTextChanged: root.search(text)
+                    activeFocusOnTab: true
+                    Keys.onEscapePressed: root.closeRequested()
+                    Keys.onReturnPressed: {
+                        if (root._results.length > 0) {
+                            root.navigateTo(root._results[0].type || "", root._results[0].id || "", root._results[0].title || "")
+                        }
+                    }
+                }
+
+                MichiButton {
+                    text: "Cerrar"
+                    variant: "ghost"
+                    anchors.verticalCenter: parent.verticalCenter
+                    Keys.onEscapePressed: root.closeRequested()
+                    onClicked: root.closeRequested()
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: MichiTheme.colors.borderSubtle
+                visible: root._results.length > 0 || root._searching
+            }
+
+            Text {
+                visible: root._searching
+                text: "Buscando..."
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
+                Accessible.name: "Buscando"
+            }
+
+            Text {
+                visible: !root._searching && root._query !== "" && root._results.length === 0
+                text: "Sin resultados para \"" + root._query + "\""
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.bodySize
+                Accessible.name: "Sin resultados"
+            }
+
+            Flickable {
+                width: parent.width
+                height: parent.height - 100
+                contentHeight: previewColumn.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                visible: root._results.length > 0
+
+                Column {
+                    id: previewColumn
+                    width: parent.width
+                    spacing: MichiTheme.spacing.xs
+
+                    Repeater {
+                        model: root._results
+
+                        SearchResultRow {
+                            width: parent.width
+                            rowType: modelData.type || ""
+                            rowId: modelData.id || ""
+                            rowTitle: modelData.title || ""
+                            rowSubtitle: modelData.subtitle || ""
+                            bridge: root.bridge
+                            objectName: "quickSearchResult_" + index
+                            Accessible.name: (modelData.title || "Resultado") + " - " + (modelData.subtitle || "")
+                            activeFocusOnTab: true
+                            onClicked: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
+                            Keys.onReturnPressed: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: MichiTheme.colors.borderSubtle
+                visible: root._results.length > 0
+            }
+
+            MichiButton {
+                text: "Abrir búsqueda completa \u2192"
+                variant: "ghost"
+                anchors.horizontalCenter: parent.horizontalCenter
+                objectName: "openFullSearchBtn"
+                Accessible.name: "Abrir búsqueda completa"
+                visible: root._results.length > 0
+                activeFocusOnTab: true
+                onClicked: root.openFullSearchFromOverlay()
+                Keys.onReturnPressed: root.openFullSearchFromOverlay()
+                Keys.onSpacePressed: root.openFullSearchFromOverlay()
+>>>>>>> origin/michi-qml-functional-wave
             }
 
             Rectangle {
@@ -448,8 +587,11 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Keys.onEscapePressed: root.closeRequested()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     function _getTopResults() {
         if (root._results.length === 0) return []
@@ -473,5 +615,8 @@ Item {
 =======
     Keys.onEscapePressed: root.closeRequested()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }

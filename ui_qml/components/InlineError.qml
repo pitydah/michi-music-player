@@ -1,7 +1,10 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 >>>>>>> Stashed changes
@@ -199,6 +202,9 @@ Rectangle {
             onClicked: root.actionTriggered()
         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         QQC2.AbstractButton {
             id: dismissBtn
@@ -220,6 +226,10 @@ Rectangle {
                 root.message = ""
                 root.dismissed()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

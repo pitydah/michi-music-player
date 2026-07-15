@@ -7,7 +7,10 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string resultType: ""
     property string resultId: ""
@@ -16,12 +19,19 @@ Item {
     property string resultSection: ""
     property real resultScore: 0.0
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     property string rowType: ""
     property string rowId: ""
     property string rowTitle: ""
     property string rowSubtitle: ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -30,7 +40,10 @@ Item {
     signal clicked()
     signal playRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     signal activateRequested()
 >>>>>>> Stashed changes
@@ -150,6 +163,9 @@ Item {
         border.color: root.activeFocus ? MichiTheme.colors.borderFocus : "transparent"
         border.width: root.activeFocus ? MichiTheme.borderWidthFocus : 0
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         Row {
@@ -163,8 +179,11 @@ Item {
                 radius: MichiTheme.radiusSm
                 anchors.verticalCenter: parent.verticalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 color: MichiTheme.colors.accentFaint
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 color: MichiTheme.colors.accentSurface
 >>>>>>> Stashed changes
@@ -176,10 +195,13 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
                 Accessible.role: Accessible.Graphic
                 Accessible.name: root.getTypeLabel()
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 color: MichiTheme.colors.accentFaint
 
@@ -193,6 +215,9 @@ Item {
                 Accessible.role: Accessible.Graphic
                 Accessible.name: root.getTypeLabel()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             }
 
@@ -203,13 +228,19 @@ Item {
 
                 Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     text: root.rowTitle
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     text: root.resultTitle
 =======
                     text: root.rowTitle
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
@@ -220,13 +251,19 @@ Item {
 
                 Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     text: root.rowSubtitle
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     text: root.resultSubtitle
 =======
                     text: root.rowSubtitle
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
@@ -237,6 +274,11 @@ Item {
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 =======
@@ -252,6 +294,10 @@ Item {
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -261,9 +307,12 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: MichiTheme.typography.bodySize
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 width: 20
                 visible: root.rowType === "track"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 width: 24
                 visible: root.resultType === "track"
@@ -271,6 +320,9 @@ Item {
                 width: 20
                 visible: root.rowType === "track"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 MouseArea {
@@ -278,14 +330,20 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.playRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     Accessible.role: Accessible.Button
                     Accessible.name: "Reproducir " + root.rowTitle
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
                     Accessible.role: Accessible.Button
                     Accessible.name: "Reproducir " + root.rowTitle
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
             }
@@ -298,12 +356,15 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: root.clicked()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             onDoubleClicked: root.playRequested()
         }
 
         Keys.onReturnPressed: root.clicked()
         Keys.onSpacePressed: root.clicked()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         }
 
@@ -323,6 +384,9 @@ Item {
         Keys.onReturnPressed: root.clicked()
         Keys.onSpacePressed: root.clicked()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 }

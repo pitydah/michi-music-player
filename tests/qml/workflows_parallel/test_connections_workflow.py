@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: discover -> connect -> disconnect -> reconnect -> forget."""
 from unittest.mock import MagicMock
 
@@ -6,6 +7,8 @@ from ui_qml_bridge.connections_bridge import ConnectionsBridge
 import pytest
 pytestmark = pytest.mark.isolation
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: discover → connect → disconnect → reconnect → forget via ConnectionsBridge."""
 import pytest
@@ -22,12 +25,16 @@ from ui_qml_bridge.connections_bridge import ConnectionsBridge
 import pytest
 pytestmark = pytest.mark.isolation
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 
 @pytest.fixture
 def mock_ctrl():
     ctrl = MagicMock()
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     s1, s2 = MagicMock(), MagicMock()
     s1.name = "Server1"
@@ -36,6 +43,8 @@ def mock_ctrl():
     s2.host = "10.0.0.2"
     ctrl.discover_servers.return_value = [s1, s2]
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     ctrl.discover_servers.return_value = [
         MagicMock(name="MichiServer", host="192.168.1.10"),
@@ -87,6 +96,9 @@ def mock_ctrl():
     ctrl.connect = MagicMock(return_value={"ok": True})
     ctrl.test_connection = MagicMock(return_value=True)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return ctrl
 
@@ -97,9 +109,12 @@ def bridge(mock_ctrl):
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestFullWorkflow:
     def test_discover_scan(self, bridge, mock_ctrl):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 class TestConnectionsWorkflow:
     """Complete workflow: discover → connect → disconnect → reconnect → forget."""
@@ -167,7 +182,10 @@ class TestConnectionsWorkflow:
         result = bridge.reconnect()
         assert result["ok"] is True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 class TestFullWorkflow:
     def test_discover_scan(self, bridge, mock_ctrl):
@@ -231,6 +249,9 @@ class TestFullWorkflow:
         assert bridge.serverVersion == "MyServer"
         result = bridge.reconnect()
         assert result["ok"] is True
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert mock_ctrl.reconnect.called
 
@@ -279,6 +300,10 @@ class TestFullWorkflow:
         b.forgetServer()
         assert b.microServerAlias == ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

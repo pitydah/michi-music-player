@@ -37,10 +37,13 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     CapabilityGuard {
         id: alabGuard
         anchors.fill: parent
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     FocusScope {
         id: focusScope
@@ -50,6 +53,9 @@ Item {
     CapabilityGuard {
         id: alabGuard
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         capabilityName: "audio_lab"
 
@@ -60,6 +66,10 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -70,6 +80,7 @@ Item {
                 navigationBridge.navigate("home")
         }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             HeroMaterial {
                 width: parent.width; height: 150; radius: MichiTheme.radiusLg; showGlow: true
@@ -89,6 +100,8 @@ Item {
                     }
                 }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             id: flickable
@@ -321,6 +334,9 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: { if (root.nav) root.nav.navigate("audio_lab.analysis") }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
                 GlassCard {
@@ -438,6 +454,7 @@ Item {
                 kind: "disconnected"
                 objectName: "alabBridgeStatus"
                 Accessible.name: "Bridge de Audio Lab no disponible"
+<<<<<<< Updated upstream
             }
 
             GlassMaterial {
@@ -456,6 +473,8 @@ Item {
                 kind: "disconnected"
                 objectName: "alabBridgeStatus"
                 Accessible.name: "Bridge de Audio Lab no disponible"
+=======
+>>>>>>> Stashed changes
             }
         }
     }

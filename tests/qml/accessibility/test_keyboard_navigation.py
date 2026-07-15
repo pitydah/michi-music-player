@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test Tab navigation through major pages.
 
@@ -9,13 +12,20 @@ Keys.onReturnPressed/SpacePressed/EscapePressed patterns on all major pages."""
 =======
 from __future__ import annotations
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 from pathlib import Path
 
 import pytest
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from PySide6.QtQml import QQmlEngine
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -352,4 +362,7 @@ class TestTabOrderAcrossControls:
         tab_count = content.count("activeFocusOnTab")
         assert tab_count > 0, f"{page_path} should have at least 1 focusable element"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

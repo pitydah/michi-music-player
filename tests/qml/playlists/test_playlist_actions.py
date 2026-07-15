@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test playlist CRUD actions: create, rename, duplicate, delete."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for playlist actions: create, rename, duplicate, delete, reorder, add/remove tracks."""
 >>>>>>> Stashed changes
@@ -402,6 +405,9 @@ class TestPlaylistActions:
         plists = svc.list()
         assert plists == []
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_list_returns_dicts(self, svc):
         svc.create("Test")
@@ -409,6 +415,10 @@ class TestPlaylistActions:
         assert "id" in plists[0]
         assert "name" in plists[0]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,5 +1,12 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test GlobalSearchBridge: search flow with debounce, results grouping, sections."""
+=======
+<<<<<<< HEAD
+"""Test GlobalSearchPage and related components for correct search behavior."""
+from unittest.mock import MagicMock
+
+>>>>>>> Stashed changes
 import pytest
 =======
 <<<<<<< HEAD
@@ -21,6 +28,9 @@ from unittest.mock import MagicMock
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @pytest.fixture
@@ -29,6 +39,7 @@ def mock_service():
     svc.search.return_value = {
         "ok": True, "request_id": 1,
         "results": [
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             {"type": "track", "id": 1, "title": "Supper's Ready", "subtitle": "Genesis · Foxtrot",
              "section": "Canciones", "score": 0.95},
@@ -43,6 +54,8 @@ def mock_service():
         ],
         "count": 5,
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             {"type": "track", "id": 1, "title": "Test Song", "subtitle": "Artist · Album",
              "section": "track", "score": 1.0},
@@ -82,6 +95,9 @@ def mock_service():
         ],
         "count": 5,
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
     return svc
@@ -93,10 +109,13 @@ def bridge(mock_service):
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestSearchFlow:
     def test_search_returns_grouped_results(self, bridge):
         result = bridge.search("Genesis")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 class TestGlobalSearchBridge:
     """Test bridge-level search functionality."""
@@ -128,6 +147,9 @@ class TestSearchFlow:
 
     def test_search_empty_query_returns_empty(self, bridge):
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         result = bridge.search("")
         assert result["ok"]
@@ -135,6 +157,12 @@ class TestSearchFlow:
         assert len(bridge.results) == 0
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    def test_searching_state(self, bridge):
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
     def test_searching_state(self, bridge):
@@ -148,6 +176,10 @@ class TestSearchFlow:
 
     def test_searching_state_during_search(self, bridge):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -156,12 +188,18 @@ class TestSearchFlow:
         assert not bridge.isSearching
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_error_code_on_failure(self, bridge, mock_service):
         mock_service.search.side_effect = Exception("DB error")
         result = bridge.search("Test")
         assert not result.get("ok")
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     def test_search_generation_increments(self, bridge):
@@ -210,6 +248,10 @@ class TestSearchFlow:
         assert not result["ok"]
         assert result["error"] == "UNKNOWN_DOMAIN"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -219,9 +261,12 @@ class TestSearchFlow:
         assert result["ok"]
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_cancel_clears_results(self, bridge):
         bridge.search("Genesis")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_generation_counter_increments(self, bridge):
         gen_before = bridge._search_gen
@@ -284,6 +329,9 @@ class TestSearchFlow:
         bridge.cancel()
         assert bridge._search_gen > gen_before
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_debounce_not_applicable_synchronous(self, bridge):
         result = bridge.search("Quick search")
@@ -301,6 +349,10 @@ class TestSearchFlow:
         bridge.search("test")
         assert len(bridge.results) <= 50
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

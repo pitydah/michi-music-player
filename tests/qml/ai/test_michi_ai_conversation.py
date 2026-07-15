@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test Michi AI conversation display and history."""
 
 from __future__ import annotations
@@ -9,17 +10,26 @@ import json
 from __future__ import annotations
 
 =======
+<<<<<<< HEAD
+from __future__ import annotations
+
+>>>>>>> Stashed changes
+=======
 """Test Michi AI conversation display and history."""
 
 from __future__ import annotations
 
 import json
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
@@ -62,6 +72,8 @@ def bridge(services):
         worker_manager=services["worker_manager"],
     )
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
 >>>>>>> Stashed changes
@@ -236,6 +248,9 @@ class TestMichiAIConversation:
         last = bridge._chat_history[-1]
         assert "cancelada" in last["text"].lower()
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_no_pending_confirmation_gives_feedback(self, bridge):
         bridge.sendMessage("sí")
@@ -259,6 +274,10 @@ class TestMichiAIConversation:
         bridge.sendMessage("no")
         assert bridge._pending_action is None
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

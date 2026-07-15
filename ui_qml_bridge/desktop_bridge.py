@@ -1,7 +1,10 @@
-"""DesktopBridge — minimal desktop integration for QML (MPRIS, notifications)."""
+"""DesktopBridge — minimal desktop integration for QML (notifications, MPRIS).
+Uses DBus for notifications instead of QSystemTrayIcon to avoid QtWidgets dependency.
+"""
 from __future__ import annotations
 
 import logging
+import os
 
 from PySide6.QtCore import QObject, Property, Slot
 
@@ -15,11 +18,9 @@ class DesktopBridge(QObject):
     @Slot(str, result=dict)
     def showNotification(self, title: str, message: str):
         try:
-            from PySide6.QtWidgets import QSystemTrayIcon
-            if QSystemTrayIcon.isSystemTrayAvailable():
-                tray = QSystemTrayIcon()
-                tray.showMessage(title, message, QSystemTrayIcon.Information, 3000)
-                return {"ok": True}
+            import subprocess
+            subprocess.run(["notify-send", title, message], capture_output=True, timeout=5)
+            return {"ok": True}
         except Exception:
             pass
         return {"ok": False, "error": "UNAVAILABLE"}
@@ -27,12 +28,12 @@ class DesktopBridge(QObject):
     @Property(bool, constant=True)
     def systemTrayAvailable(self):
         try:
-            from PySide6.QtWidgets import QSystemTrayIcon
-            return QSystemTrayIcon.isSystemTrayAvailable()
+            import subprocess
+            r = subprocess.run(["which", "notify-send"], capture_output=True, timeout=5)
+            return r.returncode == 0
         except Exception:
             return False
 
     @Property(str, constant=True)
     def desktopEnvironment(self):
-        import os
         return os.environ.get("XDG_CURRENT_DESKTOP", os.environ.get("DESKTOP_SESSION", "unknown"))

@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test history export with real progress: JSON and CSV, cancel, progress tracking."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for HistoryExportDialog: export flows, cancellation, format selection, edge cases."""
 >>>>>>> Stashed changes
@@ -284,6 +287,9 @@ class TestHistoryExport:
         data = json.loads(out.read_text())
         assert len(data) == 0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_export_csv_headers(self, bridge, tmp_path):
         out = tmp_path / "headers.csv"
@@ -293,6 +299,10 @@ class TestHistoryExport:
         assert "event_id" in first_line
         assert "track_id" in first_line
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

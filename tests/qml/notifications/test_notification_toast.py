@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test NotificationToast — show, dismiss, auto-dismiss, timer states."""
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for NotificationToast QML component states and behavior."""
 >>>>>>> Stashed changes
@@ -34,6 +37,9 @@ import pytest
 from ui_qml_bridge.notification_bridge import NotificationBridge
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @pytest.fixture
@@ -42,12 +48,15 @@ def bridge():
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestToastShowDismiss:
     def test_show_message_sets_current(self, bridge):
         result = bridge.showMessage("Hola mundo")
         assert result["ok"] is True
         assert bridge.currentNotification is not None
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 @pytest.fixture
 def toast_component(engine, qml_dir):
@@ -104,6 +113,9 @@ class TestToastShowDismiss:
         result = bridge.showMessage("Hola mundo")
         assert result["ok"] is True
         assert bridge.currentNotification is not None
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert bridge.currentNotification["text"] == "Hola mundo"
 
@@ -181,6 +193,10 @@ class TestToastKinds:
         bridge.showMessage("Raro", "unknown")
         assert bridge.currentNotification["kind"] == "info"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

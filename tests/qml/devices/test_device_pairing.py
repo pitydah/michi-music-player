@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test pairing flow: discover → pair → trust."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test device pairing flow."""
 from __future__ import annotations
@@ -8,11 +11,15 @@ from __future__ import annotations
 =======
 """Test pairing flow: discover → pair → trust."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 from core.device_sync_service import (
     DeviceSyncService,
@@ -23,6 +30,8 @@ from ui_qml_bridge.devices_bridge import DevicesBridge
 
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from core.device_sync_service import DeviceSyncService, DeviceIdentity, DeviceProtocol
 from ui_qml_bridge.devices_bridge import DevicesBridge
@@ -37,12 +46,21 @@ from ui_qml_bridge.devices_bridge import DevicesBridge
 
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+def svc():
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 def svc():
@@ -59,6 +77,10 @@ def temp_music(tmp_path):
 @pytest.fixture
 def dev_svc():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -67,8 +89,11 @@ def dev_svc():
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 def mock_sync_mgr():
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def bridge(svc):
 >>>>>>> Stashed changes
@@ -283,6 +308,9 @@ class TestPairingFlow:
         result = bridge.trustDevice("nonexistent")
         assert result["ok"] is False
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_authorize_device(self, bridge, dev_svc, temp_music):
         identity = DeviceIdentity(
@@ -340,6 +368,10 @@ class TestPairingFlow:
         assert unpair_result["ok"] is True
         assert dev_svc.is_paired(key) is False
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

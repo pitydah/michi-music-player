@@ -16,6 +16,7 @@ Item {
     property string normError: ""
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property int _state: 0
     property real _targetLufs: -14.0
     property real _truePeakLimit: -1.0
@@ -25,6 +26,8 @@ Item {
 
     objectName: "AudioNormalizationPage"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "audioNormalization.page"
 >>>>>>> Stashed changes
@@ -98,12 +101,19 @@ Item {
 
     Flickable {
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -114,6 +124,7 @@ Item {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Text {
                 text: "Normalización"
                 color: MichiTheme.colors.textPrimary
@@ -121,6 +132,8 @@ Item {
                 objectName: "normPageTitle"
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             anchors.fill: parent
@@ -239,7 +252,10 @@ Item {
                     }
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
             Text {
                 text: "Normalización"
@@ -356,6 +372,9 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
                 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 height: childrenRect.height + MichiTheme.spacing.lg * 2
             }
@@ -367,6 +386,10 @@ Item {
                 objectName: "normBridgeStatus"
                 Accessible.name: "Bridge no disponible"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

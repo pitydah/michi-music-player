@@ -1,12 +1,18 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 =======
 import QtQuick.Controls as QQC2
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import QtQuick.Layouts
 import "../theme"
@@ -17,12 +23,15 @@ FocusScope {
 
     property string title: ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property alias searchContent: searchHost.data
     property alias primaryActions: primaryHost.data
     property alias secondaryActions: secondaryHost.data
     property alias overflowContent: overflowHost.data
     property int overflowThreshold: 600
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var primaryActions: []
     property var secondaryActions: []
@@ -47,6 +56,9 @@ FocusScope {
     objectName: "ResponsiveToolbar"
 
     Accessible.role: Accessible.ToolBar
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     Accessible.name: title !== "" ? title : "Barra de herramientas"
 
@@ -55,6 +67,10 @@ FocusScope {
 
     readonly property bool compactMode: root.width < root.overflowThreshold
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -69,6 +85,7 @@ FocusScope {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Column {
         id: childrenColumn
         width: parent.width
@@ -79,6 +96,8 @@ FocusScope {
             height: MichiTheme.toolbarHeight
             spacing: MichiTheme.spacing.sm
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Rectangle {
         anchors.fill: parent
@@ -101,6 +120,9 @@ FocusScope {
             height: MichiTheme.toolbarHeight
             spacing: MichiTheme.spacing.sm
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
             Text {
@@ -110,10 +132,14 @@ FocusScope {
                 font.weight: MichiTheme.typography.weightSemiBold
                 visible: text !== ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             }
 
             Item {
                 id: searchHost
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -166,6 +192,9 @@ FocusScope {
                 Layout.alignment: Qt.AlignVCenter
             }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             Row {
                 id: overflowHost
@@ -173,6 +202,10 @@ FocusScope {
                 Layout.alignment: Qt.AlignVCenter
                 visible: root.compactMode
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

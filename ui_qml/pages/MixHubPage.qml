@@ -28,12 +28,15 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Flickable {
         id: flickable
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     FocusScope {
         id: focusScope
@@ -98,6 +101,9 @@ Item {
         Column {
             id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             HeroMaterial {
                 width: parent.width; height: 140; radius: 16; showGlow: true
@@ -113,6 +119,7 @@ Item {
                         text: "Descubre, revive y explora tu música desde nuevas perspectivas."
                         color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70; wrapMode: Text.WordWrap
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                     }
                 }
@@ -132,6 +139,12 @@ Item {
                     }
                 }
 
+=======
+>>>>>>> origin/michi-qml-functional-wave
+                    }
+                }
+
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 StatusBadge {
                     text: root.mx ? "Bridge conectado" : "Bridge no disponible"
@@ -155,6 +168,9 @@ Item {
                 width: parent.width; columns: 2
                 columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 Grid {
@@ -163,6 +179,7 @@ Item {
                     columnSpacing: MichiTheme.spacing.md
                     rowSpacing: MichiTheme.spacing.md
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                     GlassCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2; height: 100
@@ -175,6 +192,8 @@ Item {
                         Keys.onSpacePressed: onClicked()
                         onClicked: {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     Repeater {
                         model: root.mx ? root.mx.categories : []
@@ -254,12 +273,19 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                         onClicked: {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             if (root.mx && typeof root.mx.loadMix !== "undefined")
                                 root.mx.loadMix(modelData.id || "")
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -29,9 +29,12 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     CapabilityGuard {
         id: homeAudioGuard
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Loader {
 >>>>>>> Stashed changes
@@ -53,6 +56,15 @@ Item {
         anchors.fill: parent
         capabilityName: "home_audio"
 
+<<<<<<< Updated upstream
+=======
+=======
+    CapabilityGuard {
+        id: homeAudioGuard
+        anchors.fill: parent
+        capabilityName: "home_audio"
+
+>>>>>>> Stashed changes
         Flickable {
             id: flickable
             anchors.fill: parent
@@ -74,12 +86,18 @@ Item {
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     objectName: "homeAudio.pageTitle"
                     Accessible.role: Accessible.Heading
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     Accessible.name: "Home Audio"
                 }
@@ -88,8 +106,11 @@ Item {
                     id: modeSelector
                     width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     objectName: "homeAudioModeSelector"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     objectName: "homeAudio.modeSelector"
 >>>>>>> Stashed changes
@@ -121,16 +142,22 @@ Item {
                     width: parent.width
                     currentIndex: modeSelector.selectedMode
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                     HomeAssistantPanel {
                         id: haPanel
                         width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         objectName: "homeAssistantPanel"
                         Accessible.name: "Panel de Home Assistant"
                         state: root.ha ? root.ha.homeAssistantState : "not_configured"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         state: root.ha ? root.ha.homeAssistantState : "not_configured"
                         objectName: "homeAudio.haPanel"
@@ -140,6 +167,9 @@ Item {
                         Accessible.name: "Panel de Home Assistant"
                         state: root.ha ? root.ha.homeAssistantState : "not_configured"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         onConfigureClicked: {
                             if (root.ha) root.ha.configureHomeAssistant()
@@ -148,6 +178,12 @@ Item {
                             if (root.ha) root.ha.openDiagnostics()
                         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                        KeyNavigation.tab: devicesSection
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
                         KeyNavigation.tab: devicesSection
@@ -159,6 +195,10 @@ Item {
                         Keys.onReturnPressed: onConfigureClicked()
                         Keys.onSpacePressed: onConfigureClicked()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -168,8 +208,12 @@ Item {
                         id: streamPanel
                         width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         objectName: "michiMusicStreamPanel"
                         Accessible.name: "Panel de streaming Michi Music"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -349,6 +393,9 @@ Item {
                     objectName: "devicesHeader"
                     Accessible.name: "Dispositivos"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
 
@@ -362,6 +409,12 @@ Item {
                         receiverState: modelData.state || "disconnected"
                         receiverType: modelData.type || "Michi Stream"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                        objectName: "homeAudio.receiverCard." + index
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
                         objectName: "homeAudio.receiverCard." + index
@@ -373,6 +426,10 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -382,8 +439,11 @@ Item {
                 Text {
                     text: "No hay dispositivos Home Audio configurados."
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
@@ -448,6 +508,9 @@ Item {
                     Accessible.name: "Experimental"
                     KeyNavigation.backtab: diagCard
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 }
             }

@@ -78,6 +78,7 @@ def test_play_event_no_service_returns_error(bridge):
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 def test_play_event_with_action_registry(bridge):
     reg = MagicMock()
     reg.execute = MagicMock(return_value={"ok": True})
@@ -88,6 +89,8 @@ def test_play_event_with_action_registry(bridge):
     reg.execute.assert_called_with("track_play_now")
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def test_retention_removes_old(svc):
     import time
@@ -108,6 +111,9 @@ def test_play_event_with_action_registry(bridge):
     assert result["ok"]
     reg.execute.assert_called_with("track_play_now")
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 def test_remove_event_by_id(bridge, hqs):
@@ -124,6 +130,10 @@ def test_remove_event_by_id_second_event(bridge, hqs):
 def test_remove_nonexistent_event(bridge):
     result = bridge.removeHistoryEvent("999")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

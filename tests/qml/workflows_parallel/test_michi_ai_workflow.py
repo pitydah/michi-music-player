@@ -1,12 +1,18 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Workflow test: Prompt → preview → confirm → execute → show result."""
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 """Workflow test: Prompt → preview → confirm → execute → show result."""
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from __future__ import annotations
 
@@ -14,6 +20,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
@@ -56,6 +63,8 @@ def bridge(services):
         worker_manager=services["worker_manager"],
     )
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
 >>>>>>> Stashed changes
@@ -287,4 +296,7 @@ class TestMichiAIWorkflow:
         last = bridge._chat_history[-1]
         assert "Hecho" in last["text"] or "Error" in last["text"]
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

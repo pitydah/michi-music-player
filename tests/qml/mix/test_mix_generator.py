@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test MixBridge generation flow with full state machine validation."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test MixGenerator: loadMix with different types, seed, empty results, custom rules."""
 =======
 """Test MixBridge generation flow with full state machine validation."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import pytest
 from unittest.mock import MagicMock
@@ -13,12 +19,18 @@ from unittest.mock import MagicMock
 from ui_qml_bridge.mix_bridge import MixBridge
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("mix")]
 
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @pytest.fixture
@@ -26,9 +38,12 @@ def mock_mqs():
     mqs = MagicMock()
     mqs.favorites.return_value = [
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "Al", "duration": 200, "reason": "Favorito"},
         {"track_id": 2, "title": "Fav 2", "artist": "B", "album": "Bl", "duration": 180, "reason": "Favorito"},
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         {"track_id": i, "title": f"Fav {i}", "artist": "A", "album": "Al", "duration": 200 + i}
         for i in range(1, 21)
@@ -58,6 +73,9 @@ def mock_mqs():
     mqs.by_year.return_value = []
     mqs.high_quality.return_value = [{"track_id": 8, "title": "HQ 1", "artist": "H", "album": "Hl", "duration": 200}]
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return mqs
 
@@ -69,8 +87,11 @@ def bridge(mock_mqs):
 
 class TestMixGenerator:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_load_favorites_returns_tracks(self, bridge):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_generate_favorites(self, bridge):
 >>>>>>> Stashed changes
@@ -194,8 +215,11 @@ class TestMixGenerator:
         result = bridge.refresh()
         assert result["ok"] is True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         assert len(bridge.currentSongs) == 2
 =======
+=======
+>>>>>>> Stashed changes
 =======
     def test_load_favorites_returns_tracks(self, bridge):
         result = bridge.loadMix("favorites")
@@ -319,4 +343,7 @@ class TestMixGenerator:
         assert result["ok"] is True
         assert len(bridge.currentSongs) == 2
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

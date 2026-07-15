@@ -1,18 +1,27 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for library keyboard navigation — 12+ tests."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for library keyboard navigation."""
 =======
 """Tests for library keyboard navigation — 12+ tests."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import pytest
 >>>>>>> Stashed changes
@@ -167,6 +176,9 @@ class TestLibraryKeyboard:
         assert scope.focus
         assert scope.objectName == "tracksFocusScope"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_focus_scope_for_albums(self):
         scope = MagicMock()
@@ -196,6 +208,10 @@ class TestLibraryKeyboard:
             obj.Accessible.name = name
             assert obj.objectName == name
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

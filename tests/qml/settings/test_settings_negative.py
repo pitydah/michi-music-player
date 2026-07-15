@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Negative tests for settings pages — null bridge, error state, destructive confirmation."""
 from pathlib import Path
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from __future__ import annotations
 >>>>>>> Stashed changes
@@ -25,6 +28,9 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 class FailingSettingsBridgeV2(QObject):
@@ -66,6 +72,10 @@ class FailingSettingsBridgeV2(QObject):
 
 EMPTY_BRIDGE = type("Empty", (QObject,), {})
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -74,8 +84,11 @@ EMPTY_BRIDGE = type("Empty", (QObject,), {})
 @pytest.fixture
 def engine(qapp):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     return QQmlEngine(qapp)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
@@ -337,6 +350,9 @@ class TestSettingsNegative:
             confirm_dialog = obj.findChild(type(obj).metaObject().superClass(), "confirmClearCache")
             assert confirm_dialog is not None
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_bridge_save_failure_handled_gracefully(self, engine, failing_bridge, page_file):
@@ -347,6 +363,10 @@ class TestSettingsNegative:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed with failing bridge: {comp.errorString()}"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,10 +1,16 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for home page display and actions — 12+ tests."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 """Tests for home page display and actions — 12+ tests."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from __future__ import annotations
 
@@ -12,7 +18,10 @@ from unittest.mock import MagicMock
 
 import pytest
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
@@ -309,12 +318,19 @@ class TestHomePageDisplay:
         nav.navigate("connections")
         nav.navigate.assert_called_once_with("connections")
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_navigate_to_jobs(self):
         nav = MagicMock()
         nav.navigate("jobs")
         nav.navigate.assert_called_once_with("jobs")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

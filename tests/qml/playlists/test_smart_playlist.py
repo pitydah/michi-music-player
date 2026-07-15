@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test smart playlist editor: rules, groups, preview, save."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for SmartPlaylistEditorPage: rule management, preview, save."""
 >>>>>>> Stashed changes
@@ -352,12 +355,19 @@ class TestSmartPlaylist:
         if result.get("ok"):
             assert result["count"] >= 0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_smart_playlist_name_required(self, svc):
         if hasattr(svc, 'create_smart'):
             result = svc.create_smart("", {"match_mode": "all", "rules": []})
             assert not result["ok"]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

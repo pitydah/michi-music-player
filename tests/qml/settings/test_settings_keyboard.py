@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Combined keyboard navigation tests for all 7 settings pages — Tab, Enter, Escape."""
 from pathlib import Path
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from __future__ import annotations
 
@@ -27,6 +30,9 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
@@ -72,6 +78,10 @@ PAGE_FILES = [
     "SettingsAboutPage.qml",
 ]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -80,8 +90,11 @@ PAGE_FILES = [
 @pytest.fixture
 def engine(qapp):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     return QQmlEngine(qapp)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
@@ -260,6 +273,9 @@ class TestSettingsKeyboardNavigation:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed with null bridge: {comp.errorString()}"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_create_successfully(self, engine, bridge, page_file):
@@ -269,6 +285,10 @@ class TestSettingsKeyboardNavigation:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed: {comp.errorString()}"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

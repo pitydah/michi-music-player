@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # MichiAIBridge Integration Contract
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 # Michi AI Bridge Contract
 >>>>>>> Stashed changes
@@ -163,6 +166,9 @@ When confirmation required:
 - `cancel()`: cancels task via `_wm.cancel_task(_current_task_id)` if WorkerManager available. Clears `_pending_action` and `_last_error`. Sets status to `"cancelled"`.
 - User saying "no"/"cancelar"/"cancel" during `awaiting_confirmation`: sets `_pending_action = None`, status `"cancelled"`, sends "Acción cancelada." response.
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 ## Integration with JobService
 - Uses `WorkerManager` (`_wm`) via `cancel_task` for cancellation.
@@ -189,6 +195,10 @@ NOT IMPLEMENTED.
 ## Recognized Intents (Spanish)
 `reproducir canción`, `reproducir álbum`, `encolar`, `buscar`, `abrir ruta`, `crear playlist`, `agregar canciones`, `mostrar no escuchadas`, `diagnosticar biblioteca`, `abrir ajustes`, `cambiar ajuste seguro`.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

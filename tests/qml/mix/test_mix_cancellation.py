@@ -1,4 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+"""CRITICAL: Verify Mix cancellation is REAL (WorkerManager cancel_all, not just counter)."""
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 """CRITICAL: Verify Mix cancellation is REAL (WorkerManager cancel_all, not just counter)."""
@@ -14,6 +20,10 @@ Requirements:
 - The bridge cancelGeneration must call worker_manager.cancel_all(owner="mix_bridge")
 """
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -22,24 +32,33 @@ from unittest.mock import MagicMock
 
 from ui_qml_bridge.mix_bridge import MixBridge
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from core.worker_manager import WorkerManager
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 
 pytestmark = [pytest.mark.qml_module("mix")]
 =======
 from core.worker_manager import WorkerManager
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 
 @pytest.fixture
 def mock_wm():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     wm = MagicMock(spec=WorkerManager)
     wm.cancel_all = MagicMock(return_value=None)
     wm.run_task = MagicMock(return_value=MagicMock(cancel=MagicMock(return_value=True)))
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     wm = MagicMock()
     wm.cancel_all = MagicMock(return_value=None)
@@ -49,6 +68,9 @@ def mock_wm():
     wm.cancel_all = MagicMock(return_value=None)
     wm.run_task = MagicMock(return_value=MagicMock(cancel=MagicMock(return_value=True)))
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return wm
 
@@ -59,16 +81,23 @@ def mock_mqs():
     mqs.favorites.return_value = [
         {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "Al", "duration": 200, "reason": "Favorito"},
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         {"track_id": 2, "title": "Fav 2", "artist": "B", "album": "Bl", "duration": 180, "reason": "Favorito"},
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     ]
     return mqs
 
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 @pytest.fixture
 def bridge(mock_mqs, mock_wm):
@@ -79,6 +108,9 @@ def bridge(mock_mqs, mock_wm):
                      track_action_service=tas, playlist_bridge=MagicMock())
 
 
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -124,6 +156,9 @@ class TestMixCancellation:
         assert result["cancelled"] == gen_before
         assert bridge._generation == gen_before + 1
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_cancel_without_worker_manager_still_ok(self, bridge):
         bridge_no_wm = MixBridge(query_service=None)
@@ -138,6 +173,10 @@ class TestMixCancellation:
 
     def test_multiple_cancels_each_calls_cancel_all(self, bridge, mock_wm):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -146,8 +185,11 @@ class TestMixCancellation:
         assert mock_wm.cancel_all.call_count == 2
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_cancel_does_not_clear_current_songs(self, bridge):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_cancel_without_wm_still_ok(self, mock_mqs):
         bridge = MixBridge(query_service=mock_mqs, worker_manager=None)
@@ -198,6 +240,9 @@ class TestMixCancellation:
         bridge.cancelGeneration()
         assert bridge._generation > 0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_generation_counter_used_for_stale_result(self, bridge):
         bridge.loadMix("favorites")
@@ -218,6 +263,10 @@ class TestMixCancellation:
 
     def test_cancel_after_songs_loaded_enqueue_still_works(self, bridge):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -226,7 +275,10 @@ class TestMixCancellation:
         result = bridge.enqueueMix()
         assert result["ok"] is True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         assert result["count"] == 2
 >>>>>>> Stashed changes
@@ -265,6 +317,9 @@ class TestMixCancellation:
         bridge.loadMix("favorites")
         assert bridge._generation == gen_before
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_cancel_generation_does_not_raise(self, bridge):
         try:
@@ -295,6 +350,10 @@ class TestMixCancellation:
         gen2 = bridge2._generation
         assert gen1 > gen2
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

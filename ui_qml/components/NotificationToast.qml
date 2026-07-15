@@ -1,12 +1,18 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 =======
 import QtQuick.Controls as QQC2
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../theme"
 
@@ -14,11 +20,14 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var bridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var notification: null
     property int defaultTimeoutMs: 5000
     property bool reducedMotion: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var notificationBridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property string objectName: "notificationToast"
@@ -258,28 +267,40 @@ Item {
                     width: parent.width
                     text: root.notification ? (root.notification.title || root.notification.text || "") : ""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightMedium
                     elide: Text.ElideRight
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     width: parent.width - closeBtn.width - MichiTheme.spacing.sm
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     visible: text !== ""
                 }
 
                 Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     id: messageText
                     width: parent.width
                     text: root.notification ? (root.notification.message || (root.notification.title ? root.notification.text : "")) : ""
                     color: MichiTheme.colors.textSecondary
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     id: closeBtn
                     text: "✕"
@@ -368,7 +389,10 @@ Item {
         onTriggered: root.dismissToast()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                     id: messageText
                     width: parent.width
@@ -456,6 +480,9 @@ Item {
         repeat: false
         onTriggered: root.dismissToast()
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     function dismissToast() {
@@ -476,6 +503,10 @@ Item {
 
     Keys.onEscapePressed: root.dismissToast()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test M3U import/export, preview, cancel, progress."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for PlaylistImportDialog and PlaylistExportDialog: import/export flows."""
 =======
 """Test M3U import/export, preview, cancel, progress."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import pytest
 from unittest.mock import MagicMock
@@ -47,7 +53,10 @@ class TestPlaylistImportExport:
         assert result["error"] == "NO_SERVICE"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_confirm_import_with_service(self):
         svc = MagicMock()
@@ -56,6 +65,9 @@ class TestPlaylistImportExport:
         result = bridge.confirmPlaylistImport("/tmp/test.m3u", "My Playlist")
         assert result["ok"] is True
         assert result["count"] == 8
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     def get_playlist_items(self, pid):
@@ -67,6 +79,10 @@ class TestPlaylistImportExport:
                  "title": "", "artist": "", "album": "", "duration": 0}
                 for idx, r in enumerate(rows)]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -80,10 +96,13 @@ class TestPlaylistImportExport:
         assert result["count"] == 5
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def remove_track_from_playlist(self, pid, track_id):
         self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?", (pid, track_id))
         self.conn.commit()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_import_m3u8_alias(self):
         svc = MagicMock()
@@ -96,6 +115,9 @@ class TestPlaylistImportExport:
         self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?", (pid, track_id))
         self.conn.commit()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     def test_cancel_import_no_service(self):
@@ -134,6 +156,7 @@ class TestPlaylistImportExport:
         assert result["ok"] is True
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestPlaylistImportExport:
     def test_import_preview_m3u(self, svc, tmp_path):
         m3u = tmp_path / "test.m3u"
@@ -142,6 +165,8 @@ class TestPlaylistImportExport:
         assert result["ok"]
         assert result["total_entries"] == 2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_export_service_error(self):
         svc = MagicMock()
@@ -248,6 +273,9 @@ class TestPlaylistImportExport:
         assert result["ok"]
         assert result["name"] == "mylist"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_import_confirm_no_db(self, svc):
         svc_no_db = PlaylistService(db=None)
@@ -298,6 +326,10 @@ class TestPlaylistImportExport:
         assert result["ok"]
         assert result["count"] == 1
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test all interactive controls have Accessible.name.
 
@@ -9,6 +12,9 @@ Accessible.description, and Accessible.role where applicable."""
 =======
 from __future__ import annotations
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 from pathlib import Path
@@ -17,9 +23,12 @@ import pytest
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 PAGE_PATHS = [
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 PAGES = [
     "pages/devices/DevicesPage.qml",
@@ -164,6 +173,9 @@ class TestAccessibleNames:
         content = (QML_DIR / "components/SearchField.qml").read_text()
         assert "Accessible.name" in content or "accessibleName" in content
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_glass_card_interactive_accessible(self):
         content = (QML_DIR / "components/GlassCard.qml").read_text()
@@ -185,6 +197,10 @@ class TestAccessibleNames:
         if "Accessible." not in content:
             pytest.skip("StatusBadge has no Accessible properties (optional)")
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

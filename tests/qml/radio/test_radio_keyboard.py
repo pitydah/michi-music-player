@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test RadioBridge keyboard navigation patterns (bridge-level focus/activation)."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test keyboard navigation patterns for RadioPage and related components."""
 =======
 """Test RadioBridge keyboard navigation patterns (bridge-level focus/activation)."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
@@ -14,10 +20,13 @@ import pytest
 from ui_qml_bridge.radio_bridge import RadioBridge
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 @pytest.fixture
 def mock_stations():
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("radio"),
               pytest.mark.qml_dimension("accessibility")]
@@ -46,6 +55,9 @@ def mock_stations():
 
 @pytest.fixture
 def mock_stations():
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     s1 = MagicMock()
     s1.id = 1
@@ -67,6 +79,10 @@ def mock_stations():
     s2.bitrate = 256
     return [s1, s2]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -77,16 +93,22 @@ def mock_radio_mgr(mock_stations):
     mgr = MagicMock()
     mgr.get_all.return_value = mock_stations
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
     mgr.remove_station.return_value = True
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
     mgr.remove_station.return_value = True
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return mgr
 
@@ -94,11 +116,14 @@ def mock_radio_mgr(mock_stations):
 @pytest.fixture
 def mock_player():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     player = MagicMock()
     player.play_url.return_value = True
     player.stop.return_value = True
     return player
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     return MagicMock()
 >>>>>>> Stashed changes
@@ -171,6 +196,9 @@ class TestKeyboardNavigation:
         bridge.refresh()
         result = bridge.deleteStation("http://a.stream")
         assert result["ok"]
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     def test_play_after_stop(self, mock_radio_mgr, mock_player):
@@ -237,6 +265,10 @@ class TestKeyboardNavigation:
         bridge.cancelStream()
         assert mock_player.stop.called
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

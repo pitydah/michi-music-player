@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 # HomeBridge Integration Contract
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 # Home Bridge Contract
 >>>>>>> Stashed changes
@@ -114,6 +117,9 @@ None — dashboard is read-only.
 ## Cancellation Contract
 NOT IMPLEMENTED — no cancellation mechanism.
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 ## Integration with JobService
 - Reads `job_bridge.activeCount` for dashboard display.
@@ -134,6 +140,10 @@ NOT IMPLEMENTED.
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

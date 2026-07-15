@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for SettingsLibraryPage — folders, scanning, covers, enrichment, rescan."""
 from pathlib import Path
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from __future__ import annotations
 
@@ -27,6 +30,9 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
@@ -71,6 +77,10 @@ class FakeSettingsBridgeV2(QObject):
     def refresh(self):
         self.dataChanged.emit()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -79,8 +89,11 @@ class FakeSettingsBridgeV2(QObject):
 @pytest.fixture
 def engine(qapp):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     return QQmlEngine(qapp)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
@@ -332,6 +345,9 @@ class TestSettingsLibraryPage:
             btn = obj.findChild(type(obj).metaObject().superClass(), "addFolderBtn")
             assert btn is not None
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_folders_list(self, engine, bridge):
         comp = self._load_page(engine, bridge)
@@ -340,6 +356,10 @@ class TestSettingsLibraryPage:
             lst = obj.findChild(type(obj).metaObject().superClass(), "foldersList")
             assert lst is not None
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

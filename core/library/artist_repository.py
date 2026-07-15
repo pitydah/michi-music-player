@@ -1,3 +1,3 @@
-from ui.controllers.artist_repository import ArtistRepository
+from legacy_widgets.ui.controllers.artist_repository import ArtistRepository
 
 __all__ = ["ArtistRepository"]

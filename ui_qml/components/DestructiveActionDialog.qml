@@ -1,8 +1,11 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import "../theme"
 import "dialogs"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,6 +14,9 @@ import "../theme"
 import "../theme"
 import "dialogs"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 Item {
@@ -19,7 +25,10 @@ Item {
     property string title: "Acción destructiva"
     property string message: "Esta acción no se puede deshacer."
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string confirmKeyword: ""
 >>>>>>> Stashed changes
@@ -38,14 +47,20 @@ Item {
     property string keywordPrompt: "Escribe \"" + root.keyword + "\" para confirmar:"
     property bool open: false
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     signal confirmed()
     signal cancelled()
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "DestructiveActionDialog"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     visible: root.open
     focus: root.open
@@ -199,6 +214,9 @@ Item {
             root.open = false
             root.cancelled()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
     }

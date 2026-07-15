@@ -1,7 +1,10 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 >>>>>>> Stashed changes
@@ -53,7 +56,10 @@ Rectangle {
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 import QtQuick.Controls as QQC2
 import "../theme"
@@ -103,6 +109,9 @@ Rectangle {
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
@@ -144,6 +153,10 @@ Rectangle {
                 subtitle: "No hay notificaciones activas en este momento"
                 visible: emptyStateItem.visible
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -153,6 +166,7 @@ Rectangle {
         ListView {
             id: notificationList
             width: parent.width
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             height: parent.height - 48 - 1
             model: {
@@ -168,6 +182,8 @@ Rectangle {
             }
             visible: !emptyStateItem.visible
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             height: parent.height - 50
             spacing: MichiTheme.spacing.sm
@@ -275,7 +291,10 @@ Rectangle {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
             height: parent.height - 48 - 1
             model: {
@@ -392,6 +411,9 @@ Rectangle {
             Keys.onEscapePressed: root.visible = false
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Component {
@@ -421,6 +443,10 @@ Rectangle {
         onTriggered: root.refresh()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

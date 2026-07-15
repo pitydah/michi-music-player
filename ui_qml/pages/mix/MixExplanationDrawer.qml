@@ -6,8 +6,11 @@ import "../../components"
 import "../../materials"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 Item {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 Drawer {
 >>>>>>> Stashed changes
@@ -56,6 +59,9 @@ Item {
     Accessible.role: Accessible.Dialog
     Accessible.name: "Explicación del Mix"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     function show(mixParams, trackExplanations) {
         root._mixParams = mixParams || {}
@@ -74,6 +80,10 @@ Item {
             if (result && result.ok) {
                 root._mixParams = { reasons: result.reasons || [], total: result.total || 0 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -82,8 +92,11 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     Rectangle {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     background: Rectangle {
         color: MichiTheme.colors.surfaceCard
@@ -478,6 +491,9 @@ Item {
     Keys.onEscapePressed: {
         if (root._open) root.dismiss()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 }

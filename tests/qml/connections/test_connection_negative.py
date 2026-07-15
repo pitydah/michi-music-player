@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test negative cases: missing service, failed connection, timeout."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for connection negative cases: null bridge, errors, unavailable state."""
 >>>>>>> Stashed changes
@@ -92,7 +95,10 @@ class TestFailedConnection:
         bridge.requestPair()
         result = bridge.confirmPair()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 """Test negative cases: missing service, failed connection, timeout."""
 from unittest.mock import MagicMock
@@ -182,6 +188,9 @@ class TestFailedConnection:
     def test_confirm_pair_failure(self, bridge):
         bridge.requestPair()
         result = bridge.confirmPair()
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         assert result["ok"] is False
 
@@ -219,6 +228,10 @@ class TestTimeout:
     def test_scan_slow(self, bridge):
         result = bridge.scanForServers()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

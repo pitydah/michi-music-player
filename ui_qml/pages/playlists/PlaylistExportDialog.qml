@@ -26,9 +26,12 @@ Dialog {
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     width: 400
     objectName: "playlistExportDialog"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "playlist.exportDialog"
     closePolicy: Dialog.CloseOnEscape
@@ -105,6 +108,9 @@ Dialog {
             width: parent.width
             visible: !root._exporting
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             TextField {
                 id: pathInput
@@ -115,6 +121,10 @@ Dialog {
                 objectName: "exportPathInput"
                 Accessible.name: "Ruta de destino"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -178,7 +188,10 @@ Dialog {
 
             MichiButton {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 id: cancelExportBtn
                 text: "Cancelar exportación"
@@ -193,6 +206,9 @@ Dialog {
                 Accessible.name: "Cancelar exportación"
                 KeyNavigation.backtab: progressBar
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 text: "Examinar"
                 variant: "secondary"
@@ -203,8 +219,17 @@ Dialog {
                 Keys.onSpacePressed: onClicked()
                 onClicked: saveDialog.open()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             }
 
+=======
+>>>>>>> origin/michi-qml-functional-wave
+            }
+
+<<<<<<< HEAD
+            Item { width: 1; height: 1; focus: true }
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
             }
@@ -303,6 +328,10 @@ Dialog {
                 }
             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -323,9 +352,12 @@ Dialog {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     onOpened: {
         root._exportPath = ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     onAccepted: {
         if (!root._exportPath || root.playlistId < 0) return
@@ -346,6 +378,9 @@ Dialog {
     onOpened: {
         root._exportPath = ""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         root._exporting = false
         root._cancelled = false
@@ -356,8 +391,11 @@ Dialog {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     onClosed: {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     onRejected: {
 >>>>>>> Stashed changes
@@ -374,6 +412,9 @@ Dialog {
             root._cancelled = true
             root._exporting = false
         }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
@@ -392,6 +433,10 @@ Dialog {
             root.close()
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

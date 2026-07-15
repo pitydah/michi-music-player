@@ -7,7 +7,11 @@ import "../../components"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "settingsAudioPage"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -200,6 +204,9 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -232,6 +239,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -240,12 +251,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: qualityCard
                     Layout.fillWidth: true
                     title: "Calidad de audio"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -501,6 +515,9 @@ Item {
                             }
                         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
@@ -546,6 +563,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -554,12 +575,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: normalizationCard
                     Layout.fillWidth: true
                     title: "Normalización"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -610,6 +634,9 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             spacing: MichiTheme.spacing.md
                             Label {
@@ -629,6 +656,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -637,12 +668,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: expertCard
                     Layout.fillWidth: true
                     title: "Opciones avanzadas"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Rectangle {
                     width: parent.width; height: 1
@@ -770,7 +804,10 @@ Item {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 GlassCard {
                     id: expertCard
@@ -897,12 +934,19 @@ Item {
             }
         }
     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -15,6 +15,7 @@ Item {
     property string analysisError: ""
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property int _state: 0
     property var _analysisResult: null
     property var _compareResult: null
@@ -23,6 +24,8 @@ Item {
 
     objectName: "AudioAnalysisPage"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "audioAnalysis.page"
 >>>>>>> Stashed changes
@@ -143,12 +146,19 @@ Item {
 
     Flickable {
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -158,6 +168,7 @@ Item {
             if (root.nav) root.nav.back()
         }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             Text {
                 text: "Análisis técnico"
@@ -172,6 +183,8 @@ Item {
                 objectName: "analysisPageSubtitle"
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             anchors.fill: parent
@@ -343,6 +356,96 @@ Item {
                             Text { text: root._analysisResult ? String(root._analysisResult[modelData]) : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
                         }
                     }
+=======
+            Text {
+                text: "Análisis técnico"
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
+                objectName: "analysisPageTitle"
+            }
+            Text {
+                text: "Formato, codec, bitrate, sample rate, bit depth, canales, encoder, tags, loudness, peak"
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
+                objectName: "analysisPageSubtitle"
+            }
+
+            AudioInputSelection { id: inputSelection }
+
+            AudioSelectionSummary { width: parent.width }
+
+            SectionHeader { text: "Acciones"; width: parent.width; objectName: "analysisActionsHeader"; Accessible.name: "Acciones" }
+
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar selección"
+                    variant: "primary"
+                    enabled: root._state !== root.stateAnalyzing && root._state !== root.stateCancelling && root.labService !== null && inputSelection.selectedFiles.length > 0
+                    objectName: "analyzeBtn"
+                    Accessible.name: "Analizar selección"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._startAnalysis()
+                }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+                MichiButton {
+                    text: "Cancelar"
+                    variant: "danger"
+                    visible: root._state === root.stateAnalyzing
+                    objectName: "cancelAnalysisBtn"
+                    Accessible.name: "Cancelar análisis"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._cancelAnalysis()
+                }
+                MichiButton {
+                    text: root._compareMode ? "Salir de comparación" : "Comparar con otro archivo"
+                    variant: "secondary"
+                    objectName: "compareToggleBtn"
+                    Accessible.name: text
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._startCompare()
+                }
+                MichiButton {
+                    text: "Volver"
+                    variant: "ghost"
+                    objectName: "analysisBackBtn"
+                    Accessible.name: "Volver"
+                    activeFocusOnTab: true
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: { if (root.nav) root.nav.back() }
+                }
+            }
+
+            SectionHeader { text: "Resultado del análisis"; width: parent.width; objectName: "analysisResultsHeader"; Accessible.name: "Resultados" }
+
+            GlassMaterial {
+                width: parent.width; radius: MichiTheme.radiusMd; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"
+                objectName: "analysisResultPanel"
+                visible: root._state === root.stateCompleted || root._state === root.stateFailed
+                Column {
+                    anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
+                    Text {
+                        text: root._analysisResult ? "Análisis completado" : "Error: " + root._errorMessage
+                        color: root._analysisResult ? MichiTheme.colors.success : MichiTheme.colors.error
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold
+                    }
+                    Repeater {
+                        model: root._analysisResult ? Object.keys(root._analysisResult) : []
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text { text: modelData + ": "; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; width: 140 }
+                            Text { text: root._analysisResult ? String(root._analysisResult[modelData]) : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
+                        }
+                    }
                 }
 >>>>>>> Stashed changes
                 height: childrenRect.height + MichiTheme.spacing.lg * 2
@@ -358,6 +461,10 @@ Item {
                     text: root._state === root.stateAnalyzing ? "Analizando..." : "Selecciona archivos para analizar"
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

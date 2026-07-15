@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: select zones -> group -> change volume -> ungroup."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: select zones → group → volume → ungroup via HomeAudioBridge."""
 >>>>>>> Stashed changes
@@ -16,6 +19,17 @@ import pytest
 from unittest.mock import MagicMock, PropertyMock
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
+<<<<<<< Updated upstream
+import pytest
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
+=======
+
+=======
+"""Full workflow: select zones -> group -> change volume -> ungroup."""
+from unittest.mock import MagicMock, PropertyMock
+
+from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -24,6 +38,11 @@ pytestmark = pytest.mark.isolation
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 =======
@@ -48,6 +67,10 @@ def mock_ha():
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -56,6 +79,7 @@ def mock_snapcast():
     sc.is_available = True
     type(sc).is_available = PropertyMock(return_value=True)
     sc.get_groups.return_value = [
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         {"id": "zone1", "name": "Living Room", "muted": False, "volume": 80, "stream_id": "s1"},
         {"id": "zone2", "name": "Kitchen", "muted": True, "volume": 30, "stream_id": "s1"},
@@ -66,6 +90,8 @@ def mock_snapcast():
     sc.group = MagicMock()
     sc.ungroup = MagicMock()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         {"id": "g1", "name": "Living Room", "muted": False, "volume": 80},
         {"id": "g2", "name": "Kitchen", "muted": True, "volume": 30},
@@ -83,15 +109,21 @@ def mock_snapcast():
     sc.group = MagicMock()
     sc.ungroup = MagicMock()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return sc
 
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 def bridge(mock_ha, mock_snapcast):
     return HomeAudioBridge(ha_controller=mock_ha, snapcast_ctrl=mock_snapcast)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def bridge(mock_snapcast):
     return HomeAudioBridge(ha_controller=None, snapcast_ctrl=mock_snapcast)
@@ -302,6 +334,9 @@ class TestFullWorkflow:
         result = bridge.openDiagnostics()
         assert result["ok"] is True
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_no_controller_full_workflow(self):
         b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
@@ -315,6 +350,10 @@ class TestFullWorkflow:
         b.disconnectHa()
         assert b.homeAssistantState == "not_configured"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -28,9 +28,12 @@ Dialog {
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     width: 420
     objectName: "playlistImportDialog"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "playlist.importDialog"
     closePolicy: Dialog.CloseOnEscape
@@ -107,6 +110,9 @@ Dialog {
             width: parent.width
         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         Text {
             text: "Formatos compatibles: M3U, M3U8, PLS, XSPF"
@@ -130,6 +136,10 @@ Dialog {
                 objectName: "importPathInput"
                 Accessible.name: "Ruta del archivo"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -226,7 +236,10 @@ Dialog {
 
             MichiButton {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 id: cancelImportBtn
                 text: "Cancelar importación"
@@ -244,6 +257,9 @@ Dialog {
                 Accessible.name: "Cancelar importación"
                 KeyNavigation.backtab: progressBar
 =======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 text: "Examinar"
                 variant: "secondary"
@@ -253,6 +269,7 @@ Dialog {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: fileDialog.open()
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             }
 
@@ -411,6 +428,11 @@ Dialog {
 >>>>>>> origin/michi-qml-functional-wave
             }
 
+=======
+>>>>>>> origin/michi-qml-functional-wave
+            }
+
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Item { width: 1; height: 1; focus: true }
 >>>>>>> Stashed changes
@@ -642,6 +664,9 @@ Dialog {
                                    ? "Error: " + root._preview.error : "Error al previsualizar"
                 }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             } else {
                 root._status = "Vista previa no disponible. Selecciona un archivo para importar."
@@ -652,9 +677,12 @@ Dialog {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     onOpened: root.reset()
     onClosed: {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     onRejected: {
 >>>>>>> Stashed changes
@@ -676,6 +704,9 @@ Dialog {
                 root.bridge.cancelPlaylistImport(root._importPath)
             root._importing = false
         }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
@@ -696,6 +727,10 @@ Dialog {
             root.close()
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

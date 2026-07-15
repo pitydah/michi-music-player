@@ -9,7 +9,10 @@ Item {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "mixResult.page"
 
@@ -360,11 +363,15 @@ Item {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: root.playTrackAtIndex(index)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     }
                 }
 
                 Text {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
                     width: 24; text: "+"; color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
@@ -376,6 +383,8 @@ Item {
                         }
                     }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     anchors.centerIn: parent
                     visible: parent.count === 0
@@ -441,6 +450,9 @@ Item {
         }
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     LoadingState {
         anchors.centerIn: parent
@@ -464,6 +476,10 @@ Item {
         text: "Bridge no disponible"
         kind: "disconnected"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: configure -> generate -> cancel -> generate again -> play.
 
 Tests the complete mix lifecycle:
@@ -13,6 +14,8 @@ Tests the complete mix lifecycle:
 from __future__ import annotations
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: configure → generate → cancel → regenerate → play via MixBridge."""
 import pytest
@@ -61,6 +64,9 @@ def worker_manager():
     wm.cancel_all = MagicMock(return_value=None)
     wm.run_task = MagicMock(return_value=MagicMock(cancel=MagicMock(return_value=True)))
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return wm
 
@@ -70,10 +76,13 @@ def mock_mqs():
     mqs = MagicMock()
     mqs.favorites.return_value = [
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         {"track_id": i, "title": f"Fav {i}", "artist": f"Artist {chr(65 + (i % 26))}",
          "album": "Album B", "duration": 200, "reason": "Favorito"}
         for i in range(1, 11)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         {"track_id": i, "title": f"Fav {i}", "artist": "ArtistA", "album": "AlbumX", "duration": 200 + i}
         for i in range(1, 16)
@@ -113,6 +122,9 @@ def mock_mqs():
         for i in range(21, 26)
     ]
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return mqs
 
@@ -121,19 +133,26 @@ def mock_mqs():
 def mock_tas():
     tas = MagicMock()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     tas.play_track.return_value = {"ok": True, "track_id": 1}
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     tas.play_track.return_value = {"ok": True}
 =======
     tas.play_track.return_value = {"ok": True, "track_id": 1}
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     tas.enqueue_track.return_value = {"ok": True}
     return tas
 
 
 @pytest.fixture
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 def mock_pb():
     pb = MagicMock()
@@ -145,6 +164,8 @@ def mock_pb():
 @pytest.fixture
 def bridge(mock_mqs, mock_tas, mock_pb, worker_manager):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 def bridge(mock_mqs, mock_wm, mock_tas):
 >>>>>>> Stashed changes
@@ -172,14 +193,20 @@ def bridge(mock_mqs, mock_tas, mock_pb, worker_manager):
         playlist_bridge=mock_pb,
         worker_manager=worker_manager,
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     )
 
 
 class TestMixWorkflow:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_configure_and_generate_favorites(self, bridge):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     """Complete workflow: configure → generate → cancel → regenerate → play."""
 
@@ -389,6 +416,9 @@ class TestMixWorkflow:
         assert len(bridge.currentSongs) == 10
 
         bridge.cancelGeneration()
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         bridge.loadMix("unplayed")
@@ -401,6 +431,10 @@ class TestMixWorkflow:
         bridge.loadMix("favorites")
         assert bridge._generation == gen_before
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

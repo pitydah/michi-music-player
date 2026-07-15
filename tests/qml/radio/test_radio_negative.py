@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test RadioBridge negative cases: connection failure, invalid URL, unavailable codec, no manager."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test negative/error cases for radio components."""
 =======
 """Test RadioBridge negative cases: connection failure, invalid URL, unavailable codec, no manager."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
@@ -13,6 +19,7 @@ import pytest
 
 from ui_qml_bridge.radio_bridge import RadioBridge
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
 @pytest.fixture
@@ -28,6 +35,8 @@ def mock_stations():
     s1.bitrate = 128
     return [s1]
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("radio"),
               pytest.mark.qml_dimension("negative")]
@@ -64,6 +73,9 @@ def mock_radio_mgr(mock_stations):
     mgr.get_all.return_value = mock_stations
     mgr.add.return_value = mock_stations[0]
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return mgr
 
@@ -71,10 +83,13 @@ def mock_radio_mgr(mock_stations):
 @pytest.fixture
 def mock_player():
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     player = MagicMock()
     player.play_url.return_value = True
     return player
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     return MagicMock()
 >>>>>>> Stashed changes
@@ -123,12 +138,16 @@ class TestConnectionFailure:
 
     def test_play_empty_url_returns_error(self, mock_radio_mgr, mock_player):
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         result = bridge.playStation("")
         assert not result["ok"]
         assert result["error"] == "EMPTY_URL"
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     def test_play_without_player(self, mock_radio_mgr):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=None)
@@ -144,6 +163,8 @@ class TestConnectionFailure:
 
     def test_reconnect_without_history(self, mock_radio_mgr, mock_player):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_delete_nonexistent(self, mock_radio_mgr, mock_player):
         mock_radio_mgr.remove_station.side_effect = Exception("Not found")
@@ -216,6 +237,9 @@ class TestInvalidUrl:
         assert result["error"] == "EMPTY_URL"
 
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 class TestUnavailableCodec:
     def test_get_codec_no_stations(self, mock_radio_mgr, mock_player):
@@ -243,6 +267,10 @@ class TestNoManager:
     def test_no_radio_manager(self):
         bridge = RadioBridge(radio_manager=None, player_service=None)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -252,10 +280,13 @@ class TestNoManager:
         assert len(bridge.stations) == 0
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_no_manager_play_fails(self):
         bridge = RadioBridge(radio_manager=None, player_service=None)
         result = bridge.playStation("http://stream.url")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_import_invalid_file(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
@@ -370,6 +401,9 @@ class TestEdgeCases:
     def test_export_opml_failure(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.refresh()
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         result = bridge.exportOpml("/nonexistent/dir/stations.opml")
         assert not result["ok"]
@@ -383,6 +417,10 @@ class TestEdgeCases:
         assert not result["ok"]
         assert result["error"] == "NO_STATIONS"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

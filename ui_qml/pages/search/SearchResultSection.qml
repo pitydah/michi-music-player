@@ -9,7 +9,11 @@ Item {
     property string sectionType: ""
     property string sectionTitle: ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var sectionItems: []
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -69,7 +73,10 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
     property var sectionItems: []
     property int resultCount: 0
@@ -127,6 +134,9 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 Text {
                     text: root.sectionTitle
@@ -145,6 +155,10 @@ Item {
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: root.resultCount > 0 && !root.isLoading
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -154,11 +168,14 @@ Item {
         Loader {
             width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             sourceComponent: {
                 if (root.isLoading) return loadingComp
                 if (root.sectionEmpty) return emptyComp
                 return listComp
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             height: active ? childrenRect.height : 0
             active: isError
@@ -232,6 +249,9 @@ Item {
             }
         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         Component {
             id: emptyComp
@@ -270,6 +290,10 @@ Item {
                 }
             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

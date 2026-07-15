@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: select input -> preview -> convert -> progress -> cancel."""
 from unittest.mock import MagicMock, PropertyMock
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: input → profile → preview → convert → cancel via AudioLabBridge + ConversionBridge."""
 from unittest.mock import MagicMock
@@ -35,6 +38,9 @@ pytestmark = pytest.mark.isolation
 @pytest.fixture
 def mock_conv_bridge():
     bridge = MagicMock()
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     bridge.outputDir = "/tmp"
     bridge.collisionPolicy = "rename"
@@ -57,6 +63,10 @@ def mock_conv_bridge():
     bridge.cancelJob.side_effect = _cancel
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -65,6 +75,7 @@ def mock_conv_bridge():
 
 @pytest.fixture
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 def mock_lab():
     lab = MagicMock()
     type(lab).backendInfo = PropertyMock(return_value={"backend": "gstreamer", "available": True})
@@ -72,6 +83,9 @@ def mock_lab():
 
 
 @pytest.fixture
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -329,6 +343,9 @@ class TestAudioLabWorkflow:
         result = bridge.startConversion("/nonexistent.flac")
         assert result["ok"] is False
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_job_history_after_conversion(self, mock_conv_bridge):
         mock_conv_bridge.startConversion("/test.flac")
@@ -351,6 +368,10 @@ class TestAudioLabWorkflow:
         result = bridge.startConversion("/test.flac")
         assert result.get("ok") is False
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Full workflow: create -> add -> reorder -> remove -> export.
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Workflow test: create → add → reorder → export via PlaylistsBridge."""
 import pytest
@@ -346,6 +349,9 @@ class TestPlaylistsWorkflow:
         bridge.refresh()
         assert len(bridge.playlists) > 0
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_workflow_rename_and_detail(self, bridge):
         bridge.createPlaylist("Rename Test")
@@ -411,6 +417,10 @@ class TestPlaylistsWorkflow:
         detail = svc.get_detail(pid)
         assert detail["count"] == 5
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,5 +1,12 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test GlobalSearchBridge keyboard navigation patterns (bridge-level focus/activation)."""
+=======
+<<<<<<< HEAD
+"""Test keyboard navigation patterns for GlobalSearchPage components."""
+from unittest.mock import MagicMock
+
+>>>>>>> Stashed changes
 import pytest
 =======
 <<<<<<< HEAD
@@ -22,6 +29,9 @@ from unittest.mock import MagicMock
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @pytest.fixture
@@ -32,13 +42,19 @@ def mock_service():
         "results": [
             {"type": "track", "id": 1, "title": "Song A", "subtitle": "Artist",
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
              "section": "track", "score": 1.0},
             {"type": "album", "id": 10, "title": "Album A", "subtitle": "",
              "section": "album", "score": 0.9},
             {"type": "artist", "id": 20, "title": "Artist A", "subtitle": "",
              "section": "artist", "score": 0.8},
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
              "section": "Canciones", "score": 1.0},
@@ -47,6 +63,10 @@ def mock_service():
             {"type": "album", "id": "key1", "title": "Album A", "subtitle": "Artist",
              "section": "Álbumes", "score": 0.8},
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -62,9 +82,12 @@ def bridge(mock_service):
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestKeyboardNavigation:
     def test_search_can_be_cancelled(self, bridge):
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 class TestGlobalSearchKeyboard:
     """Test keyboard navigation semantics for search."""
@@ -169,7 +192,10 @@ class TestGlobalSearchKeyboard:
         bridge.search("Nav")
         assert len(bridge.results) > 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
 class TestKeyboardNavigation:
     def test_search_can_be_cancelled(self, bridge):
@@ -270,6 +296,9 @@ class TestKeyboardNavigation:
     def test_search_then_cancel_then_navigate(self, bridge):
         bridge.search("Nav")
         assert len(bridge.results) > 0
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         bridge.cancel()
         bridge.search("Nav again")
@@ -282,6 +311,10 @@ class TestKeyboardNavigation:
         bridge.search("")
         assert bridge.errorCode == ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

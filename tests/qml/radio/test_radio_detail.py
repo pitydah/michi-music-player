@@ -1,11 +1,17 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test RadioBridge station detail operations."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test RadioStationDetailPage states and metadata display."""
 =======
 """Test RadioBridge station detail operations."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
@@ -14,13 +20,19 @@ import pytest
 from ui_qml_bridge.radio_bridge import RadioBridge
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("radio"),
               pytest.mark.qml_dimension("detail")]
 
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 @pytest.fixture
@@ -35,12 +47,18 @@ def mock_stations():
     s1.favorite = True
     s1.bitrate = 128
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     s1.language = "English"
     s1.genre = "Jazz"
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     s2 = MagicMock()
     s2.id = 2
@@ -52,12 +70,18 @@ def mock_stations():
     s2.favorite = False
     s2.bitrate = 256
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     s2.language = "English"
     s2.genre = "Rock"
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return [s1, s2]
 
@@ -67,15 +91,21 @@ def mock_radio_mgr(mock_stations):
     mgr = MagicMock()
     mgr.get_all.return_value = mock_stations
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     mgr.get_metadata.return_value = {"ok": True, "title": "Now Playing", "artist": "Artist"}
 =======
     mgr.add.return_value = mock_stations[0]
     mgr.toggle_favorite.return_value = True
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     return mgr
 
@@ -88,10 +118,13 @@ def mock_player():
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 class TestStationDetail:
     def test_station_data_available(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 @pytest.fixture
 def bridge(mock_radio_mgr, mock_player):
@@ -193,16 +226,22 @@ class TestStationDetail:
     def test_reconnect_without_history_returns_error(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         result = bridge.reconnectLast()
         assert not result["ok"]
         assert result["error"] == "NO_LAST_STATION"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_retry_current(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bridge.playStation("http://jazz.stream", "Jazz FM")
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_retry_current(self, bridge, mock_player):
         bridge.playStation("http://retry.stream")
@@ -276,12 +315,19 @@ class TestStationDetail:
         codec = bridge.getCodec()
         assert codec == "MP3"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_get_bitrate(self, mock_radio_mgr, mock_player):
         bridge = RadioBridge(radio_manager=mock_radio_mgr, player_service=mock_player)
         bitrate = bridge.getBitrate()
         assert bitrate == 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

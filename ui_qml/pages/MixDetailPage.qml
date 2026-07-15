@@ -11,6 +11,7 @@ Item {
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string _mixTitle: ""
     property var _songs: []
     property bool _generating: false
@@ -18,6 +19,8 @@ Item {
     property string _errorMsg: ""
     property string _state: "idle"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string _status: "loading"
 >>>>>>> Stashed changes
@@ -104,6 +107,9 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: _mixTitle || "Mix"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     function refresh() {
         if (root.mx) {
@@ -112,6 +118,10 @@ Item {
             root._errorMsg = root.mx.errorMessage || ""
             root._state = root._songs.length > 0 ? "ready" : "idle"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

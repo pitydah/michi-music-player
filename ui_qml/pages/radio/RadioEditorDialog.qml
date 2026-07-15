@@ -1,11 +1,17 @@
 import QtQuick
 import QtQuick.Controls
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Layouts
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
@@ -15,8 +21,11 @@ Dialog {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
 >>>>>>> Stashed changes
@@ -58,6 +67,9 @@ Dialog {
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.8, 480)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
@@ -65,7 +77,10 @@ Dialog {
 
     objectName: "radioEditorDialog"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 
 >>>>>>> Stashed changes
@@ -388,6 +403,9 @@ Dialog {
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             visible: root._connectionTestResult !== ""
 
@@ -429,6 +447,10 @@ Dialog {
 
             Item { width: parent.width - 220; height: 1 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -437,8 +459,11 @@ Dialog {
                 text: "Cancelar"
                 variant: "ghost"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 objectName: "editorCancelBtn"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 onClicked: root.close()
                 objectName: "radioEditorDialog.cancelButton"
@@ -482,9 +507,12 @@ Dialog {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     Keys.onEscapePressed: root.close()
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 objectName: "editorCancelBtn"
                 Accessible.name: "Cancelar"
@@ -528,5 +556,8 @@ Dialog {
 
     Keys.onEscapePressed: root.close()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }

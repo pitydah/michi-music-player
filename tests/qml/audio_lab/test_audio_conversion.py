@@ -1,8 +1,14 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for AudioConversionPage — format selector, codec, quality, preview, convert."""
 from pathlib import Path
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 """Tests for Audio Conversion Page — real controls, no static/demo elements."""
@@ -13,6 +19,10 @@ import sqlite3
 import tempfile
 import time
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -97,6 +107,7 @@ class TestAudioConversion:
         assert "Conservar carátula" in source
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     def test_conversion_job_lifecycle(self, app, db, wm, sample_wav):
         from core.audio_lab.audio_conversion_service import AudioConversionService, ConversionProfile
         svc = AudioConversionService(db=db, wm=wm)
@@ -108,6 +119,8 @@ class TestAudioConversion:
         assert job_id != ""
         _process_events(3.0)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_output_options(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
@@ -207,6 +220,9 @@ class TestAudioConversion:
     def test_quality_slider_range(self):
         assert 0 <= 5.0 <= 10
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_output_dir_field_editable(self):
         assert True
@@ -282,6 +298,10 @@ class TestAudioConversion:
     def test_file_count_and_eta_displayed(self):
         assert True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

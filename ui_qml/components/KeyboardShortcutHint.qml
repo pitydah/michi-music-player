@@ -1,7 +1,10 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 >>>>>>> Stashed changes
@@ -50,6 +53,9 @@ Rectangle {
     Accessible.name: label + (shortcut ? " " + shortcut : "")
     Accessible.description: description || label + " atajo de teclado " + shortcut
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2
     implicitWidth: row.implicitWidth + MichiTheme.spacing.sm * 2
@@ -61,6 +67,10 @@ Rectangle {
 
     visible: label !== "" || shortcut !== ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -72,7 +82,11 @@ Rectangle {
 
         Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             anchors.verticalCenter: parent.verticalCenter
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -103,7 +117,10 @@ Rectangle {
             }
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
             anchors.verticalCenter: parent.verticalCenter
             text: root.label
@@ -132,6 +149,9 @@ Rectangle {
                 font.weight: MichiTheme.typography.weightMedium
             }
         }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         QQC2.ToolTip {
@@ -140,6 +160,10 @@ Rectangle {
             delay: 600
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

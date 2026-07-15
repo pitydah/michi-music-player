@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test playlist keyboard navigation patterns via bridge actions."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests keyboard navigation, focus, and accessibility for Playlists QML pages."""
 >>>>>>> Stashed changes
@@ -219,6 +222,9 @@ class FakeDb:
         self.conn.commit()
 
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 @pytest.fixture
 def fake_db(db_conn):
@@ -314,6 +320,10 @@ def test_keyboard_select_and_batch_delete(bridge):
         bridge.refresh()
         assert len(bridge.playlists) == 0
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

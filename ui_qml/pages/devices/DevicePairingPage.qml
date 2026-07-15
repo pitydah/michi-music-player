@@ -1,7 +1,10 @@
 import QtQuick
 import QtQuick.Controls
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Layouts
 >>>>>>> Stashed changes
@@ -33,8 +36,11 @@ Item {
 
     Flickable {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         id: flickable
 =======
+=======
+>>>>>>> Stashed changes
 =======
 import "../../theme"
 import "../../components"
@@ -65,6 +71,9 @@ Item {
     Flickable {
         id: flickable
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
@@ -72,14 +81,20 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         activeFocusOnTab: true
         visible: root.pairingState !== "loading"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
         activeFocusOnTab: true
         visible: root.pairingState !== "loading"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         Column {
@@ -87,6 +102,7 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
             MichiButton {
                 id: backButton
@@ -101,6 +117,8 @@ Item {
                 Keys.onReturnPressed: clicked()
                 Keys.onSpacePressed: clicked()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -148,13 +166,20 @@ Item {
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 Accessible.name: text
             }
 
             GlassMaterial {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 id: discoveryCard
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -182,6 +207,9 @@ Item {
                 Column {
                     id: discoveryColumn
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.lg
@@ -189,8 +217,11 @@ Item {
 
                     Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         text: "Dispositivos detectados"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         text: "Dispositivos detectados en la red"
 >>>>>>> Stashed changes
@@ -371,6 +402,86 @@ Item {
                                         visible: modelData.ip
                                     }
                                 }
+<<<<<<< Updated upstream
+=======
+=======
+                        text: "Dispositivos detectados"
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
+                        font.weight: MichiTheme.typography.weightSemiBold
+                    }
+
+                    Text {
+                        text: "Busca dispositivos en la red o conéctalos manualmente."
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+
+                    MichiButton {
+                        text: "Escanear red"
+                        variant: "secondary"
+                        onClicked: {
+                            if (root.dv && typeof root.dv.discoverDevices === "function") {
+                                var result = root.dv.discoverDevices()
+                                if (result && result.ok) {
+                                    var disc = root.dv.discovered || []
+                                    if (disc.length > 0) {
+                                        root.discoveredDeviceName = disc[0].alias || disc[0].name || ""
+                                        root.discoveredDeviceType = disc[0].device || disc[0].type || ""
+                                        root.discoveredDeviceIp = disc[0].ip || ""
+                                        root.discoveredDevicePort = disc[0].port || 0
+                                    }
+                                }
+                            }
+                        }
+                        objectName: "scanNetworkButton"
+                        Accessible.name: "Escanear red en busca de dispositivos"
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: manualConnectionSection
+                        KeyNavigation.backtab: backButton
+                        Keys.onReturnPressed: clicked()
+                        Keys.onSpacePressed: clicked()
+                    }
+
+                    Repeater {
+                        model: root.dv && root.dv.discovered ? root.dv.discovered : []
+
+                        GlassMaterial {
+                            width: parent.width
+                            height: 56
+                            radius: MichiTheme.radiusSm
+                            variant: "base"
+                            objectName: "discoveredDeviceCard_" + index
+                            Accessible.name: modelData.alias || modelData.name || "Dispositivo detectado"
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.margins: MichiTheme.spacing.md
+                                spacing: MichiTheme.spacing.sm
+
+                                Column {
+                                    width: parent.width - 140
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    Text {
+                                        text: modelData.alias || modelData.name || "Desconocido"
+                                        color: MichiTheme.colors.textPrimary
+                                        font.pixelSize: MichiTheme.typography.bodySize
+                                        font.weight: MichiTheme.typography.weightMedium
+                                        elide: Text.ElideRight
+                                        width: parent.width
+                                    }
+
+                                    Text {
+                                        text: (modelData.ip || "") + ":" + (modelData.port || "")
+                                        color: MichiTheme.colors.textMuted
+                                        font.pixelSize: MichiTheme.typography.metaSize
+                                        visible: modelData.ip
+                                    }
+                                }
+>>>>>>> Stashed changes
 
                                 MichiButton {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -395,6 +506,9 @@ Item {
                                 }
                                 cursorShape: Qt.PointingHandCursor
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             }
                         }
@@ -402,11 +516,14 @@ Item {
 
                     Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         text: "No se detectaron dispositivos."
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: root.dv && root.dv.discovered && root.dv.discovered.length === 0
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         text: "No se detectaron dispositivos en la red."
                         color: MichiTheme.colors.textMuted
@@ -419,6 +536,9 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: root.dv && root.dv.discovered && root.dv.discovered.length === 0
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     }
                 }
@@ -426,26 +546,38 @@ Item {
 
             GlassMaterial {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 id: manualConnectionSection
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
                 id: manualConnectionSection
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 width: parent.width
                 height: manualColumn.height + MichiTheme.spacing.xl * 2
                 radius: MichiTheme.radiusMd
                 variant: "base"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 objectName: "pairingManualConnection"
                 Accessible.name: "Conexión manual"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
                 objectName: "pairingManualConnection"
                 Accessible.name: "Conexión manual"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                 Column {
@@ -460,7 +592,10 @@ Item {
                         font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                         objectName: "devices.pairingPage.manualTitle"
                         Accessible.role: Accessible.Heading
@@ -652,6 +787,9 @@ Item {
                                 }
                             }
                         }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         objectName: "connectManualButton"
                         Accessible.name: "Conectar a dispositivo manualmente"
@@ -661,6 +799,10 @@ Item {
                         Keys.onReturnPressed: clicked()
                         Keys.onSpacePressed: clicked()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -670,7 +812,11 @@ Item {
 
             GlassMaterial {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 id: pairingStatusCard
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -789,6 +935,9 @@ Item {
                 }
             }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -818,6 +967,10 @@ Item {
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -826,6 +979,11 @@ Item {
         }
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 =======
@@ -859,6 +1017,10 @@ Item {
         onSecondaryActionRequested: root.backClicked()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

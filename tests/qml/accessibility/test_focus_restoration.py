@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from __future__ import annotations
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test focus returns when dialogs close.
 
@@ -90,6 +93,9 @@ class TestFocusRestoration:
         content = (QML_DIR / "pages/playlists/PlaylistsPage.qml").read_text()
         assert "onRejected" in content
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_confirm_dialog_has_focus_management(self):
         content = (QML_DIR / "pages/playlists/PlaylistsPage.qml").read_text()
@@ -113,6 +119,10 @@ class TestFocusRestoration:
         content = (QML_DIR / "pages/assistant/AssistantPage.qml").read_text()
         assert "activeFocus" in content or "focus" in content
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

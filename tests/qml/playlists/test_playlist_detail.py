@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test playlist detail page with track list, metadata, missing tracks."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Tests for PlaylistDetailPage: bridge interactions, track loading, CRUD."""
 >>>>>>> Stashed changes
@@ -388,6 +391,9 @@ class TestPlaylistDetail:
             if t.get("filepath"):
                 assert not t.get("missing", True)
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_detail_tracklist_ordered_by_position(self, svc):
         svc.create("Ordered")
@@ -399,6 +405,10 @@ class TestPlaylistDetail:
         track_ids = [t["track_id"] for t in detail["tracks"]]
         assert track_ids == [3, 1, 2]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

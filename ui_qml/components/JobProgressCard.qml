@@ -1,9 +1,12 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 import "../theme"
 import "../components"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 import "../theme"
@@ -12,15 +15,21 @@ import QtQuick.Controls as QQC2
 import "../theme"
 import "../components"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 Rectangle {
     id: root
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string jobTitle: ""
     property string jobDescription: ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string title: ""
     property string description: ""
@@ -43,7 +52,10 @@ Rectangle {
     objectName: "JobProgressCard"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
     property string jobTitle: ""
     property string jobDescription: ""
@@ -62,6 +74,9 @@ Rectangle {
 
     objectName: "JobProgressCard"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     Accessible.role: Accessible.Panel
     Accessible.name: jobTitle || "Trabajo en progreso"
@@ -69,6 +84,10 @@ Rectangle {
 
     implicitHeight: column.implicitHeight + MichiTheme.spacing.lg * 2
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -77,27 +96,37 @@ Rectangle {
     border.width: MichiTheme.borderWidth
     border.color: {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         switch (root.variant) {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         switch (root.statusVariant) {
 >>>>>>> Stashed changes
             case "error": return MichiTheme.colors.error
             case "warning": return MichiTheme.colors.warning
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             case "success": return MichiTheme.colors.success
 =======
+=======
+>>>>>>> Stashed changes
 =======
         switch (root.variant) {
             case "error": return MichiTheme.colors.error
             case "warning": return MichiTheme.colors.warning
             case "success": return MichiTheme.colors.success
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             default: return MichiTheme.colors.borderCard
         }
     }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     MouseArea {
         anchors.fill: parent
@@ -108,6 +137,8 @@ Rectangle {
     Column {
         id: column
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Accessible.role: Accessible.Panel
     Accessible.name: root.title
@@ -124,13 +155,19 @@ Rectangle {
     Column {
         id: column
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.lg
         spacing: MichiTheme.spacing.sm
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Text {
             text: root.title
@@ -159,6 +196,9 @@ Rectangle {
 
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         Row {
             width: parent.width
@@ -166,12 +206,15 @@ Rectangle {
 
             Text {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.jobTitle
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 text: root.statusText
                 color: MichiTheme.colors.textMuted
@@ -209,7 +252,10 @@ Rectangle {
             }
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.jobTitle
@@ -246,6 +292,9 @@ Rectangle {
                 onClicked: root.cancelRequested()
             }
         }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
         Text {
@@ -276,6 +325,10 @@ Rectangle {
             visible: text !== ""
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

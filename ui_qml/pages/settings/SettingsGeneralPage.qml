@@ -7,7 +7,11 @@ import "../../components"
 Item {
     id: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "settingsGeneralPage"
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
 =======
 <<<<<<< HEAD
 >>>>>>> Stashed changes
@@ -225,6 +229,9 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -267,6 +274,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -275,12 +286,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: themeCard
                     Layout.fillWidth: true
                     title: "Tema"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -322,6 +336,9 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -360,6 +377,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -368,12 +389,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: behaviorCard
                     Layout.fillWidth: true
                     title: "Comportamiento de ventana"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -494,6 +518,9 @@ Item {
                             }
                         }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
@@ -540,6 +567,10 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -548,12 +579,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: updatesCard
                     Layout.fillWidth: true
                     title: "Actualizaciones"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Column {
                     width: parent.width
@@ -633,6 +667,9 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             text: "Buscar actualizaciones ahora"
                             variant: "ghost"
@@ -640,6 +677,10 @@ Item {
                             onClicked: root._checkForUpdates()
                             Accessible.name: "Buscar actualizaciones ahora"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -648,12 +689,15 @@ Item {
                 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 GlassCard {
                     id: cacheCard
                     Layout.fillWidth: true
                     title: "Caché"
                     interactive: false
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Rectangle {
                     width: parent.width
@@ -699,9 +743,12 @@ Item {
                     }
                 }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
                 Item { Layout.fillHeight: true }
 =======
+=======
+>>>>>>> Stashed changes
 =======
                 GlassCard {
                     id: cacheCard
@@ -748,6 +795,9 @@ Item {
 
                 Item { Layout.fillHeight: true }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             }
         }
@@ -755,10 +805,13 @@ Item {
 
     ConfirmActionDialog {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         id: confirmClearCache
         title: "Limpiar caché"
         message: "¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario."
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         id: confirmResetDialog
         objectName: "settings.general.resetConfirm"
@@ -775,9 +828,12 @@ Item {
         else root.closeRequested()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
     signal closeRequested()
 =======
+=======
+>>>>>>> Stashed changes
 =======
         id: confirmClearCache
         title: "Limpiar caché"
@@ -793,5 +849,8 @@ Item {
 
     signal closeRequested()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 }

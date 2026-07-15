@@ -5,8 +5,11 @@ import "../../components"
 import "../../materials"
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 Drawer {
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 Item {
 >>>>>>> Stashed changes
@@ -100,6 +103,9 @@ Drawer {
         border.width: 1
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     Column {
         anchors.fill: parent
@@ -110,6 +116,10 @@ Drawer {
             width: parent.width
             spacing: MichiTheme.spacing.sm
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -119,9 +129,12 @@ Drawer {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 font.weight: MichiTheme.typography.weightSemiBold
                 anchors.verticalCenter: parent.verticalCenter
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 font.weight: MichiTheme.typography.weightBold
                 Accessible.role: Accessible.Heading
@@ -544,6 +557,9 @@ Drawer {
                         "radio": true, "device": false, "server": false,
                         "action": false, "setting": false
                     }
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     root._yearFrom = 0
                     root._yearTo = 0
@@ -552,6 +568,10 @@ Drawer {
                     yearToField.text = ""
                     root.filtersReset()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

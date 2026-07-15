@@ -1,4 +1,4 @@
-"""BridgeFactory — creates bridges from ServiceContainer, no caching.
+"""BridgeFactory  creates bridges from ServiceContainer, no caching.
 
 Does not open databases, construct backends, or start services.
 Does not cache or create core services internally.
@@ -12,7 +12,6 @@ from PySide6.QtCore import QObject
 from ui_qml_bridge.service_bundle import ServiceBundle
 
 logger = logging.getLogger("michi.bridge_factory")
-
 
 class BridgeFactory(QObject):
     """Creates each bridge with injected dependencies from ServiceContainer."""
@@ -137,16 +136,10 @@ class BridgeFactory(QObject):
                 device_sync_service=self._services.device_sync_service,
                 job_service=self._services.job_service,
             )
-<<<<<<< Updated upstream
         self._register_capability("devices", "sync_manager", "device_sync_service")
         return self._bridges["devices"]
-=======
-<<<<<<< HEAD
-=======
         self._register_capability("devices", "sync_manager", "device_sync_service")
         return self._bridges["devices"]
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     def create_radio_bridge(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
@@ -199,16 +192,10 @@ class BridgeFactory(QObject):
                 player_service=self._services.player_service,
                 worker_manager=self._services.worker_manager,
             )
-<<<<<<< Updated upstream
         self._register_capability("audio_lab", "audio_lab_service")
         return self._bridges["audio_lab"]
-=======
-<<<<<<< HEAD
-=======
         self._register_capability("audio_lab", "audio_lab_service")
         return self._bridges["audio_lab"]
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     def create_metadata_bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
@@ -518,7 +505,6 @@ class BridgeFactory(QObject):
 
     def __repr__(self) -> str:
         return f"BridgeFactory(bridges={len(self._bridges)})"
-
 
 def create_all_bridges(container) -> dict[str, QObject]:
     from ui_qml_bridge.service_bundle import ServiceBundle

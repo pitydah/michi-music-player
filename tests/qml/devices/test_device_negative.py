@@ -1,6 +1,9 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Test error states: missing service, empty device list, video rejection, etc."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 """Test negative/edge cases: null bridge, empty states, errors."""
 from __future__ import annotations
@@ -8,16 +11,22 @@ from __future__ import annotations
 =======
 """Test error states: missing service, empty device list, video rejection, etc."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from core.device_sync_service import (
     DeviceSyncService,
 )
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from core.device_sync_service import DeviceSyncService, DeviceIdentity, DeviceProtocol
 >>>>>>> Stashed changes
@@ -435,4 +444,7 @@ def mock_sync_mgr():
 def bridge(mock_sync_mgr):
     return DevicesBridge(sync_manager=mock_sync_mgr)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes

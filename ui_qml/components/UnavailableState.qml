@@ -1,10 +1,16 @@
 import QtQuick
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import QtQuick.Controls
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 import "../theme"
 
@@ -13,12 +19,15 @@ Item {
 
     property string title: "No disponible"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string message: "Esta función no está disponible en este momento."
     property string details: ""
     property string iconText: ""
     property string primaryActionText: ""
     property string secondaryActionText: ""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property string message: "Esta función no está disponible en el estado actual."
     property string explanation: ""
@@ -49,9 +58,12 @@ Item {
             text: root.iconText || "\u26A0"
             color: MichiTheme.colors.textMuted
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             font.pixelSize: 36
             visible: true
 =======
+=======
+>>>>>>> Stashed changes
 =======
     property string message: "Esta función no está disponible en este momento."
     property string details: ""
@@ -84,18 +96,27 @@ Item {
             font.pixelSize: 36
             visible: true
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             width: Math.min(implicitWidth, 460)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
             width: Math.min(implicitWidth, 460)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             text: root.title
             color: MichiTheme.colors.textPrimary
@@ -108,12 +129,18 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             width: Math.min(Math.max(implicitWidth, 240), 460)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
             width: Math.min(Math.max(implicitWidth, 240), 460)
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             text: root.message
             color: MichiTheme.colors.textSecondary
@@ -125,15 +152,21 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             width: Math.min(Math.max(implicitWidth, 240), 460)
             text: root.details
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             text: root.explanation
 =======
             width: Math.min(Math.max(implicitWidth, 240), 460)
             text: root.details
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
@@ -143,9 +176,12 @@ Item {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         MichiButton {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -156,6 +192,9 @@ Item {
 =======
         Row {
             anchors.horizontalCenter: parent.horizontalCenter
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             spacing: MichiTheme.spacing.sm
             visible: root.primaryActionText !== "" || root.secondaryActionText !== ""
@@ -173,6 +212,10 @@ Item {
                 onClicked: root.secondaryActionRequested()
             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

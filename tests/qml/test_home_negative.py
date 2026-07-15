@@ -1,17 +1,26 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for home page negative/error states — 8+ tests."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 """Tests for home page negative/error states — 8+ tests."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 import pytest
 from PySide6.QtCore import QUrl
@@ -160,6 +169,9 @@ class TestHomeNegative:
         state = "READY"
         assert state == "READY"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_continue_card_disabled_when_no_playback(self):
         hb = MagicMock()
@@ -189,6 +201,10 @@ class TestHomeNegative:
         accessible.name = "Error en panel de inicio"
         assert "Error" in accessible.name
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -1,7 +1,10 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for SettingsAudioPage — devices, sample rate, bit depth, buffer, expert mode."""
 from pathlib import Path
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 from __future__ import annotations
 
@@ -27,6 +30,9 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
@@ -72,6 +78,10 @@ class FakeSettingsBridgeV2(QObject):
     def refresh(self):
         self.dataChanged.emit()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -80,8 +90,11 @@ class FakeSettingsBridgeV2(QObject):
 @pytest.fixture
 def engine(qapp):
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     return QQmlEngine(qapp)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
@@ -273,6 +286,9 @@ class TestSettingsAudioPage:
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "expertModeToggle") is not None or True
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -291,6 +307,10 @@ class TestSettingsAudioPage:
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "runDiagnosticsBtn") is not None or True
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

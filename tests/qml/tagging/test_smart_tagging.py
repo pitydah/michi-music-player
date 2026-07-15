@@ -1,10 +1,16 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 """Tests for SmartTaggingBridge detectFormat and service handling."""
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 =======
 """Tests for SmartTaggingBridge detectFormat and service handling."""
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 from __future__ import annotations
 
@@ -13,11 +19,14 @@ from unittest.mock import MagicMock
 import pytest
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 pytestmark = pytest.mark.isolation
 
 
 class TestSmartTaggingDetectFormat:
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("smart_tagging")]
 
@@ -29,12 +38,16 @@ pytestmark = pytest.mark.isolation
 
 class TestSmartTaggingDetectFormat:
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         return SmartTaggingBridge()
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
     @pytest.mark.parametrize("filepath,expected", [
         ("/music/song.mp3", "mp3"),
@@ -52,6 +65,8 @@ class TestSmartTaggingDetectFormat:
         result = bridge.detectFormat(filepath)
         assert result == expected
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     def test_initial_status_idle(self, bridge):
         assert bridge.status == "idle"
@@ -295,12 +310,19 @@ class TestSmartTaggingBridgeGraceful:
         bridge = SmartTaggingBridge()
         assert bridge.suggestions == []
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     def test_no_worker_manager(self):
         from ui_qml_bridge.smart_tagging_bridge import SmartTaggingBridge
         bridge = SmartTaggingBridge(service=MagicMock())
         assert bridge._wm is None
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

@@ -12,8 +12,11 @@ Item {
     property bool bridgeAvailable: root.jobBr !== null
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "AudioBatchJobsPage"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "audioJobs.page"
 >>>>>>> Stashed changes
@@ -66,12 +69,19 @@ Item {
 
     Flickable {
         anchors.fill: parent
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -82,6 +92,7 @@ Item {
         }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             Text {
                 text: "Trabajos de Audio Lab"
                 color: MichiTheme.colors.textPrimary
@@ -89,6 +100,8 @@ Item {
                 objectName: "jobsPageTitle"
             }
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Flickable {
             anchors.fill: parent
@@ -126,6 +139,9 @@ Item {
                 objectName: "jobsPageSubtitle"
             }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "accent"
@@ -141,6 +157,7 @@ Item {
                         Text { text: "Total"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
                     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 }
 
             SectionHeader { text: "Trabajos activos"; width: parent.width; objectName: "jobsActiveHeader"; Accessible.name: "Trabajos activos" }
@@ -151,6 +168,11 @@ Item {
 >>>>>>> origin/michi-qml-functional-wave
                 }
 
+=======
+>>>>>>> origin/michi-qml-functional-wave
+                }
+
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 Text {
                     text: "Cola, progreso, cancelar, reintentar. Trabajos completados y fallidos."
@@ -185,6 +207,9 @@ Item {
                     objectName: "activeJobItem_" + index
                     Accessible.name: modelData.title || "Trabajo activo"
                     Row {
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
@@ -243,6 +268,7 @@ Item {
                         Text { width: parent.width * 0.50; text: modelData.title || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
                         Text { text: "Cancelado"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     }
                 }
 
@@ -262,6 +288,12 @@ Item {
                     }
                 }
 
+=======
+>>>>>>> origin/michi-qml-functional-wave
+                    }
+                }
+
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 SectionHeader { text: "En ejecución / En cola"; width: parent.width; objectName: "jobs.section.active" }
 
@@ -408,6 +440,9 @@ Item {
                 }
             }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             StatusBadge {
                 visible: root.jobBr === null
@@ -416,6 +451,10 @@ Item {
                 objectName: "jobsBridgeStatus"
                 Accessible.name: "Bridge de trabajos no disponible"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes

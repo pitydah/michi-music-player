@@ -20,7 +20,10 @@ Item {
     property string _errorCode: ""
     property string _errorMessage: ""
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     property bool _hasError: false
     property int _generation: 0
@@ -288,6 +291,9 @@ Item {
         if (root._query) root.search(root._query)
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     function resetFilters() {
         root._typeFilters = null
@@ -387,6 +393,10 @@ Item {
                         }
                     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -411,9 +421,12 @@ Item {
             }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             SearchRecentQueries {
                 id: recentColumn
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         Column {
             anchors.fill: parent
@@ -529,6 +542,9 @@ Item {
                 onRetryRequested: root.retry()
             }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             Text {
                 id: noResultsText
@@ -538,6 +554,10 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 Accessible.name: "Sin resultados para " + root._query
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -547,11 +567,14 @@ Item {
                 id: resultsFlickable
                 width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 height: parent.height - (searchHero.height + MichiTheme.spacing.xl * 2 + (recentColumn.visible ? recentColumn.height + MichiTheme.spacing.lg : 0) + (errorState.visible ? 120 : 0) + (noResultsText.visible ? 30 : 0) + 60)
                 contentHeight: resultsColumn.height + MichiTheme.spacing.lg
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                 height: parent.height - hero.height - MichiTheme.spacing.xl * 3 - 60
                 contentHeight: resultsColumn.height + MichiTheme.spacing.lg
@@ -573,12 +596,19 @@ Item {
                 contentHeight: resultsColumn.height + MichiTheme.spacing.lg
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 activeFocusOnTab: true
                 visible: root._groupedResults.length > 0
                 KeyNavigation.backtab: globalSearchInput
                 KeyNavigation.tab: root
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -588,12 +618,18 @@ Item {
                     width: parent.width
                     spacing: MichiTheme.spacing.lg
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                     objectName: "globalSearch.resultsColumn"
                     visible: root._query !== "" && !root._hasError && !(!root._searching && root._groupedResults.length === 0)
 =======
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
                     Repeater {
@@ -602,10 +638,13 @@ Item {
                         SearchResultSection {
                             width: parent.width
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                             sectionType: (modelData.section || "Otros").toLowerCase()
                             sectionTitle: modelData.section || ""
                             sectionItems: modelData.items || []
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
                             sectionType: modelData.section || ""
                             sectionTitle: {

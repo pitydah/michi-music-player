@@ -16,8 +16,11 @@ Item {
     property bool _loading: false
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     objectName: "MixHubPage"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     objectName: "mix.page"
     focus: true
@@ -28,6 +31,9 @@ Item {
 =======
     objectName: "MixHubPage"
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     Component.onCompleted: {
@@ -37,9 +43,12 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     CapabilityGuard {
         id: mixGuard
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     Loader {
 >>>>>>> Stashed changes
@@ -104,6 +113,9 @@ Item {
                         }
                         Text {
                             text: "Descubre, revive y explora tu música desde nuevas perspectivas."
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                             width: parent.width * 0.70; wrapMode: Text.WordWrap
@@ -114,6 +126,8 @@ Item {
                 SectionHeader {
                     id: yourMixesHeader
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
 =======
                     text: "Tus mixes"
                     width: parent.width
@@ -232,6 +246,137 @@ Item {
                                 navigationBridge.navigate("mix_rule_editor")
                         }
                     }
+                }
+
+<<<<<<< HEAD
+                SectionHeader {
+                    id: yourMixesSection
+>>>>>>> Stashed changes
+                    text: "Tus mixes"
+                    width: parent.width
+                    objectName: "yourMixesHeader"
+                    Accessible.name: "Tus mixes"
+                }
+
+                Grid {
+                    id: mixGrid
+                    width: parent.width; columns: 2
+                    columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
+
+                    Repeater {
+                        model: root.mx ? root.mx.categories : []
+
+                        GlassCard {
+                            width: (parent.width - MichiTheme.spacing.md) / 2; height: 100
+                            title: modelData.title || ""; subtitle: modelData.desc || ""
+                            variant: "base"
+                            objectName: "mixCard_" + index
+                            Accessible.name: modelData.title || "Mix"
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: onClicked()
+                            Keys.onSpacePressed: onClicked()
+                            onClicked: {
+                                if (root.mx && typeof root.mx.loadMix !== "undefined")
+                                    root.mx.loadMix(modelData.id || "")
+                                if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                    navigationBridge.navigate("mix_detail")
+                            }
+                        }
+                    }
+                }
+
+                SectionHeader {
+                    id: smartMixesHeader
+                    text: "Smart Mixes personalizados"
+                    width: parent.width
+                    objectName: "smartMixesHeader"
+                    Accessible.name: "Smart Mixes personalizados"
+                }
+
+                Text {
+                    text: "Crea mixes basados en reglas: artista, género, década, año, carpeta, calidad."
+                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                    width: parent.width * 0.7; wrapMode: Text.WordWrap
+                    Accessible.name: "Crea mixes basados en reglas"
+                }
+
+                Row {
+                    id: smartMixRow
+                    spacing: MichiTheme.spacing.sm
+                    MichiButton {
+                        id: mixArtistBtn
+                        text: "+ Mix por artista"; variant: "secondary"
+                        objectName: "mixByArtistButton"
+                        Accessible.name: "Mix por artista"
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: mixGenreBtn
+                        KeyNavigation.backtab: smartMixesHeader
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (root.mx && typeof root.mx.loadMix !== "undefined")
+                                root.mx.loadMix("by_artist")
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("mix_detail")
+>>>>>>> origin/michi-qml-functional-wave
+                        }
+                    }
+                    MichiButton {
+                        id: mixGenreBtn
+                        text: "+ Mix por género"; variant: "secondary"
+                        objectName: "mixByGenreButton"
+                        Accessible.name: "Mix por género"
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: mixDecadeBtn
+                        KeyNavigation.backtab: mixArtistBtn
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (root.mx && typeof root.mx.loadMix !== "undefined")
+                                root.mx.loadMix("by_genre")
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("mix_detail")
+                        }
+                    }
+                    MichiButton {
+                        id: mixDecadeBtn
+                        text: "+ Mix por década"; variant: "secondary"
+                        objectName: "mixByDecadeButton"
+                        Accessible.name: "Mix por década"
+                        activeFocusOnTab: true
+                        KeyNavigation.tab: mixAdvancedBtn
+                        KeyNavigation.backtab: mixGenreBtn
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (root.mx && typeof root.mx.loadMix !== "undefined")
+                                root.mx.loadMix("by_decade")
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("mix_detail")
+                        }
+                    }
+                    MichiButton {
+                        id: mixAdvancedBtn
+                        text: "Reglas avanzadas"; variant: "ghost"
+                        objectName: "mixAdvancedRulesButton"
+                        Accessible.name: "Reglas avanzadas"
+                        activeFocusOnTab: true
+                        KeyNavigation.backtab: mixDecadeBtn
+                        Keys.onReturnPressed: onClicked()
+                        Keys.onSpacePressed: onClicked()
+                        onClicked: {
+                            if (typeof navigationBridge !== "undefined" && navigationBridge)
+                                navigationBridge.navigate("mix_rule_editor")
+                        }
+                    }
+=======
+                StatusBadge {
+                    visible: root.mx === null
+                    text: "Bridge no disponible"
+                    kind: "disconnected"
+                    objectName: "mixBridgeStatus"
+                    Accessible.name: "Bridge de mix no disponible"
+>>>>>>> origin/michi-qml-functional-wave
                 }
 
 <<<<<<< HEAD

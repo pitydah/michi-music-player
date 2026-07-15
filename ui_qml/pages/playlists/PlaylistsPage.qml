@@ -23,9 +23,12 @@ Item {
     property bool _confirmBatchDelete: false
     property string _state: "LOADING"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     property string _errorMsg: ""
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
 
     objectName: "playlists.page"
@@ -37,6 +40,9 @@ Item {
 =======
     property string _errorMsg: ""
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     PageStateManager {
         id: pageState
@@ -45,6 +51,10 @@ Item {
         onSearchTextChanged: pageState.save()
     }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -53,10 +63,13 @@ Item {
         if (root.pl && typeof root.pl.refresh !== "undefined")
             root.pl.refresh()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         root._updateState()
     }
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         root._state = root.pl && root.pl.playlists && root.pl.playlists.length > 0 ? "READY" : "EMPTY"
     }
@@ -67,6 +80,9 @@ Item {
         root._updateState()
     }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     onPlChanged: root._updateState()
 
@@ -76,6 +92,10 @@ Item {
         if (!items || items.length === 0) { root._state = "EMPTY"; return }
         root._state = "READY"
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -100,10 +120,13 @@ Item {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     function deletePlaylist(pid) {
         if (root.pl && typeof root.pl.deletePlaylist !== "undefined")
             root.pl.deletePlaylist(pid)
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
     function getFilteredPlaylists() {
         if (!root.pl || !root.pl.playlists) return []
@@ -417,8 +440,11 @@ Item {
             forceActiveFocus()
         }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         onCancelled: { forceActiveFocus() }
 =======
+=======
+>>>>>>> Stashed changes
 =======
     function deletePlaylist(pid) {
         if (root.pl && typeof root.pl.deletePlaylist !== "undefined")
@@ -725,6 +751,9 @@ Item {
         }
         onCancelled: { forceActiveFocus() }
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
@@ -732,12 +761,15 @@ Item {
         id: importDialog
         bridge: root.pl
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         objectName: "importPlaylistDialog"
         Accessible.name: "Importar playlist"
         onImportCompleted: function(name, count) {
             root.refresh()
             root._addResult = "Importada \"" + name + "\" (" + count + " canciones)"
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         objectName: "playlists.importDialog"
         onImportCompleted: {
@@ -751,6 +783,9 @@ Item {
         onImportCompleted: function(name, count) {
             root.refresh()
             root._addResult = "Importada \"" + name + "\" (" + count + " canciones)"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             forceActiveFocus()
         }
@@ -774,6 +809,10 @@ Item {
             smartPlaylistDialog.visible = false
             forceActiveFocus()
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -795,11 +834,14 @@ Item {
         x: (parent.width - width) / 2
         y: (parent.height - height) / 3
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         objectName: "confirmBatchDeleteDialog"
         Accessible.name: "Eliminar playlists"
         closePolicy: Popup.CloseOnEscape
 
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
         objectName: "playlists.confirmBatchDelete"
 
@@ -821,6 +863,9 @@ Item {
         Accessible.name: "Eliminar playlists"
         closePolicy: Popup.CloseOnEscape
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         Column {
             spacing: MichiTheme.spacing.md
@@ -835,6 +880,10 @@ Item {
                 font.pixelSize: MichiTheme.typography.metaSize
             }
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 =======
 >>>>>>> origin/michi-qml-functional-wave
 >>>>>>> Stashed changes
@@ -849,15 +898,21 @@ Item {
             root._selectionMode = false
             root._confirmBatchDelete = false
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             root.refresh()
             forceActiveFocus()
 =======
+=======
+>>>>>>> Stashed changes
 <<<<<<< HEAD
             root._state = root.pl && root.pl.playlists && root.pl.playlists.length > 0 ? "READY" : "EMPTY"
 =======
             root.refresh()
             forceActiveFocus()
 >>>>>>> origin/michi-qml-functional-wave
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
         onRejected: { root._confirmBatchDelete = false; forceActiveFocus() }
