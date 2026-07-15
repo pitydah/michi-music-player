@@ -4,7 +4,6 @@ from __future__ import annotations
 import pytest
 
 from ui_qml_bridge.action_registry import ActionRegistry
-import pytest
 pytestmark = [pytest.mark.qml_module("library")]
 
 

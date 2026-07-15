@@ -5,7 +5,7 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
-import pytest
+
 pytestmark = [pytest.mark.qml_module("smart_tagging")]
 
 

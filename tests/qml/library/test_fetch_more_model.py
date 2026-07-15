@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
-import pytest
 pytestmark = [pytest.mark.qml_module("library")]
 
 

@@ -38,7 +38,7 @@ def module_normalized_score(mod: dict) -> tuple[float, float, float]:
             continue
         total_applicable_weight += mw
         total_approved_weight += mw * SCORE_MAP.get(status, 0.0)
-    score = (total_approved_weight / total_applicable_weight * 100) if total_applicable_weight > 0 else 100.0
+    score = (total_approved_weight / total_applicable_weight * 100) if total_applicable_weight > 0 else 0.0
     return round(score, 1), float(total_approved_weight), float(total_applicable_weight)
 
 

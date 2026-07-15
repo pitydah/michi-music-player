@@ -1,7 +1,7 @@
 {
   "version": "9.0",
-  "generated_at": "2026-07-15T00:49:30.230364+00:00",
-  "sha": "fbaeca333833cc62e50e53c42e6f295870038bff",
+  "generated_at": "2026-07-15T01:23:29.054326+00:00",
+  "sha": "47967569c0c39d0815ea10a6e7651d9461aa6dc3",
   "module_weights": {
     "workflows": 25,
     "workflows_interaction_real": 20,
