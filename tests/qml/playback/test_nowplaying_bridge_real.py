@@ -1,9 +1,8 @@
+from __future__ import annotations
 """DM — NowPlayingBridge real adapter tests.
-
 Bridge is reactive: it reads PlayerService state, does NOT duplicate control logic.
 All commands return dict with structured errors.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,7 +10,6 @@ import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 pytestmark = [pytest.mark.qml_module("playback")]
-
 
 
 @pytest.fixture

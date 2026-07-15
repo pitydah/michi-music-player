@@ -1,5 +1,6 @@
-"""Negative tests for Audio Lab: missing service, invalid format, conversion failure, cancellation."""
 from __future__ import annotations
+from __future__ import annotations
+"""Negative tests for Audio Lab: missing service, invalid format, conversion failure, cancellation."""
 
 import os
 import tempfile
@@ -112,7 +113,6 @@ class TestAudioNegative:
             source = self._read(name)
             assert "retryConvert" in source or "retry" in source.lower(), f"{name} missing retry"
 """Negative tests for Audio Lab: missing service, invalid format, conversion failure, cancellation."""
-from __future__ import annotations
 
 
 import pytest

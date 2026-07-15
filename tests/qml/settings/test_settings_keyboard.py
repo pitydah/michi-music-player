@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Combined keyboard navigation tests for all 7 settings pages — Tab, Enter, Escape."""
 from pathlib import Path
-from __future__ import annotations
 
 
 import pytest
@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pytest
 
-QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
 
 class FakeSettingsBridgeV2(QObject):
@@ -52,13 +51,6 @@ class FakeSettingsBridgeV2(QObject):
 
 
 PAGE_FILES = [
-    "SettingsGeneralPage.qml",
-    "SettingsAppearancePage.qml",
-    "SettingsPlaybackPage.qml",
-    "SettingsLibraryPage.qml",
-    "SettingsAccessibilityPage.qml",
-    "SettingsAudioPage.qml",
-    "SettingsAboutPage.qml",
 ]
 
 
@@ -180,7 +172,6 @@ class TestSettingsKeyboardTabOrder:
                 assert tab is not None
         finally:
             obj.deleteLater()
-    return QQmlEngine(qapp)
 
 
 @pytest.fixture

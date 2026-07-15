@@ -1,4 +1,4 @@
-"""MTP contractual states test: discovery → authorization → disconnected → storage unavailable → transfer → cancel → reconnect.
+"""MTP contractual states test: discovery  authorization  disconnected  storage unavailable  transfer  cancel  reconnect.
 
 Shows: "Compatibilidad contractual disponible. Validación física pendiente."
 No hardware, no physical audio scoring.

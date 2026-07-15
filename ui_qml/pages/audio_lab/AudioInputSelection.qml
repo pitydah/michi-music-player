@@ -137,7 +137,7 @@ Item {
             height: 60
             Row {
                 anchors.centerIn: parent; spacing: MichiTheme.spacing.sm
-                QQC2.BusyIndicator { running: true; width: 20; height: 20 }
+                BusyIndicator { running: true; width: 20; height: 20 }
                 Text { text: "Cargando metadatos..."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
             }
         }

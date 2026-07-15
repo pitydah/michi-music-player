@@ -15,13 +15,6 @@ Item {
     property bool _showEditor: false
     property var _editProfile: null
 
-    objectName: "outputProfiles.page"
-    focus: true
-
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Perfiles de salida"
-    Accessible.description: "Gestión de perfiles de salida de audio"
-
     function refresh() {
         if (root.op && typeof root.op.refresh === "function")
             root.op.refresh()
@@ -43,13 +36,6 @@ Item {
     }
 
     Component.onCompleted: root.refresh()
-
-    Keys.onEscapePressed: {
-        if (root._showEditor) {
-            root._showEditor = false
-            root._editProfile = null
-        }
-    }
 
     Flickable {
         anchors.fill: parent

@@ -1,25 +1,21 @@
+from __future__ import annotations
+from __future__ import annotations
 """Test command palette keyboard navigation."""
 
-from __future__ import annotations
-
 from unittest.mock import MagicMock
+import pytest
 
 """Tests for CommandPalette — keyboard navigation, shortcuts, accessibility."""
-import pytest
 
 from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
 
-pytestmark = pytest.mark.isolation
 pytestmark = [pytest.mark.qml_module("command_palette"), pytest.mark.qml_dimension("keyboard")]
 """Test command palette keyboard navigation."""
 
-from __future__ import annotations
-
 
 import pytest
-
 
 
 pytestmark = pytest.mark.isolation

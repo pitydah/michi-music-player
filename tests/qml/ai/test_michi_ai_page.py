@@ -1,8 +1,6 @@
-"""Test Michi AI page states and interactions."""
-
-"""Test Michi AI page states and interactions."""
-
 from __future__ import annotations
+"""Test Michi AI page states and interactions."""
+"""Test Michi AI page states and interactions."""
 
 from unittest.mock import MagicMock
 
@@ -162,7 +160,6 @@ class TestMichiAIInteractions:
         assert bridge.status in ("idle", "understanding", "planning", "awaiting_confirmation", "executing", "completed", "cancelled", "failed")
 
 import pytest
-
 
 
 pytestmark = pytest.mark.isolation

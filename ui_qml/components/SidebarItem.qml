@@ -38,7 +38,7 @@ Item {
             height: 20
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            radius: MichiTheme.radiusXs
+            radius: 2
             color: MichiTheme.colors.accentBlue
         }
 
@@ -71,7 +71,7 @@ Item {
                     anchors.centerIn: parent
                     text: root.iconText
                     color: root.active ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.captionSize
+                    font.pixelSize: 12
                     font.weight: MichiTheme.typography.weightSemiBold
                     font.letterSpacing: 1.2
                     visible: root.iconSource === ""

@@ -1,5 +1,5 @@
-"""Test MichiAIBridge — no false success responses, all errors are typed."""
 from __future__ import annotations
+"""Test MichiAIBridge — no false success responses, all errors are typed."""
 
 from unittest.mock import MagicMock
 

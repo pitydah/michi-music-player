@@ -29,7 +29,7 @@ Item {
             anchors.centerIn: parent
             text: "MP"
             color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.sectionTitleSize
+            font.pixelSize: 18
             font.weight: MichiTheme.typography.weightBold
             opacity: 0.7
             visible: bridgeLoader.status === Loader.Error || (bridgeLoader.status === Loader.Ready && !bridgeLoader.item.ready)

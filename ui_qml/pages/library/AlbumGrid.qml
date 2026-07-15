@@ -28,8 +28,8 @@ Item {
 
         Item { anchors.centerIn: parent; width: 300; height: 180; visible: root.albums.length === 0
             Column { anchors.centerIn: parent; spacing: MichiTheme.spacing.lg
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: MichiTheme.radiusMd; color: MichiTheme.colors.accentSurface
-                    Text { anchors.centerIn: parent; text: "AL"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 } }
+                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: 12; color: MichiTheme.colors.accentSurface
+                    Text { anchors.centerIn: parent; text: "AL"; color: MichiTheme.colors.accentBlue; font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 } }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No hay álbumes"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "La biblioteca no tiene álbumes detectados."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
                 Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm

@@ -1,6 +1,6 @@
-"""Tests for home page negative/error states — 8+ tests."""
-"""Tests for home page negative/error states — 8+ tests."""
 from __future__ import annotations
+"""Tests for home page negative/error states — 8+ tests."""
+"""Tests for home page negative/error states — 8+ tests."""
 
 from unittest.mock import MagicMock
 

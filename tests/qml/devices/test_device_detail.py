@@ -1,5 +1,5 @@
-"""Test DeviceDetailPage, storage, transfer plan."""
 from __future__ import annotations
+"""Test DeviceDetailPage, storage, transfer plan."""
 
 from pathlib import Path
 from unittest.mock import MagicMock

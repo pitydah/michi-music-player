@@ -1,44 +1,12 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import "../theme"
-import QtQuick.Controls
-import "../theme"
-import "foundations"
-import QtQuick.Controls as QQC2
-import "../theme"
 
 Item {
     id: root
 
     property string title: "Cargando"
     property string message: ""
-    property bool busy: true
-    property bool reducedMotion: false
-
-    objectName: "LoadingState"
-    property string objectName: "loadingState"
-    property bool reducedMotion: MichiReducedMotion.enabled
-
-    Accessible.role: Accessible.Indicator
-    Accessible.name: title
-    Accessible.description: message || "Cargando contenido"
-
-    implicitWidth: childrenColumn.implicitWidth
-    implicitHeight: childrenColumn.implicitHeight
-
-    Column {
-        id: childrenColumn
-        anchors.centerIn: parent
-        width: Math.min(implicitWidth, parent.width * 0.85)
-        spacing: MichiTheme.spacing.md
-
-        QQC2.BusyIndicator {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: 32
-            height: 32
-            running: root.busy
-            Accessible.role: Accessible.Indicator
-            Accessible.name: root.title
     property bool busy: true
     property bool reducedMotion: false
 
@@ -92,12 +60,10 @@ Item {
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             font.weight: MichiTheme.typography.weightMedium
             horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.WordWrap
         }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: Math.min(Math.max(implicitWidth, 240), 460)
             width: Math.min(Math.max(implicitWidth, 240), 460)
             text: root.message
             color: MichiTheme.colors.textSecondary

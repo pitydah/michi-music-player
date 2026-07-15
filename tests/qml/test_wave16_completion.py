@@ -1,5 +1,5 @@
-"""Wave XVI completion: core workflow integration tests."""
 from __future__ import annotations
+"""Wave XVI completion: core workflow integration tests."""
 
 import time
 import sqlite3

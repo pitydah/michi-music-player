@@ -1,5 +1,5 @@
-"""Comprehensive tests for Albums — 12+ tests."""
 from __future__ import annotations
+"""Comprehensive tests for Albums — 12+ tests."""
 
 from unittest.mock import MagicMock
 
@@ -7,7 +7,6 @@ import pytest
 
 from ui_qml.models.AlbumPagedListModel import AlbumPagedListModel
 pytestmark = [pytest.mark.qml_module("album_views")]
-
 
 
 @pytest.fixture

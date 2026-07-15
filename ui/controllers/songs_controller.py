@@ -177,12 +177,12 @@ class SongsController(QObject):
             self._locate_cb(fp)
         elif fp:
             import os
-            import subprocess
             import contextlib
             folder = os.path.dirname(fp)
             if os.path.isdir(folder):
                 with contextlib.suppress(Exception):
-                    subprocess.Popen(["xdg-open", folder])
+                    from core.external_process import run_process
+                    run_process(["xdg-open", folder])
 
     def add_to_playlist(self, items: list):
         fps = self._filepaths(items)

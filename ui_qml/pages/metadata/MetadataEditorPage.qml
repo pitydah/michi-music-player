@@ -8,12 +8,6 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "metadataEditor.page"
-    focus: true
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Editor de metadatos"
-    Accessible.description: "Edita los metadatos de tus archivos de audio"
-
     property var mb: typeof metadataBridge !== "undefined" ? metadataBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property string _mode: "single"
@@ -31,58 +25,41 @@ Item {
     Component.onCompleted: root.loadFromSelection()
 
     Flickable {
-        id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        objectName: "metadataEditor.flickable"
 
         Column {
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
-            objectName: "metadataEditor.column"
 
             Text {
-                id: titleText
                 text: "Editor de metadatos"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "metadataEditor.title"
-                Accessible.role: Accessible.Heading
-                Accessible.name: "Editor de metadatos"
             }
 
             Row {
-                id: modeRow
                 spacing: MichiTheme.spacing.sm
-                objectName: "metadataEditor.modeRow"
                 MichiButton {
-                    id: singleBtn
                     text: "Edición individual"
                     variant: root._mode === "single" ? "primary" : "ghost"
-                    objectName: "metadataEditor.mode.single"
-                    Accessible.name: "Modo edición individual"
                     onClicked: { root._mode = "single"; root.loadFromSelection() }
                 }
                 MichiButton {
-                    id: batchBtn
                     text: "Edición por lotes"
                     variant: root._mode === "batch" ? "primary" : "ghost"
-                    objectName: "metadataEditor.mode.batch"
-                    Accessible.name: "Modo edición por lotes"
                     onClicked: { root._mode = "batch" }
                 }
             }
 
             Loader {
-                id: editorLoader
                 width: parent.width
                 sourceComponent: root._mode === "single" ? singleEditor : batchEditor
-                objectName: "metadataEditor.loader"
             }
         }
     }

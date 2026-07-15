@@ -1,10 +1,9 @@
+from __future__ import annotations
 """CK — JobService durable states and persistence tests.
-
 States: QUEUED, RUNNING, PAUSING, PAUSED, CANCELLING, CANCELLED,
 SUCCEEDED, PARTIAL_SUCCESS, FAILED, INTERRUPTED.
-Crash → RUNNING pasa a INTERRUPTED.
+Crash  RUNNING pasa a INTERRUPTED.
 """
-from __future__ import annotations
 
 import json
 import os

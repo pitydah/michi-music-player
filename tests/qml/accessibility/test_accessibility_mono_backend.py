@@ -1,14 +1,13 @@
+from __future__ import annotations
 """Test AccessibilityBridge — font_scale, high_contrast, reduced_motion, focus_indicators,
 target_size, accessible names, roles, tab order, keyboard, announcements, mono, balance.
-Mono/balance → PlaybackService contractual. Rejections revert QML control."""
-from __future__ import annotations
+Mono/balance  PlaybackService contractual. Rejections revert QML control."""
 
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
 import pytest
 pytestmark = [pytest.mark.qml_module("accessibility")]
-
 
 
 class FakePlaybackService:

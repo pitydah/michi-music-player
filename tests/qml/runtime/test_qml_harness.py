@@ -1,5 +1,5 @@
-"""DH — Workflow harness QML real: QGuiApplication, bridges reales, QML pages."""
 from __future__ import annotations
+"""DH — Workflow harness QML real: QGuiApplication, bridges reales, QML pages."""
 
 import os
 from pathlib import Path

@@ -1,5 +1,5 @@
-"""Tests for shell navigation — NavigationBridge back/forward, route resolution, errors, state."""
 from __future__ import annotations
+"""Tests for shell navigation — NavigationBridge back/forward, route resolution, errors, state."""
 
 import pytest
 

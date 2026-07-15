@@ -1,5 +1,5 @@
-"""MW: Radio — connect to station, play stream, stop stream."""
 from __future__ import annotations
+"""MW: Radio — connect to station, play stream, stop stream."""
 
 from unittest.mock import MagicMock
 

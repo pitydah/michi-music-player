@@ -8,8 +8,7 @@ Item {
     width: parent.width; height: 32
 
     property string path: ""
-    property var bridge: null
-    property var _parts: path && bridge ? bridge.splitPath(path) : []
+    property var _parts: path ? path.split("/").filter(function(p) { return p !== "" }) : []
 
     signal navigate(int index)
 
@@ -25,7 +24,7 @@ Item {
             Text {
                 text: "BL"
                 color: MichiTheme.colors.accentBlue
-                font.pixelSize: MichiTheme.typography.captionSize
+                font.pixelSize: 12
                 font.weight: MichiTheme.typography.weightBold
             }
 

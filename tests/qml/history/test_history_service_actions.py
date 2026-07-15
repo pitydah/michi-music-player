@@ -10,7 +10,6 @@ from ui_qml_bridge.history_bridge import HistoryBridge
 pytestmark = [pytest.mark.qml_module("history")]
 
 
-
 @pytest.fixture
 def db_conn():
     conn = sqlite3.connect(":memory:")

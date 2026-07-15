@@ -143,8 +143,6 @@ class TestHistoryExport:
         result_csv = bridge.exportHistory("/tmp/t.csv", "CSV")
         assert result_csv["ok"] is True
 """Test history export with real progress: JSON and CSV, cancel, progress tracking."""
-import pytest
-
 
 
 @pytest.fixture

@@ -48,9 +48,6 @@ class ApplicationBootstrap:
             bridge = self._bridges.get(bridge_key)
             if bridge is not None:
                 registrar.register(qml_name, bridge)
-        eq_bridge = self._bridges.get("eq")
-        if eq_bridge:
-            registrar.register("eqBridge", eq_bridge)
         audit = registrar.audit()
         logger.info("Bootstrap: registered %d context properties", audit["total"])
         if audit["duplicates"]:

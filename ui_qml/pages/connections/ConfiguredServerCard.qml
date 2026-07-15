@@ -11,16 +11,11 @@ Item {
     property string serverType: ""
     property string statusText: "Conectado"
     property string statusKind: "success"
-    property string objectName: "connections.configuredCard"
 
     signal disconnectClicked()
     signal configureClicked()
 
     implicitHeight: 100
-
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.serverName
-    Accessible.description: "Estado: " + root.statusText + ". Tipo: " + root.serverType
 
     GlassMaterial {
         anchors.fill: parent
@@ -34,7 +29,6 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.configureClicked()
         }
 
         Row {
@@ -52,7 +46,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    objectName: root.objectName + ".name"
                 }
 
                 Text {
@@ -60,7 +53,6 @@ Item {
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
-                    objectName: root.objectName + ".host"
                 }
             }
 
@@ -68,22 +60,18 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: MichiTheme.spacing.sm
 
-                StatusBadge { text: root.statusText; kind: root.statusKind; objectName: root.objectName + ".statusBadge" }
+                StatusBadge { text: root.statusText; kind: root.statusKind }
 
                 MichiButton {
                     text: "Configurar"
                     variant: "secondary"
                     onClicked: root.configureClicked()
-                    objectName: root.objectName + ".configureButton"
-                    Accessible.name: "Configurar " + root.serverName
                 }
 
                 MichiButton {
                     text: "Desconectar"
                     variant: "ghost"
                     onClicked: root.disconnectClicked()
-                    objectName: root.objectName + ".disconnectButton"
-                    Accessible.name: "Desconectar " + root.serverName
                 }
             }
         }

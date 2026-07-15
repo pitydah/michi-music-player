@@ -1,5 +1,5 @@
-"""EA — Devices/Sync productivo: DevicesBridge receives SyncManager, DeviceSyncService, JobService, ActionRegistry, NavigationBridge. SyncManager (peers Michi), DeviceSyncService (MTP/UMS/Android/dedicados). Full UMS workflow."""
 from __future__ import annotations
+"""EA — Devices/Sync productivo: DevicesBridge receives SyncManager, DeviceSyncService, JobService, ActionRegistry, NavigationBridge. SyncManager (peers Michi), DeviceSyncService (MTP/UMS/Android/dedicados). Full UMS workflow."""
 
 from pathlib import Path
 from unittest.mock import MagicMock

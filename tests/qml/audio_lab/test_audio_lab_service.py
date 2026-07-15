@@ -1,11 +1,13 @@
-"""Macrofase F — 13.1: AudioLabService orchestration tests."""
 from __future__ import annotations
+"""Macrofase F — 13.1: AudioLabService orchestration tests."""
 
 import time
 import sqlite3
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -103,8 +105,6 @@ class TestAudioLabService:
 
     def test_comparison_service_independent(self, app, db, wm):
         from core.audio_lab.audio_comparison_service import AudioComparisonService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         svc = AudioComparisonService()
         result = svc.compare("/nonexistent/a.flac", "/nonexistent/b.flac")

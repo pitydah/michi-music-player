@@ -1,5 +1,5 @@
-"""MW: Notifications — show progress notification, cancel/dismiss it."""
 from __future__ import annotations
+"""MW: Notifications — show progress notification, cancel/dismiss it."""
 
 from .specialized_workflow_harness import SpecializedWorkflowBase
 

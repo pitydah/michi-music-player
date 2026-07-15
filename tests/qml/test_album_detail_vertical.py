@@ -1,5 +1,5 @@
-"""Tests for album detail: model, bridge methods, route params, multi-disc."""
 from __future__ import annotations
+"""Tests for album detail: model, bridge methods, route params, multi-disc."""
 
 from unittest.mock import MagicMock
 

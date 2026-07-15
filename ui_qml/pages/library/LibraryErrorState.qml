@@ -20,14 +20,14 @@ Item {
 
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 64; height: 64; radius: MichiTheme.radiusLg
+            width: 64; height: 64; radius: 16
             color: MichiTheme.colors.error
             opacity: 0.15
             Text {
                 anchors.centerIn: parent
                 text: "!"
                 color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.heroTitleSize
+                font.pixelSize: 28
                 font.weight: MichiTheme.typography.weightBold
             }
         }

@@ -1,11 +1,13 @@
-"""Macrofase F — 13.9: Audio integrity service tests."""
 from __future__ import annotations
+"""Macrofase F — 13.9: Audio integrity service tests."""
 
 import sqlite3
 import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -116,8 +118,6 @@ class TestAudioIntegrity:
         p2 = self._tmp_file(".wav", b"\xff" * 512)
         try:
             from core.audio_lab.audio_integrity_service import AudioIntegrityService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
             svc = AudioIntegrityService(db=db, wm=wm)
             groups = svc.check_duplicate_content([p1, p2])

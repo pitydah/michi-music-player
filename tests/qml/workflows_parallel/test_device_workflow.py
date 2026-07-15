@@ -1,4 +1,4 @@
-"""Full device workflow: discover → select → inspect → profile → plan → start → cancel.
+"""Full device workflow: discover  select  inspect  profile  plan  start  cancel.
 
 Tests the complete lifecycle through DevicesBridge and DeviceSyncService.
 Audio-only: validates that video files are rejected.
@@ -75,7 +75,7 @@ def bridge(dev_svc, job_svc, mock_sync_mgr):
 
 
 class TestDeviceWorkflow:
-    """Full device workflow: discover → select → inspect → profile → plan → start → cancel."""
+    """Full device workflow: discover  select  inspect  profile  plan  start  cancel."""
 
     def test_step1_discover(self, bridge, dev_svc, temp_music):
         """Discover devices from sync manager."""
@@ -139,7 +139,7 @@ class TestDeviceWorkflow:
         assert dev_svc.get_job(job.job_id).status == TransferStatus.CANCELLED
 
     def test_full_workflow_round_trip(self, bridge, dev_svc, temp_music):
-        """Complete round-trip: discover → select → inspect → profile → plan → start → cancel."""
+        """Complete round-trip: discover  select  inspect  profile  plan  start  cancel."""
         identity = DeviceIdentity(
             protocol=DeviceProtocol.USB_MASS_STORAGE,
             vendor="FiiO", model="M11", serial="wf_full",

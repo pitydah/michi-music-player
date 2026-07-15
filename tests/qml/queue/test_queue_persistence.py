@@ -8,7 +8,6 @@ from core.queue_service import QueueService, _queue_state_path
 pytestmark = [pytest.mark.qml_module("queue")]
 
 
-
 _SAMPLE = [
     {"id": 1, "track_uid": "uid1", "title": "Track 1", "artist": "A",
      "album": "Al", "duration": 200, "filepath": "/path/1.flac", "source_type": "local_file"},

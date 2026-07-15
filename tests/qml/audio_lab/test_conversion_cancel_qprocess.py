@@ -1,5 +1,5 @@
-"""Tests for AV — Conversión cancelable con QProcess."""
 from __future__ import annotations
+"""Tests for AV — Conversión cancelable con QProcess."""
 
 import os
 import sqlite3
@@ -8,6 +8,8 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -107,8 +109,6 @@ class TestConversionCancelQProcess:
 
     def test_conversion_cancel_lifecycle(self, svc, sample_wav):
         from core.audio_lab.audio_conversion_service import ConversionProfile, STATUS_CANCELLED
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         profile = ConversionProfile(format="FLAC", output_dir=tempfile.gettempdir())
         job_id = svc.convert(sample_wav, profile)

@@ -212,8 +212,6 @@ class TestPlaylistActions:
         assert result["ok"] is False
         assert result["error"] == "UNSUPPORTED"
 """Test playlist CRUD actions: create, rename, duplicate, delete."""
-import pytest
-
 
 
 @pytest.fixture

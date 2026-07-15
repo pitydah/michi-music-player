@@ -1,5 +1,5 @@
-"""Tests for batch metadata editing."""
 from __future__ import annotations
+"""Tests for batch metadata editing."""
 
 import time
 

@@ -1,5 +1,5 @@
-"""Tests for fetchMore behavior in BasePagedListModel and TrackListModel."""
 from __future__ import annotations
+"""Tests for fetchMore behavior in BasePagedListModel and TrackListModel."""
 
 from unittest.mock import MagicMock
 

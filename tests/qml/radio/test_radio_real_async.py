@@ -7,7 +7,6 @@ from ui_qml_bridge.radio_bridge import RadioBridge
 pytestmark = [pytest.mark.qml_module("radio")]
 
 
-
 @pytest.fixture
 def mock_stations():
     s1 = MagicMock()

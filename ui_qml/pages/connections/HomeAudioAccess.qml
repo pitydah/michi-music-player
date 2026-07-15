@@ -6,15 +6,9 @@ import "../../components"
 Item {
     id: root
 
-    property string objectName: "connections.homeAudioAccess"
-
     signal openHomeAudio()
 
     implicitHeight: 80
-
-    Accessible.role: Accessible.Button
-    Accessible.name: "Acceso a Home Audio"
-    Accessible.description: "Home Assistant y Michi Music Stream en tu hogar"
 
     GlassMaterial {
         anchors.fill: parent
@@ -46,14 +40,12 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    objectName: root.objectName + ".title"
                 }
 
                 Text {
                     text: "Home Assistant y Michi Music Stream en tu hogar"
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
-                    objectName: root.objectName + ".subtitle"
                 }
             }
 
@@ -62,8 +54,6 @@ Item {
                 text: "Abrir"
                 variant: "accent"
                 onClicked: root.openHomeAudio()
-                objectName: root.objectName + ".openButton"
-                Accessible.name: "Abrir Home Audio"
             }
         }
     }

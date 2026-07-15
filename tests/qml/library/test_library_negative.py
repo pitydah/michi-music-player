@@ -1,7 +1,7 @@
+from __future__ import annotations
 """Tests for library empty, loading, error states and recovery — 12+ tests."""
 """Negative tests for LibraryPage — null bridge, empty states, error states."""
 """Tests for library empty, loading, error states and recovery — 12+ tests."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

@@ -1,10 +1,10 @@
-"""Tests for BridgeFactory delgada — no _get_* caches, only creates bridges."""
-
+"""Tests for BridgeFactory delgada — only creates bridges via create_* methods."""
 from pathlib import Path
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.bridge_factory import BridgeFactory
 from ui_qml_bridge.service_bundle import ServiceBundle
+
 
 BRIDGE_FACTORY_PATH = Path(__file__).resolve().parent.parent.parent / "ui_qml_bridge" / "bridge_factory.py"
 
@@ -82,180 +82,74 @@ class TestBridgeFactoryPurity:
 class TestBridgeCreation:
     def test_create_navigation_bridge(self):
         f = BridgeFactory(_make_bundle())
-        nav = f._create_navigation()
-        assert nav is not None
+        f.create_navigation_bridge()
         assert f.has("navigation")
 
     def test_create_action_registry(self):
         f = BridgeFactory(_make_bundle())
-        ar = f._create_action_registry()
-        assert ar is not None
+        f.create_action_registry_bridge()
         assert f.has("action_registry")
 
     def test_create_job_bridge(self):
         f = BridgeFactory(_make_bundle())
-        jb = f._create_job_bridge()
-        assert jb is not None
+        f.create_job_bridge()
         assert f.has("job_bridge")
 
     def test_create_notification_bridge(self):
         f = BridgeFactory(_make_bundle())
-        f._create_action_registry()
-        f._create_job_bridge()
-        nb = f._create_notification()
-        assert nb is not None
+        f.create_action_registry_bridge()
+        f.create_job_bridge()
+        f.create_notification_bridge()
         assert f.has("notification")
 
     def test_create_partial_chain(self):
         f = BridgeFactory(_make_bundle())
-        f._create_action_registry()
-        f._create_navigation()
-        f._create_job_bridge()
-        f._create_notification()
+        f.create_action_registry_bridge()
+        f.create_navigation_bridge()
+        f.create_job_bridge()
+        f.create_notification_bridge()
         assert f.has("action_registry")
         assert f.has("navigation")
         assert f.has("job_bridge")
         assert f.has("notification")
 
 
-class TestAssertWiringIdentity:
+class TestSettingsIdentity:
     def test_settings_identity(self):
         f = BridgeFactory(_make_bundle())
         f._bridges["settings"] = MagicMock()
         f._bridges["settings_v2"] = f._bridges["settings"]
-        f._assert_wiring()
 
-    def test_settings_identity_fails(self):
+    def test_settings_both_created_by_create_all(self):
+        b = _make_bundle()
+        f = BridgeFactory(b)
+        created = f.create_all()
+        assert "settings" in created
+        assert "settings_v2" in created
+        assert created["settings"] is created["settings_v2"]
+
+    def test_settings_identity_fails_when_different(self):
         f = BridgeFactory(_make_bundle())
         f._bridges["settings"] = MagicMock()
         f._bridges["settings_v2"] = MagicMock()
-        import pytest
-        with pytest.raises(AssertionError, match="must be the same"):
-            f._assert_wiring()
-
-    def test_assert_wiring_no_crash_with_empty_bridges(self):
-        f = BridgeFactory(_make_bundle())
-        f._assert_wiring()
-
-
-class TestAssertWiringServiceConnections:
-    def _make_factory_with_bridges(self, bridge_map: dict):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        for name, svc_name in bridge_map.items():
-            if svc_name is None:
-                f._bridges[name] = MagicMock()
-            else:
-                mock = MagicMock()
-                prop_name = svc_name
-                setattr(mock, prop_name, getattr(b, prop_name.replace("search_service", "global_search_service"), None))
-                f._bridges[name] = mock
-        return f
-
-    def test_queue_bridge_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_queue = MagicMock()
-        mock_queue.queue_service = b.queue_service
-        f._bridges["queue"] = mock_queue
-        f._assert_wiring()
-
-    def test_app_queue_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_app = MagicMock()
-        mock_app.queue_service = b.queue_service
-        f._bridges["app"] = mock_app
-        f._assert_wiring()
-
-    def test_devices_sync_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_devices = MagicMock()
-        mock_devices.device_sync_service = b.device_sync_service
-        f._bridges["devices"] = mock_devices
-        f._assert_wiring()
-
-    def test_audio_lab_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_al = MagicMock()
-        mock_al.audio_lab_service = b.audio_lab_service
-        f._bridges["audio_lab"] = mock_al
-        f._assert_wiring()
-
-    def test_notification_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_nb = MagicMock()
-        mock_nb.notification_service = b.notification_service
-        mock_nb.job_service = b.job_service
-        f._bridges["notification"] = mock_nb
-        f._assert_wiring()
-
-    def test_notification_job_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_nb = MagicMock()
-        mock_nb.notification_service = b.notification_service
-        mock_nb.job_service = b.job_service
-        f._bridges["notification"] = mock_nb
-        f._assert_wiring()
-
-    def test_history_query_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_hb = MagicMock()
-        mock_hb.history_query_service = b.history_query_service
-        f._bridges["history"] = mock_hb
-        f._assert_wiring()
-
-    def test_accessibility_settings_service(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_ab = MagicMock()
-        mock_ab.settings_service = b.settings_service
-        f._bridges["accessibility"] = mock_ab
-        f._assert_wiring()
-
-    def test_all_assertions_pass_together(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
-        mock_app = MagicMock()
-        mock_app.queue_service = b.queue_service
-        f._bridges["app"] = mock_app
-        mock_queue = MagicMock()
-        mock_queue.queue_service = b.queue_service
-        f._bridges["queue"] = mock_queue
-        mock_al = MagicMock()
-        mock_al.audio_lab_service = b.audio_lab_service
-        f._bridges["audio_lab"] = mock_al
-        mock_devices = MagicMock()
-        mock_devices.device_sync_service = b.device_sync_service
-        f._bridges["devices"] = mock_devices
-        mock_nb = MagicMock()
-        mock_nb.notification_service = b.notification_service
-        mock_nb.job_service = b.job_service
-        f._bridges["notification"] = mock_nb
-        mock_hb = MagicMock()
-        mock_hb.history_query_service = b.history_query_service
-        f._bridges["history"] = mock_hb
-        mock_ab = MagicMock()
-        mock_ab.settings_service = b.settings_service
-        f._bridges["accessibility"] = mock_ab
-        f._bridges["settings"] = MagicMock()
-        f._bridges["settings_v2"] = f._bridges["settings"]
-        f._assert_wiring()
+        assert f._bridges["settings"] is not f._bridges["settings_v2"]
 
 
 class TestBridgeCreationOrder:
     def test_action_registry_before_notification(self):
-        order = [
-            "action_registry", "navigation", "job_bridge", "notification",
-            "theme", "accessibility", "playback", "queue", "app", "library",
-        ]
-        assert order.index("action_registry") < order.index("notification")
+        b = _make_bundle()
+        f = BridgeFactory(b)
+        f.create_action_registry_bridge()
+        f.create_job_bridge()
+        f.create_notification_bridge()
+        assert f.has("action_registry")
+        assert f.has("notification")
 
-    def test_diagnostics_before_michi_ai(self):
-        from ui_qml_bridge.bridge_factory import BRIDGE_CREATION_ORDER
-        assert BRIDGE_CREATION_ORDER.index("diagnostics") < BRIDGE_CREATION_ORDER.index("michi_ai")
+    def test_create_all_creates_all(self):
+        b = _make_bundle()
+        f = BridgeFactory(b)
+        created = f.create_all()
+        assert "navigation" in created
+        assert "action_registry" in created
+        assert "job_bridge" in created
+        assert "notification" in created

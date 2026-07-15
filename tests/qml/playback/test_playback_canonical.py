@@ -1,9 +1,8 @@
+from __future__ import annotations
 """DM — PlaybackService canonical tests.
-
 PlaybackService is the single facade. NowPlayingBridge adapts reactively.
 NowPlayingPage consumes. No state duplication.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -12,7 +11,6 @@ import pytest
 from audio.player_service import PlayerService
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 pytestmark = [pytest.mark.qml_module("playback")]
-
 
 
 @pytest.fixture

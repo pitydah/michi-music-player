@@ -1,5 +1,5 @@
-"""Tests for library actions via ActionRegistry — 15+ tests."""
 from __future__ import annotations
+"""Tests for library actions via ActionRegistry — 15+ tests."""
 
 
 import pytest

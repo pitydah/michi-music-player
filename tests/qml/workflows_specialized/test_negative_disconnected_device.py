@@ -1,5 +1,5 @@
-"""MX: Negative — disconnected device scenarios."""
 from __future__ import annotations
+"""MX: Negative — disconnected device scenarios."""
 
 from ui_qml_bridge.devices_bridge import DevicesBridge
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge

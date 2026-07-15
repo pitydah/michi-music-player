@@ -1,7 +1,7 @@
+from __future__ import annotations
 """Tests for library keyboard navigation — 12+ tests."""
 """Tests for library keyboard navigation."""
 """Tests for library keyboard navigation — 12+ tests."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

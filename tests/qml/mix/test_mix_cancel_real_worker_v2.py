@@ -8,7 +8,6 @@ from core.worker_manager import WorkerManager
 pytestmark = [pytest.mark.qml_module("mix")]
 
 
-
 @pytest.fixture
 def mock_wm():
     wm = MagicMock(spec=WorkerManager)

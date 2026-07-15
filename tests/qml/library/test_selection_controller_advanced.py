@@ -1,5 +1,5 @@
-"""Advanced tests for SelectionController."""
 from __future__ import annotations
+"""Advanced tests for SelectionController."""
 
 import pytest
 

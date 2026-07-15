@@ -1,5 +1,5 @@
+from __future__ import annotations
 """Full workflow: show progress -> open center -> click cancel -> verify job state.
-
 Tests the complete notification lifecycle across bridges:
 1. Show a progress notification via NotificationBridge
 2. Verify it appears as current notification
@@ -8,7 +8,6 @@ Tests the complete notification lifecycle across bridges:
 5. Dismiss the notification
 6. Verify center is empty
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

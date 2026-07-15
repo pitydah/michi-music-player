@@ -75,8 +75,6 @@ def test_clear_all_requires_confirmation_pattern(bridge):
             content = p.read_text()
             assert "Keys.onEscapePressed" in content or "Keys.on" in content
 """Test history keyboard navigation via bridge action patterns."""
-import pytest
-
 
 
 @pytest.fixture

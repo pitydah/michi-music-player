@@ -1,5 +1,5 @@
+from __future__ import annotations
 """Wave XLIII — 10.1: Metadata batch with correct WorkerManager.
-
 Tests:
   - batchSetField uses run_task with callable, not dict
   - Progress signal emitted
@@ -8,7 +8,6 @@ Tests:
   - Partial result dict
   - Library refresh after batch
 """
-from __future__ import annotations
 
 import time
 

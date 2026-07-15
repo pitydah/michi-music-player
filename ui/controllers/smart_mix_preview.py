@@ -2,6 +2,7 @@
 
 Returns counts and descriptions WITHOUT mutating the UI (no model populate,
 no fade_content, no playback). Used by MixHubPage for its dynamic cards.
+SQL queries delegated to core/library/mix_preview_service.py.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from library.library_db import LibraryDB
 from library.smart_mixes import (
     get_daily_mix, get_unplayed, get_popular,
 )
+from core.library.mix_preview_service import MixPreviewService
 
 logger = logging.getLogger("michi.smart_preview")
 
@@ -81,6 +83,12 @@ class SmartMixPreview:
             },
         }
 
+    @property
+    def _preview_svc(self) -> MixPreviewService:
+        if not hasattr(self, "_mix_preview_svc"):
+            self._mix_preview_svc = MixPreviewService(db=self._db)
+        return self._mix_preview_svc
+
     def get_preview(self, key: str) -> MixPreview:
         """Return a MixPreview for the given key. Never raises — returns empty on error."""
         mix = self._MIXES.get(key)
@@ -114,62 +122,10 @@ class SmartMixPreview:
 
 
 def _get_fav_filepaths(db=None) -> list[str]:
-    if db is not None:
-        try:
-            rows = db.conn.execute(
-                "SELECT m.filepath FROM favorites f "
-                "LEFT JOIN media_items m ON f.track_id = m.filepath OR f.track_id = CAST(m.id AS TEXT) "
-                "WHERE m.deleted_at IS NULL AND m.filepath IS NOT NULL "
-                "ORDER BY f.added_at DESC LIMIT 30"
-            ).fetchall()
-            return [r[0] for r in rows]
-        except Exception:
-            logger.exception("_get_fav_filepaths failed")
-            return []
-    import sqlite3
-    from library.library_db import DB_PATH
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT f.track_id, m.filepath FROM favorites f "
-            "LEFT JOIN media_items m ON f.track_id = m.filepath OR f.track_id = CAST(m.id AS TEXT) "
-            "WHERE m.deleted_at IS NULL AND m.filepath IS NOT NULL "
-            "ORDER BY f.added_at DESC LIMIT 30"
-        ).fetchall()
-        conn.close()
-        return [r["filepath"] for r in rows]
-    except Exception:
-        logger.exception("_get_fav_filepaths failed")
-        return []
+    svc = MixPreviewService(db=db)
+    return svc.favorites()
 
 
 def _get_recent_filepaths(db=None) -> list[str]:
-    if db is not None:
-        try:
-            rows = db.conn.execute(
-                "SELECT m.filepath FROM play_history h "
-                "LEFT JOIN media_items m ON h.track_id = m.filepath OR h.track_id = CAST(m.id AS TEXT) "
-                "WHERE m.deleted_at IS NULL AND m.filepath IS NOT NULL "
-                "ORDER BY h.played_at DESC LIMIT 30"
-            ).fetchall()
-            return [r[0] for r in rows]
-        except Exception:
-            logger.exception("_get_recent_filepaths failed")
-            return []
-    import sqlite3
-    from library.library_db import DB_PATH
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT h.track_id, m.filepath FROM play_history h "
-            "LEFT JOIN media_items m ON h.track_id = m.filepath OR h.track_id = CAST(m.id AS TEXT) "
-            "WHERE m.deleted_at IS NULL AND m.filepath IS NOT NULL "
-            "ORDER BY h.played_at DESC LIMIT 30"
-        ).fetchall()
-        conn.close()
-        return [r["filepath"] for r in rows]
-    except Exception:
-        logger.exception("_get_recent_filepaths failed")
-        return []
+    svc = MixPreviewService(db=db)
+    return svc.recent()

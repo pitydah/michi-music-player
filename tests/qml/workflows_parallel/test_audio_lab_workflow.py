@@ -1,6 +1,6 @@
 """Full workflow: select input -> preview -> convert -> progress -> cancel."""
 from unittest.mock import MagicMock, PropertyMock
-"""Workflow test: input → profile → preview → convert → cancel via AudioLabBridge + ConversionBridge."""
+"""Workflow test: input  profile  preview  convert  cancel via AudioLabBridge + ConversionBridge."""
 
 import pytest
 pytestmark = pytest.mark.isolation

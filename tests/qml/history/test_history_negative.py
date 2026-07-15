@@ -60,7 +60,6 @@ def test_apply_retention_no_service(bridge_no_db):
 """Test history negative paths: missing service, empty history, export cancellation."""
 
 
-
 def test_bridge_without_db_or_service():
     bridge = HistoryBridge(db=None, history_query_service=None)
     result = bridge.refresh()

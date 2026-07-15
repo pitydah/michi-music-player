@@ -1,4 +1,4 @@
-"""QML application entry point. Does NOT import PySide6.QtWidgets or ui.* modules."""
+"""QML application entry point. Does NOT import QtWidgets or ui.* modules."""
 from __future__ import annotations
 
 import logging

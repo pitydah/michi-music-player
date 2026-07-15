@@ -1,5 +1,5 @@
-"""MW: Mix — configure mix category, generate mix, cancel generation."""
 from __future__ import annotations
+"""MW: Mix — configure mix category, generate mix, cancel generation."""
 
 from unittest.mock import MagicMock
 

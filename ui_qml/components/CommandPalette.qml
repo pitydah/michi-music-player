@@ -1,47 +1,11 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import "../theme"
 
 Item {
     id: root
 
     property var cpb: typeof commandPaletteBridge !== "undefined" ? commandPaletteBridge : null
-    property var capb: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
-    property alias shortcut: paletteShortcut
-    property var cap: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
-    property bool open: false
-    property var _results: []
-    property var _recentActions: []
-    property int _selectedIndex: -1
-    property string _filterText: ""
-
-    visible: open
-
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Paleta de comandos"
-
-    Shortcut {
-        id: paletteShortcut
-        sequences: ["Ctrl+P", "Ctrl+P"]
-        enabled: true
-        onActivated: {
-            root.open = !root.open
-            if (root.open) {
-                searchField.forceActiveFocus()
-                searchField.selectAll()
-            }
-        }
-    }
-
-    Keys.onEscapePressed: closePalette()
-    Keys.onUpPressed: navigateUp()
-    Keys.onDownPressed: navigateDown()
-    Keys.onReturnPressed: activateSelected()
-    Keys.onTabPressed: cycleSection()
-
-    function closePalette() {
-        root.open = false
     property var capb: typeof capabilityBridge !== "undefined" ? capabilityBridge : null
     property alias shortcut: paletteShortcut
     property bool open: false
@@ -150,19 +114,11 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: root.closePalette()
-            Accessible.name: "Cerrar paleta de comandos"
         }
     }
 
     Rectangle {
         anchors.centerIn: parent
-        width: 480
-        height: Math.min(420, parent.height * 0.7)
-        width: 480; height: 400
-        radius: MichiTheme.radiusMd
-        color: MichiTheme.colors.surfacePopup
-        border.color: MichiTheme.colors.borderCard
-        border.width: MichiTheme.borderWidth
         width: 480
         height: Math.min(420, parent.height * 0.7)
         radius: MichiTheme.radiusMd
@@ -171,127 +127,11 @@ Item {
         border.width: MichiTheme.borderWidth
         z: 9999
 
-        ColumnLayout {
+        Column {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.md
             spacing: MichiTheme.spacing.sm
 
-            Rectangle {
-                width: parent.width
-                height: 40
-                radius: MichiTheme.radiusSm
-                color: MichiTheme.colors.surfaceInput
-                border.color: searchField.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
-                border.width: searchField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-            TextField {
-                id: searchField
-                Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                placeholderText: "Buscar comando (Ctrl+P)..."
-                font.pixelSize: MichiTheme.typography.bodySize
-                color: MichiTheme.colors.textPrimary
-                placeholderTextColor: MichiTheme.colors.textMuted
-                background: Rectangle {
-                    radius: MichiTheme.radiusSm
-                    color: MichiTheme.colors.surfaceInput
-                    border.width: searchField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-                    border.color: searchField.activeFocus ? MichiTheme.colors.borderActive : MichiTheme.colors.borderInner
-                }
-                leftPadding: MichiTheme.spacing.md
-                rightPadding: MichiTheme.spacing.md
-                objectName: "commandPalette.searchField"
-                Accessible.name: "Campo de búsqueda de comandos"
-                Accessible.description: "Escribe para buscar comandos"
-
-                TextInput {
-                    id: searchField
-                    anchors.fill: parent
-                    anchors.leftMargin: MichiTheme.spacing.md
-                    anchors.rightMargin: MichiTheme.spacing.md
-                    anchors.topMargin: MichiTheme.spacing.xs
-                    anchors.bottomMargin: MichiTheme.spacing.xs
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.bodySize
-                    verticalAlignment: TextInput.AlignVCenter
-                    objectName: "commandPaletteSearchField"
-                    Accessible.name: "Buscar comando"
-                    activeFocusOnTab: true
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "Buscar comando…"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        visible: parent.text === "" && !parent.activeFocus
-                    }
-
-                    onTextChanged: {
-                        root._filterText = text
-                        debounceSearch.restart()
-                    }
-
-                    Keys.onEscapePressed: root.closePalette()
-                    Keys.onUpPressed: root.navigateUp()
-                    Keys.onDownPressed: root.navigateDown()
-                    Keys.onReturnPressed: root.activateSelected()
-                    Keys.onTabPressed: root.cycleSection()
-                }
-            }
-
-            Timer {
-                id: debounceSearch
-                interval: 150
-                repeat: false
-                onTriggered: searchCommands(root._filterText)
-                onTriggered: {
-                    root._debouncePending = false
-                    root.doSearch(root._query)
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true; Layout.preferredHeight: 20
-                color: "transparent"
-                visible: root._recentActions.length > 0 && root._query === ""
-
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: MichiTheme.spacing.xs
-
-                    Text {
-                        text: "Recientes"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                    }
-
-                    Repeater {
-                        model: root._recentActions
-
-                        Rectangle {
-                            height: 18
-                            width: label.implicitWidth + 12
-                            radius: MichiTheme.radiusXs
-                            color: MichiTheme.colors.accentSurface
-
-                            Text {
-                                id: label
-                                anchors.centerIn: parent
-                                text: modelData.title || ""
-                                color: MichiTheme.colors.accentBlue
-                                font.pixelSize: MichiTheme.typography.badgeSize
-                                font.weight: MichiTheme.typography.weightMedium
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root._execute(modelData.id || "")
-                                Accessible.name: "Acción reciente: " + (modelData.title || "")
-                            }
-                        }
-                    }
-                }
             Rectangle {
                 width: parent.width
                 height: 40
@@ -344,93 +184,6 @@ Item {
 
             ListView {
                 id: listView
-                width: parent.width
-                height: parent.height - searchField.height - MichiTheme.spacing.lg - sectionBar.height - MichiTheme.spacing.sm
-                Layout.fillWidth: true; Layout.fillHeight: true
-                model: root._results
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                activeFocusOnTab: true
-                objectName: "commandPaletteList"
-                Accessible.name: "Lista de comandos"
-
-                model: root._results
-                currentIndex: root._selectedIndex
-
-                delegate: Rectangle {
-                    width: listView.width
-                    height: 36
-                    color: index === listView.currentIndex ? MichiTheme.colors.accentSelection : "transparent"
-                    radius: MichiTheme.radiusXs
-                    objectName: "commandPaletteItem_" + index
-                    Accessible.name: (modelData._unavailable ? "(No disponible) " : "") + (modelData.title || "") + (modelData.shortcut ? " " + modelData.shortcut : "")
-                    Accessible.role: Accessible.ListItem
-                    Accessible.description: modelData._unavailable ? "Acción no disponible en el estado actual" : ""
-
-                    Rectangle {
-                        visible: root._filterText === "" && root._recentActions.length > 0 && index < root._recentActions.length
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: MichiTheme.spacing.xs
-                        width: 4
-                        height: 4
-                        radius: 2
-                        color: MichiTheme.colors.experimental
-                    }
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: MichiTheme.spacing.sm
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.title || ""
-                        color: modelData._unavailable ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: modelData._unavailable ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightMedium
-                        elide: Text.ElideRight
-                        width: parent.width * 0.55
-                    }
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: MichiTheme.spacing.sm
-                        anchors.right: shortcutLabel.left
-                        anchors.rightMargin: MichiTheme.spacing.sm
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.category || ""
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: MichiTheme.typography.captionSize
-                        visible: modelData._unavailable
-                        elide: Text.ElideRight
-                    }
-
-                    Text {
-                        id: shortcutLabel
-                        anchors.right: parent.right
-                        anchors.rightMargin: MichiTheme.spacing.sm
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.shortcut || ""
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        visible: modelData.shortcut !== ""
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: MichiTheme.spacing.sm
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "No disponible"
-                        color: MichiTheme.colors.error
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        visible: modelData._unavailable
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: modelData._unavailable ? Qt.ArrowCursor : Qt.PointingHandCursor
-                        onClicked: {
-                            root._selIndex = index
-                            root._execute(modelData.id || "")
                 width: parent.width
                 height: parent.height - searchField.height - MichiTheme.spacing.lg - sectionBar.height - MichiTheme.spacing.sm
                 clip: true
@@ -557,196 +310,12 @@ Item {
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
                         }
-                        Accessible.name: "Ejecutar comando: " + (modelData.title || "")
-                        Accessible.description: modelData.destructive ? "Acción destructiva" : ""
-                    }
-                }
-
-                Item {
-                    width: parent.width; height: 80
-                    visible: root._results.length === 0 && root._query !== ""
-
-                    Column {
-                        anchors.centerIn: parent; spacing: MichiTheme.spacing.sm
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "Sin resultados"
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.bodySize
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "No se encontraron comandos para \"" + root._query + "\""
-                            color: MichiTheme.colors.textMeta
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true; Layout.preferredHeight: 22
-                color: MichiTheme.colors.borderInner
-                radius: MichiTheme.radiusSm
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: MichiTheme.spacing.sm; anchors.rightMargin: MichiTheme.spacing.sm
-                    spacing: MichiTheme.spacing.sm
-
-                    Text {
-                        text: root._results.length > 0 ? root._results.length + " comandos" : ""
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: 9
-                        Layout.fillWidth: true
-                    }
-                    Text {
-                        text: "\u2191\u2193 Navegar"
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: 9
-                    }
-                    Text {
-                        text: "Enter Ejecutar"
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: 9
-                    }
-                    Text {
-                        text: "Esc Cerrar"
-                        color: MichiTheme.colors.textMeta
-                        font.pixelSize: 9
                     }
                 }
             }
         }
     }
 
-    function getVisibleSections() {
-        var sections = []
-        var seen = {}
-    Shortcut {
-        sequence: "Escape"
-        onActivated: { if (root.open) root.closePalette() }
-    }
-
-    function doSearch(query) {
-        var q = query.toLowerCase().trim()
-        if (root.cpb && root.cpb.searchCommands) {
-            root._results = root.cpb.searchCommands(q)
-        } else {
-            root._results = []
-        }
-        root._selIndex = -1
-
-        if (q !== "" && root.cap && root.cap.capabilities) {
-            var caps = root.cap.capabilities
-            root._results = root._results.filter(function(a) {
-                if (a.id.indexOf("radio") >= 0 && caps.has_radio === false) return false
-                if (a.id.indexOf("sync") >= 0 && caps.has_sync === false) return false
-                if (a.id.indexOf("home_audio") >= 0 && caps.has_home_audio === false) return false
-                return true
-            })
-        }
-
-        if (q === "" && root._results.length === 0 && root.cpb && root.cpb.commands) {
-            root._results = root.cpb.commands
-        }
-    }
-
-    function executeSelected() {
-        if (root._selIndex >= 0 && root._selIndex < root._results.length) {
-            root._execute(root._results[root._selIndex].id || "")
-        } else if (root._results.length > 0) {
-            root._selIndex = 0
-            root._execute(root._results[0].id || "")
-        }
-    }
-
-    function _execute(id) {
-        if (!id) return
-        var action = null
-        for (var i = 0; i < root._results.length; i++) {
-            var cat = root._results[i].category
-            if (!seen[cat]) {
-                seen[cat] = true
-                sections.push(cat)
-            }
-        }
-        return sections
-    }
-
-    function searchCommands(query) {
-        var q = query.toLowerCase().trim()
-        var all = root.cpb && typeof root.cpb.searchCommands !== "undefined" ? root.cpb.searchCommands(query) : []
-
-        var caps = root.capb && typeof root.capb.capabilities !== "undefined" ? root.capb.capabilities : ({})
-
-        var results = []
-        for (var i = 0; i < all.length; i++) {
-            var item = all[i]
-            var copy = {}
-            for (var key in item) {
-                copy[key] = item[key]
-            }
-            if (!capabilityAllowed(copy, caps)) {
-                copy._unavailable = true
-            } else {
-                copy._unavailable = false
-            }
-            results.push(copy)
-        }
-
-        root._results = results
-        root._selectedIndex = results.length > 0 ? 0 : -1
-    }
-
-    function capabilityAllowed(action, caps) {
-        if (!action || !action.id) return true
-        var requirements = {
-            "radio_add_station": "has_radio",
-            "navigate_radio": "has_radio",
-            "navigate_home_audio": "has_home_audio",
-            "navigate_queue": "has_queue",
-            "track_analyze_audio_lab": "has_audio_lab",
-            "album_analyze": "has_audio_lab",
-            "track_check_integrity": "has_audio_lab",
-            "track_calculate_replaygain": "has_replaygain",
-            "playback_volume_up": "has_volume",
-            "playback_volume_down": "has_volume",
-            "playback_mute": "has_volume",
-            "playback_seek_forward": "has_seek",
-            "playback_seek_back": "has_seek",
-            "source_add": "has_subsonic",
-            "source_edit": "has_subsonic",
-            "source_remove": "has_subsonic",
-            "source_scan": "has_subsonic",
-            "source_cancel_scan": "has_subsonic",
-            "metadata_smart_tagging": "has_smart_tagging",
-            "track_send_to_device": "has_sync",
-            "navigate_diagnostics": "has_diagnostics",
-            "diagnostics_show": "has_diagnostics",
-            "library_doctor": "has_library_doctor",
-        }
-        var required = requirements[action.id]
-        if (required) {
-            return caps[required] === true
-        }
-        return true
-    }
-
-    Connections {
-        target: root.cpb
-        function onCommandsChanged() {
-            searchCommands(root._filterText)
-        }
-    }
-
-    onOpenChanged: {
-        if (root.open) {
-            searchCommands("")
-            searchField.forceActiveFocus()
-        }
-        root.closePalette()
     function getVisibleSections() {
         var sections = []
         var seen = {}

@@ -12,7 +12,6 @@ from ui_qml_bridge.service_bundle import ServiceBundle
 pytestmark = [pytest.mark.qml_module("queue")]
 
 
-
 @pytest.fixture
 def mock_player():
     player = MagicMock()
@@ -66,8 +65,10 @@ def test_factory_creates_queue_bridge_with_service():
     bundle.player_service = MagicMock()
     bundle.worker_manager = MagicMock()
     bundle.db = MagicMock()
+    bundle.queue_service = QueueService()
     factory = BridgeFactory(bundle)
-    bridge = factory.create_queue_bridge()
+    factory.create_queue_bridge()
+    bridge = factory.get("queue")
     assert bridge is not None
     assert hasattr(bridge, 'queue_service')
 

@@ -1,10 +1,9 @@
+from __future__ import annotations
 """CQ — Michi AI + Diagnostics + Command Palette.
-
 Michi AI después de Diagnostics. Acciones via ActionRegistry. Sin handler: ACTION_UNAVAILABLE.
 Diagnostics: snapshots, services, jobs, logs, DB health, playback health, export, async.
 Command Palette: actions, routes, tracks, settings, devices, capability filtering, keyboard.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

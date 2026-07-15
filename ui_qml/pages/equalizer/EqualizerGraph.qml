@@ -39,7 +39,7 @@ Item {
                         x: 2; width: parent.width - 4
                         y: root.gain >= 0 ? barY : parent.height * 0.85
                         height: Math.max(2, root.barHeight)
-                        radius: MichiTheme.radiusXs
+                        radius: 2
                         color: root.gain >= 0
                             ? (root.gain > 6 ? MichiTheme.colors.warning : MichiTheme.colors.accentBlue)
                             : MichiTheme.colors.error

@@ -55,7 +55,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: "[X]"
             color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.bodySize
+            font.pixelSize: 14
 
             MouseArea {
                 anchors.fill: parent

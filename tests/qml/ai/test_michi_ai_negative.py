@@ -1,8 +1,6 @@
-"""Test Michi AI negative scenarios: missing service, execution failure, rejected action, cancellation."""
-
-"""Test Michi AI negative scenarios: missing service, execution failure, rejected action, cancellation."""
-
 from __future__ import annotations
+"""Test Michi AI negative scenarios: missing service, execution failure, rejected action, cancellation."""
+"""Test Michi AI negative scenarios: missing service, execution failure, rejected action, cancellation."""
 
 from unittest.mock import MagicMock
 
@@ -11,7 +9,6 @@ import pytest
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
-pytestmark = pytest.mark.isolation
 pytestmark = [pytest.mark.qml_module("michi_ai")]
 
 

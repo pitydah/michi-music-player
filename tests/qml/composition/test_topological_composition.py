@@ -9,10 +9,10 @@ import pytest
 pytestmark = [pytest.mark.qml_module("worker_manager")]
 
 
-
 def _make_container(**overrides) -> ServiceContainer:
     c = ServiceContainer()
     defaults = {
+        "database": Mock(),
         "connection_factory": Mock(),
         "worker_manager": Mock(),
         "query_executor": Mock(),
@@ -27,6 +27,7 @@ def _make_container(**overrides) -> ServiceContainer:
         "history_query_service": Mock(),
         "global_search_service": Mock(),
         "mix_query_service": Mock(),
+        "mix_service": Mock(),
         "track_action_service": Mock(),
         "playback_service": Mock(),
         "queue_service": Mock(),
@@ -39,9 +40,15 @@ def _make_container(**overrides) -> ServiceContainer:
         "device_sync_service": Mock(),
         "connection_service": Mock(),
         "home_audio_service": Mock(),
+        "radio_service": Mock(),
+        "lyrics_service": Mock(),
         "diagnostics_service": Mock(),
         "notification_service": Mock(),
         "action_registry": Mock(),
+        "confirmation_service": Mock(),
+        "runtime_persistence": Mock(),
+        "process_controller": Mock(),
+        "michi_ai_service": Mock(),
     }
     defaults.update(overrides)
     for name, svc in defaults.items():

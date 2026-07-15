@@ -1,5 +1,5 @@
-"""MX: Negative — insufficient storage scenarios."""
 from __future__ import annotations
+"""MX: Negative — insufficient storage scenarios."""
 
 from unittest.mock import MagicMock, PropertyMock
 

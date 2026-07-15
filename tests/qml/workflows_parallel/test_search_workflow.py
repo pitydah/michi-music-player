@@ -1,5 +1,5 @@
 """Full workflow: type query, debounce, navigate results, activate with keyboard."""
-"""Workflow test: query characters → debounce → navigate → activate result."""
+"""Workflow test: query characters  debounce  navigate  activate result."""
 """Full workflow: type query, debounce, navigate results, activate with keyboard."""
 from unittest.mock import MagicMock
 
@@ -50,7 +50,7 @@ class TestFullSearchWorkflow:
         assert result["count"] == 4
         assert len(bridge.results) == 4
 class TestSearchWorkflow:
-    """Complete search workflow: query → debounce → navigate → activate."""
+    """Complete search workflow: query  debounce  navigate  activate."""
 
     def test_debounce_generation_tracking(self, bridge):
         gen1 = bridge._search_gen

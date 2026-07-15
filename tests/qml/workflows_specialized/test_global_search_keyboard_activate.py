@@ -1,5 +1,5 @@
-"""MW: Global Search — type query, activate search, navigate results."""
 from __future__ import annotations
+"""MW: Global Search — type query, activate search, navigate results."""
 
 from unittest.mock import MagicMock
 

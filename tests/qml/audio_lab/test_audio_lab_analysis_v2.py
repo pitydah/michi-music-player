@@ -1,6 +1,6 @@
+from __future__ import annotations
 """DV — AudioLab advanced analysis: codec, format, sample rate, bit depth,
 channels, bitrate, loudness, peak, clipping, silence, checksum, decode."""
-from __future__ import annotations
 
 import os
 import tempfile
@@ -9,6 +9,8 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=0.3):
@@ -46,8 +48,6 @@ class TestAudioLabAnalysisV2:
     @pytest.fixture
     def svc(self, app, db, wm):
         from core.audio_lab.audio_analysis_service import AudioAnalysisService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         return AudioAnalysisService(db=db, wm=wm)
 

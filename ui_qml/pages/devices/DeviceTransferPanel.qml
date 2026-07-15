@@ -8,21 +8,6 @@ Item {
     id: root
 
     property string deviceKey: ""
-    property var bridge: null
-    property var transferJobs: []
-    property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
-
-    signal startTransferClicked()
-    signal cancelTransferClicked()
-    signal retryTransferClicked(string jobId)
-
-    implicitHeight: childrenRect.height
-
-    objectName: "DeviceTransferPanel"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Panel de transferencia"
-    objectName: "devices.transferPanel"
-    property string deviceKey: ""
     property var transferJobs: []
     property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
 
@@ -46,37 +31,6 @@ Item {
             id: column
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
-            spacing: MichiTheme.spacing.sm
-            spacing: MichiTheme.spacing.md
-
-            Text {
-                text: "Transferencias"
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Transferencias"
-            }
-
-            Text {
-                text: "Estado: " + (root.dv ? (root.dv.transferActive ? "Activo" : "Inactivo") : "No disponible")
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: root.deviceKey !== ""
-            }
-
-            Repeater {
-                model: root.transferJobs
-
-                Item {
-                    id: jobItem
-                    width: parent.width
-                    implicitHeight: 80
-                    objectName: "transferJob_" + index
-                    Accessible.name: "Transferencia: " + (modelData.file_name || modelData.name || "Archivo")
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.xs
             spacing: MichiTheme.spacing.sm
 
             Text {
@@ -124,27 +78,10 @@ Item {
 
                                 Text {
                                     text: modelData.file_name || modelData.name || "Archivo"
-                                    width: parent.width
-                                    text: modelData.source_path ? bridge.fileName(modelData.source_path) : "Archivo"
-                                    text: modelData.file_name || modelData.name || "Archivo"
                                     color: MichiTheme.colors.textPrimary
                                     font.pixelSize: MichiTheme.typography.bodySize
                                     font.weight: MichiTheme.typography.weightMedium
                                     elide: Text.ElideRight
-                                    width: parent.width
-                                }
-
-                                Text {
-                                    text: formatBytes(modelData.transferred_bytes || modelData.transferredBytes || 0)
-                                          + " / " + formatBytes(modelData.total_bytes || modelData.totalBytes || 0)
-                                }
-
-                                Text {
-                                    text: {
-                                        var tb = modelData.total_bytes || 0
-                                        var tfb = modelData.transferred_bytes || 0
-                                        return formatBytes(tfb) + " / " + formatBytes(tb)
-                                    }
                                     width: parent.width
                                 }
 
@@ -158,14 +95,6 @@ Item {
                                 MichiProgressBar {
                                     width: parent.width
                                     height: 4
-                                    value: (modelData.total_bytes || modelData.totalBytes || 1) > 0
-                                           ? (modelData.transferred_bytes || modelData.transferredBytes || 0)
-                                             / (modelData.total_bytes || modelData.totalBytes || 1)
-                                           : 0
-                                    accessibleName: "Progreso de transferencia"
-                                    value: modelData.total_bytes > 0 ? (modelData.transferred_bytes || 0) / modelData.total_bytes : 0
-                                    accessibleName: "Progreso de transferencia"
-                                    accessibleDescription: (modelData.transferred_bytes || 0) + " de " + (modelData.total_bytes || 0) + " bytes"
                                     value: (modelData.total_bytes || modelData.totalBytes || 1) > 0
                                            ? (modelData.transferred_bytes || modelData.transferredBytes || 0)
                                              / (modelData.total_bytes || modelData.totalBytes || 1)
@@ -189,9 +118,6 @@ Item {
                                     text: {
                                         var s = modelData.status || modelData.state || "queued"
                                         switch (s) {
-                                        switch (modelData.status || "queued") {
-                                        var s = modelData.status || modelData.state || "queued"
-                                        switch (s) {
                                             case "transferring": return "Transfiriendo"
                                             case "completed": return "Completado"
                                             case "failed": return "Falló"
@@ -200,9 +126,6 @@ Item {
                                         }
                                     }
                                     kind: {
-                                        var s = modelData.status || modelData.state || "queued"
-                                        switch (s) {
-                                        switch (modelData.status || "queued") {
                                         var s = modelData.status || modelData.state || "queued"
                                         switch (s) {
                                             case "transferring": return "info"
@@ -214,18 +137,11 @@ Item {
                                     }
                                     objectName: "transferJobStatus_" + index
                                     Accessible.name: text
-                                    objectName: "transferJobStatus_" + index
-                                    Accessible.name: text
                                 }
 
                                 MichiButton {
                                     text: "Cancelar"
                                     variant: "ghost"
-                                    visible: modelData.status === "queued" || modelData.status === "transferring"
-                                    onClicked: root.cancelTransfer(modelData.job_id || "")
-                                    objectName: "devices.transferPanel.cancelBtn." + (modelData.job_id || index)
-                                    Accessible.name: "Cancelar transferencia " + (modelData.source_path || "")
-                                    Accessible.description: "Detiene la transferencia en curso"
                                     visible: {
                                         var s = modelData.status || modelData.state || ""
                                         return s === "queued" || s === "transferring"
@@ -243,11 +159,6 @@ Item {
                                 MichiButton {
                                     text: "Reintentar"
                                     variant: "ghost"
-                                    visible: modelData.status === "failed" || modelData.status === "cancelled"
-                                    onClicked: root.retryTransfer(modelData.job_id || "")
-                                    objectName: "devices.transferPanel.retryBtn." + (modelData.job_id || index)
-                                    Accessible.name: "Reintentar transferencia " + (modelData.source_path || "")
-                                    Accessible.description: "Vuelve a intentar la transferencia fallida"
                                     visible: {
                                         var s = modelData.status || modelData.state || ""
                                         return s === "failed" || s === "cancelled"
@@ -261,9 +172,6 @@ Item {
                             }
                         }
                     }
-
-                    Accessible.role: Accessible.ListItem
-                    Accessible.name: (modelData.source_path ? bridge.fileName(modelData.source_path) : "Transferencia") + " - " + (modelData.status || "queued")
                 }
             }
 
@@ -272,41 +180,6 @@ Item {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.transferJobs.length === 0
-                Accessible.name: "No hay transferencias activas"
-                objectName: "devices.transferPanel.noActive"
-            }
-
-            Row {
-                spacing: MichiTheme.spacing.sm
-                visible: root.deviceKey !== ""
-
-                MichiButton {
-                    text: "Iniciar transferencia"
-                    variant: "primary"
-                    onClicked: root.startTransferClicked()
-                    objectName: "startTransferButton"
-                    Accessible.name: "Iniciar nueva transferencia"
-                    activeFocusOnTab: true
-                    Keys.onReturnPressed: clicked()
-                    Keys.onSpacePressed: clicked()
-                }
-
-            Text {
-                text: root.transferHistory.length === 0 ? "No hay historial de transferencias." : ""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                visible: root.transferHistory.length === 0
-                objectName: "devices.transferPanel.noHistory"
-            }
-
-            MichiButton {
-                text: "Limpiar historial"
-                variant: "ghost"
-                visible: root.transferHistory.length > 0
-                onClicked: root.clearHistory()
-                objectName: "devices.transferPanel.clearHistoryBtn"
-                Accessible.name: "Limpiar historial de transferencias"
-                Accessible.description: "Elimina todo el historial de transferencias"
                 Accessible.name: "No hay transferencias activas"
             }
 
@@ -341,9 +214,6 @@ Item {
     }
 
     function formatBytes(bytes) {
-        if (!bytes || bytes < 1) return "0 B"
-        if (bytes < 1024) return bytes + " B"
-        if (!bytes || bytes < 1024) return (bytes || 0) + " B"
         if (!bytes || bytes < 1) return "0 B"
         if (bytes < 1024) return bytes + " B"
         if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"

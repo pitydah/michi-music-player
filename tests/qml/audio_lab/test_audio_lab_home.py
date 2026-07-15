@@ -1,5 +1,5 @@
-"""Tests for AudioLabOverviewPage hub page."""
 from __future__ import annotations
+"""Tests for AudioLabOverviewPage hub page."""
 
 from unittest.mock import MagicMock, PropertyMock
 

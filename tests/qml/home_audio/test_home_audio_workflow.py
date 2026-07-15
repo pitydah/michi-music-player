@@ -7,7 +7,6 @@ import pytest
 pytestmark = pytest.mark.isolation
 
 
-
 @pytest.fixture
 def mock_ha():
     ha = MagicMock()

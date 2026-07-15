@@ -6,7 +6,6 @@ from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 pytestmark = [pytest.mark.qml_module("global_search")]
 
 
-
 @pytest.fixture
 def mock_service():
     svc = MagicMock()

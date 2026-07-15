@@ -1,11 +1,9 @@
+from __future__ import annotations
 """Tests for SelectionController — unified selection for Library, Playlist, Metadata, Tagging, Doctor.
-
 Covers: replace, toggle, add, remove, selectRangeByRows, selectAllLoaded,
         selectAllFiltered, invertLoaded, clear, restore, contains, snapshot.
-
 IDs are arbitrary non-consecutive values to prove no consecutive-ID assumption.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

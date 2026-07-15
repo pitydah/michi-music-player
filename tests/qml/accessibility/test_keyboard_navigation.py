@@ -1,9 +1,9 @@
 from __future__ import annotations
+from __future__ import annotations
 """Test Tab navigation through major pages.
 
 Verifies KeyNavigation.tab chains, activeFocusOnTab, FocusScope, and
 Keys.onReturnPressed/SpacePressed/EscapePressed patterns on all major pages."""
-from __future__ import annotations
 
 from pathlib import Path
 

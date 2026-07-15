@@ -1,5 +1,5 @@
-"""Tests for LibraryTrackTable fetchMore behavior — 6+ tests."""
 from __future__ import annotations
+"""Tests for LibraryTrackTable fetchMore behavior — 6+ tests."""
 
 from unittest.mock import MagicMock
 

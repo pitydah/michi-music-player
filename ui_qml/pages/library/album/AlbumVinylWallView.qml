@@ -28,14 +28,14 @@ Item {
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: MichiTheme.radiusXl
+                    radius: 60
                     color: MichiTheme.colors.borderInner
                     border.width: 2
                     border.color: MichiTheme.colors.borderSubtle
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 40; height: 40; radius: MichiTheme.radiusXl
+                        width: 40; height: 40; radius: 20
                         color: MichiTheme.colors.surfaceCard
                     }
 
@@ -44,7 +44,7 @@ Item {
                         anchors.top: parent.top; anchors.topMargin: 30
                         text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
                         color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.pixelSize: 16
                         font.weight: FontWeight.Bold
                     }
 

@@ -1,5 +1,5 @@
-"""MW: Devices — discover paired devices, transfer file, cancel transfer."""
 from __future__ import annotations
+"""MW: Devices — discover paired devices, transfer file, cancel transfer."""
 
 from unittest.mock import MagicMock
 

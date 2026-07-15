@@ -1,11 +1,13 @@
-"""Tests for ReplayGain page — modes, sliders, apply/clear, states."""
 from __future__ import annotations
+"""Tests for ReplayGain page — modes, sliders, apply/clear, states."""
 
 import sqlite3
 import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -83,8 +85,6 @@ class TestReplayGain:
 
     def test_replaygain_album_computation(self, app, db, wm):
         from core.audio_lab.replaygain_service import ReplayGainService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         svc = ReplayGainService(db=db, wm=wm)
         results = svc.analyze_album(["/missing1.flac", "/missing2.flac"])

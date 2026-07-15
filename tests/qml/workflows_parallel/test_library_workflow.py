@@ -1,13 +1,13 @@
-"""Workflow: Browse albums → select → context menu → play — 8+ tests."""
 from __future__ import annotations
+from __future__ import annotations
+from __future__ import annotations
+"""Workflow: Browse albums  select  context menu  play — 8+ tests."""
 
 """Workflow test: Search -> select -> context menu -> play -> queue update."""
-from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-"""Workflow: Browse albums → select → context menu → play — 8+ tests."""
-from __future__ import annotations
+"""Workflow: Browse albums  select  context menu  play — 8+ tests."""
 
 from unittest.mock import MagicMock
 

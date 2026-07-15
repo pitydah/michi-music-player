@@ -1,7 +1,6 @@
 """Tests for CapabilityAwarePage template."""
 
 
-
 def test_capability_aware_page_loads():
     import os
     filepath = "ui_qml/components/CapabilityAwarePage.qml"

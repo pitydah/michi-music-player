@@ -1,10 +1,9 @@
+from __future__ import annotations
 """Test keyboard navigation for devices pages.
-
 Tests focus on the DevicesBridge and DeviceSyncService layers,
 verifying that slot-based navigation contracts work correctly.
 """
 """Test keyboard navigation for Devices pages."""
-from __future__ import annotations
 
 """Test keyboard navigation for devices pages.
 
@@ -17,7 +16,6 @@ import pytest
 
 from ui_qml_bridge.devices_bridge import DevicesBridge
 from ui_qml_bridge.navigation_bridge import NavigationBridge
-
 
 
 pytestmark = pytest.mark.isolation

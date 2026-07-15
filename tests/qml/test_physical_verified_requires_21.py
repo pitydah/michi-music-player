@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Verify that VERIFIED status requires exactly 21/21 checks passed.
-
 Only VERIFIED with 21/21 delivers physical points.
 Any other state (PENDING, RUNNING, FAILED, BLOCKED_HARDWARE) does not count.
 """
-from __future__ import annotations
 
 import json
 from pathlib import Path

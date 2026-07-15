@@ -1,9 +1,9 @@
+from __future__ import annotations
+from __future__ import annotations
 """Tests for keyboard navigation across Audio Lab pages.
-
 Verifies that all interactive elements have KeyNavigation, activeFocusOnTab,
 Keys.onReturnPressed, and Keys.onSpacePressed handlers.
 """
-from __future__ import annotations
 """Tests for keyboard accessibility and focus across all Audio Lab pages."""
 
 import pytest
@@ -76,7 +76,6 @@ class TestAudioKeyboardNavigation:
 Verifies that all interactive elements have KeyNavigation, activeFocusOnTab,
 Keys.onReturnPressed, and Keys.onSpacePressed handlers.
 """
-from __future__ import annotations
 
 import pytest
 

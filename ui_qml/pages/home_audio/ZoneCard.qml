@@ -6,24 +6,18 @@ import "../../components"
 Item {
     id: root
 
-    objectName: "homeAudio.zoneCard"
-
     property string zoneName: ""
     property int deviceCount: 0
     property string zoneStatus: "idle"
     property bool isMuted: false
     property int volume: 50
     property bool hasLatency: false
-    property bool online: true
 
     signal zoneCardClicked()
     signal zoneCardVolumeChanged(int volume)
     signal zoneMuteToggled()
 
-    implicitHeight: 140
-
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Zona: " + root.zoneName
+    implicitHeight: 100
 
     GlassMaterial {
         anchors.fill: parent
@@ -59,7 +53,6 @@ Item {
                         font.weight: MichiTheme.typography.weightSemiBold
                         elide: Text.ElideRight
                         width: parent.width
-                        Accessible.name: root.zoneName
                     }
 
                     Text {
@@ -77,45 +70,23 @@ Item {
                         text: root.zoneStatus === "playing" ? "Reproduciendo" : "En espera"
                         kind: root.zoneStatus === "playing" ? "active" : "disconnected"
                     }
-
-                    StatusBadge {
-                        text: root.online ? "En línea" : "Sin conexión"
-                        kind: root.online ? "success" : "disconnected"
-                        visible: true
-                    }
                 }
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                width: parent.width
-                objectName: "zoneCard.volumeRow"
 
-                MichiSlider {
-                    id: volumeSlider
-                    width: parent.width - 140
-                    from: 0; to: 100
-                    value: root.volume
-                    stepSize: 1
-                    anchors.verticalCenter: parent.verticalCenter
-                    accessibleName: "Volumen de " + root.zoneName
-                    onMoved: root.zoneCardVolumeChanged(value)
+                MichiButton {
+                    text: root.isMuted ? "Activar sonido" : "Silenciar"
+                    variant: root.isMuted ? "secondary" : "ghost"
+                    onClicked: root.zoneMuteToggled()
                 }
 
                 Text {
-                    text: "Vol: " + Math.round(volumeSlider.value) + "%"
+                    text: "Vol: " + root.volume + "%"
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
                     anchors.verticalCenter: parent.verticalCenter
-                }
-
-                MichiButton {
-                    text: root.isMuted ? "🔇" : "🔊"
-                    variant: root.isMuted ? "secondary" : "ghost"
-                    implicitWidth: 36; implicitHeight: 36
-                    onClicked: root.zoneMuteToggled()
-                    objectName: "zoneCard.muteButton"
-                    Accessible.name: root.isMuted ? "Activar sonido" : "Silenciar"
                 }
             }
         }

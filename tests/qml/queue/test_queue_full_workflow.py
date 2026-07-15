@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test full queue workflow via QueueBridge and QueueListModel.
-
 Covers: play from index, remove, reorder, clear, append, insert next,
 save as playlist, undo preparation, multiple selection.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,6 +10,8 @@ import pytest
 
 from core.queue_service import QueueService
 from ui_qml_bridge.queue_bridge import QueueBridge
+
+pytestmark = [pytest.mark.qml_module("queue")]
 
 
 @pytest.fixture
@@ -102,8 +103,6 @@ def test_queue_bridge_save_as_playlist_no_name(mock_player):
 
 def test_queue_bridge_save_as_playlist(mock_player):
     from unittest.mock import MagicMock
-import pytest
-pytestmark = [pytest.mark.qml_module("queue")]
 
     mock_pb = MagicMock()
     mock_pb.saveQueueAsPlaylist.return_value = {"ok": True}

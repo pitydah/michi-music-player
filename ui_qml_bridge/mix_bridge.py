@@ -1,28 +1,38 @@
-"""MixBridge — connects QML Mix page to real library data.
-
-No fake tracks, no false success on empty mix/queue, no AI mix without backend.
-Deterministic seed support, explainable, stale-safe, partial results explicit.
-"""
 from __future__ import annotations
 
 import contextlib
+import logging
+from enum import Enum
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
-import logging
 
 logger = logging.getLogger("michi.mix")
+
+
+class MixState(Enum):
+    IDLE = "IDLE"
+    CONFIGURING = "CONFIGURING"
+    VALIDATING = "VALIDATING"
+    QUEUED = "QUEUED"
+    GENERATING = "GENERATING"
+    CANCELLING = "CANCELLING"
+    CANCELLED = "CANCELLED"
+    READY = "READY"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+
 
 MIX_CATEGORIES = [
     {"id": "favorites", "title": "Favoritos", "icon": "FV", "desc": "Tus canciones marcadas como favoritas"},
     {"id": "recent", "title": "Escuchadas recientemente", "icon": "RC", "desc": "Canciones reproducidas recientemente"},
-    {"id": "most_played", "title": "Más escuchadas", "icon": "MP", "desc": "Tus canciones con más reproducciones"},
-    {"id": "unplayed", "title": "No escuchadas", "icon": "UN", "desc": "Canciones que aún no has reproducido"},
+    {"id": "most_played", "title": "Mas escuchadas", "icon": "MP", "desc": "Tus canciones con mas reproducciones"},
+    {"id": "unplayed", "title": "No escuchadas", "icon": "UN", "desc": "Canciones que aun no has reproducido"},
     {"id": "rediscovery", "title": "Redescubrimiento", "icon": "RD", "desc": "Canciones antiguas que no escuchas hace tiempo"},
     {"id": "daily_mix", "title": "Mix diario", "icon": "MX", "desc": "Recomendaciones basadas en tu historial"},
     {"id": "by_artist", "title": "Por artista", "icon": "AR", "desc": "Mixes centrados en un artista"},
-    {"id": "by_genre", "title": "Por género", "icon": "GN", "desc": "Mixes por género musical"},
-    {"id": "by_decade", "title": "Por década", "icon": "DC", "desc": "Mixes por década"},
-    {"id": "by_year", "title": "Por año", "icon": "YR", "desc": "Mixes por año específico"},
+    {"id": "by_genre", "title": "Por genero", "icon": "GN", "desc": "Mixes por genero musical"},
+    {"id": "by_decade", "title": "Por decada", "icon": "DC", "desc": "Mixes por decada"},
+    {"id": "by_year", "title": "Por ano", "icon": "YR", "desc": "Mixes por ano especifico"},
     {"id": "high_quality", "title": "Alta calidad", "icon": "HQ", "desc": "Solo pistas con bitrate >= 320 kbps"},
     {"id": "custom", "title": "Mix personalizado", "icon": "CS", "desc": "Mix basado en reglas definidas por ti"},
 ]
@@ -30,8 +40,70 @@ MIX_CATEGORIES = [
 
 class MixBridge(QObject):
     dataChanged = Signal()
-    generationProgress = Signal(int, int)  # current, total
+    generationProgress = Signal(int, int)
     generationError = Signal(str)
+    stateChanged = Signal(str)
+
+    def __init__(self, mix_service=None, job_service=None,
+                 action_registry=None, navigation_bridge=None,
+                 page_state_store=None, capability_bridge=None,
+                 accessibility_bridge=None, playlist_service=None,
+                 playback_service=None, queue_service=None,
+                 db=None, query_service=None, player_service=None,
+                 track_action_service=None, playlist_bridge=None,
+                 query_executor=None, worker_manager=None, parent=None):
+        super().__init__(parent)
+        self._mix_svc = mix_service or query_service
+        self._job_svc = job_service
+        self._action_registry = action_registry
+        self._nav = navigation_bridge
+        self._page_state = page_state_store
+        self._cap = capability_bridge
+        self._access = accessibility_bridge
+        self._playlist_svc = playlist_service or playlist_bridge
+        self._playback_svc = playback_service or player_service
+        self._queue_svc = queue_service
+        self._tas = track_action_service
+        self._pb = playlist_bridge
+
+        self._state = MixState.IDLE
+        self._current_mix_id = ""
+        self._current_mix_title = ""
+        self._current_songs: list[dict] = []
+        self._error_message = ""
+        self._ai_enabled = False
+        self._generation = 0
+        self._validation_errors: list[str] = []
+
+    @property
+    def state(self) -> MixState:
+        return self._state
+
+    def _set_state(self, new_state: MixState):
+        if self._state != new_state:
+            self._state = new_state
+            self.stateChanged.emit(new_state.value)
+            self.dataChanged.emit()
+
+    def _can_transition(self, target: MixState) -> bool:
+        valid = {
+            MixState.IDLE: {MixState.CONFIGURING, MixState.GENERATING},
+            MixState.CONFIGURING: {MixState.VALIDATING, MixState.IDLE, MixState.FAILED},
+            MixState.VALIDATING: {MixState.QUEUED, MixState.CONFIGURING, MixState.FAILED},
+            MixState.QUEUED: {MixState.GENERATING, MixState.IDLE, MixState.CANCELLING, MixState.FAILED},
+            MixState.GENERATING: {MixState.READY, MixState.PARTIAL_SUCCESS, MixState.FAILED,
+                                  MixState.CANCELLING, MixState.CANCELLED},
+            MixState.CANCELLING: {MixState.CANCELLED, MixState.IDLE},
+            MixState.CANCELLED: {MixState.CONFIGURING, MixState.IDLE},
+            MixState.READY: {MixState.CONFIGURING, MixState.IDLE, MixState.GENERATING},
+            MixState.PARTIAL_SUCCESS: {MixState.CONFIGURING, MixState.IDLE, MixState.GENERATING},
+            MixState.FAILED: {MixState.CONFIGURING, MixState.IDLE},
+        }
+        return target in valid.get(self._state, set())
+
+    @Property(str, notify=stateChanged)
+    def stateName(self):
+        return self._state.value
 
     @Property("QVariantList", notify=dataChanged)
     def categories(self):
@@ -56,42 +128,145 @@ class MixBridge(QObject):
     def currentMixId(self):
         return self._current_mix_id
 
-    @Slot(str, result=dict)
-    def loadMix(self, mix_id: str, seed: str = ""):
-        self._current_mix_id = mix_id
-        category = next((c for c in MIX_CATEGORIES if c["id"] == mix_id), None)
-        self._current_mix_title = category["title"] if category else "Mix"
-        self._error_message = ""
-        try:
-            songs = self._load_mix_items(mix_id, seed=seed)
-            if not songs:
-                self._error_message = "No se encontraron canciones para este mix"
-            self._current_songs = songs
-        except Exception as e:
-            logger.debug("Mix load failed: %s", e, exc_info=True)
-            self._error_message = str(e)
-            self._current_songs = []
-        self.dataChanged.emit()
-        return {"ok": bool(self._current_songs) or self._error_message == "",
-                "count": len(self._current_songs),
-                "partial": len(self._current_songs) > 0}
+    @Property("QVariantList", notify=dataChanged)
+    def validationErrors(self):
+        return self._validation_errors
 
-    def _load_mix_items(self, mix_id: str, seed: str = "") -> list[dict]:
-        if not self._mqs:
-            return []
+    @Slot(str, result=dict)
+    def configure(self, mix_id: str, params: str = ""):
+        if not self._can_transition(MixState.CONFIGURING):
+            return {"ok": False, "error_code": "INVALID_STATE", "state": self._state.value}
+        self._set_state(MixState.CONFIGURING)
+        category = next((c for c in MIX_CATEGORIES if c["id"] == mix_id), None)
+        if not category:
+            self._error_message = f"Categoria '{mix_id}' no encontrada"
+            self._set_state(MixState.FAILED)
+            return {"ok": False, "error_code": "UNKNOWN_CATEGORY"}
+        self._current_mix_id = mix_id
+        self._current_mix_title = category["title"]
+        self._config_params = params
+        self._error_message = ""
+        self._validation_errors = []
+        self.dataChanged.emit()
+        return {"ok": True, "mix_id": mix_id, "title": category["title"]}
+
+    @Slot(result=dict)
+    def validate(self):
+        if not self._can_transition(MixState.VALIDATING):
+            return {"ok": False, "error_code": "INVALID_STATE", "state": self._state.value}
+        self._set_state(MixState.VALIDATING)
+        self._validation_errors = []
+        if not self._current_mix_id:
+            self._validation_errors.append("No se selecciono ningun mix")
+            self._set_state(MixState.FAILED)
+            return {"ok": False, "error_code": "NO_MIX_SELECTED", "errors": self._validation_errors}
+        if self._mix_svc is None:
+            self._validation_errors.append("Servicio de mix no disponible")
+            self._set_state(MixState.FAILED)
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE", "errors": self._validation_errors}
+        self._set_state(MixState.QUEUED)
+        return {"ok": True, "valid": True}
+
+    @Slot(result=dict)
+    def generate(self):
+        if not self._can_transition(MixState.GENERATING):
+            return {"ok": False, "error_code": "INVALID_STATE", "state": self._state.value}
+        self._set_state(MixState.QUEUED)
+        self._generation += 1
+        gen = self._generation
+        mix_id = self._current_mix_id
+        params = getattr(self, '_config_params', "")
+
+        self._set_state(MixState.GENERATING)
+
+        try:
+            songs = self._load_mix_items(mix_id, seed=params)
+        except Exception as e:
+            logger.debug("Mix generate failed: %s", e, exc_info=True)
+            self._error_message = str(e)
+            self._set_state(MixState.FAILED)
+            return {"ok": False, "error_code": "GENERATION_FAILED", "detail": str(e)}
+
+        if songs is None:
+            self._error_message = "Servicio de biblioteca no disponible"
+            self._set_state(MixState.FAILED)
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE", "detail": self._error_message}
+
+        if not songs:
+            self._error_message = "No se encontraron canciones para este mix"
+            self._current_songs = []
+            self._set_state(MixState.READY)
+            return {"ok": True, "count": 0, "partial": False}
+
+        self._current_songs = songs
+        self._error_message = ""
+
+        if self._page_state:
+            self._page_state.set("mix_last_result", {
+                "mix_id": mix_id, "count": len(songs), "generation": gen,
+            })
+
+        if self.generationProgress:
+            self.generationProgress.emit(len(songs), len(songs))
+
+        self._set_state(MixState.READY)
+        return {"ok": True, "count": len(songs), "partial": False}
+
+    @Slot(result=dict)
+    def loadMix(self, mix_id: str, seed: str = ""):
+        cfg = self.configure(mix_id, seed)
+        if not cfg.get("ok"):
+            return cfg
+        val = self.validate()
+        if not val.get("ok"):
+            return val
+        return self.generate()
+
+    @Slot(result=dict)
+    def regenerate(self):
+        if self._state not in (MixState.READY, MixState.PARTIAL_SUCCESS, MixState.FAILED):
+            return {"ok": False, "error_code": "INVALID_STATE", "state": self._state.value}
+        return self.generate()
+
+    @Slot(result=dict)
+    def cancelGeneration(self):
+        if self._state == MixState.GENERATING:
+            self._set_state(MixState.CANCELLING)
+        if self._job_svc and hasattr(self._job_svc, 'cancel_all'):
+            with contextlib.suppress(Exception):
+                self._job_svc.cancel_all(owner="mix_bridge")
+        gen = self._generation
+        self._generation += 1
+        self._current_songs = []
+        self._set_state(MixState.CANCELLED)
+        return {"ok": True, "cancelled": gen}
+
+    @Slot(result=dict)
+    def reset(self):
+        self._current_mix_id = ""
+        self._current_mix_title = ""
+        self._current_songs = []
+        self._error_message = ""
+        self._validation_errors = []
+        self._set_state(MixState.IDLE)
+        return {"ok": True}
+
+    def _load_mix_items(self, mix_id: str, seed: str = "") -> list[dict] | None:
+        if self._mix_svc is None:
+            return None
 
         loaders = {
-            "favorites": lambda: self._mqs.favorites(50),
-            "recent": lambda: self._mqs.recent(30),
-            "most_played": lambda: self._mqs.most_played(30),
-            "unplayed": lambda: self._mqs.unplayed(30),
-            "rediscovery": lambda: self._mqs.rediscovery(30),
+            "favorites": lambda: self._mix_svc.favorites(50),
+            "recent": lambda: self._mix_svc.recent(30),
+            "most_played": lambda: self._mix_svc.most_played(30),
+            "unplayed": lambda: self._mix_svc.unplayed(30),
+            "rediscovery": lambda: self._mix_svc.rediscovery(30),
             "daily_mix": lambda: self._build_daily_mix(),
-            "by_artist": lambda: self._mqs.by_field("artist", limit=30),
-            "by_genre": lambda: self._mqs.by_field("genre", limit=30),
-            "by_decade": lambda: self._mqs.by_decade(30),
-            "by_year": lambda: self._mqs.by_year(30),
-            "high_quality": lambda: self._mqs.high_quality(30),
+            "by_artist": lambda: self._mix_svc.by_field("artist", limit=30),
+            "by_genre": lambda: self._mix_svc.by_field("genre", limit=30),
+            "by_decade": lambda: self._mix_svc.by_decade(30),
+            "by_year": lambda: self._mix_svc.by_year(30),
+            "high_quality": lambda: self._mix_svc.high_quality(30),
             "custom": lambda: self._build_custom_mix(seed),
         }
         loader = loaders.get(mix_id)
@@ -100,6 +275,8 @@ class MixBridge(QObject):
 
         try:
             items = loader()
+            if items is None:
+                return None
             if not items:
                 return []
             return self._deduplicate_and_apply_limits(items)
@@ -127,14 +304,18 @@ class MixBridge(QObject):
             result.append(item)
             if len(result) >= max_total:
                 break
+        if len(result) < len(items) and len(result) > 0:
+            self._set_state(MixState.PARTIAL_SUCCESS)
         return result
 
     def _build_daily_mix(self) -> list[dict]:
-        if not self._mqs:
+        if not self._mix_svc:
             return []
         try:
-            recent = self._mqs.recent(50)
-            unplayed = self._mqs.unplayed(50)
+            recent = self._mix_svc.recent(50)
+            unplayed = self._mix_svc.unplayed(50)
+            if recent is None or unplayed is None:
+                return []
             recent_ids = {r.get("track_id", 0) or r.get("id", 0) for r in recent}
             combined = recent[:15]
             for t in unplayed:
@@ -149,7 +330,7 @@ class MixBridge(QObject):
             return []
 
     def _build_custom_mix(self, params: str = "") -> list[dict]:
-        if not params or not self._mqs:
+        if not params or not self._mix_svc:
             return []
         try:
             import json
@@ -158,76 +339,68 @@ class MixBridge(QObject):
             genre = rules.get("genre", "")
             limit = int(rules.get("limit", 30))
             if artist:
-                return self._mqs.by_field("artist", value=artist, limit=limit) or []
+                result = self._mix_svc.by_field("artist", value=artist, limit=limit)
+                return result or []
             if genre:
-                return self._mqs.by_field("genre", value=genre, limit=limit) or []
+                result = self._mix_svc.by_field("genre", value=genre, limit=limit)
+                return result or []
         except (json.JSONDecodeError, Exception):
             pass
         return []
 
-    @Slot(result=dict)
-    def refresh(self):
-        if self._current_mix_id:
-            return self.loadMix(self._current_mix_id)
-        self.dataChanged.emit()
-        return {"ok": True}
+    def _try_play_track(self, tid):
+        if self._playback_svc and hasattr(self._playback_svc, 'play'):
+            self._playback_svc.play(tid)
+            return True
+        if self._tas and hasattr(self._tas, 'play_track'):
+            result = self._tas.play_track(tid)
+            if isinstance(result, dict):
+                return result.get("ok", False)
+            return bool(result)
+        return False
 
-    def __init__(self, db=None, playback_ctrl=None, player_service=None,
-                 track_action_service=None, playlist_bridge=None,
-                 query_service=None, query_executor=None,
-                 worker_manager=None, parent=None):
-        super().__init__(parent)
-        self._db = db
-        self._player = playback_ctrl or player_service
-        self._tas = track_action_service
-        self._pb = playlist_bridge
-        self._qe = query_executor
-        self._current_mix_id = ""
-        self._current_mix_title = ""
-        self._current_songs: list[dict] = []
-        self._error_message = ""
-        self._ai_enabled = False
-        self._generation = 0
-        self._mqs = query_service
-        self._wm = worker_manager
+    def _try_enqueue_track(self, tid):
+        if self._queue_svc and hasattr(self._queue_svc, 'enqueue'):
+            self._queue_svc.enqueue(tid)
+            return True
+        if self._playback_svc and hasattr(self._playback_svc, 'enqueue'):
+            self._playback_svc.enqueue([tid])
+            return True
+        if self._tas and hasattr(self._tas, 'enqueue_track'):
+            result = self._tas.enqueue_track(tid)
+            if isinstance(result, dict):
+                return result.get("ok", False)
+            return bool(result)
+        return False
 
     @Slot(result=dict)
     def playMix(self):
         if not self._current_songs:
-            return {"ok": False, "error": "EMPTY_MIX", "error_code": "EMPTY_MIX"}
+            return {"ok": False, "error_code": "EMPTY_MIX"}
         first = self._current_songs[0]
         tid = first.get("track_id") or first.get("id")
         if not tid:
-            return {"ok": False, "error": "NO_TRACK_ID", "error_code": "NO_TRACK_ID"}
-        if self._tas and hasattr(self._tas, 'play_track'):
-            try:
-                return self._tas.play_track(tid)
-            except Exception as e:
-                return {"ok": False, "error": str(e), "error_code": "PLAY_FAILED"}
-        if self._player and hasattr(self._player, 'play'):
-            try:
-                self._player.play(tid)
+            return {"ok": False, "error_code": "NO_TRACK_ID"}
+        try:
+            ok = self._try_play_track(tid)
+            if ok:
                 return {"ok": True, "track_id": tid}
-            except Exception as e:
-                return {"ok": False, "error": str(e), "error_code": "PLAY_FAILED"}
-        return {"ok": False, "error": "NO_PLAYBACK_SERVICE", "error_code": "NO_PLAYBACK"}
+            return {"ok": False, "error_code": "NO_PLAYBACK"}
+        except Exception as e:
+            return {"ok": False, "error_code": "PLAY_FAILED", "detail": str(e)}
 
     @Slot(result=dict)
     def enqueueMix(self):
         if not self._current_songs:
-            return {"ok": False, "error": "EMPTY_MIX", "error_code": "EMPTY_MIX"}
+            return {"ok": False, "error_code": "EMPTY_MIX"}
         count = 0
         errors = []
         for s in self._current_songs:
             tid = s.get("track_id") or s.get("id")
             if tid:
                 try:
-                    if self._tas and hasattr(self._tas, 'enqueue_track'):
-                        result = self._tas.enqueue_track(tid)
-                        if isinstance(result, dict) and not result.get("ok"):
-                            errors.append({"track_id": tid, "error": result.get("error", "ENQUEUE_FAILED")})
-                        else:
-                            count += 1
+                    if self._try_enqueue_track(tid):
+                        count += 1
                 except Exception as e:
                     errors.append({"track_id": tid, "error": str(e)})
         result = {"ok": count > 0, "count": count}
@@ -236,90 +409,95 @@ class MixBridge(QObject):
             result["error_count"] = len(errors)
         return result
 
+    def _try_create_playlist(self, name):
+        if self._playlist_svc and hasattr(self._playlist_svc, 'create'):
+            pid = self._playlist_svc.create(name)
+            if pid:
+                return pid
+        if self._pb and hasattr(self._pb, 'createPlaylist'):
+            result = self._pb.createPlaylist(name)
+            if isinstance(result, dict) and result.get("ok"):
+                return result.get("id", result.get("playlist_id"))
+            if isinstance(result, (int, str)):
+                return result
+        return None
+
+    def _try_add_to_playlist(self, pid, tid):
+        if self._playlist_svc and hasattr(self._playlist_svc, 'add_track'):
+            self._playlist_svc.add_track(pid, tid)
+            return True
+        if self._pb and hasattr(self._pb, 'addTrackToPlaylist'):
+            result = self._pb.addTrackToPlaylist(pid, track_id=str(tid))
+            if isinstance(result, dict):
+                return result.get("ok", False)
+            return bool(result)
+        return False
+
     @Slot(str, result=dict)
     def saveMixAsPlaylist(self, name: str):
         if not name:
-            return {"ok": False, "error": "EMPTY_NAME", "error_code": "EMPTY_NAME"}
-        if not self._pb:
-            return {"ok": False, "error": "NO_PLAYLIST_BRIDGE", "error_code": "NO_PLAYLIST_BRIDGE"}
+            return {"ok": False, "error_code": "EMPTY_NAME"}
         if not self._current_songs:
-            return {"ok": False, "error": "EMPTY_MIX", "error_code": "EMPTY_MIX"}
+            return {"ok": False, "error_code": "EMPTY_MIX"}
+        if not self._playlist_svc and not self._pb:
+            return {"ok": False, "error_code": "NO_PLAYLIST_SERVICE"}
         try:
-            result = self._pb.createPlaylist(name)
-            if not result.get("ok"):
-                return {"ok": False, "error": "CREATE_FAILED", "error_code": "CREATE_FAILED"}
-            pid = result["id"]
+            pid = self._try_create_playlist(name)
+            if not pid:
+                return {"ok": False, "error_code": "CREATE_FAILED"}
             count = 0
             for s in self._current_songs:
                 tid = s.get("track_id") or s.get("id")
                 if tid:
-                    add = self._pb.addTrackToPlaylist(pid, track_id=str(tid))
-                    if add.get("ok"):
-                        count += 1
-            self._pb.refresh()
+                    try:
+                        if self._try_add_to_playlist(pid, tid):
+                            count += 1
+                    except Exception:
+                        pass
+            if self._playlist_svc and hasattr(self._playlist_svc, 'refresh'):
+                self._playlist_svc.refresh()
+            elif self._pb and hasattr(self._pb, 'refresh'):
+                self._pb.refresh()
             return {"ok": True, "id": pid, "count": count}
         except Exception as e:
-            return {"ok": False, "error": str(e), "error_code": "SAVE_FAILED"}
+            return {"ok": False, "error_code": "SAVE_FAILED", "detail": str(e)}
 
     @Slot(int, result=dict)
     def playFromIndex(self, index: int):
         if not self._current_songs or index < 0 or index >= len(self._current_songs):
-            return {"ok": False, "error_code": "INVALID_INDEX", "message": "Índice inválido"}
+            return {"ok": False, "error_code": "INVALID_INDEX"}
         song = self._current_songs[index]
         tid = song.get("track_id") or song.get("id")
         if not tid:
-            return {"ok": False, "error_code": "NO_TRACK_ID", "message": "Pista sin identificador"}
-        if self._tas and hasattr(self._tas, 'play_track'):
-            try:
-                result = self._tas.play_track(tid)
-                if isinstance(result, dict):
-                    return result if not result.get("ok") else {"ok": True, "track_id": tid, "index": index}
+            return {"ok": False, "error_code": "NO_TRACK_ID"}
+        try:
+            ok = self._try_play_track(tid)
+            if ok:
                 return {"ok": True, "track_id": tid, "index": index}
-            except Exception as e:
-                return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
-        if self._player and hasattr(self._player, 'play'):
-            try:
-                self._player.play(tid)
-                return {"ok": True, "track_id": tid, "index": index}
-            except Exception as e:
-                return {"ok": False, "error_code": "PLAY_FAILED", "message": str(e)}
-        return {"ok": False, "error_code": "NO_PLAYBACK", "message": "Reproductor no disponible"}
-
-    @Slot(result=dict)
-    def cancelGeneration(self):
-        if self._wm and hasattr(self._wm, 'cancel_all'):
-            with contextlib.suppress(Exception):
-                self._wm.cancel_all(owner="mix_bridge")
-                pass
-        gen = self._generation
-        self._generation += 1
-        return {"ok": True, "cancelled": gen}
+            return {"ok": False, "error_code": "NO_PLAYBACK"}
+        except Exception as e:
+            return {"ok": False, "error_code": "PLAY_FAILED", "detail": str(e)}
 
     @Slot(int, result=dict)
     def enqueueTrack(self, index: int):
         if not self._current_songs or index < 0 or index >= len(self._current_songs):
-            return {"ok": False, "error_code": "INVALID_INDEX", "message": "Índice inválido"}
+            return {"ok": False, "error_code": "INVALID_INDEX"}
         song = self._current_songs[index]
         tid = song.get("track_id") or song.get("id")
         if not tid:
-            return {"ok": False, "error_code": "NO_TRACK_ID", "message": "Pista sin identificador"}
-        if self._tas and hasattr(self._tas, 'enqueue_track'):
-            try:
-                return self._tas.enqueue_track(tid)
-            except Exception as e:
-                return {"ok": False, "error_code": "ENQUEUE_FAILED", "message": str(e)}
-        if self._player and hasattr(self._player, 'enqueue'):
-            try:
-                self._player.enqueue([tid])
-                return {"ok": True, "track_id": tid, "index": index, "queued": True}
-            except Exception as e:
-                return {"ok": False, "error_code": "ENQUEUE_FAILED", "message": str(e)}
-        return {"ok": False, "error_code": "NO_PLAYBACK", "message": "Reproductor no disponible"}
+            return {"ok": False, "error_code": "NO_TRACK_ID"}
+        try:
+            ok = self._try_enqueue_track(tid)
+            if ok:
+                return {"ok": True, "track_id": tid, "index": index}
+            return {"ok": False, "error_code": "NO_PLAYBACK"}
+        except Exception as e:
+            return {"ok": False, "error_code": "ENQUEUE_FAILED", "detail": str(e)}
 
     @Slot(result=dict)
     def explainCurrentMix(self):
         if not self._current_songs:
-            return {"ok": False, "error": "EMPTY_MIX", "error_code": "EMPTY_MIX"}
+            return {"ok": False, "error_code": "EMPTY_MIX"}
         reasons = set()
         for s in self._current_songs[:10]:
             r = s.get("reason", "")
@@ -335,3 +513,16 @@ class MixBridge(QObject):
         if not failures:
             return {"ok": True, "has_failures": False, "failures": []}
         return {"ok": True, "has_failures": True, "failures": failures[:10], "total": len(failures)}
+
+    @Slot(result=dict)
+    def refresh(self):
+        if self._current_mix_id:
+            return self.loadMix(self._current_mix_id)
+        self.dataChanged.emit()
+        return {"ok": True}
+
+    @Slot(str, result=dict)
+    def navigateTo(self, route: str):
+        if self._nav:
+            return self._nav.navigate(route)
+        return {"ok": False, "error_code": "NAVIGATION_UNAVAILABLE"}

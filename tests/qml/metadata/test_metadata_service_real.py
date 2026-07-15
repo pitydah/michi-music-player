@@ -1,10 +1,9 @@
+from __future__ import annotations
 """DX — MetadataService real: load, edit, validate, preview, confirmation,
 backup, write temp, verify, replace, DB update, event, model refresh, undo.
-
 Single editor, batch editor, mixed values, artwork, diff, conflicts,
 numbering, search/replace, filename parsing, progress, cancel, rollback.
 """
-from __future__ import annotations
 
 import os
 import tempfile

@@ -1,5 +1,5 @@
-"""CJ — Advanced Audio Lab: Analysis, ReplayGain, Normalization, Integrity, Comparison, Batch."""
 from __future__ import annotations
+"""CJ — Advanced Audio Lab: Analysis, ReplayGain, Normalization, Integrity, Comparison, Batch."""
 
 import os
 import tempfile

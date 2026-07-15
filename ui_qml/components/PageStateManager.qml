@@ -1,7 +1,7 @@
 import QtQuick
 import QtQml
 import "../theme"
-import "../ui_qml_bridge"
+// import "../ui_qml_bridge"
 
 QtObject {
     id: root

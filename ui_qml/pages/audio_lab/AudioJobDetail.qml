@@ -9,8 +9,6 @@ Item {
 
     property var jobData: null
     property var jobBr: typeof jobBridge !== "undefined" ? jobBridge : null
-    property var alab: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
-    property var jobBr: typeof jobBridge !== "undefined" ? jobBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
     objectName: "AudioJobDetail"
@@ -40,15 +38,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-            anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
-            Text { text: root.jobData ? root.jobData.title : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
-            Text { text: "Estado: " + (root.jobData ? root.jobData.state : ""); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-            Text { text: "Progreso: " + (root.jobData && root.jobData.progress ? Math.round(root.jobData.progress * 100) + "%" : "0%"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
-            Text { text: "Error: " + (root.jobData ? (root.jobData.error_code || "") : ""); color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; visible: root.jobData && root.jobData.state === "failed" }
-            Row { spacing: MichiTheme.spacing.sm
-                MichiButton { text: "Reintentar"; variant: "secondary"; enabled: root.jobData && root.jobData.state === "failed"; onClicked: root.alab && root.alab.retryJob(root.jobData.job_id) }
-                MichiButton { text: "Cancelar"; variant: "danger"; enabled: root.jobData && root.jobData.state === "running"; onClicked: root.alab && root.alab.cancelJob(root.jobData.job_id) }
-                MichiButton { text: "Abrir output"; variant: "ghost"; onClicked: {} }
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg

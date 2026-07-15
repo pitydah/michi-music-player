@@ -1,18 +1,18 @@
+from __future__ import annotations
+from __future__ import annotations
 """Full workflow: filter -> play event -> remove event -> export.
-
 Tests the complete history lifecycle across bridges:
 1. Filter history by artist
 2. Play an event from the filtered results
 3. Remove an event
 4. Export remaining history
 """
-from __future__ import annotations
 
 import sqlite3
 import time
 import json
-"""Workflow test: filter → play → export → remove via HistoryBridge."""
 import pytest
+"""Workflow test: filter  play  export  remove via HistoryBridge."""
 from unittest.mock import MagicMock
 
 
@@ -153,11 +153,9 @@ Tests the complete history lifecycle across bridges:
 3. Remove an event
 4. Export remaining history
 """
-from __future__ import annotations
 
 
 import pytest
-
 
 
 @pytest.fixture

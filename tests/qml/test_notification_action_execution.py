@@ -1,5 +1,5 @@
-"""Test NotificationBridge — ActionRegistry integration, progress, cancel, dedup."""
 from __future__ import annotations
+"""Test NotificationBridge — ActionRegistry integration, progress, cancel, dedup."""
 
 from unittest.mock import MagicMock
 

@@ -1,5 +1,5 @@
-"""MF-MK: AudioLabBridge orchestrated — accepts audio_lab_service, job_service, confirmation_service by DI."""
 from __future__ import annotations
+"""MF-MK: AudioLabBridge orchestrated — accepts audio_lab_service, job_service, confirmation_service by DI."""
 
 import sqlite3
 from unittest.mock import MagicMock

@@ -1,8 +1,7 @@
+from __future__ import annotations
 """Negative tests for CommandPalette — edge cases, failures, invalid inputs."""
 """Negative tests for CommandPalette — edge cases, failures, invalid inputs."""
 """Test command palette negative scenarios: no actions, capability filtering."""
-
-from __future__ import annotations
 
 import pytest
 
@@ -10,7 +9,6 @@ from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
 
-pytestmark = pytest.mark.isolation
 pytestmark = [pytest.mark.qml_module("command_palette"), pytest.mark.qml_dimension("negative")]
 
 

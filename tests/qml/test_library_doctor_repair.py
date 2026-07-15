@@ -1,5 +1,5 @@
+from __future__ import annotations
 """Wave XLIII — 10.3: Library Doctor con reparación.
-
 Tests:
   - Detección: missing files, duplicate UID, duplicate path, metadata missing,
     orphan playlist items, orphan history
@@ -7,7 +7,6 @@ Tests:
   - Async scan with progress
   - No silent 500-track limit
 """
-from __future__ import annotations
 
 import time
 import sqlite3

@@ -52,6 +52,9 @@ class ServiceBundle:
     global_search_service: Any | None = None
     diagnostics_service: Any | None = None
     job_service: Any | None = None
+    playlist_service: Any | None = None
+    mix_query_service: Any | None = None
+    process_controller: Any | None = None
 
     def has(self, name: str) -> bool:
         return getattr(self, name, None) is not None

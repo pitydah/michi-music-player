@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test NowPlayingBar bridge state propagation.
-
 Verifies the NowPlayingBar component correctly reads shared state
 from NowPlayingBridge without duplicating playback control logic.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,7 +10,6 @@ import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 pytestmark = [pytest.mark.qml_module("playback")]
-
 
 
 @pytest.fixture

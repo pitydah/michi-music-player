@@ -1,5 +1,5 @@
-"""Tests for separated launchers — qml_app, widgets_app, app_launcher."""
 from __future__ import annotations
+"""Tests for separated launchers — qml_app, widgets_app, app_launcher."""
 
 import os
 import sys

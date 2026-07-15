@@ -8,7 +8,6 @@ from ui_qml_bridge.theme_bridge import ThemeBridge
 pytestmark = [pytest.mark.qml_module("theme")]
 
 
-
 class TestThemeReactiveStore:
     @pytest.fixture
     def settings_service(self):

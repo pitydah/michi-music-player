@@ -1,5 +1,5 @@
-"""MF-MK: Audio conversion real — conversion via AudioLabBridge with injected services."""
 from __future__ import annotations
+"""MF-MK: Audio conversion real — conversion via AudioLabBridge with injected services."""
 
 import sqlite3
 

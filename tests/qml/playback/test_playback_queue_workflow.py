@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test playback-queue workflow: Library click QueueService PlayerService.
-
 QueueService owns state; PlayerService executes; NowPlayingBridge reflects
 PlayerService (no duplicate state); QueueBridge adapts QueueService.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -12,6 +11,8 @@ import pytest
 from core.queue_service import QueueService
 from ui_qml_bridge.queue_bridge import QueueBridge
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+
+pytestmark = [pytest.mark.qml_module("playback")]
 
 
 @pytest.fixture
@@ -133,7 +134,5 @@ def test_queue_service_persistence_roundtrip(queue_service):
 
 def _queue_state_path():
     from core.queue_service import _queue_state_path as qsp
-import pytest
-pytestmark = [pytest.mark.qml_module("playback")]
 
     return qsp()

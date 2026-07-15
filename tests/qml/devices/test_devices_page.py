@@ -1,11 +1,11 @@
-"""Test DevicesPage state machine, server controls, device list."""
 from __future__ import annotations
+"""Test DevicesPage state machine, server controls, device list."""
 
 from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.devices_bridge import DevicesBridge, STATE_UNAVAILABLE, STATE_LOADING, STATE_READY, STATE_EMPTY, STATE_ERROR
+from ui_qml_bridge.devices_bridge import DevicesBridge, STATE_INITIALIZING, STATE_DISCOVERING, STATE_READY, STATE_EMPTY, STATE_ERROR
 
 pytestmark = pytest.mark.isolation
 
@@ -13,7 +13,7 @@ pytestmark = pytest.mark.isolation
 class TestDevicesPageStates:
     def test_initial_state_unavailable(self):
         b = DevicesBridge()
-        assert b.pageState == STATE_UNAVAILABLE
+        assert b.pageState == STATE_INITIALIZING
 
     def test_unavailable_when_no_manager(self):
         b = DevicesBridge()
@@ -53,13 +53,13 @@ class TestDevicesPageStates:
     def test_state_loading_when_manager_no_server(self):
         mgr = MagicMock()
         b = DevicesBridge(sync_manager=mgr)
-        assert b.pageState == STATE_LOADING
+        assert b.pageState == STATE_DISCOVERING
 
     def test_state_unavailable_no_bridge(self):
         b = DevicesBridge()
         b._bridge_available = False
         b._set_state()
-        assert b.pageState == STATE_UNAVAILABLE
+        assert b.pageState == STATE_INITIALIZING
 
 
 class TestDevicesPageServerControls:

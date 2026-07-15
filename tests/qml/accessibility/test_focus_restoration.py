@@ -1,4 +1,5 @@
 from __future__ import annotations
+from __future__ import annotations
 """Test focus returns when dialogs close.
 
 Verifies that:
@@ -53,7 +54,6 @@ class TestFocusRestoration:
             content = path.read_text()
             assert "FocusScope" in content, f"{path.name} lacks FocusScope"
             assert "activeFocusOnTab" in content, f"{path.name} lacks activeFocusOnTab"
-from __future__ import annotations
 
 from pathlib import Path
 

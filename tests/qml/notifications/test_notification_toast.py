@@ -1,5 +1,6 @@
-"""Test NotificationToast — show, dismiss, auto-dismiss, timer states."""
 from __future__ import annotations
+from __future__ import annotations
+"""Test NotificationToast — show, dismiss, auto-dismiss, timer states."""
 """Tests for NotificationToast QML component states and behavior."""
 
 import pytest
@@ -20,10 +21,8 @@ def engine(qapp):
     return QQmlEngine(qapp)
 
 """Test NotificationToast — show, dismiss, auto-dismiss, timer states."""
-from __future__ import annotations
 
 import pytest
-
 
 
 @pytest.fixture

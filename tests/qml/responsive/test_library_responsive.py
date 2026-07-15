@@ -1,4 +1,5 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import pytest
 from unittest.mock import MagicMock, PropertyMock
@@ -72,7 +73,6 @@ class TestLibraryPageResponsive:
 
     def test_page_qml_exists(self):
         assert (QML_DIR / "pages/library/LibraryPage.qml").exists()
-from __future__ import annotations
 
 import pytest
 

@@ -1,5 +1,5 @@
-"""MW: Home Audio — group zones, ungroup zones."""
 from __future__ import annotations
+"""MW: Home Audio — group zones, ungroup zones."""
 
 from unittest.mock import MagicMock
 

@@ -5,6 +5,8 @@ import time
 
 from core.history_query_service import HistoryQueryService
 
+pytestmark = [pytest.mark.qml_module("history")]
+
 
 @pytest.fixture
 def db_conn():
@@ -128,8 +130,6 @@ def test_event_id_in_export_csv(svc, tmp_path):
     out = tmp_path / "history_event.csv"
     svc.export_history(str(out), fmt="csv")
     import csv
-import pytest
-pytestmark = [pytest.mark.qml_module("history")]
 
     with open(out, newline="") as f:
         reader = csv.DictReader(f)

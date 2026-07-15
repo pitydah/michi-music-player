@@ -1,5 +1,5 @@
-"""conftest for specialized workflow tests — provides domain fixtures."""
 from __future__ import annotations
+"""conftest for specialized workflow tests — provides domain fixtures."""
 
 from unittest.mock import MagicMock
 

@@ -1,5 +1,5 @@
-"""CM — EQ applied state, preamp, bands, presets, import/export, bypass, clipping, bit-perfect conflict, rollback."""
 from __future__ import annotations
+"""CM — EQ applied state, preamp, bands, presets, import/export, bypass, clipping, bit-perfect conflict, rollback."""
 
 from unittest.mock import MagicMock
 

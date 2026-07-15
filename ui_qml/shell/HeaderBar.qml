@@ -9,18 +9,15 @@ Item {
     id: root
 
     property string pageTitle: "Inicio"
-    property string routeTitle: "Inicio"
     property bool canGoBack: false
     property bool canGoForward: false
+    property var routeHistory: []
 
-    signal backRequested()
-    signal forwardRequested()
+    signal backClicked()
+    signal forwardClicked()
+    signal breadcrumbClicked(string route)
 
     height: MichiTheme.headerHeight
-
-    objectName: "headerBar"
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Barra superior"
 
     Rectangle {
         anchors.fill: parent
@@ -35,59 +32,54 @@ Item {
 
         Row {
             anchors.fill: parent
-            anchors.leftMargin: MichiTheme.spacing.sm
+            anchors.leftMargin: MichiTheme.spacing.xl
             anchors.rightMargin: MichiTheme.spacing.xl
-            spacing: MichiTheme.spacing.sm
+            spacing: MichiTheme.spacing.md
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
+                spacing: MichiTheme.spacing.xs
 
                 MichiIconButton {
-                    iconText: ""
+                    iconText: "<"
                     tooltipText: "Atrás"
-                    btnSize: 32
+                    btnSize: 28
                     enabled: root.canGoBack
-                    objectName: "header.backButton"
+                    onClicked: root.backClicked()
                     Accessible.name: "Navegar atrás"
-                    onClicked: root.backRequested()
                 }
 
                 MichiIconButton {
-                    iconText: ""
+                    iconText: ">"
                     tooltipText: "Adelante"
-                    btnSize: 32
+                    btnSize: 28
                     enabled: root.canGoForward
-                    objectName: "header.forwardButton"
+                    onClicked: root.forwardClicked()
                     Accessible.name: "Navegar adelante"
-                    onClicked: root.forwardRequested()
+                }
+
+                Text {
+                    text: root.pageTitle
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                    leftPadding: MichiTheme.spacing.sm
+                }
+
+                StatusBadge {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Experimental"
+                    kind: "experimental"
                 }
             }
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.routeTitle
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Título de página: " + root.routeTitle
-            }
-
-            StatusBadge {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Experimental"
-                kind: "experimental"
-                Accessible.name: "Versión experimental"
-            }
-
-            Item { width: 1; height: 1; Layout.fillWidth: true }
+            Item { Layout.fillWidth: true; width: 1; height: 1 }
 
             SearchField {
                 anchors.verticalCenter: parent.verticalCenter
                 placeholderText: "Buscar en Michi..."
                 implicitWidth: Math.min(280, root.width * 0.25)
-                objectName: "header.searchField"
-                Accessible.name: "Búsqueda global"
             }
         }
     }

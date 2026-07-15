@@ -109,8 +109,6 @@ class FakeDb:
             content = p.read_text()
             assert "Keys.onEscapePressed" in content
 """Test playlist keyboard navigation patterns via bridge actions."""
-import pytest
-
 
 
 @pytest.fixture

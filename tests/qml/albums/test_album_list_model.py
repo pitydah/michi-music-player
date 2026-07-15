@@ -1,5 +1,5 @@
-"""Tests for AlbumListModel — 10+ tests."""
 from __future__ import annotations
+"""Tests for AlbumListModel — 10+ tests."""
 
 from unittest.mock import MagicMock
 
@@ -7,7 +7,6 @@ import pytest
 
 from ui_qml.models.AlbumListModel import AlbumListModel
 pytestmark = [pytest.mark.qml_module("album_views")]
-
 
 
 @pytest.fixture

@@ -7,7 +7,6 @@ from core.history_query_service import HistoryQueryService
 pytestmark = [pytest.mark.qml_module("history")]
 
 
-
 @pytest.fixture
 def db_conn():
     conn = sqlite3.connect(":memory:")

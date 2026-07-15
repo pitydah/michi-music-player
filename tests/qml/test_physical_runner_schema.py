@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Verify structure of a physical audio artifact produced by the local runner.
-
 The artifact is a JSON file at artifacts/qml-physical-results.json.
 This test validates the schema regardless of the artifact's status value.
 """
-from __future__ import annotations
 
 import json
 from pathlib import Path

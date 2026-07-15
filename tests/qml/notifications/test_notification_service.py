@@ -8,7 +8,6 @@ from core.notification_service import Notification, NotificationService, Notific
 pytestmark = [pytest.mark.qml_module("notification")]
 
 
-
 @pytest.fixture
 def service():
     return NotificationService()

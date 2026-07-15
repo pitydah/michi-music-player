@@ -10,7 +10,7 @@ Item {
     property real balance: 0.0
     property var audioBridge: null
 
-    signal balanceChanged(real value)
+    signal balanceSliderChanged(real value)
 
     objectName: "balanceSlider"
 
@@ -48,7 +48,7 @@ Item {
                 root.balance = value
                 if (root.audioBridge && typeof root.audioBridge.setBalance !== "undefined")
                     root.audioBridge.setBalance(value)
-                root.balanceChanged(value)
+                root.balanceSliderChanged(value)
             }
         }
 

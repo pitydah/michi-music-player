@@ -5,6 +5,8 @@ import pytest
 
 from ui_qml_bridge.eq_bridge import EqBridge, GRAPHIC_BAND_COUNT
 
+pytestmark = [pytest.mark.qml_module("eq_dsp")]
+
 PRESETS_MODULE = "audio.eq_presets"
 
 
@@ -79,8 +81,6 @@ def test_import_preset(mock_save, mock_player):
 
 def test_export_preset(mock_player):
     import pathlib
-import pytest
-pytestmark = [pytest.mark.qml_module("eq_dsp")]
 
     original = pathlib.Path.write_text
     pathlib.Path.write_text = lambda self, data: None

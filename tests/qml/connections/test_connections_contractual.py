@@ -1,8 +1,7 @@
+from __future__ import annotations
 """CO — Connections contractual: discovery, manual, auth, pairing, reconnect, disconnect, remove, detail, capabilities, errors, retry.
-
 No ok:true sin controller.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

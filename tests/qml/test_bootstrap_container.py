@@ -1,5 +1,5 @@
-"""Tests for HD + HE — ApplicationBootstrap and ServiceContainer real."""
 from __future__ import annotations
+"""Tests for HD + HE — ApplicationBootstrap and ServiceContainer real."""
 
 import sys
 from pathlib import Path

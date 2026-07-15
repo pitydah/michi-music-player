@@ -1,5 +1,5 @@
-"""10 vertical workflows obligatorios con SQLite real, servicios reales, bridges reales."""
 from __future__ import annotations
+"""10 vertical workflows obligatorios con SQLite real, servicios reales, bridges reales."""
 
 import sqlite3
 import struct
@@ -304,10 +304,10 @@ def real_db(sql_conn):
     return db
 
 
-# ── WF1: LibraryPage → search → filter → selection → play → Now Playing → Queue ──
+# ── WF1: LibraryPage  search  filter  selection  play  Now Playing  Queue ──
 
 class TestWorkflow1LibraryToPlayback:
-    """WF1: Biblioteca → Playback real con SQLite."""
+    """WF1: Biblioteca  Playback real con SQLite."""
 
     def test_wf1_search_and_filter(self, sql_tmpdb, player, real_db):
         db_path, files = sql_tmpdb
@@ -392,10 +392,10 @@ class TestWorkflow1LibraryToPlayback:
         assert qb.queueCount == 0
 
 
-# ── WF2: AlbumDetail → select disc → enqueue → add to playlist → open playlist ──
+# ── WF2: AlbumDetail  select disc  enqueue  add to playlist  open playlist ──
 
 class TestWorkflow2AlbumToPlaylist:
-    """WF2: Álbum → Playlist real."""
+    """WF2: Álbum  Playlist real."""
 
     def test_wf2_album_detail(self, sql_tmpdb, real_db):
         from ui_qml_bridge.library_query_service import LibraryQueryService
@@ -439,10 +439,10 @@ class TestWorkflow2AlbumToPlaylist:
         assert len(pb.playlists) > 0
 
 
-# ── WF3: ArtistDetail → generate Mix → play → save playlist ──
+# ── WF3: ArtistDetail  generate Mix  play  save playlist ──
 
 class TestWorkflow3ArtistMix:
-    """WF3: Artista → Mix real."""
+    """WF3: Artista  Mix real."""
 
     def test_wf3_artist_detail(self, sql_tmpdb, real_db):
         from ui_qml_bridge.library_bridge import LibraryBridge
@@ -474,7 +474,7 @@ class TestWorkflow3ArtistMix:
         assert r.get("count") == 4
 
 
-# ── WF4: Audio Lab — Real selection → preview → conversion → progress → cancellation ──
+# ── WF4: Audio Lab — Real selection  preview  conversion  progress  cancellation ──
 
 class TestWorkflow4AudioLab:
     """WF4: Audio Lab real."""
@@ -504,7 +504,7 @@ class TestWorkflow4AudioLab:
         assert len(modules) > 0
 
 
-# ── WF5: Metadata — Load → edit → preview → save → verify → model refresh ──
+# ── WF5: Metadata — Load  edit  preview  save  verify  model refresh ──
 
 class TestWorkflow5Metadata:
     """WF5: Metadata real (mutagen on real files)."""
@@ -547,7 +547,7 @@ class TestWorkflow5Metadata:
         assert mb.qualitySummary
 
 
-# ── WF6: Doctor — Scan → dry run → repair → DB verification ──
+# ── WF6: Doctor — Scan  dry run  repair  DB verification ──
 
 class TestWorkflow6Doctor:
     """WF6: Library Doctor real."""
@@ -600,7 +600,7 @@ class TestWorkflow6Doctor:
         assert r.get("ok")
 
 
-# ── WF7: Search — Query A → query B (supersede) → open → back → preserve query ──
+# ── WF7: Search — Query A  query B (supersede)  open  back  preserve query ──
 
 class TestWorkflow7Search:
     """WF7: Global Search real."""
@@ -642,7 +642,7 @@ class TestWorkflow7Search:
         assert r.get("ok")
 
 
-# ── WF8: Playlist — Create → add tracks → reorder → export M3U → import copy ──
+# ── WF8: Playlist — Create  add tracks  reorder  export M3U  import copy ──
 
 class TestWorkflow8PlaylistCRUD:
     """WF8: Playlist CRUD real."""
@@ -702,7 +702,7 @@ class TestWorkflow8PlaylistCRUD:
         assert len(pb.playlists) > 0
 
 
-# ── WF9: Theme — Change → QML tokens → restart → persistence ──
+# ── WF9: Theme — Change  QML tokens  restart  persistence ──
 
 class TestWorkflow9Theme:
     """WF9: Theme change real."""
@@ -749,7 +749,7 @@ class TestWorkflow9Theme:
             SETTINGS.sync()
 
 
-# ── WF10: Device — Discover UMS → profile → transfer → cancel → cleanup ──
+# ── WF10: Device — Discover UMS  profile  transfer  cancel  cleanup ──
 
 class TestWorkflow10DeviceSync:
     """WF10: Device sync real."""

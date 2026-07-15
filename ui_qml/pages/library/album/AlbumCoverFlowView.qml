@@ -30,7 +30,7 @@ Item {
 
             Rectangle {
                 anchors.centerIn: parent
-                width: 140; height: 140; radius: MichiTheme.radiusSm
+                width: 140; height: 140; radius: 6
                 color: MichiTheme.colors.borderInner
                 scale: PathView.isCurrentItem ? 1.15 : 0.85
                 opacity: PathView.isCurrentItem ? 1.0 : 0.5
@@ -39,7 +39,7 @@ Item {
                     anchors.centerIn: parent
                     text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
                     color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.sectionTitleSize
+                    font.pixelSize: 20
                     font.weight: FontWeight.Bold
                 }
 

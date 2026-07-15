@@ -1,5 +1,5 @@
-"""Test NotificationBridge wiring — created after ActionRegistry and JobBridge, exposed via read-only properties."""
 from __future__ import annotations
+"""Test NotificationBridge wiring — created after ActionRegistry and JobBridge, exposed via read-only properties."""
 
 from unittest.mock import MagicMock
 

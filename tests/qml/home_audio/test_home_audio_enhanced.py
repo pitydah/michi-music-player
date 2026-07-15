@@ -1,5 +1,5 @@
-"""CP — Home Audio: zones, groups, streams, volume, mute, latency, server handoff, refresh, offline, partial failure."""
 from __future__ import annotations
+"""CP — Home Audio: zones, groups, streams, volume, mute, latency, server handoff, refresh, offline, partial failure."""
 
 from unittest.mock import MagicMock, PropertyMock
 

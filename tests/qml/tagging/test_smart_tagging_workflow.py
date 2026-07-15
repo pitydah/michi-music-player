@@ -1,5 +1,5 @@
-"""Tests for Smart Tagging full workflow."""
 from __future__ import annotations
+"""Tests for Smart Tagging full workflow."""
 
 import time
 

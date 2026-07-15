@@ -10,15 +10,10 @@ Item {
     property string serverHost: ""
     property string serverType: ""
     property string serverStatus: "disconnected"
-    property string objectName: "connections.discoveredCard"
 
     signal connectClicked()
 
     implicitHeight: 100
-
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.serverName
-    Accessible.description: "Estado: " + root.serverStatus + ". Host: " + root.serverHost
 
     GlassMaterial {
         anchors.fill: parent
@@ -31,7 +26,6 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.connectClicked()
         }
 
         Row {
@@ -49,7 +43,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    objectName: root.objectName + ".name"
                 }
 
                 Text {
@@ -57,7 +50,6 @@ Item {
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
-                    objectName: root.objectName + ".host"
                 }
             }
 
@@ -72,15 +64,12 @@ Item {
                     kind: root.serverStatus === "connected" ? "success"
                         : root.serverStatus === "detected" ? "info"
                         : "disconnected"
-                    objectName: root.objectName + ".statusBadge"
                 }
 
                 MichiButton {
                     text: "Conectar"
                     variant: "accent"
                     onClicked: root.connectClicked()
-                    objectName: root.objectName + ".connectButton"
-                    Accessible.name: "Conectar a " + root.serverName
                 }
             }
         }

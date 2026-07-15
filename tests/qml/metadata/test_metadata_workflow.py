@@ -1,5 +1,5 @@
-"""CL — Metadata full workflow: load, edit, validate, preview, backup, write, verify, replace, undo."""
 from __future__ import annotations
+"""CL — Metadata full workflow: load, edit, validate, preview, backup, write, verify, replace, undo."""
 
 import os
 import tempfile

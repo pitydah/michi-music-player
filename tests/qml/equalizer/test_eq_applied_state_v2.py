@@ -1,11 +1,13 @@
-"""DY — EQ Applied State v2: enable, bypass, preamp, bands, Q, frequency, gain, presets, import, export, reset, clipping, bit-perfect conflict, rollback."""
 from __future__ import annotations
+"""DY — EQ Applied State v2: enable, bypass, preamp, bands, Q, frequency, gain, presets, import, export, reset, clipping, bit-perfect conflict, rollback."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ui_qml_bridge.eq_bridge import EqBridge, GRAPHIC_BAND_COUNT
+
+pytestmark = [pytest.mark.qml_module("eq_dsp")]
 
 
 @pytest.fixture
@@ -94,8 +96,6 @@ class TestEqAppliedStateV2:
 
     def test_import_preset(self, mock_player, tmp_path):
         import json
-import pytest
-pytestmark = [pytest.mark.qml_module("eq_dsp")]
 
         preset_file = tmp_path / "test_preset.json"
         preset_file.write_text(json.dumps({

@@ -27,6 +27,8 @@ class ContainerState(Enum):
 class ServicePriority(Enum):
     REQUIRED = "required"
     OPTIONAL = "optional"
+    CAPABILITY_GATED = "capability_gated"
+    DEFERRED_PHYSICAL = "deferred_physical"
     DEFERRED = "deferred"
 
 
@@ -47,18 +49,23 @@ class ServiceContainer:
             self._priorities[name] = ServicePriority.REQUIRED
         for name in self._optional_names():
             self._priorities[name] = ServicePriority.OPTIONAL
+        for name in self._capability_gated_names():
+            self._priorities[name] = ServicePriority.CAPABILITY_GATED
+        for name in self._deferred_physical_names():
+            self._priorities[name] = ServicePriority.DEFERRED_PHYSICAL
         for name in self._deferred_names():
             self._priorities[name] = ServicePriority.DEFERRED
 
     @staticmethod
     def _required_names() -> set[str]:
         return {
-            "connection_factory", "worker_manager", "query_executor",
-            "job_service", "event_bus", "settings_coordinator",
-            "settings_service", "library_query_service",
-            "library_sources_service", "library_mutation_service",
-            "playlist_service", "history_query_service",
-            "global_search_service", "mix_query_service",
+            "database", "connection_factory", "worker_manager",
+            "query_executor", "job_service", "event_bus",
+            "settings_coordinator", "settings_service",
+            "library_query_service", "library_sources_service",
+            "library_mutation_service", "playlist_service",
+            "history_query_service", "global_search_service",
+            "mix_query_service", "mix_service",
             "track_action_service", "playback_service",
             "queue_service", "metadata_service",
         }
@@ -70,16 +77,34 @@ class ServiceContainer:
             "audio_lab_service", "smart_tagging_service",
             "library_doctor_service", "device_sync_service",
             "connection_service", "home_audio_service",
+            "radio_service", "lyrics_service",
             "diagnostics_service", "notification_service",
-            "action_registry",
+            "action_registry", "confirmation_service",
+            "runtime_persistence", "process_controller",
         }
+
+    @staticmethod
+    def _capability_gated_names() -> set[str]:
+        return {
+            "michi_ai_service",
+        }
+
+    @staticmethod
+    def _deferred_physical_names() -> set[str]:
+        return set()
 
     @staticmethod
     def _deferred_names() -> set[str]:
         return set()
 
     def _all_names(self) -> list[str]:
-        return list(self._required_names() | self._optional_names() | self._deferred_names())
+        return list(
+            self._required_names()
+            | self._optional_names()
+            | self._capability_gated_names()
+            | self._deferred_physical_names()
+            | self._deferred_names()
+        )
 
     def register(self, name: str, service: Any, required: bool | None = None, dependencies: tuple[str, ...] = ()) -> None:
         self._services[name] = service
@@ -107,6 +132,10 @@ class ServiceContainer:
 
     def priority(self, name: str) -> ServicePriority | None:
         return self._priorities.get(name)
+
+    @property
+    def database(self):
+        return self._services.get("database")
 
     @property
     def connection_factory(self):
@@ -171,6 +200,10 @@ class ServiceContainer:
     @property
     def mix_query_service(self):
         return self._services.get("mix_query_service")
+
+    @property
+    def mix_service(self):
+        return self._services.get("mix_service")
 
     @property
     def track_action_service(self):
@@ -238,6 +271,30 @@ class ServiceContainer:
         return self._services.get("action_registry")
 
     @property
+    def confirmation_service(self):
+        return self._services.get("confirmation_service")
+
+    @property
+    def runtime_persistence(self):
+        return self._services.get("runtime_persistence")
+
+    @property
+    def process_controller(self):
+        return self._services.get("process_controller")
+
+    @property
+    def radio_service(self):
+        return self._services.get("radio_service")
+
+    @property
+    def lyrics_service(self):
+        return self._services.get("lyrics_service")
+
+    @property
+    def michi_ai_service(self):
+        return self._services.get("michi_ai_service")
+
+    @property
     def state(self) -> ContainerState:
         return self._state
 
@@ -258,6 +315,8 @@ class ServiceContainer:
             "failures": dict(self._failures),
             "required": len(self._required_names()),
             "optional": len(self._optional_names()),
+            "capability_gated": len(self._capability_gated_names()),
+            "deferred_physical": len(self._deferred_physical_names()),
         }
 
     def cancel_all(self):
@@ -287,7 +346,9 @@ class ServiceContainer:
             return name in self._services and self._services[name] is not None and name not in self._failures
         if prio == ServicePriority.OPTIONAL:
             return name in self._services and self._services[name] is not None
-        return True
+        if prio == ServicePriority.CAPABILITY_GATED:
+            return name in self._services and self._services[name] is not None and name not in self._failures
+        return prio != ServicePriority.DEFERRED_PHYSICAL
 
     def list_services(self) -> dict[str, dict]:
         result = {}

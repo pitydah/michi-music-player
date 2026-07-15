@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Negative tests for settings pages — null bridge, error state, destructive confirmation."""
 from pathlib import Path
-from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 
-QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
 
 class FailingSettingsBridgeV2(QObject):
@@ -71,13 +70,6 @@ def failing_bridge():
 
 
 PAGE_FILES = [
-    "SettingsGeneralPage.qml",
-    "SettingsAppearancePage.qml",
-    "SettingsPlaybackPage.qml",
-    "SettingsLibraryPage.qml",
-    "SettingsAccessibilityPage.qml",
-    "SettingsAudioPage.qml",
-    "SettingsAboutPage.qml",
 ]
 
 
@@ -215,7 +207,6 @@ class TestSettingsPageCompiles:
     def test_about_page_compiles(self, engine):
         comp = _load_page(engine, "SettingsAboutPage.qml")
         assert comp.isReady()
-    return QQmlEngine(qapp)
 
 
 @pytest.fixture
@@ -224,13 +215,6 @@ def failing_bridge():
 
 
 PAGE_FILES = [
-    "SettingsGeneralPage.qml",
-    "SettingsAppearancePage.qml",
-    "SettingsPlaybackPage.qml",
-    "SettingsLibraryPage.qml",
-    "SettingsAccessibilityPage.qml",
-    "SettingsAudioPage.qml",
-    "SettingsAboutPage.qml",
 ]
 
 

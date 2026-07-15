@@ -1,5 +1,5 @@
-"""Tests for track context menu actions."""
 from __future__ import annotations
+"""Tests for track context menu actions."""
 
 from unittest.mock import MagicMock
 

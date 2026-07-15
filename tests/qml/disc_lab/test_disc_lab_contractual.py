@@ -7,7 +7,6 @@ from ui_qml_bridge.disc_lab_bridge import DiscLabBridge
 pytestmark = [pytest.mark.qml_module("disc_lab")]
 
 
-
 @pytest.fixture
 def no_drive_bridge():
     return DiscLabBridge()

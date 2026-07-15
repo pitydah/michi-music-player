@@ -1,12 +1,11 @@
+from __future__ import annotations
 """Wave XLIII — 10.2: Diagnostics async.
-
 Tests:
   - Diagnostics via jobs, NOT from getters
   - Cero tareas y cero requests = PASS
   - Biblioteca vacía = WARN (no FAIL)
   - All jobs produce dict with id/status/value/message/duration_ms
 """
-from __future__ import annotations
 
 import time
 import sqlite3

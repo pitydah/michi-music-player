@@ -1,5 +1,5 @@
-"""Workflow test: discover → select → inspect → profile → plan → transfer → progress → cancel."""
 from __future__ import annotations
+"""Workflow test: discover  select  inspect  profile  plan  transfer  progress  cancel."""
 
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -62,7 +62,7 @@ def bridge(svc, mock_sync_mgr):
 
 
 class TestDevicesWorkflow:
-    """Complete workflow: discover → select → inspect → profile → plan → transfer → progress → cancel."""
+    """Complete workflow: discover  select  inspect  profile  plan  transfer  progress  cancel."""
 
     def test_wf_discover(self, bridge):
         bridge.refresh()
@@ -158,7 +158,7 @@ class TestDevicesWorkflow:
         assert bridge.transferHistory == []
 
     def test_wf_full_workflow(self, bridge, svc, temp_music):
-        """Full end-to-end: discover → select → inspect → profile → plan → transfer → progress → cancel."""
+        """Full end-to-end: discover  select  inspect  profile  plan  transfer  progress  cancel."""
         mgr = bridge._sync_mgr
 
         mgr.get_all_peers.return_value = [

@@ -7,10 +7,6 @@ Item {
 
     property var cmdPalette: null
 
-    objectName: "shortcutLayer"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Capas de atajos de teclado"
-
     Shortcut {
         sequence: "Ctrl+K"
         onActivated: { if (root.cmdPalette) root.cmdPalette.open = !root.cmdPalette.open }
@@ -22,7 +18,7 @@ Item {
     }
 
     Shortcut {
-        sequence: "Ctrl+," 
+        sequence: "Ctrl+,"
         onActivated: navigateIf("settings")
     }
 
@@ -39,25 +35,7 @@ Item {
         onActivated: {
             if (root.cmdPalette && root.cmdPalette.open) {
                 root.cmdPalette.open = false
-            } else if (typeof navigationBridge !== "undefined" && navigationBridge && navigationBridge.canGoBack) {
-                navigationBridge.back()
             }
-        }
-    }
-
-    Shortcut {
-        sequence: "Alt+Left"
-        onActivated: {
-            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                navigationBridge.back()
-        }
-    }
-
-    Shortcut {
-        sequence: "Alt+Right"
-        onActivated: {
-            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                navigationBridge.forward()
         }
     }
 
@@ -67,23 +45,6 @@ Item {
         onActivated: {
             if (typeof nowplayingBridge !== "undefined" && nowplayingBridge)
                 nowplayingBridge.togglePlay()
-        }
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Home"
-        onActivated: navigateIf("home")
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Shift+T"
-        onActivated: navigateIf("playback")
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Q"
-        onActivated: {
-            if (typeof Qt !== "undefined") Qt.quit()
         }
     }
 

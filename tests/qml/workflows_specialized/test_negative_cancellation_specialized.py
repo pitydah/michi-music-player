@@ -1,5 +1,5 @@
-"""MX: Negative — cancellation edge cases for specialized domains."""
 from __future__ import annotations
+"""MX: Negative — cancellation edge cases for specialized domains."""
 
 from unittest.mock import MagicMock
 
