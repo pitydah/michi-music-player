@@ -1,8 +1,7 @@
-"""AudioLabBridge — connects Audio Lab QML to real diagnostics and health services.
+"""AudioLabBridge — connects Audio Lab QML to real audio_lab_service.
 
-NO muestra cards sin backend real.
-Migra: pipeline activo, input/output format, sample rate, bit depth, channels,
-resampling, backend, bit-perfect, DSP, device, cache, metadata health, library health.
+Accepts audio_lab_service, job_service, confirmation_service by constructor — no construction inside.
+Cancel reaches the service. Audio-only respected.
 """
 from __future__ import annotations
 
@@ -16,9 +15,14 @@ logger = logging.getLogger("michi.audio_lab.bridge")
 class AudioLabBridge(QObject):
     dataChanged = Signal()
 
-    def __init__(self, db_conn=None, navigation_bridge=None, player_service=None,
+    def __init__(self, audio_lab_service=None, job_service=None,
+                 confirmation_service=None, db_conn=None,
+                 navigation_bridge=None, player_service=None,
                  worker_manager=None, parent=None):
         super().__init__(parent)
+        self._audio_lab_svc = audio_lab_service
+        self._job_svc = job_service
+        self._confirm_svc = confirmation_service
         self._conn = db_conn
         self._nav = navigation_bridge
         self._player = player_service
@@ -194,45 +198,40 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def probeFile(self, filepath: str):
-        try:
-            from core.audio_lab.audio_probe_service import AudioProbeService
-            svc = AudioProbeService()
-            result = svc.probe(filepath)
-            return result.to_dict()
-        except Exception as e:
-            return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "error", "error": str(e)}
+        if self._audio_lab_svc and self._audio_lab_svc.probe:
+            try:
+                result = self._audio_lab_svc.probe.probe(filepath)
+                return result.to_dict()
+            except Exception as e:
+                return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "error", "error": str(e)}
+        return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "unavailable", "error": "AudioLabService no disponible"}
 
     @Slot(str, result=dict)
     def analyzeFile(self, filepath: str):
-        try:
-            svc = None
+        if self._audio_lab_svc and self._audio_lab_svc.analysis:
             try:
-                from core.audio_lab.audio_analysis_service import AudioAnalysisService
-                svc = AudioAnalysisService()
-            except Exception:
-                pass
-            if svc and svc.available:
-                return svc.analyze_file(filepath)
-            return {"filepath": filepath, "status": "unsupported", "error": "Backend no disponible", "explanation": "Instala librosa/GStreamer con soporte de análisis"}
-        except Exception as e:
-            return {"filepath": filepath, "status": "error", "error": str(e)}
+                result = self._audio_lab_svc.analysis.analyze_file(filepath)
+                return result
+            except Exception as e:
+                return {"filepath": filepath, "status": "error", "error": str(e)}
+        return {"filepath": filepath, "status": "unsupported", "error": "AudioLabService no disponible"}
 
     @Slot(str, str, result=dict)
     def integrityCheck(self, filepath: str, quick: bool = False):
-        try:
-            from core.audio_lab.audio_integrity_service import AudioIntegrityService
-            svc = AudioIntegrityService()
-            result = svc.check(filepath, quick=quick)
-            return {"filepath": result.filepath, "status": result.status, "valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
-        except Exception as e:
-            return {"filepath": filepath, "status": "error", "error": str(e)}
+        if self._audio_lab_svc and self._audio_lab_svc.integrity:
+            try:
+                result = self._audio_lab_svc.integrity.check(filepath, quick=quick)
+                return {"filepath": result.filepath, "status": result.status, "valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
+            except Exception as e:
+                return {"filepath": filepath, "status": "error", "error": str(e)}
+        return {"filepath": filepath, "status": "unavailable", "error": "AudioLabService no disponible"}
 
     @Slot(str, str, result=dict)
     def compareFiles(self, file_a: str, file_b: str):
-        try:
-            from core.audio_lab.audio_comparison_service import AudioComparisonService
-            svc = AudioComparisonService()
-            result = svc.compare(file_a, file_b)
-            return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
-        except Exception as e:
-            return {"error": str(e)}
+        if self._audio_lab_svc and self._audio_lab_svc.comparison:
+            try:
+                result = self._audio_lab_svc.comparison.compare(file_a, file_b)
+                return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
+            except Exception as e:
+                return {"error": str(e)}
+        return {"error": "AudioLabService no disponible"}

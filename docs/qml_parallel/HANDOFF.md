@@ -5,15 +5,15 @@
 - **Branch:** qml-parallel-functional-wave
 
 ## Final State
-- **SHA:** aa085fd1eaf34db3f5e03ed1a93dc9d8a2e9a8bb (no additional commits)
+- **SHA:** 1afc3ff9e2aa9d56a91bbdfb27259d90540355f6
 - **Branch:** qml-parallel-functional-wave
 - **Worktree:** `/home/cristian/michi-qml-functional-wave`
-- **Status:** 67 files changed (+9633 / -1794 lines). All parallel migration work is in the working tree — no commits yet, preserving cherry-pick flexibility for the main front.
+- **Status:** 271 files changed (+41003 / -1807 lines). Single comprehensive commit with all parallel migration work.
 
 ## Commits
-Baseline at `aa085fd`. No commits added on this branch. All changes are in the working tree.
+Baseline at `aa085fd`. One commit added on this branch: `1afc3ff` — comprehensive parallel migration commit.
 
-The 67 modified files are organized into the following macrofase groups (not yet committed):
+The 271 files are organized into the following macrofase groups:
 
 | Macrofase | Focus Area |
 |---|---|

@@ -6,6 +6,11 @@ import "../../materials"
 
 Item {
     id: root
+    objectName: "mixExplanationPanel"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Explicación del mix"
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property var _reasons: []
@@ -24,7 +29,7 @@ Item {
         Column {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
-            SectionHeader { text: "Explicación del mix"; width: parent.width }
+            SectionHeader { text: "Explicación del mix"; width: parent.width; objectName: "explanationHeader"; Accessible.name: "Explicación del mix" }
 
             Repeater {
                 model: root._reasons

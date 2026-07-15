@@ -192,8 +192,10 @@ class BridgeFactory(QObject):
         if "devices" not in self._bridges:
             self._bridges["devices"] = DevicesBridge(
                 sync_manager=self._services.sync_manager,
+                device_sync_service=self._services.device_sync_service,
+                job_service=self._services.job_service,
             )
-        self._register_capability("devices", "sync_manager")
+        self._register_capability("devices", "sync_manager", "device_sync_service")
         return self._bridges["devices"]
 
     def create_radio_bridge(self):
@@ -254,12 +256,15 @@ class BridgeFactory(QObject):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
         if "audio_lab" not in self._bridges:
             self._bridges["audio_lab"] = AudioLabBridge(
+                audio_lab_service=self._services.audio_lab_service,
+                job_service=self._services.job_service,
+                confirmation_service=self._services.confirmation_service,
                 db_conn=self._services.db_connection,
                 navigation_bridge=self._nav,
                 player_service=self._services.player_service,
                 worker_manager=self._services.worker_manager,
             )
-        self._register_capability("audio_lab", "db_connection")
+        self._register_capability("audio_lab", "audio_lab_service")
         return self._bridges["audio_lab"]
 
     def create_metadata_bridge(self):

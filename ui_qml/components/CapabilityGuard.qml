@@ -10,11 +10,13 @@ Item {
     property bool checking: false
     property bool available: false
     property bool degraded: false
+    property bool deferredPhysical: false
 
     default property alias availableContent: availableHost.children
     property alias unavailableContent: unavailableHost.children
     property alias degradedContent: degradedHost.children
     property alias loadingContent: loadingHost.children
+    property alias deferredPhysicalContent: deferredPhysicalHost.children
 
     signal primaryActionRequested()
     signal secondaryActionRequested()
@@ -26,6 +28,7 @@ Item {
     Accessible.description: {
         if (root.checking) return "Verificando disponibilidad de " + capabilityName
         if (root.available) return capabilityName + " disponible"
+        if (root.deferredPhysical) return capabilityName + " requiere hardware físico"
         if (root.degraded) return capabilityName + " funciona con limitaciones"
         return capabilityName + " no disponible"
     }
@@ -35,30 +38,60 @@ Item {
             root.checking = false
             root.available = false
             root.degraded = false
+            root.deferredPhysical = false
             return
         }
         root.checking = true
         root.available = false
         root.degraded = false
+        root.deferredPhysical = false
 
         var caps = bridge.capabilities || {}
-        var hasCap = bridge.has(root.capabilityName) || caps[root.capabilityName] === true
-        root.available = hasCap
-        root.degraded = false
+        var state = caps[root.capabilityName]
+        if (state === undefined) {
+            var hasCap = bridge.has(root.capabilityName)
+            state = hasCap ? "available" : "unavailable"
+        }
+        root.available = state === "available"
+        root.degraded = state === "degraded"
+        root.deferredPhysical = state === "deferred_physical"
         root.checking = false
     }
 
     Item {
         id: availableHost
         anchors.fill: parent
-        visible: root.available && !root.degraded && !root.checking
+        visible: root.available && !root.degraded && !root.checking && !root.deferredPhysical
     }
 
     Item {
         id: degradedHost
         anchors.fill: parent
-        visible: root.degraded && !root.checking && !root.available
+        visible: root.degraded && !root.checking && !root.available && !root.deferredPhysical
         z: 5
+
+        UnavailableState {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
+            title: root.capabilityName + " con limitaciones"
+            message: "Algunas funciones de " + root.capabilityName + " no están disponibles."
+            iconText: "\u26A0"
+        }
+    }
+
+    Item {
+        id: deferredPhysicalHost
+        anchors.fill: parent
+        visible: root.deferredPhysical && !root.checking && !root.available && !root.degraded
+        z: 5
+
+        UnavailableState {
+            anchors.centerIn: parent
+            width: Math.min(implicitWidth + MichiTheme.spacing.xl * 2, parent.width * 0.85)
+            title: root.capabilityName + " requiere hardware"
+            message: "Esta función necesita hardware físico especializado."
+            iconText: "\u2699"
+        }
     }
 
     Item {
@@ -81,7 +114,7 @@ Item {
     Item {
         id: unavailableHost
         anchors.fill: parent
-        visible: !root.available && !root.degraded && !root.checking
+        visible: !root.available && !root.degraded && !root.checking && !root.deferredPhysical
 
         UnavailableState {
             anchors.centerIn: parent

@@ -78,7 +78,7 @@ class TestAudioNegative:
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
         bridge = AudioLabBridge()
         result = bridge.integrityCheck("/nonexistent/file.flac")
-        assert result["status"] == "error"
+        assert result["status"] in ("error", "unavailable")
 
     def test_comparison_no_backend(self):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge

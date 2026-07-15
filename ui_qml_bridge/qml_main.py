@@ -128,6 +128,36 @@ def _create_services() -> ServiceBundle:
     except Exception:
         pass
 
+    # Device Sync
+    try:
+        from core.device_sync_service import DeviceSyncService
+        bundle.device_sync_service = DeviceSyncService()
+    except Exception as e:
+        logger.debug("QML: DeviceSyncService init failed: %s", e)
+
+    # Job Service
+    try:
+        from core.job_service import JobService
+        bundle.job_service = JobService()
+    except Exception as e:
+        logger.debug("QML: JobService init failed: %s", e)
+
+    # Confirmation Service
+    try:
+        from core.confirmation_service import ConfirmationService
+        bundle.confirmation_service = ConfirmationService()
+    except Exception as e:
+        logger.debug("QML: ConfirmationService init failed: %s", e)
+
+    # Audio Lab Service
+    try:
+        from core.audio_lab.audio_lab_service import AudioLabService
+        als = AudioLabService(db=bundle.db, worker_manager=bundle.worker_manager)
+        als.setup()
+        bundle.audio_lab_service = als
+    except Exception as e:
+        logger.debug("QML: AudioLabService init failed: %s", e)
+
     logger.info("QML: Services available: %s", bundle.available_services)
     return bundle
 
