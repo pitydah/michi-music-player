@@ -4,6 +4,11 @@
 
 project:
   name: Michi Music Player
+  branch: michi-qml-functional-wave
+  base_sha: 1afc3ff
+  final_sha: 8b78d3e
+  status: READY_FOR_INTEGRATION
+  merge_priority: 40
   license: GPL-3.0-or-later
   python: "3.11+"
   ui_toolkit: PySide6 (Qt 6) + QML experimental
