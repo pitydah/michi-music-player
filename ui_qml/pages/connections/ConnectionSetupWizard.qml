@@ -15,7 +15,7 @@ Item {
     property int manualPort: 53318
     property string serverAlias: ""
     property string authToken: ""
-    property string objectName: "connectionSetupWizard"
+    property string objectName: "connections.setupWizard"
 
     signal scanRequested()
     signal connectRequested(string host, int port, string alias)

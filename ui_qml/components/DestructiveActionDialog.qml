@@ -49,7 +49,7 @@ Item {
         width: Math.min(400, parent.width * 0.9)
         radius: MichiTheme.radiusMd
         color: MichiTheme.colors.surfacePopup
-        border.width: 1
+        border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.error
         z: 9991
 
@@ -62,7 +62,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text {
                     text: "\u26A0"
-                    font.pixelSize: 24
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
                     color: MichiTheme.colors.error
                 }
                 Text {
@@ -105,6 +105,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 color: MichiTheme.colors.textPrimary
                 focus: true
+                KeyNavigation.tab: cancelDlgBtn
             }
 
             Item { height: 1; Layout.fillWidth: true }
@@ -116,15 +117,19 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 MichiButton {
+                    id: cancelDlgBtn
                     text: root.cancelText
                     variant: "ghost"
                     onClicked: {
                         root.open = false
                         root.cancelled()
                     }
+                    KeyNavigation.tab: confirmDlgBtn
+                    KeyNavigation.backtab: root.confirmKeyword !== "" ? keywordInput : confirmDlgBtn
                 }
 
                 MichiButton {
+                    id: confirmDlgBtn
                     text: root.confirmText
                     variant: "danger"
                     enabled: root.confirmKeyword === "" || keywordInput.text === root.confirmKeyword
@@ -132,6 +137,7 @@ Item {
                         root.open = false
                         root.confirmed()
                     }
+                    KeyNavigation.backtab: cancelDlgBtn
                 }
             }
         }

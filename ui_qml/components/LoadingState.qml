@@ -15,6 +15,10 @@ Item {
     Accessible.name: root.title
     Accessible.description: root.message
 
+    Keys.onEscapePressed: {
+        root.visible = false
+    }
+
     Column {
         anchors.centerIn: parent
         spacing: MichiTheme.spacing.md

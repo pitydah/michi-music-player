@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../theme"
 
-Item {
+FocusScope {
     id: root
 
     enum CapabilityState {
@@ -25,8 +25,24 @@ Item {
 
     default property alias content: fallback.children
 
+    activeFocusOnTab: true
+
     Accessible.role: Accessible.Panel
     Accessible.name: root.capabilityName !== "" ? root.capabilityName : "Capacidad"
+    Accessible.description: {
+        switch (root.state) {
+            case CapabilityGuard.UNAVAILABLE: return root.unavailableReason
+            case CapabilityGuard.DEGRADED: return root.degradedReason
+            case CapabilityGuard.LOADING: return "Cargando"
+            default: return "Disponible"
+        }
+    }
+
+    Keys.onEscapePressed: {
+        if (root.state !== CapabilityGuard.AVAILABLE) {
+            root.state = CapabilityGuard.AVAILABLE
+        }
+    }
 
     Loader {
         anchors.fill: parent
@@ -42,6 +58,7 @@ Item {
                     return root.availableContent
             }
         }
+        onLoaded: item.objectName = root.objectName + "/active"
     }
 
     Item {

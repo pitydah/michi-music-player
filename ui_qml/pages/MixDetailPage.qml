@@ -8,7 +8,7 @@ import "../pages/library"
 Item {
     id: root
 
-    objectName: "mixDetailPage"
+    objectName: "mixDetail.page"
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property string _status: "loading"

@@ -21,6 +21,10 @@ Item {
     Accessible.name: root.title
     Accessible.description: root.message + (root.errorCode !== "" ? ". Código: " + root.errorCode : "")
 
+    Keys.onEscapePressed: {
+        root.detailsExpanded = !root.detailsExpanded
+    }
+
     Column {
         anchors.centerIn: parent
         spacing: MichiTheme.spacing.lg
@@ -29,7 +33,7 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "\u26A0"
-            font.pixelSize: 36
+            font.pixelSize: MichiTheme.typography.heroTitleSize
             color: MichiTheme.colors.error
         }
 

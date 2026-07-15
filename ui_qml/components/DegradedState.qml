@@ -17,6 +17,16 @@ Item {
     Accessible.name: root.title
     Accessible.description: root.message
 
+    Keys.onEscapePressed: {
+        if (root.dismissible) root.dismissed()
+    }
+    Keys.onReturnPressed: {
+        if (root.dismissible) root.dismissed()
+    }
+    Keys.onSpacePressed: {
+        if (root.dismissible) root.dismissed()
+    }
+
     Rectangle {
         anchors.centerIn: parent
         width: Math.min(implicitWidth, 420)
@@ -36,7 +46,7 @@ Item {
 
                 Text {
                     text: "\u26A0"
-                    font.pixelSize: 24
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize
                     color: MichiTheme.colors.warning
                 }
 

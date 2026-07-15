@@ -19,7 +19,7 @@ Item {
     signal activateRequested()
 
     implicitHeight: 44
-    objectName: "searchResultRow"
+    objectName: "search.resultRow"
 
     Accessible.role: Accessible.ListItem
     Accessible.name: resultTitle + (resultSubtitle !== "" ? " - " + resultSubtitle : "")

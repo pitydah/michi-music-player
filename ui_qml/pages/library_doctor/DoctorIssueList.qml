@@ -29,7 +29,7 @@ Item {
             MichiButton {
                 text: "Seleccionar todos"
                 variant: "ghost"
-                objectName: "doctorSelectAllButton"
+                objectName: "libraryDoctor.selectAllButton"
                 Accessible.name: "Seleccionar todos los problemas"
                 onClicked: {
                     if (root.doc && typeof root.doc.selectAll !== "undefined")
@@ -40,7 +40,7 @@ Item {
             MichiButton {
                 text: "Deseleccionar todos"
                 variant: "ghost"
-                objectName: "doctorSelectNoneButton"
+                objectName: "libraryDoctor.selectNoneButton"
                 Accessible.name: "Deseleccionar todos los problemas"
                 onClicked: {
                     if (root.doc && typeof root.doc.selectNone !== "undefined")
@@ -86,7 +86,7 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     Rectangle {
-                        width: 18; height: 18; radius: 3
+                        width: 18; height: 18; radius: MichiTheme.radiusXs
                         anchors.verticalCenter: parent.verticalCenter
                         color: modelData.selected ? MichiTheme.colors.accentBlue : "transparent"
                         border.color: modelData.selected

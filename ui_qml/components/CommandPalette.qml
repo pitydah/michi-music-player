@@ -134,7 +134,7 @@ Item {
                         Rectangle {
                             height: 18
                             width: label.implicitWidth + 12
-                            radius: 3
+                            radius: MichiTheme.radiusXs
                             color: MichiTheme.colors.accentSurface
 
                             Text {
@@ -142,7 +142,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: modelData.title || ""
                                 color: MichiTheme.colors.accentBlue
-                                font.pixelSize: 9
+                                font.pixelSize: MichiTheme.typography.badgeSize
                                 font.weight: MichiTheme.typography.weightMedium
                             }
 
@@ -233,7 +233,7 @@ Item {
                                     return ic.charAt(0).toUpperCase()
                                 }
                                 color: MichiTheme.colors.accentBlue
-                                font.pixelSize: 11
+                                font.pixelSize: MichiTheme.typography.metaSize
                                 font.weight: MichiTheme.typography.weightBold
                             }
                         }

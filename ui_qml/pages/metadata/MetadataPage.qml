@@ -52,20 +52,27 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Row {
+                id: headerRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
+                objectName: "metadata.headerRow"
 
                 Text {
+                    id: titleText
                     text: "Editor de metadatos"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
+                    objectName: "metadata.title"
+                    Accessible.role: Accessible.Heading
+                    Accessible.name: "Editor de metadatos"
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
 
                 StatusBadge {
+                    id: stateBadge
                     text: pageState === "LOADING" ? "Cargando..." :
                           pageState === "APPLYING" ? "Aplicando cambios..." :
                           pageState === "ERROR" ? "Error" :
@@ -74,16 +81,21 @@ Item {
                           pageState === "APPLYING" ? "warning" :
                           pageState === "EDITING" ? "info" : "success"
                     visible: pageState !== "READY" || root._selectedFile !== ""
+                    objectName: "metadata.stateBadge"
                 }
             }
 
             Row {
+                id: modeRow
                 spacing: MichiTheme.spacing.sm
+                objectName: "metadata.modeRow"
                 MichiButton {
+                    id: singleModeBtn
                     text: "Edición individual"
                     variant: root._mode === "single" ? "primary" : "ghost"
                     objectName: "metadata.mode.single"
                     Accessible.name: "Modo edición individual"
+                    Accessible.description: "Editar metadatos de una sola canción"
                     onClicked: {
                         root._mode = "single"
                         if (root.sel && root.sel.hasSelection && root.sel.selectedFilepath) {
@@ -93,10 +105,12 @@ Item {
                     }
                 }
                 MichiButton {
+                    id: batchModeBtn
                     text: "Edición por lotes"
                     variant: root._mode === "batch" ? "primary" : "ghost"
                     objectName: "metadata.mode.batch"
                     Accessible.name: "Modo edición por lotes"
+                    Accessible.description: "Editar metadatos de múltiples canciones"
                     onClicked: { root._mode = "batch" }
                 }
             }
@@ -112,10 +126,13 @@ Item {
             }
 
             Text {
+                id: errorText
                 text: root.mb && root.mb.errorMessage ? "Error: " + root.mb.errorMessage : ""
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
+                objectName: "metadata.errorText"
+                Accessible.name: text
             }
         }
     }

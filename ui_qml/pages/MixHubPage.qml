@@ -8,7 +8,7 @@ import "../materials"
 Item {
     id: root
 
-    objectName: "mixHubPage"
+    objectName: "mixHub.page"
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 
@@ -49,7 +49,7 @@ Item {
                 HeroMaterial {
                     width: parent.width
                     height: 140
-                    radius: 16
+                    radius: MichiTheme.radiusLg
                     showGlow: true
 
                     Column {

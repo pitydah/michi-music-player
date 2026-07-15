@@ -76,7 +76,7 @@ Item {
                     MichiButton {
                         text: "Aceptar corrección"
                         variant: "primary"
-                        objectName: "doctorAcceptFixButton"
+                        objectName: "libraryDoctor.acceptFixButton"
                         Accessible.name: "Aceptar corrección para este problema"
                         onClicked: {
                             if (root.issueData)
@@ -87,7 +87,7 @@ Item {
                     MichiButton {
                         text: "Rechazar"
                         variant: "ghost"
-                        objectName: "doctorRejectFixButton"
+                        objectName: "libraryDoctor.rejectFixButton"
                         Accessible.name: "Rechazar corrección para este problema"
                         onClicked: {
                             if (root.issueData)

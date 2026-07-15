@@ -17,6 +17,13 @@ Item {
     Accessible.name: root.title
     Accessible.description: root.message + (root.explanation !== "" ? ". " + root.explanation : "")
 
+    Keys.onReturnPressed: {
+        if (actionText !== "") root.actionRequested()
+    }
+    Keys.onSpacePressed: {
+        if (actionText !== "") root.actionRequested()
+    }
+
     Column {
         anchors.centerIn: parent
         spacing: MichiTheme.spacing.lg
@@ -25,7 +32,7 @@ Item {
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "\u26D4"
-            font.pixelSize: 36
+            font.pixelSize: MichiTheme.typography.heroTitleSize
             color: MichiTheme.colors.textMuted
         }
 

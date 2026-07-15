@@ -26,7 +26,7 @@ Item {
 
     signal backRequested()
 
-    objectName: "artistDetailPage"
+    objectName: "artistDetail.page"
     Accessible.role: Accessible.Panel
     Accessible.name: "Detalle del artista"
     Accessible.description: artistName
@@ -122,14 +122,14 @@ Item {
                 }
 
                 Rectangle {
-                    width: 48; height: 48; radius: 24
+                    width: 48; height: 48; radius: MichiTheme.radiusXl
                     color: MichiTheme.colors.surfaceCard
                     objectName: "artistDetail.avatar"
                     Text {
                         anchors.centerIn: parent
                         text: root.artistName.length > 0 ? root.artistName.charAt(0).toUpperCase() : "?"
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: 22; font.weight: MichiTheme.typography.weightBold
+                        font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                 }
 
@@ -139,7 +139,7 @@ Item {
                         text: root.artistName
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.heroTitleSize
-                        font.weight: FontWeight.Bold
+                        font.weight: MichiTheme.typography.weightBold
                         elide: Text.ElideRight; width: parent.width
                         Accessible.name: "Artista: " + root.artistName
                     }
@@ -178,7 +178,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root._errorMessage
-                    color: MichiTheme.colors.errorColor
+                    color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
@@ -359,7 +359,7 @@ Item {
                                 }
                                 Text {
                                     text: modelData.missing ? "Faltante" : (modelData.duration ? formatDuration(modelData.duration) : "")
-                                    color: modelData.missing ? MichiTheme.colors.errorColor : MichiTheme.colors.textMuted
+                                    color: modelData.missing ? MichiTheme.colors.error : MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.metaSize
                                     font.italic: modelData.missing
                                 }

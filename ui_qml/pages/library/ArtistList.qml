@@ -28,8 +28,8 @@ Item {
 
         Item { anchors.centerIn: parent; width: 300; height: 180; visible: root.artists.length === 0
             Column { anchors.centerIn: parent; spacing: MichiTheme.spacing.lg
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: 12; color: MichiTheme.colors.accentSurface
-                    Text { anchors.centerIn: parent; text: "AR"; color: MichiTheme.colors.accentBlue; font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 } }
+                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 48; height: 48; radius: MichiTheme.radiusMd; color: MichiTheme.colors.accentSurface
+                    Text { anchors.centerIn: parent; text: "AR"; color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightBold; opacity: 0.7 } }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No hay artistas"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightMedium }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Refresca la biblioteca o revisa los metadatos de artista."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap }
                 Row { anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm

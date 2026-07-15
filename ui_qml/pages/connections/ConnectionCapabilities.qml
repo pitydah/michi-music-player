@@ -8,7 +8,7 @@ Item {
     id: root
 
     property var capabilities: []
-    property string objectName: "connectionCapabilities"
+    property string objectName: "connections.capabilities"
 
     implicitHeight: childrenRect.height
 

@@ -214,7 +214,7 @@ Item {
                     Rectangle {
                         width: 160; height: 160
                         radius: MichiTheme.radiusSm
-                        color: "white"
+                        color: MichiTheme.colors.textOnError
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: root.qrCodeData !== ""
                         objectName: "devices.pairingPage.qrCode"
@@ -223,7 +223,7 @@ Item {
                             anchors.centerIn: parent
                             text: "QR"
                             color: "black"
-                            font.pixelSize: 36
+                            font.pixelSize: MichiTheme.typography.heroTitleSize
                             font.bold: true
                         }
 

@@ -1,0 +1,305 @@
+# Michi QML Domain Parity Manifest — Final State
+# Generated: 2026-07-14
+
+metadata:
+  branch: michi-qml-domain-parity
+  phase: final
+  date: 2026-07-14
+
+routes:
+  home:
+    page: HomePage.qml
+    bridge: HomeBridge
+    context: homeBridge
+    status: PRODUCTIVE
+    responsive: true
+
+  library:
+    page: LibraryPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: PRODUCTIVE
+    responsive: true
+
+  library.albums:
+    page: AlbumGridPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: FUNCTIONAL
+
+  library.album_detail:
+    page: AlbumDetailPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: FUNCTIONAL
+
+  library.artists:
+    page: ArtistGridPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: FUNCTIONAL
+
+  library.artist_detail:
+    page: ArtistDetailPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: FUNCTIONAL
+
+  library.folders:
+    page: FolderBrowserPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: FUNCTIONAL
+
+  library.sources:
+    page: SourcesPage.qml
+    bridge: LibraryBridge
+    context: libraryBridge
+    status: FUNCTIONAL
+
+  queue:
+    page: QueuePage.qml
+    bridge: QueueBridge
+    context: queueBridge
+    status: PRODUCTIVE
+
+  nowplaying:
+    page: NowPlayingPage.qml
+    bridge: NowPlayingBridge
+    context: nowplayingBridge
+    status: FUNCTIONAL
+
+  playback:
+    page: PlaybackPage.qml
+    bridge: PlaybackBridge
+    context: playbackBridge
+    status: FUNCTIONAL
+
+  playlists:
+    page: PlaylistsPage.qml
+    bridge: PlaylistsBridge
+    context: playlistsBridge
+    status: PRODUCTIVE
+
+  playlist_detail:
+    page: PlaylistDetailPage.qml
+    bridge: PlaylistsBridge
+    context: playlistsBridge
+    status: FUNCTIONAL
+
+  history:
+    page: HistoryPage.qml
+    bridge: HistoryBridge
+    context: historyBridge
+    status: PRODUCTIVE
+
+  settings:
+    page: SettingsPage.qml
+    bridge: SettingsBridgeV2
+    context: settingsBridgeV2
+    status: FUNCTIONAL
+    responsive: true
+
+  settings.general:
+    page: SettingsGeneralPage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  settings.appearance:
+    page: SettingsAppearancePage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  settings.playback:
+    page: SettingsPlaybackPage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  settings.library:
+    page: SettingsLibraryPage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  settings.accessibility:
+    page: SettingsAccessibilityPage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  settings.audio:
+    page: SettingsAudioPage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  settings.about:
+    page: SettingsAboutPage.qml
+    bridge: SettingsBridge
+    context: settingsBridge
+    status: PARTIAL
+
+  outputs:
+    page: OutputProfilesPage.qml
+    bridge: OutputProfilesBridge
+    context: outputProfilesBridge
+    status: FUNCTIONAL
+
+  lyrics:
+    page: LyricsPage.qml
+    bridge: LyricsBridge
+    context: lyricsBridge
+    status: FUNCTIONAL
+
+  metadata.inspector:
+    page: MetadataInspectorPage.qml
+    bridge: MetadataBridge
+    context: metadataBridge
+    status: FUNCTIONAL
+
+  metadata.batch:
+    page: MetadataBatchEditor.qml
+    bridge: MetadataBridge
+    context: metadataBridge
+    status: PARTIAL
+
+  tagging:
+    page: SmartTaggingPage.qml
+    bridge: SmartTaggingBridge
+    context: smartTaggingBridge
+    status: PARTIAL
+
+  library_doctor:
+    page: LibraryDoctorPage.qml
+    bridge: LibraryDoctorBridge
+    context: libraryDoctorBridge
+    status: FUNCTIONAL
+
+  diagnostics:
+    page: DiagnosticsPage.qml
+    bridge: DiagnosticsBridge
+    context: diagnosticsBridge
+    status: FUNCTIONAL
+
+  command_palette:
+    page: CommandPalette.qml
+    bridge: CommandPaletteBridge
+    context: commandPaletteBridge
+    status: FUNCTIONAL
+
+  michi_ai:
+    page: AssistantPage.qml
+    bridge: MichiAIBridge
+    context: michiAIBridge
+    status: PRODUCTIVE
+
+  assistant:
+    page: AssistantPage.qml
+    bridge: MichiAIBridge
+    context: michiAIBridge
+    status: PRODUCTIVE
+
+  shell:
+    page: AppShell.qml
+    bridge: NavigationBridge
+    context: navigationBridge
+    status: PRODUCTIVE
+    responsive: true
+
+bridges:
+  NavigationBridge:
+    context: navigationBridge
+    properties: [currentRoute, canGoBack, canGoForward]
+    signals: [routeChanged, invalidRouteError]
+    slots: [navigate, navigateWithParams, back, forward, refreshCurrent]
+
+  HomeBridge:
+    context: homeBridge
+    properties: [hasPlayback, libraryAlbums, libraryArtists, libraryTracks, sourcesCount, lastScan, activeJobs]
+    signals: [dataChanged]
+    slots: [refresh]
+
+  LibraryBridge:
+    context: libraryBridge
+    properties: [state, songCount, albumCount, artistCount, searchQuery]
+    signals: [stateChanged, dataChanged]
+    slots: [search, clearFilters, refresh, playTrackById, enqueueTrackById, addMedia]
+
+  QueueBridge:
+    context: queueBridge
+    signals: [dataChanged]
+    slots: [refresh, moveItem, undo]
+
+  HistoryBridge:
+    context: historyBridge
+    properties: [historyModel, historyCount]
+    signals: [dataChanged]
+    slots: [refresh, playHistoryItem, removeHistoryEvent, clearHistory]
+
+  SettingsBridgeV2:
+    context: settingsBridgeV2
+    properties: [categories]
+    signals: [dataChanged]
+    slots: [getValue, setValue, resetValue, resetAll, refresh]
+
+  MetadataBridge:
+    context: metadataBridge
+    properties: [trackTitle, trackArtist, trackAlbum, hasSelection, fields, artworkStatus, qualitySummary]
+    signals: [dataChanged]
+    slots: [inspectTrack, applyChanges]
+
+  MichiAIBridge:
+    context: michiAIBridge
+    properties: [status, suggestions]
+    signals: [statusChanged]
+    slots: [sendMessage, cancel, refresh]
+
+  LibraryDoctorBridge:
+    context: libraryDoctorBridge
+    properties: [status, issues, totalChecked, issueCount]
+    signals: [dataChanged]
+    slots: [refresh, scan, dryRun, repair, cancelScan]
+
+  PlaylistsBridge:
+    context: playlistsBridge
+    properties: [playlists]
+    signals: [dataChanged]
+    slots: [refresh, create, addTracks, reorder, export]
+
+objectName_convention: page.section.control
+
+responsive_test_breakpoints:
+  desktop: [1920, 1366, 1024, 900]
+  compact: 600
+  narrow: 360
+  zoom: [1.0, 1.25, 1.5]
+
+test_modules:
+  responsive:
+    - test_home_responsive
+    - test_library_responsive
+    - test_settings_responsive
+    - test_shell_responsive
+  workflows_domain:
+    - test_library_search_play
+    - test_album_queue
+    - test_queue_reorder_undo
+    - test_playlist_create_export
+    - test_history_filter_play_remove
+    - test_settings_rollback
+    - test_metadata_preview_confirm
+    - test_doctor_scan_dry_run
+    - test_michi_ai_proposal_execution
+    - test_keyboard_full_page
+  negative:
+    - test_negative_service_unavailable
+    - test_negative_backend_error
+    - test_negative_cancellation
+    - test_negative_stale_callback
+    - test_negative_invalid_selection
+    - test_negative_rejected_confirmation
+
+harness: tests/qml/workflows_domain/domain_workflow_harness.py

@@ -16,7 +16,7 @@ Item {
     property string serverVersion: ""
     property string lastError: ""
     property var caps: []
-    property string objectName: "connectionDetailPage"
+    property string objectName: "connections.detailPage"
 
     signal backClicked()
     signal reconnectClicked()

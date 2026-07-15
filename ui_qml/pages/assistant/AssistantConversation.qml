@@ -83,7 +83,7 @@ Item {
                         Rectangle {
                             width: 6
                             height: 6
-                            radius: 3
+                            radius: MichiTheme.radiusXs
                             color: MichiTheme.colors.accentBlue
                             opacity: 0.6
 

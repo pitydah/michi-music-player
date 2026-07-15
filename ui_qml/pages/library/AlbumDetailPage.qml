@@ -28,7 +28,7 @@ Item {
 
     signal backRequested()
 
-    objectName: "albumDetailPage"
+    objectName: "albumDetail.page"
     Accessible.role: Accessible.Panel
     Accessible.name: "Detalle del álbum"
     Accessible.description: albumTitle + " por " + albumArtist
@@ -168,7 +168,7 @@ Item {
                                 text: root.albumTitle
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.heroTitleSize
-                                font.weight: FontWeight.Bold
+                                font.weight: MichiTheme.typography.weightBold
                                 wrapMode: Text.WordWrap; width: parent.width
                                 Accessible.name: "Álbum: " + root.albumTitle
                             }
@@ -273,7 +273,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: root._errorMessage
-                    color: MichiTheme.colors.errorColor
+                    color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
             }
@@ -369,7 +369,7 @@ Item {
 
                             Text {
                                 text: modelData.missing ? "Faltante" : (modelData.duration ? formatDuration(modelData.duration) : "")
-                                color: modelData.missing ? MichiTheme.colors.errorColor : MichiTheme.colors.textMuted
+                                color: modelData.missing ? MichiTheme.colors.error : MichiTheme.colors.textMuted
                                 font.pixelSize: MichiTheme.typography.metaSize
                                 font.italic: modelData.missing
                             }

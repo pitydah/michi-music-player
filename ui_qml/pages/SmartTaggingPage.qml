@@ -22,6 +22,11 @@ Item {
     Accessible.name: "Smart Tagging"
     Accessible.description: "Sugerencias automáticas de metadatos para tu biblioteca musical"
 
+    Keys.onEscapePressed: {
+        root._confirmApply = false
+        root._errorMsg = ""
+    }
+
     Component.onCompleted: {
         if (root.stb) {
             if (root.stb.status === "idle") {
@@ -50,20 +55,27 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Row {
+                id: headerRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
+                objectName: "smartTagging.headerRow"
 
                 Text {
+                    id: titleText
                     text: "Smart Tagging"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
+                    objectName: "smartTagging.title"
+                    Accessible.role: Accessible.Heading
+                    Accessible.name: "Smart Tagging"
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
 
                 StatusBadge {
+                    id: stateBadge
                     text: pageState === "ANALYZING" ? "Analizando..." :
                           pageState === "APPLYING" ? "Aplicando..." :
                           pageState === "ERROR" ? "Error" :
@@ -72,6 +84,7 @@ Item {
                           pageState === "APPLYING" ? "warning" :
                           pageState === "ANALYZING" ? "info" : "success"
                     visible: pageState !== "LOADING"
+                    objectName: "smartTagging.stateBadge"
                 }
             }
 
@@ -93,20 +106,28 @@ Item {
             }
 
             GlassCard {
+                id: fileCard
                 width: parent.width; height: 70
                 title: root.selectedFile ? "Archivo seleccionado" : (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Canción desde Biblioteca" : "Seleccionar archivo")
                 subtitle: root.selectedFile ? root.selectedFile : (root.sel && root.sel.hasSelection && root.sel.selectedTitle ? root.sel.selectedTitle : "Elige un archivo de audio")
                 variant: root.selectedFile || (root.sel && root.sel.hasSelection) ? "accent" : "base"
                 objectName: "smartTagging.fileCard"
+                Accessible.name: title
+                Accessible.description: subtitle
                 onClicked: fileDialog.open()
             }
 
             Row {
+                id: fileActionRow
                 spacing: MichiTheme.spacing.sm
+                objectName: "smartTagging.fileActions"
                 MichiButton {
+                    id: selectFileBtn
                     text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : "Seleccionar archivo"
                     variant: "primary"
                     objectName: "smartTagging.selectFile"
+                    Accessible.name: text
+                    Accessible.description: "Seleccionar archivo de audio para analizar"
                     onClicked: {
                         if (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" && root.sel.selectedFilepath) {
                             root.selectedFile = root.sel.selectedFilepath
@@ -116,11 +137,13 @@ Item {
                     }
                 }
                 MichiButton {
+                    id: scanBtn
                     text: root.stb && root.stb.status === "scanning" ? "Cancelar" : "Escanear"
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
                     objectName: "smartTagging.scanButton"
                     Accessible.name: root.stb && root.stb.status === "scanning" ? "Cancelar escaneo" : "Escanear archivo"
+                    Accessible.description: root.selectedFile !== "" ? "Analizar: " + root.selectedFile : "Selecciona un archivo primero"
                     onClicked: {
                         if (root.stb && root.stb.status === "scanning" && typeof root.stb.cancelScan !== "undefined") {
                             root.stb.cancelScan()
@@ -134,21 +157,27 @@ Item {
                     }
                 }
                 MichiButton {
+                    id: clearBtn
                     text: "Limpiar"
                     variant: "ghost"
                     visible: root.selectedFile !== ""
                     objectName: "smartTagging.clearButton"
+                    Accessible.name: "Limpiar selección"
                     onClicked: { root.selectedFile = ""; _errorMsg = "" }
                 }
             }
 
             Text {
+                id: errorMsg
                 text: root._errorMsg
                 color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
+                objectName: "smartTagging.errorMsg"
+                Accessible.name: text
             }
 
             StatusBadge {
+                id: scanStatusBadge
                 text: root.stb && root.stb.status === "scanning" ? "Analizando metadatos..." :
                       root.stb && root.stb.status === "review" ? "Revisa las sugerencias" :
                       root.stb && root.stb.status === "completed" ? "Cambios aplicados" :
@@ -158,6 +187,7 @@ Item {
                       root.stb && root.stb.status === "review" ? "warning" :
                       root.stb && root.stb.status === "error" || root.stb.status === "unavailable" ? "error" : "info"
                 visible: root.stb && root.stb.status !== "idle"
+                objectName: "smartTagging.scanStatus"
             }
 
             MichiProgressBar {
@@ -183,7 +213,7 @@ Item {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
                         Rectangle {
-                            width: 16; height: 16; radius: 2
+                            width: 16; height: 16; radius: MichiTheme.radiusXs
                             color: modelData.selected ? MichiTheme.colors.accentBlue : "transparent"
                             border.color: modelData.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                             anchors.verticalCenter: parent.verticalCenter

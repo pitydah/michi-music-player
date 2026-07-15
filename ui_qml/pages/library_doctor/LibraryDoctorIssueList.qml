@@ -30,7 +30,7 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
                     Rectangle {
-                        width: 16; height: 16; radius: 2; anchors.verticalCenter: parent.verticalCenter
+                        width: 16; height: 16; radius: MichiTheme.radiusXs; anchors.verticalCenter: parent.verticalCenter
                         color: modelData.selected ? MichiTheme.colors.accentBlue : "transparent"
                         border.color: modelData.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                         MouseArea {

@@ -83,7 +83,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: 80; height: 80; radius: 40
+                    width: 80; height: 80; radius: MichiTheme.radiusXl
                     color: MichiTheme.colors.accentSurface
                     border.color: MichiTheme.colors.borderFocus
                     border.width: 1
@@ -92,7 +92,7 @@ Item {
                         anchors.centerIn: parent
                         text: "MM"
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: 28
+                        font.pixelSize: MichiTheme.typography.heroTitleSize
                         font.weight: MichiTheme.typography.weightBold
                         font.letterSpacing: 2.0
                         opacity: 0.50

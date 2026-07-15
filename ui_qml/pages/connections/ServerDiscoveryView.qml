@@ -9,7 +9,7 @@ Item {
 
     property var discoveredServers: []
     property bool scanning: false
-    property string objectName: "serverDiscoveryView"
+    property string objectName: "connections.discoveryView"
 
     signal serverSelected(int index)
     signal scanRequested()

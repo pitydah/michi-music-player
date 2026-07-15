@@ -7,7 +7,7 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "groupEditor"
+    objectName: "homeAudio.groupEditor"
 
     property var availableZones: []
     property var selectedZoneIds: []

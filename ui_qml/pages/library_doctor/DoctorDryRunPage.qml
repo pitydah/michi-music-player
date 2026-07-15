@@ -90,7 +90,7 @@ Item {
                         text: root._running ? "Procesando..." : "Confirmar reparación"
                         variant: "danger"
                         enabled: !root._running
-                        objectName: "doctorConfirmRepairButton"
+                        objectName: "libraryDoctor.confirmRepairButton"
                         Accessible.name: "Confirmar reparación de problemas seleccionados"
                         onClicked: {
                             root._running = true
@@ -102,7 +102,7 @@ Item {
                         text: "Cancelar"
                         variant: "ghost"
                         enabled: !root._running
-                        objectName: "doctorCancelRepairButton"
+                        objectName: "libraryDoctor.cancelRepairButton"
                         Accessible.name: "Cancelar reparación"
                         onClicked: {
                             root._running = false

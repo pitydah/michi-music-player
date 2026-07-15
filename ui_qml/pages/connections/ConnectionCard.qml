@@ -14,7 +14,7 @@ Item {
     property string contract: ""
     property string serverVersion: ""
     property bool compatible: false
-    property string objectName: "connectionCard"
+    property string objectName: "connections.card"
 
     signal connectClicked()
     signal disconnectClicked()

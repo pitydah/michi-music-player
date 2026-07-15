@@ -99,26 +99,32 @@ Item {
                         root.dontAskAgain = checked
                         root.dontAskAgainChanged(checked)
                     }
+                    KeyNavigation.tab: cancelBtn
                 }
 
                 Item { Layout.fillWidth: !dontAskCheck.visible }
 
                 MichiButton {
+                    id: cancelBtn
                     text: root.cancelText
                     variant: "ghost"
                     onClicked: {
                         root.open = false
                         root.cancelled()
                     }
+                    KeyNavigation.tab: confirmBtn
+                    KeyNavigation.backtab: dontAskCheck.visible ? dontAskCheck : confirmBtn
                 }
 
                 MichiButton {
+                    id: confirmBtn
                     text: root.confirmText
                     variant: "primary"
                     onClicked: {
                         root.open = false
                         root.confirmed()
                     }
+                    KeyNavigation.backtab: cancelBtn
                 }
             }
         }

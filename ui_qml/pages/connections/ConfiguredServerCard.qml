@@ -11,7 +11,7 @@ Item {
     property string serverType: ""
     property string statusText: "Conectado"
     property string statusKind: "success"
-    property string objectName: "configuredServerCard"
+    property string objectName: "connections.configuredCard"
 
     signal disconnectClicked()
     signal configureClicked()

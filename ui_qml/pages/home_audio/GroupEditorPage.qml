@@ -7,7 +7,7 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "groupEditorPage"
+    objectName: "homeAudio.groupEditorPage"
 
     property var ha: typeof homeAudioBridge !== "undefined" ? homeAudioBridge : null
     property var availableZones: root.ha ? root.ha.zones : []

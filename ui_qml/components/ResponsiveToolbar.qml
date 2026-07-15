@@ -61,18 +61,21 @@ FocusScope {
                     variant: modelData.variant || "ghost"
                     iconSource: modelData.iconSource || ""
                     onClicked: modelData.action ? modelData.action() : undefined
+                    objectName: root.objectName + "/action/" + (modelData.text || index)
                 }
             }
 
             Menu {
                 id: overflowMenu
                 title: "Más acciones"
+                objectName: root.objectName + "/overflowMenu"
 
                 Instantiator {
                     model: root.compactMode ? root.primaryActions : root.secondaryActions
                     MenuItem {
                         text: modelData.text || ""
                         onTriggered: modelData.action ? modelData.action() : undefined
+                        objectName: root.objectName + "/menuItem/" + (modelData.text || index)
                     }
                     onObjectAdded: function(index, object) { overflowMenu.insertItem(index, object) }
                     onObjectRemoved: function(index, object) { overflowMenu.removeItem(object) }

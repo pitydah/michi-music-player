@@ -8,7 +8,7 @@ Item {
     id: root
 
     property string state: "not_configured"
-    property string objectName: "microServerHero"
+    property string objectName: "connections.microServerHero"
 
     signal scanClicked()
     signal manualAddClicked()

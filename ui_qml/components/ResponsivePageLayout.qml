@@ -3,7 +3,7 @@ import QtQuick.Controls
 import "../theme"
 import "foundations"
 
-Item {
+FocusScope {
     id: root
 
     enum Mode {
@@ -20,9 +20,20 @@ Item {
     default property alias content: contentFlickable.contentItem
 
     property string objectName: "responsivePageLayout"
+    activeFocusOnTab: true
 
     Accessible.role: Accessible.Panel
     Accessible.name: "Página"
+
+    Keys.onEscapePressed: {
+        var headerItems = headerHost.children
+        for (var i = 0; i < headerItems.length; i++) {
+            if (typeof headerItems[i].focus !== "undefined") {
+                headerItems[i].focus = true
+                break
+            }
+        }
+    }
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 

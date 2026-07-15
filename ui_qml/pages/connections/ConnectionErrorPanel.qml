@@ -8,7 +8,7 @@ Item {
     id: root
 
     property string errorText: ""
-    property string objectName: "connectionErrorPanel"
+    property string objectName: "connections.errorPanel"
 
     signal retryClicked()
     signal dismissClicked()

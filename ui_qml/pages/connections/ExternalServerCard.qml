@@ -10,7 +10,7 @@ Item {
     property string serverType: ""
     property string badgeText: "Externo"
     property string badgeKind: "info"
-    property string objectName: "externalServerCard"
+    property string objectName: "connections.externalCard"
 
     signal configureClicked()
 

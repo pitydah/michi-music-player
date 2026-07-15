@@ -45,6 +45,19 @@ Item {
         }
     }
 
+    Keys.onEscapePressed: {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigate("home")
+    }
+
+    Keys.onPressed: function(event) {
+        if (event.key === Qt.Key_Tab) {
+            if (stateLoader.item && stateLoader.item.hasOwnProperty("forceActiveFocus")) {
+                stateLoader.item.forceActiveFocus()
+            }
+        }
+    }
+
     Loader {
         id: stateLoader
         anchors.fill: parent
@@ -56,6 +69,7 @@ Item {
             objectName: "home.loading"
             title: "Cargando centro Michi"
             message: "Obteniendo estado del ecosistema..."
+            Accessible.name: "Cargando centro Michi"
         }
     }
 
@@ -68,6 +82,7 @@ Item {
             subtitle: "Agrega carpetas con música para comenzar. Michi indexará tu biblioteca y mostrará tu resumen aquí."
             actionText: "Abrir biblioteca"
             showAction: true
+            Accessible.name: "Inicio vacío"
             onActionClicked: {
                 if (typeof navigationBridge !== "undefined" && navigationBridge)
                     navigationBridge.navigate("library")
@@ -82,6 +97,7 @@ Item {
             title: "Inicio no disponible"
             message: root.hasBridge ? "Error al cargar el resumen del ecosistema." : "HomeBridge no está disponible."
             retryText: "Reconectar"
+            Accessible.name: "Error en inicio"
             onRetryRequested: {
                 root.bridge = typeof homeBridge !== "undefined" ? homeBridge : null
                 root.hasBridge = root.bridge !== null
@@ -147,6 +163,7 @@ Item {
                         radius: MichiTheme.radiusMd
                         objectName: "home.playbackCard"
                         Accessible.name: "Reproducción actual"
+                        Accessible.description: root.bridge && root.bridge.hasPlayback ? (root.bridge.currentTrackTitle + " - " + root.bridge.currentArtist) : "Sin reproducción activa"
 
                         Keys.onReturnPressed: root.continuePlayback()
                         Keys.onSpacePressed: root.continuePlayback()
@@ -176,7 +193,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: "♪"
                                     color: MichiTheme.colors.accentBlue
-                                    font.pixelSize: 24
+                                    font.pixelSize: MichiTheme.typography.cardTitleSize
                                     opacity: 0.50
                                 }
                             }
@@ -211,6 +228,7 @@ Item {
                                         text: root.bridge && root.bridge.backend ? root.bridge.backend : ""
                                         kind: "info"
                                         visible: text !== ""
+                                        Accessible.name: text
                                     }
                                 }
                             }
@@ -291,6 +309,7 @@ Item {
                                         ]
                                         Column {
                                             spacing: MichiTheme.spacing.xs
+                                            Accessible.name: modelData.label + ": " + modelData.value
                                             Text {
                                                 text: modelData.value
                                                 color: modelData.label === "Álbumes" ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
@@ -366,8 +385,8 @@ Item {
 
                                 Row {
                                     spacing: MichiTheme.spacing.sm
-                                    StatusBadge { text: "No configurado"; kind: "disconnected" }
-                                    StatusBadge { text: "Experimental"; kind: "experimental" }
+                                    StatusBadge { text: "No configurado"; kind: "disconnected"; Accessible.name: "Servidor no configurado" }
+                                    StatusBadge { text: "Experimental"; kind: "experimental"; Accessible.name: "Versión experimental" }
                                 }
 
                                 Text {
@@ -461,6 +480,18 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    function routeEnter(route) {
+        if (root.bridge && state === "READY") {
+            root.bridge.refresh()
+        }
+    }
+
+    function routeRefresh(route) {
+        if (root.bridge) {
+            root.bridge.refresh()
         }
     }
 }

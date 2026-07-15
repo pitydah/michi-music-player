@@ -105,7 +105,7 @@ Item {
                                     if (t === "sandisk") return "\uD83D\uDCFD"
                                     return "\uD83D\uDDA5"
                                 }
-                                font.pixelSize: 22
+                                font.pixelSize: MichiTheme.typography.pageTitleSize
                             }
                         }
 

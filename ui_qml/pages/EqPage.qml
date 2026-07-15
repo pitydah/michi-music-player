@@ -9,7 +9,7 @@ import "equalizer"
 Item {
     id: root
 
-    objectName: "eqPage"
+    objectName: "eq.page"
     Accessible.role: Accessible.Pane
     Accessible.name: "Ecualizador"
 
@@ -105,7 +105,7 @@ Item {
                     text: root.eq && root.eq.bypass ? "Activar EQ" : "Bypass EQ"
                     variant: root.eq && root.eq.bypass ? "primary" : "danger"
                     enabled: root._cap("backendAvailable")
-                    objectName: "eqBypassToggle"
+                    objectName: "eq.bypassToggle"
                     Accessible.name: "Activar o desactivar ecualizador"
                     onClicked: {
                         if (root.eq) {
@@ -119,7 +119,7 @@ Item {
                     text: "Restablecer plano"
                     variant: "ghost"
                     enabled: root._cap("backendAvailable")
-                    objectName: "eqResetButton"
+                    objectName: "eq.resetButton"
                     Accessible.name: "Restablecer ecualizador a plano"
                     onClicked: {
                         if (root.eq) {
@@ -146,7 +146,7 @@ Item {
                     from: -24; to: 24; value: root.eq ? root.eq.preamp : 0
                     stepSize: 0.5
                     enabled: root._cap("backendAvailable")
-                    objectName: "eqPreampSlider"
+                    objectName: "eq.preampSlider"
                     accessibleName: "Preamplificador"
                     onMoved: {
                         if (root.eq) root.eq.setPreamp(value)

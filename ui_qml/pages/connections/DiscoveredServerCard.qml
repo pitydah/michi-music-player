@@ -10,7 +10,7 @@ Item {
     property string serverHost: ""
     property string serverType: ""
     property string serverStatus: "disconnected"
-    property string objectName: "discoveredServerCard"
+    property string objectName: "connections.discoveredCard"
 
     signal connectClicked()
 

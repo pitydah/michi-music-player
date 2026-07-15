@@ -8,7 +8,7 @@ Item {
     id: root
 
     property var discoveredServers: []
-    property string objectName: "networkDiscoveryPanel"
+    property string objectName: "connections.discoveryPanel"
 
     signal serverSelected(int index)
 

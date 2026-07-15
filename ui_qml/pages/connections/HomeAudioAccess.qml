@@ -6,7 +6,7 @@ import "../../components"
 Item {
     id: root
 
-    property string objectName: "homeAudioAccess"
+    property string objectName: "connections.homeAudioAccess"
 
     signal openHomeAudio()
 

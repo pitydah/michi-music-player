@@ -9,9 +9,11 @@ import "outputs"
 Item {
     id: root
 
-    objectName: "outputProfilesPage"
+    objectName: "outputProfiles.page"
+    focus: true
     Accessible.role: Accessible.Pane
     Accessible.name: "Perfiles de salida"
+    Accessible.description: "Selecciona el perfil de audio que mejor se adapte a tu equipo"
 
     property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property var op: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
@@ -70,39 +72,50 @@ Item {
     }
 
     Flickable {
+        id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         focus: true
+        objectName: "outputProfiles.flickable"
 
         Column {
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
+            objectName: "outputProfiles.column"
 
             Text {
+                id: titleText
                 text: "Perfiles de salida"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
+                objectName: "outputProfiles.title"
+                Accessible.role: Accessible.Heading
+                Accessible.name: "Perfiles de salida"
             }
 
             Text {
+                id: subtitleText
                 text: "Selecciona el perfil de audio que mejor se adapte a tu equipo y tipo de archivo."
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 width: parent.width
                 wrapMode: Text.WordWrap
+                objectName: "outputProfiles.subtitle"
             }
 
             Row {
+                id: actionRow
                 spacing: MichiTheme.spacing.sm
+                objectName: "outputProfiles.actions"
                 MichiButton {
                     text: "Crear perfil"
                     variant: "primary"
-                    objectName: "outputCreateProfileButton"
+                    objectName: "outputProfiles.createProfileButton"
                     Accessible.name: "Crear nuevo perfil de salida"
                     onClicked: {
                         root._editProfile = null
@@ -113,24 +126,29 @@ Item {
                 MichiButton {
                     text: "Refrescar"
                     variant: "ghost"
-                    objectName: "outputRefreshButton"
+                    objectName: "outputProfiles.refreshButton"
                     Accessible.name: "Refrescar lista de perfiles"
                     onClicked: root.refresh()
                 }
             }
 
             Row {
+                id: activeProfileRow
                 spacing: MichiTheme.spacing.sm
                 visible: root.op !== null
+                objectName: "outputProfiles.activeProfile"
                 Text {
                     text: "Perfil activo:"
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
+                    Accessible.name: "Perfil activo"
                 }
                 StatusBadge {
+                    id: activeBadge
                     text: root.op ? root.op.activeProfileId || "ninguno" : "ninguno"
                     kind: root.op && root.op.activeProfileId ? "success" : "info"
+                    objectName: "outputProfiles.activeBadge"
                 }
             }
 

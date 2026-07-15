@@ -43,14 +43,14 @@ Rectangle {
         spacing: MichiTheme.spacing.md
 
         Rectangle {
-            width: 40; height: 40; radius: 8
+            width: 40; height: 40; radius: MichiTheme.radiusSm
             color: root.enabled ? MichiTheme.colors.accentSurface : MichiTheme.colors.surfaceHover
 
             Text {
                 anchors.centerIn: parent
                 text: root.sourceType === "local" ? "HD" : root.sourceType === "subsonic" ? "SV" : "SR"
                 color: root.enabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                font.pixelSize: 14; font.weight: MichiTheme.typography.weightBold
+                font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightBold
             }
         }
 

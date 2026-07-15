@@ -33,6 +33,7 @@ Item {
         filterBar.clearAll()
         if (root.lib && typeof root.lib.clearFilters !== "undefined")
             root.lib.clearFilters()
+        _updateState()
     }
 
     function showArtistDetail(name) {
@@ -70,7 +71,12 @@ Item {
             case "NO_SOURCES": libraryState = LibraryPage.NO_SOURCES; break
             case "SCANNING": libraryState = LibraryPage.SCANNING; break
             case "LOADING": libraryState = LibraryPage.LOADING; break
-            case "READY": libraryState = LibraryPage.READY; break
+            case "READY":
+                if (navBar.searchText !== "" && root.lib.songCount === 0)
+                    libraryState = LibraryPage.FILTERED_EMPTY
+                else
+                    libraryState = LibraryPage.READY
+                break
             case "FILTERED_EMPTY": libraryState = LibraryPage.FILTERED_EMPTY; break
             case "SOURCE_OFFLINE": libraryState = LibraryPage.SOURCE_OFFLINE; break
             case "QUERY_ERROR": libraryState = LibraryPage.QUERY_ERROR; break
@@ -78,6 +84,18 @@ Item {
             case "CANCELLED": libraryState = LibraryPage.CANCELLED; break
             default: libraryState = LibraryPage.INITIALIZING
         }
+    }
+
+    onLibraryStateChanged: {
+        if (libraryState === LibraryPage.READY && focusScope) {
+            focusScope.forceActiveFocus()
+        }
+    }
+
+    Connections {
+        target: root.lib
+        function onStateChanged() { _updateState() }
+        function onDataChanged() { _updateState() }
     }
 
     Loader {
@@ -88,24 +106,46 @@ Item {
             message: "El servicio de biblioteca no está disponible en este momento."
             explanation: "Library Bridge no está configurado o el módulo no está activo."
             objectName: "library.unavailableState"
+            Accessible.name: "Biblioteca no disponible"
+        }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.CANCELLED
+        z: 10
+        sourceComponent: CancellationState {
+            title: "Operación cancelada"
+            message: "La carga de la biblioteca fue cancelada."
+            objectName: "library.cancelledState"
+            Accessible.name: "Biblioteca cancelada"
         }
     }
 
     FocusScope {
         id: focusScope
-        visible: libraryState !== LibraryPage.UNAVAILABLE
+        visible: libraryState !== LibraryPage.UNAVAILABLE && libraryState !== LibraryPage.CANCELLED
         anchors.fill: parent
         objectName: "library.focusScope"
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
-            root.clearFilters()
+            if (root.sel && root.sel.hasSelection) {
+                root.sel.clear()
+            } else {
+                root.clearFilters()
+            }
         }
 
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Tab) {
                 if (focusScope.focus) {
                     navBar.forceActiveFocus()
+                }
+            }
+            if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
+                if (root.sel && tracksView && tracksView.selectAll) {
+                    tracksView.selectAll()
                 }
             }
         }
@@ -119,7 +159,12 @@ Item {
                 width: parent.width
                 objectName: "library.navBar"
                 Accessible.name: "Barra de navegación de biblioteca"
-                onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
+                onSearchTextUpdated: function(text) {
+                    if (root.lib && typeof root.lib.search !== "undefined") {
+                        root.lib.search(text)
+                        _updateState()
+                    }
+                }
                 KeyNavigation.tab: filterBar
                 KeyNavigation.down: filterBar
             }
@@ -129,9 +174,9 @@ Item {
                 width: parent.width
                 objectName: "library.filterBar"
                 Accessible.name: "Barra de filtros"
-                onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt) }
-                onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre) }
-                onYearFilterChanged: function(year) { if (root.lib) root.lib.setYearFilter(year) }
+                onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt); _updateState() }
+                onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre); _updateState() }
+                onYearFilterChanged: function(year) { if (root.lib) root.lib.setYearFilter(year); _updateState() }
                 KeyNavigation.tab: statusHeader
                 KeyNavigation.backtab: navBar
                 KeyNavigation.down: statusHeader
@@ -245,6 +290,8 @@ Item {
             title: "Sin fuentes configuradas"
             message: "Agrega carpetas de música para comenzar"
             actionText: "Añadir fuente"
+            objectName: "library.noSourcesState"
+            Accessible.name: "Sin fuentes"
             onActionRequested: {
                 if (typeof navigationBridge !== "undefined")
                     navigationBridge.navigate("library.sources")
@@ -259,6 +306,8 @@ Item {
             title: "Sin resultados"
             message: "No se encontraron resultados con los filtros actuales"
             actionText: "Limpiar filtros"
+            objectName: "library.filteredEmptyState"
+            Accessible.name: "Sin resultados de filtro"
             onActionRequested: root.clearFilters()
         }
     }
@@ -270,17 +319,34 @@ Item {
             title: "Fuente no disponible"
             message: "La fuente de biblioteca no está disponible actualmente"
             actionText: "Reintentar"
+            objectName: "library.sourceOfflineState"
+            Accessible.name: "Fuente fuera de línea"
             onActionRequested: root.refreshData()
         }
     }
 
     Loader {
         anchors.centerIn: parent
-        active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
+        active: libraryState === LibraryPage.QUERY_ERROR
         sourceComponent: LibraryErrorState {
-            title: "Error al cargar la biblioteca"
-            message: "Ocurrió un error al consultar la base de datos"
+            title: "Error de consulta"
+            message: "Ocurrió un error al consultar la biblioteca"
             actionText: "Reintentar"
+            objectName: "library.queryErrorState"
+            Accessible.name: "Error de consulta"
+            onActionRequested: root.refreshData()
+        }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: libraryState === LibraryPage.DATABASE_ERROR
+        sourceComponent: LibraryErrorState {
+            title: "Error de base de datos"
+            message: "Ocurrió un error en la base de datos de la biblioteca"
+            actionText: "Reintentar"
+            objectName: "library.databaseErrorState"
+            Accessible.name: "Error de base de datos"
             onActionRequested: root.refreshData()
         }
     }
@@ -289,8 +355,9 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
         sourceComponent: Item {
-            width: 120
-            height: 120
+            width: 120; height: 120
+            objectName: "library.loadingState"
+            Accessible.name: "Cargando biblioteca"
             BusyIndicator {
                 anchors.centerIn: parent
                 running: true
@@ -304,6 +371,7 @@ Item {
         id: selectionBar
         width: parent.width
         height: 40
+        y: parent.height - height
         z: 10
         visible: root.sel ? root.sel.hasSelection : false
         count: root.sel ? root.sel.count : 0

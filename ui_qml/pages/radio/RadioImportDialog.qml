@@ -223,14 +223,14 @@ Dialog {
         Rectangle {
             width: parent.width
             height: 6
-            radius: 3
+            radius: MichiTheme.radiusXs
             color: MichiTheme.colors.controlTrack
             visible: root._importing
 
             Rectangle {
                 width: parent.width * (root._importProgress / Math.max(root._importTotal, 1))
                 height: parent.height
-                radius: 3
+                radius: MichiTheme.radiusXs
                 color: MichiTheme.colors.accent
 
                 Behavior on width {

@@ -21,9 +21,14 @@ Rectangle {
     border.color: MichiTheme.colors.borderCard
     visible: root.selectedCount > 0
     clip: true
+    focus: root.selectedCount > 0
 
     Accessible.role: Accessible.ToolBar
     Accessible.name: root.selectedCount + " elementos seleccionados"
+
+    Keys.onEscapePressed: {
+        root.clearRequested()
+    }
 
     Behavior on height {
         NumberAnimation {

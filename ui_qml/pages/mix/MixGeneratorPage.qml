@@ -8,7 +8,7 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "mixGeneratorPage"
+    objectName: "mixGenerator.page"
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 

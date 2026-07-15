@@ -8,7 +8,7 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "mixResultPage"
+    objectName: "mixResult.page"
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property var _songs: root.mx ? root.mx.currentSongs : []

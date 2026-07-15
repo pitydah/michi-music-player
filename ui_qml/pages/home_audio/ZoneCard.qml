@@ -6,7 +6,7 @@ import "../../components"
 Item {
     id: root
 
-    objectName: "zoneCard"
+    objectName: "homeAudio.zoneCard"
 
     property string zoneName: ""
     property int deviceCount: 0

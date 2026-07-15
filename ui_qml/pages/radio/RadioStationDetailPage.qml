@@ -23,7 +23,7 @@ Item {
     signal retryRequested()
     signal backRequested()
 
-    objectName: "radioStationDetailPage"
+    objectName: "radioStationDetail.page"
     implicitHeight: 280
 
     Accessible.role: Accessible.Panel
@@ -166,14 +166,14 @@ Item {
                 Rectangle {
                     width: parent.width * 0.6
                     height: 6
-                    radius: 3
+                    radius: MichiTheme.radiusXs
                     color: MichiTheme.colors.controlTrack
                     anchors.centerIn: parent
 
                     Rectangle {
                         width: parent.width * (root._bufferPercent / 100)
                         height: parent.height
-                        radius: 3
+                        radius: MichiTheme.radiusXs
                         color: MichiTheme.colors.accent
                     }
                 }

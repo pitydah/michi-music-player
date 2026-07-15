@@ -126,20 +126,27 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             Row {
+                id: headerRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
+                objectName: "assistant.headerRow"
 
                 Text {
+                    id: titleText
                     text: "Michi AI"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
+                    objectName: "assistant.title"
+                    Accessible.role: Accessible.Heading
+                    Accessible.name: "Michi AI"
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
 
                 StatusBadge {
+                    id: stateBadge
                     text: pageState === "UNAVAILABLE" ? "No disponible" :
                           pageState === "ERROR" ? "Error" :
                           pageState === "LOADING" ? "Procesando..." :
@@ -149,6 +156,7 @@ Item {
                           pageState === "LOADING" ? "warning" :
                           pageState === "INITIALIZING" ? "info" : "success"
                     visible: pageState !== "READY"
+                    objectName: "assistant.stateBadge"
                 }
             }
 
@@ -182,11 +190,13 @@ Item {
             }
 
             Rectangle {
+                id: contextPreview
                 width: parent.width
                 height: contextPreviewRow.height + MichiTheme.spacing.md
                 radius: MichiTheme.radiusSm
                 color: MichiTheme.colors.surfaceCard
                 visible: contextTrack !== "" || contextLibrary !== ""
+                objectName: "assistant.contextPreview"
 
                 Row {
                     id: contextPreviewRow
@@ -199,6 +209,7 @@ Item {
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
+                        Accessible.name: "Contexto"
                     }
 
                     Text {
@@ -207,6 +218,7 @@ Item {
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
                         visible: contextTrack !== ""
+                        Accessible.name: contextTrack
                     }
 
                     Text {
@@ -215,6 +227,7 @@ Item {
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter
                         visible: contextLibrary !== ""
+                        Accessible.name: contextLibrary
                     }
                 }
             }
@@ -342,9 +355,11 @@ Item {
             }
 
             Flow {
+                id: suggestionsFlow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
                 visible: pageState === "READY" && chatItems.length === 0
+                objectName: "assistant.suggestions"
 
                 Repeater {
                     model: root.ai ? root.ai.suggestions : []
@@ -355,6 +370,9 @@ Item {
                         radius: MichiTheme.radiusPill
                         variant: "base"
                         hovered: suggestionMouse.containsMouse
+                        objectName: "assistant.suggestion." + index
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.title || ""
 
                         Text {
                             id: suggestionText
@@ -373,6 +391,11 @@ Item {
                                 promptInput.text = modelData.title || ""
                                 promptInput.forceActiveFocus()
                             }
+                        }
+
+                        Keys.onReturnPressed: {
+                            promptInput.text = modelData.title || ""
+                            promptInput.forceActiveFocus()
                         }
                     }
                 }

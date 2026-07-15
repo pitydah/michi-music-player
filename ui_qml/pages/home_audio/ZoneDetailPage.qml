@@ -8,7 +8,7 @@ import "../../materials"
 Item {
     id: root
 
-    objectName: "zoneDetailPage"
+    objectName: "homeAudio.zoneDetailPage"
 
     property string zoneId: ""
     property string zoneName: ""

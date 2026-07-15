@@ -42,7 +42,7 @@ Item {
                     background: Rectangle {
                         color: "transparent"
                         Rectangle {
-                            anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1
+                            anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: MichiTheme.radiusXs
                             color: MichiTheme.colors.accentBlue
                             visible: tabBar.currentIndex === index
                         }

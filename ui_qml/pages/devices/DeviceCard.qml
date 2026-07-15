@@ -42,7 +42,7 @@ Item {
                     anchors.centerIn: parent
                     text: root.deviceAlias ? root.deviceAlias.charAt(0).toUpperCase() : "?"
                     color: root.paired ? MichiTheme.colors.success : MichiTheme.colors.accentBlue
-                    font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
+                    font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightBold
                 }
             }
 

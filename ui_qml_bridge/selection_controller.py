@@ -1,3 +1,10 @@
+"""SelectionController — single selection state for Library, Playlist, Metadata, Tagging, Doctor.
+
+API: replace, toggle, add, remove, selectRangeByRows, selectAllLoaded,
+     selectAllFiltered, invertLoaded, clear, restore, contains.
+
+IDs are arbitrary (no consecutive ID assumption). Use generation for change tracking.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot

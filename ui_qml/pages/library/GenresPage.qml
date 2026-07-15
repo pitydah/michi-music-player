@@ -75,7 +75,7 @@ Item {
                         Text {
                             text: "▶"
                             color: MichiTheme.colors.textMuted
-                            font.pixelSize: 12
+                            font.pixelSize: MichiTheme.typography.captionSize
                         }
                     }
                     MouseArea {

@@ -18,7 +18,7 @@ Menu {
     property var selectionController: null
     property var trackModel: null
 
-    objectName: "libraryTrackContextMenu"
+    objectName: "library.trackContextMenu"
     Accessible.role: Accessible.PopupMenu
     Accessible.name: "Menú contextual"
 
