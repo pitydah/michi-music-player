@@ -1,3 +1,124 @@
+<<<<<<< Updated upstream
+"""Negative tests for Audio Lab: missing service, invalid format, conversion failure, cancellation."""
+from __future__ import annotations
+
+import os
+import tempfile
+import time
+from unittest.mock import MagicMock
+=======
+<<<<<<< HEAD
+"""Negative tests: bridge null, empty states, error states across Audio Lab pages."""
+from pathlib import Path
+>>>>>>> Stashed changes
+
+import pytest
+from PySide6.QtCore import QCoreApplication
+
+
+def _process_events(duration=0.5):
+    deadline = time.time() + duration
+    while time.time() < deadline:
+        QCoreApplication.processEvents()
+        time.sleep(0.02)
+
+
+class TestAudioNegative:
+    @pytest.fixture
+    def app(self):
+        return QCoreApplication.instance() or QCoreApplication()
+
+    def test_null_bridge_does_not_crash(self):
+        alab = None
+        assert alab is None
+
+    def test_conversion_without_output_dir(self):
+        from ui_qml_bridge.conversion_bridge import ConversionBridge
+        bridge = ConversionBridge()
+        result = bridge.startConversion("/nonexistent.flac")
+        assert result["ok"] is False
+
+    def test_conversion_source_not_found(self):
+        from ui_qml_bridge.conversion_bridge import ConversionBridge
+        bridge = ConversionBridge()
+        bridge.outputDir = "/tmp"
+        result = bridge.startConversion("/nonexistent/file.flac")
+        assert result["ok"] is False
+        assert "SOURCE_NOT_FOUND" in result.get("error", "")
+
+    def test_conversion_unsupported_format(self):
+        from ui_qml_bridge.conversion_bridge import ConversionBridge
+        bridge = ConversionBridge()
+        bridge.outputDir = "/tmp"
+        path = "/tmp/test.xyz"
+        with open(path, "w") as f:
+            f.write("test")
+        try:
+            result = bridge.startConversion(path)
+            assert result["ok"] is False
+            assert "UNSUPPORTED_FORMAT" in result.get("error", "")
+        finally:
+            if os.path.exists(path):
+                os.unlink(path)
+
+    def test_conversion_cancel_nonexistent_job(self):
+        from ui_qml_bridge.conversion_bridge import ConversionBridge
+        bridge = ConversionBridge()
+        result = bridge.cancelJob("nonexistent_job")
+        assert result["ok"] is False
+        assert result.get("error") == "NOT_FOUND"
+
+    def test_analysis_without_files(self):
+        lab = MagicMock()
+        lab.analyzeFile = MagicMock(return_value={"status": "error", "error": "No files selected"})
+        result = lab.analyzeFile("")
+        assert result["status"] == "error"
+
+    def test_analysis_backend_unavailable(self):
+        from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+        bridge = AudioLabBridge()
+        result = bridge.analyzeFile("/nonexistent.flac")
+        assert result["status"] in ("unsupported", "error")
+
+    def test_integrity_missing_file(self):
+        from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+        bridge = AudioLabBridge()
+        result = bridge.integrityCheck("/nonexistent/file.flac")
+        assert result["status"] in ("error", "unavailable")
+
+    def test_comparison_no_backend(self):
+        from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+        bridge = AudioLabBridge()
+        result = bridge.compareFiles("/a.flac", "/b.flac")
+        assert "error" in result or result.get("identical") is not None
+
+    def test_conversion_video_format_rejected(self):
+        from ui_qml_bridge.conversion_bridge import ConversionBridge
+        bridge = ConversionBridge()
+        result = bridge.validateAudioFile("/test.mp4")
+        assert result["ok"] is False
+        assert "VIDEO_NOT_SUPPORTED" in result.get("error", "")
+
+    def test_conversion_collision_skip_existing(self):
+        from ui_qml_bridge.conversion_bridge import ConversionBridge
+        bridge = ConversionBridge()
+        bridge.outputDir = "/tmp"
+        bridge.collisionPolicy = "skip"
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            existing = f.name
+        try:
+            bridge.startConversion(existing)
+        finally:
+            if os.path.exists(existing):
+                os.unlink(existing)
+
+<<<<<<< Updated upstream
+=======
+    def test_retry_after_failure(self):
+        for name in ["AudioConversionPage.qml"]:
+            source = self._read(name)
+            assert "retryConvert" in source or "retry" in source.lower(), f"{name} missing retry"
+=======
 """Negative tests for Audio Lab: missing service, invalid format, conversion failure, cancellation."""
 from __future__ import annotations
 
@@ -106,6 +227,7 @@ class TestAudioNegative:
             if os.path.exists(existing):
                 os.unlink(existing)
 
+>>>>>>> Stashed changes
     def test_preview_missing_source(self):
         from ui_qml_bridge.conversion_bridge import ConversionBridge
         bridge = ConversionBridge()
@@ -137,3 +259,7 @@ class TestAudioNegative:
 
     def test_bridge_status_badge_on_null(self):
         assert True
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

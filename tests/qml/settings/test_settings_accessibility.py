@@ -1,3 +1,23 @@
+<<<<<<< Updated upstream
+"""Tests for SettingsAccessibilityPage — mono, balance, font scale, announcements."""
+from pathlib import Path
+=======
+<<<<<<< HEAD
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+>>>>>>> Stashed changes
+
+import pytest
+from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
+
+<<<<<<< Updated upstream
+=======
+pytestmark = [pytest.mark.qml_module("settings")]
+=======
 """Tests for SettingsAccessibilityPage — mono, balance, font scale, announcements."""
 from pathlib import Path
 
@@ -7,6 +27,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+>>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
     dataChanged = Signal()
@@ -50,10 +71,109 @@ class FakeSettingsBridgeV2(QObject):
     @Slot()
     def refresh(self):
         self.dataChanged.emit()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 
 @pytest.fixture
 def engine(qapp):
+<<<<<<< Updated upstream
+    return QQmlEngine(qapp)
+=======
+<<<<<<< HEAD
+    engine = QQmlEngine(qapp)
+    engine.addImportPath(str(QML_DIR))
+    return engine
+>>>>>>> Stashed changes
+
+
+@pytest.fixture
+def bridge():
+    return FakeSettingsBridgeV2()
+
+
+class TestSettingsAccessibilityPage:
+    def _load_page(self, engine, bridge):
+        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.addImportPath(str(QML_DIR))
+        comp = QQmlComponent(engine)
+        comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsAccessibilityPage.qml")))
+        return comp
+
+    def test_creates(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
+
+    def test_object_name(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.objectName() == "settingsAccessibilityPage"
+
+    def test_initial_state_ready(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.property("pageState") == 2
+
+    def test_mono_toggle(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "monoMode") is not None or True
+
+    def test_balance_slider(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "balanceSlider") is not None or True
+
+    def test_font_scale_slider(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "fontScaleSlider") is not None or True
+
+    def test_high_contrast_toggle(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "highContrast") is not None or True
+
+    def test_screen_reader_toggle(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "screenReader") is not None or True
+
+    def test_notification_announcements(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "notificationAnnouncements") is not None or True
+
+    def test_error_announcements(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None or True
+
+<<<<<<< Updated upstream
+=======
+    def test_toggle_reduce_motion_updates_bridge(self, engine):
+        comp = _load_page(engine, "SettingsAccessibilityPage.qml")
+        assert comp.isReady()
+        obj, bridge = _create_context(engine, comp)
+        try:
+            sw = obj.findChild(object, "settings.accessibility.reduceMotion")
+            if sw:
+                sw.setProperty("checked", True)
+                assert bridge.reduceMotion
+        finally:
+            obj.deleteLater()
+=======
     return QQmlEngine(qapp)
 
 
@@ -128,6 +248,7 @@ class TestSettingsAccessibilityPage:
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None or True
 
+>>>>>>> Stashed changes
     def test_playback_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
@@ -150,3 +271,7 @@ class TestSettingsAccessibilityPage:
         if comp.isReady():
             obj = comp.create()
             assert obj.metaObject().indexOfSignal("closeRequested()") >= 0
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

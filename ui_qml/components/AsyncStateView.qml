@@ -1,12 +1,30 @@
 import QtQuick
+<<<<<<< Updated upstream
 import "../theme"
 import "states"
+=======
+<<<<<<< HEAD
+import QtQuick.Controls
+import "../theme"
+=======
+import "../theme"
+import "states"
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 Item {
     id: root
 
     enum State {
+<<<<<<< Updated upstream
         INITIALIZING = 0,
+=======
+<<<<<<< HEAD
+        INITIALIZING,
+=======
+        INITIALIZING = 0,
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         LOADING,
         READY,
         EMPTY,
@@ -16,6 +34,55 @@ Item {
     }
 
     property int state: AsyncStateView.INITIALIZING
+<<<<<<< Updated upstream
+    property string title: ""
+    property string message: ""
+    property string details: ""
+    property string iconName: ""
+    property string primaryActionText: ""
+    property string secondaryActionText: ""
+    property string errorCode: ""
+    property string errorSource: ""
+    property bool retryAvailable: true
+    property bool reducedMotion: false
+=======
+<<<<<<< HEAD
+    property string objectName: "asyncStateView"
+>>>>>>> Stashed changes
+
+    property alias readyContent: readyHost.children
+    property alias degradedOverlay: degradedHost.children
+
+    signal primaryActionRequested()
+    signal secondaryActionRequested()
+    signal retryRequested()
+
+    objectName: "AsyncStateView"
+
+    Accessible.role: Accessible.Grouping
+    Accessible.name: {
+        if (state === AsyncStateView.LOADING) return "Cargando"
+        if (state === AsyncStateView.ERROR) return "Error" + (title ? ": " + title : "")
+        if (state === AsyncStateView.EMPTY) return "Sin contenido" + (title ? ": " + title : "")
+        if (state === AsyncStateView.UNAVAILABLE) return "No disponible"
+        if (state === AsyncStateView.DEGRADED) return "Funcionamiento degradado"
+        return ""
+    }
+    Accessible.description: message + (details ? ". " + details : "")
+
+    Item {
+        id: readyHost
+        anchors.fill: parent
+        visible: root.state === AsyncStateView.READY || root.state === AsyncStateView.DEGRADED
+    }
+
+    Item {
+        id: stateLayer
+        anchors.fill: parent
+<<<<<<< Updated upstream
+=======
+        visible: root.state === AsyncStateView.READY
+=======
     property string title: ""
     property string message: ""
     property string details: ""
@@ -56,6 +123,7 @@ Item {
     Item {
         id: stateLayer
         anchors.fill: parent
+>>>>>>> Stashed changes
         visible: root.state !== AsyncStateView.READY
 
         Item {
@@ -132,5 +200,9 @@ Item {
                 }
             }
         }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 }

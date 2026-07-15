@@ -8,7 +8,7 @@ import sys
 
 
 def launch():
-    ui_mode = os.environ.get("MICHI_UI", "widgets").lower()
+    ui_mode = os.environ.get("MICHI_UI", "qml").lower()
     if ui_mode == "qml":
         from michi.qml_app import run_qml
         sys.exit(run_qml())

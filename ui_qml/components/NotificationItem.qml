@@ -1,4 +1,109 @@
 import QtQuick
+<<<<<<< Updated upstream
+import QtQuick.Controls as QQC2
+=======
+<<<<<<< HEAD
+import QtQuick.Controls
+>>>>>>> Stashed changes
+import "../theme"
+
+Rectangle {
+    id: root
+
+    property var notification: null
+    property var bridge: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property bool reducedMotion: false
+
+    signal dismissed()
+    signal actionTriggered(string actionId)
+
+    objectName: "NotificationItem"
+
+    Accessible.role: Accessible.ListItem
+    Accessible.name: root.notification ? (root.notification.title || root.notification.text || "") : ""
+    Accessible.description: {
+        if (!root.notification) return ""
+        const parts = []
+        if (root.notification.message) parts.push(root.notification.message)
+        if (root.notification.kind) parts.push("Tipo: " + root.notification.kind)
+        if (root.notification.progress !== undefined && root.notification.progress >= 0) parts.push(Math.round(root.notification.progress) + "%")
+        return parts.join(". ")
+    }
+
+    implicitHeight: contentColumn.implicitHeight + MichiTheme.spacing.md * 2
+    radius: MichiTheme.radiusMd
+    color: root.activeFocus ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard
+    border.width: root.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
+    border.color: root.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+
+    Behavior on color {
+        ColorAnimation { duration: root.reducedMotion ? 1 : MichiTheme.motion.fast }
+    }
+
+    Column {
+        id: contentColumn
+        anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.md
+        spacing: MichiTheme.spacing.sm
+
+        Row {
+            width: parent.width
+            spacing: MichiTheme.spacing.sm
+
+            Rectangle {
+                id: typeIcon
+                anchors.verticalCenter: parent.verticalCenter
+                width: 8
+                height: 8
+                radius: 4
+                color: {
+                    if (!root.notification) return MichiTheme.colors.accentBlue
+                    switch (root.notification.kind) {
+                        case "success": return MichiTheme.colors.success
+                        case "warning": return MichiTheme.colors.warning
+                        case "error":   return MichiTheme.colors.error
+                        case "progress": return MichiTheme.colors.accentBlue
+                        default:        return MichiTheme.colors.accentBlue
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width - typeIcon.width - dismissBtn.width - MichiTheme.spacing.md
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: MichiTheme.spacing.xs
+
+                Row {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.sm
+
+                    Text {
+                        text: root.notification ? (root.notification.title || root.notification.text || "") : ""
+                        color: MichiTheme.colors.textPrimary
+                        font.pixelSize: MichiTheme.typography.cardTitleSize
+                        font.weight: MichiTheme.typography.weightMedium
+                        elide: Text.ElideRight
+                        width: parent.width - timestampText.width - MichiTheme.spacing.sm
+                    }
+
+                    Text {
+                        id: timestampText
+                        text: {
+                            if (!root.notification || !root.notification.timestamp) return ""
+                            const now = new Date()
+                            const ts = new Date(root.notification.timestamp * 1000)
+                            const diff = Math.round((now - ts) / 1000)
+                            if (diff < 60) return "ahora"
+                            if (diff < 3600) return Math.floor(diff / 60) + "m"
+                            if (diff < 86400) return Math.floor(diff / 3600) + "h"
+                            return Math.floor(diff / 86400) + "d"
+                        }
+                        color: MichiTheme.colors.textMuted
+<<<<<<< Updated upstream
+                        font.pixelSize: MichiTheme.typography.metaSize
+=======
+                        font.pixelSize: MichiTheme.typography.captionSize
+=======
 import QtQuick.Controls as QQC2
 import "../theme"
 
@@ -95,10 +200,65 @@ Rectangle {
                         }
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
 
+<<<<<<< Updated upstream
+                Text {
+                    width: parent.width
+                    text: root.notification ? (root.notification.message || "") : ""
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    elide: Text.ElideRight
+                    maximumLineCount: 2
+                    wrapMode: Text.WordWrap
+                    visible: text !== ""
+=======
+<<<<<<< HEAD
+                Row {
+                    spacing: MichiTheme.spacing.sm
+                    visible: root.action !== "" || root.persistent
+
+                    MichiButton {
+                        text: root.action === "retry" ? "Reintentar" : root.action === "cancelJob" ? "Cancelar" : root.action === "openJob" ? "Abrir" : "Ver"
+                        variant: "ghost"
+                        visible: root.action !== ""
+                        onClicked: root.actionRequested(root.notificationId)
+                    }
+
+                    MichiButton {
+                        text: "Descartar"
+                        variant: "ghost"
+                        onClicked: root.dismissRequested(root.notificationId)
+                    }
+>>>>>>> Stashed changes
+                }
+            }
+
+            QQC2.AbstractButton {
+                id: dismissBtn
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: 24
+                implicitHeight: 24
+                focusPolicy: Qt.StrongFocus
+
+                Accessible.role: Accessible.Button
+                Accessible.name: "Descartar notificación"
+                Accessible.description: "Eliminar esta notificación de la lista"
+
+                contentItem: Text {
+                    text: "\u00D7"
+                    color: dismissBtn.hovered ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+<<<<<<< Updated upstream
+=======
+=======
                 Text {
                     width: parent.width
                     text: root.notification ? (root.notification.message || "") : ""
@@ -129,6 +289,7 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
+>>>>>>> Stashed changes
 
                 background: Rectangle {
                     radius: MichiTheme.radiusSm
@@ -185,10 +346,15 @@ Rectangle {
 
                 Accessible.role: Accessible.Button
                 Accessible.name: "Cancelar trabajo"
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }
         }
     }
 
+<<<<<<< Updated upstream
     NumberAnimation {
         id: removeAnim
         target: root
@@ -198,6 +364,22 @@ Rectangle {
         duration: root.reducedMotion ? 1 : MichiTheme.motion.normal
         onFinished: root.dismissed()
     }
+=======
+<<<<<<< HEAD
+    Keys.onReturnPressed: {
+        root.actionRequested(root.notificationId)
+    }
+=======
+    NumberAnimation {
+        id: removeAnim
+        target: root
+        property: "opacity"
+        from: 1
+        to: 0
+        duration: root.reducedMotion ? 1 : MichiTheme.motion.normal
+        onFinished: root.dismissed()
+    }
+>>>>>>> Stashed changes
 
     function dismissItem() {
         if (root.bridge && root.notification) {
@@ -217,4 +399,8 @@ Rectangle {
     Keys.onEnterPressed: root.activatePrimaryAction()
     Keys.onEscapePressed: root.dismissItem()
     focus: true
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 }

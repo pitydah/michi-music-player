@@ -312,6 +312,42 @@ class HomeAudioBridge(QObject):
         self._cancel_retry()
         return self.testHomeAssistant()
 
+<<<<<<< Updated upstream
+    # ── Group operations ──
+=======
+<<<<<<< HEAD
+    @Slot(result=dict)
+    def serverHandoff(self):
+        if not self._server_handoff_available:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if self._ha_ctrl and hasattr(self._ha_ctrl, 'server_handoff'):
+                result = self._ha_ctrl.server_handoff()
+                self.refresh()
+                return {"ok": True, "handoff_result": str(result)}
+            if self._snapcast_ctrl and hasattr(self._snapcast_ctrl, 'server_handoff'):
+                result = self._snapcast_ctrl.server_handoff()
+                self.refresh()
+                return {"ok": True, "handoff_result": str(result)}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+>>>>>>> Stashed changes
+
+    @Slot(str, result=dict)
+    def groupZones(self, zone_ids: str = ""):
+        if not zone_ids:
+            return {"ok": False, "error": "EMPTY_ZONES"}
+        if not self._snapcast_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+<<<<<<< Updated upstream
+            if hasattr(self._snapcast_ctrl, 'group'):
+                self._snapcast_ctrl.group(zone_ids)
+=======
+            if self._snapcast_ctrl and hasattr(self._snapcast_ctrl, 'playback_transfer'):
+                self._snapcast_ctrl.playback_transfer(target_zone_id)
+=======
     # ── Group operations ──
 
     @Slot(str, result=dict)
@@ -323,12 +359,15 @@ class HomeAudioBridge(QObject):
         try:
             if hasattr(self._snapcast_ctrl, 'group'):
                 self._snapcast_ctrl.group(zone_ids)
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                 self.refresh()
                 return {"ok": True}
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+<<<<<<< Updated upstream
     @Slot(str, result=dict)
     def ungroupZone(self, zone_id: str = ""):
         if not zone_id:
@@ -436,6 +475,126 @@ class HomeAudioBridge(QObject):
     # ── Handoff ──
 
     @Slot(result=dict)
+=======
+<<<<<<< HEAD
+    @Slot(result=dict)
+    def recoverFromOffline(self):
+        self._offline = False
+        self.refresh()
+        return {"ok": True}
+
+    @Slot(result=dict)
+    def getLatencyReport(self):
+        return {"ok": True, "latency_ms": self._latency_ms, "offline": self._offline}
+=======
+    @Slot(str, result=dict)
+    def ungroupZone(self, zone_id: str = ""):
+        if not zone_id:
+            return {"ok": False, "error": "EMPTY_ZONE"}
+        if not self._snapcast_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if hasattr(self._snapcast_ctrl, 'ungroup'):
+                self._snapcast_ctrl.ungroup(zone_id)
+                self.refresh()
+                return {"ok": True}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def renameZone(self, zone_id: str = "", new_name: str = ""):
+        if not zone_id or not new_name:
+            return {"ok": False, "error": "MISSING_ARGS"}
+        if not self._snapcast_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if hasattr(self._snapcast_ctrl, 'set_group_name'):
+                self._snapcast_ctrl.set_group_name(zone_id, new_name)
+                self.refresh()
+                return {"ok": True}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def deleteZone(self, zone_id: str = ""):
+        if not zone_id:
+            return {"ok": False, "error": "EMPTY_ZONE"}
+        if not self._snapcast_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if hasattr(self._snapcast_ctrl, 'delete_group'):
+                self._snapcast_ctrl.delete_group(zone_id)
+                self.refresh()
+                return {"ok": True}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    # ── Latency ──
+
+    @Slot(str, int, result=dict)
+    def setLatency(self, zone_id: str = "", latency_ms: int = 0):
+        if not zone_id:
+            return {"ok": False, "error": "EMPTY_ZONE"}
+        if not self._snapcast_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if hasattr(self._snapcast_ctrl, 'set_latency'):
+                self._snapcast_ctrl.set_latency(zone_id, latency_ms)
+                self.refresh()
+                return {"ok": True}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    # ── Source management ──
+
+    @Slot(str, result=dict)
+    def setSource(self, source: str = ""):
+        if not source:
+            return {"ok": False, "error": "EMPTY_SOURCE"}
+        if not self._ha_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if hasattr(self._ha_ctrl, 'select_source'):
+                self._ha_ctrl.select_source(source)
+                self.refresh()
+                return {"ok": True}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Property("QVariant", notify=stateChanged)
+    def sourceInfo(self):
+        return {}
+
+    @Property("QVariant", notify=stateChanged)
+    def syncStatus(self):
+        return {}
+
+    # ── Transfer playback ──
+
+    @Slot(str, str, result=dict)
+    def transferPlayback(self, from_zone: str = "", to_zone: str = ""):
+        if not from_zone or not to_zone:
+            return {"ok": False, "error": "MISSING_ARGS"}
+        if not self._ha_ctrl:
+            return {"ok": False, "error": "UNSUPPORTED"}
+        try:
+            if hasattr(self._ha_ctrl, 'transfer_playback'):
+                raw = self._ha_ctrl.transfer_playback(from_zone, to_zone)
+                self.refresh()
+                return {"ok": True, "result": raw}
+            return {"ok": False, "error": "NOT_IMPLEMENTED"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    # ── Handoff ──
+
+    @Slot(result=dict)
+>>>>>>> Stashed changes
     def handoffToServer(self):
         if not self._ha_ctrl:
             return {"ok": False, "error": "UNSUPPORTED"}
@@ -447,3 +606,7 @@ class HomeAudioBridge(QObject):
             return {"ok": False, "error": "NOT_IMPLEMENTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

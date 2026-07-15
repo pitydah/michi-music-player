@@ -1,3 +1,81 @@
+<<<<<<< Updated upstream
+"""Test playlist negative paths: missing service, empty playlists, import errors."""
+=======
+<<<<<<< HEAD
+"""Negative tests for Playlists: null bridge, invalid inputs, edge cases, error states."""
+>>>>>>> Stashed changes
+import pytest
+import sqlite3
+
+from core.playlist_service import PlaylistService
+from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+
+
+def test_bridge_without_db():
+    bridge = PlaylistsBridge(db=None)
+    assert len(bridge.playlists) == 0
+
+
+def test_bridge_no_playlists():
+    bridge = PlaylistsBridge(db=None)
+    bridge.refresh()
+    assert len(bridge.playlists) == 0
+
+
+def test_create_playlist_no_db():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.createPlaylist("Test")
+    assert not result["ok"]
+
+
+def test_delete_playlist_no_db():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.deletePlaylist(1)
+    assert not result["ok"]
+
+
+def test_rename_playlist_no_db():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.renamePlaylist(1, "New")
+    assert not result["ok"]
+
+
+def test_get_detail_no_db():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.getPlaylistDetail(1)
+    assert not result["ok"]
+
+
+def test_export_no_service():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.exportM3U(1, "/tmp/out.m3u")
+    assert not result["ok"]
+
+
+def test_import_preview_no_service():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.previewPlaylistImport("/path/to/file.m3u")
+    assert not result["ok"]
+
+
+def test_import_confirm_no_service():
+    bridge = PlaylistsBridge(db=None)
+    result = bridge.confirmPlaylistImport("/path/to/file.m3u")
+    assert not result["ok"]
+
+<<<<<<< Updated upstream
+=======
+    def test_add_track_using_selection_context(self):
+        sel_ctx = MagicMock()
+        sel_ctx.hasSelection = True
+        sel_ctx.selectedFilepath = ""
+        sel_ctx.selectedTrackId = ""
+        db = MagicMock()
+        bridge = PlaylistsBridge(db=db, selection_context=sel_ctx)
+        result = bridge.addTrackToPlaylist(1)
+        assert result["ok"] is False
+        assert result["error"] == "NO_SELECTION"
+=======
 """Test playlist negative paths: missing service, empty playlists, import errors."""
 import pytest
 import sqlite3
@@ -58,6 +136,7 @@ def test_import_confirm_no_service():
     result = bridge.confirmPlaylistImport("/path/to/file.m3u")
     assert not result["ok"]
 
+>>>>>>> Stashed changes
 
 def test_play_playlist_no_db():
     bridge = PlaylistsBridge(db=None)
@@ -220,3 +299,7 @@ def fake_db():
 @pytest.fixture
 def svc_with_db(fake_db):
     return PlaylistService(db=fake_db)
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

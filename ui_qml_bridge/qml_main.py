@@ -22,40 +22,7 @@ def _get_app_version() -> str:
         from importlib.metadata import version
         return version("michi-music-player")
     except Exception:
-        pass
-
-    # Device Sync
-    try:
-        from core.device_sync_service import DeviceSyncService
-        bundle.device_sync_service = DeviceSyncService()
-    except Exception as e:
-        logger.debug("QML: DeviceSyncService init failed: %s", e)
-
-    # Job Service
-    try:
-        from core.job_service import JobService
-        bundle.job_service = JobService()
-    except Exception as e:
-        logger.debug("QML: JobService init failed: %s", e)
-
-    # Confirmation Service
-    try:
-        from core.confirmation_service import ConfirmationService
-        bundle.confirmation_service = ConfirmationService()
-    except Exception as e:
-        logger.debug("QML: ConfirmationService init failed: %s", e)
-
-    # Audio Lab Service
-    try:
-        from core.audio_lab.audio_lab_service import AudioLabService
-        als = AudioLabService(db=bundle.db, worker_manager=bundle.worker_manager)
-        als.setup()
-        bundle.audio_lab_service = als
-    except Exception as e:
-        logger.debug("QML: AudioLabService init failed: %s", e)
-
-    logger.info("QML: Services available: %s", bundle.available_services)
-    return bundle
+        return "0.2.0-alpha.1"
 
 
 def _qt_message_handler(mode, context, message):
@@ -78,23 +45,20 @@ def main():
     bootstrap.build().start()
     bootstrap.create_bridges()
     bootstrap.register_context(engine)
+    bootstrap.load_qml(engine)
 
-    if not bootstrap.load_qml(engine):
-        sys.exit(1)
+    if not engine.rootObjects():
+        logger.error("Failed to load QML root objects")
+        return 1
 
-    logger.info("Michi Music Player %s — experimental QML UI", _get_app_version())
+    logger.info("QML: READY")
+    code = app.exec()
 
-    try:
-        exit_code = app.exec()
-        logger.info("QML app exited with code %d", exit_code)
-        sys.exit(exit_code)
-    except Exception as e:
-        logger.critical("QML app crashed: %s", e, exc_info=True)
-        print(f"[QML] CRASH: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
+    logger.info("QML: SHUTTING_DOWN")
+    bootstrap.shutdown()
+    logger.info("QML: STOPPED")
+    return code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

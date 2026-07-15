@@ -1,10 +1,78 @@
 import QtQuick
 import QtQuick.Controls
 import "../../theme"
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+import "../../materials"
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 Item {
     id: root
 
+<<<<<<< Updated upstream
+    property var chatHistory: []
+=======
+<<<<<<< HEAD
+    property var model: []
+>>>>>>> Stashed changes
+    property bool aiThinking: false
+    property alias flickable: flickable
+
+    signal requestScrollToBottom()
+
+    implicitHeight: 300
+    width: parent ? parent.width : 400
+
+    Accessible.role: Accessible.List
+    Accessible.name: "Historial de conversación"
+
+    Flickable {
+        id: flickable
+        anchors.fill: parent
+        contentHeight: column.height + MichiTheme.spacing.md
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        activeFocusOnTab: true
+        objectName: "conversationFlickable"
+        Accessible.name: "Historial de mensajes"
+
+        Column {
+            id: column
+            width: parent.width
+            spacing: MichiTheme.spacing.md
+            padding: MichiTheme.spacing.sm
+
+            Repeater {
+                id: messageRepeater
+                model: root.chatHistory
+
+                Rectangle {
+                    width: parent.width - MichiTheme.spacing.md
+                    radius: MichiTheme.radiusSm
+                    color: model.role === "user" ? MichiTheme.colors.accentSelection : MichiTheme.colors.surfaceCard
+                    border.color: model.role === "user" ? MichiTheme.colors.borderActive : MichiTheme.colors.borderSubtle
+                    border.width: MichiTheme.borderWidth
+                    objectName: "message_" + index
+                    Accessible.name: (model.role === "user" ? "Tú" : "Michi AI") + ": " + (model.text || "")
+                    Accessible.role: Accessible.ListItem
+
+                    anchors.left: model.role === "user" ? undefined : parent.left
+                    anchors.right: model.role === "user" ? parent.right : undefined
+                    anchors.leftMargin: model.role === "user" ? MichiTheme.spacing.xl : 0
+                    anchors.rightMargin: model.role === "assistant" ? MichiTheme.spacing.xl : 0
+
+<<<<<<< Updated upstream
+=======
+                            SequentialAnimation on opacity {
+                                running: root.aiThinking
+                                loops: Animation.Infinite
+                                PropertyAnimation { from: 0.3; to: 1.0; duration: 400 }
+                                PropertyAnimation { from: 1.0; to: 0.3; duration: 400 }
+                                PauseAnimation { duration: index * 200 }
+=======
     property var chatHistory: []
     property bool aiThinking: false
     property alias flickable: flickable
@@ -52,6 +120,7 @@ Item {
                     anchors.leftMargin: model.role === "user" ? MichiTheme.spacing.xl : 0
                     anchors.rightMargin: model.role === "assistant" ? MichiTheme.spacing.xl : 0
 
+>>>>>>> Stashed changes
                     implicitHeight: messageContent.height + MichiTheme.spacing.md
 
                     Column {
@@ -77,10 +146,24 @@ Item {
                             textFormat: Text.RichText
                             onLinkActivated: function(link) {
                                 Qt.openUrlExternally(link)
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                             }
                         }
                     }
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                    Text {
+                        text: "Pensando..."
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        font.weight: MichiTheme.typography.weightMedium
+=======
+>>>>>>> Stashed changes
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
@@ -125,15 +208,34 @@ Item {
                                 }
                             }
                         }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     }
                 }
             }
         }
     }
 
+<<<<<<< Updated upstream
     ScrollBar.vertical: ScrollBar {
         policy: ScrollBar.AsNeeded
         width: 6
+=======
+<<<<<<< HEAD
+    ScrollBar {
+        id: scrollBar
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 6
+        policy: listView.contentHeight > listView.height ? ScrollBar.AlwaysOn : ScrollBar.Off
+=======
+    ScrollBar.vertical: ScrollBar {
+        policy: ScrollBar.AsNeeded
+        width: 6
+>>>>>>> Stashed changes
     }
 
     onRequestScrollToBottom: {
@@ -148,5 +250,9 @@ Item {
                 root.requestScrollToBottom()
             }
         }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 }

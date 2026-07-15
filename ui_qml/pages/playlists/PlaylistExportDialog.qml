@@ -25,6 +25,54 @@ Dialog {
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
+<<<<<<< Updated upstream
+    width: 400
+    objectName: "playlistExportDialog"
+=======
+<<<<<<< HEAD
+    objectName: "playlist.exportDialog"
+    closePolicy: Dialog.CloseOnEscape
+
+>>>>>>> Stashed changes
+    Accessible.role: Accessible.Dialog
+    Accessible.name: "Exportar playlist"
+    closePolicy: Popup.CloseOnEscape
+
+    Column {
+        spacing: MichiTheme.spacing.md
+        width: parent ? parent.width : 360
+
+        Text {
+            text: "Exportar \"" + root.playlistName + "\" como M3U"
+            color: MichiTheme.colors.textSecondary
+            font.pixelSize: MichiTheme.typography.bodySize
+            wrapMode: Text.WordWrap
+            width: parent.width
+        }
+
+        Text {
+            text: "Selecciona la ruta de destino para el archivo .m3u"
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: MichiTheme.typography.metaSize
+            wrapMode: Text.WordWrap
+            width: parent.width
+            visible: !root._exporting
+        }
+
+        Row {
+            spacing: MichiTheme.spacing.sm
+            width: parent.width
+            visible: !root._exporting
+
+<<<<<<< Updated upstream
+=======
+            Text {
+                text: "Exportar \"" + root.playlistName + "\""
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                wrapMode: Text.WordWrap
+                width: parent.width
+=======
     width: 400
     objectName: "playlistExportDialog"
     Accessible.role: Accessible.Dialog
@@ -57,6 +105,7 @@ Dialog {
             width: parent.width
             visible: !root._exporting
 
+>>>>>>> Stashed changes
             TextField {
                 id: pathInput
                 width: parent.width - 80
@@ -65,6 +114,10 @@ Dialog {
                 readOnly: true
                 objectName: "exportPathInput"
                 Accessible.name: "Ruta de destino"
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }
 
             Text {
@@ -124,6 +177,23 @@ Dialog {
             }
 
             MichiButton {
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                id: cancelExportBtn
+                text: "Cancelar exportación"
+                variant: "danger"
+                visible: root._exporting
+                onClicked: {
+                    root._exporting = false
+                    root._status = "Exportación cancelada"
+                    root.exportCancelled()
+                }
+                objectName: "playlist.exportDialog.cancelBtn"
+                Accessible.name: "Cancelar exportación"
+                KeyNavigation.backtab: progressBar
+=======
+>>>>>>> Stashed changes
                 text: "Examinar"
                 variant: "secondary"
                 objectName: "exportBrowseButton"
@@ -132,8 +202,17 @@ Dialog {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: saveDialog.open()
+<<<<<<< Updated upstream
             }
 
+=======
+>>>>>>> origin/michi-qml-functional-wave
+            }
+
+<<<<<<< HEAD
+            Item { width: 1; height: 1; focus: true }
+=======
+>>>>>>> Stashed changes
         Rectangle {
             width: parent.width
             height: 4
@@ -223,6 +302,10 @@ Dialog {
                     }
                 }
             }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         }
     }
 
@@ -239,8 +322,31 @@ Dialog {
         }
     }
 
+<<<<<<< Updated upstream
     onOpened: {
         root._exportPath = ""
+=======
+<<<<<<< HEAD
+    onAccepted: {
+        if (!root._exportPath || root.playlistId < 0) return
+        root._exporting = true
+        root._status = "Exportando..."
+        if (root.bridge && typeof root.bridge.exportM3U !== "undefined") {
+            var result = root.bridge.exportM3U(root.playlistId, root._exportPath)
+            if (result && result.ok) {
+                root._status = "Exportadas " + (result.count || 0) + " canciones"
+                root.exportCompleted(root._exportPath, result.count || 0)
+            } else {
+                root._status = result && result.error ? "Error: " + result.error : "Error al exportar"
+            }
+        } else {
+            root._status = "Bridge no disponible"
+        }
+=======
+    onOpened: {
+        root._exportPath = ""
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         root._exporting = false
         root._cancelled = false
         root._progress = 0
@@ -249,11 +355,26 @@ Dialog {
         pathInput.text = ""
     }
 
+<<<<<<< Updated upstream
+    onClosed: {
+=======
+<<<<<<< HEAD
+    onRejected: {
+>>>>>>> Stashed changes
+        if (root._exporting) {
+            root._cancelled = true
+            root._exporting = false
+        }
+<<<<<<< Updated upstream
+=======
+        root.exportCancelled()
+=======
     onClosed: {
         if (root._exporting) {
             root._cancelled = true
             root._exporting = false
         }
+>>>>>>> Stashed changes
     }
 
     QQC2.FocusTrap {
@@ -270,5 +391,9 @@ Dialog {
         } else {
             root.close()
         }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 }

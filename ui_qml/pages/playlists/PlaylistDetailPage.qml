@@ -26,8 +26,16 @@ Item {
     property bool _confirmDelete: false
     property string _errorMsg: ""
     property string _state: "LOADING"
+<<<<<<< Updated upstream
     property var _selectedTracks: []
     property bool _selectionMode: false
+=======
+<<<<<<< HEAD
+=======
+    property var _selectedTracks: []
+    property bool _selectionMode: false
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     signal backRequested()
 
@@ -35,9 +43,29 @@ Item {
         root.playlistId = pid
         root.playlistTitle = title
         root._confirmDelete = false
+<<<<<<< Updated upstream
         root._selectedTracks = []
         root._selectionMode = false
         root._state = "LOADING"
+=======
+<<<<<<< HEAD
+        root._state = "LOADING"
+        root._errorMsg = ""
+        trackListRef.playlistId = pid
+        trackListRef.bridge = root.bridge
+        var result = trackListRef.refresh()
+        root.tracks = trackListRef.tracks || []
+        root.trackCount = root.tracks.length
+        var plData = null
+        if (root.bridge && root.bridge.playlists) {
+            for (var i = 0; i < root.bridge.playlists.length; i++) {
+                if (root.bridge.playlists[i].id === pid) {
+                    plData = root.bridge.playlists[i]
+=======
+        root._selectedTracks = []
+        root._selectionMode = false
+        root._state = "LOADING"
+>>>>>>> Stashed changes
         root.refresh()
     }
 
@@ -80,10 +108,118 @@ Item {
             for (var j = 0; j < root.tracks.length; j++) {
                 if (root.tracks[j].track_id === tid) {
                     root.tracks.splice(j, 1)
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     break
                 }
             }
         }
+<<<<<<< Updated upstream
+        root._selectedTracks = []
+        root._selectionMode = false
+        root.trackCount = root.tracks.length
+        root._calcDuration()
+    }
+
+    function moveTrack(fromIndex, toIndex) {
+        if (fromIndex < 0 || fromIndex >= root.tracks.length ||
+            toIndex < 0 || toIndex >= root.tracks.length || fromIndex === toIndex) return
+        if (root.bridge && typeof root.bridge.reorderTrack !== "undefined") {
+            var result = root.bridge.reorderTrack(root.playlistId, fromIndex, toIndex)
+            if (!result || !result.ok) {
+                root._errorMsg = result && result.error ? result.error : "Error al reordenar"
+                return
+            }
+=======
+<<<<<<< HEAD
+        if (plData) {
+            root.playlistDescription = plData.description || ""
+            root.playlistCover = plData.cover_key || ""
+>>>>>>> Stashed changes
+        }
+        var item = root.tracks[fromIndex]
+        root.tracks.splice(fromIndex, 1)
+        root.tracks.splice(toIndex, 0, item)
+    }
+
+    function addTracks() {
+        if (typeof actionRegistry !== "undefined" && actionRegistry &&
+            typeof actionRegistry.execute !== "undefined")
+            actionRegistry.execute("track_add_to_playlist")
+    }
+
+    function renamePlaylist(name) {
+        if (!root.bridge || typeof root.bridge.renamePlaylist === "undefined" || root.playlistId < 0) return
+        var result = root.bridge.renamePlaylist(root.playlistId, name)
+        if (result && result.ok) root.playlistTitle = name
+        else root._errorMsg = result && result.error ? result.error : "Error al renombrar"
+    }
+
+    function duplicatePlaylist() {
+        if (!root.bridge || typeof root.bridge.duplicatePlaylist === "undefined" || root.playlistId < 0) return
+        var result = root.bridge.duplicatePlaylist(root.playlistId)
+        if (!result || !result.ok) root._errorMsg = result && result.error ? result.error : "Error al duplicar"
+    }
+
+    function deletePlaylist() {
+        if (!root.bridge || typeof root.bridge.deletePlaylist === "undefined" || root.playlistId < 0) return
+        var result = root.bridge.deletePlaylist(root.playlistId)
+        if (result && result.ok) root.backRequested()
+        else root._errorMsg = result && result.error ? result.error : "Error al eliminar"
+    }
+
+    function playAll() {
+        if (!root.bridge || typeof root.bridge.playPlaylist === "undefined" || root.playlistId < 0) return
+        root.bridge.playPlaylist(root.playlistId)
+    }
+
+    function playShuffled() {
+        if (!root.bridge || typeof root.bridge.playPlaylist === "undefined" || root.playlistId < 0) return
+        root.bridge.playPlaylist(root.playlistId)
+    }
+
+    function playTrack(index) {
+        if (!root.bridge || typeof root.bridge.playPlaylistFromIndex === "undefined" || root.playlistId < 0) return
+        root.bridge.playPlaylistFromIndex(root.playlistId, index)
+    }
+
+    function removeTrack(trackId, index) {
+        if (!root.bridge || typeof root.bridge.removeTrackFromPlaylist === "undefined" || root.playlistId < 0) return
+        var result = root.bridge.removeTrackFromPlaylist(root.playlistId, trackId)
+        if (result && result.ok) {
+            root.tracks.splice(index, 1)
+            root.trackCount = root.tracks.length
+            root._calcDuration()
+        } else {
+            root._errorMsg = result && result.error ? result.error : "Error al quitar"
+        }
+    }
+
+    function exportM3U() {
+        exportDialog.open()
+    }
+
+    function openTrackAlbum(track) {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigateWithParams("album_detail", {trackId: track.track_id})
+    }
+
+    function openTrackArtist(track) {
+        if (typeof navigationBridge !== "undefined" && navigationBridge)
+            navigationBridge.navigateWithParams("artist_detail", {artist: track.artist})
+    }
+
+<<<<<<< Updated upstream
+    Component.onCompleted: {
+        if (root.playlistId >= 0) root.refresh()
+=======
+    Keys.onEscapePressed: {
+        if (editorDialog.opened) editorDialog.close()
+        else if (exportDialog.opened) exportDialog.close()
+        else root.backRequested()
+=======
         root._selectedTracks = []
         root._selectionMode = false
         root.trackCount = root.tracks.length
@@ -174,6 +310,8 @@ Item {
 
     Component.onCompleted: {
         if (root.playlistId >= 0) root.refresh()
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 
     Flickable {
@@ -182,9 +320,20 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+<<<<<<< Updated upstream
         activeFocusOnTab: true
         objectName: "playlistDetailFlickable"
         Accessible.name: "Detalle de playlist"
+=======
+<<<<<<< HEAD
+        focus: true
+        objectName: "playlist.detail.flickable"
+=======
+        activeFocusOnTab: true
+        objectName: "playlistDetailFlickable"
+        Accessible.name: "Detalle de playlist"
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
         Column {
             id: column
@@ -193,6 +342,31 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
+<<<<<<< Updated upstream
+                width: parent.width
+=======
+<<<<<<< HEAD
+                objectName: "playlist.detail.header"
+>>>>>>> Stashed changes
+
+                MichiButton {
+                    text: "Volver"
+                    variant: "ghost"
+                    objectName: "playlistDetailBackButton"
+                    Accessible.name: "Volver a playlists"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: playAllBtn
+                    KeyNavigation.backtab: flickable
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.backRequested()
+                }
+
+<<<<<<< Updated upstream
+                Item { Layout.fillWidth: true; height: 1; width: 1 }
+
+=======
+=======
                 width: parent.width
 
                 MichiButton {
@@ -210,12 +384,19 @@ Item {
 
                 Item { Layout.fillWidth: true; height: 1; width: 1 }
 
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                 Text {
                     text: root.playlistTitle
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                    Accessible.role: Accessible.Heading
+>>>>>>> Stashed changes
                     Accessible.name: root.playlistTitle
                 }
 
@@ -257,6 +438,58 @@ Item {
                 }
             }
 
+<<<<<<< Updated upstream
+=======
+            Text {
+                text: root.playlistDescription
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                visible: root.playlistDescription !== ""
+                wrapMode: Text.WordWrap
+                width: parent.width * 0.6
+=======
+                    Accessible.name: root.playlistTitle
+                }
+
+                Item { Layout.fillWidth: true; height: 1; width: 1 }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: MichiTheme.colors.borderSubtle
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.lg
+                width: parent.width
+
+                Column {
+                    spacing: MichiTheme.spacing.xs
+                    Text {
+                        text: root.trackCount + " canciones"
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        Accessible.name: root.trackCount + " canciones"
+                    }
+                    Text {
+                        text: root._duration.length > 0 ? "Duración: " + root._duration : ""
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        visible: text !== ""
+                    }
+                    Text {
+                        text: root._description
+                        color: MichiTheme.colors.textSecondary
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        wrapMode: Text.WordWrap
+                        width: 400
+                        visible: root._description !== ""
+                    }
+                }
+            }
+
+>>>>>>> Stashed changes
             LoadingState {
                 width: parent.width
                 visible: root._state === "LOADING"
@@ -288,10 +521,133 @@ Item {
                 objectName: "playlistDetailErrorState"
                 Accessible.name: "Error al cargar playlist"
                 onRetryRequested: root.refresh()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
+<<<<<<< Updated upstream
+                visible: root._state === "READY"
+=======
+<<<<<<< HEAD
+                objectName: "playlist.detail.toolbar"
+
+>>>>>>> Stashed changes
+                MichiButton {
+                    id: playAllBtn
+                    text: "Reproducir todo"
+                    variant: "primary"
+                    objectName: "playAllButton"
+                    Accessible.name: "Reproducir todo"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: shuffleBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.playAll()
+                }
+                MichiButton {
+                    id: shuffleBtn
+                    text: "Aleatorio"
+                    variant: "secondary"
+                    objectName: "shuffleButton"
+                    Accessible.name: "Reproducir aleatorio"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: addTracksBtn
+                    KeyNavigation.backtab: playAllBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.playShuffled()
+                }
+                MichiButton {
+                    id: addTracksBtn
+                    text: "+ Agregar canciones"
+                    variant: "secondary"
+                    objectName: "addTracksButton"
+                    Accessible.name: "Agregar canciones"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: renameBtn
+                    KeyNavigation.backtab: shuffleBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.addTracks()
+                }
+                MichiButton {
+                    id: renameBtn
+                    text: "Renombrar"
+                    variant: "ghost"
+                    objectName: "renamePlaylistButton"
+                    Accessible.name: "Renombrar playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: duplicateBtn
+                    KeyNavigation.backtab: addTracksBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: renameDialog.open()
+                }
+                MichiButton {
+                    id: duplicateBtn
+                    text: "Duplicar"
+                    variant: "ghost"
+                    objectName: "duplicatePlaylistButton"
+                    Accessible.name: "Duplicar playlist"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: exportBtn
+                    KeyNavigation.backtab: renameBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.duplicatePlaylist()
+                }
+                MichiButton {
+                    id: exportBtn
+                    text: "Exportar M3U"
+                    variant: "ghost"
+                    objectName: "exportM3UButton"
+                    Accessible.name: "Exportar playlist como M3U"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: selectToggleBtn
+                    KeyNavigation.backtab: duplicateBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.exportM3U()
+                }
+                MichiButton {
+                    id: selectToggleBtn
+                    text: root._selectionMode ? "Cancelar selección" : "Seleccionar"
+                    variant: "ghost"
+                    highlighted: root._selectionMode
+                    objectName: "selectToggleButton"
+                    Accessible.name: root._selectionMode ? "Cancelar selección" : "Seleccionar canciones"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: batchRemoveBtn
+                    KeyNavigation.backtab: exportBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root._selectionMode = !root._selectionMode
+                }
+                MichiButton {
+                    id: batchRemoveBtn
+                    text: "Quitar seleccionadas (" + root._selectedTracks.length + ")"
+                    variant: "danger"
+                    visible: root._selectionMode && root._selectedTracks.length > 0
+                    objectName: "batchRemoveButton"
+                    Accessible.name: "Quitar canciones seleccionadas"
+                    activeFocusOnTab: true
+                    KeyNavigation.tab: deleteBtn
+                    KeyNavigation.backtab: selectToggleBtn
+                    Keys.onReturnPressed: onClicked()
+                    Keys.onSpacePressed: onClicked()
+                    onClicked: root.removeSelectedTracks()
+                }
+                MichiButton {
+                    id: deleteBtn
+<<<<<<< Updated upstream
+                    text: root._confirmDelete ? "Confirmar eliminar" : "Eliminar playlist"
+=======
+                    text: root._confirmDelete ? "Confirmar" : "Eliminar"
+=======
                 visible: root._state === "READY"
                 MichiButton {
                     id: playAllBtn
@@ -401,6 +757,8 @@ Item {
                 MichiButton {
                     id: deleteBtn
                     text: root._confirmDelete ? "Confirmar eliminar" : "Eliminar playlist"
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     variant: root._confirmDelete ? "danger" : "ghost"
                     objectName: "deletePlaylistButton"
                     Accessible.name: root._confirmDelete ? "Confirmar eliminar playlist" : "Eliminar playlist"
@@ -409,8 +767,18 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: {
+<<<<<<< Updated upstream
                         if (!root._confirmDelete) root._confirmDelete = true
                         else { root.deletePlaylist(); root._confirmDelete = false }
+=======
+<<<<<<< HEAD
+                        if (!root._confirmDelete) { root._confirmDelete = true }
+                        else { root.deletePlaylist() }
+=======
+                        if (!root._confirmDelete) root._confirmDelete = true
+                        else { root.deletePlaylist(); root._confirmDelete = false }
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     }
                     objectName: "playlist.detail.delete"
                     Accessible.name: root._confirmDelete ? "Confirmar eliminación" : "Eliminar playlist"
@@ -419,6 +787,13 @@ Item {
                     KeyNavigation.backtab: exportBtn
                 }
                 MichiButton {
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                    id: cancelDeleteBtn
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root._confirmDelete
@@ -460,10 +835,56 @@ Item {
             PlaylistTrackList {
                 id: trackListRef
                 width: parent.width
+<<<<<<< Updated upstream
                 height: Math.min(600, root.tracks.length * 44 + 30)
                 bridge: root.bridge
                 playlistId: root.playlistId
                 tracks: root.tracks
+=======
+<<<<<<< HEAD
+                height: 400
+                visible: root._state === "READY"
+                bridge: root.bridge
+                playlistId: root.playlistId
+                tracks: root.tracks
+                objectName: "playlist.detail.trackList"
+                onPlayRequested: function(index) {
+                    if (root.bridge && typeof root.bridge.playPlaylistFromIndex !== "undefined")
+                        root.bridge.playPlaylistFromIndex(root.playlistId, index)
+                }
+                onRemoveRequested: function(trackId, index) {
+                    root.tracks.splice(index, 1)
+                    root.trackCount = root.tracks.length
+                    if (root.tracks.length === 0) root._state = "EMPTY"
+                }
+                onMoveUpRequested: function(index) {
+                    if (index <= 0) return
+                    if (root.bridge && typeof root.bridge.reorderTrack !== "undefined") {
+                        var result = root.bridge.reorderTrack(root.playlistId, index, index - 1)
+                        if (result && result.ok) {
+                            var item = root.tracks[index]
+                            root.tracks.splice(index, 1)
+                            root.tracks.splice(index - 1, 0, item)
+                        }
+                    }
+                }
+                onMoveDownRequested: function(index) {
+                    if (index >= root.tracks.length - 1) return
+                    if (root.bridge && typeof root.bridge.reorderTrack !== "undefined") {
+                        var result = root.bridge.reorderTrack(root.playlistId, index, index + 1)
+                        if (result && result.ok) {
+                            var item = root.tracks[index]
+                            root.tracks.splice(index, 1)
+                            root.tracks.splice(index + 1, 0, item)
+                        }
+                    }
+                }
+=======
+                height: Math.min(600, root.tracks.length * 44 + 30)
+                bridge: root.bridge
+                playlistId: root.playlistId
+                tracks: root.tracks
+>>>>>>> Stashed changes
                 selectionMode: root._selectionMode
                 selectedTracks: root._selectedTracks
                 visible: root._state === "READY"
@@ -476,6 +897,10 @@ Item {
                 onToggleSelection: function(trackId) { root.toggleTrackSelection(trackId) }
                 onOpenAlbumRequested: function(track) { root.openTrackAlbum(track) }
                 onOpenArtistRequested: function(track) { root.openTrackArtist(track) }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }
 
             Text {
@@ -485,13 +910,35 @@ Item {
                 visible: text !== ""
                 wrapMode: Text.WordWrap
                 width: parent.width
+<<<<<<< Updated upstream
                 Accessible.name: root._errorMsg
+=======
+<<<<<<< HEAD
+=======
+                Accessible.name: root._errorMsg
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }
 
             Item { width: 1; height: MichiTheme.spacing.lg }
         }
     }
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    PlaylistEditorDialog {
+        id: editorDialog
+        bridge: root.bridge
+        playlistId: root.playlistId
+        playlistName: root.playlistTitle
+        playlistDescription: root.playlistDescription
+        objectName: "playlist.detail.editorDialog"
+        onSaved: {
+            root.playlistTitle = editorDialog.playlistName
+            root.playlistDescription = editorDialog.playlistDescription
+=======
+>>>>>>> Stashed changes
     Dialog {
         id: renameDialog
         title: "Renombrar playlist"
@@ -530,6 +977,10 @@ Item {
             if (name === "") { root._errorMsg = "El nombre no puede estar vacío."; return }
             root.renamePlaylist(name)
             root._errorMsg = ""
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         }
         onRejected: { forceActiveFocus() }
         onOpened: { renameInput.selectAll(); renameInput.forceActiveFocus() }
@@ -540,6 +991,12 @@ Item {
         bridge: root.bridge
         playlistId: root.playlistId
         playlistName: root.playlistTitle
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+        objectName: "playlist.detail.exportDialog"
+=======
+>>>>>>> Stashed changes
         objectName: "playlistExportDialog"
         Accessible.name: "Exportar playlist"
     }
@@ -548,5 +1005,9 @@ Item {
         if (renameDialog.opened) renameDialog.close()
         else if (exportDialog.opened) exportDialog.close()
         else root.backRequested()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     }
 }

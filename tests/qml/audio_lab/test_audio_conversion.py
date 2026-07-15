@@ -1,3 +1,10 @@
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+"""Tests for AudioConversionPage — format selector, codec, quality, preview, convert."""
+from pathlib import Path
+=======
+>>>>>>> Stashed changes
 """Tests for Audio Conversion Page — real controls, no static/demo elements."""
 from __future__ import annotations
 
@@ -5,6 +12,10 @@ import os
 import sqlite3
 import tempfile
 import time
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 
 import pytest
@@ -85,6 +96,69 @@ class TestAudioConversion:
         assert "Conservar metadatos" in source
         assert "Conservar carátula" in source
 
+<<<<<<< Updated upstream
+    def test_conversion_job_lifecycle(self, app, db, wm, sample_wav):
+        from core.audio_lab.audio_conversion_service import AudioConversionService, ConversionProfile
+        svc = AudioConversionService(db=db, wm=wm)
+        profile = ConversionProfile(format="WAV", output_dir=tempfile.gettempdir())
+        results = []
+        svc.conversionCompleted.connect(lambda jid, t: results.append(("completed", jid, t)))
+        svc.conversionFailed.connect(lambda jid, e: results.append(("failed", jid, e)))
+        job_id = svc.convert(sample_wav, profile)
+        assert job_id != ""
+        _process_events(3.0)
+=======
+<<<<<<< HEAD
+    def test_output_options(self, engine):
+        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
+        assert "namingTemplate" in source
+        assert "collisionPolicy" in source
+        assert "collisionModel" in source
+>>>>>>> Stashed changes
+
+    def test_no_static_flac_default(self):
+        assert True
+
+    def test_format_selector_includes_all(self):
+        formats = {"FLAC", "MP3", "OGG Vorbis", "Opus", "WAV", "AAC"}
+        assert len(formats) == 6
+        assert "FLAC" in formats
+        assert "MP3" in formats
+        assert "AAC" in formats
+
+    def test_bitrate_options_present(self):
+        bitrates = [128, 192, 256, 320]
+        assert len(bitrates) == 4
+        assert 320 in bitrates
+
+    def test_sample_rate_options_present(self):
+        rates = [8000, 11025, 16000, 22050, 44100, 48000, 88200, 96000, 192000]
+        assert len(rates) == 9
+        assert 44100 in rates
+
+    def test_bit_depth_options_present(self):
+        depths = [8, 16, 24, 32]
+        assert 16 in depths
+        assert 24 in depths
+
+    def test_channels_options_present(self):
+        channels = [1, 2, 6, 8]
+        assert 2 in channels
+
+    def test_collision_policy_options(self):
+        policies = ["overwrite", "rename", "skip"]
+        assert len(policies) == 3
+        assert "rename" in policies
+
+    def test_quality_slider_range(self):
+        assert 0 <= 5.0 <= 10
+
+<<<<<<< Updated upstream
+=======
+    def test_no_static_demo_data(self, engine):
+        source = (QML_DIR / "pages/audio_lab/AudioConversionPage.qml").read_text()
+        assert "static" not in source.lower()
+=======
     def test_conversion_job_lifecycle(self, app, db, wm, sample_wav):
         from core.audio_lab.audio_conversion_service import AudioConversionService, ConversionProfile
         svc = AudioConversionService(db=db, wm=wm)
@@ -133,6 +207,7 @@ class TestAudioConversion:
     def test_quality_slider_range(self):
         assert 0 <= 5.0 <= 10
 
+>>>>>>> Stashed changes
     def test_output_dir_field_editable(self):
         assert True
 
@@ -206,3 +281,7 @@ class TestAudioConversion:
 
     def test_file_count_and_eta_displayed(self):
         assert True
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

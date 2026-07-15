@@ -1,3 +1,69 @@
+<<<<<<< Updated upstream
+"""Test history negative paths: missing service, empty history, export cancellation."""
+=======
+<<<<<<< HEAD
+"""Negative tests for History: null bridge, invalid inputs, edge cases, error states."""
+>>>>>>> Stashed changes
+import pytest
+
+from ui_qml_bridge.history_bridge import HistoryBridge
+
+
+def test_bridge_without_db_or_service():
+    bridge = HistoryBridge(db=None, history_query_service=None)
+    result = bridge.refresh()
+    assert result["ok"]
+    assert result["count"] == 0
+
+
+def test_remove_history_item_no_db(bridge_no_db):
+    result = bridge_no_db.removeHistoryItem("1")
+    assert not result["ok"]
+
+
+def test_remove_history_event_no_service(bridge_no_db):
+    result = bridge_no_db.removeHistoryEvent("1")
+    assert not result["ok"]
+
+
+def test_clear_history_no_db(bridge_no_db):
+    result = bridge_no_db.clearHistory()
+    assert not result["ok"]
+
+
+def test_export_no_db_no_service(bridge_no_db, tmp_path):
+    out = tmp_path / "fail.json"
+    result = bridge_no_db.exportHistory(str(out))
+    assert not result["ok"]
+    assert result["error"] == "NO_DB"
+
+
+def test_play_item_no_backend(bridge_no_db):
+    result = bridge_no_db.playHistoryItem("1")
+    assert not result["ok"]
+
+
+def test_statistics_no_db(bridge_no_db):
+    result = bridge_no_db.getStatistics()
+    assert not result["ok"]
+
+
+def test_export_empty_path_no_bridge(bridge_no_db):
+    result = bridge_no_db.exportHistory("")
+    assert not result["ok"]
+
+
+def test_apply_retention_no_service(bridge_no_db):
+    result = bridge_no_db.applyRetention('{"max_age_days": 30}')
+    assert not result["ok"]
+
+<<<<<<< Updated upstream
+=======
+    def test_negative_events_model_null(self):
+        bridge = HistoryBridge()
+        assert bridge.historyModel is not None
+        assert len(bridge.historyModel) == 0 or bridge.historyModel.rowCount() == 0
+=======
 """Test history negative paths: missing service, empty history, export cancellation."""
 import pytest
 
@@ -52,6 +118,7 @@ def test_apply_retention_no_service(bridge_no_db):
     result = bridge_no_db.applyRetention('{"max_age_days": 30}')
     assert not result["ok"]
 
+>>>>>>> Stashed changes
 
 def test_empty_history_display(bridge_empty):
     result = bridge_empty.refresh()
@@ -116,3 +183,7 @@ def bridge_no_db():
 @pytest.fixture
 def bridge_empty():
     return HistoryBridge(db=None, history_query_service=None)
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

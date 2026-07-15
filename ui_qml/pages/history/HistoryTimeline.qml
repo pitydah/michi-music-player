@@ -9,11 +9,27 @@ Item {
     property var model: null
     property var bridge: null
 
+<<<<<<< Updated upstream
     signal playRequested(int trackId, string title)
     signal removeRequested(int eventId, int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(int trackId)
     signal addToQueueRequested(int trackId)
+=======
+<<<<<<< HEAD
+    signal playRequested(int eventId, int trackId, string title)
+    signal queueRequested(int eventId, int trackId)
+    signal openTrackRequested(int trackId)
+    signal openAlbumRequested(string albumKey)
+    signal removeRequested(int eventId)
+=======
+    signal playRequested(int trackId, string title)
+    signal removeRequested(int eventId, int trackId)
+    signal openTrackRequested(int trackId)
+    signal openAlbumRequested(int trackId)
+    signal addToQueueRequested(int trackId)
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     ListView {
         id: timelineView
@@ -21,6 +37,22 @@ Item {
         clip: true
         spacing: 1
         model: root.model
+<<<<<<< Updated upstream
+        objectName: "historyTimelineList"
+        Accessible.role: Accessible.List
+        Accessible.name: "Línea de tiempo del historial"
+        keyNavigationWraps: true
+=======
+<<<<<<< HEAD
+>>>>>>> Stashed changes
+
+        delegate: Rectangle {
+            width: timelineView.width
+<<<<<<< Updated upstream
+            height: 52
+=======
+            height: 56
+=======
         objectName: "historyTimelineList"
         Accessible.role: Accessible.List
         Accessible.name: "Línea de tiempo del historial"
@@ -29,6 +61,8 @@ Item {
         delegate: Rectangle {
             width: timelineView.width
             height: 52
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
             radius: MichiTheme.radiusSm
 
@@ -47,7 +81,15 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     Text {
+<<<<<<< Updated upstream
                         text: model.title || modelData.title || ""
+=======
+<<<<<<< HEAD
+                        text: modelData.title || model.title || ""
+=======
+                        text: model.title || modelData.title || ""
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: MichiTheme.typography.weightMedium
@@ -56,12 +98,106 @@ Item {
                     }
 
                     Text {
+<<<<<<< Updated upstream
                         text: (model.artist || modelData.artist || "") + " · " +
                               (model.album || modelData.album || "")
+=======
+<<<<<<< HEAD
+                        text: (modelData.artist || model.artist || "") + " · " + (modelData.album || model.album || "")
+=======
+                        text: (model.artist || modelData.artist || "") + " · " +
+                              (model.album || modelData.album || "")
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         width: parent.width
+<<<<<<< Updated upstream
+                        visible: (model.artist || modelData.artist || model.album || modelData.album) !== ""
+=======
+<<<<<<< HEAD
+                        visible: (modelData.artist || model.artist || modelData.album || model.album) !== ""
+                    }
+
+                    Text {
+                        text: (modelData.playedAt || model.played_at || "") + (modelData.device || model.device ? " [" + (modelData.device || model.device) + "]" : "")
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        elide: Text.ElideRight
+                        width: parent.width
+                        visible: text !== ""
+>>>>>>> Stashed changes
+                    }
+                }
+
+                Column {
+                    width: 100
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1
+                    Text {
+                        text: model.playedAt || modelData.playedAt || ""
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        elide: Text.ElideRight
+                        width: parent.width
+                    }
+                    Text {
+                        text: model.device || modelData.device ? "[" + (model.device || modelData.device) + "]" : ""
+                        color: MichiTheme.colors.textMuted
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        visible: (model.device || modelData.device) !== ""
+                    }
+                }
+
+                Text {
+                    text: "▶"
+                    color: MichiTheme.colors.accent
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.playRequested(
+                            model.trackId || modelData.track_id || model.track_id || 0,
+                            model.title || modelData.title || "")
+                    }
+<<<<<<< Updated upstream
+=======
+
+                    Text {
+                        text: "\uD83D\uDD0A"; color: MichiTheme.colors.accent
+                        font.pixelSize: MichiTheme.typography.metaSize
+                        width: 24; height: 24
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: root.queueRequested(
+                                modelData.eventId || modelData.id || model.eventId || model.id || 0,
+                                modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0)
+                        }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Agregar a la cola"
+                    }
+
+                    Text {
+                        text: "\u25B6"; color: MichiTheme.colors.accent
+                        font.pixelSize: MichiTheme.typography.bodySize
+                        width: 24; height: 24
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: root.playRequested(
+                                modelData.eventId || modelData.id || model.eventId || model.id || 0,
+                                modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0,
+                                modelData.title || model.title || "")
+                        }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Reproducir"
+=======
                         visible: (model.artist || modelData.artist || model.album || modelData.album) !== ""
                     }
                 }
@@ -98,6 +234,7 @@ Item {
                             model.trackId || modelData.track_id || model.track_id || 0,
                             model.title || modelData.title || "")
                     }
+>>>>>>> Stashed changes
                 }
                 Text {
                     text: "☰"
@@ -109,6 +246,10 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: contextMenu.popup()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
                     }
                 }
             }
@@ -117,6 +258,12 @@ Item {
                 id: mouseArea
                 anchors.fill: parent
                 hoverEnabled: true
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+                acceptedButtons: Qt.NoButton
+=======
+>>>>>>> Stashed changes
                 acceptedButtons: Qt.RightButton
                 onClicked: contextMenu.popup()
             }
@@ -164,6 +311,10 @@ Item {
                         model.id || modelData.id || model.eventId || modelData.event_id || 0,
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }
         }
 

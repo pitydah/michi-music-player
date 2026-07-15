@@ -1,3 +1,99 @@
+<<<<<<< Updated upstream
+"""Test negative cases: missing service, failed connection, timeout."""
+=======
+<<<<<<< HEAD
+"""Tests for connection negative cases: null bridge, errors, unavailable state."""
+>>>>>>> Stashed changes
+from unittest.mock import MagicMock
+
+from ui_qml_bridge.connections_bridge import ConnectionsBridge
+import pytest
+pytestmark = pytest.mark.isolation
+
+
+class TestNoController:
+    def test_missing_service_state(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        assert b.microServerState == "not_configured"
+
+    def test_missing_service_error_empty(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        assert b.lastError == ""
+
+    def test_missing_service_scan(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.scanForServers()
+        assert result["ok"] is True
+
+    def test_missing_service_reconnect(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.reconnect()
+        assert result["ok"] is False
+
+    def test_missing_service_diagnose(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.diagnose()
+        assert result["ok"] is True
+
+    def test_missing_service_add_manual_empty(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.addManualServer("", 0, "")
+        assert result["ok"] is False
+
+    def test_missing_service_confirm_pair(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        b.requestPair()
+        result = b.confirmPair()
+        assert result["ok"] is True
+
+    def test_missing_service_forget(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.forgetServer()
+        assert result["ok"] is True
+
+    def test_missing_service_disconnect(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        result = b.disconnect()
+        assert result["ok"] is True
+
+    def test_missing_service_latency_zero(self):
+        b = ConnectionsBridge(michi_link_ctrl=None)
+        assert b.latencyMs == 0
+
+
+class TestFailedConnection:
+    @pytest.fixture
+    def failing_ctrl(self):
+        ctrl = MagicMock()
+        ctrl.discover_servers.side_effect = Exception("Network unreachable")
+        ctrl.get_capabilities.side_effect = Exception("Service unavailable")
+        ctrl.reconnect.side_effect = Exception("Connection refused")
+        ctrl.get_connection_state.side_effect = Exception("No response")
+        ctrl.is_connected = False
+        return ctrl
+
+    @pytest.fixture
+    def bridge(self, failing_ctrl):
+        return ConnectionsBridge(michi_link_ctrl=failing_ctrl)
+
+    def test_scan_failure_error_state(self, bridge):
+        result = bridge.scanForServers()
+        assert result["ok"] is False
+
+    def test_reconnect_failure(self, bridge):
+        result = bridge.reconnect()
+        assert result["ok"] is False
+
+    def test_diagnose_failure(self, bridge):
+        result = bridge.diagnose()
+        assert result["ok"] is False
+
+    def test_confirm_pair_failure(self, bridge):
+        bridge.requestPair()
+        result = bridge.confirmPair()
+<<<<<<< Updated upstream
+=======
+=======
 """Test negative cases: missing service, failed connection, timeout."""
 from unittest.mock import MagicMock
 
@@ -86,6 +182,7 @@ class TestFailedConnection:
     def test_confirm_pair_failure(self, bridge):
         bridge.requestPair()
         result = bridge.confirmPair()
+>>>>>>> Stashed changes
         assert result["ok"] is False
 
     def test_connect_manual_still_works(self, bridge):
@@ -121,4 +218,8 @@ class TestTimeout:
 
     def test_scan_slow(self, bridge):
         result = bridge.scanForServers()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         assert result["ok"] is True

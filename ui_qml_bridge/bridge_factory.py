@@ -137,8 +137,16 @@ class BridgeFactory(QObject):
                 device_sync_service=self._services.device_sync_service,
                 job_service=self._services.job_service,
             )
+<<<<<<< Updated upstream
         self._register_capability("devices", "sync_manager", "device_sync_service")
         return self._bridges["devices"]
+=======
+<<<<<<< HEAD
+=======
+        self._register_capability("devices", "sync_manager", "device_sync_service")
+        return self._bridges["devices"]
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     def create_radio_bridge(self):
         from ui_qml_bridge.radio_bridge import RadioBridge
@@ -191,8 +199,16 @@ class BridgeFactory(QObject):
                 player_service=self._services.player_service,
                 worker_manager=self._services.worker_manager,
             )
+<<<<<<< Updated upstream
         self._register_capability("audio_lab", "audio_lab_service")
         return self._bridges["audio_lab"]
+=======
+<<<<<<< HEAD
+=======
+        self._register_capability("audio_lab", "audio_lab_service")
+        return self._bridges["audio_lab"]
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     def create_metadata_bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge

@@ -1,3 +1,120 @@
+<<<<<<< Updated upstream
+"""Test playlist keyboard navigation patterns via bridge actions."""
+=======
+<<<<<<< HEAD
+"""Tests keyboard navigation, focus, and accessibility for Playlists QML pages."""
+>>>>>>> Stashed changes
+import pytest
+import sqlite3
+from unittest.mock import MagicMock
+
+from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+
+
+@pytest.fixture
+def db_conn():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS playlists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            track_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT ''
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS playlist_tracks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            playlist_id INTEGER NOT NULL,
+            track_id INTEGER,
+            filepath TEXT,
+            position INTEGER DEFAULT 0,
+            added_at TEXT DEFAULT ''
+        )
+    """)
+    # Insert a real playlist
+    conn.execute("INSERT INTO playlists (id, name, track_count) VALUES (1, 'Favorites', 3)")
+    conn.execute("INSERT INTO playlist_tracks (playlist_id, track_id, filepath, position) "
+                 "VALUES (1, 101, '/path/a.flac', 0)")
+    conn.execute("INSERT INTO playlist_tracks (playlist_id, track_id, filepath, position) "
+                 "VALUES (1, 102, '/path/b.flac', 1)")
+    conn.commit()
+    return conn
+
+
+class FakeDb:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def get_playlists(self):
+        rows = self.conn.execute("SELECT id, name, track_count FROM playlists").fetchall()
+        return [{"id": r[0], "name": r[1], "track_count": r[2]} for r in rows]
+
+    def create_playlist(self, name):
+        self.conn.execute("INSERT INTO playlists (name) VALUES (?)", (name,))
+        self.conn.commit()
+        return self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    def get_playlist_items(self, pid):
+        rows = self.conn.execute(
+            "SELECT track_id, filepath, position FROM playlist_tracks WHERE playlist_id=? ORDER BY position",
+            (pid,)
+        ).fetchall()
+        return [{"id": r[0] or 0, "track_id": r[0] or 0, "filepath": r[1] or "", "position": r[2] or idx,
+                 "title": f"Track {r[0]}" if r[0] else "", "artist": "", "album": "", "duration": 0}
+                for idx, r in enumerate(rows)]
+
+    def add_track_to_playlist(self, pid, track_id=None, filepath=None):
+        max_pos = self.conn.execute(
+            "SELECT COALESCE(MAX(position), -1) FROM playlist_tracks WHERE playlist_id=?", (pid,)
+        ).fetchone()[0]
+        self.conn.execute(
+            "INSERT INTO playlist_tracks (playlist_id, track_id, filepath, position) VALUES (?, ?, ?, ?)",
+            (pid, track_id, filepath, max_pos + 1)
+        )
+        self.conn.commit()
+
+    def remove_track_from_playlist(self, pid, track_id):
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?", (pid, track_id))
+        self.conn.commit()
+
+    def update_playlist(self, pid, name=None):
+        if name:
+            self.conn.execute("UPDATE playlists SET name=? WHERE id=?", (name, pid))
+            self.conn.commit()
+
+    def delete_playlist(self, pid):
+        self.conn.execute("DELETE FROM playlists WHERE id=?", (pid,))
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=?", (pid,))
+        self.conn.commit()
+
+    def reorder_playlist_track(self, pid, from_index, to_index):
+        rows = self.conn.execute(
+            "SELECT id, track_id, filepath, position FROM playlist_tracks WHERE playlist_id=? ORDER BY position",
+            (pid,)
+        ).fetchall()
+        if not rows:
+            return
+        ids = [r[0] for r in rows]
+        item = ids.pop(from_index)
+        ids.insert(to_index, item)
+        for pos, row_id in enumerate(ids):
+            self.conn.execute("UPDATE playlist_tracks SET position=? WHERE id=?", (pos, row_id))
+        self.conn.commit()
+
+    def clear_playlist(self, pid):
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=?", (pid,))
+        self.conn.commit()
+
+
+<<<<<<< Updated upstream
+=======
+    def test_smart_editor_page_keys(self):
+        p = QML_DIR / "pages" / "playlists" / "SmartPlaylistEditorPage.qml"
+        if p.exists():
+            content = p.read_text()
+            assert "Keys.onEscapePressed" in content
+=======
 """Test playlist keyboard navigation patterns via bridge actions."""
 import pytest
 import sqlite3
@@ -102,6 +219,7 @@ class FakeDb:
         self.conn.commit()
 
 
+>>>>>>> Stashed changes
 @pytest.fixture
 def fake_db(db_conn):
     return FakeDb(db_conn)
@@ -195,3 +313,7 @@ def test_keyboard_select_and_batch_delete(bridge):
         bridge.deletePlaylist(bridge.playlists[0]["id"])
         bridge.refresh()
         assert len(bridge.playlists) == 0
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

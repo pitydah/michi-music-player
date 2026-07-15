@@ -73,7 +73,15 @@ def test_no_search_service():
     bridge = GlobalSearchBridge(search_service=None)
     result = bridge.search("Test")
     assert not result.get("ok")
+<<<<<<< Updated upstream
     assert result.get("error_code") == "SERVICE_UNAVAILABLE"
+=======
+<<<<<<< HEAD
+    assert "SERVICE_UNAVAILABLE" in result.get("error", "")
+=======
+    assert result.get("error_code") == "SERVICE_UNAVAILABLE"
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 
 def test_results_property(bridge):

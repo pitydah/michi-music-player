@@ -1,7 +1,25 @@
+<<<<<<< Updated upstream
 """AudioLabBridge — connects Audio Lab QML to real audio_lab_service.
 
 Accepts audio_lab_service, job_service, confirmation_service by constructor — no construction inside.
 Cancel reaches the service. Audio-only respected.
+=======
+<<<<<<< HEAD
+"""AudioLabBridge — connects Audio Lab QML to single AudioLabService + AudioLabState.
+
+NO muestra cards sin backend real.
+Inyecta AudioLabService + AudioLabState como instancia ÚNICA.
+Migra: capabilities, inputs, profiles, selectedProfile, preview,
+startAnalysis, startConversion, startReplayGain, startNormalization,
+startIntegrity, startComparison, cancelJob, retryJob, clearInputs,
+results, errors.
+=======
+"""AudioLabBridge — connects Audio Lab QML to real audio_lab_service.
+
+Accepts audio_lab_service, job_service, confirmation_service by constructor — no construction inside.
+Cancel reaches the service. Audio-only respected.
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 """
 from __future__ import annotations
 
@@ -20,10 +38,22 @@ logger = logging.getLogger("michi.audio_lab.bridge")
 class AudioLabBridge(QObject):
     dataChanged = Signal()
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    def __init__(self, db_conn=None, navigation_bridge=None, player_service=None,
+                 worker_manager=None, audio_lab_service: AudioLabService | None = None,
+                 audio_lab_state: AudioLabState | None = None, parent=None):
+=======
+>>>>>>> Stashed changes
     def __init__(self, audio_lab_service=None, job_service=None,
                  confirmation_service=None, db_conn=None,
                  navigation_bridge=None, player_service=None,
                  worker_manager=None, parent=None):
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         super().__init__(parent)
         self._audio_lab_svc = audio_lab_service
         self._job_svc = job_service
@@ -381,6 +411,56 @@ class AudioLabBridge(QObject):
 
     @Slot(str, result=dict)
     def probeFile(self, filepath: str):
+<<<<<<< Updated upstream
+        if self._audio_lab_svc and self._audio_lab_svc.probe:
+=======
+<<<<<<< HEAD
+        svc = self._svc()
+        if svc and svc.probe:
+>>>>>>> Stashed changes
+            try:
+                result = self._audio_lab_svc.probe.probe(filepath)
+                return result.to_dict()
+            except Exception as e:
+                return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "error", "error": str(e)}
+        return {"filepath": filepath, "format": "UNSUPPORTED", "decode_status": "unavailable", "error": "AudioLabService no disponible"}
+
+    @Slot(str, result=dict)
+    def analyzeFile(self, filepath: str):
+        if self._audio_lab_svc and self._audio_lab_svc.analysis:
+            try:
+                result = self._audio_lab_svc.analysis.analyze_file(filepath)
+                return result
+            except Exception as e:
+                return {"filepath": filepath, "status": "error", "error": str(e)}
+        return {"filepath": filepath, "status": "unsupported", "error": "AudioLabService no disponible"}
+
+    @Slot(str, str, result=dict)
+    def integrityCheck(self, filepath: str, quick: bool = False):
+        if self._audio_lab_svc and self._audio_lab_svc.integrity:
+            try:
+                result = self._audio_lab_svc.integrity.check(filepath, quick=quick)
+                return {"filepath": result.filepath, "status": result.status, "valid": result.is_valid, "issues": result.issues, "checksum": result.checksum}
+            except Exception as e:
+                return {"filepath": filepath, "status": "error", "error": str(e)}
+        return {"filepath": filepath, "status": "unavailable", "error": "AudioLabService no disponible"}
+
+    @Slot(str, str, result=dict)
+    def compareFiles(self, file_a: str, file_b: str):
+<<<<<<< Updated upstream
+=======
+        svc = self._svc()
+        if svc and svc.comparison:
+            result = svc.comparison.compare(file_a, file_b)
+            return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
+        try:
+            from core.audio_lab.audio_comparison_service import AudioComparisonService
+            svc_adhoc = AudioComparisonService()
+            result = svc_adhoc.compare(file_a, file_b)
+            return {"file_a": result.file_a, "file_b": result.file_b, "identical": result.identical, "dimensions": [{"key": d.key, "label": d.label, "identical": d.identical} for d in result.dimensions]}
+        except Exception as e:
+            return {"error": str(e)}
+=======
         if self._audio_lab_svc and self._audio_lab_svc.probe:
             try:
                 result = self._audio_lab_svc.probe.probe(filepath)
@@ -411,6 +491,7 @@ class AudioLabBridge(QObject):
 
     @Slot(str, str, result=dict)
     def compareFiles(self, file_a: str, file_b: str):
+>>>>>>> Stashed changes
         if self._audio_lab_svc and self._audio_lab_svc.comparison:
             try:
                 result = self._audio_lab_svc.comparison.compare(file_a, file_b)
@@ -418,3 +499,7 @@ class AudioLabBridge(QObject):
             except Exception as e:
                 return {"error": str(e)}
         return {"error": "AudioLabService no disponible"}
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

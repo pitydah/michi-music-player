@@ -77,6 +77,7 @@ def test_play_event_no_service_returns_error(bridge):
     assert not result["ok"]
 
 
+<<<<<<< Updated upstream
 def test_play_event_with_action_registry(bridge):
     reg = MagicMock()
     reg.execute = MagicMock(return_value={"ok": True})
@@ -86,6 +87,28 @@ def test_play_event_with_action_registry(bridge):
     assert result["ok"]
     reg.execute.assert_called_with("track_play_now")
 
+=======
+<<<<<<< HEAD
+def test_retention_removes_old(svc):
+    import time
+import pytest
+pytestmark = [pytest.mark.qml_module("history")]
+
+    old_time = time.time() - 10000000
+    svc._db.conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)", ("very_old", old_time))
+    svc._db.conn.commit()
+    result = svc.apply_retention(days=365, max_age_days=30)
+=======
+def test_play_event_with_action_registry(bridge):
+    reg = MagicMock()
+    reg.execute = MagicMock(return_value={"ok": True})
+    bridge._action_registry = reg
+    bridge._playback_svc = None
+    result = bridge.playHistoryItem("1")
+    assert result["ok"]
+    reg.execute.assert_called_with("track_play_now")
+
+>>>>>>> Stashed changes
 
 def test_remove_event_by_id(bridge, hqs):
     result = bridge.removeHistoryEvent("1")
@@ -100,6 +123,10 @@ def test_remove_event_by_id_second_event(bridge, hqs):
 
 def test_remove_nonexistent_event(bridge):
     result = bridge.removeHistoryEvent("999")
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
     assert result["ok"]
 
 

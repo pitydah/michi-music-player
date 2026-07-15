@@ -10,6 +10,13 @@ Audio-only — explicitly exclude video, show message if video content found.
 from __future__ import annotations
 
 import os
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+from pathlib import Path
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
@@ -74,6 +81,7 @@ class DevicesBridge(QObject):
     state = STATE_INITIALIZING
     errorMessage = ""
 
+<<<<<<< Updated upstream
     def __init__(
         self,
         sync_manager: SyncManager | None = None,
@@ -84,16 +92,93 @@ class DevicesBridge(QObject):
         super().__init__(parent)
         self._sync_mgr = sync_manager
         self._dev_svc = device_sync_service
+=======
+<<<<<<< HEAD
+    def __init__(self, sync_manager: SyncManager | None = None, parent=None,
+                 device_sync_service=None, job_service=None):
+        super().__init__(parent)
+        self._sync_mgr = sync_manager
+        self._device_sync_svc = device_sync_service
+=======
+    def __init__(
+        self,
+        sync_manager: SyncManager | None = None,
+        device_sync_service=None,
+        job_service=None,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self._sync_mgr = sync_manager
+        self._dev_svc = device_sync_service
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         self._job_svc = job_service
         self._server_active = False
         self._server_port = 53318
         self._peers: list[dict] = []
         self._paired_devices: list[dict] = []
         self._discovered: list[dict] = []
+<<<<<<< Updated upstream
         self._transfer_jobs: list[dict] = []
         self._transfer_history: list[dict] = []
         self._storage_info: list[dict] = []
         self._compatibility_info: list[dict] = []
+=======
+<<<<<<< HEAD
+        self._storage_info: list[dict] = []
+        self._compatibility_info: list[dict] = []
+        self._transfer_jobs: list[dict] = []
+        self._transfer_history: list[dict] = []
+        self._qr_code_data = ""
+        self._bridge_available = True
+        self._set_state()
+
+    @Slot(str, result=str)
+    def fileName(self, path: str) -> str:
+        if not path:
+            return ""
+        return Path(path).name
+
+    def _set_state(self):
+        if self._error:
+            self.state = STATE_ERROR
+        elif self._sync_mgr is None and self._device_sync_svc is None:
+            self.state = STATE_UNAVAILABLE
+        elif self._server_active and (self._paired_devices or self._peers):
+            self.state = STATE_READY
+        elif self._server_active:
+            self.state = STATE_EMPTY
+        elif self._sync_mgr:
+            self.state = STATE_LOADING
+        else:
+            self.state = STATE_INITIALIZING
+
+    @property
+    def _error(self):
+        return bool(self.errorMessage)
+
+    @Property(str, notify=stateChanged)
+    def pageState(self):
+        return self.state
+
+    @Property(str, notify=stateChanged)
+    def qrCodeData(self):
+        return self._qr_code_data
+
+    @Property(bool, notify=stateChanged)
+    def bridgeAvailable(self):
+        return self._bridge_available
+
+    @Property(str, notify=stateChanged)
+    def bridgeErrorMessage(self):
+        return self.errorMessage
+=======
+        self._transfer_jobs: list[dict] = []
+        self._transfer_history: list[dict] = []
+        self._storage_info: list[dict] = []
+        self._compatibility_info: list[dict] = []
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     @Property(bool, notify=stateChanged)
     def serverActive(self):
@@ -111,10 +196,47 @@ class DevicesBridge(QObject):
     def pairedDevices(self):
         return self._paired_devices
 
+<<<<<<< Updated upstream
     @Property("QVariantList", notify=stateChanged)
     def discovered(self):
         return self._discovered
 
+=======
+<<<<<<< HEAD
+    @Slot(str, int, result=dict)
+    def connectToPeer(self, ip: str, port: int):
+        if not self._sync_mgr:
+            return _typed_error("NO_SYNC_MANAGER")
+        try:
+            if hasattr(self._sync_mgr, 'connect'):
+                raw = self._sync_mgr.connect(ip, port)
+                return _normalise_result(raw)
+            return _typed_error("CONNECT_NOT_SUPPORTED",
+                                "El SyncManager no soporta conexión directa a pares.")
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=str)
+    def getDeviceIcon(self, deviceType: str):
+        icons = {
+            "android": "smartphone",
+            "iphone": "smartphone",
+            "desktop": "desktop",
+            "laptop": "laptop",
+            "tablet": "tablet",
+            "dedicated": "music_note",
+            "hiby": "music_note",
+            "fiio": "music_note",
+            "sandisk": "sd_card",
+            "ruizu": "music_note",
+        }
+        return icons.get(deviceType.lower(), "devices")
+=======
+    @Property("QVariantList", notify=stateChanged)
+    def discovered(self):
+        return self._discovered
+
+>>>>>>> Stashed changes
     @Property("QVariantList", notify=stateChanged)
     def transferJobs(self):
         return self._transfer_jobs
@@ -137,6 +259,10 @@ class DevicesBridge(QObject):
             j.get("state") in ("transferring", "queued", "cancel_requested")
             for j in self._transfer_jobs
         )
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     @Slot(result=dict)
     def startServer(self):
@@ -225,15 +351,92 @@ class DevicesBridge(QObject):
                         })
             except Exception as e:
                 logger.debug("Sync paired devices refresh failed: %s", e)
+<<<<<<< Updated upstream
         dev_svc_paired = self._refresh_paired_from_dev_svc()
         if dev_svc_paired:
             paired.extend(dev_svc_paired)
+=======
+<<<<<<< HEAD
+        if self._device_sync_svc:
+            try:
+                svc_paired = self._device_sync_svc.get_paired()
+                for p in svc_paired:
+                    if not any(d.get("alias", "") == p.get("label", "") for d in paired):
+                        paired.append({
+                            "alias": p.get("label", ""),
+                            "device": p.get("protocol", "dedicated"),
+                            "vendor": p.get("vendor", ""),
+                            "model": p.get("model", ""),
+                        })
+            except Exception as e:
+                logger.debug("Device sync paired refresh failed: %s", e)
+=======
+        dev_svc_paired = self._refresh_paired_from_dev_svc()
+        if dev_svc_paired:
+            paired.extend(dev_svc_paired)
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         self._peers = peers
         self._paired_devices = paired
         self._set_state()
         self.stateChanged.emit()
         return {"ok": True, "peers": len(peers), "paired": len(paired)}
 
+<<<<<<< Updated upstream
+    @Slot(str, result=dict)
+    def loadDeviceDetail(self, device_key: str):
+        if not self._sync_mgr:
+            return _typed_error("NO_SYNC_MANAGER")
+        if not device_key:
+            return _typed_error("NO_DEVICE_KEY")
+        try:
+            detail = {}
+            if hasattr(self._sync_mgr, 'get_device_detail'):
+                raw = self._sync_mgr.get_device_detail(device_key)
+                if isinstance(raw, dict):
+                    detail = raw
+            return {"ok": True, "detail": detail}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+=======
+<<<<<<< HEAD
+    @Property("QVariantList", notify=stateChanged)
+    def discovered(self):
+        return list(self._discovered)
+
+    @Property("QVariantList", notify=stateChanged)
+    def storageInfo(self):
+        return list(self._storage_info)
+
+    @Property("QVariantList", notify=stateChanged)
+    def compatibilityInfo(self):
+        return list(self._compatibility_info)
+
+    @Property("QVariantList", notify=stateChanged)
+    def transferJobs(self):
+        return list(self._transfer_jobs)
+
+    @Property("QVariantList", notify=stateChanged)
+    def transferHistory(self):
+        return list(self._transfer_history)
+>>>>>>> Stashed changes
+
+    @Slot(result=dict)
+    def discoverDevices(self):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            if hasattr(self._dev_svc, 'discover'):
+                discovered = self._dev_svc.discover()
+            else:
+                discovered = self._dev_svc.get_discovered() if hasattr(self._dev_svc, 'get_discovered') else []
+            self._discovered = [
+<<<<<<< Updated upstream
+=======
+                {"mount_point": d.mount_point, "vendor": d.vendor, "model": d.model,
+                 "label": d.label or Path(d.mount_point).name, "protocol": d.protocol.value}
+                for d in discovered
+=======
     @Slot(str, result=dict)
     def loadDeviceDetail(self, device_key: str):
         if not self._sync_mgr:
@@ -260,6 +463,7 @@ class DevicesBridge(QObject):
             else:
                 discovered = self._dev_svc.get_discovered() if hasattr(self._dev_svc, 'get_discovered') else []
             self._discovered = [
+>>>>>>> Stashed changes
                 {
                     "alias": getattr(d, 'alias', '') or getattr(d, 'name', '') or str(d),
                     "device": getattr(d, 'device', 'desktop') or getattr(d, 'protocol', '') or '',
@@ -267,6 +471,10 @@ class DevicesBridge(QObject):
                     "port": getattr(d, 'port', 0),
                 }
                 for d in (discovered or [])
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             ]
             self.stateChanged.emit()
             return {"ok": True, "count": len(self._discovered)}
@@ -274,6 +482,108 @@ class DevicesBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
+<<<<<<< Updated upstream
+    def pairDevice(self, path_or_key: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            discovered = self._dev_svc.get_discovered()
+            for identity in discovered:
+                key = f"{identity.protocol.value}:{identity.serial}"
+                mount = getattr(identity, 'mount_point', '') or ''
+                if key == path_or_key or mount == path_or_key:
+                    result = self._dev_svc.pair(identity)
+                    self.refresh()
+                    return result
+            if ":" in path_or_key:
+                for identity in discovered:
+                    key = f"{identity.protocol.value}:{identity.serial}"
+                    if key == path_or_key:
+                        result = self._dev_svc.pair(identity)
+                        self.refresh()
+                        return result
+            return _typed_error("DEVICE_NOT_FOUND")
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+=======
+<<<<<<< HEAD
+    def pairDevice(self, mount_point: str):
+        if not self._device_sync_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE", "Servicio de dispositivos no disponible")
+        identity = self._device_sync_svc.identify(mount_point)
+        if not identity:
+            return {"ok": False, "error": "NOT_FOUND", "message": "Dispositivo no encontrado"}
+        result = self._device_sync_svc.pair(identity)
+        self.refresh()
+        return result
+>>>>>>> Stashed changes
+
+    @Slot(str, result=dict)
+    def unpairDevice(self, key: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            return self._dev_svc.unpair(key)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def trustDevice(self, key: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            return self._dev_svc.trust(key)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def untrustDevice(self, key: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            return self._dev_svc.untrust(key)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def authorizeDevice(self, key: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            return self._dev_svc.authorize(key)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def unauthorizeDevice(self, key: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            return self._dev_svc.unauthorize(key)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def deviceDetailStorage(self, path: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            if hasattr(self._dev_svc, 'get_storage'):
+                info = self._dev_svc.get_storage(path)
+            else:
+                info = type('StorageInfo', (), {'total_bytes': 0, 'free_bytes': 0, 'used_bytes': 0})()
+            self._storage_info = [{
+                "mount_point": path,
+                "total_bytes": info.total_bytes,
+                "free_bytes": info.free_bytes,
+                "used_bytes": info.used_bytes,
+<<<<<<< Updated upstream
+                "total_gb": round(info.total_bytes / (1024 ** 3), 2) if info.total_bytes else 0,
+                "supported_formats": sorted(_AUDIO_EXTS),
+=======
+                "label": info.label,
+                "total_gb": info.total_bytes / 1073741824 if info.total_bytes else 0,
+=======
     def pairDevice(self, path_or_key: str):
         if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
@@ -358,6 +668,8 @@ class DevicesBridge(QObject):
                 "used_bytes": info.used_bytes,
                 "total_gb": round(info.total_bytes / (1024 ** 3), 2) if info.total_bytes else 0,
                 "supported_formats": sorted(_AUDIO_EXTS),
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             }]
             self.stateChanged.emit()
             return {"ok": True}
@@ -365,6 +677,40 @@ class DevicesBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     @Slot(str, result=dict)
+<<<<<<< Updated upstream
+    def deviceDetailCompatibility(self, path: str):
+        if not self._dev_svc:
+=======
+<<<<<<< HEAD
+    def deviceDetailCompatibility(self, mount_point: str):
+        if not self._device_sync_svc:
+>>>>>>> Stashed changes
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            identity = self._dev_svc.identify(path)
+            caps = self._dev_svc.resolve_capabilities(identity) if identity else None
+            self._compatibility_info = [{
+                "protocol": identity.protocol.value if identity else "unknown",
+                "supported_formats": sorted(_AUDIO_EXTS),
+                "unsupported_formats": sorted(_VIDEO_EXTS),
+                "supports_pairing": caps.supports_pairing if caps else False,
+                "supports_playlists": caps.supports_playlists if caps else False,
+            }]
+            self.stateChanged.emit()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, str, result=dict)
+    def startTransfer(self, source: str, destination: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+<<<<<<< Updated upstream
+=======
+            job = self._device_sync_svc.create_transfer_job(src, dst)
+            result = self._device_sync_svc.execute_job(job.job_id)
+=======
     def deviceDetailCompatibility(self, path: str):
         if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
@@ -388,6 +734,7 @@ class DevicesBridge(QObject):
         if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
         try:
+>>>>>>> Stashed changes
             audio_type = _is_audio_extension(source)
             if audio_type == "video":
                 return _typed_error("VIDEO_NOT_SUPPORTED",
@@ -397,6 +744,10 @@ class DevicesBridge(QObject):
                                     "Formato de archivo no reconocido")
             job = self._dev_svc.create_transfer_job(source, destination)
             result = self._dev_svc.execute_job(job.job_id)
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
             self._refresh_transfer_jobs()
             return result
         except Exception as e:
@@ -404,6 +755,67 @@ class DevicesBridge(QObject):
 
     @Slot(str, result=dict)
     def cancelTransfer(self, job_id: str):
+<<<<<<< Updated upstream
+        if not self._dev_svc:
+=======
+<<<<<<< HEAD
+        if not self._device_sync_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        result = self._device_sync_svc.cancel_job(job_id)
+        self._refresh_transfer_jobs()
+        return result
+
+    @Slot(str, result=dict)
+    def retryTransfer(self, job_id: str):
+        if not self._device_sync_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        result = self._device_sync_svc.retry_job(job_id)
+        self._refresh_transfer_jobs()
+        return result
+
+    @Slot(str, result=dict)
+    def validateAudioFile(self, path: str):
+        ext = Path(path).suffix.lower()
+        if ext in VIDEO_EXTENSIONS:
+            return {"ok": False, "error": "VIDEO_NOT_SUPPORTED",
+                    "message": "Solo se admiten archivos de audio"}
+        if ext not in AUDIO_EXTENSIONS:
+            return {"ok": False, "error": "UNSUPPORTED_FORMAT",
+                    "message": f"Formato '{ext}' no soportado"}
+        if not os.path.isfile(path):
+            return {"ok": False, "error": "FILE_NOT_FOUND"}
+        transcode_policy = "copy" if ext == ".flac" else "transcode_if_needed"
+        return {"ok": True, "format": ext.lstrip('.'), "transcode_policy": transcode_policy}
+
+    @Slot(result=str)
+    def generateQRCode(self):
+        from uuid import uuid4
+        self._qr_code_data = f"michi://pair/{uuid4().hex[:12]}"
+        self.stateChanged.emit()
+        return self._qr_code_data
+
+    @Slot(str, result=dict)
+    def ejectDevice(self, mount_point: str):
+        if not self._device_sync_svc:
+>>>>>>> Stashed changes
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            result = self._dev_svc.cancel_job(job_id)
+            self._refresh_transfer_jobs()
+            return result
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def retryTransfer(self, job_id: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+<<<<<<< Updated upstream
+=======
+            files = self._device_sync_svc.list_music(mount_point, music_dir=path)
+            return {"ok": True, "files": files}
+=======
         if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
         try:
@@ -418,6 +830,7 @@ class DevicesBridge(QObject):
         if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
         try:
+>>>>>>> Stashed changes
             job = self._dev_svc.get_job(job_id)
             if not job:
                 return _typed_error("JOB_NOT_FOUND")
@@ -429,17 +842,32 @@ class DevicesBridge(QObject):
                 self._refresh_transfer_jobs()
                 return result if isinstance(result, dict) else {"ok": True}
             return _typed_error("JOB_NO_SOURCE")
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def clearTransferHistory(self):
+<<<<<<< Updated upstream
         if self._dev_svc and hasattr(self._dev_svc, 'clear_history'):
             self._dev_svc.clear_history()
+=======
+<<<<<<< HEAD
+        if self._device_sync_svc:
+            self._device_sync_svc.clear_history()
+=======
+        if self._dev_svc and hasattr(self._dev_svc, 'clear_history'):
+            self._dev_svc.clear_history()
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
         self._transfer_history = []
         self.stateChanged.emit()
         return {"ok": True}
 
+<<<<<<< Updated upstream
     @Slot(str, result=dict)
     def validateAudioFile(self, path: str):
         try:
@@ -476,6 +904,56 @@ class DevicesBridge(QObject):
             return {"ok": False, "error": str(e)}
 
     def _refresh_transfer_jobs(self):
+=======
+<<<<<<< HEAD
+    def _refresh_transfer_jobs(self):
+        if self._device_sync_svc:
+            self._transfer_jobs = [
+                {"job_id": j.job_id, "source_path": j.source_path, "dest_path": j.dest_path,
+                 "status": j.status.value, "total_bytes": j.total_bytes,
+                 "transferred_bytes": j.transferred_bytes, "error": j.error}
+                for j in self._device_sync_svc.list_jobs()
+            ]
+            self._transfer_history = self._device_sync_svc.get_history()
+        self.stateChanged.emit()
+=======
+    @Slot(str, result=dict)
+    def validateAudioFile(self, path: str):
+        try:
+            audio_type = _is_audio_extension(path)
+            if audio_type == "video":
+                return _typed_error("VIDEO_NOT_SUPPORTED",
+                                    "No se admiten archivos de video.")
+            if audio_type is None:
+                return _typed_error("UNSUPPORTED_FORMAT",
+                                    "Formato no soportado. Solo audio.")
+            if not os.path.exists(path):
+                return {"ok": True, "warning": "FILE_NOT_FOUND",
+                        "type": "audio", "transcode_policy": "copy"}
+            return {
+                "ok": True,
+                "type": "audio",
+                "transcode_policy": "copy",
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, result=dict)
+    def ejectDevice(self, mount_point: str):
+        if not self._dev_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        if not mount_point:
+            return _typed_error("NO_MOUNT_POINT")
+        try:
+            if hasattr(self._dev_svc, 'eject'):
+                return _normalise_result(self._dev_svc.eject(mount_point))
+            return _typed_error("EJECT_NOT_SUPPORTED",
+                                "La expulsión no está soportada por este servicio.")
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _refresh_transfer_jobs(self):
+>>>>>>> Stashed changes
         if not self._dev_svc:
             return
         try:
@@ -504,3 +982,7 @@ class DevicesBridge(QObject):
             self.stateChanged.emit()
         except Exception:
             pass
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

@@ -1,4 +1,12 @@
+<<<<<<< Updated upstream
 """Test M3U import/export, preview, cancel, progress."""
+=======
+<<<<<<< HEAD
+"""Tests for PlaylistImportDialog and PlaylistExportDialog: import/export flows."""
+=======
+"""Test M3U import/export, preview, cancel, progress."""
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 import pytest
 from unittest.mock import MagicMock
 
@@ -38,6 +46,18 @@ class TestPlaylistImportExport:
         assert result["ok"] is False
         assert result["error"] == "NO_SERVICE"
 
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+    def test_confirm_import_with_service(self):
+        svc = MagicMock()
+        svc.import_confirm.return_value = {"ok": True, "name": "Imported", "count": 8}
+        bridge = PlaylistsBridge(playlist_service=svc)
+        result = bridge.confirmPlaylistImport("/tmp/test.m3u", "My Playlist")
+        assert result["ok"] is True
+        assert result["count"] == 8
+=======
+>>>>>>> Stashed changes
     def get_playlist_items(self, pid):
         rows = self.conn.execute(
             "SELECT track_id, filepath, position FROM playlist_tracks WHERE playlist_id=? ORDER BY position",
@@ -46,6 +66,10 @@ class TestPlaylistImportExport:
         return [{"id": r[0] or 0, "track_id": r[0] or 0, "filepath": r[1] or "", "position": r[2] or idx,
                  "title": "", "artist": "", "album": "", "duration": 0}
                 for idx, r in enumerate(rows)]
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     def test_import_m3u_alias(self):
         svc = MagicMock()
@@ -55,9 +79,24 @@ class TestPlaylistImportExport:
         assert result["ok"] is True
         assert result["count"] == 5
 
+<<<<<<< Updated upstream
     def remove_track_from_playlist(self, pid, track_id):
         self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?", (pid, track_id))
         self.conn.commit()
+=======
+<<<<<<< HEAD
+    def test_import_m3u8_alias(self):
+        svc = MagicMock()
+        svc.import_confirm.return_value = {"ok": True, "name": "Test", "count": 5}
+        bridge = PlaylistsBridge(playlist_service=svc)
+        result = bridge.importM3U8("/tmp/test.m3u8")
+        assert result["ok"] is True
+=======
+    def remove_track_from_playlist(self, pid, track_id):
+        self.conn.execute("DELETE FROM playlist_tracks WHERE playlist_id=? AND track_id=?", (pid, track_id))
+        self.conn.commit()
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
     def test_cancel_import_no_service(self):
         bridge = PlaylistsBridge()
@@ -94,6 +133,77 @@ class TestPlaylistImportExport:
         result = bridge.exportM3U8(1, "/tmp/export.m3u8")
         assert result["ok"] is True
 
+<<<<<<< Updated upstream
+class TestPlaylistImportExport:
+    def test_import_preview_m3u(self, svc, tmp_path):
+        m3u = tmp_path / "test.m3u"
+        m3u.write_text("#EXTM3U\n/path/to/track1.flac\n/path/to/track2.flac\n")
+        result = svc.import_preview(str(m3u))
+        assert result["ok"]
+        assert result["total_entries"] == 2
+=======
+<<<<<<< HEAD
+    def test_export_service_error(self):
+        svc = MagicMock()
+        svc.export.return_value = {"ok": False, "error": "WRITE_FAILED"}
+        bridge = PlaylistsBridge(playlist_service=svc)
+        result = bridge.exportM3U(1, "/tmp/fail.m3u")
+        assert result["ok"] is False
+        assert result["error"] == "WRITE_FAILED"
+>>>>>>> Stashed changes
+
+    def test_import_preview_file_not_found(self, svc):
+        result = svc.import_preview("/nonexistent/file.m3u")
+        assert not result["ok"]
+        assert result["error_code"] == "FILE_NOT_FOUND"
+
+    def test_import_preview_empty_file(self, svc, tmp_path):
+        m3u = tmp_path / "empty.m3u"
+        m3u.write_text("")
+        result = svc.import_preview(str(m3u))
+        assert result["ok"]
+
+    def test_import_preview_with_extinf(self, svc, tmp_path):
+        m3u = tmp_path / "extinf.m3u"
+        m3u.write_text('#EXTM3U\n#EXTINF:123,Test Artist - Test Title\n/path/to/track.flac\n')
+        result = svc.import_preview(str(m3u))
+        assert result["ok"]
+
+    def test_import_confirm_valid(self, svc, tmp_path):
+        track = tmp_path / "track.flac"
+        track.write_text("data")
+        m3u = tmp_path / "test.m3u"
+        m3u.write_text(f"#EXTM3U\n{track}\n")
+        result = svc.import_confirm(str(m3u), "Imported")
+        assert result["ok"]
+        assert result["count"] == 1
+        assert result["name"] == "Imported"
+
+    def test_import_confirm_no_name_uses_stem(self, svc, tmp_path):
+        track = tmp_path / "track.flac"
+        track.write_text("data")
+        m3u = tmp_path / "mylist.m3u"
+        m3u.write_text(f"#EXTM3U\n{track}\n")
+        result = svc.import_confirm(str(m3u))
+        assert result["ok"]
+        assert result["name"] == "mylist"
+
+<<<<<<< Updated upstream
+=======
+    def test_play_from_index(self):
+        db = MagicMock()
+        items = [
+            MagicMock(id=1, track_uid="u1", filepath="/m/s1.mp3",
+                      title="S1", artist="A", album="Al", duration=200),
+            MagicMock(id=2, track_uid="u2", filepath="/m/s2.mp3",
+                      title="S2", artist="B", album="Bl", duration=180),
+        ]
+        db.get_playlist_items.return_value = items
+        player = MagicMock()
+        bridge = PlaylistsBridge(db=db, player_service=player)
+        result = bridge.playPlaylistFromIndex(1, 1)
+        assert result["ok"] is True
+=======
 class TestPlaylistImportExport:
     def test_import_preview_m3u(self, svc, tmp_path):
         m3u = tmp_path / "test.m3u"
@@ -138,6 +248,7 @@ class TestPlaylistImportExport:
         assert result["ok"]
         assert result["name"] == "mylist"
 
+>>>>>>> Stashed changes
     def test_import_confirm_no_db(self, svc):
         svc_no_db = PlaylistService(db=None)
         result = svc_no_db.import_confirm("/path/to/file.m3u")
@@ -186,3 +297,7 @@ class TestPlaylistImportExport:
         result = svc.import_confirm(str(m3u8), "FromM3U8")
         assert result["ok"]
         assert result["count"] == 1
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

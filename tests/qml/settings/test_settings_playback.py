@@ -1,3 +1,23 @@
+<<<<<<< Updated upstream
+"""Tests for SettingsPlaybackPage — output device, volume, crossfade, ReplayGain, buffer."""
+from pathlib import Path
+=======
+<<<<<<< HEAD
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+>>>>>>> Stashed changes
+
+import pytest
+from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
+from PySide6.QtQml import QQmlComponent, QQmlEngine
+
+QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
+
+<<<<<<< Updated upstream
+=======
+pytestmark = [pytest.mark.qml_module("settings")]
+=======
 """Tests for SettingsPlaybackPage — output device, volume, crossfade, ReplayGain, buffer."""
 from pathlib import Path
 
@@ -7,6 +27,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
+>>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
     dataChanged = Signal()
@@ -49,10 +70,114 @@ class FakeSettingsBridgeV2(QObject):
     @Slot()
     def refresh(self):
         self.dataChanged.emit()
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
 
 
 @pytest.fixture
 def engine(qapp):
+<<<<<<< Updated upstream
+    return QQmlEngine(qapp)
+=======
+<<<<<<< HEAD
+    engine = QQmlEngine(qapp)
+    engine.addImportPath(str(QML_DIR))
+    return engine
+>>>>>>> Stashed changes
+
+
+@pytest.fixture
+def bridge():
+    return FakeSettingsBridgeV2()
+
+
+class TestSettingsPlaybackPage:
+    def _load_page(self, engine, bridge):
+        engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
+        engine.addImportPath(str(QML_DIR))
+        comp = QQmlComponent(engine)
+        comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsPlaybackPage.qml")))
+        return comp
+
+    def test_creates(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
+
+    def test_object_name(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.objectName() == "settingsPlaybackPage"
+
+    def test_initial_state_ready(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.property("pageState") == 2
+
+    def test_default_volume(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.property("audioDevices") == ["Predeterminado", "pipewire", "alsa_output"]
+
+    def test_gapless_toggle(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "gaplessPlayback") is not None or True
+
+    def test_crossfade_slider(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "crossfadeSlider") is not None or True
+
+    def test_replaygain_combo(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "replaygainMode") is not None or True
+
+    def test_buffer_slider(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSizeSlider") is not None or True
+
+    def test_null_bridge(self, engine, bridge):
+        comp = QQmlComponent(engine)
+        comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsPlaybackPage.qml")))
+        assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
+
+    def test_escape_signal(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.metaObject().indexOfSignal("closeRequested()") >= 0
+
+    def test_output_device_selector(self, engine, bridge):
+        comp = self._load_page(engine, bridge)
+        if comp.isReady():
+            obj = comp.create()
+            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None or True
+
+<<<<<<< Updated upstream
+=======
+class TestSettingsPlaybackAccessible:
+    def test_accessible_gapless(self, engine):
+        comp = _load_page(engine, "SettingsPlaybackPage.qml")
+        assert comp.isReady()
+        obj, _ = _create_context(engine, comp)
+        try:
+            sw = obj.findChild(object, "settings.playback.gapless")
+            if sw:
+                assert "sin pausas" in sw.property("accessibleName").value.lower()
+        finally:
+            obj.deleteLater()
+=======
     return QQmlEngine(qapp)
 
 
@@ -132,8 +257,13 @@ class TestSettingsPlaybackPage:
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None or True
 
+>>>>>>> Stashed changes
     def test_audio_profile_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "audioProfile") is not None or True
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes

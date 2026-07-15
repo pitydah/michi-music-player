@@ -1,3 +1,71 @@
+<<<<<<< Updated upstream
+"""Test progress notifications — progress updates, updateProgress, cancel."""
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+=======
+<<<<<<< HEAD
+"""Tests for NotificationProgressItem QML component."""
+>>>>>>> Stashed changes
+
+import pytest
+
+from ui_qml_bridge.notification_bridge import NotificationBridge
+
+
+@pytest.fixture
+def job_bridge():
+    jb = MagicMock()
+    jb.cancelJob.return_value = {"ok": True}
+    return jb
+
+
+@pytest.fixture
+def bridge(job_bridge):
+    return NotificationBridge(job_bridge=job_bridge)
+
+
+class TestShowProgress:
+    def test_show_progress_creates_notification(self, bridge):
+        result = bridge.showProgress("Descargando...", "job_1", 50)
+        assert result["ok"] is True
+        assert bridge.currentNotification is not None
+
+    def test_show_progress_has_kind_and_job_id(self, bridge):
+        bridge.showProgress("Procesando", "job_99", 25)
+        n = bridge.currentNotification
+        assert n["progress"] == 25
+        assert n["job_id"] == "job_99"
+        assert n["kind"] == "info"
+
+    def test_show_progress_clamps_value(self, bridge):
+        bridge.showProgress("Sobre 100", "j1", 150)
+        assert bridge.currentNotification["progress"] == 100
+
+        bridge.dismiss()
+        bridge.showProgress("Bajo 0", "j2", -10)
+        assert bridge.currentNotification is None or bridge.currentNotification["progress"] == 0
+
+    def test_progress_is_persistent(self, bridge):
+        bridge.showProgress("Largo", "j_long", 10)
+        assert bridge.currentNotification["persistent"] is True
+
+    def test_show_progress_dedup(self, bridge):
+        bridge.showProgress("Paso 1", "j_dedup", 25)
+        result = bridge.showProgress("Paso 2", "j_dedup", 50)
+        assert result.get("updated") is True
+        assert bridge.currentNotification["progress"] == 50
+        assert bridge.currentNotification["text"] == "Paso 2"
+
+
+class TestUpdateProgress:
+    def test_update_existing_progress(self, bridge):
+        bridge.showProgress("Iniciando", "j_upd", 0)
+        result = bridge.updateProgress("j_upd", 0.75, "75% completado")
+        assert result["ok"] is True
+<<<<<<< Updated upstream
+=======
+=======
 """Test progress notifications — progress updates, updateProgress, cancel."""
 from __future__ import annotations
 
@@ -58,6 +126,7 @@ class TestUpdateProgress:
         bridge.showProgress("Iniciando", "j_upd", 0)
         result = bridge.updateProgress("j_upd", 0.75, "75% completado")
         assert result["ok"] is True
+>>>>>>> Stashed changes
         assert bridge.currentNotification["progress"] >= 75
 
     def test_update_progress_creates_if_not_exists(self, bridge):
@@ -114,3 +183,7 @@ class TestProgressEdgeCases:
         bridge.showProgress("Job B", "j_b", 50)
         assert bridge.queueLength == 1
         assert bridge.currentNotification["job_id"] == "j_a"
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/michi-qml-functional-wave
+>>>>>>> Stashed changes
