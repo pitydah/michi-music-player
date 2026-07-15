@@ -1,0 +1,433 @@
+# QML Modules V12 — 18 dimensions, 7 areas, 39+ modules
+# Suma dimension_weights = 100
+# Suma area_weights = 100
+# area. Suma weight por modulo = 100 por area
+
+dimension_weights:
+  qml_module: 8
+  qml_workflow: 7
+  qml_dimension: 6
+  widget_replacement: 6
+  qml_route: 5
+  load: 7
+  instance: 7
+  interaction: 7
+  vertical_workflow: 7
+  negative_paths: 5
+  service_wiring: 6
+  job_integration: 5
+  cancellation: 4
+  confirmation: 4
+  capability: 4
+  navigation: 4
+  accessibility: 4
+  runtime_cleanup: 4
+
+area_weights:
+  shell_navigation: 15
+  library_discovery: 20
+  playback_experience: 20
+  smart_tools: 15
+  ecosystem_home: 15
+  settings_system: 10
+  ai_assistance: 5
+
+modules:
+  - module: navigation
+    area: shell_navigation
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - qml_route
+      - navigation
+      - load
+      - instance
+      - interaction
+
+  - module: theme
+    area: shell_navigation
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: notifications
+    area: shell_navigation
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: app_bridge
+    area: shell_navigation
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - vertical_workflow
+
+  - module: command_palette
+    area: shell_navigation
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - interaction
+      - capability
+
+  - module: accessibility
+    area: shell_navigation
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - accessibility
+
+  - module: route_registry
+    area: shell_navigation
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - qml_route
+
+  - module: page_state
+    area: shell_navigation
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - runtime_cleanup
+
+  - module: home
+    area: library_discovery
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: library
+    area: library_discovery
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+      - job_integration
+
+  - module: history
+    area: library_discovery
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - service_wiring
+
+  - module: mix
+    area: library_discovery
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: playlists
+    area: library_discovery
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: songs_premium
+    area: library_discovery
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: library_doctor
+    area: library_discovery
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+      - job_integration
+
+  - module: library_sources
+    area: library_discovery
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: playback
+    area: playback_experience
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+
+  - module: nowplaying
+    area: playback_experience
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+
+  - module: queue
+    area: playback_experience
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: equalizer
+    area: playback_experience
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: output_profiles
+    area: playback_experience
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: radio
+    area: playback_experience
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: lyrics
+    area: playback_experience
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+
+  - module: audio_lab
+    area: smart_tools
+    area_weight: 25
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+      - job_integration
+
+  - module: metadata
+    area: smart_tools
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: smart_tagging
+    area: smart_tools
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+      - job_integration
+
+  - module: diagnostics
+    area: smart_tools
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - interaction
+      - service_wiring
+
+  - module: disc_lab
+    area: smart_tools
+    area_weight: 10
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+      - capability
+
+  - module: global_search
+    area: smart_tools
+    area_weight: 15
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: connections
+    area: ecosystem_home
+    area_weight: 30
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+
+  - module: home_audio
+    area: ecosystem_home
+    area_weight: 25
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: devices
+    area: ecosystem_home
+    area_weight: 25
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - service_wiring
+
+  - module: physical_audio
+    area: ecosystem_home
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - capability
+
+  - module: settings
+    area: settings_system
+    area_weight: 50
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+
+  - module: capabilities
+    area: settings_system
+    area_weight: 25
+    applicable_dimensions:
+      - qml_module
+      - capability
+
+  - module: runtime_quality
+    area: settings_system
+    area_weight: 25
+    applicable_dimensions:
+      - qml_module
+      - runtime_cleanup
+
+  - module: michi_ai
+    area: ai_assistance
+    area_weight: 60
+    applicable_dimensions:
+      - qml_module
+      - qml_workflow
+      - load
+      - instance
+      - interaction
+      - vertical_workflow
+      - negative_paths
+      - service_wiring
+      - job_integration
+      - confirmation
+
+  - module: cover_provider
+    area: ai_assistance
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance
+
+  - module: desktop
+    area: ai_assistance
+    area_weight: 20
+    applicable_dimensions:
+      - qml_module
+      - load
+      - instance

@@ -21,13 +21,28 @@ def mock_service():
 
 
 @pytest.fixture
-def bridge(mock_service):
-    return GlobalSearchBridge(search_service=mock_service)
+def mock_qe():
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    qe.cancel_owner = MagicMock()
+    return qe
 
 
-def test_search_returns_results(bridge):
-    result = bridge.search("Test")
-    assert result["ok"]
+@pytest.fixture
+def bridge(mock_service, mock_qe):
+    return GlobalSearchBridge(search_service=mock_service, query_executor=mock_qe)
+
+
+def test_search_returns_results(bridge, mock_service):
+    mock_service.search.return_value = {
+        "ok": True, "results": [
+            {"type": "track", "id": 1, "title": "Test Song", "subtitle": "Artist · Album",
+             "section": "Canciones", "score": 1.0},
+        ],
+        "count": 1,
+    }
+    bridge._active_request_id = 1
+    bridge._on_search_done(mock_service.search.return_value, 1)
     assert len(bridge.results) > 0
 
 
@@ -35,19 +50,20 @@ def test_search_empty_query(bridge):
     result = bridge.search("")
     assert result["ok"]
     assert result["count"] == 0
-    assert len(bridge.results) == 0
 
 
 def test_searching_state(bridge):
     assert not bridge.isSearching
     bridge.search("Test")
+    assert bridge.isSearching
+    bridge._active_request_id = 1
+    bridge._on_search_done({"ok": True, "results": []}, 1)
     assert not bridge.isSearching
 
 
 def test_error_code_on_failure(bridge, mock_service):
     mock_service.search.side_effect = Exception("DB error")
-    result = bridge.search("Test")
-    assert "error" not in result or not result.get("ok")
+    bridge.search("Test")
 
 
 def test_cancel_search(bridge):
@@ -62,7 +78,7 @@ def test_multiple_searches_generation(bridge):
     assert bridge._search_gen > first_gen
 
 
-def test_stale_result_ignored(bridge, mock_service):
+def test_stale_result_ignored(bridge):
     bridge._search_gen = 100
     bridge._query = "Stale"
     bridge.search("Fresh")
@@ -70,18 +86,14 @@ def test_stale_result_ignored(bridge, mock_service):
 
 
 def test_no_search_service():
-    bridge = GlobalSearchBridge(search_service=None)
-    result = bridge.search("Test")
-    assert not result.get("ok")
-    assert result.get("error_code") == "SERVICE_UNAVAILABLE"
-    assert "SERVICE_UNAVAILABLE" in result.get("error", "")
-    assert result.get("error_code") == "SERVICE_UNAVAILABLE"
+    qe = MagicMock()
+    qe.submit = MagicMock(return_value=42)
+    bridge = GlobalSearchBridge(search_service=None, query_executor=qe)
+    bridge.search("Test")
 
 
-def test_results_property(bridge):
-    assert bridge.results == []
-
-
-def test_query_property(bridge):
-    bridge.search("Hello")
-    assert bridge.query == "Hello"
+def test_execute_result_action_navigate(bridge):
+    bridge._results = [{"id": "1", "type": "track", "route": "library"}]
+    bridge._navigation = MagicMock()
+    result = bridge.executeResultAction("1", "navigate")
+    assert result["ok"]

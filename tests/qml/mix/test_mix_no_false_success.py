@@ -1,4 +1,3 @@
-"""Test MixBridge: no fake tracks, no false success on empty mix/queue, no AI without backend."""
 import pytest
 from unittest.mock import MagicMock
 
@@ -7,7 +6,7 @@ pytestmark = [pytest.mark.qml_module("mix")]
 
 
 @pytest.fixture
-def mock_query_service():
+def mock_mix_svc():
     mqs = MagicMock()
     mqs.favorites.return_value = [
         {"track_id": 1, "title": "Fav 1", "artist": "A", "album": "B", "duration": 200, "reason": "Favorito"},
@@ -31,10 +30,13 @@ def mock_query_service():
 
 
 @pytest.fixture
-def bridge(mock_query_service):
-    return MixBridge(query_service=mock_query_service,
-                     track_action_service=MagicMock(),
-                     playlist_bridge=MagicMock())
+def bridge(mock_mix_svc):
+    return MixBridge(
+        mix_service=mock_mix_svc,
+        playback_service=MagicMock(),
+        queue_service=MagicMock(),
+        playlist_service=MagicMock(),
+    )
 
 
 def test_favorites_mix_returns_real_tracks(bridge):

@@ -1,20 +1,13 @@
 {
   "counts": {
-    "REQUIRED_FALLBACK": 1,
-    "MIGRATION_PENDING": 63,
+    "REQUIRED_FALLBACK": 0,
+    "MIGRATION_PENDING": 55,
     "UNSAFE_HYBRID": 0,
     "DUPLICATED_LOGIC": 25,
-    "REMOVABLE": 13
+    "REMOVABLE": 12
   },
   "results": {
-    "REQUIRED_FALLBACK": [
-      {
-        "file": "ui_qml_bridge/qml_main.py",
-        "line": 125,
-        "code": "from ui.audio_lab.services.smart_tagging_service import SmartTaggingService",
-        "category": "REQUIRED_FALLBACK"
-      }
-    ],
+    "REQUIRED_FALLBACK": [],
     "MIGRATION_PENDING": [
       {
         "file": "ui_qml_bridge/action_registry_binder.py",
@@ -42,32 +35,7 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/capability_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/command_bus.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/command_palette_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/context_bindings.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/context_registrar.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
-        "file": "ui_qml_bridge/cover_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
       },
@@ -137,11 +105,6 @@
         "reason": "No test coverage"
       },
       {
-        "file": "ui_qml_bridge/runtime_quality_bridge.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "No test coverage"
-      },
-      {
         "file": "ui_qml_bridge/selection_context_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "No test coverage"
@@ -163,11 +126,6 @@
       },
       {
         "file": "ui_qml_bridge/__init__.py",
-        "category": "MIGRATION_PENDING",
-        "reason": "QML page without actions"
-      },
-      {
-        "file": "ui_qml_bridge/accessibility_bridge.py",
         "category": "MIGRATION_PENDING",
         "reason": "QML page without actions"
       },
@@ -342,7 +300,7 @@
       {
         "file": "ui_qml_bridge/connections_bridge.py",
         "category": "REMOVABLE",
-        "reason": "12x return 'ok:True' sin ejecución real de backend"
+        "reason": "14x return 'ok:True' sin ejecución real de backend"
       },
       {
         "file": "ui_qml_bridge/conversion_bridge.py",
@@ -370,9 +328,14 @@
         "reason": "Business rule: album-key logic (aparece en bridge y core)"
       },
       {
+        "file": "ui_qml_bridge/history_bridge.py",
+        "category": "REMOVABLE",
+        "reason": "7x return 'ok:True' sin ejecución real de backend"
+      },
+      {
         "file": "ui_qml_bridge/home_audio_bridge.py",
         "category": "REMOVABLE",
-        "reason": "16x return 'ok:True' sin ejecución real de backend"
+        "reason": "8x return 'ok:True' sin ejecución real de backend"
       },
       {
         "file": "ui_qml_bridge/library_bridge.py",
@@ -420,9 +383,9 @@
         "reason": "Business rule: file-exists check (aparece en bridge y core)"
       },
       {
-        "file": "ui_qml_bridge/michi_ai_bridge.py",
+        "file": "ui_qml_bridge/mix_bridge.py",
         "category": "REMOVABLE",
-        "reason": "8x return 'ok:True' sin ejecución real de backend"
+        "reason": "16x return 'ok:True' sin ejecución real de backend"
       },
       {
         "file": "ui_qml_bridge/notification_bridge.py",
@@ -448,11 +411,6 @@
         "file": "ui_qml_bridge/playlists_bridge.py",
         "category": "DUPLICATED_LOGIC",
         "reason": "Business rule: track-uid logic (aparece en bridge y core)"
-      },
-      {
-        "file": "ui_qml_bridge/qml_main.py",
-        "category": "DUPLICATED_LOGIC",
-        "reason": "Business rule: file-exists check (aparece en bridge y core)"
       }
     ],
     "REMOVABLE": [
@@ -472,22 +430,17 @@
         "reason": "No service dependency"
       },
       {
+        "file": "ui_qml_bridge/bridge_factory.py",
+        "category": "REMOVABLE",
+        "reason": "No service dependency"
+      },
+      {
         "file": "ui_qml_bridge/conversion_bridge.py",
         "category": "REMOVABLE",
         "reason": "No service dependency"
       },
       {
         "file": "ui_qml_bridge/desktop_bridge.py",
-        "category": "REMOVABLE",
-        "reason": "No service dependency"
-      },
-      {
-        "file": "ui_qml_bridge/devices_bridge.py",
-        "category": "REMOVABLE",
-        "reason": "No service dependency"
-      },
-      {
-        "file": "ui_qml_bridge/home_audio_bridge.py",
         "category": "REMOVABLE",
         "reason": "No service dependency"
       },

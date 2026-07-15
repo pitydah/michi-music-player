@@ -327,6 +327,61 @@ class NotificationBridge(QObject):
                 return {"ok": True}
         return self.showProgress(text or f"Progreso: {pct}%", job_id, pct)
 
+    @Slot(str, result=dict)
+    def showBanner(self, text: str, kind: str = "info"):
+        msg = self._build_notification(text, kind=kind, persistent=True)
+        msg["_priority"] = _PRIORITY_HIGH
+        msg["banner"] = True
+        self._queue.insert(0, msg)
+        if not self._current:
+            self._next()
+        self._persistent_map[msg["id"]] = msg
+        self.notificationChanged.emit()
+        return {"ok": True, "banner": True}
+
+    @Slot(str, str, result=dict)
+    def showCenter(self, text: str, kind: str = "info"):
+        msg = self._build_notification(text, kind=kind, persistent=True)
+        msg["_priority"] = _PRIORITY_HIGH
+        msg["center"] = True
+        self._queue.insert(0, msg)
+        if not self._current:
+            self._next()
+        self._persistent_map[msg["id"]] = msg
+        self.notificationChanged.emit()
+        return {"ok": True, "center": True}
+
+    @Slot(str, str, result=dict)
+    def showPersistentError(self, text: str, error_code: str = ""):
+        return self.showMessage(text, kind="error", persistent=True)
+
+    @Slot(str, str, result=dict)
+    def showProgressNotification(self, text: str, job_id: str):
+        return self.showProgress(text, job_id, 0)
+
+    @Slot(str, str, result=dict)
+    def cancelAndNotify(self, job_id: str, reason: str = ""):
+        result = self.cancelJobById(job_id)
+        text = reason or f"Tarea {job_id} cancelada."
+        self.showMessage(text, kind="info")
+        return result
+
+    @Slot(str, str, result=dict)
+    def retryAndNotify(self, job_id: str, reason: str = ""):
+        result = self.retryJob(job_id)
+        if result.get("ok"):
+            text = reason or f"Reintentando tarea {job_id}..."
+            self.showMessage(text, kind="info")
+        return result
+
+    @Slot(str, str, result=dict)
+    def undoAndNotify(self, undo_key: str, action_name: str = ""):
+        result = self.undoAction(undo_key)
+        if result.get("ok"):
+            text = f"Accion '{action_name or undo_key}' deshecha."
+            self.showMessage(text, kind="success")
+        return result
+
     def _next(self):
         if not self._queue:
             self._current = None

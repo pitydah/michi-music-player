@@ -8,6 +8,7 @@ from core.service_container import ServiceContainer, ServicePriority, ContainerS
 def _make_container(**overrides) -> ServiceContainer:
     c = ServiceContainer()
     defaults = {
+        "database": MagicMock(),
         "connection_factory": MagicMock(),
         "worker_manager": MagicMock(),
         "query_executor": MagicMock(),
@@ -22,6 +23,7 @@ def _make_container(**overrides) -> ServiceContainer:
         "history_query_service": MagicMock(),
         "global_search_service": MagicMock(),
         "mix_query_service": MagicMock(),
+        "mix_service": MagicMock(),
         "track_action_service": MagicMock(),
         "playback_service": MagicMock(),
         "queue_service": MagicMock(),
@@ -68,11 +70,6 @@ class TestContainerCreation:
 
 
 class TestContainerLifecycle:
-    def test_start_transitions_to_starting(self):
-        c = ServiceContainer()
-        c.state = ContainerState.STARTING
-        assert c.state == ContainerState.STARTING
-
     def test_start_to_ready(self):
         c = _make_container()
         c.start()

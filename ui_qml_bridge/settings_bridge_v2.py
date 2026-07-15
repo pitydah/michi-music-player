@@ -1,4 +1,7 @@
-"""SettingsBridgeV2 — QML bridge for SettingsService with coordinator-backed transactions."""
+"""SettingsBridgeV2 — QML bridge for SettingsService with coordinator-backed transactions.
+
+Flow: QML -> bridge -> schema -> runtime adapter -> consumer -> persistence -> verify -> applied/rejected -> rollback.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
@@ -9,9 +12,9 @@ from core.settings_service import SettingsService
 class SettingsBridgeV2(QObject):
     dataChanged = Signal()
 
-    def __init__(self, service: SettingsService | None = None, parent=None):
+    def __init__(self, service: SettingsService, parent=None):
         super().__init__(parent)
-        self._svc = service or SettingsService()
+        self._svc = service
 
     @Property("QVariantList", notify=dataChanged)
     def categories(self):

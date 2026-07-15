@@ -1,29 +1,44 @@
 """ContextRegistrar — registers context properties, validates contracts.
 
 Validates: unique name, bridge built, QObject alive, ownership stable, no QtWidgets.
+REQUIRED service absent -> blocks registration.
+OPTIONAL service absent -> capability false.
+No None registered as context. No duplicate instances of same service.
 """
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Any
 
 from PySide6.QtCore import QObject
 from PySide6.QtQml import QQmlApplicationEngine
 
-if TYPE_CHECKING:
-    pass
+from ui_qml_bridge.context_bindings import ContextBinding
 
 logger = logging.getLogger("michi.context_registrar")
 
+CANONICAL_MAP: dict[str, str] = {
+    "db": "database",
+    "player_service": "playback_service",
+    "search_engine": "global_search_service",
+    "sync_manager": "device_sync_service",
+    "michi_link_controller": "connection_service",
+    "home_audio_controller": "home_audio_service",
+    "radio_manager": "radio_service",
+}
+
+
+class ContractViolation(Exception):
+    pass
+
 
 class ContextRegistrar:
-    """Registers QML context properties with contract validation."""
-
     def __init__(self, engine: QQmlApplicationEngine):
         self._engine = engine
         self._registered: dict[str, QObject] = {}
         self._duplicates: list[tuple[str, type, type]] = []
         self._violations: list[str] = []
+        self._service_registry: dict[str, QObject] = {}
 
     def register(self, name: str, obj: QObject | None):
         violations = self._validate_contract(name, obj)
@@ -40,6 +55,45 @@ class ContextRegistrar:
                 logger.debug("ContextRegistrar: re-registering '%s' (same type)", name)
         self._registered[name] = obj
         self._engine.rootContext().setContextProperty(name, obj)
+
+    def register_with_contract(self, binding: ContextBinding, bridge: QObject, service_container: Any):
+        name = binding.context_name
+        canonical_required = tuple(self._canonical(s) for s in binding.required_services)
+        canonical_optional = tuple(self._canonical(s) for s in binding.optional_services)
+
+        def _resolve(svc_name: str):
+            if hasattr(service_container, 'contains') and service_container.contains(svc_name):
+                return service_container.get(svc_name) if hasattr(service_container, 'get') else None
+            if hasattr(service_container, 'get'):
+                candidate = service_container.get(svc_name)
+                if candidate is not None:
+                    return candidate
+            return None
+
+        for svc_name in canonical_required:
+            if svc_name not in self._service_registry:
+                svc = _resolve(svc_name)
+                if svc is None:
+                    raise ContractViolation(
+                        f"Cannot register '{name}': REQUIRED service '{svc_name}' not in container"
+                    )
+                self._service_registry[svc_name] = svc
+
+        for svc_name in canonical_optional:
+            if svc_name not in self._service_registry:
+                svc = _resolve(svc_name)
+                if svc is not None:
+                    self._service_registry[svc_name] = svc
+
+        self.register(name, bridge)
+
+    def register_bindings(self, bindings: list[ContextBinding], bridges: dict[str, QObject], container: Any):
+        for b in bindings:
+            bridge = bridges.get(b.context_name)
+            self.register_with_contract(b, bridge, container)
+
+    def _canonical(self, name: str) -> str:
+        return CANONICAL_MAP.get(name, name)
 
     def _validate_contract(self, name: str, obj: QObject | None) -> list[str]:
         issues = []

@@ -4,7 +4,6 @@ from unittest.mock import Mock
 
 from core.service_container import ServiceContainer
 from ui_qml_bridge.bridge_factory import BridgeFactory
-from ui_qml_bridge.service_bundle import ServiceBundle
 import pytest
 pytestmark = [pytest.mark.qml_module("worker_manager")]
 
@@ -57,49 +56,30 @@ def _make_container(**overrides) -> ServiceContainer:
     return c
 
 
-def _make_bundle(**overrides) -> ServiceBundle:
-    b = ServiceBundle()
-    for k, v in {
-        "player_service": Mock(),
-        "db": Mock(),
-        "db_connection": Mock(),
-        "search_engine": Mock(),
-        "radio_manager": Mock(),
-        "sync_manager": Mock(),
-        "michi_link_controller": Mock(),
-        "home_audio_controller": Mock(),
-        "snapcast_controller": Mock(),
-        "disc_service": Mock(),
-        "worker_manager": Mock(),
-        "metadata_service": Mock(),
-        "smart_tagging_service": Mock(),
-    }.items():
-        setattr(b, k, overrides.get(k, v))
-    return b
-
-
 class TestBridgeFactoryWithContainer:
     def test_creates_navigation_bridge(self):
-        f = BridgeFactory(_make_bundle())
+        c = _make_container()
+        f = BridgeFactory(c)
         f.create_navigation_bridge()
         assert f.has("navigation")
         assert f.get("navigation") is not None
 
     def test_creates_app_state_bridge(self):
-        f = BridgeFactory(_make_bundle())
+        c = _make_container()
+        f = BridgeFactory(c)
         f.create_app_state_bridge()
         assert f.has("app_state")
         assert f.get("app_state") is not None
 
     def test_creates_theme_bridge_with_coordinator(self):
-        b = _make_bundle()
-        b.settings_coordinator = Mock()
-        f = BridgeFactory(b)
+        c = _make_container()
+        f = BridgeFactory(c)
         f.create_theme_bridge()
         assert f.get("theme") is not None
 
     def test_creates_notification_bridge_with_action_registry(self):
-        f = BridgeFactory(_make_bundle())
+        c = _make_container()
+        f = BridgeFactory(c)
         f.create_job_bridge()
         f.create_notification_bridge()
         assert f.has("notification")
@@ -107,30 +87,31 @@ class TestBridgeFactoryWithContainer:
 
 class TestTopologicalOrder:
     def test_config_before_theme_bridge(self):
-        f = BridgeFactory(_make_bundle())
+        c = _make_container()
+        f = BridgeFactory(c)
         f.create_theme_bridge()
-        assert f._services.settings_coordinator is not None or f._services.settings_coordinator is None
+        assert f._container.settings_coordinator is not None
 
     def test_worker_manager_before_job_bridge(self):
-        f = BridgeFactory(_make_bundle())
+        c = _make_container()
+        f = BridgeFactory(c)
         f.create_job_bridge()
-        assert f._services.worker_manager is not None
+        assert f._container.worker_manager is not None
 
     def test_queue_service_available(self):
-        b = _make_bundle()
-        b.queue_service = Mock()
-        assert b.queue_service is not None
+        c = _make_container()
+        assert c.queue_service is not None
 
 
 class TestAssertRequiredDependencies:
     def test_create_all_returns_dict(self):
-        b = _make_bundle()
-        f = BridgeFactory(b)
+        c = _make_container()
+        f = BridgeFactory(c)
         result = f.create_all()
         assert isinstance(result, dict)
 
     def test_create_all_has_expected_bridges(self):
-        f = BridgeFactory(_make_bundle())
+        f = BridgeFactory(_make_container())
         result = f.create_all()
         expected_keys = {
             "navigation", "app_state", "route_registry", "job_bridge",

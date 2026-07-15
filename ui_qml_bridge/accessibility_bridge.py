@@ -11,6 +11,7 @@ class AccessibilityBridge(QObject):
     def __init__(self, service=None, coordinator=None, playback_service=None,
                  settings_service=None, settings_coordinator=None, parent=None):
         super().__init__(parent)
+        assert playback_service is not None, "AccessibilityBridge: playback_service is REQUIRED"
         self._svc = service or settings_service
         self._coordinator = coordinator or settings_coordinator
         self._playback_service = playback_service
@@ -21,6 +22,7 @@ class AccessibilityBridge(QObject):
         self._mono = bool(SETTINGS.value("accessibility/mono", False))
         self._balance = int(SETTINGS.value("accessibility/balance", 0))
         self._last_error = ""
+        self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
 
     def _set_via_service(self, key: str, value):
         if self._svc:
@@ -89,6 +91,17 @@ class AccessibilityBridge(QObject):
             self.dataChanged.emit()
 
     @Property(bool, notify=dataChanged)
+    def reduceTransparency(self):
+        return self._reduce_transparency
+
+    @reduceTransparency.setter
+    def reduceTransparency(self, val: bool):
+        if val != self._reduce_transparency:
+            self._reduce_transparency = val
+            self._set_via_service("accessibility/reduce_transparency", val)
+            self.dataChanged.emit()
+
+    @Property(bool, notify=dataChanged)
     def focusIndicators(self):
         return self._focus_indicators
 
@@ -146,6 +159,8 @@ class AccessibilityBridge(QObject):
             score += 10
         if self._reduce_motion:
             score += 10
+        if self._reduce_transparency:
+            score += 10
         if not self._mono:
             score += 10
         if self._balance != 0:
@@ -165,6 +180,7 @@ class AccessibilityBridge(QObject):
             "font_scale": self._font_scale,
             "high_contrast": self._high_contrast,
             "reduce_motion": self._reduce_motion,
+            "reduce_transparency": self._reduce_transparency,
             "focus_indicators": self._focus_indicators,
             "mono": self._mono,
             "balance": self._balance,
@@ -176,6 +192,7 @@ class AccessibilityBridge(QObject):
         self._font_scale = SETTINGS.value("accessibility/font_size", "normal")
         self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
         self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
+        self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
         self._focus_indicators = bool(SETTINGS.value("accessibility/focus_indicators", True))
         self._mono = bool(SETTINGS.value("accessibility/mono", False))
         self._balance = int(SETTINGS.value("accessibility/balance", 0))

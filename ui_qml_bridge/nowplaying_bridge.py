@@ -111,6 +111,8 @@ class NowPlayingBridge(QObject):
 
     def __init__(self, player_service=None, audio_quality_adapter=None, parent=None):
         super().__init__(parent)
+        assert player_service is not None, "NowPlayingBridge: player_service is REQUIRED"
+        assert audio_quality_adapter is not None, "NowPlayingBridge: audio_quality_adapter is REQUIRED"
         self._player = player_service
         self._quality_adapter = audio_quality_adapter
         self._track_title = "—"

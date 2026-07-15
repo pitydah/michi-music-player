@@ -55,14 +55,13 @@ class TestEqNegative:
         result = bridge.setEnabled(True)
         assert result["ok"] is False
 
-    def test_refresh_fallback_on_error(self, mock_player):
+    def test_refresh_on_empty_presets(self, mock_player):
         bridge = EqBridge(player_service=mock_player)
         with pytest.MonkeyPatch().context() as m:
             import audio.eq_presets as ep
             m.setattr(ep, 'get_preset_names', lambda: [])
             bridge.refresh()
-        assert len(bridge.presets) == 1
-        assert bridge.presets[0]["name"] == "Plano"
+        assert len(bridge.presets) == 0
 
     def test_graphic_band_index_out_of_range_negative(self, mock_player):
         bridge = EqBridge(player_service=mock_player)

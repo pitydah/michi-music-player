@@ -1,0 +1,441 @@
+services:
+  - name: player_service
+    class: PlayerService
+    module: audio.player_service
+    priority: critical
+    dependencies:
+      - queue_service
+      - worker_manager
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - PlaybackBridge
+      - NowPlayingBridge
+      - EqBridge
+      - OutputProfilesBridge
+      - QueueBridge
+      - DiagnosticsBridge
+      - AppBridge
+      - HomeBridge
+    physical_dependency: GStreamer, MPD
+    status: ACTIVE
+
+  - name: queue_service
+    class: QueueService
+    module: core.queue_service
+    priority: critical
+    dependencies:
+      - playlist_service
+      - worker_manager
+      - settings_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - QueueBridge
+      - PlaybackBridge
+      - player_service
+    physical_dependency: none
+    status: ACTIVE
+
+  - name: library_query_service
+    class: LibraryQueryService
+    module: core.library_query_service
+    priority: critical
+    dependencies:
+      - connection_factory
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - LibraryBridge
+      - HistoryBridge
+      - MixBridge
+      - playlist_service
+      - global_search_service
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: library_mutation_service
+    class: LibraryMutationService
+    module: core.library_mutation_service
+    priority: high
+    dependencies:
+      - worker_manager
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - metadata_service
+      - library_doctor_service
+      - track_action_service
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: connection_factory
+    class: ConnectionFactory
+    module: core.connection_factory
+    priority: critical
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - library_query_service
+      - history_query_service
+      - global_search_service
+      - mix_query_service
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: worker_manager
+    class: WorkerManager
+    module: core.worker_manager
+    priority: critical
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - player_service
+      - queue_service
+      - JobBridge
+      - AudioLabBridge
+      - LyricsBridge
+      - MetadataBridge
+      - SmartTaggingBridge
+      - LibraryDoctorBridge
+      - DiagnosticsBridge
+      - MichiAIBridge
+      - HomeBridge
+      - GlobalSearchBridge
+    physical_dependency: none
+    status: ACTIVE
+
+  - name: settings_service
+    class: SettingsService
+    module: core.settings_service
+    priority: critical
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - queue_service
+      - ThemeBridge
+      - SettingsBridgeV2
+      - AccessibilityBridge
+    physical_dependency: QSettings
+    status: ACTIVE
+
+  - name: search_engine
+    class: SearchEngine
+    module: library.search_engine
+    priority: high
+    dependencies:
+      - connection_factory
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - GlobalSearchBridge
+    physical_dependency: SQLite FTS5
+    status: ACTIVE
+
+  - name: radio_manager
+    class: RadioManager
+    module: streaming.radio_manager
+    priority: medium
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - RadioBridge
+      - DiagnosticsBridge
+      - AppBridge
+    physical_dependency: network
+    status: ACTIVE
+
+  - name: sync_manager
+    class: SyncManager
+    module: sync.sync_manager
+    priority: medium
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - DevicesBridge
+      - DiagnosticsBridge
+      - AppBridge
+    physical_dependency: network, Android
+    status: ACTIVE
+
+  - name: device_sync_service
+    class: DeviceSyncService
+    module: core.device_sync_service
+    priority: medium
+    dependencies:
+      - worker_manager
+      - library_query_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - DevicesBridge
+    physical_dependency: network
+    status: ACTIVE
+
+  - name: job_service
+    class: JobService
+    module: core.job_service
+    priority: high
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - AudioLabBridge
+      - MetadataBridge
+      - NotificationBridge
+      - DevicesBridge
+      - MichiAIBridge
+    physical_dependency: none
+    status: ACTIVE
+
+  - name: confirmation_service
+    class: ConfirmationService
+    module: core.confirmation_service
+    priority: medium
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - ConfirmationBridge
+      - MichiAIBridge
+      - DevicesBridge
+    physical_dependency: none
+    status: ACTIVE
+
+  - name: audio_lab_service
+    class: AudioLabService
+    module: core.audio_lab.audio_lab_service
+    priority: medium
+    dependencies:
+      - job_service
+      - metadata_service
+      - worker_manager
+      - library_query_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - AudioLabBridge
+    physical_dependency: GStreamer, librosa
+    status: ACTIVE
+
+  - name: metadata_service
+    class: MetadataService
+    module: metadata.services
+    priority: high
+    dependencies:
+      - worker_manager
+      - library_mutation_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - MetadataBridge
+      - audio_lab_service
+    physical_dependency: mutagen, SQLite
+    status: ACTIVE
+
+  - name: notification_service
+    class: NotificationService
+    module: core.notification_service
+    priority: high
+    dependencies:
+      - action_registry
+      - job_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - NotificationBridge
+    physical_dependency: none
+    status: ACTIVE
+
+  - name: playlist_service
+    class: PlaylistService
+    module: core.playlist_service
+    priority: medium
+    dependencies:
+      - library_query_service
+      - connection_factory
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - queue_service
+      - PlaylistsBridge
+      - MixBridge
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: history_query_service
+    class: HistoryQueryService
+    module: core.history_query_service
+    priority: low
+    dependencies:
+      - connection_factory
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - HistoryBridge
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: global_search_service
+    class: GlobalSearchService
+    module: core.global_search_service
+    priority: high
+    dependencies:
+      - connection_factory
+      - library_query_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - GlobalSearchBridge
+    physical_dependency: SQLite FTS5
+    status: ACTIVE
+
+  - name: mix_query_service
+    class: MixQueryService
+    module: core.mix_query_service
+    priority: low
+    dependencies:
+      - library_query_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - MixBridge
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: michi_link_controller
+    class: ServiceManager
+    module: integrations.michi_link.services.service_manager
+    priority: medium
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - ConnectionsBridge
+      - HomeAudioBridge
+    physical_dependency: network
+    status: ACTIVE
+
+  - name: home_audio_controller
+    class: HomeAudioController
+    module: core.home_audio_controller
+    priority: medium
+    dependencies:
+      - worker_manager
+      - playback_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - HomeAudioBridge
+      - AppBridge
+    physical_dependency: network, Snapcast
+    status: ACTIVE
+
+  - name: snapcast_controller
+    class: SnapcastController
+    module: integrations.snapcast.controller
+    priority: low
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - HomeAudioBridge
+    physical_dependency: network, Snapcast
+    status: ACTIVE
+
+  - name: smart_tagging_service
+    class: SmartTaggingService
+    module: core.smart_tagging_service
+    priority: low
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - SmartTaggingBridge
+    physical_dependency: none
+    status: ACTIVE
+
+  - name: diagnostics_service
+    class: DiagnosticsService
+    module: core.diagnostics_service
+    priority: low
+    dependencies:
+      - worker_manager
+      - library_query_service
+      - settings_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - DiagnosticsBridge
+      - NotificationBridge
+    physical_dependency: GStreamer
+    status: ACTIVE
+
+  - name: disc_service
+    class: DiscService
+    module: streaming.disc_service
+    priority: low
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: false
+    shutdown: true
+    consumers:
+      - DiscLabBridge
+    physical_dependency: optical drive
+    status: DEFERRED
+
+  - name: track_action_service
+    class: TrackActionService
+    module: core.track_action_service
+    priority: low
+    dependencies:
+      - library_mutation_service
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers: []
+    physical_dependency: SQLite
+    status: ACTIVE
+
+  - name: process_controller
+    class: ProcessController
+    module: core.process_controller
+    priority: low
+    dependencies: []
+    constructed_by: ServiceContainer
+    started: true
+    shutdown: true
+    consumers:
+      - AudioLabBridge
+    physical_dependency: subprocess
+    status: ACTIVE

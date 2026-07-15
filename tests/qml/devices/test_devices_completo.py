@@ -11,7 +11,6 @@ from ui_qml_bridge.devices_bridge import (
     STATE_EMPTY,
     STATE_READY,
     STATE_PAIRING,
-    STATE_ERROR,
     STATE_DEFERRED_PHYSICAL,
 )
 

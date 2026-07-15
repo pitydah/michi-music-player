@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.devices_bridge import DevicesBridge, STATE_INITIALIZING, STATE_DISCOVERING, STATE_READY, STATE_EMPTY, STATE_ERROR
+from ui_qml_bridge.devices_bridge import DevicesBridge, STATE_INITIALIZING, STATE_DISCOVERING, STATE_READY, STATE_EMPTY
 
 pytestmark = pytest.mark.isolation
 
@@ -48,7 +48,7 @@ class TestDevicesPageStates:
         b = DevicesBridge()
         b.errorMessage = "Connection failed"
         b._set_state()
-        assert b.pageState == STATE_ERROR
+        assert b.pageState == "FAILED"
 
     def test_state_loading_when_manager_no_server(self):
         mgr = MagicMock()

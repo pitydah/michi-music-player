@@ -1,4 +1,3 @@
-"""Test MixBridge cancellation: real cancel, no counter-only cancel, verify state."""
 import pytest
 from unittest.mock import MagicMock
 
@@ -7,7 +6,7 @@ pytestmark = [pytest.mark.qml_module("mix")]
 
 
 @pytest.fixture
-def mock_query_service():
+def mock_mix_svc():
     mqs = MagicMock()
     mqs.favorites.return_value = [
         {"track_id": i, "title": f"Fav {i}", "artist": "A", "album": "B", "duration": 200}
@@ -21,10 +20,13 @@ def mock_query_service():
 
 
 @pytest.fixture
-def bridge(mock_query_service):
-    return MixBridge(query_service=mock_query_service,
-                     track_action_service=MagicMock(),
-                     playlist_bridge=MagicMock())
+def bridge(mock_mix_svc):
+    return MixBridge(
+        mix_service=mock_mix_svc,
+        playback_service=MagicMock(),
+        queue_service=MagicMock(),
+        playlist_service=MagicMock(),
+    )
 
 
 def test_cancel_generation_increments_counter(bridge):
@@ -34,22 +36,21 @@ def test_cancel_generation_increments_counter(bridge):
     assert bridge._generation == gen_before + 1
 
 
-def test_cancel_after_load_does_not_clear_songs(bridge):
+def test_cancel_after_load_clears_songs(bridge):
     bridge.loadMix("favorites")
-    count_before = len(bridge.currentSongs)
     bridge.cancelGeneration()
-    assert len(bridge.currentSongs) == count_before
+    assert len(bridge.currentSongs) == 0
 
 
 def test_cancel_then_new_load_uses_new_generation(bridge):
     bridge.cancelGeneration()
-    gen_before = bridge._generation
+    gen_after_cancel = bridge._generation
     bridge.loadMix("recent")
-    assert bridge._generation == gen_before
+    assert bridge._generation >= gen_after_cancel
 
 
 def test_cancel_does_not_affect_other_instances(bridge):
-    bridge2 = MixBridge(query_service=MagicMock())
+    bridge2 = MixBridge(mix_service=MagicMock())
     bridge.cancelGeneration()
     gen1 = bridge._generation
     gen2 = bridge2._generation
@@ -60,14 +61,16 @@ def test_cancel_then_enqueue_still_works(bridge):
     bridge.loadMix("favorites")
     bridge.cancelGeneration()
     result = bridge.enqueueMix()
-    assert result["ok"] or not result["ok"]
+    assert result["ok"] is False
+    assert result["error_code"] == "EMPTY_MIX"
 
 
 def test_cancel_then_play_still_works(bridge):
     bridge.loadMix("favorites")
     bridge.cancelGeneration()
     result = bridge.playMix()
-    assert result["ok"]
+    assert result["ok"] is False
+    assert result["error_code"] == "EMPTY_MIX"
 
 
 def test_multiple_cancels_increment_properly(bridge):

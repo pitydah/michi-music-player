@@ -1,23 +1,24 @@
-"""GlobalSearchBridge — async QML search via QueryExecutor/WorkerManager.
+"""GlobalSearchBridge — async QML search via QueryExecutor from container.
+Always async. GlobalSearchService real. No sync fallback.
+Executes result actions, navigates, restores searches, exposes capabilities.
 
 Architecture:
-  QML debounce → search(query) → request generation → stale guard →
-  QueryExecutor/WorkerManager → service connection → partial results → QML.
+  QML debounce -> search(query) -> request generation -> stale guard ->
+  QueryExecutor/WorkerManager -> GlobalSearchService -> partial results -> QML.
 
 No direct DB access. Integrates with JobService, ActionRegistry,
 NavigationBridge, PageStateStore, CapabilityBridge, AccessibilityBridge.
 """
 from __future__ import annotations
 
-
-
 from PySide6.QtCore import QObject, Signal, Property, Slot
 import logging
+
+from ui_qml_bridge.query_executor import QueryExecutor
 
 logger = logging.getLogger("michi.global_search")
 
 _MAX_TOTAL = 50
-_STALE_MS = 60000
 
 DOMAIN_MAP = {
     "tracks": "track",
@@ -37,14 +38,21 @@ DOMAIN_MAP = {
 class GlobalSearchBridge(QObject):
     resultsChanged = Signal()
     searchingChanged = Signal()
-    partialResults = Signal(str, "QVariantList")
+    partialResults = Signal(str, list)
     staleResultDropped = Signal(str)
 
-    def __init__(self, search_service=None, query_executor=None,
-                 action_registry=None, navigation_bridge=None,
-                 page_state_store=None, capability_bridge=None,
-                 accessibility_bridge=None, notification_bridge=None,
-                 parent=None):
+    def __init__(
+        self,
+        search_service=None,
+        query_executor: QueryExecutor | None = None,
+        action_registry=None,
+        navigation_bridge=None,
+        page_state_store=None,
+        capability_bridge=None,
+        accessibility_bridge=None,
+        notification_bridge=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self._svc = search_service
         self._qe = query_executor
@@ -90,20 +98,6 @@ class GlobalSearchBridge(QObject):
     def _notify(self, text: str, kind: str = "info"):
         if self._notifications:
             self._notifications.showMessage(text, kind=kind)
-
-    def _run_search(self, query: str, request_id: int) -> dict:
-        if self._is_stale(request_id):
-            return {"ok": False, "error": "STALE"}
-        if self._svc and callable(getattr(self._svc, 'search', None)):
-            try:
-                result = self._svc.search(query, owner=self._owner, timeout_ms=5000)
-                if self._is_stale(request_id):
-                    self.staleResultDropped.emit(query)
-                    return {"ok": False, "error": "STALE"}
-                return result
-            except Exception as e:
-                return {"ok": False, "error_code": "SEARCH_FAILED", "message": str(e)}
-        return {"ok": False, "error_code": "SERVICE_UNAVAILABLE", "message": "No search service"}
 
     def _on_search_done(self, result: dict, request_id: int):
         if self._is_stale(request_id):
@@ -151,10 +145,24 @@ class GlobalSearchBridge(QObject):
         self._error_message = ""
         self.searchingChanged.emit()
 
+        def _run():
+            if self._is_stale(request_id):
+                return {"ok": False, "error": "STALE"}
+            if self._svc and callable(getattr(self._svc, 'search', None)):
+                try:
+                    result = self._svc.search(q, owner=self._owner, timeout_ms=5000)
+                    if self._is_stale(request_id):
+                        self.staleResultDropped.emit(q)
+                        return {"ok": False, "error": "STALE"}
+                    return result
+                except Exception as e:
+                    return {"ok": False, "error_code": "SEARCH_FAILED", "message": str(e)}
+            return {"ok": False, "error_code": "SERVICE_UNAVAILABLE", "message": "No search service"}
+
         if self._qe and hasattr(self._qe, 'submit'):
             self._qe.submit(
                 owner=self._owner,
-                callable_fn=lambda: self._run_search(q, request_id),
+                callable_fn=_run,
                 on_success=lambda res: self._on_search_done(res, request_id),
                 on_error=lambda code, msg: self._on_search_done(
                     {"ok": False, "error_code": code, "message": msg}, request_id),
@@ -163,9 +171,14 @@ class GlobalSearchBridge(QObject):
             )
             return {"ok": True, "async": True, "request_id": request_id}
 
-        result = self._run_search(q, request_id)
-        self._on_search_done(result, request_id)
-        return result
+        logger.error("GlobalSearchBridge: no QueryExecutor available — search cannot execute")
+        self._results = []
+        self._is_searching = False
+        self._error_code = "NO_QUERY_EXECUTOR"
+        self._error_message = "QueryExecutor not available"
+        self.searchingChanged.emit()
+        self.resultsChanged.emit()
+        return {"ok": False, "error": "NO_QUERY_EXECUTOR"}
 
     @Slot(result=dict)
     def cancel(self):
@@ -187,6 +200,65 @@ class GlobalSearchBridge(QObject):
     def searchDomain(self, domain: str, query: str):
         mapped = DOMAIN_MAP.get(domain, domain)
         return self.search(f"{mapped}:{query}")
+
+    @Slot(str, result=dict)
+    def executeResultAction(self, result_id: str, action: str):
+        if action == "navigate":
+            route = ""
+            for r in self._results:
+                if str(r.get("id", "")) == result_id:
+                    route = r.get("route", r.get("type", ""))
+                    break
+            if route and self._navigation:
+                if self._page_state:
+                    self._page_state.saveState("search", {
+                        "query": self._query,
+                        "results": self._results[:10],
+                    })
+                self._navigation.navigate(route)
+                return {"ok": True, "route": route}
+            return {"ok": False, "error": "NO_ROUTE"}
+        if action == "play":
+            if self._action_registry:
+                result = self._action_registry.execute("track_play_now")
+                return result if isinstance(result, dict) else {"ok": True}
+            return {"ok": False, "error": "NO_ACTION_REGISTRY"}
+        if action == "add_to_queue":
+            if self._action_registry:
+                result = self._action_registry.execute("track_add_to_queue")
+                return result if isinstance(result, dict) else {"ok": True}
+            return {"ok": False, "error": "NO_ACTION_REGISTRY"}
+        return {"ok": False, "error": "UNKNOWN_ACTION"}
+
+    @Slot(result=dict)
+    def restoreLastSearch(self):
+        if self._page_state and self._page_state.hasState("search"):
+            state = self._page_state.restoreState("search")
+            q = state.get("query", "")
+            if q:
+                return self.search(q)
+        return {"ok": False, "error": "NO_SAVED_SEARCH"}
+
+    @Slot(result="QVariantMap")
+    def getCapabilities(self):
+        caps = {}
+        if self._svc:
+            caps["has_service"] = True
+        if self._qe:
+            caps["has_query_executor"] = True
+        if self._action_registry:
+            caps["has_action_registry"] = True
+        if self._navigation:
+            caps["has_navigation"] = True
+        if self._page_state:
+            caps["has_page_state"] = True
+        if self._capability:
+            caps["has_capability"] = True
+        if self._accessibility:
+            caps["has_accessibility"] = True
+        if self._notifications:
+            caps["has_notifications"] = True
+        return caps
 
     @Slot(result=dict)
     def searchScore(self) -> dict:

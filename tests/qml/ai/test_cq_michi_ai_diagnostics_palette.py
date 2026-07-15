@@ -117,8 +117,19 @@ class TestDiagnostics:
         return wm
 
     @pytest.fixture
-    def bridge(self, wm):
-        return DiagnosticsBridge(worker_manager=wm)
+    def ds(self):
+        d = MagicMock()
+        d.check_player_api.return_value = {"status": "ok", "api_version": "v1"}
+        d.check_sync_server.return_value = {"status": "ok", "running": True}
+        d.check_pairing.return_value = {"status": "ok", "paired": 1}
+        d.check_playback.return_value = {"status": "ok", "state": "playing"}
+        d.check_queue.return_value = {"status": "ok", "queue_length": 5}
+        d.check_continue_readiness.return_value = {"status": "ready", "has_queue": True}
+        return d
+
+    @pytest.fixture
+    def bridge(self, wm, ds):
+        return DiagnosticsBridge(diagnostics_service=ds, worker_manager=wm)
 
     def test_initial_state(self, bridge):
         assert bridge.jobs == []
@@ -141,18 +152,20 @@ class TestDiagnostics:
         text = bridge.copyDiagnostics()
         assert text != ""
 
-    def test_db_health_check(self, bridge):
-        result = bridge._check_db_integrity()
-        assert result["status"] in ("FAIL", "PASS", "WARN")
+    def test_player_api_check(self, ds):
+        bridge = DiagnosticsBridge(diagnostics_service=ds)
+        result = bridge._check_player_api()
+        assert result["status"] in ("PASS", "WARN", "FAIL")
 
-    def test_library_status_check(self, bridge):
-        result = bridge._check_library_status()
-        assert result["status"] in ("FAIL", "PASS", "WARN")
+    def test_sync_server_check(self, ds):
+        bridge = DiagnosticsBridge(diagnostics_service=ds)
+        result = bridge._check_sync_server()
+        assert result["status"] in ("PASS", "WARN", "FAIL")
 
-    def test_player_status_check(self):
-        bridge = DiagnosticsBridge(player_service=MagicMock())
-        result = bridge._check_player_status()
-        assert result["status"] in ("FAIL", "PASS", "WARN")
+    def test_playback_check(self, ds):
+        bridge = DiagnosticsBridge(diagnostics_service=ds, player_service=MagicMock())
+        result = bridge._check_playback()
+        assert result["status"] in ("PASS", "WARN", "FAIL")
 
     def test_storage_paths_check(self, bridge):
         result = bridge._check_storage_paths()

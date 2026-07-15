@@ -8,10 +8,10 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ["MICHI_SAFE_MODE"] = "1"
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO))  # noqa: E402
 
-from PySide6.QtCore import QCoreApplication
-from PySide6.QtQml import QQmlEngine, QQmlComponent
+from PySide6.QtCore import QCoreApplication  # noqa: E402
+from PySide6.QtQml import QQmlEngine, QQmlComponent  # noqa: E402
 
 PAGE_DIR = REPO / "ui_qml"
 

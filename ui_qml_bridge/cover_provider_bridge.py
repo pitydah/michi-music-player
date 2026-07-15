@@ -18,6 +18,7 @@ class CoverProviderBridge(QObject):
 
     def __init__(self, cover_bridge=None, parent=None):
         super().__init__(parent)
+        assert cover_bridge is not None, "CoverProviderBridge: cover_bridge is REQUIRED"
         self._cover_bridge = cover_bridge
         self._cache: dict[str, dict] = {}
         self._max_cache = _MAX_CACHE

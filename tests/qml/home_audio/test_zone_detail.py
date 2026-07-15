@@ -1,292 +1,71 @@
-"""Test zone detail page with mock bridge."""
 from unittest.mock import MagicMock, PropertyMock
-"""Test ZoneDetailPage properties, signals, volume control, mute."""
-from pathlib import Path
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
-from PySide6.QtCore import QUrl
-from PySide6.QtQml import QQmlComponent, QQmlEngine
-
-QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
-"""Test zone detail page with mock bridge."""
 
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-def mock_ha():
-    ha = MagicMock()
-    ha.is_connected = True
-    type(ha).is_connected = PropertyMock(return_value=True)
-    ha.test_connection.return_value = True
-    ha.get_devices.return_value = [
-        {"name": "Speaker1", "entity_id": "spk1", "state": "playing"},
+def mock_ha_svc():
+    svc = MagicMock()
+    type(svc).is_connected = PropertyMock(return_value=True)
+    svc.get_zones.return_value = [
+        {"id": "z1", "name": "Living Room", "muted": False, "volume": 80},
     ]
-    ha.set_volume = MagicMock()
-    ha.set_mute = MagicMock()
-    ha.reconnect = MagicMock()
-    ha.select_source = MagicMock()
-    return ha
-def engine(qapp):
-    e = QQmlEngine(qapp)
-    e.addImportPath(str(QML_DIR))
-    return e
+    svc.set_volume = MagicMock()
+    svc.set_mute = MagicMock()
+    svc.set_group_name = MagicMock()
+    svc.delete_group = MagicMock()
+    svc.set_latency = MagicMock()
+    svc.select_source = MagicMock()
+    return svc
 
 
 @pytest.fixture
-def mock_snapcast():
-    sc = MagicMock()
-    sc.is_available = True
-    type(sc).is_available = PropertyMock(return_value=True)
-    sc.get_groups.return_value = [
-        {"id": "zone1", "name": "Living Room", "muted": False, "volume": 80,
-         "stream_id": "default", "latency": 50},
-    ]
-    sc.set_group_volume = MagicMock()
-    sc.set_group_mute = MagicMock()
-    sc.group = MagicMock()
-    sc.ungroup = MagicMock()
-    sc.set_group_name = MagicMock()
-    sc.delete_group = MagicMock()
-    sc.set_latency = MagicMock()
-    return sc
-
-
-@pytest.fixture
-def bridge(mock_ha, mock_snapcast):
-    return HomeAudioBridge(ha_controller=mock_ha, snapcast_ctrl=mock_snapcast)
+def bridge(mock_ha_svc):
+    return HomeAudioBridge(home_audio_service=mock_ha_svc)
 
 
 class TestZoneDetail:
-    def test_refresh_populates_zones(self, bridge):
+    def test_zone_select(self, bridge):
         bridge.refresh()
-        assert len(bridge.zones) >= 1
+        zone = bridge.zones[0]
+        assert zone["id"] == "z1"
+        assert zone["name"] == "Living Room"
 
-    def test_zone_has_all_properties(self, bridge):
+    def test_zone_volume(self, bridge, mock_ha_svc):
+        result = bridge.setZoneVolume("z1", 0.5)
+        assert result["ok"]
+
+    def test_zone_mute(self, bridge, mock_ha_svc):
+        result = bridge.setZoneMute("z1", True)
+        assert result["ok"]
+
+    def test_zone_rename(self, bridge, mock_ha_svc):
+        result = bridge.renameZone("z1", "New Name")
+        assert result["ok"]
+        mock_ha_svc.set_group_name.assert_called_once_with("z1", "New Name")
+
+    def test_zone_delete(self, bridge, mock_ha_svc):
+        result = bridge.deleteZone("z1")
+        assert result["ok"]
+        mock_ha_svc.delete_group.assert_called_once_with("z1")
+
+    def test_zone_latency_set(self, bridge, mock_ha_svc):
+        result = bridge.setLatency("z1", 100)
+        assert result["ok"]
+        mock_ha_svc.set_latency.assert_called_once_with("z1", 100)
+
+    def test_zone_source_change(self, bridge, mock_ha_svc):
+        result = bridge.setSource("HDMI")
+        assert result["ok"]
+        mock_ha_svc.select_source.assert_called_once_with("HDMI")
+
+    def test_zone_detail_accessible(self, bridge):
         bridge.refresh()
         zone = bridge.zones[0]
         assert "id" in zone
         assert "name" in zone
-
-    def test_zone_volume_change(self, bridge, mock_snapcast):
-        result = bridge.setZoneVolume("zone1", 0.75)
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_volume.called
-
-    def test_zone_mute_toggle(self, bridge, mock_snapcast):
-        result = bridge.setZoneMute("zone1", True)
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_mute.called
-
-    def test_zone_reconnect(self, bridge, mock_ha):
-        result = bridge.reconnectHa()
-        assert result["ok"] is True
-        assert mock_ha.test_connection.called
-
-    def test_zone_group(self, bridge, mock_snapcast):
-        result = bridge.groupZones("zone1,zone2")
-        assert result["ok"] is True
-        assert mock_snapcast.group.called
-
-    def test_zone_ungroup(self, bridge, mock_snapcast):
-        result = bridge.ungroupZone("zone1")
-        assert result["ok"] is True
-        assert mock_snapcast.ungroup.called
-
-    def test_zone_rename(self, bridge, mock_snapcast):
-        result = bridge.renameZone("zone1", "New Name")
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_name.called
-
-    def test_zone_delete(self, bridge, mock_snapcast):
-        result = bridge.deleteZone("zone1")
-        assert result["ok"] is True
-        assert mock_snapcast.delete_group.called
-
-    def test_zone_latency_set(self, bridge, mock_snapcast):
-        result = bridge.setLatency("zone1", 100)
-        assert result["ok"] is True
-        assert mock_snapcast.set_latency.called
-
-    def test_zone_source_change(self, bridge, mock_ha):
-        result = bridge.setSource("TV")
-        assert result["ok"] is True
-        assert mock_ha.select_source.called
-
-
-class TestZoneDetailNoController:
-    def test_set_volume_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.setZoneVolume("zone1", 0.5)
-        assert result["ok"] is False
-
-    def test_set_mute_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.setZoneMute("zone1", True)
-        assert result["ok"] is False
-
-    def test_group_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.groupZones("zone1,zone2")
-        assert result["ok"] is False
-
-    def test_ungroup_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.ungroupZone("zone1")
-        assert result["ok"] is False
-
-    def test_rename_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.renameZone("zone1", "New")
-        assert result["ok"] is False
-
-    def test_delete_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.deleteZone("zone1")
-        assert result["ok"] is False
-
-def test_zone_detail_accessible(engine):
-    component = QQmlComponent(engine)
-    component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/home_audio/ZoneDetailPage.qml")))
-    obj = component.create()
-    try:
-        assert obj.property("objectName") == "zoneDetailPage"
-    finally:
-        obj.deleteLater()
-def mock_ha():
-    ha = MagicMock()
-    ha.is_connected = True
-    type(ha).is_connected = PropertyMock(return_value=True)
-    ha.test_connection.return_value = True
-    ha.get_devices.return_value = [
-        {"name": "Speaker1", "entity_id": "spk1", "state": "playing"},
-    ]
-    ha.set_volume = MagicMock()
-    ha.set_mute = MagicMock()
-    ha.reconnect = MagicMock()
-    ha.select_source = MagicMock()
-    return ha
-
-
-@pytest.fixture
-def mock_snapcast():
-    sc = MagicMock()
-    sc.is_available = True
-    type(sc).is_available = PropertyMock(return_value=True)
-    sc.get_groups.return_value = [
-        {"id": "zone1", "name": "Living Room", "muted": False, "volume": 80,
-         "stream_id": "default", "latency": 50},
-    ]
-    sc.set_group_volume = MagicMock()
-    sc.set_group_mute = MagicMock()
-    sc.group = MagicMock()
-    sc.ungroup = MagicMock()
-    sc.set_group_name = MagicMock()
-    sc.delete_group = MagicMock()
-    sc.set_latency = MagicMock()
-    return sc
-
-
-@pytest.fixture
-def bridge(mock_ha, mock_snapcast):
-    return HomeAudioBridge(ha_controller=mock_ha, snapcast_ctrl=mock_snapcast)
-
-
-class TestZoneDetail:
-    def test_refresh_populates_zones(self, bridge):
-        bridge.refresh()
-        assert len(bridge.zones) >= 1
-
-    def test_zone_has_all_properties(self, bridge):
-        bridge.refresh()
-        zone = bridge.zones[0]
-        assert "id" in zone
-        assert "name" in zone
-
-    def test_zone_volume_change(self, bridge, mock_snapcast):
-        result = bridge.setZoneVolume("zone1", 0.75)
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_volume.called
-
-    def test_zone_mute_toggle(self, bridge, mock_snapcast):
-        result = bridge.setZoneMute("zone1", True)
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_mute.called
-
-    def test_zone_reconnect(self, bridge, mock_ha):
-        result = bridge.reconnectHa()
-        assert result["ok"] is True
-        assert mock_ha.test_connection.called
-
-    def test_zone_group(self, bridge, mock_snapcast):
-        result = bridge.groupZones("zone1,zone2")
-        assert result["ok"] is True
-        assert mock_snapcast.group.called
-
-    def test_zone_ungroup(self, bridge, mock_snapcast):
-        result = bridge.ungroupZone("zone1")
-        assert result["ok"] is True
-        assert mock_snapcast.ungroup.called
-
-    def test_zone_rename(self, bridge, mock_snapcast):
-        result = bridge.renameZone("zone1", "New Name")
-        assert result["ok"] is True
-        assert mock_snapcast.set_group_name.called
-
-    def test_zone_delete(self, bridge, mock_snapcast):
-        result = bridge.deleteZone("zone1")
-        assert result["ok"] is True
-        assert mock_snapcast.delete_group.called
-
-    def test_zone_latency_set(self, bridge, mock_snapcast):
-        result = bridge.setLatency("zone1", 100)
-        assert result["ok"] is True
-        assert mock_snapcast.set_latency.called
-
-    def test_zone_source_change(self, bridge, mock_ha):
-        result = bridge.setSource("TV")
-        assert result["ok"] is True
-        assert mock_ha.select_source.called
-
-
-class TestZoneDetailNoController:
-    def test_set_volume_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.setZoneVolume("zone1", 0.5)
-        assert result["ok"] is False
-
-    def test_set_mute_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.setZoneMute("zone1", True)
-        assert result["ok"] is False
-
-    def test_group_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.groupZones("zone1,zone2")
-        assert result["ok"] is False
-
-    def test_ungroup_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.ungroupZone("zone1")
-        assert result["ok"] is False
-
-    def test_rename_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.renameZone("zone1", "New")
-        assert result["ok"] is False
-
-    def test_delete_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.deleteZone("zone1")
-        assert result["ok"] is False
-
-    def test_latency_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
-        result = b.setLatency("zone1", 100)
-        assert result["ok"] is False
-
-    def test_source_unsupported(self):
-        b = HomeAudioBridge(ha_controller=None)
-        result = b.setSource("TV")
-        assert result["ok"] is False
+        assert "muted" in zone
+        assert "volume" in zone

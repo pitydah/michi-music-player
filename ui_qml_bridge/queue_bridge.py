@@ -28,6 +28,7 @@ class QueueBridge(QObject):
     def __init__(self, player_service=None, playlists_bridge=None,
                  queue_service=None, parent=None):
         super().__init__(parent)
+        assert player_service is not None, "QueueBridge: player_service is REQUIRED"
         self._player = player_service
         self._pb = playlists_bridge
         self._queue_service = queue_service

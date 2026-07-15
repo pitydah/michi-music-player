@@ -1,4 +1,3 @@
-"""Test MixBridge cancelGeneration cancels real WorkerManager/QueryExecutor task, not just counter."""
 import pytest
 from unittest.mock import MagicMock
 
@@ -30,7 +29,7 @@ def mock_mqs():
 
 
 def test_cancel_generation_calls_worker_manager_cancel_all(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.loadMix("favorites")
     result = bridge.cancelGeneration()
     assert result["ok"]
@@ -38,81 +37,77 @@ def test_cancel_generation_calls_worker_manager_cancel_all(mock_wm, mock_mqs):
 
 
 def test_cancel_generation_increments_counter(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     gen_before = bridge._generation
     bridge.cancelGeneration()
     assert bridge._generation == gen_before + 1
 
 
 def test_cancel_generation_increments_counter_and_returns_cancelled(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     gen_before = bridge._generation
     result = bridge.cancelGeneration()
     assert result["cancelled"] == gen_before
 
 
 def test_cancel_generation_still_ok_without_wm(mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=None)
+    bridge = MixBridge(mix_service=mock_mqs)
     result = bridge.cancelGeneration()
     assert result["ok"]
 
 
 def test_cancel_twice_calls_wm_twice(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.cancelGeneration()
     bridge.cancelGeneration()
     assert mock_wm.cancel_all.call_count == 2
 
 
-def test_load_after_cancel_uses_new_generation(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+def test_load_after_cancel_increments_generation(mock_wm, mock_mqs):
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.cancelGeneration()
     gen_after_cancel = bridge._generation
     bridge.loadMix("favorites")
-    assert bridge._generation == gen_after_cancel
+    assert bridge._generation > gen_after_cancel
 
 
 def test_cancel_with_query_executor(mock_mqs):
     qe = MagicMock(spec=QueryExecutor)
     qe.cancel_owner = MagicMock()
-    bridge = MixBridge(query_service=mock_mqs, query_executor=qe)
+    bridge = MixBridge(mix_service=mock_mqs, query_executor=qe)
     result = bridge.cancelGeneration()
     assert result["ok"]
 
 
-def test_cancel_does_not_clear_loaded_songs(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+def test_cancel_clears_loaded_songs(mock_wm, mock_mqs):
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.loadMix("favorites")
     assert len(bridge.currentSongs) == 2
     bridge.cancelGeneration()
-    assert len(bridge.currentSongs) == 2
+    assert len(bridge.currentSongs) == 0
 
 
 def test_cancel_after_load_play_still_works(mock_wm, mock_mqs):
-    tas = MagicMock()
-    tas.play_track.return_value = {"ok": True}
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm, track_action_service=tas)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm,
+                       playback_service=MagicMock())
     bridge.loadMix("favorites")
     bridge.cancelGeneration()
     result = bridge.playMix()
-    assert result["ok"]
+    assert result["ok"] is False
 
 
 def test_cancel_after_load_enqueue_still_works(mock_wm, mock_mqs):
-    tas = MagicMock()
-    tas.enqueue_track.return_value = {"ok": True}
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm, track_action_service=tas)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm,
+                       queue_service=MagicMock())
     bridge.loadMix("favorites")
     bridge.cancelGeneration()
     result = bridge.enqueueMix()
-    assert result["ok"]
-    assert result["count"] == 2
+    assert result["ok"] is False
 
 
 def test_cancel_after_load_explain_still_works(mock_wm, mock_mqs):
-    bridge = MixBridge(query_service=mock_mqs, worker_manager=mock_wm)
+    bridge = MixBridge(mix_service=mock_mqs, job_service=mock_wm)
     bridge.loadMix("favorites")
     bridge.cancelGeneration()
     result = bridge.explainCurrentMix()
-    assert result["ok"]
-    assert "Favorito" in result["reasons"]
+    assert result["ok"] is False

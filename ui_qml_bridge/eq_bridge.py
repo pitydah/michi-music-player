@@ -25,6 +25,7 @@ class EqBridge(QObject):
 
     def __init__(self, player_service=None, parent=None):
         super().__init__(parent)
+        assert player_service is not None, "EqBridge: player_service is REQUIRED"
         self._player = player_service
         self._enabled = True
         self._bypass = False

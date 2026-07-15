@@ -12,10 +12,12 @@ class HomeBridge(QObject):
     snapshotChanged = Signal()
 
     def __init__(self, db=None, player_service=None, library_bridge=None,
-                 library_sources_service=None, job_bridge=None, parent=None):
+                 library_sources_service=None, job_bridge=None, playback_service=None,
+                 library_query_service=None, library_mutation_service=None,
+                 track_action_service=None, query_executor=None, parent=None):
         super().__init__(parent)
         self._db = db
-        self._player = player_service
+        self._player = player_service or playback_service
         self._lib = library_bridge
         self._src_svc = library_sources_service
         self._job_bridge = job_bridge

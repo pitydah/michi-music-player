@@ -116,7 +116,8 @@ class TestWave13VisibleWorkflows:
         qe = QueryExecutor(worker_manager=wm)
         qs = LibraryQueryService(db, db_path=db_path)
         src_svc = LibrarySourcesService(db=db)
-        lib = LibraryBridge(db=db, query_service=qs, query_executor=qe)
+        from unittest.mock import MagicMock
+        lib = LibraryBridge(db=db, query_service=qs, query_executor=qe, track_action_service=MagicMock())
         yield wm, qe, qs, src_svc, lib, db
         wm.shutdown(2000)
         db.conn.close()

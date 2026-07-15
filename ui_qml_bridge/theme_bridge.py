@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
 from core.settings_manager import SETTINGS
 
@@ -8,8 +8,11 @@ from core.settings_manager import SETTINGS
 class ThemeBridge(QObject):
     themeChanged = Signal()
 
+    VALID_THEMES = ("dark", "light", "system", "high_contrast")
+
     def __init__(self, service=None, coordinator=None, parent=None):
         super().__init__(parent)
+        assert coordinator is not None, "ThemeBridge: coordinator is REQUIRED"
         self._service = service or coordinator
         self._theme = SETTINGS.value("appearance/theme", "dark")
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
@@ -17,11 +20,15 @@ class ThemeBridge(QObject):
         self._compact_mode = bool(SETTINGS.value("appearance/compact_mode", False))
         self._font_scale = SETTINGS.value("accessibility/font_size", "normal")
         self._reduce_motion = bool(SETTINGS.value("accessibility/reduce_motion", False))
-        self._dark_mode = self._theme != "light"
+        self._reduce_transparency = bool(SETTINGS.value("accessibility/reduce_transparency", False))
+        self._dark_mode = self._theme not in ("light",)
 
     def _write(self, key: str, value):
         if self._service and hasattr(self._service, 'set_'):
             self._service.set_(key, value)
+        else:
+            SETTINGS.setValue(key, value)
+            SETTINGS.sync()
 
     def _notify_theme_store(self):
         try:
@@ -53,6 +60,9 @@ class ThemeBridge(QObject):
 
     @theme.setter
     def theme(self, val: str):
+        val = val.lower()
+        if val not in self.VALID_THEMES:
+            val = "dark"
         if val != self._theme:
             self._theme = val
             self._dark_mode = val != "light"
@@ -119,3 +129,27 @@ class ThemeBridge(QObject):
             self._write("accessibility/reduce_motion", val)
             self._notify_theme_store()
             self.themeChanged.emit()
+
+    @Property(bool, notify=themeChanged)
+    def reduceTransparency(self):
+        return self._reduce_transparency
+
+    @reduceTransparency.setter
+    def reduceTransparency(self, val: bool):
+        if val != self._reduce_transparency:
+            self._reduce_transparency = val
+            self._write("accessibility/reduce_transparency", val)
+            self._notify_theme_store()
+            self.themeChanged.emit()
+
+    @Slot(result=dict)
+    def themeInfo(self):
+        return {
+            "theme": self._theme,
+            "dark_mode": self._dark_mode,
+            "accent_color": self._accent_color,
+            "high_contrast": self._high_contrast,
+            "reduce_motion": self._reduce_motion,
+            "reduce_transparency": self._reduce_transparency,
+            "valid_themes": list(self.VALID_THEMES),
+        }

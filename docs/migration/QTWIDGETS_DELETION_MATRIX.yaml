@@ -70,6 +70,10 @@ classifications:
 
   SAFE_TO_DELETE:
     description: "QML page exists, bridge connected, primary action works, no imports from other Widgets, no business logic."
+    files: []
+
+  DELETED:
+    description: "Widget files already deleted — QML replacement is complete and production-ready."
     files:
       - ui/genre_detail_view.py
       - ui/genre_grid.py
@@ -173,7 +177,3 @@ classifications:
       - ui/dialogs/album_server_import_dialog.py
       - ui/dialogs/alias_resolution_dialog.py
       - ui/dialogs/crash_dialog.py
-
-  DELETED:
-    description: "Widget files already deleted — QML replacement is complete and production-ready."
-    files: []

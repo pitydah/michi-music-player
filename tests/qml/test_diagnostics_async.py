@@ -3,12 +3,11 @@ from __future__ import annotations
 Tests:
   - Diagnostics via jobs, NOT from getters
   - Cero tareas y cero requests = PASS
-  - Biblioteca vacía = WARN (no FAIL)
   - All jobs produce dict with id/status/value/message/duration_ms
+  - Uses DiagnosticsService, no direct db/radio/sync
 """
-
+from unittest.mock import MagicMock
 import time
-import sqlite3
 
 import pytest
 from PySide6.QtCore import QCoreApplication
@@ -44,24 +43,21 @@ class TestDiagnosticsAsync:
         wm.shutdown()
 
     @pytest.fixture
-    def empty_db(self):
-        conn = sqlite3.connect(":memory:")
-        conn.execute("CREATE TABLE IF NOT EXISTS media_items (id INTEGER PRIMARY KEY, filepath TEXT, title TEXT, artist TEXT, deleted_at REAL)")
-        conn.execute("CREATE TABLE IF NOT EXISTS library_sources (id INTEGER PRIMARY KEY)")
-        conn.execute("CREATE TABLE IF NOT EXISTS library_scan_log (id INTEGER PRIMARY KEY, last_scan REAL)")
-        conn.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT)")
-        conn.execute("CREATE TABLE IF NOT EXISTS playlists (id INTEGER PRIMARY KEY)")
-        conn.execute("CREATE TABLE IF NOT EXISTS play_history (id INTEGER PRIMARY KEY, filepath TEXT)")
-        return conn
+    def diagnostics_service(self):
+        ds = MagicMock()
+        ds.check_player_api.return_value = {"status": "ok", "api_version": "v1"}
+        ds.check_sync_server.return_value = {"status": "ok", "running": True}
+        ds.check_pairing.return_value = {"status": "ok", "paired": 1}
+        ds.check_playback.return_value = {"status": "ok", "state": "playing"}
+        ds.check_queue.return_value = {"status": "ok", "queue_length": 5}
+        ds.check_continue_readiness.return_value = {"status": "ready", "has_queue": True}
+        return ds
 
     @pytest.fixture
-    def bridge(self, worker_manager, empty_db):
+    def bridge(self, worker_manager, diagnostics_service):
         from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
-        class FakeDB:
-            conn = empty_db
-            db_path = ":memory:"
         br = DiagnosticsBridge(
-            db=FakeDB(),
+            diagnostics_service=diagnostics_service,
             worker_manager=worker_manager,
         )
         return br
@@ -98,51 +94,30 @@ class TestDiagnosticsAsync:
             assert isinstance(j.get("status"), str), f"Job status debe ser str: {j}"
             assert isinstance(j.get("duration_ms"), (int, float)), f"duration_ms debe ser numérico: {j}"
 
-    def test_empty_library_is_warn_not_fail(self, worker_manager, empty_db):
+    def test_no_diagnostics_service_still_works(self, worker_manager):
         from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
-        class FakeDB:
-            conn = empty_db
-            db_path = ":memory:"
-        bridge = DiagnosticsBridge(db=FakeDB(), worker_manager=worker_manager)
-        library_status = bridge._check_library_status()
-        assert library_status["status"] in ("WARN", "PASS"), \
-            f"Biblioteca vacía debe ser WARN, no FAIL. Got: {library_status['status']}"
-        assert library_status["value"] == 0
-
-    def test_no_db_is_fail(self, worker_manager):
-        from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
-        bridge = DiagnosticsBridge(db=None, worker_manager=worker_manager)
-        db_status = bridge._check_db_integrity()
-        assert db_status["status"] == "FAIL"
-        assert db_status["value"] is False
-
-    def test_no_player_is_warn(self):
-        from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
-        bridge = DiagnosticsBridge(player_service=None)
-        player_status = bridge._check_player_status()
-        assert player_status["status"] == "WARN"
+        bridge = DiagnosticsBridge(diagnostics_service=None, worker_manager=worker_manager)
+        assert bridge._ds is None
 
     def test_copy_diagnostics_format(self, bridge):
         bridge._jobs = [
-            {"id": "database.integrity", "status": "PASS", "value": 100,
-             "message": "Integridad OK", "duration_ms": 12.5},
-            {"id": "library.status", "status": "WARN", "value": 0,
-             "message": "Biblioteca vacía", "duration_ms": 3.2},
+            {"id": "diagnostics.player_api", "status": "PASS", "value": True,
+             "message": "Player API OK", "duration_ms": 12.5},
+            {"id": "diagnostics.sync_server", "status": "WARN", "value": False,
+             "message": "Sync server stopped", "duration_ms": 3.2},
         ]
         text = bridge.copyDiagnostics()
         assert "=== Michi Music Player Diagnostics ===" in text
         assert "PASS" in text
         assert "WARN" in text
-        assert "database.integrity" in text
-        assert "library.status" in text
+        assert "diagnostics.player_api" in text
+        assert "diagnostics.sync_server" in text
 
-    def test_services_availability_all_ok(self, worker_manager, empty_db):
+    def test_services_availability_all_ok(self, worker_manager):
         from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
-        class FakeDB:
-            conn = empty_db
-            db_path = ":memory:"
+        ds = MagicMock()
         bridge = DiagnosticsBridge(
-            db=FakeDB(),
+            diagnostics_service=ds,
             player_service=object(),
             worker_manager=worker_manager,
             query_executor=object(),
