@@ -3,6 +3,10 @@
 
 metadata:
   branch: michi-qml-domain-parity
+  base_sha: a3c73a89
+  final_sha: fec7d38
+  status: READY_FOR_INTEGRATION
+  merge_priority: 30
   phase: final
   date: 2026-07-14
 
