@@ -4,11 +4,27 @@ import logging
 import os
 import sys
 import time
+from dataclasses import dataclass, field
 from importlib.metadata import version, PackageNotFoundError
+from typing import Any
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
 
 logger = logging.getLogger("michi.app_bridge")
+
+
+@dataclass
+class ShutdownResult:
+    steps: list[dict[str, Any]] = field(default_factory=list)
+    success: bool = True
+
+    def record(self, step: str, ok: bool, detail: str = ""):
+        self.steps.append({"step": step, "ok": ok, "detail": detail})
+        if not ok:
+            self.success = False
+
+    def to_dict(self) -> dict:
+        return {"success": self.success, "steps": list(self.steps)}
 
 
 def get_app_version() -> str:

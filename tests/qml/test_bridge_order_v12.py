@@ -37,7 +37,10 @@ def _make_container(**overrides) -> ServiceContainer:
         "smart_tagging_service": MagicMock(),
         "library_doctor_service": MagicMock(),
         "library_sources_service": MagicMock(),
+        "library_query_service": MagicMock(),
+        "library_mutation_service": MagicMock(),
         "process_controller": MagicMock(),
+        "action_registry": MagicMock(),
     }.items():
         c.register(k, overrides.get(k, v))
     return c
@@ -177,17 +180,17 @@ class TestAggregatorOrder:
         assert nt_idx >= 0 and hm_idx >= 0
         assert nt_idx < hm_idx, "notification should be created before home"
 
-    def test_app_after_capability(self):
+    def test_app_after_home(self):
         c = _make_container()
         f = BridgeFactory(c)
         f._create_infrastructure()
         f._create_domain()
         f._create_aggregators()
         keys = list(f._bridges.keys())
-        cp_idx = keys.index("capability") if "capability" in keys else -1
+        hm_idx = keys.index("home") if "home" in keys else -1
         ap_idx = keys.index("app") if "app" in keys else -1
-        assert cp_idx >= 0 and ap_idx >= 0
-        assert cp_idx < ap_idx, "capability should be created before app"
+        assert hm_idx >= 0 and ap_idx >= 0
+        assert hm_idx < ap_idx, "home should be created before app"
 
 
 class TestForbiddenOrders:
@@ -227,7 +230,7 @@ class TestForbiddenOrders:
         assert jb_idx < pl_idx, "Playlists should be built after JobBridge"
         assert cf_idx < pl_idx, "Playlists should be built after Confirmation"
 
-    def test_capability_after_domain(self):
+    def test_capability_before_domain(self):
         c = _make_container()
         f = BridgeFactory(c)
         result = f.create_all()
@@ -238,15 +241,15 @@ class TestForbiddenOrders:
         for dk in dm_keys:
             if dk in keys:
                 dk_idx = keys.index(dk)
-                assert dk_idx < cp_idx, f"Capability before domain bridge {dk}"
+                assert cp_idx < dk_idx, f"Capability should be before domain bridge {dk}"
 
 
 class TestDeterministicConstants:
     def test_infrastructure_order_defined(self):
-        assert len(INFRASTRUCTURE) == 10
+        assert len(INFRASTRUCTURE) == 11
         expected = ["page_state", "route_registry", "navigation", "action_registry",
                     "query_executor", "job_bridge", "confirmation", "theme", "accessibility",
-                    "app_state"]
+                    "capability", "app_state"]
         assert expected == INFRASTRUCTURE
 
     def test_domain_order_defined(self):
@@ -256,10 +259,9 @@ class TestDeterministicConstants:
         assert DOMAIN[2] == "playback"
 
     def test_aggregators_order_defined(self):
-        assert len(AGGREGATORS) == 8
+        assert len(AGGREGATORS) == 7
         assert AGGREGATORS[0] == "notification"
-        assert AGGREGATORS[3] == "capability"
-        assert AGGREGATORS[4] == "app"
+        assert AGGREGATORS[3] == "app"
 
 
 class TestOrderInvariants:

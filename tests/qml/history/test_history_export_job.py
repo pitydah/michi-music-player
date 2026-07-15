@@ -5,7 +5,8 @@ import time
 import json
 
 from core.history_query_service import HistoryQueryService
-from core.job_service import JobService, JobStatus
+from core.jobs.job_service import JobState as JobStatus
+from core.job_service import JobService
 from ui_qml_bridge.history_bridge import HistoryBridge
 pytestmark = [pytest.mark.qml_module("history")]
 

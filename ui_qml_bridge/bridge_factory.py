@@ -16,7 +16,7 @@ logger = logging.getLogger("michi.bridge_factory")
 INFRASTRUCTURE = [
     "page_state", "route_registry", "navigation", "action_registry",
     "query_executor", "job_bridge", "confirmation", "theme", "accessibility",
-    "app_state",
+    "capability", "app_state",
 ]
 
 DOMAIN = [
@@ -28,7 +28,7 @@ DOMAIN = [
 ]
 
 AGGREGATORS = [
-    "notification", "command_palette", "home", "capability",
+    "notification", "command_palette", "home",
     "app", "desktop", "runtime_quality", "physical_audio",
 ]
 
@@ -79,7 +79,7 @@ class BridgeFactory(QObject):
             from ui_qml_bridge.job_bridge import JobBridge
             self._bridges["job_bridge"] = JobBridge(
                 worker_manager=self._get("worker_manager"),
-                db=self._get("connection_factory"),
+                db=self._get("database"),
             )
 
     def create_confirmation_bridge(self):
@@ -116,7 +116,7 @@ class BridgeFactory(QObject):
         if "library" not in self._bridges:
             from ui_qml_bridge.library_bridge import LibraryBridge
             self._bridges["library"] = LibraryBridge(
-                db=self._get("connection_factory"),
+                db=self._get("database"),
                 search_engine=self._get("global_search_service"),
                 playback_ctrl=self._get("playback_service"),
                 query_service=self._get("library_query_service"),
@@ -172,7 +172,7 @@ class BridgeFactory(QObject):
             sel = SelectionContextBridge()
             self._bridges["selection_context"] = sel
             self._bridges["playlists"] = PlaylistsBridge(
-                db=self._get("connection_factory"),
+                db=self._get("database"),
                 selection_context=sel,
                 player_service=self._get("playback_service"),
                 playlist_service=self._get("playlist_service"),
@@ -190,7 +190,7 @@ class BridgeFactory(QObject):
         if "history" not in self._bridges:
             from ui_qml_bridge.history_bridge import HistoryBridge
             self._bridges["history"] = HistoryBridge(
-                db=self._get("connection_factory"),
+                db=self._get("database"),
                 history_query_service=self._get("history_query_service"),
                 query_executor=self._get("query_executor"),
                 playback_service=self._get("playback_service"),
@@ -374,7 +374,7 @@ class BridgeFactory(QObject):
         if "library_doctor" not in self._bridges:
             from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
             self._bridges["library_doctor"] = LibraryDoctorBridge(
-                db=self._get("connection_factory"),
+                db=self._get("database"),
                 worker_manager=self._get("worker_manager"),
             )
 
@@ -441,7 +441,7 @@ class BridgeFactory(QObject):
         if "home" not in self._bridges:
             from ui_qml_bridge.home_bridge import HomeBridge
             self._bridges["home"] = HomeBridge(
-                db=self._get("connection_factory"),
+                db=self._get("database"),
                 player_service=self._get("playback_service"),
                 library_bridge=self._bridges.get("library"),
                 library_sources_service=self._get("library_sources_service"),
@@ -460,7 +460,7 @@ class BridgeFactory(QObject):
                 home_audio_controller=self._get("home_audio_service"),
                 radio_manager=self._get("radio_service"),
                 discovery=None,
-                db=self._get("connection_factory"),
+                db=self._get("database"),
             )
 
     def create_desktop_bridge(self):
@@ -643,6 +643,7 @@ class BridgeFactory(QObject):
                 "confirmation": "create_confirmation_bridge",
                 "theme": "create_theme_bridge",
                 "accessibility": "create_accessibility_bridge",
+                "capability": "create_capability_bridge",
                 "app_state": "create_app_state_bridge",
             }[name]
             getattr(self, method_name)()
