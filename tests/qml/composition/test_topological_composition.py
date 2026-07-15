@@ -74,28 +74,28 @@ def _make_bundle(**overrides) -> ServiceBundle:
 class TestBridgeFactoryWithContainer:
     def test_creates_navigation_bridge(self):
         f = BridgeFactory(_make_bundle())
-        nav = f.create_navigation_bridge()
-        assert nav is not None
+        f.create_navigation_bridge()
         assert f.has("navigation")
+        assert f.get("navigation") is not None
 
     def test_creates_app_state_bridge(self):
         f = BridgeFactory(_make_bundle())
-        br = f.create_app_state_bridge()
-        assert br is not None
+        f.create_app_state_bridge()
+        assert f.has("app_state")
+        assert f.get("app_state") is not None
 
     def test_creates_theme_bridge_with_coordinator(self):
         b = _make_bundle()
         b.settings_coordinator = Mock()
         f = BridgeFactory(b)
-        theme = f.create_theme_bridge()
-        assert theme is not None
+        f.create_theme_bridge()
+        assert f.get("theme") is not None
 
     def test_creates_notification_bridge_with_action_registry(self):
         f = BridgeFactory(_make_bundle())
         f.create_job_bridge()
-        f.get_action_registry()
-        notif = f.create_notification_bridge()
-        assert notif is not None
+        f.create_notification_bridge()
+        assert f.has("notification")
 
 
 class TestTopologicalOrder:
