@@ -1,0 +1,382 @@
+# X10.3 Real Implementation Map
+# Maps legacy/stub services to their real implementations
+
+domain: home_audio
+current_service: object()
+candidate_implementations:
+  - path: integrations/snapcast/group_manager.py
+    class: GroupManager
+    reusable: true
+  - path: integrations/snapcast/snapserver_manager.py
+    class: SnapserverManager
+    reusable: true
+  - path: integrations/snapcast/discovery.py
+    class: SnapcastDiscovery
+    reusable: true
+  - path: integrations/snapcast/audio_capture.py
+    class: AudioCapture
+    reusable: true
+  - path: integrations/home_assistant/client.py
+    class: HomeAssistantClient
+    reusable: true
+  - path: integrations/home_assistant/local_media_server.py
+    class: LocalMediaServer
+    reusable: true
+  - path: integrations/connections/adapters/home_assistant_adapter.py
+    class: HomeAssistantAdapter
+    reusable: true
+  - path: integrations/connections/adapters/snapcast_adapter.py
+    class: SnapcastAdapter
+    reusable: true
+target_service:
+  path: core/home_audio_service.py
+  class: HomeAudioService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/home_audio/HomeAudioPage.qml
+  - ui_qml/pages/home_audio/ZoneDetailPage.qml
+  - ui_qml/pages/home_audio/GroupEditorPage.qml
+
+---
+domain: connections
+current_service: object()
+candidate_implementations:
+  - path: integrations/connections/connection_manager.py
+    class: ConnectionManager
+    reusable: true
+  - path: integrations/connections/discovery_manager.py
+    class: DiscoveryManager
+    reusable: true
+  - path: integrations/connections/credentials_store.py
+    class: CredentialsStore
+    reusable: true
+  - path: integrations/connections/connection_profile.py
+    class: ConnectionProfile
+    reusable: true
+  - path: integrations/connections/diagnostics.py
+    class: Diagnostics
+    reusable: true
+  - path: integrations/michi_link/services/micro_server_service.py
+    class: MicroServerService
+    reusable: true
+  - path: integrations/michi_link/services/diagnostics_service.py (michi_link)
+    class: DiagnosticsService
+    reusable: true
+  - path: integrations/michi_link/client.py
+    class: MichiLinkClient
+    reusable: true
+target_service:
+  path: core/connection_service.py
+  class: ConnectionService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/connections/ConnectionsPage.qml
+  - ui_qml/pages/connections/ConnectionDetailPage.qml
+
+---
+domain: mix
+current_service: object()
+candidate_implementations:
+  - path: recommendation/smart_mix_service.py
+    class: SmartMixService
+    reusable: true
+  - path: recommendation/recommendation_service.py
+    class: RecommendationService
+    reusable: true
+  - path: recommendation/similarity_engine.py
+    functions: multiple
+    reusable: true
+  - path: recommendation/listening_profile.py
+    function: build_profile
+    reusable: true
+  - path: library/smart_mixes.py
+    functions: daily, recent, unplayed, most_played, favorites
+    reusable: true
+  - path: core/genre_mix_service.py
+    class: GenreMixService
+    reusable: partial
+  - path: core/mix_query_service.py
+    class: MixQueryService
+    reusable: partial
+target_service:
+  path: core/mix_service.py
+  class: MixService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/mix/MixHubPage.qml
+  - ui_qml/pages/mix/MixGeneratorPage.qml
+  - ui_qml/pages/mix/MixRuleEditorPage.qml
+
+---
+domain: lyrics
+current_service: object()
+candidate_implementations:
+  - path: lyrics/lrclib_client.py
+    class: LrcLibClient
+    reusable: true
+  - path: lyrics/*.py
+    services: full lyrics module
+    reusable: true
+target_service:
+  path: core/lyrics_service.py
+  class: LyricsService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/lyrics/LyricsPage.qml
+  - ui_qml/pages/lyrics/LyricsEditDialog.qml
+
+---
+domain: diagnostics
+current_service: object()
+candidate_implementations:
+  - path: core/audio_lab/diagnostics_service.py
+    class: AudioDiagnosticsService (functions: analyse_file, generate_report, get_badge_for_file)
+    reusable: true
+  - path: core/audio_lab/diagnostics_helpers.py
+    functions: multiple
+    reusable: true
+  - path: core/audio_lab/library_health.py
+    class: LibraryHealthChecker
+    reusable: true
+  - path: core/audio_lab/metadata_doctor.py
+    class: MetadataDoctor
+    reusable: true
+  - path: integrations/michi_ecosystem/ecosystem_doctor.py
+    class: EcosystemDoctor
+    reusable: true
+  - path: integrations/michi_link/services/diagnostics_service.py
+    class: MichiLinkDiagnosticsService
+    reusable: true
+  - path: audio/diagnostics/bitperfect_verifier.py
+    module: bitperfect diagnostics
+    reusable: true
+target_service:
+  path: core/diagnostics_service.py
+  class: DiagnosticsService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/audio_lab/DiagnosticsPage.qml
+  - ui_qml/pages/home/DiagnosticsPage.qml
+
+---
+domain: smart_tagging
+current_service: object()
+candidate_implementations:
+  - path: legacy_widgets/ui/audio_lab/services/smart_tagging_service.py
+    class: SmartTaggingService (legacy)
+    reusable: true (logic only, needs extraction)
+  - path: metadata/*.py
+    services: tag readers/writers
+    reusable: true
+  - path: recognition/*.py
+    services: music recognition
+    reusable: true
+target_service:
+  path: core/smart_tagging_service.py
+  class: SmartTaggingService
+legacy_files_to_delete:
+  - legacy_widgets/ui/audio_lab/services/smart_tagging_service.py
+qml_pages_to_modify:
+  - ui_qml/pages/metadata/SmartTaggingPage.qml
+
+---
+domain: library_doctor
+current_service: object()
+candidate_implementations:
+  - path: core/library_doctor/repositories/scan_repository.py
+    class: LibraryDoctorScanRepository
+    reusable: true
+  - path: integrations/michi_ecosystem/ecosystem_doctor.py
+    class: EcosystemDoctor
+    reusable: true
+  - path: core/audio_lab/library_health.py
+    class: LibraryHealthChecker
+    reusable: true
+  - path: core/audio_lab/metadata_doctor.py
+    class: MetadataDoctor
+    reusable: true
+target_service:
+  path: core/library_doctor_service.py
+  class: LibraryDoctorService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/library_doctor/LibraryDoctorPage.qml
+
+---
+domain: disc_lab
+current_service: not registered
+candidate_implementations:
+  - path: streaming/__init__.py
+    note: disc_service.py not found; use streaming subsonic client
+    reusable: false
+  - path: legacy_widgets/ui/audio_lab/services/disc_detection_service.py
+    class: DiscDetectionService
+    reusable: partial (needs extraction)
+  - path: legacy_widgets/ui/audio_lab/services/rip_job_manager.py
+    class: RipJobManager
+    reusable: partial
+target_service:
+  path: core/disc_lab_service.py
+  class: DiscLabService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/disc_lab/DiscLabPage.qml
+
+---
+domain: event_bus
+current_service: inline _EventBus class (in application_bootstrap.py)
+candidate_implementations:
+  - path: core/event_bus.py
+    class: EventBus
+    reusable: fresh implementation
+target_service:
+  path: core/event_bus.py
+  class: EventBus
+legacy_files_to_delete: []
+qml_pages_to_modify: []
+
+---
+domain: output_profile
+current_service: not registered as standalone service
+candidate_implementations:
+  - path: audio/output_profiles.py
+    functions: get_profile, PROFILES dict
+    reusable: true
+target_service:
+  path: core/output_profile_service.py
+  class: OutputProfileService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/outputs/OutputProfilesPage.qml
+
+---
+domain: equalizer
+current_service: not registered as standalone service
+candidate_implementations:
+  - path: audio/dsp_state.py
+    class: DspState
+    reusable: true
+  - path: audio/eq_*.py
+    widgets: EqCurveWidget, GraphicEqWidget, AdvancedEqWidget
+    reusable: partial (extract logic)
+target_service:
+  path: core/equalizer_service.py
+  class: EqualizerService
+legacy_files_to_delete: []
+qml_pages_to_modify:
+  - ui_qml/pages/equalizer/EqualizerPage.qml
+
+---
+domain: album_service
+current_service: in ui/controllers/album_controller.py (UI-bound)
+candidate_implementations:
+  - path: core/album_service.py
+    class: AlbumService
+    reusable: fresh extraction from album_controller
+target_service:
+  path: core/album_service.py
+  class: AlbumService
+legacy_files_to_delete: []
+
+---
+domain: artist_service
+current_service: in ui/controllers/artist_controller.py (UI-bound)
+candidate_implementations:
+  - path: core/artist_service.py
+    class: ArtistService
+    reusable: fresh extraction from artist_controller
+target_service:
+  path: core/artist_service.py
+  class: ArtistService
+legacy_files_to_delete: []
+
+---
+domain: playlist_io
+current_service: in legacy_widgets/ui/playlist_io.py (pure logic)
+candidate_implementations:
+  - path: legacy_widgets/ui/playlist_io.py
+    functions: parse_m3u, parse_pls, export_m3u, export_pls
+    reusable: true
+target_service:
+  path: core/playlist_io.py
+  class: (functions only)
+legacy_files_to_delete:
+  - legacy_widgets/ui/playlist_io.py
+
+---
+domain: device_registry
+current_service: in legacy_widgets/ui/services/device_registry.py (pure logic)
+candidate_implementations:
+  - path: legacy_widgets/ui/services/device_registry.py
+    class: DeviceRegistry
+    reusable: true
+target_service:
+  path: core/sync/device_registry.py
+  class: DeviceRegistry
+
+---
+domain: sync_manifest_builder
+current_service: in legacy_widgets/ui/services/sync_manifest_builder.py
+candidate_implementations:
+  - path: legacy_widgets/ui/services/sync_manifest_builder.py
+    class: SyncManifestBuilder
+    reusable: true
+target_service:
+  path: core/sync/manifest_builder.py
+  class: SyncManifestBuilder
+
+---
+domain: sync_manifest_store
+current_service: in legacy_widgets/ui/services/sync_manifest_store.py
+candidate_implementations:
+  - path: legacy_widgets/ui/services/sync_manifest_store.py
+    class: SyncManifestStore
+    reusable: true
+target_service:
+  path: core/sync/manifest_store.py
+  class: SyncManifestStore
+
+---
+domain: sync_queue
+current_service: in legacy_widgets/ui/services/sync_queue.py
+candidate_implementations:
+  - path: legacy_widgets/ui/services/sync_queue.py
+    class: SyncQueue
+    reusable: true
+target_service:
+  path: core/sync/queue.py
+  class: SyncQueue
+
+---
+domain: transcode_service
+current_service: in legacy_widgets/ui/services/transcode_service.py
+candidate_implementations:
+  - path: legacy_widgets/ui/services/transcode_service.py
+    class: TranscodeService
+    reusable: true
+target_service:
+  path: core/sync/transcode_service.py
+  class: TranscodeService
+
+---
+domain: transfer_backends
+current_service: in legacy_widgets/ui/services/transfer_backends.py
+candidate_implementations:
+  - path: legacy_widgets/ui/services/transfer_backends.py
+    class: TransferBackend (ABC), WirelessSyncBackend, MTPBackend, FilesystemBackend
+    reusable: true
+target_service:
+  path: core/sync/transfer_backends.py
+  class: TransferBackend, WirelessSyncBackend, MTPBackend, FilesystemBackend
+
+---
+domain: library_data
+current_service: in ui/controllers/library_controller.py (UI-bound)
+candidate_implementations:
+  - path: core/library_data_service.py
+    class: LibraryDataService
+    reusable: fresh extraction from library_controller
+target_service:
+  path: core/library_data_service.py
+  class: LibraryDataService
+legacy_files_to_delete: []

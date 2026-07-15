@@ -132,15 +132,8 @@ class ApplicationBootstrap:
         self.container.register("process_controller", pc, priority=ServicePriority.OPTIONAL)
 
     def _build_event_bus(self):
-        class _EventBus:
-            def __init__(self):
-                self._handlers = {}
-            def on(self, event, handler):
-                self._handlers.setdefault(event, []).append(handler)
-            def emit(self, event, *args, **kwargs):
-                for h in self._handlers.get(event, []):
-                    h(*args, **kwargs)
-        self.container.register("event_bus", _EventBus())
+        from core.event_bus import EventBus
+        self.container.register("event_bus", EventBus())
 
     def _build_workers(self):
         from core.worker_manager import WorkerManager
@@ -170,81 +163,240 @@ class ApplicationBootstrap:
         self.container.register("settings_coordinator", coordinator)
         self.container.register("settings_service", svc)
 
-    def _build_domain_services(self):
+    def _build_library_services(self):
+        cf = self.container.get("connection_factory")
         from core.library.library_query_service import LibraryQueryService
         from core.library_sources_service import LibrarySourcesService
         from core.library_mutation_service import LibraryMutationService
-        from core.playlist_service import PlaylistService
-        from core.history_query_service import HistoryQueryService
-        from core.global_search_service import GlobalSearchService
+        self.container.register("library_query_service", LibraryQueryService(cf))
+        self.container.register("library_sources_service", LibrarySourcesService(cf))
+        self.container.register("library_mutation_service", LibraryMutationService(cf))
+
+    def _build_playback_services(self):
+        from audio.player_service import PlayerService
         from core.queue_service import QueueService
         from core.track_action_service import TrackActionService
-        from audio.player_service import PlayerService
-        from core.metadata_service import MetadataService
-        from core.audio_lab.audio_lab_service import AudioLabService
-        from core.device_sync_service import DeviceSyncService
-        from core.radio.radio_service import RadioService
         from core.notification_service import NotificationService
-        from ui_qml_bridge.action_registry import ActionRegistry
-        cf = self.container.get("connection_factory")
-        wm = self.container.get("worker_manager")
         qs = QueueService()
         ts = TrackActionService()
         ps = PlayerService(engine=None)
-        lqs = LibraryQueryService(cf)
-        lss = LibrarySourcesService(cf)
-        lms = LibraryMutationService(cf)
-        pls = PlaylistService(cf)
-        hqs = HistoryQueryService(cf)
-        gss = GlobalSearchService(cf)
-        ms = MetadataService()
-        sts = object()
-        audio = AudioLabService(worker_manager=wm)
-        lds = object()
-        dss = DeviceSyncService()
-        rs = RadioService()
         ns = NotificationService()
-        ar = ActionRegistry()
-        mqs = object()
-        mix_svc = object()
-        self.container.register("library_query_service", lqs)
-        self.container.register("library_sources_service", lss)
-        self.container.register("library_mutation_service", lms)
-        self.container.register("playlist_service", pls)
-        self.container.register("history_query_service", hqs)
-        self.container.register("global_search_service", gss)
-        self.container.register("mix_query_service", mqs)
-        self.container.register("mix_service", mix_svc)
         self.container.register("queue_service", qs)
         self.container.register("track_action_service", ts)
         self.container.register("playback_service", ps)
+        self.container.register("notification_service", ns, priority=ServicePriority.OPTIONAL)
+
+    def _build_playlist_and_history_services(self):
+        cf = self.container.get("connection_factory")
+        from core.playlist_service import PlaylistService
+        from core.history_query_service import HistoryQueryService
+        from core.global_search_service import GlobalSearchService
+        self.container.register("playlist_service", PlaylistService(cf))
+        self.container.register("history_query_service", HistoryQueryService(cf))
+        self.container.register("global_search_service", GlobalSearchService(cf))
+
+    def _build_metadata_services(self):
+        from core.metadata_service import MetadataService
+        ms = MetadataService()
         self.container.register("metadata_service", ms)
-        self.container.register("smart_tagging_service", sts, priority=ServicePriority.OPTIONAL)
+        try:
+            from core.smart_tagging_service import SmartTaggingService
+            wm = self.container.get("worker_manager")
+            lqs = self.container.get("library_query_service")
+            sts = SmartTaggingService(worker_manager=wm, library_query_service=lqs)
+            self.container.register("smart_tagging_service", sts, priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("smart_tagging_service", None, priority=ServicePriority.OPTIONAL)
+
+    def _build_audio_lab_services(self):
+        wm = self.container.get("worker_manager")
+        from core.audio_lab.audio_lab_service import AudioLabService
+        audio = AudioLabService(worker_manager=wm)
         self.container.register("audio_lab_service", audio, priority=ServicePriority.OPTIONAL)
-        self.container.register("library_doctor_service", lds, priority=ServicePriority.OPTIONAL)
+        try:
+            from core.diagnostics_service import DiagnosticsService
+            db = self.container.get("database")
+            ps = self.container.get("playback_service")
+            ds = DiagnosticsService(db=db, audio_diagnostics=True,
+                                     player_service=ps, worker_manager=wm)
+            self.container.register("diagnostics_service", ds, priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("diagnostics_service", None, priority=ServicePriority.OPTIONAL)
+
+    def _build_radio_services(self):
+        from core.radio.radio_service import RadioService
+        rs = RadioService()
+        self.container.register("radio_service", rs, priority=ServicePriority.OPTIONAL)
+
+    def _build_mix_services(self):
+        try:
+            from recommendation.smart_mix_service import SmartMixService
+            from recommendation.recommendation_service import RecommendationService
+            from core.mix_service import MixService
+            db = self.container.get("database")
+            pls = self.container.get("playlist_service")
+            lqs = self.container.get("library_query_service")
+            sms = SmartMixService(db)
+            mqs = RecommendationService(db)
+            mix_svc = MixService(db=db, recommendation_service=mqs,
+                                  smart_mix_service=sms,
+                                  library_query_service=lqs,
+                                  playlist_service=pls)
+            self.container.register("mix_query_service", mqs)
+            self.container.register("mix_service", mix_svc)
+        except Exception:
+            self.container.register("mix_query_service", None)
+            self.container.register("mix_service", None)
+
+    def _build_device_services(self):
+        from core.device_sync_service import DeviceSyncService
+        dss = DeviceSyncService()
         self.container.register("device_sync_service", dss, priority=ServicePriority.OPTIONAL)
-        resource_services = [
-            ("connection_service", object()),
-            ("home_audio_service", object()),
-            ("lyrics_service", object()),
-            ("diagnostics_service", object()),
-            ("radio_service", rs),
-            ("notification_service", ns),
-            ("action_registry", ar),
-        ]
-        for rname, rsvc in resource_services:
-            self.container.register(rname, rsvc, priority=ServicePriority.OPTIONAL)
+        try:
+            from core.sync.device_registry import DeviceRegistry
+            self.container.register("device_registry", DeviceRegistry(),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_connection_services(self):
+        try:
+            from core.connection_service import ConnectionService
+            cs = ConnectionService()
+            self.container.register("connection_service", cs, priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("connection_service", None, priority=ServicePriority.OPTIONAL)
+
+    def _build_home_audio_services(self):
+        try:
+            from core.home_audio_service import HomeAudioService
+            ha = HomeAudioService()
+            self.container.register("home_audio_service", ha, priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("home_audio_service", None, priority=ServicePriority.OPTIONAL)
+
+    def _build_lyrics_services(self):
+        try:
+            from lyrics.lrclib_client import LrcLibClient
+            from core.lyrics_service import LyricsService
+            wm = self.container.get("worker_manager")
+            lrc = LrcLibClient()
+            ls = LyricsService(lrclib_client=lrc, worker_manager=wm)
+            self.container.register("lyrics_service", ls, priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("lyrics_service", None, priority=ServicePriority.OPTIONAL)
+
+    def _build_album_service(self):
+        try:
+            from core.album_service import AlbumService
+            db = self.container.get("database")
+            ps = self.container.get("playback_service")
+            self.container.register("album_service", AlbumService(db=db, playback_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_artist_service(self):
+        try:
+            from core.artist_service import ArtistService
+            db = self.container.get("database")
+            ps = self.container.get("playback_service")
+            self.container.register("artist_service", ArtistService(db=db, playback_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_library_data_service(self):
+        try:
+            from core.library_data_service import LibraryDataService
+            db = self.container.get("database")
+            self.container.register("library_data_service", LibraryDataService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_output_profile_service(self):
+        try:
+            from core.output_profile_service import OutputProfileService
+            ps = self.container.get("playback_service")
+            self.container.register("output_profile_service", OutputProfileService(player_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_equalizer_service(self):
+        try:
+            from core.equalizer_service import EqualizerService
+            ps = self.container.get("playback_service")
+            self.container.register("equalizer_service", EqualizerService(player_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_domain_services(self):
+        from ui_qml_bridge.action_registry import ActionRegistry
+        ar = ActionRegistry()
+        self.container.register("action_registry", ar, priority=ServicePriority.OPTIONAL)
+        self._build_library_services()
+        self._build_playback_services()
+        self._build_playlist_and_history_services()
+        self._build_metadata_services()
+        self._build_audio_lab_services()
+        self._build_radio_services()
+        self._build_mix_services()
+        self._build_device_services()
+        self._build_connection_services()
+        self._build_home_audio_services()
+        self._build_lyrics_services()
+        self._build_album_service()
+        self._build_artist_service()
+        self._build_library_data_service()
+        self._build_output_profile_service()
+        self._build_equalizer_service()
 
     def _build_action_registry(self):
         ar = self.container.get("action_registry")
         if ar is None:
             return
         from ui_qml_bridge.action_registry import ActionDescriptor
-        ar.register(ActionDescriptor(action_id="play", title="Play", category="playback", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="pause", title="Pause", category="playback", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="next", title="Next", category="playback", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="queue_add", title="Add to queue", category="queue", handler=lambda: None))
-        ar.register(ActionDescriptor(action_id="favorite", title="Toggle favorite", category="track", handler=lambda: None))
+        ps = self.container.get("playback_service")
+
+        def _play():
+            if ps and hasattr(ps, 'play'):
+                ps.play()
+
+        def _pause():
+            if ps and hasattr(ps, 'pause'):
+                ps.pause()
+
+        def _next():
+            if ps and hasattr(ps, 'next'):
+                ps.next()
+
+        def _prev():
+            if ps and hasattr(ps, 'prev'):
+                ps.prev()
+
+        def _stop():
+            if ps and hasattr(ps, 'stop'):
+                ps.stop()
+
+        def _queue_add():
+            pass
+
+        def _favorite():
+            pass
+
+        ar.register(ActionDescriptor(action_id="play", title="Play", category="playback", handler=_play))
+        ar.register(ActionDescriptor(action_id="pause", title="Pause", category="playback", handler=_pause))
+        ar.register(ActionDescriptor(action_id="next", title="Next", category="playback", handler=_next))
+        ar.register(ActionDescriptor(action_id="previous", title="Previous", category="playback", handler=_prev))
+        ar.register(ActionDescriptor(action_id="stop", title="Stop", category="playback", handler=_stop))
+        ar.register(ActionDescriptor(action_id="queue_add", title="Add to queue", category="queue", handler=_queue_add))
+        ar.register(ActionDescriptor(action_id="favorite", title="Toggle favorite", category="track", handler=_favorite))
+        ar.register(ActionDescriptor(action_id="settings.open", title="Open Settings", category="navigation", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="playlist.create", title="Create Playlist", category="playlist", handler=lambda: None))
+        ar.register(ActionDescriptor(action_id="mix.generate", title="Generate Mix", category="mix", handler=lambda: None))
 
     def _build_michi_ai(self):
         try:
@@ -258,13 +410,18 @@ class ApplicationBootstrap:
                                     priority=ServicePriority.CAPABILITY_GATED)
 
     def _build_theme_and_accessibility(self):
-        from core.background_theme_service import BackgroundThemeService
-        class _NullContentStack:
-            def currentWidget(self): return None
-        self.container.register("theme_service", BackgroundThemeService(content_stack=_NullContentStack()),
-                                priority=ServicePriority.OPTIONAL)
-        self.container.register("accessibility_service", object(),
-                                priority=ServicePriority.OPTIONAL)
+        try:
+            from core.background_theme_service import BackgroundThemeService
+            self.container.register("theme_service", BackgroundThemeService(),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("theme_service", None, priority=ServicePriority.OPTIONAL)
+        try:
+            from core.accessibility_service import AccessibilityService
+            self.container.register("accessibility_service", AccessibilityService(),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            self.container.register("accessibility_service", None, priority=ServicePriority.OPTIONAL)
 
     def get_queue_service(self):
         return self.container.get("queue_service")
