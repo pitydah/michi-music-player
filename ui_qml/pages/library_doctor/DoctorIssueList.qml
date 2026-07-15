@@ -123,7 +123,7 @@ Item {
 
                     Text {
                         width: parent.width * 0.15
-                        text: modelData.filepath ? modelData.filepath.split("/").pop() : ""
+                        text: modelData.filepath && root.doc && typeof root.doc.fileName === "function" ? root.doc.fileName(modelData.filepath) : ""
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         anchors.verticalCenter: parent.verticalCenter

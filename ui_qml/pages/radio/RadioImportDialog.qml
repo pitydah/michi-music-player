@@ -29,76 +29,6 @@ Dialog {
     Accessible.name: "Importar emisoras"
     Accessible.description: "Importar emisoras desde archivo M3U, PLS o XSPF"
 
-    function parseM3u(content) {
-        var stations = []
-        var lines = content.split("\n")
-        var currentName = ""
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-            if (line === "") continue
-            var extinfMatch = line.match(/^#EXTINF:-1,(.+)$/)
-            if (extinfMatch) {
-                currentName = extinfMatch[1].trim()
-            } else if (!line.startsWith("#") && line.match(/^https?:\/\//)) {
-                stations.push({
-                    name: currentName || "Imported",
-                    url: line,
-                    selected: true
-                })
-                currentName = ""
-            }
-        }
-        return stations
-    }
-
-    function parsePls(content) {
-        var stations = []
-        var lines = content.split("\n")
-        var currentEntry = -1
-        var nameMap = {}
-        var fileMap = {}
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-            if (line.startsWith("File")) {
-                var match = line.match(/^File(\d+)=(.+)$/)
-                if (match) {
-                    currentEntry = parseInt(match[1])
-                    fileMap[currentEntry] = match[2].trim()
-                }
-            } else if (line.startsWith("Title")) {
-                var match2 = line.match(/^Title(\d+)=(.+)$/)
-                if (match2) {
-                    nameMap[parseInt(match2[1])] = match2[2].trim()
-                }
-            }
-        }
-        for (var key in fileMap) {
-            stations.push({
-                name: nameMap[key] || "Imported",
-                url: fileMap[key],
-                selected: true
-            })
-        }
-        return stations
-    }
-
-    function parseXspf(content) {
-        var stations = []
-        var trackRegex = /<track>([\s\S]*?)<\/track>/g
-        var match
-        while ((match = trackRegex.exec(content)) !== null) {
-            var trackContent = match[1]
-            var titleMatch = trackContent.match(/<title>([^<]*)<\/title>/)
-            var locMatch = trackContent.match(/<location>([^<]*)<\/location>/)
-            stations.push({
-                name: titleMatch ? titleMatch[1].trim() : "Imported",
-                url: locMatch ? locMatch[1].trim() : "",
-                selected: true
-            })
-        }
-        return stations.filter(function(s) { return s.url !== "" })
-    }
-
     function loadFile(fileUrl) {
         var path = fileUrl.toString().replace("file://", "")
         if (path === "") return
@@ -109,14 +39,9 @@ Dialog {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 0 || xhr.status === 200) {
                     var content = xhr.responseText
-                    var stations = []
-                    if (path.match(/\.pls$/i)) {
-                        stations = parsePls(content)
-                    } else if (path.match(/\.xspf$/i)) {
-                        stations = parseXspf(content)
-                    } else {
-                        stations = parseM3u(content)
-                    }
+                    var stations = root.rd && typeof root.rd.parsePlaylistFile === "function"
+                        ? root.rd.parsePlaylistFile(content)
+                        : []
                     root._importedStations = stations
                     root._selectedIndices = []
                     for (var si = 0; si < stations.length; si++) {
