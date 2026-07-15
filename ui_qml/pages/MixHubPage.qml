@@ -27,28 +27,19 @@ Item {
             root.mx.refresh()
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     Flickable {
         id: flickable
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true; boundsBehavior: Flickable.StopAtBounds
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     FocusScope {
         id: focusScope
         anchors.fill: parent
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Column {
             id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
-<<<<<<< Updated upstream
-=======
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
@@ -90,7 +81,6 @@ Item {
                             width: parent.width * 0.70
                             wrapMode: Text.WordWrap
                         }
-=======
     Flickable {
         id: flickable
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
@@ -101,10 +91,6 @@ Item {
         Column {
             id: column; width: parent.width; spacing: MichiTheme.spacing.lg
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             HeroMaterial {
                 width: parent.width; height: 140; radius: 16; showGlow: true
                 objectName: "mixHero"
@@ -119,8 +105,6 @@ Item {
                         text: "Descubre, revive y explora tu música desde nuevas perspectivas."
                         color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.70; wrapMode: Text.WordWrap
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     }
                 }
 
@@ -134,18 +118,12 @@ Item {
             Grid {
                 width: parent.width; columns: 2
                 columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
-=======
->>>>>>> origin/michi-qml-functional-wave
                     }
                 }
 
-=======
->>>>>>> origin/michi-qml-functional-wave
                     }
                 }
 
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 StatusBadge {
                     text: root.mx ? "Bridge conectado" : "Bridge no disponible"
                     kind: root.mx ? "success" : "warning"
@@ -156,7 +134,6 @@ Item {
                     text: "Tus mixes"
                     width: parent.width
                 }
-=======
             SectionHeader {
                 text: "Tus mixes"
                 width: parent.width
@@ -167,11 +144,6 @@ Item {
             Grid {
                 width: parent.width; columns: 2
                 columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                 Grid {
                     width: parent.width
@@ -179,8 +151,6 @@ Item {
                     columnSpacing: MichiTheme.spacing.md
                     rowSpacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     GlassCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2; height: 100
                         title: modelData.title || ""; subtitle: modelData.desc || ""
@@ -191,10 +161,6 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                         onClicked: {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     Repeater {
                         model: root.mx ? root.mx.categories : []
 
@@ -262,7 +228,6 @@ Item {
                             if (navigationBridge) {
                                 navigationBridge.navigateWithParams("mix_generator", { mixType: "by_genre" })
                             }
-=======
                     GlassCard {
                         width: (parent.width - MichiTheme.spacing.md) / 2; height: 100
                         title: modelData.title || ""; subtitle: modelData.desc || ""
@@ -273,22 +238,10 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                         onClicked: {
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             if (root.mx && typeof root.mx.loadMix !== "undefined")
                                 root.mx.loadMix(modelData.id || "")
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
 

@@ -6,15 +6,7 @@ import "../../components"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "settingsAppearancePage"
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var themeBridge: typeof themeBridge !== "undefined" ? themeBridge : null
@@ -137,8 +129,6 @@ Item {
                                         }
                                     }
                                 }
-<<<<<<< Updated upstream
-=======
 
                                 Keys.onReturnPressed: {
                                     if (root.bridge) root.bridge.accentColor = modelData
@@ -148,7 +138,6 @@ Item {
                                 }
                                 focus: true
                                 activeFocusOnTab: true
-=======
     objectName: "settingsAppearancePage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -272,7 +261,6 @@ Item {
                                         }
                                     }
                                 }
->>>>>>> Stashed changes
                             }
                         }
                     }
@@ -306,8 +294,6 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                             }
 
                             MichiSlider {
@@ -324,10 +310,8 @@ Item {
                                     if (!pressed) root._saveValue("appearance/font_scale", value)
                                 }
                                 Accessible.description: "Ajusta el tamaño de la fuente: " + value + "%"
-=======
                                 focus: true
                                 activeFocusOnTab: true
-=======
     objectName: "settingsAppearancePage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -451,19 +435,16 @@ Item {
                                         }
                                     }
                                 }
->>>>>>> Stashed changes
                             }
                         }
                     }
                 }
 
                 GlassCard {
-<<<<<<< Updated upstream
                     id: visualCard
                     Layout.fillWidth: true
                     title: "Preferencias visuales"
                     interactive: false
-=======
                     id: typographyCard
                     Layout.fillWidth: true
                     title: "Tipografía"
@@ -491,8 +472,6 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
-=======
->>>>>>> Stashed changes
                             }
 
                             MichiSlider {
@@ -509,17 +488,14 @@ Item {
                                     if (!pressed) root._saveValue("appearance/font_scale", value)
                                 }
                                 Accessible.description: "Ajusta el tamaño de la fuente: " + value + "%"
->>>>>>> origin/michi-qml-functional-wave
                             }
                         }
                     }
                 }
 
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -547,8 +523,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
-=======
                         ComboBox {
                             id: fontScaleCombo
                             objectName: "settings.appearance.fontScale"
@@ -556,7 +530,6 @@ Item {
                             currentIndex: 1
                             Accessible.name: "Escala de fuente"
                             KeyNavigation.tab: reduceMotionSwitch
-=======
                 GlassCard {
                     id: visualCard
                     Layout.fillWidth: true
@@ -589,10 +562,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         RowLayout {
@@ -660,33 +629,18 @@ Item {
                                 Accessible.description: "Usar la carátula del álbum actual como fondo"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: menuCard
                     Layout.fillWidth: true
                     title: "Barra de menú"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -719,12 +673,6 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
                 GlassCard {
                     id: menuCard
                     Layout.fillWidth: true
@@ -762,20 +710,8 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

@@ -632,33 +632,6 @@ class DevicesBridge(QObject):
     @Slot(str, result=dict)
     def deviceDetailCompatibility(self, path: str):
         if not self._dev_svc:
-    def deviceDetailCompatibility(self, mount_point: str):
-        if not self._device_sync_svc:
-            return _typed_error("NO_DEVICE_SYNC_SERVICE")
-        try:
-            identity = self._dev_svc.identify(path)
-            caps = self._dev_svc.resolve_capabilities(identity) if identity else None
-            self._compatibility_info = [{
-                "protocol": identity.protocol.value if identity else "unknown",
-                "supported_formats": sorted(_AUDIO_EXTS),
-                "unsupported_formats": sorted(_VIDEO_EXTS),
-                "supports_pairing": caps.supports_pairing if caps else False,
-                "supports_playlists": caps.supports_playlists if caps else False,
-            }]
-            self.stateChanged.emit()
-            return {"ok": True}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
-    @Slot(str, str, result=dict)
-    def startTransfer(self, source: str, destination: str):
-        if not self._dev_svc:
-            return _typed_error("NO_DEVICE_SYNC_SERVICE")
-        try:
-            job = self._device_sync_svc.create_transfer_job(src, dst)
-            result = self._device_sync_svc.execute_job(job.job_id)
-    def deviceDetailCompatibility(self, path: str):
-        if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
         try:
             identity = self._dev_svc.identify(path)
@@ -696,7 +669,6 @@ class DevicesBridge(QObject):
 
     @Slot(str, result=dict)
     def cancelTransfer(self, job_id: str):
-        if not self._dev_svc:
         if not self._device_sync_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
         result = self._device_sync_svc.cancel_job(job_id)
@@ -750,6 +722,8 @@ class DevicesBridge(QObject):
         try:
             files = self._device_sync_svc.list_music(mount_point, music_dir=path)
             return {"ok": True, "files": files}
+        except Exception as e:
+            return _typed_error(str(e))
         if not self._dev_svc:
             return _typed_error("NO_DEVICE_SYNC_SERVICE")
         try:
@@ -825,7 +799,6 @@ class DevicesBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def _refresh_transfer_jobs(self):
     def _refresh_transfer_jobs(self):
         if self._device_sync_svc:
             self._transfer_jobs = [

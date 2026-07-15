@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Full workflow: filter -> play event -> remove event -> export.
 
 Tests the complete history lifecycle across bridges:
@@ -13,16 +11,10 @@ from __future__ import annotations
 import sqlite3
 import time
 import json
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Workflow test: filter → play → export → remove via HistoryBridge."""
 import pytest
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
-import pytest
 
 from core.history_query_service import HistoryQueryService
 from ui_qml_bridge.history_bridge import HistoryBridge
@@ -146,8 +138,6 @@ class TestHistoryWorkflow:
         result = bridge.playHistoryItem("5")
         assert result["ok"]
 
-<<<<<<< Updated upstream
-=======
     def test_wf_statistics_after_actions(self, bridge):
         bridge.refresh()
         bridge.removeHistoryItem("1")
@@ -155,7 +145,6 @@ class TestHistoryWorkflow:
         stats = bridge.getStatistics()
         assert stats["ok"] is True
         assert stats["total_plays"] == 5
-=======
 """Full workflow: filter -> play event -> remove event -> export.
 
 Tests the complete history lifecycle across bridges:
@@ -166,15 +155,9 @@ Tests the complete history lifecycle across bridges:
 """
 from __future__ import annotations
 
-import sqlite3
-import time
-import json
-from unittest.mock import MagicMock
 
 import pytest
 
-from core.history_query_service import HistoryQueryService
-from ui_qml_bridge.history_bridge import HistoryBridge
 
 
 @pytest.fixture
@@ -295,10 +278,6 @@ class TestHistoryWorkflow:
         result = bridge.playHistoryItem("5")
         assert result["ok"]
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_workflow_remove_nonexistent_then_export(self, bridge, hqs, tmp_path):
         bridge.removeHistoryEvent("999")
         out = tmp_path / "no_change.json"
@@ -316,11 +295,3 @@ class TestHistoryWorkflow:
         result = bridge.exportHistory(str(out))
         assert result["ok"]
         assert result["count"] == 3
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

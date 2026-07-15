@@ -1,23 +1,11 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import "../theme"
 import "dialogs"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
-=======
 import "../theme"
 import "dialogs"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 Item {
     id: root
@@ -26,15 +14,7 @@ Item {
     property string message: "¿Estás seguro?"
     property string confirmText: "Confirmar"
     property string cancelText: "Cancelar"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string iconText: ""
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
     property bool open: false
     property bool destructive: false
 
@@ -62,11 +42,9 @@ Item {
             root.open = false
             root.confirmed()
         }
-<<<<<<< Updated upstream
         onCancelled: {
             root.open = false
             root.cancelled()
-=======
     }
 
     Rectangle {
@@ -147,7 +125,6 @@ Item {
                     KeyNavigation.backtab: cancelBtn
                 }
             }
-=======
     property string iconText: ""
     property bool open: false
     property bool destructive: false
@@ -179,11 +156,6 @@ Item {
         onCancelled: {
             root.open = false
             root.cancelled()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 }

@@ -12,29 +12,17 @@ Dialog {
     property int playlistId: -1
     property string playlistName: ""
     property string playlistDescription: ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string _coverPath: ""
     property string _validationError: ""
     property bool _hasChanges: false
     property bool _saving: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string coverArt: ""
     property bool _hasChanges: false
     property string _validationError: ""
-=======
     property string _coverPath: ""
     property string _validationError: ""
     property bool _hasChanges: false
     property bool _saving: false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     signal saved(int id, string name)
     signal cancelled()
@@ -43,18 +31,11 @@ Dialog {
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     width: 380
     objectName: "playlistEditorDialog"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "playlist.editorDialog"
     closePolicy: Dialog.CloseOnEscape
 
->>>>>>> Stashed changes
     Accessible.role: Accessible.Dialog
     Accessible.name: title
     closePolicy: Popup.CloseOnEscape
@@ -216,10 +197,7 @@ Dialog {
         nameInput.forceActiveFocus()
     }
 
-<<<<<<< Updated upstream
-=======
     onRejected: root.cancelled()
-=======
     width: 380
     objectName: "playlistEditorDialog"
     Accessible.role: Accessible.Dialog
@@ -383,10 +361,6 @@ Dialog {
         nameInput.forceActiveFocus()
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     onClosed: {
         root._saving = false
     }
@@ -397,12 +371,4 @@ Dialog {
     }
 
     Keys.onEscapePressed: { root.reject(); root.close() }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

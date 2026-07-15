@@ -8,15 +8,8 @@ import "../../materials"
 Dialog {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
->>>>>>> Stashed changes
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
     property var _importedStations: []
@@ -31,13 +24,10 @@ Dialog {
 
     title: "Importar emisoras"
     modal: true
-<<<<<<< Updated upstream
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.7, 500)
     height: 500
-=======
     width: Math.min(parent.width * 0.8, 500)
-=======
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
 
@@ -56,24 +46,12 @@ Dialog {
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.7, 500)
     height: 500
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
     padding: MichiTheme.spacing.lg
 
     objectName: "radioImportDialog"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 
->>>>>>> Stashed changes
     Accessible.role: Accessible.Dialog
     Accessible.name: "Importar emisoras"
     Accessible.description: "Selecciona un archivo M3U, PLS o XSPF para importar emisoras"
@@ -152,8 +130,6 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root._importedStations.length > 0
-<<<<<<< Updated upstream
-=======
                 onClicked: selectAll()
                 objectName: "radioImportDialog.selectAllButton"
                 Accessible.name: "Seleccionar todas las emisoras"
@@ -166,7 +142,6 @@ Dialog {
                 onClicked: deselectAll()
                 objectName: "radioImportDialog.deselectAllButton"
                 Accessible.name: "Deseleccionar todas las emisoras"
-=======
     Accessible.role: Accessible.Dialog
     Accessible.name: "Importar emisoras"
     Accessible.description: "Selecciona un archivo M3U, PLS o XSPF para importar emisoras"
@@ -245,25 +220,14 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root._importedStations.length > 0
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
         }
 
         Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             text: "Formatos soportados: M3U, PLS, XSPF"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
             visible: root._importedStations.length === 0
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             text: root._importedStations.length > 0
                 ? root._importedStations.length + " emisoras encontradas. " + root._selectedIndices.length + " seleccionadas."
                 : "Selecciona un archivo M3U, PLS o XSPF para importar emisoras."
@@ -271,7 +235,6 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
             width: parent.width
             wrapMode: Text.WordWrap
->>>>>>> Stashed changes
         }
 
         Text {
@@ -373,12 +336,6 @@ Dialog {
                         horizontalAlignment: Text.AlignRight
                     }
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
             text: "Formatos soportados: M3U, PLS, XSPF"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.metaSize
@@ -484,10 +441,6 @@ Dialog {
                         horizontalAlignment: Text.AlignRight
                     }
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                 Rectangle {
                     width: parent.width
@@ -520,27 +473,13 @@ Dialog {
                 width: parent.width - 140
                 value: root._importTotal > 0 ? root._importProgress / root._importTotal : 0
                 anchors.verticalCenter: parent.verticalCenter
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
 
         Rectangle {
             width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             height: 1
             color: MichiTheme.colors.borderSubtle
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             height: 6
             radius: MichiTheme.radiusXs
             color: MichiTheme.colors.controlTrack
@@ -556,16 +495,12 @@ Dialog {
                     NumberAnimation { duration: MichiTheme.motion.fast }
                 }
             }
->>>>>>> Stashed changes
         }
 
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-=======
             anchors.horizontalCenter: parent.horizontalCenter
-=======
             height: 1
             color: MichiTheme.colors.borderSubtle
         }
@@ -573,10 +508,6 @@ Dialog {
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
             MichiButton {
                 text: "Seleccionar todo"
@@ -594,25 +525,11 @@ Dialog {
             }
 
             Item { width: parent.width - 220; height: 1 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 objectName: "importCancelBtn"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 enabled: !root._importing
                 onClicked: {
                     root._importedStations = []
@@ -620,7 +537,6 @@ Dialog {
                     root.close()
                 }
                 objectName: "radioImportDialog.cancelButton"
->>>>>>> Stashed changes
                 Accessible.name: "Cancelar importación"
                 activeFocusOnTab: true
                 enabled: !root._importing
@@ -644,12 +560,6 @@ Dialog {
             }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
                 objectName: "importCancelBtn"
                 Accessible.name: "Cancelar importación"
                 activeFocusOnTab: true
@@ -674,10 +584,6 @@ Dialog {
             }
         }
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     FileDialog {
         id: filePickerDialog
@@ -700,12 +606,4 @@ Dialog {
     }
 
     Keys.onEscapePressed: root.close()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

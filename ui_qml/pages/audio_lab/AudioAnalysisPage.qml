@@ -14,8 +14,6 @@ Item {
     property var analysisResult: null
     property string analysisError: ""
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _state: 0
     property var _analysisResult: null
     property var _compareResult: null
@@ -23,12 +21,7 @@ Item {
     property bool _compareMode: false
 
     objectName: "AudioAnalysisPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "audioAnalysis.page"
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -82,10 +75,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         objectName: "audioAnalysis.focusScope"
-=======
     property int _state: 0
     property var _analysisResult: null
     property var _compareResult: null
@@ -146,30 +136,16 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "Análisis técnico"
                 color: MichiTheme.colors.textPrimary
@@ -182,17 +158,12 @@ Item {
                 font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
                 objectName: "analysisPageSubtitle"
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
->>>>>>> Stashed changes
 
             AudioInputSelection { id: inputSelection }
 
@@ -267,7 +238,6 @@ Item {
                             Text { text: root._analysisResult ? String(root._analysisResult[modelData]) : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
                         }
                     }
-=======
             Text {
                 text: "Análisis técnico"
                 color: MichiTheme.colors.textPrimary
@@ -300,8 +270,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startAnalysis()
                 }
-<<<<<<< Updated upstream
-=======
                 MichiButton {
                     text: "Cancelar"
                     variant: "danger"
@@ -356,7 +324,6 @@ Item {
                             Text { text: root._analysisResult ? String(root._analysisResult[modelData]) : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize }
                         }
                     }
-=======
             Text {
                 text: "Análisis técnico"
                 color: MichiTheme.colors.textPrimary
@@ -389,9 +356,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startAnalysis()
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
                 MichiButton {
                     text: "Cancelar"
                     variant: "danger"
@@ -447,7 +411,6 @@ Item {
                         }
                     }
                 }
->>>>>>> Stashed changes
                 height: childrenRect.height + MichiTheme.spacing.lg * 2
             }
 
@@ -460,14 +423,6 @@ Item {
                     anchors.centerIn: parent
                     text: root._state === root.stateAnalyzing ? "Analizando..." : "Selecciona archivos para analizar"
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
 

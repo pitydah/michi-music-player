@@ -1,62 +1,34 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test command palette keyboard navigation."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for CommandPalette — keyboard navigation, shortcuts, accessibility."""
->>>>>>> Stashed changes
 import pytest
 
 from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
-<<<<<<< Updated upstream
 
 pytestmark = pytest.mark.isolation
-=======
 pytestmark = [pytest.mark.qml_module("command_palette"), pytest.mark.qml_dimension("keyboard")]
-=======
 """Test command palette keyboard navigation."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
-from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
 
 pytestmark = pytest.mark.isolation
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 
 @pytest.fixture
 def registry():
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
     return ActionRegistry()
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
     return ActionRegistry()
-=======
->>>>>>> Stashed changes
     r = ActionRegistry()
     r._actions.clear()
     r.register(ActionDescriptor("a1", "Action One", "category_a", "icon1"))
@@ -65,14 +37,6 @@ def registry():
     r.register(ActionDescriptor("a4", "Action Four", "category_c", "icon4"))
     r.register(ActionDescriptor("a5", "Action Five", "category_c", "icon5"))
     return r
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -81,15 +45,9 @@ def bridge(registry):
 
 
 class TestCommandPaletteKeyboard:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     def test_up_down_navigation(self, bridge):
         results = bridge.searchCommands("")
         assert len(results) >= 5
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     def test_search_debounce_character_accumulation(self, bridge):
         bridge.searchCommands("")
         results_a = bridge.searchCommands("a")
@@ -97,7 +55,6 @@ class TestCommandPaletteKeyboard:
         results_abc = bridge.searchCommands("abc")
         assert results_abc is not None
         assert len(results_abc) <= len(results_a) or True  # narrowing search
->>>>>>> Stashed changes
 
     def test_search_preserves_ordering(self, bridge):
         results = bridge.searchCommands("")
@@ -126,12 +83,6 @@ class TestCommandPaletteKeyboard:
         action.enabled = False
         result = bridge.executeCommand("a2")
         assert result["ok"] is False
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
     def test_up_down_navigation(self, bridge):
         results = bridge.searchCommands("")
         assert len(results) >= 5
@@ -163,10 +114,6 @@ class TestCommandPaletteKeyboard:
         action.enabled = False
         result = bridge.executeCommand("a2")
         assert result["ok"] is False
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     def test_execute_cycles_sections(self, bridge):
         results = bridge.searchCommands("")
@@ -195,11 +142,3 @@ class TestCommandPaletteKeyboard:
         bridge.searchCommands("")
         all_results = bridge.commands
         assert len(all_results) >= 5
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

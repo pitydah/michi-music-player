@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test playlist CRUD actions: create, rename, duplicate, delete."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for playlist actions: create, rename, duplicate, delete, reorder, add/remove tracks."""
->>>>>>> Stashed changes
 import pytest
 import sqlite3
 
@@ -190,8 +183,6 @@ class TestPlaylistActions:
         plists = svc.list()
         assert plists == []
 
-<<<<<<< Updated upstream
-=======
     def test_batch_add_track_ids(self):
         db = MagicMock()
         bridge = PlaylistsBridge(db=db)
@@ -220,12 +211,9 @@ class TestPlaylistActions:
         result = bridge.reorderTrack(1, 0, 2)
         assert result["ok"] is False
         assert result["error"] == "UNSUPPORTED"
-=======
 """Test playlist CRUD actions: create, rename, duplicate, delete."""
 import pytest
-import sqlite3
 
-from core.playlist_service import PlaylistService
 
 
 @pytest.fixture
@@ -405,20 +393,8 @@ class TestPlaylistActions:
         plists = svc.list()
         assert plists == []
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_list_returns_dicts(self, svc):
         svc.create("Test")
         plists = svc.list()
         assert "id" in plists[0]
         assert "name" in plists[0]
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

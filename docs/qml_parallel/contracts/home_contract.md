@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # HomeBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Home Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `homeBridge` → `HomeBridge` instance
@@ -59,11 +52,8 @@ None — dashboard is read-only.
 ## Cancellation Contract
 NOT IMPLEMENTED — no cancellation mechanism.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - None. Home bridge is read-only display.
-=======
 # HomeBridge Integration Contract
 
 ## Context Property
@@ -117,10 +107,6 @@ None — dashboard is read-only.
 ## Cancellation Contract
 NOT IMPLEMENTED — no cancellation mechanism.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 - Reads `job_bridge.activeCount` for dashboard display.
 - Connects to `job_bridge.jobsChanged` for reactive updates.
@@ -139,11 +125,3 @@ NOT IMPLEMENTED.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -1,12 +1,4 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-from pathlib import Path
->>>>>>> Stashed changes
 
 import pytest
 from unittest.mock import MagicMock, PropertyMock
@@ -44,11 +36,9 @@ class TestHomePageResponsive:
         assert mock_home_page.width > 1400
         assert mock_home_page.objectName == "homePage"
 
-<<<<<<< Updated upstream
     def test_narrow_single_column(self, mock_home_page):
         mock_home_page.width = 700
         assert mock_home_page.width < 768
-=======
     def _check_no_overflow(self, page, viewport_w, viewport_h):
         children = [page] + self._collect_children(page)
         for child in children:
@@ -100,11 +90,9 @@ class TestHomePageResponsive:
 
     def test_page_qml_exists(self):
         assert (QML_DIR / "pages/home/HomePage.qml").exists()
-=======
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock
 
 
 @pytest.fixture
@@ -142,8 +130,3 @@ class TestHomePageResponsive:
     def test_narrow_single_column(self, mock_home_page):
         mock_home_page.width = 700
         assert mock_home_page.width < 768
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes

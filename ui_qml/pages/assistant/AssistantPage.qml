@@ -7,18 +7,12 @@ import "../../materials"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Michi AI"
 
     property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
-<<<<<<< HEAD
     property var chatItems: []
     property string pageState: "INITIALIZING"
     property string executionState: ""
@@ -32,21 +26,13 @@ Item {
     property bool _confirmDialogOpen: false
 
     objectName: "assistant.page"
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Michi AI"
-<<<<<<< Updated upstream
 
     property var ai: typeof michiAiBridge !== "undefined" ? michiAiBridge : null
-=======
     Accessible.description: "Asistente inteligente para tu ecosistema musical"
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property bool _initialized: false
     property string _aiStatus: root.ai ? root.ai.status || "idle" : "unavailable"
     property string _lastError: root.ai ? root.ai.lastError || "" : "No disponible"
@@ -96,14 +82,6 @@ Item {
             executionResult.visible = true
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Component.onCompleted: {
         setState("INITIALIZING")
@@ -117,14 +95,8 @@ Item {
         root._initialized = true
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     Flickable {
         id: flickable
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     function setState(state) {
         pageState = state
     }
@@ -192,7 +164,6 @@ Item {
 
     FocusScope {
         id: focusScope
->>>>>>> Stashed changes
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
@@ -200,8 +171,6 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
 
-<<<<<<< Updated upstream
-=======
         Keys.onEscapePressed: {
             if (executionState === "EXECUTING" || executionState === "PROPOSING") {
                 cancelExecution()
@@ -211,7 +180,6 @@ Item {
                 navigationBridge.navigate("home")
             }
         }
-=======
     Flickable {
         id: flickable
         anchors.fill: parent
@@ -220,9 +188,7 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
->>>>>>> origin/michi-qml-functional-wave
 
->>>>>>> Stashed changes
         Column {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
@@ -268,34 +234,20 @@ Item {
                 width: parent.width
                 height: 100
                 radius: MichiTheme.radiusLg
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 showGlow: root.ai !== null
                 objectName: "aiHero"
                 Accessible.name: "Michi AI"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 showGlow: true
                 objectName: "assistant.hero"
-=======
                 showGlow: root.ai !== null
                 objectName: "aiHero"
                 Accessible.name: "Michi AI"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                 Column {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.xl
                     spacing: MichiTheme.spacing.xs
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     Row {
                         spacing: MichiTheme.spacing.md
                         width: parent.width
@@ -321,10 +273,6 @@ Item {
                     }
 
                     Text {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     Text {
                         text: "Asistente inteligente"
                         color: MichiTheme.colors.textPrimary
@@ -334,7 +282,6 @@ Item {
 
                     Text {
                         text: "Pregunta, explora y descubre. Reproduce música, busca artistas, crea playlists y más."
-=======
                     Row {
                         spacing: MichiTheme.spacing.md
                         width: parent.width
@@ -360,10 +307,6 @@ Item {
                     }
 
                     Text {
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         text: root.ai === null
                             ? "Asistente no disponible. Verifica la conexión con los servicios de Michi."
                             : root._aiStatus === "initializing"
@@ -375,20 +318,11 @@ Item {
                                         : root._aiStatus === "unavailable"
                                             ? "Asistente no disponible en este contexto."
                                             : "Asistente inteligente para tu ecosistema musical. Pregunta, explora y descubre."
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
                         width: parent.width * 0.75
                         wrapMode: Text.WordWrap
                     }
-<<<<<<< HEAD
                 }
             }
 
@@ -400,15 +334,12 @@ Item {
                 Accessible.name: "Sugerencias"
             }
 
-<<<<<<< Updated upstream
                 Column {
                     width: parent.width
-=======
             Item {
                 width: parent.width
                 height: parent.height - y
                 clip: true
-=======
                 }
             }
 
@@ -419,11 +350,9 @@ Item {
                 objectName: "suggestionsHeader"
                 Accessible.name: "Sugerencias"
             }
->>>>>>> origin/michi-qml-functional-wave
 
                 Column {
                     width: parent.width
-<<<<<<< HEAD
                     spacing: MichiTheme.spacing.md
 
                     AssistantConversation {
@@ -459,11 +388,6 @@ Item {
                         objectName: "assistant.executionResult"
                         onRetryTriggered: root.retryAction()
                         onUndoTriggered: root.undoAction()
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     suggestionTitle: model.title || ""
                     suggestionDescription: model.description || ""
                     actionRoute: model.route || ""
@@ -478,39 +402,20 @@ Item {
                         } else if (model.route && typeof navigationBridge !== "undefined" && navigationBridge) {
                             navigationBridge.navigate(model.route)
                         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             AssistantConversation {
                 id: conversation
                 width: parent.width
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Rectangle {
                 width: parent.width
                 height: 1
                 color: MichiTheme.colors.borderSubtle
-=======
             AssistantConversation {
                 id: conversation
                 width: parent.width
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 chatHistory: root._chatHistory
                 aiThinking: root._aiStatus === "understanding" || root._aiStatus === "planning"
                 objectName: "assistantConversation"
@@ -573,41 +478,23 @@ Item {
                     }
                     confirmationDialog.visible = false
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             Row {
                 id: chatInputRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 activeFocusOnTab: true
                 visible: root.ai !== null
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 objectName: "assistant.inputRow"
->>>>>>> Stashed changes
 
                 Rectangle {
                     width: parent.width - MichiTheme.minimumInteractiveSize
                     height: MichiTheme.minimumInteractiveSize
                     radius: MichiTheme.radiusSm
                     color: MichiTheme.colors.surfaceInput
-<<<<<<< Updated upstream
-=======
                     border.color: promptInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                     border.width: promptInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-=======
                 activeFocusOnTab: true
                 visible: root.ai !== null
 
@@ -616,22 +503,10 @@ Item {
                     height: MichiTheme.minimumInteractiveSize
                     radius: MichiTheme.radiusSm
                     color: MichiTheme.colors.surfaceInput
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                     border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
                     objectName: "chatInputBackground"
                     Accessible.name: "Entrada de chat"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
                     TextInput {
                         id: promptInput
@@ -642,29 +517,11 @@ Item {
                         anchors.bottomMargin: MichiTheme.spacing.xs
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
                         objectName: "chatInput"
                         Accessible.name: "Pregunta a Michi AI"
                         activeFocusOnTab: true
                         enabled: root._aiStatus !== "executing" && root._aiStatus !== "understanding" && root._aiStatus !== "planning"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         verticalAlignment: TextInput.AlignVCenter
                         objectName: "assistant.promptInput"
                         activeFocusOnTab: true
@@ -684,16 +541,9 @@ Item {
                             visible: parent.text === "" && !parent.activeFocus
                         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         onAccepted: sendMessage()
                         Keys.onReturnPressed: sendMessage()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         Keys.onReturnPressed: root.sendMessage()
->>>>>>> Stashed changes
                         Keys.onEscapePressed: {
                             if (root._executing && root.ai && typeof root.ai.cancel !== "undefined") {
                                 root.ai.cancel()
@@ -702,11 +552,8 @@ Item {
                                 focus = false
                             }
                         }
-<<<<<<< Updated upstream
-=======
 
                         onAccepted: root.sendMessage()
-=======
                         onAccepted: sendMessage()
                         Keys.onReturnPressed: sendMessage()
                         Keys.onEscapePressed: {
@@ -717,11 +564,6 @@ Item {
                                 focus = false
                             }
                         }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     }
 
                     HoverHandler { cursorShape: Qt.IBeamCursor }
@@ -729,8 +571,6 @@ Item {
 
                 MichiIconButton {
                     id: sendBtn
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     iconText: root._executing ? "■" : ">"
                     tooltipText: root._executing ? "Cancelar" : "Enviar"
                     btnSize: MichiTheme.minimumInteractiveSize
@@ -740,10 +580,6 @@ Item {
                     KeyNavigation.backtab: chatInput
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     iconSource: "../../icons/sidebar_add.svg"
                     iconText: executionState === "EXECUTING" ? "■" : ">"
                     tooltipText: executionState === "EXECUTING" ? "Cancelar" : "Enviar"
@@ -751,18 +587,14 @@ Item {
                     objectName: executionState === "EXECUTING" ? "assistant.cancelButton" : "assistant.sendButton"
                     Accessible.name: executionState === "EXECUTING" ? "Cancelar ejecución" : "Enviar mensaje"
                     Accessible.description: executionState === "EXECUTING" ? "Cancela la ejecución en curso" : ""
->>>>>>> Stashed changes
                     onClicked: {
                         if (root._executing) {
                             if (root.ai && typeof root.ai.cancel !== "undefined") {
                                 root.ai.cancel()
                             }
                         } else {
-<<<<<<< Updated upstream
                             sendMessage()
-=======
                             root.sendMessage()
-=======
                     iconText: root._executing ? "■" : ">"
                     tooltipText: root._executing ? "Cancelar" : "Enviar"
                     btnSize: MichiTheme.minimumInteractiveSize
@@ -779,22 +611,11 @@ Item {
                             }
                         } else {
                             sendMessage()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         }
                     }
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Flow {
                 id: suggestionsFlow
                 width: parent.width
@@ -840,11 +661,6 @@ Item {
                         }
                     }
                 }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             StatusBadge {
                 id: aiStatusBadge
                 text: root.ai === null
@@ -857,24 +673,10 @@ Item {
                 kind: root.ai === null ? "disconnected" : root._executing ? "active" : "info"
                 objectName: "aiStatusBadge"
                 Accessible.name: "Estado de Michi AI"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     AssistantConfirmationDialog {
         id: confirmDialog
         anchors.fill: parent
@@ -887,11 +689,6 @@ Item {
         objectName: "assistant.confirmationDialog"
         onConfirmed: root.confirmAction()
         onCancelled: root.rejectAction()
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     function sendMessage() {
         if (!root.ai) return
         var text = chatInput.text.trim()
@@ -907,14 +704,6 @@ Item {
         if (root.ai && typeof root.ai.getChatHistory !== "undefined") {
             root._chatHistory = parseChatHistory(root.ai.getChatHistory())
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 
     Connections {

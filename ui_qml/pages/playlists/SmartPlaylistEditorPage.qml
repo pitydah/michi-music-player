@@ -3,57 +3,26 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import "../../materials"
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 Item {
     id: root
 
     property var bridge: null
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string playlistName: ""
     property var ruleGroups: []
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var rules: []
     property string playlistName: ""
-=======
     property string playlistName: ""
     property var ruleGroups: []
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property string matchMode: "all"
     property int limitCount: 0
     property string orderBy: ""
     property int _previewCount: 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property bool _saving: false
     property string _errorMsg: ""
     property string _state: "READY"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string _status: ""
->>>>>>> Stashed changes
 
     signal saved(string name, var rules)
     signal cancelled()
@@ -122,11 +91,8 @@ Item {
         root._saving = false
     }
 
-<<<<<<< Updated upstream
-=======
     Keys.onEscapePressed: root.backRequested()
 
-=======
     property bool _saving: false
     property string _errorMsg: ""
     property string _state: "READY"
@@ -198,47 +164,23 @@ Item {
         root._saving = false
     }
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     Flickable {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         focus: true
         objectName: "smartPlaylist.editor.flickable"
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
         Column {
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             RowLayout {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Row {
                 spacing: MichiTheme.spacing.sm
->>>>>>> Stashed changes
                 width: parent.width
                 MichiButton {
                     text: "Volver"
@@ -345,12 +287,9 @@ Item {
                             }
                             Item { Layout.fillWidth: true }
 
-<<<<<<< Updated upstream
-=======
                             Row {
                                 anchors.fill: parent
                                 anchors.margins: MichiTheme.spacing.sm
-=======
             RowLayout {
                 width: parent.width
                 MichiButton {
@@ -458,10 +397,6 @@ Item {
                             }
                             Item { Layout.fillWidth: true }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             ComboBox {
                                 id: groupOpCombo
                                 model: ["and", "or"]
@@ -489,28 +424,14 @@ Item {
 
                             RowLayout {
                                 width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                                 spacing: MichiTheme.spacing.sm
 
                                 ComboBox {
                                     id: fieldCombo
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                                     model: ["genre", "artist", "album", "title", "year", "rating", "playcount", "lastplayed", "added"]
                                     currentIndex: Math.max(0, fieldCombo.find(modelData.field))
                                     Layout.preferredWidth: 100
                                     objectName: "ruleFieldCombo_" + index + "_" + modelIndex
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                                     width: 120
                                     model: ["genre", "artist", "album", "year", "rating", "playcount", "lastplayed", "added", "title", "format"]
                                     currentIndex: {
@@ -519,7 +440,6 @@ Item {
                                     }
                                     onCurrentTextChanged: root.rules[index].field = currentText
                                     objectName: "smartPlaylist.editor.ruleField." + index
->>>>>>> Stashed changes
                                     Accessible.name: "Campo de la regla"
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
@@ -562,14 +482,11 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
-=======
                     Text {
                         text: root.rules.length === 0 ? "Sin reglas. Agrega al menos una regla para filtrar." : ""
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.bodySize
                         visible: root.rules.length === 0
-=======
                                     model: ["genre", "artist", "album", "title", "year", "rating", "playcount", "lastplayed", "added"]
                                     currentIndex: Math.max(0, fieldCombo.find(modelData.field))
                                     Layout.preferredWidth: 100
@@ -616,10 +533,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         MichiButton {
                             text: "+ Añadir regla"
                             variant: "ghost"
@@ -630,20 +543,10 @@ Item {
                             Keys.onSpacePressed: onClicked()
                             onClicked: root.addRule(index)
                         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             MichiButton {
                 text: "+ Añadir grupo de reglas"
                 variant: "ghost"
@@ -663,12 +566,7 @@ Item {
             }
 
             RowLayout {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             GlassPanel {
->>>>>>> Stashed changes
                 width: parent.width
                 Text {
                     text: "Limitar a:"
@@ -714,8 +612,6 @@ Item {
                 }
             }
 
-<<<<<<< Updated upstream
-=======
                     Row {
                         spacing: MichiTheme.spacing.sm
                         width: parent.width
@@ -739,7 +635,6 @@ Item {
                             Accessible.name: "Ordenar por"
                         }
                     }
-=======
             MichiButton {
                 text: "+ Añadir grupo de reglas"
                 variant: "ghost"
@@ -804,10 +699,6 @@ Item {
                 }
             }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             RowLayout {
                 width: parent.width
                 MichiButton {
@@ -831,39 +722,21 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.save()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
 
             Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 text: root._errorMsg
                 color: MichiTheme.colors.error
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 text: root._status
                 color: root._status.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
->>>>>>> Stashed changes
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
                 Accessible.name: root._errorMsg
             }
 
-<<<<<<< Updated upstream
             Item { width: 1; height: MichiTheme.spacing.lg }
-=======
             Item { height: MichiTheme.spacing.xl; width: 1 }
-=======
                 text: root._errorMsg
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
@@ -872,11 +745,6 @@ Item {
             }
 
             Item { width: 1; height: MichiTheme.spacing.lg }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 }

@@ -8,21 +8,9 @@ Item {
     id: root
 
     property var jobData: null
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property var jobBr: typeof jobBridge !== "undefined" ? jobBridge : null
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var alab: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
-=======
     property var jobBr: typeof jobBridge !== "undefined" ? jobBridge : null
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
     objectName: "AudioJobDetail"
@@ -52,12 +40,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
             Text { text: root.jobData ? root.jobData.title : ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold }
             Text { text: "Estado: " + (root.jobData ? root.jobData.state : ""); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
@@ -67,11 +49,6 @@ Item {
                 MichiButton { text: "Reintentar"; variant: "secondary"; enabled: root.jobData && root.jobData.state === "failed"; onClicked: root.alab && root.alab.retryJob(root.jobData.job_id) }
                 MichiButton { text: "Cancelar"; variant: "danger"; enabled: root.jobData && root.jobData.state === "running"; onClicked: root.alab && root.alab.cancelJob(root.jobData.job_id) }
                 MichiButton { text: "Abrir output"; variant: "ghost"; onClicked: {} }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
@@ -197,14 +174,6 @@ Item {
                         }
                     }
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

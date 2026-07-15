@@ -1,27 +1,13 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Workflow test: Prompt → preview → confirm → execute → show result."""
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Workflow test: Prompt → preview → confirm → execute → show result."""
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
@@ -62,12 +48,7 @@ def bridge(services):
         diagnostics_service=services["diagnostics_service"],
         worker_manager=services["worker_manager"],
     )
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
->>>>>>> Stashed changes
 
 
 class TestMichiAIWorkflow:
@@ -153,11 +134,9 @@ class TestMichiAIWorkflow:
     def test_workflow_partial_execution_shows_result(self, bridge, services):
         services["track_action_service"].play_track.return_value = {"ok": True}
         bridge.sendMessage("reproduce canción 1")
-<<<<<<< Updated upstream
         assert len(bridge._chat_history) >= 1
         last = bridge._chat_history[-1]
         assert "Hecho" in last["text"] or "Error" in last["text"]
-=======
         assert bridge.status == "failed"
 
     def test_workflow_refreshes_suggestions(self, bridge, services):
@@ -166,8 +145,6 @@ class TestMichiAIWorkflow:
         ]
         bridge.refresh()
         assert len(bridge.suggestions) == 1
-=======
-from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -295,8 +272,3 @@ class TestMichiAIWorkflow:
         assert len(bridge._chat_history) >= 1
         last = bridge._chat_history[-1]
         assert "Hecho" in last["text"] or "Error" in last["text"]
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes

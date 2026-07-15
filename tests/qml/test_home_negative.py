@@ -1,27 +1,9 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for home page negative/error states — 8+ tests."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Tests for home page negative/error states — 8+ tests."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import pytest
 from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
@@ -44,7 +26,6 @@ def _load_page(engine) -> QQmlComponent:
     comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/home/HomePage.qml")))
     return comp
 
->>>>>>> Stashed changes
 
 class TestHomeNegative:
     def test_null_bridge_handled(self):
@@ -96,8 +77,6 @@ class TestHomeNegative:
         state = "READY"
         assert state == "READY"
 
-<<<<<<< Updated upstream
-=======
     def test_recover_from_error(self, engine):
         comp = _load_page(engine)
         assert comp.isReady()
@@ -117,7 +96,6 @@ class TestHomeNegative:
             assert obj.property("state") == "READY"
         finally:
             obj.deleteLater()
-=======
 
 class TestHomeNegative:
     def test_null_bridge_handled(self):
@@ -169,10 +147,6 @@ class TestHomeNegative:
         state = "READY"
         assert state == "READY"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_continue_card_disabled_when_no_playback(self):
         hb = MagicMock()
         hb.hasPlayback = False
@@ -200,11 +174,3 @@ class TestHomeNegative:
         accessible = MagicMock()
         accessible.name = "Error en panel de inicio"
         assert "Error" in accessible.name
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

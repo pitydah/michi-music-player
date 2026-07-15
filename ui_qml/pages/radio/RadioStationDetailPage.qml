@@ -8,16 +8,9 @@ import "../../materials"
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
->>>>>>> Stashed changes
     property var stationData: null
 
     property bool _isPlaying: false
@@ -37,12 +30,9 @@ Item {
 
     implicitHeight: detailColumn.height + MichiTheme.spacing.xl * 2
 
-<<<<<<< Updated upstream
-=======
     Accessible.role: Accessible.Panel
     Accessible.name: stationData ? stationData.name + " - Detalle de emisora" : "Detalle de emisora"
     Accessible.description: "Estado: " + _playState
-=======
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var stationData: null
@@ -64,10 +54,6 @@ Item {
 
     implicitHeight: detailColumn.height + MichiTheme.spacing.xl * 2
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     objectName: "radioStationDetailPage"
 
     Accessible.role: Accessible.Pane
@@ -96,61 +82,34 @@ Item {
         root.retryRequested()
         root.play()
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     GlassCard {
         width: parent.width
         height: root.implicitHeight
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         title: ""
         subtitle: ""
 
         Column {
             id: detailColumn
             width: parent.width
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         objectName: "radioStationDetailPage.card"
 
         Column {
             anchors.fill: parent
-=======
         title: ""
         subtitle: ""
 
         Column {
             id: detailColumn
             width: parent.width
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
 
             Row {
                 width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 spacing: MichiTheme.spacing.md
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 spacing: MichiTheme.spacing.sm
                 objectName: "radioStationDetailPage.headerRow"
->>>>>>> Stashed changes
 
                 Rectangle {
                     width: 64
@@ -187,11 +146,8 @@ Item {
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
-<<<<<<< Updated upstream
                         width: parent.parent.width - 80
-=======
                         width: parent.width
-=======
                 spacing: MichiTheme.spacing.md
 
                 Rectangle {
@@ -230,25 +186,14 @@ Item {
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         width: parent.parent.width - 80
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     }
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Rectangle {
                 width: parent.width
                 height: 1
                 color: MichiTheme.colors.borderSubtle
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Text {
                 text: stationData ? (stationData.genre || "") : ""
                 color: MichiTheme.colors.textMuted
@@ -264,7 +209,6 @@ Item {
                 elide: Text.ElideMiddle
                 visible: text !== ""
                 objectName: "radioStationDetailPage.url"
->>>>>>> Stashed changes
             }
 
             Row {
@@ -349,11 +293,8 @@ Item {
                             default: return ""
                         }
                     }
-<<<<<<< Updated upstream
-=======
                     objectName: "radioStationDetailPage.playButton"
                     Accessible.name: root._playState === "PLAYING" ? "Detener reproducción" : "Reproducir emisora"
-=======
             Rectangle {
                 width: parent.width
                 height: 1
@@ -442,10 +383,6 @@ Item {
                             default: return ""
                         }
                     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     color: {
                         switch (root._state) {
                             case "PLAYING": return MichiTheme.colors.success
@@ -519,33 +456,18 @@ Item {
                     onClicked: root._isPlaying ? root.stop() : root.play()
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
 
                 MichiButton {
                     text: root._isFav ? "\u2605" : "\u2606"
                     variant: "ghost"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     objectName: "toggleFavBtn"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                     onClicked: {
                         root._isFav = !root._isFav
                         root.toggleFavRequested()
                     }
                     objectName: "radioStationDetailPage.favButton"
->>>>>>> Stashed changes
                     Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                     activeFocusOnTab: true
                     onClicked: {
@@ -580,8 +502,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                 }
 
-<<<<<<< Updated upstream
-=======
             Item {
                 width: parent.width
                 height: 20
@@ -648,7 +568,6 @@ Item {
                         onClicked: root.backRequested()
                         objectName: "radioStationDetailPage.dismissErrorButton"
                     }
-=======
                     objectName: "toggleFavBtn"
                     Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                     activeFocusOnTab: true
@@ -684,10 +603,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                 }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 MichiButton {
                     text: "Reintentar"
                     variant: "ghost"
@@ -697,14 +612,6 @@ Item {
                     activeFocusOnTab: true
                     onClicked: root.retry()
                     Keys.onReturnPressed: root.retry()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

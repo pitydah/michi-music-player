@@ -1,36 +1,16 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for library empty, loading, error states and recovery — 12+ tests."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Negative tests for LibraryPage — null bridge, empty states, error states."""
-=======
 """Tests for library empty, loading, error states and recovery — 12+ tests."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import pytest
 
-from ui_qml_bridge.library_bridge import LibraryBridge, LibraryState
-from ui_qml_bridge.selection_controller import SelectionController
+from ui_qml_bridge.library_bridge import LibraryBridge
 
 pytestmark = [pytest.mark.qml_module("library")]
 
->>>>>>> Stashed changes
 
 class TestLibraryNegative:
     def test_null_library_bridge(self):
@@ -99,14 +79,11 @@ class TestLibraryNegative:
         bridge.state = "INITIALIZING"
         assert bridge.state == "INITIALIZING"
 
-<<<<<<< Updated upstream
-=======
     def test_null_query_service_play_artist(self):
         bridge = LibraryBridge()
         result = bridge.playArtist("some_artist")
         assert result["ok"] is False
         assert result["error"] == "NO_QUERY_SERVICE"
-=======
 
 class TestLibraryNegative:
     def test_null_library_bridge(self):
@@ -175,10 +152,6 @@ class TestLibraryNegative:
         bridge.state = "INITIALIZING"
         assert bridge.state == "INITIALIZING"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_cancelled_state(self):
         bridge = MagicMock()
         bridge.state = "CANCELLED"
@@ -215,11 +188,3 @@ class TestLibraryNegative:
         bridge.state = "PARTIAL_RESULTS"
         bridge.songCount = 5
         assert bridge.songCount == 5
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

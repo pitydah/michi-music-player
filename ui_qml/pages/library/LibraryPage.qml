@@ -77,12 +77,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     enum State {
         INITIALIZING,
         NO_SOURCES,
@@ -99,12 +93,6 @@ Item {
 
     property int libraryState: root.lib ? LibraryPage.INITIALIZING : LibraryPage.UNAVAILABLE
 
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     function _updateState() {
         if (!root.lib) return
         var s = root.lib.state || "INITIALIZING"
@@ -127,8 +115,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     function onTrackContextMenu(trackId, trackTitle, trackArtist, trackAlbum) {
         if (typeof contextMenu !== "undefined") {
             contextMenu.trackId = trackId
@@ -136,14 +122,9 @@ Item {
             contextMenu.trackArtist = trackArtist
             contextMenu.trackAlbum = trackAlbum
             contextMenu.open()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     onLibraryStateChanged: {
         if (libraryState === LibraryPage.READY && focusScope) {
             focusScope.forceActiveFocus()
->>>>>>> Stashed changes
         }
     }
 
@@ -290,8 +271,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-=======
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.CANCELLED
@@ -460,7 +439,6 @@ Item {
                         bridge: root.lib
                         lib: root.lib
                     }
-=======
     function onTrackContextMenu(trackId, trackTitle, trackArtist, trackAlbum) {
         if (typeof contextMenu !== "undefined") {
             contextMenu.trackId = trackId
@@ -591,7 +569,6 @@ Item {
                     objectName: "folderBrowserPage"
                     Accessible.name: "Explorador de carpetas"
                     activeFocusOnTab: true
->>>>>>> origin/michi-qml-functional-wave
                 }
             }
         }
@@ -615,10 +592,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     LibraryContextMenu {
         id: contextMenu
         objectName: "libraryContextMenu"
@@ -631,12 +604,6 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.NO_SOURCES
         sourceComponent: LibraryEmptyState {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             title: "Sin fuentes configuradas"
             message: "Agrega carpetas de música para comenzar"
             actionText: "Añadir fuente"
@@ -646,23 +613,10 @@ Item {
                 if (typeof navigationBridge !== "undefined")
                     navigationBridge.navigate("library.sources")
             }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             title: "Sin fuentes"
             message: "No hay fuentes de música configuradas. Agrega carpetas en Ajustes."
             actionText: "Configurar fuentes"
             onActionRequested: { if (typeof navigationBridge !== "undefined") navigationBridge.navigate("settings") }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         }
     }
 
@@ -671,26 +625,14 @@ Item {
         active: libraryState === LibraryPage.FILTERED_EMPTY
         sourceComponent: LibraryEmptyState {
             title: "Sin resultados"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             message: "No se encontraron elementos con los filtros actuales."
             actionText: "Limpiar filtros"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             message: "No se encontraron resultados con los filtros actuales"
             actionText: "Limpiar filtros"
             objectName: "library.filteredEmptyState"
             Accessible.name: "Sin resultados de filtro"
-=======
             message: "No se encontraron elementos con los filtros actuales."
             actionText: "Limpiar filtros"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             onActionRequested: root.clearFilters()
         }
     }
@@ -698,53 +640,29 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.SOURCE_OFFLINE
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         sourceComponent: LibraryEmptyState {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         sourceComponent: LibraryErrorState {
->>>>>>> Stashed changes
             title: "Fuente no disponible"
             message: "La fuente de biblioteca configurada no está disponible en este momento."
             actionText: "Reintentar"
-<<<<<<< Updated upstream
-=======
             objectName: "library.sourceOfflineState"
             Accessible.name: "Fuente fuera de línea"
-=======
         sourceComponent: LibraryEmptyState {
             title: "Fuente no disponible"
             message: "La fuente de biblioteca configurada no está disponible en este momento."
             actionText: "Reintentar"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             onActionRequested: root.refreshData()
         }
     }
 
     Loader {
         anchors.centerIn: parent
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         active: libraryState === LibraryPage.QUERY_ERROR
->>>>>>> Stashed changes
         sourceComponent: LibraryErrorState {
             title: "Error de biblioteca"
             message: root.lib ? root.lib.errorMessage : "Ocurrió un error al acceder a la biblioteca."
             actionText: "Reintentar"
-<<<<<<< Updated upstream
-=======
             objectName: "library.queryErrorState"
             Accessible.name: "Error de consulta"
             onActionRequested: root.refreshData()
@@ -760,17 +678,11 @@ Item {
             actionText: "Reintentar"
             objectName: "library.databaseErrorState"
             Accessible.name: "Error de base de datos"
-=======
         active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
         sourceComponent: LibraryErrorState {
             title: "Error de biblioteca"
             message: root.lib ? root.lib.errorMessage : "Ocurrió un error al acceder a la biblioteca."
             actionText: "Reintentar"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             onActionRequested: root.refreshData()
         }
     }
@@ -781,49 +693,19 @@ Item {
         sourceComponent: Item {
             id: loadingContainer
             width: 120; height: 120
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             objectName: "library.loadingState"
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             Accessible.name: "Cargando biblioteca"
             BusyIndicator {
                 anchors.centerIn: parent
                 running: true
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 Accessible.role: Accessible.Indicator
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Accessible.name: "Cargando biblioteca"
                 Accessible.description: "La biblioteca se está cargando"
-=======
                 Accessible.role: Accessible.Indicator
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     LibrarySelectionBar {
         id: selectionBar
         width: parent.width
@@ -834,22 +716,9 @@ Item {
         count: root.sel ? root.sel.count : 0
         selectionController: root.sel
         objectName: "library.selectionBar"
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     Connections {
         target: root.lib
         function onStateChanged() { root._updateState() }
         function onDataChanged() { root._updateState() }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

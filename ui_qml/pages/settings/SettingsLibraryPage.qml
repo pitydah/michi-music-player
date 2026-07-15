@@ -1,168 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import Qt.labs.platform
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 import Qt.labs.platform
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    objectName: "settingsLibraryPage"
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-
-    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
-    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-
-    property int pageState: AsyncStateView.READY
-    property string errorMessage: ""
-    property string errorDetails: ""
-    property var musicFolders: []
-
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes de biblioteca"
-
-    function refresh() {
-        if (pageState === AsyncStateView.ERROR) return
-        _loadFolders()
-    }
-
-    function _loadFolders() {
-        if (!root.bridge) return
-        var folders = root.bridge.getValue("library/music_folders")
-        root.musicFolders = folders || []
-    }
-
-    function _loadValue(key, fallback) {
-        if (!root.bridge) return fallback
-        var v = root.bridge.getValue(key)
-        return v !== null && v !== undefined ? v : fallback
-    }
-
-    function _saveValue(key, value) {
-        if (!root.bridge) return
-        root.bridge.setValue(key, value)
-    }
-
-    function _addFolder(path) {
-        if (!root.bridge || !path) return
-        var result = root.bridge.setValue("library/add_folder", path)
-        if (result && result.ok) {
-            if (root.notif) root.notif.showMessage("Carpeta agregada", "info")
-            _loadFolders()
-        } else {
-            if (root.notif) root.notif.showMessage("Error al agregar carpeta", "error")
-        }
-    }
-
-    function _removeFolder(path) {
-        if (!root.bridge || !path) return
-        var result = root.bridge.setValue("library/remove_folder", path)
-        if (result && result.ok) {
-            if (root.notif) root.notif.showMessage("Carpeta eliminada", "info")
-            _loadFolders()
-        } else {
-            if (root.notif) root.notif.showMessage("Error al eliminar carpeta", "error")
-        }
-    }
-
-    function _rescanLibrary() {
-        if (!root.bridge) return
-        root.bridge.setValue("library/rescan", true)
-        if (root.notif) root.notif.showMessage("Reescaneo iniciado", "info")
-    }
-
-    function _clearAndRescan() {
-        if (!root.bridge) return
-        root.bridge.setValue("library/clear_and_rescan", true)
-        if (root.notif) root.notif.showMessage("Biblioteca limpiada y reescaneo iniciado", "info")
-    }
-
-    Component.onCompleted: root.refresh()
-
-    AsyncStateView {
-        id: stateView
-        anchors.fill: parent
-        state: root.pageState
-        title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
-        message: root.errorMessage
-        details: root.errorDetails
-        retryAvailable: root.pageState === AsyncStateView.ERROR
-        onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
-
-        readyContent: ScrollView {
-            id: scrollView
-            anchors.fill: parent
-            clip: true
-            objectName: "settings.library.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes de biblioteca"
-
-            ColumnLayout {
-                width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
-                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
-                spacing: MichiTheme.spacing.lg
-                topPadding: MichiTheme.spacing.xl
-                bottomPadding: MichiTheme.spacing.xl
-
-                PageHeader {
-                    title: "Biblioteca"
-                    subtitle: "Carpetas, escaneo y mantenimiento"
-                }
-
-                GlassCard {
-                    id: foldersCard
-                    Layout.fillWidth: true
-                    title: "Carpetas de música"
-                    interactive: false
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.lg
-                        spacing: MichiTheme.spacing.md
-
-                        ListView {
-                            id: foldersList
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: Math.min(contentHeight, 300)
-                            model: root.musicFolders
-                            clip: true
-                            spacing: MichiTheme.spacing.sm
-                            interactive: true
-                            objectName: "settings.library.foldersList"
-                            Accessible.role: Accessible.List
-                            Accessible.name: "Carpetas de música"
-
-                            delegate: Rectangle {
-                                width: foldersList.width
-                                height: 48
-                                radius: MichiTheme.radiusSm
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                                color: MichiTheme.colors.surfaceCard
-=======
-=======
->>>>>>> Stashed changes
-=======
     objectName: "settingsLibraryPage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -292,47 +137,157 @@ Item {
                                 height: 48
                                 radius: MichiTheme.radiusSm
                                 color: MichiTheme.colors.surfaceCard
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+    objectName: "settingsLibraryPage"
+
+    property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+
+    property int pageState: AsyncStateView.READY
+    property string errorMessage: ""
+    property string errorDetails: ""
+    property var musicFolders: []
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ajustes de biblioteca"
+
+    function refresh() {
+        if (pageState === AsyncStateView.ERROR) return
+        _loadFolders()
+    }
+
+    function _loadFolders() {
+        if (!root.bridge) return
+        var folders = root.bridge.getValue("library/music_folders")
+        root.musicFolders = folders || []
+    }
+
+    function _loadValue(key, fallback) {
+        if (!root.bridge) return fallback
+        var v = root.bridge.getValue(key)
+        return v !== null && v !== undefined ? v : fallback
+    }
+
+    function _saveValue(key, value) {
+        if (!root.bridge) return
+        root.bridge.setValue(key, value)
+    }
+
+    function _addFolder(path) {
+        if (!root.bridge || !path) return
+        var result = root.bridge.setValue("library/add_folder", path)
+        if (result && result.ok) {
+            if (root.notif) root.notif.showMessage("Carpeta agregada", "info")
+            _loadFolders()
+        } else {
+            if (root.notif) root.notif.showMessage("Error al agregar carpeta", "error")
+        }
+    }
+
+    function _removeFolder(path) {
+        if (!root.bridge || !path) return
+        var result = root.bridge.setValue("library/remove_folder", path)
+        if (result && result.ok) {
+            if (root.notif) root.notif.showMessage("Carpeta eliminada", "info")
+            _loadFolders()
+        } else {
+            if (root.notif) root.notif.showMessage("Error al eliminar carpeta", "error")
+        }
+    }
+
+    function _rescanLibrary() {
+        if (!root.bridge) return
+        root.bridge.setValue("library/rescan", true)
+        if (root.notif) root.notif.showMessage("Reescaneo iniciado", "info")
+    }
+
+    function _clearAndRescan() {
+        if (!root.bridge) return
+        root.bridge.setValue("library/clear_and_rescan", true)
+        if (root.notif) root.notif.showMessage("Biblioteca limpiada y reescaneo iniciado", "info")
+    }
+
+    Component.onCompleted: root.refresh()
+
+    AsyncStateView {
+        id: stateView
+        anchors.fill: parent
+        state: root.pageState
+        title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
+        message: root.errorMessage
+        details: root.errorDetails
+        retryAvailable: root.pageState === AsyncStateView.ERROR
+        onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
+
+        readyContent: ScrollView {
+            id: scrollView
+            anchors.fill: parent
+            clip: true
+            objectName: "settings.library.scrollView"
+            Accessible.role: Accessible.ScrollArea
+            Accessible.name: "Ajustes de biblioteca"
+
+            ColumnLayout {
+                width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
+                anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
+                spacing: MichiTheme.spacing.lg
+                topPadding: MichiTheme.spacing.xl
+                bottomPadding: MichiTheme.spacing.xl
+
+                PageHeader {
+                    title: "Biblioteca"
+                    subtitle: "Carpetas, escaneo y mantenimiento"
+                }
+
+                GlassCard {
+                    id: foldersCard
+                    Layout.fillWidth: true
+                    title: "Carpetas de música"
+                    interactive: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.lg
+                        spacing: MichiTheme.spacing.md
+
+                        ListView {
+                            id: foldersList
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.min(contentHeight, 300)
+                            model: root.musicFolders
+                            clip: true
+                            spacing: MichiTheme.spacing.sm
+                            interactive: true
+                            objectName: "settings.library.foldersList"
+                            Accessible.role: Accessible.List
+                            Accessible.name: "Carpetas de música"
+
+                            delegate: Rectangle {
+                                width: foldersList.width
+                                height: 48
+                                radius: MichiTheme.radiusSm
+                                color: MichiTheme.colors.surfaceCard
 
                                 RowLayout {
                                     anchors.fill: parent
                                     anchors.margins: MichiTheme.spacing.sm
                                     spacing: MichiTheme.spacing.sm
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                                     Label {
                                         text: modelData
                                         color: MichiTheme.colors.textPrimary
                                         font.pixelSize: MichiTheme.typography.bodySize
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                                     Text {
                                         text: modelData.path || ""
                                         color: MichiTheme.colors.textPrimary
                                         font.pixelSize: MichiTheme.typography.captionSize
-=======
                                     Label {
                                         text: modelData
                                         color: MichiTheme.colors.textPrimary
                                         font.pixelSize: MichiTheme.typography.bodySize
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                                         elide: Text.ElideMiddle
                                         Layout.fillWidth: true
                                     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                                     MichiButton {
                                         text: "Eliminar"
                                         variant: "danger"
@@ -344,10 +299,6 @@ Item {
 
                                 Accessible.role: Accessible.ListItem
                                 Accessible.name: modelData
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                                     Text {
                                         text: modelData.available ? "" : "(no disponible)"
                                         color: MichiTheme.colors.error
@@ -355,7 +306,6 @@ Item {
                                         visible: !modelData.available
                                     }
                                 }
-=======
                                     MichiButton {
                                         text: "Eliminar"
                                         variant: "danger"
@@ -367,62 +317,36 @@ Item {
 
                                 Accessible.role: Accessible.ListItem
                                 Accessible.name: modelData
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             }
 
                             Item {
                                 anchors.centerIn: parent
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                                 visible: foldersList.count === 0
                                 Label {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textSecondary
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                                 visible: sourcesList.count === 0
                                 Text {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textMuted
-=======
                                 visible: foldersList.count === 0
                                 Label {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textSecondary
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                             }
                         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     }
 
                     RowLayout {
                         width: parent.width
                         spacing: MichiTheme.spacing.sm
->>>>>>> Stashed changes
 
                         MichiButton {
                             id: addFolderBtn
                             text: "Añadir carpeta de música"
                             variant: "primary"
-<<<<<<< Updated upstream
-=======
                             Accessible.name: "Añadir carpeta musical"
                             KeyNavigation.tab: watchSwitch
                         }
@@ -436,13 +360,11 @@ Item {
                             variant: "secondary"
                             Accessible.name: "Reescanear biblioteca"
                             KeyNavigation.tab: clearRescanBtn
-=======
 
                         MichiButton {
                             id: addFolderBtn
                             text: "Añadir carpeta de música"
                             variant: "primary"
->>>>>>> Stashed changes
                             Layout.fillWidth: true
                             onClicked: folderDialog.open()
                             Accessible.name: "Añadir carpeta de música"
@@ -654,8 +576,6 @@ Item {
                             Layout.fillWidth: true
                             onClicked: root._rescanLibrary()
                             Accessible.name: "Reescanear biblioteca"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -667,9 +587,7 @@ Item {
                             onClicked: confirmRescan.open()
                             Accessible.name: "Limpiar y reescanear biblioteca"
                             Accessible.description: "Elimina la base de datos y reescanea desde cero"
-=======
                             KeyNavigation.tab: clearRescanBtn
-=======
 
                         MichiButton {
                             id: addFolderBtn
@@ -678,14 +596,11 @@ Item {
                             Layout.fillWidth: true
                             onClicked: folderDialog.open()
                             Accessible.name: "Añadir carpeta de música"
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
                 Item { Layout.fillHeight: true }
-=======
                 GlassCard {
                     id: scanningCard
                     Layout.fillWidth: true
@@ -890,8 +805,6 @@ Item {
                             Layout.fillWidth: true
                             onClicked: root._rescanLibrary()
                             Accessible.name: "Reescanear biblioteca"
-=======
->>>>>>> Stashed changes
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -903,12 +816,10 @@ Item {
                             onClicked: confirmRescan.open()
                             Accessible.name: "Limpiar y reescanear biblioteca"
                             Accessible.description: "Elimina la base de datos y reescanea desde cero"
->>>>>>> origin/michi-qml-functional-wave
                         }
                     }
                 }
 
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
@@ -1069,19 +980,11 @@ Item {
                         onClicked: confirmClearRescanDialog.open()
                     }
                 }
-=======
                 Item { Layout.fillHeight: true }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     FolderDialog {
         id: folderDialog
         title: "Seleccionar carpeta de música"
@@ -1090,10 +993,6 @@ Item {
             if (folderPath) root._addFolder(folderPath)
         }
     }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     ConfirmActionDialog {
         id: confirmClearRescanDialog
         objectName: "settings.library.clearRescanConfirm"
@@ -1105,7 +1004,6 @@ Item {
             console.log("[Settings] Limpiar y reescanear biblioteca")
         }
     }
-=======
     FolderDialog {
         id: folderDialog
         title: "Seleccionar carpeta de música"
@@ -1114,10 +1012,6 @@ Item {
             if (folderPath) root._addFolder(folderPath)
         }
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     ConfirmActionDialog {
         id: confirmRescan
@@ -1133,12 +1027,4 @@ Item {
     }
 
     signal closeRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

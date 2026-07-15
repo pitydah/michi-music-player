@@ -1,32 +1,13 @@
 import QtQuick
 import QtQuick.Controls
 import "../../theme"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import "../../materials"
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property var chatHistory: []
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var model: []
->>>>>>> Stashed changes
     property bool aiThinking: false
     property alias flickable: flickable
 
@@ -73,15 +54,12 @@ Item {
                     anchors.leftMargin: model.role === "user" ? MichiTheme.spacing.xl : 0
                     anchors.rightMargin: model.role === "assistant" ? MichiTheme.spacing.xl : 0
 
-<<<<<<< Updated upstream
-=======
                             SequentialAnimation on opacity {
                                 running: root.aiThinking
                                 loops: Animation.Infinite
                                 PropertyAnimation { from: 0.3; to: 1.0; duration: 400 }
                                 PropertyAnimation { from: 1.0; to: 0.3; duration: 400 }
                                 PauseAnimation { duration: index * 200 }
-=======
     property var chatHistory: []
     property bool aiThinking: false
     property alias flickable: flickable
@@ -129,10 +107,6 @@ Item {
                     anchors.leftMargin: model.role === "user" ? MichiTheme.spacing.xl : 0
                     anchors.rightMargin: model.role === "assistant" ? MichiTheme.spacing.xl : 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     implicitHeight: messageContent.height + MichiTheme.spacing.md
 
                     Column {
@@ -158,34 +132,15 @@ Item {
                             textFormat: Text.RichText
                             onLinkActivated: function(link) {
                                 Qt.openUrlExternally(link)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                             }
                         }
                     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     Text {
                         text: "Pensando..."
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         font.weight: MichiTheme.typography.weightMedium
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
@@ -230,29 +185,15 @@ Item {
                                 }
                             }
                         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     ScrollBar.vertical: ScrollBar {
         policy: ScrollBar.AsNeeded
         width: 6
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     ScrollBar {
         id: scrollBar
         anchors.right: parent.right
@@ -260,14 +201,9 @@ Item {
         anchors.bottom: parent.bottom
         width: 6
         policy: listView.contentHeight > listView.height ? ScrollBar.AlwaysOn : ScrollBar.Off
-=======
     ScrollBar.vertical: ScrollBar {
         policy: ScrollBar.AsNeeded
         width: 6
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 
     onRequestScrollToBottom: {
@@ -282,13 +218,5 @@ Item {
                 root.requestScrollToBottom()
             }
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

@@ -1,36 +1,15 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for home page display and actions — 12+ tests."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Tests for home page display and actions — 12+ tests."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-from PySide6.QtCore import QUrl
-from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 from pathlib import Path
 QML_DIR = Path(__file__).resolve().parent.parent / "ui_qml"
 
 pytestmark = [pytest.mark.qml_module("home")]
->>>>>>> Stashed changes
 
 
 class TestHomePageDisplay:
@@ -113,8 +92,6 @@ class TestHomePageDisplay:
         nav.navigate("connections")
         nav.navigate.assert_called_once_with("connections")
 
-<<<<<<< Updated upstream
-=======
 class TestHomePageStates:
     def test_ready_with_bridge(self, engine):
         comp = _load_page(engine)
@@ -235,7 +212,6 @@ class TestHomePageAccessible:
             assert obj.property("objectName") == "home.page"
         finally:
             obj.deleteLater()
-=======
 
 
 class TestHomePageDisplay:
@@ -318,19 +294,7 @@ class TestHomePageDisplay:
         nav.navigate("connections")
         nav.navigate.assert_called_once_with("connections")
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_navigate_to_jobs(self):
         nav = MagicMock()
         nav.navigate("jobs")
         nav.navigate.assert_called_once_with("jobs")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

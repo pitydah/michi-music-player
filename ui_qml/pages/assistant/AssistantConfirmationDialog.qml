@@ -1,77 +1,44 @@
 import QtQuick
 import QtQuick.Controls
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Layouts
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
 
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
     property bool destructive: false
     property bool visible: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string title: "Confirmar acción"
     property string message: "¿Estás seguro de realizar esta acción?"
     property bool destructive: false
     property var actionDetails: ({})
     property bool open: false
     property int affectedCount: 0
-=======
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
     property bool destructive: false
     property bool visible: false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     signal confirmed()
     signal cancelled()
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     anchors.fill: parent
     visible: root.visible
     z: 10000
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     visible: root.open
     focus: root.open
     objectName: "assistant.confirmation.dialog"
->>>>>>> Stashed changes
 
     Accessible.role: Accessible.Dialog
     Accessible.name: "Confirmar acción" + (destructive ? " - Acción destructiva" : "")
     Accessible.description: actionDescription
 
-<<<<<<< Updated upstream
     Keys.onEscapePressed: root.cancelled()
-=======
     Keys.onEscapePressed: {
         root.open = false
         root.cancelled()
@@ -83,7 +50,6 @@ Item {
             root.confirmed()
         }
     }
-=======
     anchors.fill: parent
     visible: root.visible
     z: 10000
@@ -93,26 +59,15 @@ Item {
     Accessible.description: actionDescription
 
     Keys.onEscapePressed: root.cancelled()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.overlayDark
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         opacity: 0.8
 
         MouseArea {
             anchors.fill: parent
             onClicked: root.cancelled()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         z: 9990
 
         MouseArea {
@@ -121,32 +76,19 @@ Item {
                 root.open = false
                 root.cancelled()
             }
-=======
         opacity: 0.8
 
         MouseArea {
             anchors.fill: parent
             onClicked: root.cancelled()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 
     Rectangle {
         anchors.centerIn: parent
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         width: 400
         implicitHeight: dialogColumn.height + MichiTheme.spacing.xl * 2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         width: Math.min(400, parent.width * 0.9)
->>>>>>> Stashed changes
         radius: MichiTheme.radiusMd
         color: MichiTheme.colors.surfacePopup
         border.color: root.destructive ? MichiTheme.colors.error : MichiTheme.colors.borderCard
@@ -188,8 +130,6 @@ Item {
                     radius: MichiTheme.radiusXs
                     color: MichiTheme.colors.surfaceSubtle
 
-<<<<<<< Updated upstream
-=======
                 Column {
                     id: detailsColumn
                     anchors.fill: parent
@@ -217,7 +157,6 @@ Item {
                                 elide: Text.ElideRight
                             }
                         }
-=======
         width: 400
         implicitHeight: dialogColumn.height + MichiTheme.spacing.xl * 2
         radius: MichiTheme.radiusMd
@@ -261,10 +200,6 @@ Item {
                     radius: MichiTheme.radiusXs
                     color: MichiTheme.colors.surfaceSubtle
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     Text {
                         anchors.left: parent.left
                         anchors.leftMargin: MichiTheme.spacing.sm
@@ -274,20 +209,10 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         elide: Text.ElideRight
                         width: parent.width - MichiTheme.spacing.md
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 width: parent.width
                 text: "¿Estás seguro?"
@@ -295,22 +220,14 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 font.weight: MichiTheme.typography.weightSemiBold
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Item { height: 1; Layout.fillWidth: true }
->>>>>>> Stashed changes
 
             Row {
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
                 layoutDirection: Qt.RightToLeft
 
-<<<<<<< Updated upstream
-=======
                 Item { Layout.fillWidth: true }
-=======
             Text {
                 width: parent.width
                 text: "¿Estás seguro?"
@@ -324,10 +241,6 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 layoutDirection: Qt.RightToLeft
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 MichiButton {
                     text: root.destructive ? "Eliminar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
@@ -337,24 +250,10 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirmed()
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     objectName: "assistant.confirmation.cancel"
                     Accessible.name: "Cancelar acción"
                     onClicked: {
@@ -373,24 +272,11 @@ Item {
                         root.open = false
                         root.confirmed()
                     }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     objectName: "confirmationDialogCancel"
                     Accessible.name: "Cancelar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.cancelled()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

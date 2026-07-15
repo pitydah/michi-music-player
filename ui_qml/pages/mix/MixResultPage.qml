@@ -8,15 +8,8 @@ import "../../materials"
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "mixResult.page"
 
->>>>>>> Stashed changes
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property var _songs: []
     property string _mixType: ""
@@ -184,15 +177,12 @@ Item {
                     width: 24; text: "P"; color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
-<<<<<<< Updated upstream
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: root.playTrackAtIndex(index)
-=======
                         id: mouseArea
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.NoButton
-=======
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property var _songs: []
     property string _mixType: ""
@@ -362,17 +352,10 @@ Item {
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: root.playTrackAtIndex(index)
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     }
                 }
 
                 Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     width: 24; text: "+"; color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
@@ -382,16 +365,11 @@ Item {
                                 root.mx.enqueueTrack(index)
                         }
                     }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     anchors.centerIn: parent
                     visible: parent.count === 0
                     text: "Mix vacío. Genera un mix para ver resultados."
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
->>>>>>> Stashed changes
                 }
             }
 
@@ -412,15 +390,12 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-=======
     Component.onCompleted: {
         if (root.mx) {
             root._songs = root.mx.currentSongs || []
             root._mixTitle = root.mx.currentMixTitle || "Mix"
             root._errorMsg = root.mx.errorMessage || ""
         }
-=======
                     width: 24; text: "+"; color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.cardTitleSize; anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
@@ -450,10 +425,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     LoadingState {
         anchors.centerIn: parent
         visible: root._loading
@@ -475,13 +446,5 @@ Item {
         visible: root.mx === null
         text: "Bridge no disponible"
         kind: "disconnected"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

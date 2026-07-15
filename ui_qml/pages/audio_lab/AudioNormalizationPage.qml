@@ -15,8 +15,6 @@ Item {
     property var normResult: null
     property string normError: ""
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _state: 0
     property real _targetLufs: -14.0
     property real _truePeakLimit: -1.0
@@ -25,12 +23,7 @@ Item {
     property string _errorMessage: ""
 
     objectName: "AudioNormalizationPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "audioNormalization.page"
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -60,10 +53,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         objectName: "audioNormalization.focusScope"
-=======
     property int _state: 0
     property real _targetLufs: -14.0
     property real _truePeakLimit: -1.0
@@ -101,47 +91,28 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "Normalización"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                 objectName: "normPageTitle"
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
->>>>>>> Stashed changes
 
             Text {
                 text: "Ajuste de loudness (LUFS), pico real, umbral de puerta. ReplayGain metadata / Player-side gain / Normalización destructiva."
@@ -251,12 +222,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
             Text {
                 text: "Normalización"
                 color: MichiTheme.colors.textPrimary
@@ -372,10 +337,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 height: childrenRect.height + MichiTheme.spacing.lg * 2
             }
 
@@ -385,14 +346,6 @@ Item {
                 kind: "disconnected"
                 objectName: "normBridgeStatus"
                 Accessible.name: "Bridge no disponible"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

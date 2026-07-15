@@ -6,47 +6,21 @@ import "../../components"
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string resultType: ""
     property string resultId: ""
     property string resultTitle: ""
     property string resultSubtitle: ""
     property string resultSection: ""
     property real resultScore: 0.0
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property string rowType: ""
     property string rowId: ""
     property string rowTitle: ""
     property string rowSubtitle: ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     property var bridge: null
 
     signal clicked()
     signal playRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     signal activateRequested()
->>>>>>> Stashed changes
 
     implicitHeight: 44
 
@@ -95,10 +69,8 @@ Item {
         anchors.fill: parent
         radius: MichiTheme.radiusSm
         color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-<<<<<<< Updated upstream
         border.color: root.activeFocus ? MichiTheme.colors.borderFocus : "transparent"
         border.width: root.activeFocus ? MichiTheme.borderWidthFocus : 0
-=======
         border.width: itemFocus.active ? 1 : 0
         border.color: MichiTheme.colors.borderFocus
 
@@ -111,7 +83,6 @@ Item {
             border.width: active ? MichiTheme.borderWidthFocus : 0
             border.color: MichiTheme.colors.borderFocus
         }
-=======
 
     implicitHeight: 44
 
@@ -162,11 +133,6 @@ Item {
         color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
         border.color: root.activeFocus ? MichiTheme.colors.borderFocus : "transparent"
         border.width: root.activeFocus ? MichiTheme.borderWidthFocus : 0
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
         Row {
             anchors.fill: parent
@@ -178,15 +144,8 @@ Item {
                 height: 36
                 radius: MichiTheme.radiusSm
                 anchors.verticalCenter: parent.verticalCenter
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 color: MichiTheme.colors.accentFaint
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 color: MichiTheme.colors.accentSurface
->>>>>>> Stashed changes
 
                 Text {
                     anchors.centerIn: parent
@@ -194,15 +153,9 @@ Item {
                     color: MichiTheme.colors.accent
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
                 Accessible.role: Accessible.Graphic
                 Accessible.name: root.getTypeLabel()
-=======
-=======
->>>>>>> Stashed changes
-=======
                 color: MichiTheme.colors.accentFaint
 
                 Text {
@@ -214,11 +167,6 @@ Item {
 
                 Accessible.role: Accessible.Graphic
                 Accessible.name: root.getTypeLabel()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
 
             Column {
@@ -227,21 +175,9 @@ Item {
                 spacing: 1
 
                 Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     text: root.rowTitle
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     text: root.resultTitle
-=======
                     text: root.rowTitle
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium
@@ -250,21 +186,9 @@ Item {
                 }
 
                 Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     text: root.rowSubtitle
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     text: root.resultSubtitle
-=======
                     text: root.rowSubtitle
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
@@ -273,16 +197,6 @@ Item {
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
             StatusBadge {
                 id: typeBadge
                 text: root.getTypeLabel()
@@ -293,58 +207,26 @@ Item {
                 Accessible.name: "Tipo: " + root.getTypeLabel()
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             Text {
                 text: "\u25B6"
                 color: MichiTheme.colors.accent
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: MichiTheme.typography.bodySize
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 width: 20
                 visible: root.rowType === "track"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 width: 24
                 visible: root.resultType === "track"
-=======
                 width: 20
                 visible: root.rowType === "track"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.playRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     Accessible.role: Accessible.Button
                     Accessible.name: "Reproducir " + root.rowTitle
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
                     Accessible.role: Accessible.Button
                     Accessible.name: "Reproducir " + root.rowTitle
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
             }
         }
@@ -355,17 +237,11 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.clicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             onDoubleClicked: root.playRequested()
         }
 
         Keys.onReturnPressed: root.clicked()
         Keys.onSpacePressed: root.clicked()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         }
 
         Keys.onReturnPressed: {
@@ -377,16 +253,10 @@ Item {
 
         focus: true
         activeFocusOnTab: false
-=======
             onDoubleClicked: root.playRequested()
         }
 
         Keys.onReturnPressed: root.clicked()
         Keys.onSpacePressed: root.clicked()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 }

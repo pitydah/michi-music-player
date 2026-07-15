@@ -6,15 +6,7 @@ import "../../components"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "settingsGeneralPage"
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -116,8 +108,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
-=======
                         ComboBox {
                             id: langCombo
                             objectName: "settings.general.language"
@@ -126,7 +116,6 @@ Item {
                             Accessible.name: "Seleccionar idioma"
                             Accessible.description: "Idioma de la interfaz de usuario"
                             KeyNavigation.tab: themeModeCombo
-=======
     objectName: "settingsGeneralPage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -229,10 +218,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
@@ -273,33 +258,18 @@ Item {
                                 Accessible.description: "Selecciona el idioma de la interfaz"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: themeCard
                     Layout.fillWidth: true
                     title: "Tema"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -310,8 +280,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
-=======
                         ComboBox {
                             id: themeModeCombo
                             objectName: "settings.general.themeMode"
@@ -320,7 +288,6 @@ Item {
                             Accessible.name: "Modo de tema"
                             Accessible.description: "Oscuro, claro o seguir el sistema"
                             KeyNavigation.tab: closeToTraySwitch
-=======
                 GlassCard {
                     id: themeCard
                     Layout.fillWidth: true
@@ -336,10 +303,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
@@ -376,33 +339,18 @@ Item {
                                 Accessible.name: "Modo de tema"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: behaviorCard
                     Layout.fillWidth: true
                     title: "Comportamiento de ventana"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -453,8 +401,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
-=======
                         Switch {
                             id: startMinimizedSwitch
                             objectName: "settings.general.startMinimized"
@@ -462,7 +408,6 @@ Item {
                             Accessible.name: "Iniciar minimizado"
                             Accessible.description: "Iniciar la aplicación minimizada en la bandeja"
                             KeyNavigation.tab: cacheBtn
-=======
                 GlassCard {
                     id: behaviorCard
                     Layout.fillWidth: true
@@ -518,10 +463,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         RowLayout {
@@ -566,33 +507,18 @@ Item {
                                 Accessible.description: "Preguntar antes de cerrar la aplicación"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: updatesCard
                     Layout.fillWidth: true
                     title: "Actualizaciones"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -622,8 +548,6 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
-<<<<<<< Updated upstream
-=======
                             id: cacheBtn
                             objectName: "settings.general.clearCache"
                             text: "Limpiar caché"
@@ -632,7 +556,6 @@ Item {
                             Accessible.description: "Eliminar todos los archivos de caché"
                             KeyNavigation.tab: resetBtn
                             onClicked: confirmCacheDialog.open()
-=======
                 GlassCard {
                     id: updatesCard
                     Layout.fillWidth: true
@@ -667,44 +590,25 @@ Item {
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         MichiButton {
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             text: "Buscar actualizaciones ahora"
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._checkForUpdates()
                             Accessible.name: "Buscar actualizaciones ahora"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: cacheCard
                     Layout.fillWidth: true
                     title: "Caché"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Rectangle {
                     width: parent.width
                     height: 1
                     color: MichiTheme.colors.borderSubtle
                 }
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -742,14 +646,8 @@ Item {
                         }
                     }
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
                 Item { Layout.fillHeight: true }
-=======
-=======
->>>>>>> Stashed changes
-=======
                 GlassCard {
                     id: cacheCard
                     Layout.fillWidth: true
@@ -794,31 +692,19 @@ Item {
                 }
 
                 Item { Layout.fillHeight: true }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
         }
     }
 
     ConfirmActionDialog {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         id: confirmClearCache
         title: "Limpiar caché"
         message: "¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario."
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         id: confirmResetDialog
         objectName: "settings.general.resetConfirm"
         title: "Restaurar ajustes generales"
         message: "¿Estás seguro de que deseas restaurar todos los ajustes generales a sus valores por defecto?"
         confirmText: "Restaurar"
->>>>>>> Stashed changes
         danger: true
         onConfirmed: root._clearCache()
     }
@@ -827,14 +713,8 @@ Item {
         if (confirmClearCache.open) confirmClearCache.open = false
         else root.closeRequested()
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
     signal closeRequested()
-=======
-=======
->>>>>>> Stashed changes
-=======
         id: confirmClearCache
         title: "Limpiar caché"
         message: "¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario."
@@ -848,9 +728,4 @@ Item {
     }
 
     signal closeRequested()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 }

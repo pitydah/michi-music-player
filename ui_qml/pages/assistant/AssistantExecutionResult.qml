@@ -1,18 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Layouts
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -20,23 +8,16 @@ import "../../components"
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string status: "" // success, partial, failure
     property string summaryText: ""
     property string detailText: ""
     property bool detailsExpanded: false
     property bool visible: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string resultStatus: ""
     property var resultDetails: ({})
     property string errorMessage: ""
     property int partialCount: 0
     property int totalCount: 0
->>>>>>> Stashed changes
 
     signal retry()
     signal undo()
@@ -56,11 +37,8 @@ Item {
         variant: status === "failure" ? "danger" : status === "partial" ? "warning" : "base"
 
         Column {
-<<<<<<< Updated upstream
             id: contentColumn
-=======
             id: column
-=======
     property string status: "" // success, partial, failure
     property string summaryText: ""
     property string detailText: ""
@@ -86,46 +64,12 @@ Item {
 
         Column {
             id: contentColumn
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
 
             Row {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 spacing: MichiTheme.spacing.sm
->>>>>>> Stashed changes
-                width: parent.width
-                spacing: MichiTheme.spacing.sm
-
-                Text {
-                    text: status === "success" ? "✓" : status === "partial" ? "⚠" : "✗"
-                    color: status === "success" ? MichiTheme.colors.success : status === "partial" ? MichiTheme.colors.warning : MichiTheme.colors.error
-                    font.pixelSize: MichiTheme.typography.pageTitleSize
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                Text {
-                    text: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : "Error"
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.cardTitleSize
-                    font.weight: MichiTheme.typography.weightSemiBold
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                    anchors.verticalCenter: parent.verticalCenter
-=======
-=======
->>>>>>> Stashed changes
-=======
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
 
@@ -142,27 +86,31 @@ Item {
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+                width: parent.width
+                spacing: MichiTheme.spacing.sm
+
+                Text {
+                    text: status === "success" ? "✓" : status === "partial" ? "⚠" : "✗"
+                    color: status === "success" ? MichiTheme.colors.success : status === "partial" ? MichiTheme.colors.warning : MichiTheme.colors.error
+                    font.pixelSize: MichiTheme.typography.pageTitleSize
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    text: status === "success" ? "Completado" : status === "partial" ? "Completado parcialmente" : "Error"
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
 
             Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 width: parent.width
                 text: root.summaryText
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 text: resultStatus === "success" ? "La acción se completó correctamente." :
                       resultStatus === "partial" ? partialCount + " de " + totalCount + " acciones completadas." :
                       resultStatus === "failed" ? errorMessage || "Ocurrió un error durante la ejecución." : ""
->>>>>>> Stashed changes
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
@@ -225,13 +173,10 @@ Item {
                 MichiButton {
                     text: "Cerrar"
                     variant: "ghost"
-<<<<<<< Updated upstream
-=======
                     objectName: "assistant.result.undo"
                     Accessible.name: "Deshacer cambios"
                     visible: resultStatus === "success" || resultStatus === "partial"
                     onClicked: root.undoTriggered()
-=======
                 width: parent.width
                 text: root.summaryText
                 color: MichiTheme.colors.textSecondary
@@ -296,23 +241,11 @@ Item {
                 MichiButton {
                     text: "Cerrar"
                     variant: "ghost"
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     objectName: "executionResultClose"
                     Accessible.name: "Cerrar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.visible = false
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

@@ -19,16 +19,9 @@ Item {
     property bool _searching: false
     property string _errorCode: ""
     property string _errorMessage: ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property bool _hasError: false
     property int _generation: 0
     property var _sectionLoading: ({})
->>>>>>> Stashed changes
     property var _recentQueries: []
     property int _requestGen: 0
     property int _debounceTimer: 0
@@ -151,8 +144,6 @@ Item {
         if (root._query) root.search(root._query)
     }
 
-<<<<<<< Updated upstream
-=======
     function onItemClicked(type, id, title, data) {
         if (typeof navigationBridge !== "undefined" && navigationBridge) {
             if (type === "track") {
@@ -168,7 +159,6 @@ Item {
             } else if (type === "radio") {
                 if (root.bridge && typeof root.bridge.playStation === "function") {
                     root.bridge.playStation(data ? data.url : "")
-=======
     property var _recentQueries: []
     property int _requestGen: 0
     property int _debounceTimer: 0
@@ -291,10 +281,6 @@ Item {
         if (root._query) root.search(root._query)
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     function resetFilters() {
         root._typeFilters = null
         root._yearFrom = 0
@@ -392,14 +378,6 @@ Item {
                             root.clearQuery()
                         }
                     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             } else {
                 navigationBridge.navigate(type, {id: id, title: title})
@@ -420,14 +398,8 @@ Item {
                 navigationBridge.navigate("home")
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             SearchRecentQueries {
                 id: recentColumn
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Column {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
@@ -435,7 +407,6 @@ Item {
 
             HeroMaterial {
                 id: hero
->>>>>>> Stashed changes
                 width: parent.width
                 recentQueries: root._recentQueries
                 bridge: root.bridge
@@ -481,8 +452,6 @@ Item {
                 onRetryRequested: root.retry()
             }
 
-<<<<<<< Updated upstream
-=======
             Loader {
                 width: parent.width
                 height: active ? childrenRect.height : 0
@@ -494,7 +463,6 @@ Item {
                     subtitle: "No se encontraron resultados para \"" + root._query + "\""
                     width: parent.width
                 }
-=======
             SearchRecentQueries {
                 id: recentColumn
                 width: parent.width
@@ -542,10 +510,6 @@ Item {
                 onRetryRequested: root.retry()
             }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             Text {
                 id: noResultsText
                 visible: !root._searching && root._errorCode === "" && root._query !== "" && root._groupedResults.length === 0
@@ -553,29 +517,15 @@ Item {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 Accessible.name: "Sin resultados para " + root._query
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             Flickable {
                 id: resultsFlickable
                 width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 height: parent.height - (searchHero.height + MichiTheme.spacing.xl * 2 + (recentColumn.visible ? recentColumn.height + MichiTheme.spacing.lg : 0) + (errorState.visible ? 120 : 0) + (noResultsText.visible ? 30 : 0) + 60)
                 contentHeight: resultsColumn.height + MichiTheme.spacing.lg
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 height: parent.height - hero.height - MichiTheme.spacing.xl * 3 - 60
                 contentHeight: resultsColumn.height + MichiTheme.spacing.lg
                 clip: true
@@ -591,61 +541,30 @@ Item {
                         navigationBridge.navigate("home")
                     }
                 }
-=======
                 height: parent.height - (searchHero.height + MichiTheme.spacing.xl * 2 + (recentColumn.visible ? recentColumn.height + MichiTheme.spacing.lg : 0) + (errorState.visible ? 120 : 0) + (noResultsText.visible ? 30 : 0) + 60)
                 contentHeight: resultsColumn.height + MichiTheme.spacing.lg
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 activeFocusOnTab: true
                 visible: root._groupedResults.length > 0
                 KeyNavigation.backtab: globalSearchInput
                 KeyNavigation.tab: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
                 Column {
                     id: resultsColumn
                     width: parent.width
                     spacing: MichiTheme.spacing.lg
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     objectName: "globalSearch.resultsColumn"
                     visible: root._query !== "" && !root._hasError && !(!root._searching && root._groupedResults.length === 0)
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                     Repeater {
                         model: root._groupedResults
 
                         SearchResultSection {
                             width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                             sectionType: (modelData.section || "Otros").toLowerCase()
                             sectionTitle: modelData.section || ""
                             sectionItems: modelData.items || []
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                             sectionType: modelData.section || ""
                             sectionTitle: {
                                 var titles = {
@@ -656,7 +575,6 @@ Item {
                                 }
                                 return titles[modelData.section] || modelData.section || ""
                             }
->>>>>>> Stashed changes
                             resultCount: modelData.items ? modelData.items.length : 0
                             isLoading: false
                             sectionEmpty: !modelData.items || modelData.items.length === 0
@@ -671,8 +589,6 @@ Item {
                             }
                         }
                     }
-<<<<<<< Updated upstream
-=======
 
                     Text {
                         width: parent.width
@@ -682,7 +598,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         horizontalAlignment: Text.AlignHCenter
                         objectName: "globalSearch.searchingIndicator"
-=======
                             sectionType: (modelData.section || "Otros").toLowerCase()
                             sectionTitle: modelData.section || ""
                             sectionItems: modelData.items || []
@@ -699,9 +614,7 @@ Item {
                                 }
                             }
                         }
->>>>>>> origin/michi-qml-functional-wave
                     }
->>>>>>> Stashed changes
                 }
             }
         }

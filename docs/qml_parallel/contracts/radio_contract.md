@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # RadioBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Radio Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `radioBridge` → `RadioBridge` instance
@@ -80,12 +73,9 @@ None.
 - `cancelStream()`: calls `PlayerService.stop()`. Idempotent.
 - No async cancellation mechanism for import/export.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - `deleteStation(url)` removes station permanently
 - No undo; station must be re-added manually
-=======
 # RadioBridge Integration Contract
 
 ## Context Property
@@ -160,10 +150,6 @@ None.
 - `cancelStream()`: calls `PlayerService.stop()`. Idempotent.
 - No async cancellation mechanism for import/export.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED.
 
@@ -181,11 +167,3 @@ NOT IMPLEMENTED.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

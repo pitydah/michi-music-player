@@ -16,31 +16,13 @@ Item {
     property int manualPort: 53318
     property string serverAlias: ""
     property string authToken: ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
     property string objectName: "connections.setupWizard"
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
     property string objectName: "connections.setupWizard"
-=======
->>>>>>> Stashed changes
     property string authPassword: ""
     property string authUser: ""
     property bool testing: false
     property string testResult: ""
     property string validationError: ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     signal scanRequested()
     signal connectRequested(string host, int port, string alias, string user, string password)
@@ -71,23 +53,11 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 Accessible.name: "Configurar servidor"
                 objectName: "wizardTitle"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 objectName: root.objectName + ".title"
-=======
                 Accessible.name: "Configurar servidor"
                 objectName: "wizardTitle"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
 
             StackLayout {
@@ -103,19 +73,8 @@ Item {
 
                     Text { text: "Elige cómo conectar:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     MichiButton { text: "Buscar en red"; variant: "primary"; onClicked: root.scanRequested(); objectName: root.objectName + ".scanOption"; Accessible.name: "Buscar en red" }
                     MichiButton { text: "Configurar manualmente"; variant: "ghost"; onClicked: root.step = 2; objectName: root.objectName + ".manualOption"; Accessible.name: "Configurar manualmente" }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     MichiButton {
                         text: "Buscar en red"
                         variant: "primary"
@@ -155,14 +114,6 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
 
                 Column {
@@ -172,40 +123,19 @@ Item {
                     Accessible.name: "Paso 2: Servidor detectado"
 
                     Text { text: "Servidor detectado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     Text { text: root.discoveredHost + ":" + root.discoveredPort; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: root.objectName + ".discoveredAddress" }
                     TextField {
                         id: aliasStep1
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     Text { text: root.discoveredHost + ":" + root.discoveredPort; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "wizardDiscoveredHost" }
 
                     QQC2.TextField {
                         id: aliasField1
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Alias (opcional)"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         objectName: "wizardAliasField1"
                         Accessible.name: "Alias del servidor"
                         Accessible.description: "Nombre opcional para identificar el servidor"
@@ -274,15 +204,10 @@ Item {
                             Keys.onSpacePressed: onClicked()
                         }
                     }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         Accessible.name: "Alias opcional para el servidor"
                     }
                     MichiButton { text: "Conectar"; variant: "primary"; onClicked: root.connectRequested(root.discoveredHost, root.discoveredPort, root.serverAlias); objectName: root.objectName + ".connectDiscovered"; Accessible.name: "Conectar al servidor detectado" }
                     MichiButton { text: "Configurar manualmente"; variant: "ghost"; onClicked: root.step = 2; objectName: root.objectName + ".switchManual"; Accessible.name: "Cambiar a configuración manual" }
-=======
                         objectName: "wizardAliasField1"
                         Accessible.name: "Alias del servidor"
                         Accessible.description: "Nombre opcional para identificar el servidor"
@@ -351,11 +276,6 @@ Item {
                             Keys.onSpacePressed: onClicked()
                         }
                     }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
 
                 Column {
@@ -365,18 +285,11 @@ Item {
                     Accessible.name: "Paso 3: Conexión manual"
 
                     Text { text: "Conexión manual"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
                     QQC2.TextField {
                         id: hostField
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     TextField {
                         id: hostInput
->>>>>>> Stashed changes
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Host o dirección IP"
@@ -399,16 +312,13 @@ Item {
                         KeyNavigation.tab: portField
                         KeyNavigation.backtab: backToStep1
                     }
-<<<<<<< Updated upstream
 
                     QQC2.TextField {
                         id: portField
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
-=======
                     TextField {
                         id: portInput
-=======
 
                     QQC2.TextField {
                         id: hostField
@@ -433,46 +343,35 @@ Item {
                         }
                         KeyNavigation.tab: portField
                         KeyNavigation.backtab: backToStep1
-<<<<<<< Updated upstream
-=======
                     }
 
                     QQC2.TextField {
                         id: portField
->>>>>>> origin/michi-qml-functional-wave
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Puerto"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         inputMethodHints: Qt.ImhDigitsOnly
-<<<<<<< HEAD
                         onTextChanged: root.manualPort = parseInt(text) || 53318
                         Accessible.name: "Puerto del servidor"
->>>>>>> Stashed changes
                     }
 
                     QQC2.TextField {
                         id: portField
->>>>>>> origin/michi-qml-functional-wave
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
->>>>>>> Stashed changes
                         placeholderText: "Puerto"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         inputMethodHints: Qt.ImhDigitsOnly
-<<<<<<< Updated upstream
                         text: "53318"
                         onTextChanged: {
                             root.manualPort = parseInt(text) || 53318
                             root.validationError = ""
                         }
                         objectName: "wizardPortField"
-=======
-<<<<<<< HEAD
                         onTextChanged: root.manualPort = parseInt(text) || 53318
->>>>>>> Stashed changes
                         Accessible.name: "Puerto del servidor"
                         Accessible.description: "Número de puerto para la conexión"
 
@@ -485,14 +384,11 @@ Item {
                         KeyNavigation.tab: aliasField2
                         KeyNavigation.backtab: hostField
                     }
-<<<<<<< Updated upstream
 
                     QQC2.TextField {
                         id: aliasField2
-=======
                     TextField {
                         id: aliasStep2
-=======
                         text: "53318"
                         onTextChanged: {
                             root.manualPort = parseInt(text) || 53318
@@ -514,19 +410,12 @@ Item {
 
                     QQC2.TextField {
                         id: aliasField2
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         width: parent.width
                         height: MichiTheme.rowHeightComfortable
                         placeholderText: "Alias (opcional)"
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         objectName: "wizardAliasField2"
                         Accessible.name: "Alias del servidor"
                         Accessible.description: "Nombre opcional para identificar el servidor"
@@ -674,20 +563,12 @@ Item {
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
                         }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         Accessible.name: "Alias opcional para el servidor"
->>>>>>> Stashed changes
                     }
                 }
             }
-<<<<<<< Updated upstream
-=======
 
             MichiButton { text: "Cancelar"; variant: "ghost"; onClicked: root.cancelRequested(); objectName: root.objectName + ".cancelButton"; Accessible.name: "Cancelar configuración" }
-=======
                         objectName: "wizardAliasField2"
                         Accessible.name: "Alias del servidor"
                         Accessible.description: "Nombre opcional para identificar el servidor"
@@ -838,11 +719,6 @@ Item {
                     }
                 }
             }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 }

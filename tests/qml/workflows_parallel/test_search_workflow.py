@@ -1,18 +1,6 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Full workflow: type query, debounce, navigate results, activate with keyboard."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Workflow test: query characters → debounce → navigate → activate result."""
-=======
 """Full workflow: type query, debounce, navigate results, activate with keyboard."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,12 +16,6 @@ def mock_service():
     svc.search.return_value = {
         "ok": True, "request_id": 1,
         "results": [
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             {"type": "track", "id": 1, "title": "Bohemian Rhapsody",
              "subtitle": "Queen · A Night at the Opera", "section": "track", "score": 1.0},
             {"type": "album", "id": 10, "title": "A Night at the Opera",
@@ -42,11 +24,6 @@ def mock_service():
              "section": "artist", "score": 0.85},
             {"type": "playlist", "id": 30, "title": "Queen Essentials",
              "subtitle": "20 canciones", "section": "playlist", "score": 0.7},
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             {"type": "track", "id": 1, "title": "Supper's Ready", "subtitle": "Genesis · Foxtrot",
              "section": "Canciones", "score": 1.0},
             {"type": "track", "id": 2, "title": "Firth of Fifth", "subtitle": "Genesis · Selling England",
@@ -55,14 +32,6 @@ def mock_service():
              "section": "Álbumes", "score": 0.90},
             {"type": "artist", "id": 10, "title": "Genesis", "subtitle": "Rock progresivo",
              "section": "Artistas", "score": 0.85},
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         ],
         "count": 4,
     }
@@ -74,21 +43,14 @@ def bridge(mock_service):
     return GlobalSearchBridge(search_service=mock_service)
 
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 class TestFullSearchWorkflow:
     def test_type_query_returns_results(self, bridge):
         result = bridge.search("Genesis")
         assert result["ok"]
         assert result["count"] == 4
         assert len(bridge.results) == 4
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 class TestSearchWorkflow:
     """Complete search workflow: query → debounce → navigate → activate."""
->>>>>>> Stashed changes
 
     def test_debounce_generation_tracking(self, bridge):
         gen1 = bridge._search_gen
@@ -141,13 +103,10 @@ class TestSearchWorkflow:
         bridge.cancel()
         assert len(bridge.results) == 0
 
-<<<<<<< Updated upstream
-=======
     def test_wf_result_has_score(self, bridge):
         bridge.search("Queen")
         for r in bridge.results:
             assert r["score"] > 0
-=======
 class TestFullSearchWorkflow:
     def test_type_query_returns_results(self, bridge):
         result = bridge.search("Genesis")
@@ -206,10 +165,6 @@ class TestFullSearchWorkflow:
         bridge.cancel()
         assert len(bridge.results) == 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_cancel_then_new_search(self, bridge):
         bridge.search("Unwanted")
         bridge.cancel()
@@ -234,11 +189,3 @@ class TestFullSearchWorkflow:
         bridge.search("First")
         assert len(bridge.results) > 0
         assert bridge.query == "First"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

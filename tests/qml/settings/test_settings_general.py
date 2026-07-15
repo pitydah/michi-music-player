@@ -1,15 +1,7 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for SettingsGeneralPage — language, theme, close-to-tray, cache, updates."""
 from pathlib import Path
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 from __future__ import annotations
 
-from unittest.mock import MagicMock
->>>>>>> Stashed changes
 
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
@@ -17,23 +9,14 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
-=======
 pytestmark = [pytest.mark.qml_module("settings")]
-=======
 """Tests for SettingsGeneralPage — language, theme, close-to-tray, cache, updates."""
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
-from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
     dataChanged = Signal()
@@ -75,29 +58,14 @@ class FakeSettingsBridgeV2(QObject):
     @Slot()
     def refresh(self):
         self.dataChanged.emit()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
 
 @pytest.fixture
 def engine(qapp):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     return QQmlEngine(qapp)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
     return engine
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -165,8 +133,6 @@ class TestSettingsGeneralPage:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsGeneralPage.qml")))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
 
-<<<<<<< Updated upstream
-=======
 
 class TestSettingsGeneralStates:
     def test_default_state_ready_with_bridge(self, engine):
@@ -232,7 +198,6 @@ class TestSettingsGeneralKeyboard:
             assert len(fired) == 1
         finally:
             obj.deleteLater()
-=======
     return QQmlEngine(qapp)
 
 
@@ -301,20 +266,8 @@ class TestSettingsGeneralPage:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/SettingsGeneralPage.qml")))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_cache_size_label(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
             assert obj.property("cacheSize") == 42.5
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

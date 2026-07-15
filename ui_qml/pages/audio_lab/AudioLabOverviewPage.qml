@@ -36,27 +36,16 @@ Item {
         alabGuard.checkCapability(root.alab)
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     CapabilityGuard {
         id: alabGuard
         anchors.fill: parent
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     FocusScope {
         id: focusScope
         anchors.fill: parent
         objectName: "audioLab.focusScope"
-=======
     CapabilityGuard {
         id: alabGuard
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         capabilityName: "audio_lab"
 
         Flickable {
@@ -65,14 +54,6 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
@@ -80,8 +61,6 @@ Item {
                 navigationBridge.navigate("home")
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             HeroMaterial {
                 width: parent.width; height: 150; radius: MichiTheme.radiusLg; showGlow: true
                 objectName: "audioLabHero"
@@ -99,10 +78,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.75; wrapMode: Text.WordWrap
                     }
                 }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             id: flickable
             anchors.fill: parent
@@ -112,7 +87,6 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             focus: true
             objectName: "audioLab.flickableContent"
->>>>>>> Stashed changes
 
             AudioSelectionSummary { id: selectionSummary }
 
@@ -129,7 +103,6 @@ Item {
             Grid {
                 width: parent.width; columns: 2; columnSpacing: MichiTheme.spacing.md; rowSpacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 90
                     title: "Análisis técnico"
@@ -153,7 +126,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: { if (root.nav) root.nav.navigate("audio_lab.conversion") }
-=======
                 HeroMaterial {
                     id: hero
                     width: parent.width
@@ -183,7 +155,6 @@ Item {
                             width: parent.width * 0.75
                             wrapMode: Text.WordWrap
                         }
-=======
             HeroMaterial {
                 width: parent.width; height: 150; radius: MichiTheme.radiusLg; showGlow: true
                 objectName: "audioLabHero"
@@ -199,16 +170,13 @@ Item {
                         text: "Análisis técnico, conversión, normalización, integridad y comparación de archivos de audio."
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize; width: parent.width * 0.75; wrapMode: Text.WordWrap
->>>>>>> origin/michi-qml-functional-wave
                     }
                 }
 
-<<<<<<< HEAD
                 AudioSelectionSummary {
                     id: selectionSummary
                     objectName: "audioLab.selectionSummary"
                     Accessible.name: "Resumen de selección de audio"
->>>>>>> Stashed changes
                 }
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 90
@@ -284,7 +252,6 @@ Item {
                 }
             }
 
-<<<<<<< Updated upstream
             SectionHeader { text: "Estado del backend"; width: parent.width; objectName: "backendHeader"; Accessible.name: "Estado del backend" }
 
             GlassMaterial {
@@ -294,7 +261,6 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text { text: "Backend: " + (root.alab ? (root.alab.backendInfo ? root.alab.backendInfo.backend : "no disponible") : "no disponible"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                     Text { text: "Pipeline: " + (root.alab ? (root.alab.pipelineInfo ? JSON.stringify(root.alab.pipelineInfo) : "") : ""); color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
-=======
                 GlassMaterial {
                     width: parent.width
                     radius: MichiTheme.radiusMd
@@ -307,7 +273,6 @@ Item {
                         StatusBadge { text: "Experimental"; kind: "experimental" }
                         StatusBadge { text: "Requiere ffmpeg para conversión"; kind: "info" }
                     }
-=======
             AudioSelectionSummary { id: selectionSummary }
 
             SectionHeader { text: "Herramientas"; width: parent.width; objectName: "toolsHeader"; Accessible.name: "Herramientas" }
@@ -334,10 +299,6 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: { if (root.nav) root.nav.navigate("audio_lab.analysis") }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
                 GlassCard {
                     width: (parent.width - MichiTheme.spacing.md) / 2; height: 90
@@ -444,7 +405,6 @@ Item {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Experimental"; kind: "experimental"; objectName: "experimentalBadge" }
                     StatusBadge { text: "Requiere ffmpeg para conversión"; kind: "info"; objectName: "ffmpegBadge" }
->>>>>>> origin/michi-qml-functional-wave
                 }
             }
 
@@ -454,7 +414,6 @@ Item {
                 kind: "disconnected"
                 objectName: "alabBridgeStatus"
                 Accessible.name: "Bridge de Audio Lab no disponible"
-<<<<<<< Updated upstream
             }
 
             GlassMaterial {
@@ -473,8 +432,6 @@ Item {
                 kind: "disconnected"
                 objectName: "alabBridgeStatus"
                 Accessible.name: "Bridge de Audio Lab no disponible"
-=======
->>>>>>> Stashed changes
             }
         }
     }

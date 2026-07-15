@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # HomeAudioBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Home Audio Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `homeAudioBridge` → `HomeAudioBridge` instance
@@ -88,12 +81,9 @@ None.
 - `_cancel_retry()`: stops retry timer and resets retry count.
 - `disconnectHa()`: cancels retry, resets HA state to "not_configured", clears devices.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - `disconnectHa()` resets state to not_configured
 - No explicit destructive actions; all operations reversible
-=======
 # HomeAudioBridge Integration Contract
 
 ## Context Property
@@ -176,10 +166,6 @@ None.
 - `_cancel_retry()`: stops retry timer and resets retry count.
 - `disconnectHa()`: cancels retry, resets HA state to "not_configured", clears devices.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED.
 
@@ -197,11 +183,3 @@ NOT IMPLEMENTED — availability is self-detected.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

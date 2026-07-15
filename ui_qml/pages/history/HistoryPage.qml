@@ -16,19 +16,12 @@ Item {
     property string _viewMode: "timeline"
     property string _state: "LOADING"
     property string _statusMsg: ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _currentPage: 0
     property int _pageSize: 50
     property int _totalCount: 0
     property var _events: []
     property bool _filtered: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string _searchText: ""
->>>>>>> Stashed changes
     property string _artistFilter: ""
     property string _albumFilter: ""
     property string _deviceFilter: ""
@@ -90,18 +83,15 @@ Item {
     function removeEvent(eventId) {
         if (root.bridge && typeof root.bridge.removeHistoryEvent !== "undefined") {
             var result = root.bridge.removeHistoryEvent(String(eventId))
-<<<<<<< Updated upstream
             if (result && result.ok) root._statusMsg = "Evento eliminado"
             else root._statusMsg = result && result.error ? "Error: " + result.error : "Error al eliminar evento"
             root._loadPage()
-=======
             if (result && result.ok) {
                 root._statusMsg = "Registro eliminado"
                 root.refresh()
             } else {
                 root._statusMsg = result && result.error ? "Error: " + result.error : "Error al eliminar"
             }
-=======
     property int _currentPage: 0
     property int _pageSize: 50
     property int _totalCount: 0
@@ -171,11 +161,6 @@ Item {
             if (result && result.ok) root._statusMsg = "Evento eliminado"
             else root._statusMsg = result && result.error ? "Error: " + result.error : "Error al eliminar evento"
             root._loadPage()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 
@@ -193,8 +178,6 @@ Item {
     }
 
     function clearFiltered() {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         if (!root.bridge || !root.bridge.historyQueryService ||
             typeof root.bridge.historyQueryService.clearFilteredHistory === "undefined") return
         var filters = {}
@@ -205,16 +188,11 @@ Item {
         var result = root.bridge.historyQueryService.clearFilteredHistory(filters)
         if (result && result.ok) root._statusMsg = "Registros filtrados eliminados"
         else root._statusMsg = result && result.error ? "Error: " + result.error : "Error al eliminar filtrados"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         var filtered = root._filterEvents(root.bridge && root.bridge.historyModel || [])
         for (var i = 0; i < filtered.length; i++) {
             root.removeItem(filtered[i].eventId || filtered[i].id || 0)
         }
         root._statusMsg = "Filtrados eliminados: " + filtered.length
->>>>>>> Stashed changes
         root.refresh()
     }
 
@@ -458,7 +436,6 @@ Item {
                     if (eventId) root.removeEvent(eventId)
                     else root.removeItem(trackId)
                 }
-<<<<<<< Updated upstream
                 onOpenTrackRequested: function(trackId) { root.openTrack(trackId) }
                 onOpenAlbumRequested: function(trackId) { root.openAlbum(trackId) }
                 onAddToQueueRequested: function(trackId) { root.addToQueue(trackId) }
@@ -478,8 +455,6 @@ Item {
                 onOpenTrackRequested: function(trackId) { root.openTrack(trackId) }
                 onOpenAlbumRequested: function(trackId) { root.openAlbum(trackId) }
                 onAddToQueueRequested: function(trackId) { root.addToQueue(trackId) }
-=======
-=======
         if (!root.bridge || !root.bridge.historyQueryService ||
             typeof root.bridge.historyQueryService.clearFilteredHistory === "undefined") return
         var filters = {}
@@ -587,8 +562,6 @@ Item {
                 Keys.onSpacePressed: onClicked()
                 onClicked: root.openStatistics()
             }
-<<<<<<< Updated upstream
-=======
 
             Item {
                 id: viewContainer
@@ -668,7 +641,6 @@ Item {
                         root.removeItem(eventId)
                     }
                 }
-=======
         if (!root.bridge || !root.bridge.historyQueryService ||
             typeof root.bridge.historyQueryService.clearFilteredHistory === "undefined") return
         var filters = {}
@@ -776,7 +748,6 @@ Item {
                 Keys.onSpacePressed: onClicked()
                 onClicked: root.openStatistics()
             }
->>>>>>> Stashed changes
             MichiButton {
                 id: viewToggleBtn
                 text: root._viewMode === "timeline" ? "Vista tabla" : "Vista línea"
@@ -841,10 +812,8 @@ Item {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: root.openExportDialog()
->>>>>>> origin/michi-qml-functional-wave
             }
 
-<<<<<<< HEAD
             RowLayout {
                 Layout.fillWidth: true
                 visible: root._state === "READY" && root._events.length > root._pageSize
@@ -878,10 +847,8 @@ Item {
                 }
 
                 Item { Layout.fillWidth: true }
->>>>>>> Stashed changes
             }
         }
-<<<<<<< Updated upstream
 
         RowLayout {
             Layout.fillWidth: true
@@ -934,9 +901,6 @@ Item {
             visible: text !== ""
             Accessible.name: root._statusMsg
         }
-=======
->>>>>>> Stashed changes
-=======
         HistoryFilterBar {
             id: filterBar
             Layout.fillWidth: true
@@ -1090,29 +1054,16 @@ Item {
             visible: text !== ""
             Accessible.name: root._statusMsg
         }
->>>>>>> origin/michi-qml-functional-wave
     }
 
     HistoryRetentionDialog {
         id: retentionDialog
         bridge: root.bridge
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         objectName: "historyRetentionDialog"
         Accessible.name: "Retención de historial"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         objectName: "history.retentionDialog"
-=======
         objectName: "historyRetentionDialog"
         Accessible.name: "Retención de historial"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         onRetentionApplied: function(count) {
             root._statusMsg = "Retención aplicada: " + count + " registros eliminados"
             root.refresh()
@@ -1122,45 +1073,23 @@ Item {
     HistoryExportDialog {
         id: exportDialog
         bridge: root.bridge
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         objectName: "historyExportDialog"
         Accessible.name: "Exportar historial"
         onExportCompleted: function(path, count) {
             root._statusMsg = "Exportadas " + count + " entradas a " + path
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         objectName: "history.exportDialog"
         onExportCompleted: function(path, count) {
             root._statusMsg = "Exportación completada: " + count + " registros a " + path
-=======
         objectName: "historyExportDialog"
         Accessible.name: "Exportar historial"
         onExportCompleted: function(path, count) {
             root._statusMsg = "Exportadas " + count + " entradas a " + path
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
         onExportCancelled: {
             root._statusMsg = "Exportación cancelada"
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
     HistoryStatisticsPage {
         id: statisticsDrawer
         bridge: root.bridge
@@ -1168,14 +1097,6 @@ Item {
         Accessible.name: "Estadísticas del historial"
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     Dialog {
         id: confirmClearDialog
         title: "Limpiar historial"
@@ -1183,30 +1104,18 @@ Item {
         modal: true
         x: (parent.width - width) / 2
         y: (parent.height - height) / 3
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         objectName: "confirmClearHistoryDialog"
         Accessible.name: "Confirmar limpiar historial"
         closePolicy: Popup.CloseOnEscape
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         objectName: "history.confirmClearDialog"
 
         Accessible.role: Accessible.Dialog
         Accessible.name: "Confirmar limpieza de historial"
         Accessible.description: "Diálogo de confirmación para eliminar todo el historial"
 
-=======
         objectName: "confirmClearHistoryDialog"
         Accessible.name: "Confirmar limpiar historial"
         closePolicy: Popup.CloseOnEscape
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         Text {
             text: "¿Eliminar todo el historial de reproducción? Esta acción no se puede deshacer."
             color: MichiTheme.colors.textPrimary
@@ -1214,16 +1123,10 @@ Item {
             wrapMode: Text.WordWrap
             width: 300
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         onAccepted: { root.clearAll(); forceActiveFocus() }
         onRejected: { forceActiveFocus() }
     }
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 
         Keys.onEscapePressed: confirmClearDialog.close()
         onAccepted: root.clearAll()
@@ -1232,27 +1135,14 @@ Item {
                 confirmClearDialog.close()
             }
         }
-=======
         onAccepted: { root.clearAll(); forceActiveFocus() }
         onRejected: { forceActiveFocus() }
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     Keys.onEscapePressed: {
         if (exportDialog.opened) exportDialog.close()
         else if (retentionDialog.opened) retentionDialog.close()
         else if (statisticsDrawer.opened) statisticsDrawer.close()
         else if (confirmClearDialog.opened) confirmClearDialog.close()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

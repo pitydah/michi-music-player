@@ -5,15 +5,8 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 Drawer {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 Item {
->>>>>>> Stashed changes
     id: root
 
     property var bridge: null
@@ -546,14 +539,8 @@ Item {
             Item { width: 1; height: MichiTheme.spacing.lg }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
     Keys.onEscapePressed: root.close()
-=======
-=======
->>>>>>> Stashed changes
-=======
 Drawer {
     id: root
 
@@ -1089,9 +1076,4 @@ Drawer {
     }
 
     Keys.onEscapePressed: root.close()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 }

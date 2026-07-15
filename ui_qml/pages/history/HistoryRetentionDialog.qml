@@ -9,27 +9,15 @@ Dialog {
     id: root
 
     property var bridge: null
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _retentionDays: 365
     property int _maxEntries: 0
     property bool _autoClean: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property int retentionDays: 365
     property int maxEntries: 10000
     property bool autoClean: false
-=======
     property int _retentionDays: 365
     property int _maxEntries: 0
     property bool _autoClean: false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property bool _applying: false
     property int _currentCount: 0
     property string _oldestDate: ""
@@ -42,18 +30,11 @@ Dialog {
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     width: 380
     objectName: "historyRetentionDialog"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "history.retentionDialog"
     closePolicy: Dialog.CloseOnEscape
 
->>>>>>> Stashed changes
     Accessible.role: Accessible.Dialog
     Accessible.name: "Política de retención"
     closePolicy: Popup.CloseOnEscape
@@ -116,15 +97,12 @@ Dialog {
             }
         }
 
-<<<<<<< Updated upstream
-=======
                 Text {
                     text: "días"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
-=======
     width: 380
     objectName: "historyRetentionDialog"
     Accessible.role: Accessible.Dialog
@@ -189,10 +167,6 @@ Dialog {
             }
         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         RowLayout {
             Layout.fillWidth: true
             Text {
@@ -209,14 +183,6 @@ Dialog {
                 objectName: "retentionMaxSpin"
                 Accessible.name: "Máximo de entradas"
                 onValueChanged: root._maxEntries = value
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             Row {
@@ -256,8 +222,6 @@ Dialog {
             }
 
             Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 text: "(0 = sin límite)"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
@@ -325,24 +289,17 @@ Dialog {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: { root.reject(); root.close() }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 text: "Los registros anteriores a " + root.retentionDays + " días serán eliminados permanentemente."
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 wrapMode: Text.WordWrap
                 width: parent.width
-=======
                 text: "(0 = sin límite)"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
->>>>>>> origin/michi-qml-functional-wave
             }
 
-<<<<<<< HEAD
             Text {
                 text: root._status
                 color: root._status.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
@@ -350,7 +307,6 @@ Dialog {
                 visible: text !== ""
                 Accessible.role: Accessible.StatusBar
                 Accessible.name: root._status
->>>>>>> Stashed changes
             }
 
             MichiButton {
@@ -389,8 +345,6 @@ Dialog {
         }
     }
 
-<<<<<<< Updated upstream
-=======
     onAccepted: {
         root._applying = true
         root._status = "Aplicando retención..."
@@ -410,7 +364,6 @@ Dialog {
         } else {
             root._status = "Bridge no disponible"
         }
-=======
         RowLayout {
             Layout.fillWidth: true
             CheckBox {
@@ -510,24 +463,12 @@ Dialog {
         }
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     onOpened: {
         root.loadSettings()
         root._status = ""
     }
 
     onClosed: {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         root._applying = false
     }
 

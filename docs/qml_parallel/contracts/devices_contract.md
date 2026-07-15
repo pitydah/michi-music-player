@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # DevicesBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Devices Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `devicesBridge` → `DevicesBridge` instance
@@ -61,13 +54,10 @@ None.
 ## Cancellation Contract
 NOT YET IMPLEMENTED — no cancellation mechanism exists.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - `unpairDevice`, `deleteStation` (via protocol) are destructive
 - No explicit confirmation; returns result dict
 - `clearTransferHistory` is destructive with no undo
-=======
 # DevicesBridge Integration Contract
 
 ## Context Property
@@ -123,10 +113,6 @@ None.
 ## Cancellation Contract
 NOT YET IMPLEMENTED — no cancellation mechanism exists.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED — no reference to `JobBridge` or `WorkerManager`.
 
@@ -144,11 +130,3 @@ NOT IMPLEMENTED.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

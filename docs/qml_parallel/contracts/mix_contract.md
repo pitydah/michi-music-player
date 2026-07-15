@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # MixBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Mix Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `mixBridge` → `MixBridge` instance
@@ -82,12 +75,9 @@ None.
 - `cancelGeneration()`: increments `_generation` counter (stale-guard), calls `_wm.cancel_all(owner="mix_bridge")` if WorkerManager available.
 - State transitions: none defined — no explicit state machine.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - `saveMixAsPlaylist` is destructive (creates playlist) but requires explicit name
 - No undo feature
-=======
 # MixBridge Integration Contract
 
 ## Context Property
@@ -164,10 +154,6 @@ None.
 - `cancelGeneration()`: increments `_generation` counter (stale-guard), calls `_wm.cancel_all(owner="mix_bridge")` if WorkerManager available.
 - State transitions: none defined — no explicit state machine.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 Uses `WorkerManager` (`_wm`) for cancellation of generation tasks via `cancel_all(owner="mix_bridge")`. NOT a full JobBridge integration.
 
@@ -185,11 +171,3 @@ NOT IMPLEMENTED — though `_ai_enabled` flag exists for conditional category fi
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

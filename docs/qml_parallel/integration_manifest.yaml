@@ -1,16 +1,9 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # Integration Manifest — Michi QML Parallel Migration
 # Generated: 2026-07-14
 # For each module modified by the parallel front, lists context requirements,
 # new routes, models, signals, slots, and composition changes needed.
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Integration Manifest — canonical services, bridges, contexts, models, routes
 # Auto-generated from codebase analysis. DO NOT EDIT MANUALLY.
->>>>>>> Stashed changes
 
 modules:
 
@@ -443,8 +436,6 @@ modules:
           - track_action_service
     new_routes:
       - library
-<<<<<<< Updated upstream
-=======
   evidence:
     services:
       - worker_manager
@@ -474,7 +465,6 @@ modules:
       - AlbumDetailModel
       - ArtistListModel
     routes:
-=======
 # Integration Manifest — Michi QML Parallel Migration
 # Generated: 2026-07-14
 # For each module modified by the parallel front, lists context requirements,
@@ -911,25 +901,13 @@ modules:
           - track_action_service
     new_routes:
       - library
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
       - library.tracks
       - library.albums
       - library.album_detail
       - library.artists
       - library.artist_detail
       - library.folders
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
       - library.folder_detail
->>>>>>> Stashed changes
       - library.sources
       - library.genres
       - library.genre_detail
@@ -1013,8 +991,6 @@ modules:
           - settings_coordinator
     new_routes:
       - settings.accessibility
-<<<<<<< Updated upstream
-=======
       - settings.audio
       - settings.about
   devices:
@@ -1028,7 +1004,6 @@ modules:
     routes:
       - devices.list
       - devices.detail
-=======
       - library.sources
       - library.genres
       - library.genre_detail
@@ -1112,10 +1087,6 @@ modules:
           - settings_coordinator
     new_routes:
       - settings.accessibility
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     new_models: []
     new_signals:
       - dataChanged
@@ -1152,11 +1123,3 @@ modules:
       - dataChanged
     new_slots: []
     composition_change_required: false
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -1,18 +1,10 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for keyboard navigation across Audio Lab pages.
 
 Verifies that all interactive elements have KeyNavigation, activeFocusOnTab,
 Keys.onReturnPressed, and Keys.onSpacePressed handlers.
 """
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for keyboard accessibility and focus across all Audio Lab pages."""
-from pathlib import Path
->>>>>>> Stashed changes
 
 import pytest
 
@@ -75,13 +67,10 @@ class TestAudioKeyboardNavigation:
     def test_analysis_cancel_btn_keyboard(self):
         assert True
 
-<<<<<<< Updated upstream
-=======
     def test_page_header_heading_role(self):
         for name in AUDIO_LAB_PAGES:
             source = self._read(name)
             assert "Accessible.Heading" in source, f"{name} missing Accessible.Heading"
-=======
 """Tests for keyboard navigation across Audio Lab pages.
 
 Verifies that all interactive elements have KeyNavigation, activeFocusOnTab,
@@ -150,10 +139,6 @@ class TestAudioKeyboardNavigation:
     def test_analysis_cancel_btn_keyboard(self):
         assert True
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_analysis_compare_toggle_btn_keyboard(self):
         assert True
 
@@ -234,11 +219,3 @@ class TestAudioKeyboardNavigation:
 
     def test_all_pages_have_focus_propagation(self):
         assert True
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

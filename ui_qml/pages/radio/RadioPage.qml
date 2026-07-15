@@ -103,17 +103,10 @@ Item {
         radioGuard.checkCapability(root.rd)
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     CapabilityGuard {
         id: radioGuard
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     FocusScope {
         id: focusScope
->>>>>>> Stashed changes
         anchors.fill: parent
         capabilityName: "radio"
 
@@ -331,8 +324,6 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
-=======
 
     RadioEditorDialog {
         id: editorDialog
@@ -355,7 +346,6 @@ Item {
         visible: root._showImportDialog
         onClosed: {
             root._showImportDialog = false
-=======
     CapabilityGuard {
         id: radioGuard
         anchors.fill: parent
@@ -573,8 +563,6 @@ Item {
                     Accessible.name: "Estado de Radio"
                 }
             }
->>>>>>> origin/michi-qml-functional-wave
         }
     }
->>>>>>> Stashed changes
 }

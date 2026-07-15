@@ -1,15 +1,7 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Combined keyboard navigation tests for all 7 settings pages — Tab, Enter, Escape."""
 from pathlib import Path
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 from __future__ import annotations
 
-from unittest.mock import MagicMock
->>>>>>> Stashed changes
 
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
@@ -17,23 +9,14 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
-=======
 pytestmark = [pytest.mark.qml_module("settings")]
-=======
 """Combined keyboard navigation tests for all 7 settings pages — Tab, Enter, Escape."""
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
-from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
     dataChanged = Signal()
@@ -77,29 +60,14 @@ PAGE_FILES = [
     "SettingsAudioPage.qml",
     "SettingsAboutPage.qml",
 ]
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
 
 @pytest.fixture
 def engine(qapp):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     return QQmlEngine(qapp)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
     return engine
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -157,8 +125,6 @@ class TestSettingsKeyboardNavigation:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed with null bridge: {comp.errorString()}"
 
-<<<<<<< Updated upstream
-=======
     def test_audio_escape_requests_close(self, engine):
         comp = _load_page(engine, "SettingsAudioPage.qml")
         assert comp.isReady()
@@ -214,7 +180,6 @@ class TestSettingsKeyboardTabOrder:
                 assert tab is not None
         finally:
             obj.deleteLater()
-=======
     return QQmlEngine(qapp)
 
 
@@ -273,10 +238,6 @@ class TestSettingsKeyboardNavigation:
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed with null bridge: {comp.errorString()}"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_all_pages_create_successfully(self, engine, bridge, page_file):
         engine.rootContext().setContextProperty("settingsBridgeV2", bridge)
@@ -284,11 +245,3 @@ class TestSettingsKeyboardNavigation:
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed: {comp.errorString()}"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -10,20 +10,13 @@ Item {
     objectName: "mixDetail.page"
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string _mixTitle: ""
     property var _songs: []
     property bool _generating: false
     property bool _cancelling: false
     property string _errorMsg: ""
     property string _state: "idle"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string _status: "loading"
->>>>>>> Stashed changes
 
     signal backRequested()
 
@@ -32,8 +25,6 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: _mixTitle || "Mix"
 
-<<<<<<< Updated upstream
-=======
     FocusScope {
         id: focusScope
         anchors.fill: parent
@@ -92,7 +83,6 @@ Item {
                     objectName: "mixDetail.trackTable"
                 }
             }
-=======
     property string _mixTitle: ""
     property var _songs: []
     property bool _generating: false
@@ -107,24 +97,12 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: _mixTitle || "Mix"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     function refresh() {
         if (root.mx) {
             root._mixTitle = root.mx.currentMixTitle || ""
             root._songs = root.mx.currentSongs || []
             root._errorMsg = root.mx.errorMessage || ""
             root._state = root._songs.length > 0 ? "ready" : "idle"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         }
     }
 

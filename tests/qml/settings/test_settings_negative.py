@@ -1,13 +1,6 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Negative tests for settings pages — null bridge, error state, destructive confirmation."""
 from pathlib import Path
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 from __future__ import annotations
->>>>>>> Stashed changes
 
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
@@ -15,23 +8,14 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
-=======
 pytestmark = [pytest.mark.qml_module("settings")]
-=======
 """Negative tests for settings pages — null bridge, error state, destructive confirmation."""
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
-from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 class FailingSettingsBridgeV2(QObject):
     dataChanged = Signal()
@@ -71,29 +55,14 @@ class FailingSettingsBridgeV2(QObject):
 
 
 EMPTY_BRIDGE = type("Empty", (QObject,), {})
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
 
 @pytest.fixture
 def engine(qapp):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     return QQmlEngine(qapp)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
     return engine
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -194,8 +163,6 @@ class TestSettingsNegative:
             confirm_dialog = obj.findChild(type(obj).metaObject().superClass(), "confirmClearCache")
             assert confirm_dialog is not None
 
-<<<<<<< Updated upstream
-=======
 
 class TestSettingsAudioNullBridge:
     def test_no_bridge_shows_error(self, engine):
@@ -248,7 +215,6 @@ class TestSettingsPageCompiles:
     def test_about_page_compiles(self, engine):
         comp = _load_page(engine, "SettingsAboutPage.qml")
         assert comp.isReady()
-=======
     return QQmlEngine(qapp)
 
 
@@ -350,10 +316,6 @@ class TestSettingsNegative:
             confirm_dialog = obj.findChild(type(obj).metaObject().superClass(), "confirmClearCache")
             assert confirm_dialog is not None
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     @pytest.mark.parametrize("page_file", PAGE_FILES)
     def test_bridge_save_failure_handled_gracefully(self, engine, failing_bridge, page_file):
         failing_bridge._fail_set = True
@@ -362,11 +324,3 @@ class TestSettingsNegative:
         comp = QQmlComponent(engine)
         comp.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/settings/" / page_file)))
         assert comp.isReady() or comp.status() == QQmlComponent.Null, f"{page_file} failed with failing bridge: {comp.errorString()}"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -18,8 +18,6 @@ Item {
     property var previewData: null
     property string convError: ""
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _state: 0
     property string _selectedFormat: "FLAC"
     property string _selectedCodec: "flac"
@@ -41,17 +39,12 @@ Item {
     property real _eta: 0.0
     property var _previewResult: null
     property string _errorMessage: ""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var formatModel: ["FLAC", "MP3", "OGG", "Opus", "WAV", "AAC"]
     property var codecModel: {"FLAC":"flac","MP3":"libmp3lame","OGG":"libvorbis","Opus":"libopus","WAV":"pcm_s16le","AAC":"aac"}
     property var sampleRateModel: ["8000","11025","16000","22050","44100","48000","96000","192000"]
     property var bitDepthModel: ["8","16","24","32"]
     property var channelsModel: ["1","2","6","8"]
     property var collisionModel: ["rename","overwrite","skip","ask"]
->>>>>>> Stashed changes
 
     objectName: "AudioConversionPage"
     focus: true
@@ -167,10 +160,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         objectName: "audioConversion.focusScope"
-=======
     property int _state: 0
     property string _selectedFormat: "FLAC"
     property string _selectedCodec: "flac"
@@ -307,47 +297,28 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "Conversión de audio"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                 objectName: "conversionPageTitle"
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
->>>>>>> Stashed changes
 
             Text {
                 text: "Formatos: FLAC, MP3, AAC, Opus, Ogg Vorbis, WAV. Solo audio, sin video."
@@ -562,7 +533,6 @@ Item {
                         }
                     }
 
-<<<<<<< Updated upstream
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Colisiones:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
@@ -576,7 +546,6 @@ Item {
                             onCurrentIndexChanged: root._collisionPolicy = root._collisionOptions[currentIndex]
                             Component.onCompleted: currentIndex = 1
                         }
-=======
                 GlassMaterial {
                     width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
                     objectName: "conversion.info"
@@ -584,7 +553,6 @@ Item {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                         StatusBadge { text: "Requiere ffmpeg"; kind: "info" }
                         StatusBadge { text: "Experimental"; kind: "experimental" }
-=======
             Text {
                 text: "Conversión de audio"
                 color: MichiTheme.colors.textPrimary
@@ -619,10 +587,6 @@ Item {
                     if (item) {
                         root._selectedFormat = item.label
                         root._selectedCodec = item.codec
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     }
                 }
                 Component.onCompleted: currentIndex = 0
@@ -934,7 +898,6 @@ Item {
                         kind: root._state === root.stateCompleted ? "success" : root._state === root.stateFailed ? "error" : "warning"
                         visible: text !== ""
                         objectName: "conversionStatusBadge"
->>>>>>> origin/michi-qml-functional-wave
                     }
                 }
             }
@@ -945,7 +908,6 @@ Item {
                 kind: "disconnected"
                 objectName: "convBridgeStatus"
                 Accessible.name: "Bridge de conversión no disponible"
-<<<<<<< Updated upstream
             }
 
             SectionHeader { text: "Previsualización"; width: parent.width; objectName: "previewHeader"; Accessible.name: "Previsualización" }
@@ -1066,8 +1028,6 @@ Item {
                 kind: "disconnected"
                 objectName: "convBridgeStatus"
                 Accessible.name: "Bridge de conversión no disponible"
-=======
->>>>>>> Stashed changes
             }
         }
     }

@@ -8,15 +8,8 @@ import "../../materials"
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "mixGenerator.page"
 
->>>>>>> Stashed changes
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 
     property string _state: "IDLE"
@@ -39,11 +32,8 @@ Item {
     property string _errorMessage: ""
     property string _statusMessage: ""
 
-<<<<<<< Updated upstream
-=======
     signal backClicked()
     signal generationComplete(var result)
-=======
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
 
     property string _state: "IDLE"
@@ -66,28 +56,14 @@ Item {
     property string _errorMessage: ""
     property string _statusMessage: ""
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     signal backRequested()
     signal showResults(var songs, string mixType)
 
     objectName: "MixGeneratorPage"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Generador de Mix"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     function reset() {
         root._state = "IDLE"
         root._errorMessage = ""
@@ -96,16 +72,11 @@ Item {
         root._progressCurrent = 0
         root._progressTotal = 0
     }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     FocusScope {
         id: focusScope
         anchors.fill: parent
         activeFocusOnTab: true
         objectName: "mixGenerator.focusScope"
->>>>>>> Stashed changes
 
     function validate() {
         root._state = "VALIDATING"
@@ -751,8 +722,6 @@ Item {
                 text: "Bridge no disponible — funcionalidad limitada"
                 kind: "disconnected"
             }
-<<<<<<< Updated upstream
-=======
         } catch (e) {
             root.state = "FAILED"
             root._errorMsg = "Error: " + e.message
@@ -769,7 +738,6 @@ Item {
         } catch (e) {
             root.state = "CANCELLED"
             root._errorMsg = "Cancelado"
-=======
     function reset() {
         root._state = "IDLE"
         root._errorMessage = ""
@@ -1423,11 +1391,6 @@ Item {
                 text: "Bridge no disponible — funcionalidad limitada"
                 kind: "disconnected"
             }
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 }

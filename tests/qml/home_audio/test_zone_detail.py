@@ -1,40 +1,20 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test zone detail page with mock bridge."""
 from unittest.mock import MagicMock, PropertyMock
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test ZoneDetailPage properties, signals, volume control, mute."""
 from pathlib import Path
->>>>>>> Stashed changes
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
-<<<<<<< Updated upstream
-=======
 from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
-=======
 """Test zone detail page with mock bridge."""
-from unittest.mock import MagicMock, PropertyMock
 
-from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
-import pytest
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 def mock_ha():
     ha = MagicMock()
     ha.is_connected = True
@@ -48,15 +28,10 @@ def mock_ha():
     ha.reconnect = MagicMock()
     ha.select_source = MagicMock()
     return ha
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 def engine(qapp):
     e = QQmlEngine(qapp)
     e.addImportPath(str(QML_DIR))
     return e
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -171,8 +146,6 @@ class TestZoneDetailNoController:
         result = b.deleteZone("zone1")
         assert result["ok"] is False
 
-<<<<<<< Updated upstream
-=======
 def test_zone_detail_accessible(engine):
     component = QQmlComponent(engine)
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/home_audio/ZoneDetailPage.qml")))
@@ -181,7 +154,6 @@ def test_zone_detail_accessible(engine):
         assert obj.property("objectName") == "zoneDetailPage"
     finally:
         obj.deleteLater()
-=======
 def mock_ha():
     ha = MagicMock()
     ha.is_connected = True
@@ -309,10 +281,6 @@ class TestZoneDetailNoController:
         result = b.deleteZone("zone1")
         assert result["ok"] is False
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_latency_unsupported(self):
         b = HomeAudioBridge(ha_controller=None, snapcast_ctrl=None)
         result = b.setLatency("zone1", 100)
@@ -322,11 +290,3 @@ class TestZoneDetailNoController:
         b = HomeAudioBridge(ha_controller=None)
         result = b.setSource("TV")
         assert result["ok"] is False
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

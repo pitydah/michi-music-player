@@ -9,33 +9,21 @@ Item {
     property var model: null
     property var bridge: null
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     signal playRequested(int trackId, string title)
     signal removeRequested(int eventId, int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(int trackId)
     signal addToQueueRequested(int trackId)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     signal playRequested(int eventId, int trackId, string title)
     signal queueRequested(int eventId, int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(string albumKey)
     signal removeRequested(int eventId)
-=======
     signal playRequested(int trackId, string title)
     signal removeRequested(int eventId, int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(int trackId)
     signal addToQueueRequested(int trackId)
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     ListView {
         id: timelineView
@@ -43,26 +31,15 @@ Item {
         clip: true
         spacing: 1
         model: root.model
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         objectName: "historyTimelineList"
         Accessible.role: Accessible.List
         Accessible.name: "Línea de tiempo del historial"
         keyNavigationWraps: true
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
         delegate: Rectangle {
             width: timelineView.width
-<<<<<<< Updated upstream
             height: 52
-=======
             height: 56
-=======
         objectName: "historyTimelineList"
         Accessible.role: Accessible.List
         Accessible.name: "Línea de tiempo del historial"
@@ -71,11 +48,6 @@ Item {
         delegate: Rectangle {
             width: timelineView.width
             height: 52
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
             radius: MichiTheme.radiusSm
 
@@ -94,21 +66,9 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         text: model.title || modelData.title || ""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         text: modelData.title || model.title || ""
-=======
                         text: model.title || modelData.title || ""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         font.weight: MichiTheme.typography.weightMedium
@@ -117,34 +77,16 @@ Item {
                     }
 
                     Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         text: (model.artist || modelData.artist || "") + " · " +
                               (model.album || modelData.album || "")
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         text: (modelData.artist || model.artist || "") + " · " + (modelData.album || model.album || "")
-=======
                         text: (model.artist || modelData.artist || "") + " · " +
                               (model.album || modelData.album || "")
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         visible: (model.artist || modelData.artist || model.album || modelData.album) !== ""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         visible: (modelData.artist || model.artist || modelData.album || model.album) !== ""
                     }
 
@@ -155,7 +97,6 @@ Item {
                         elide: Text.ElideRight
                         width: parent.width
                         visible: text !== ""
->>>>>>> Stashed changes
                     }
                 }
 
@@ -191,8 +132,6 @@ Item {
                             model.trackId || modelData.track_id || model.track_id || 0,
                             model.title || modelData.title || "")
                     }
-<<<<<<< Updated upstream
-=======
 
                     Text {
                         text: "\uD83D\uDD0A"; color: MichiTheme.colors.accent
@@ -225,7 +164,6 @@ Item {
                         }
                         Accessible.role: Accessible.Button
                         Accessible.name: "Reproducir"
-=======
                         visible: (model.artist || modelData.artist || model.album || modelData.album) !== ""
                     }
                 }
@@ -262,10 +200,6 @@ Item {
                             model.trackId || modelData.track_id || model.track_id || 0,
                             model.title || modelData.title || "")
                     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
                 Text {
                     text: "☰"
@@ -277,14 +211,6 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: contextMenu.popup()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
@@ -293,18 +219,8 @@ Item {
                 id: mouseArea
                 anchors.fill: parent
                 hoverEnabled: true
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
                 acceptedButtons: Qt.NoButton
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
                 acceptedButtons: Qt.NoButton
-=======
->>>>>>> Stashed changes
                 acceptedButtons: Qt.RightButton
                 onClicked: contextMenu.popup()
             }
@@ -352,14 +268,6 @@ Item {
                         model.id || modelData.id || model.eventId || modelData.event_id || 0,
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
 

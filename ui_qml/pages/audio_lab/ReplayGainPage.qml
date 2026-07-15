@@ -16,8 +16,6 @@ Item {
     property var rgResult: null
     property string rgError: ""
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _state: 0
     property string _mode: "track"
     property real _preamp: 0.0
@@ -26,12 +24,7 @@ Item {
     property string _errorMessage: ""
 
     objectName: "ReplayGainPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "replayGain.page"
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -81,10 +74,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         objectName: "replayGain.focusScope"
-=======
     property int _state: 0
     property string _mode: "track"
     property real _preamp: 0.0
@@ -142,47 +132,28 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "ReplayGain"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                 objectName: "replaygainPageTitle"
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
->>>>>>> Stashed changes
 
             Text {
                 text: "Análisis de loudness, pico, ganancia track/album, escritura de etiquetas"
@@ -272,12 +243,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startAnalysis()
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
             Text {
                 text: "ReplayGain"
                 color: MichiTheme.colors.textPrimary
@@ -373,10 +338,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startAnalysis()
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 MichiButton {
                     text: "Escribir etiquetas"
                     variant: "secondary"
@@ -444,14 +405,6 @@ Item {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: { if (root.nav) root.nav.back() }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

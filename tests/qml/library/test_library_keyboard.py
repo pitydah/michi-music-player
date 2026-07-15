@@ -1,30 +1,10 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for library keyboard navigation — 12+ tests."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for library keyboard navigation."""
-=======
 """Tests for library keyboard navigation — 12+ tests."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-import pytest
->>>>>>> Stashed changes
 
 class TestLibraryKeyboard:
     def test_tab_between_sections(self):
@@ -96,15 +76,12 @@ class TestLibraryKeyboard:
         assert scope.focus
         assert scope.objectName == "tracksFocusScope"
 
-<<<<<<< Updated upstream
-=======
     def test_enter_key_on_empty_selection_does_nothing(self, ctrl):
         bridge = MagicMock()
         assert ctrl.count == 0
         if ctrl.count > 0:
             bridge.playTrackById(ctrl.selectedIds[0])
         bridge.playTrackById.assert_not_called()
-=======
 
 class TestLibraryKeyboard:
     def test_tab_between_sections(self):
@@ -176,10 +153,6 @@ class TestLibraryKeyboard:
         assert scope.focus
         assert scope.objectName == "tracksFocusScope"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_focus_scope_for_albums(self):
         scope = MagicMock()
         scope.focus = True
@@ -207,11 +180,3 @@ class TestLibraryKeyboard:
             obj.Accessible = MagicMock()
             obj.Accessible.name = name
             assert obj.objectName == name
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

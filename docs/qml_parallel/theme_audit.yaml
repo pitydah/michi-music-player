@@ -1,16 +1,9 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # Theme Audit Report — QML Pages Hardcoded Values vs MichiTheme Tokens
 # Generated for FE: Theme-reactive QML surfaces
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 theme_audit:
   date: "2026-07-14"
   scope: "ui_qml/pages/ - all 12 target pages"
   status: "completed"
->>>>>>> Stashed changes
 
 overview:
   total_pages_audited: 14
@@ -293,12 +286,9 @@ pages:
     objectNames_valid: true
     state_preservation_needed: false
 
-<<<<<<< Updated upstream
-=======
 remaining_violations_not_in_scope:
   - note: "Sub-pages (library/*, radio/*, playlists/*) not in scope for this audit"
   - note: "LibraryPage hardcoded radius values (12, 24, 4, etc.) in sub-components not targeted"
-=======
 # Theme Audit Report — QML Pages Hardcoded Values vs MichiTheme Tokens
 # Generated for FE: Theme-reactive QML surfaces
 
@@ -583,10 +573,6 @@ pages:
     objectNames_valid: true
     state_preservation_needed: false
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
   LibraryPage.qml (subpages):
     status: REVIEWED
     subpages:
@@ -601,11 +587,3 @@ pages:
         value: "spacing: 0"
         suggestion: "Use MichiTheme.spacing.sm for column spacing"
     objectNames_valid: true
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

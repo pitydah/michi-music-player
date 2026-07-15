@@ -1,12 +1,4 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-from pathlib import Path
->>>>>>> Stashed changes
 
 import pytest
 from unittest.mock import MagicMock, PropertyMock
@@ -51,11 +43,9 @@ class TestLibraryPageResponsive:
         mock_library_page.width = 900
         assert 768 <= mock_library_page.width < 1024
 
-<<<<<<< Updated upstream
     def test_narrow_layout(self, mock_library_page):
         mock_library_page.width = 700
         assert mock_library_page.width < 768
-=======
     def test_desktop_1024(self, engine):
         comp = self._create_page(engine, 1024, 768)
         assert comp.isReady() or comp.status() == QQmlComponent.Null, comp.errorString()
@@ -82,11 +72,9 @@ class TestLibraryPageResponsive:
 
     def test_page_qml_exists(self):
         assert (QML_DIR / "pages/library/LibraryPage.qml").exists()
-=======
 from __future__ import annotations
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock
 
 
 @pytest.fixture
@@ -131,8 +119,3 @@ class TestLibraryPageResponsive:
     def test_narrow_layout(self, mock_library_page):
         mock_library_page.width = 700
         assert mock_library_page.width < 768
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes

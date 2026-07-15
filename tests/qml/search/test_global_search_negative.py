@@ -1,13 +1,6 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test GlobalSearchBridge negative cases: stale requests, empty results, error, null bridge."""
 import pytest
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test negative/error cases for global search to ensure robustness."""
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
@@ -159,8 +152,6 @@ class TestNullBridge:
         bridge = GlobalSearchBridge(search_service=None)
         assert not bridge.isSearching
 
-<<<<<<< Updated upstream
-=======
     def test_generation_monotonic(self, mock_service):
         bridge = GlobalSearchBridge(search_service=mock_service)
         gens = []
@@ -169,12 +160,9 @@ class TestNullBridge:
             gens.append(bridge._search_gen)
         for i in range(1, len(gens)):
             assert gens[i] >= gens[i - 1]
-=======
 """Test GlobalSearchBridge negative cases: stale requests, empty results, error, null bridge."""
 import pytest
-from unittest.mock import MagicMock
 
-from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 
 
 @pytest.fixture
@@ -323,10 +311,6 @@ class TestNullBridge:
         bridge = GlobalSearchBridge(search_service=None)
         assert not bridge.isSearching
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_no_service_cancel_then_search_empty(self):
         bridge = GlobalSearchBridge(search_service=None)
         bridge.cancel()
@@ -364,11 +348,3 @@ class TestNullBridge:
         result = bridge.search("Test")
         assert not result["ok"]
         assert bridge.errorCode == "SERVICE_UNAVAILABLE"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

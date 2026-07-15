@@ -1,18 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Layouts
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../materials"
 import "../../components"
@@ -20,17 +8,10 @@ import "../../components"
 Item {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var action: null
->>>>>>> Stashed changes
     property bool destructive: false
     property bool visible: false
 
@@ -53,11 +34,8 @@ Item {
         variant: root.destructive ? "danger" : "base"
 
         Column {
-<<<<<<< Updated upstream
             id: contentColumn
-=======
             id: column
-=======
     property string actionName: ""
     property string actionDescription: ""
     property var affectedItems: []
@@ -84,24 +62,12 @@ Item {
 
         Column {
             id: contentColumn
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
 
             Row {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 spacing: MichiTheme.spacing.sm
->>>>>>> Stashed changes
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
 
@@ -178,11 +144,8 @@ Item {
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
-<<<<<<< Updated upstream
-=======
                     objectName: "assistant.preview.reject"
                     onClicked: root.rejectTriggered()
-=======
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
 
@@ -259,23 +222,11 @@ Item {
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     objectName: "actionPreviewReject"
                     Accessible.name: "Cancelar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.reject()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

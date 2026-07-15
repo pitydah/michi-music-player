@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # NotificationBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Notification Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `notificationBridge` → `NotificationBridge` instance
@@ -85,12 +78,9 @@ None in bridge itself — destructive actions delegated via `ActionRegistry`.
 - `dismiss()` clears current notification, stops timeout timer, advances queue.
 - `clear()` empties entire queue and all maps.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - `clear()` is destructive with no undo
 - `undoAction()` provides limited undo via `action_registry.execute("undo_<key>")`
-=======
 # NotificationBridge Integration Contract
 
 ## Context Property
@@ -170,10 +160,6 @@ None in bridge itself — destructive actions delegated via `ActionRegistry`.
 - `dismiss()` clears current notification, stops timeout timer, advances queue.
 - `clear()` empties entire queue and all maps.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 - `openJob(job_id)`: navigates to JobBridge (via `navigateToJob`).
 - `cancelJobById(job_id)`: calls `JobBridge.cancelJob(job_id)`.
@@ -199,11 +185,3 @@ NOT IMPLEMENTED.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED — basic `QAccessible` announcement attempted in `_announce()`.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

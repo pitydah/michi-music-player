@@ -1,13 +1,6 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
->>>>>>> Stashed changes
 import "../theme"
 
 Rectangle {
@@ -102,11 +95,8 @@ Rectangle {
                             return Math.floor(diff / 86400) + "d"
                         }
                         color: MichiTheme.colors.textMuted
-<<<<<<< Updated upstream
                         font.pixelSize: MichiTheme.typography.metaSize
-=======
                         font.pixelSize: MichiTheme.typography.captionSize
-=======
 import QtQuick.Controls as QQC2
 import "../theme"
 
@@ -203,17 +193,10 @@ Rectangle {
                         }
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 Text {
                     width: parent.width
                     text: root.notification ? (root.notification.message || "") : ""
@@ -223,10 +206,6 @@ Rectangle {
                     maximumLineCount: 2
                     wrapMode: Text.WordWrap
                     visible: text !== ""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Row {
                     spacing: MichiTheme.spacing.sm
                     visible: root.action !== "" || root.persistent
@@ -243,7 +222,6 @@ Rectangle {
                         variant: "ghost"
                         onClicked: root.dismissRequested(root.notificationId)
                     }
->>>>>>> Stashed changes
                 }
             }
 
@@ -265,12 +243,6 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
                 Text {
                     width: parent.width
                     text: root.notification ? (root.notification.message || "") : ""
@@ -301,10 +273,6 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                 background: Rectangle {
                     radius: MichiTheme.radiusSm
@@ -361,20 +329,10 @@ Rectangle {
 
                 Accessible.role: Accessible.Button
                 Accessible.name: "Cancelar trabajo"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     NumberAnimation {
         id: removeAnim
         target: root
@@ -384,14 +342,9 @@ Rectangle {
         duration: root.reducedMotion ? 1 : MichiTheme.motion.normal
         onFinished: root.dismissed()
     }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Keys.onReturnPressed: {
         root.actionRequested(root.notificationId)
     }
-=======
     NumberAnimation {
         id: removeAnim
         target: root
@@ -401,10 +354,6 @@ Rectangle {
         duration: root.reducedMotion ? 1 : MichiTheme.motion.normal
         onFinished: root.dismissed()
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     function dismissItem() {
         if (root.bridge && root.notification) {
@@ -424,12 +373,4 @@ Rectangle {
     Keys.onEnterPressed: root.activatePrimaryAction()
     Keys.onEscapePressed: root.dismissItem()
     focus: true
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

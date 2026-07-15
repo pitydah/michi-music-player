@@ -1,13 +1,6 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
->>>>>>> Stashed changes
 import "../theme"
 import "states"
 
@@ -69,10 +62,7 @@ Item {
     Item {
         id: availableHost
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         visible: children.length > 0 && root.state === CapabilityGuard.AVAILABLE && root.availableContent === null
-=======
 import QtQuick.Controls as QQC2
 import "../theme"
 import "states"
@@ -135,10 +125,6 @@ Item {
     Item {
         id: availableHost
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         visible: root.available && !root.degraded && !root.checking && !root.deferredPhysical
     }
 
@@ -201,13 +187,5 @@ Item {
             message: "Esta funcionalidad requiere servicios adicionales que no están activos."
             iconText: "\u26A0"
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

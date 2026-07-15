@@ -1,33 +1,14 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
 import QtQuick.Layouts
-=======
 import QtQuick.Controls as QQC2
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
 import "../../materials"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 Item {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 Popup {
->>>>>>> Stashed changes
     id: root
     focus: true
 
@@ -272,11 +253,9 @@ Popup {
             }
         }
 
-<<<<<<< Updated upstream
         QQC2.FocusTrap {
             active: root.visible
             focusItem: hostField
-=======
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
@@ -298,7 +277,6 @@ Popup {
                 onClicked: root.connectRequested(root.host, root.port, root.alias)
                 Accessible.name: "Conectar al servidor"
             }
-=======
 Item {
     id: root
     focus: true
@@ -547,11 +525,6 @@ Item {
         QQC2.FocusTrap {
             active: root.visible
             focusItem: hostField
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 }

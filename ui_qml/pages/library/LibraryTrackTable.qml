@@ -12,20 +12,8 @@ Item {
     property var notif: null
     property var actionRegistry: null
     property var selectionController: null
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property bool _fetchingMore: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
     property bool _fetchingMore: false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property bool _shiftPressed: false
     property int _lastClickedIndex: -1
 
@@ -118,80 +106,25 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             cacheBuffer: 200
             focus: true
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             visible: !root._loading && !root._error
             objectName: "library.trackList"
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             keyNavigationWraps: false
 
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Shift) root._shiftPressed = true
                 if (event.key === Qt.Key_Escape) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     root._selectedIds = []
                     if (root.selectionController) root.selectionController.clear()
                     updateSelectionBar()
-=======
-<<<<<<< HEAD
                     if (root.selectionController) root.selectionController.clear()
-=======
-<<<<<<< HEAD
                     if (root.selectionController) root.selectionController.clear()
->>>>>>> Stashed changes
-=======
                     root._selectedIds = []
                     if (root.selectionController) root.selectionController.clear()
                     updateSelectionBar()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
                 if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
                     selectAll()
                 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                if (event.key === Qt.Key_Down) {
-                    incrementCurrentIndex()
-                    event.accepted = true
-                }
-                if (event.key === Qt.Key_Up) {
-                    decrementCurrentIndex()
-                    event.accepted = true
-                }
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    var curIdx = listView.currentIndex
-                    if (curIdx >= 0) {
-                        var tid = getTrackId(curIdx)
-                        if (root.bridge && root.bridge.playTrackById)
-                            root.bridge.playTrackById(tid)
-                    }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                    event.accepted = true
-=======
-=======
->>>>>>> Stashed changes
-=======
                 if (event.key === Qt.Key_Down) {
                     incrementCurrentIndex()
                     event.accepted = true
@@ -208,11 +141,22 @@ Item {
                             root.bridge.playTrackById(tid)
                     }
                     event.accepted = true
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+                if (event.key === Qt.Key_Down) {
+                    incrementCurrentIndex()
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Up) {
+                    decrementCurrentIndex()
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    var curIdx = listView.currentIndex
+                    if (curIdx >= 0) {
+                        var tid = getTrackId(curIdx)
+                        if (root.bridge && root.bridge.playTrackById)
+                            root.bridge.playTrackById(tid)
+                    }
+                    event.accepted = true
                 }
             }
 
@@ -246,21 +190,9 @@ Item {
                 trackFavorite: model.favorite || false
                 trackMissing: model.missing || false
                 trackQuality: model.bitDepth || model.bitrate || 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 isSelected: root._selectedIds.indexOf(model.trackId || 0) !== -1
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 isSelected: root.selectionController ? root.selectionController.contains(model.trackId || 0) : false
-=======
                 isSelected: root._selectedIds.indexOf(model.trackId || 0) !== -1
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 isShiftPressed: root._shiftPressed
                 lastClickedIndex: root._lastClickedIndex
                 rowIndex: index
@@ -276,47 +208,24 @@ Item {
                 }
 
                 onRightClicked: function(mx, my) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     root._selectedIds = [model.trackId || 0]
                     updateSelectionBar()
                     root.trackContextMenuRequested(model.trackId || 0, model.title || "", model.artist || "", model.album || "")
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     if (root.selectionController) {
                         root.selectionController.replace([model.trackId || 0])
                     }
                     contextMenu.x = mx; contextMenu.y = my
                     contextMenu.open()
-=======
                     root._selectedIds = [model.trackId || 0]
                     updateSelectionBar()
                     root.trackContextMenuRequested(model.trackId || 0, model.title || "", model.artist || "", model.album || "")
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
 
                 onSelectionToggled: function(id, ctrl, shift) {
                     if (!root.selectionController) return
                     if (ctrl && shift) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         var visibleIds = root.trackModel ? root.trackModel.visibleIds() : []
                         root.selectionController.selectRangeByRows(root._lastClickedIndex, index, visibleIds)
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         var start = Math.min(root._lastClickedIndex, index)
                         var end = Math.max(root._lastClickedIndex, index)
                         for (var i = start; i <= end; i++) {
@@ -324,14 +233,6 @@ Item {
                             if (root._selectedIds.indexOf(tid) === -1)
                                 root._selectedIds.push(tid)
                         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     } else if (ctrl) {
                         root.selectionController.toggle(id)
                     } else {
@@ -383,8 +284,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     function selectAll() {
         root._selectedIds = []
         if (root.trackModel) {
@@ -394,17 +293,12 @@ Item {
             }
         }
         updateSelectionBar()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     LibraryTrackContextMenu {
         id: contextMenu
         bridge: root.bridge
         selectionController: root.selectionController
         trackModel: root.trackModel
         objectName: "library.trackContextMenu"
->>>>>>> Stashed changes
     }
 
     function updateSelectionBar() {
@@ -416,13 +310,10 @@ Item {
     }
 
     function clearSelection() {
-<<<<<<< Updated upstream
         root._selectedIds = []
         if (typeof selectionBar !== "undefined" && selectionBar)
             selectionBar.visible = false
-=======
         if (root.selectionController) root.selectionController.clear()
-=======
     function selectAll() {
         root._selectedIds = []
         if (root.trackModel) {
@@ -446,11 +337,6 @@ Item {
         root._selectedIds = []
         if (typeof selectionBar !== "undefined" && selectionBar)
             selectionBar.visible = false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 
     function formatDuration(secs) {

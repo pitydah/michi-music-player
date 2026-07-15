@@ -1,50 +1,15 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
-=======
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
 import "../../materials"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    focus: true
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-
-    property var availableZones: []
-    property var selectedZoneIds: []
-    property string groupName: ""
-    property bool editMode: false
-    property string originalGroupName: ""
-
-    signal groupCreated(string name, var zoneIds)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
     focus: true
 
     property var availableZones: []
@@ -54,50 +19,37 @@ Item {
     property string originalGroupName: ""
 
     signal groupCreated(string name, var zoneIds)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+    focus: true
+
+    property var availableZones: []
+    property var selectedZoneIds: []
+    property string groupName: ""
+    property bool editMode: false
+    property string originalGroupName: ""
+
+    signal groupCreated(string name, var zoneIds)
     signal groupUpdated(string name, var zoneIds)
     signal groupCancelled()
 
     objectName: "groupEditorPage"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Editor de grupos"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     AsyncStateView {
         id: asyncView
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     FocusScope {
         id: focusScope
->>>>>>> Stashed changes
         anchors.fill: parent
         state: root.availableZones.length === 0 ? AsyncStateView.EMPTY : AsyncStateView.READY
         title: "Sin zonas disponibles"
         message: "No hay zonas disponibles para agrupar. Conecta dispositivos primero."
         iconName: "group"
 
-<<<<<<< Updated upstream
         readyContent: Flickable {
-=======
         Keys.onEscapePressed: root.backClicked()
 
         Flickable {
-=======
     AsyncStateView {
         id: asyncView
         anchors.fill: parent
@@ -107,41 +59,22 @@ Item {
         iconName: "group"
 
         readyContent: Flickable {
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             activeFocusOnTab: true
             objectName: "groupEditorFlickable"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             focus: true
-=======
             activeFocusOnTab: true
             objectName: "groupEditorFlickable"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
             Column {
                 id: column
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 MichiButton {
                     id: backBtn
                     text: "< Volver"
@@ -151,10 +84,6 @@ Item {
                     Accessible.name: "Volver"
                     Keys.onReturnPressed: root.groupCancelled()
                     Keys.onSpacePressed: root.groupCancelled()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Row {
                     spacing: MichiTheme.spacing.sm
                     width: parent.width
@@ -176,7 +105,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         Accessible.role: Accessible.Heading
                     }
->>>>>>> Stashed changes
                 }
 
                 Text {
@@ -267,8 +195,6 @@ Item {
                                 elide: Text.ElideRight
                             }
 
-<<<<<<< Updated upstream
-=======
                             MichiButton {
                                 id: cancelBtnGroup
                                 text: "Cancelar"
@@ -277,7 +203,6 @@ Item {
                                 objectName: "groupEditor.cancelButton"
                                 Accessible.name: "Cancelar"
                                 KeyNavigation.tab: groupNameField
-=======
                 MichiButton {
                     id: backBtn
                     text: "< Volver"
@@ -377,10 +302,6 @@ Item {
                                 elide: Text.ElideRight
                             }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             StatusBadge {
                                 text: root.selectedZoneIds.indexOf(modelData.id) >= 0 ? "Seleccionada" : ""
                                 kind: "success"
@@ -406,34 +327,15 @@ Item {
                                 root.selectedZoneIds = arr
                             } else {
                                 root.selectedZoneIds = root.selectedZoneIds.concat([modelData.id])
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                             }
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 StatusBadge {
                     text: "Requiere Snapcast para agrupar zonas"
                     kind: "info"
                     visible: root.ha && !root.ha.groupingSupported
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 Text {
                     text: root.selectedZoneIds.length + " zona(s) seleccionada(s)"
                     color: MichiTheme.colors.textMuted
@@ -483,14 +385,6 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

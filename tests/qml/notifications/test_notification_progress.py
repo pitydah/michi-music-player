@@ -1,15 +1,8 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test progress notifications — progress updates, updateProgress, cancel."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for NotificationProgressItem QML component."""
->>>>>>> Stashed changes
 
 import pytest
 
@@ -66,20 +59,12 @@ class TestUpdateProgress:
         bridge.showProgress("Iniciando", "j_upd", 0)
         result = bridge.updateProgress("j_upd", 0.75, "75% completado")
         assert result["ok"] is True
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
 """Test progress notifications — progress updates, updateProgress, cancel."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.notification_bridge import NotificationBridge
 
 
 @pytest.fixture
@@ -132,10 +117,6 @@ class TestUpdateProgress:
         bridge.showProgress("Iniciando", "j_upd", 0)
         result = bridge.updateProgress("j_upd", 0.75, "75% completado")
         assert result["ok"] is True
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         assert bridge.currentNotification["progress"] >= 75
 
     def test_update_progress_creates_if_not_exists(self, bridge):
@@ -192,11 +173,3 @@ class TestProgressEdgeCases:
         bridge.showProgress("Job B", "j_b", 50)
         assert bridge.queueLength == 1
         assert bridge.currentNotification["job_id"] == "j_a"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -37,16 +37,9 @@ Item {
         connectionGuard.checkCapability(root.conn)
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     CapabilityGuard {
         id: connectionGuard
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     AsyncStateView {
->>>>>>> Stashed changes
         anchors.fill: parent
         capabilityName: "connections_michilink"
 
@@ -148,8 +141,6 @@ Item {
                     Keys.onSpacePressed: onServerSelected(0)
                 }
 
-<<<<<<< Updated upstream
-=======
                     ManualConnectionDialog {
                         id: manualDialog
                         objectName: "connections.manualDialog"
@@ -231,7 +222,6 @@ Item {
                                 navigationBridge.navigate("home_audio")
                         }
                         KeyNavigation.backtab: discoveryPanel
-=======
     CapabilityGuard {
         id: connectionGuard
         anchors.fill: parent
@@ -335,10 +325,6 @@ Item {
                     Keys.onSpacePressed: onServerSelected(0)
                 }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 HomeAudioAccess {
                     id: homeAudioAccess
                     width: parent.width
@@ -351,14 +337,6 @@ Item {
                     onOpenHomeAudio: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("home_audio")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }

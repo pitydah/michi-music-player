@@ -1,29 +1,8 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for AudioBatchJobsPage — active, completed, failed jobs display and actions."""
 from pathlib import Path
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 """Tests for Audio Lab jobs queue — running, queued, completed, failed, cancelled."""
 from __future__ import annotations
 
-import sqlite3
-import time
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
 import pytest
 from PySide6.QtCore import QUrl
@@ -89,21 +68,14 @@ class TestAudioJobs:
         source = (QML_DIR / "pages/audio_lab/AudioBatchJobsPage.qml").read_text()
         assert "cancelJob" in source or "Cancelar" in source
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     def test_list_jobs(self, adapter):
         adapter.submit_probe("/a.flac")
         adapter.submit_analysis("/b.flac")
         jobs = adapter.list()
         assert len(jobs) >= 2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     def test_retry_job_button(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioBatchJobsPage.qml").read_text()
         assert "retryJob" in source or "Reintentar" in source
->>>>>>> Stashed changes
 
     def test_job_bridge_clear_completed(self):
         from ui_qml_bridge.job_bridge import JobBridge
@@ -146,12 +118,9 @@ class TestAudioJobs:
     def test_job_cancel_button_visible_on_running(self):
         assert True
 
-<<<<<<< Updated upstream
-=======
     def test_michitheme_references(self, engine):
         source = (QML_DIR / "pages/audio_lab/AudioBatchJobsPage.qml").read_text()
         assert "MichiTheme" in source
-=======
     def test_list_jobs(self, adapter):
         adapter.submit_probe("/a.flac")
         adapter.submit_analysis("/b.flac")
@@ -199,10 +168,6 @@ class TestAudioJobs:
     def test_job_cancel_button_visible_on_running(self):
         assert True
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_job_retry_button_visible_on_failed(self):
         assert True
 
@@ -211,11 +176,3 @@ class TestAudioJobs:
 
     def test_clear_failed_removes_errors(self):
         assert True
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

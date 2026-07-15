@@ -1,27 +1,13 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test Michi AI action execution flow with confirmation."""
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Test Michi AI action execution flow with confirmation."""
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
@@ -62,12 +48,7 @@ def bridge(services):
         diagnostics_service=services["diagnostics_service"],
         worker_manager=services["worker_manager"],
     )
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
->>>>>>> Stashed changes
 
 
 class TestMichiAIExecution:
@@ -132,10 +113,6 @@ class TestMichiAIExecution:
         services["playlist_service"].batch_add.return_value = {"ok": True}
         bridge.sendMessage("agregar canciones a playlist 5")
         assert bridge.status == "awaiting_confirmation"
-<<<<<<< Updated upstream
-=======
-=======
-from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -212,10 +189,6 @@ class TestMichiAIExecution:
         services["playlist_service"].create.return_value = {"ok": True, "id": 1}
         bridge.sendMessage("crear playlist llamada Favoritos")
         assert bridge.status == "awaiting_confirmation"
-<<<<<<< Updated upstream
-=======
-=======
-from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -292,7 +265,6 @@ class TestMichiAIExecution:
         services["playlist_service"].create.return_value = {"ok": True, "id": 1}
         bridge.sendMessage("crear playlist llamada Favoritos")
         assert bridge.status == "awaiting_confirmation"
->>>>>>> Stashed changes
 
     def test_confirm_playlist_creation(self, bridge, services):
         services["playlist_service"].create.return_value = {"ok": True, "id": 1}
@@ -320,10 +292,6 @@ class TestMichiAIExecution:
         services["playlist_service"].batch_add.return_value = {"ok": True}
         bridge.sendMessage("agregar canciones a playlist 5")
         assert bridge.status == "awaiting_confirmation"
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     def test_change_setting_needs_confirmation(self, bridge, services):
         services["settings_service"].set_.return_value = True
@@ -353,11 +321,3 @@ class TestMichiAIExecution:
         bridge.sendMessage("reproduce canción 999")
         last = bridge._chat_history[-1]
         assert "Error" in last["text"]
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

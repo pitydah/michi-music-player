@@ -9,41 +9,27 @@ Item {
     property var model: null
     property var bridge: null
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     signal playRequested(int trackId, string title)
     signal removeRequested(int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(int trackId)
     signal addToQueueRequested(int trackId)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     signal playRequested(int eventId, int trackId, string title)
     signal queueRequested(int eventId, int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(string albumKey)
     signal removeRequested(int eventId)
-=======
     signal playRequested(int trackId, string title)
     signal removeRequested(int trackId)
     signal openTrackRequested(int trackId)
     signal openAlbumRequested(int trackId)
     signal addToQueueRequested(int trackId)
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.surface
         radius: MichiTheme.radiusSm
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     ListView {
         id: tableView
         anchors.fill: parent
@@ -54,14 +40,9 @@ Item {
         Accessible.role: Accessible.Table
         Accessible.name: "Tabla del historial"
         keyNavigationWraps: true
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Column {
             anchors.fill: parent
             spacing: 0
->>>>>>> Stashed changes
 
         delegate: Rectangle {
             width: tableView.width
@@ -231,7 +212,6 @@ Item {
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
             }
-=======
     ListView {
         id: tableView
         anchors.fill: parent
@@ -411,7 +391,6 @@ Item {
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
             }
-=======
     ListView {
         id: tableView
         anchors.fill: parent
@@ -599,7 +578,6 @@ Item {
             text: "No hay registros de historial"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.bodySize
->>>>>>> origin/michi-qml-functional-wave
         }
 
         Text {
@@ -608,7 +586,6 @@ Item {
             text: "No hay registros de historial"
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.bodySize
->>>>>>> origin/michi-qml-functional-wave
         }
 
         Text {

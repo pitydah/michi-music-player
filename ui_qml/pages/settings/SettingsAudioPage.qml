@@ -6,15 +6,7 @@ import "../../components"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "settingsAudioPage"
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -104,8 +96,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
-=======
                         ComboBox {
                             id: outputDeviceCombo
                             objectName: "settings.audio.outputDevice"
@@ -113,7 +103,6 @@ Item {
                             currentIndex: 0
                             Accessible.name: "Dispositivo de salida de audio"
                             KeyNavigation.tab: sampleRateCombo
-=======
     objectName: "settingsAudioPage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -204,10 +193,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
@@ -238,33 +223,18 @@ Item {
                                 Accessible.name: "Dispositivo de salida de audio"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: qualityCard
                     Layout.fillWidth: true
                     title: "Calidad de audio"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -382,8 +352,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
-=======
                         SpinBox {
                             id: bufferSizeSpinBox
                             objectName: "settings.audio.bufferSize"
@@ -392,7 +360,6 @@ Item {
                             editable: true
                             Accessible.name: "Tamaño de búfer"
                             KeyNavigation.tab: expertModeSwitch
-=======
                 GlassCard {
                     id: qualityCard
                     Layout.fillWidth: true
@@ -515,10 +482,6 @@ Item {
                             }
                         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
                         RowLayout {
@@ -562,33 +525,18 @@ Item {
                                 Accessible.name: "Calidad de resample"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: normalizationCard
                     Layout.fillWidth: true
                     title: "Normalización"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -597,8 +545,6 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-<<<<<<< Updated upstream
-=======
                         }
 
                         Switch {
@@ -620,7 +566,6 @@ Item {
                             text: "Opciones avanzadas visibles en modo experto."
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
-=======
                 GlassCard {
                     id: normalizationCard
                     Layout.fillWidth: true
@@ -634,10 +579,6 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             spacing: MichiTheme.spacing.md
                             Label {
                                 text: "Normalización de volumen"
@@ -655,34 +596,19 @@ Item {
                                 Accessible.description: "Aplicar normalización de volumen basada en ReplayGain"
                                 focusPolicy: Qt.StrongFocus
                             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: expertCard
                     Layout.fillWidth: true
                     title: "Opciones avanzadas"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Rectangle {
                     width: parent.width; height: 1
                     color: MichiTheme.colors.borderSubtle
                 }
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -803,12 +729,6 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
                 GlassCard {
                     id: expertCard
                     Layout.fillWidth: true
@@ -934,20 +854,8 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

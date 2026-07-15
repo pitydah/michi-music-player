@@ -1,34 +1,14 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test Tab navigation through major pages.
 
 Verifies KeyNavigation.tab chains, activeFocusOnTab, FocusScope, and
 Keys.onReturnPressed/SpacePressed/EscapePressed patterns on all major pages."""
-=======
 from __future__ import annotations
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 from pathlib import Path
 
 import pytest
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from PySide6.QtQml import QQmlEngine
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
@@ -152,11 +132,9 @@ class TestTabOrderAcrossControls:
         qml_path = QML_DIR / page_path
         if not qml_path.exists():
             pytest.skip(f"{page_path} not found")
-<<<<<<< Updated upstream
         content = qml_path.read_text()
         tab_count = content.count("activeFocusOnTab")
         assert tab_count > 0, f"{page_path} should have at least 1 focusable element"
-=======
         content = page_path.read_text()
         assert "activeFocusOnTab" in content, f"{page_path.name} lacks activeFocusOnTab"
 
@@ -233,8 +211,6 @@ class TestKeyboardFocusAcrossPages:
         content = p.read_text()
         assert "activeFocusOnTab" in content
         assert "chatInput.activeFocus" in content or "onActiveFocusChanged" in content
-=======
-from PySide6.QtQml import QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
@@ -361,8 +337,3 @@ class TestTabOrderAcrossControls:
         content = qml_path.read_text()
         tab_count = content.count("activeFocusOnTab")
         assert tab_count > 0, f"{page_path} should have at least 1 focusable element"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes

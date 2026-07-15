@@ -92,31 +92,13 @@ Item {
     Loader {
         id: stateLoader
         anchors.fill: parent
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
     }
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
     }
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Component {
         id: loadingComp
@@ -128,15 +110,9 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             HomeHero {
                 objectName: "homeHero"
                 Accessible.name: "Hero de inicio"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Component {
         id: emptyComp
         EmptyState {
@@ -150,12 +126,9 @@ Item {
             onActionClicked: {
                 if (typeof navigationBridge !== "undefined" && navigationBridge)
                     navigationBridge.navigate("library")
-=======
             HomeHero {
                 objectName: "homeHero"
                 Accessible.name: "Hero de inicio"
-<<<<<<< Updated upstream
-=======
             }
 
             StatusBadge {
@@ -192,11 +165,8 @@ Item {
                     if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("playback")
                 }
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
-<<<<<<< Updated upstream
             StatusBadge {
                 objectName: "homeStatusBadge"
                 text: {
@@ -231,11 +201,8 @@ Item {
                     if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("playback")
                 }
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
-<<<<<<< Updated upstream
             StatusBadge {
                 objectName: "homeStatusBadge"
                 text: {
@@ -269,10 +236,6 @@ Item {
                 onActivate: {
                     if (root.hb && root.hb.hasPlayback && typeof navigationBridge !== "undefined")
                         navigationBridge.navigate("playback")
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Component {
         id: errorComp
         ErrorState {
@@ -287,7 +250,6 @@ Item {
                 if (root.bridge) {
                     root.state = "READY"
                     root.bridge.refresh()
-=======
             Row {
                 id: statusGrid
                 width: parent.width
@@ -312,10 +274,6 @@ Item {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
                             navigationBridge.navigate("library")
                     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 }
 
                 EcosystemCard {
@@ -496,7 +454,6 @@ Item {
                 onOpenAssistant: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
                         navigationBridge.navigate("assistant")
->>>>>>> origin/michi-qml-functional-wave
                 }
             }
 
@@ -511,8 +468,6 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Row {
                 id: statusGrid
                 width: parent.width
@@ -520,10 +475,6 @@ Item {
                 activeFocusOnTab: true
                 KeyNavigation.tab: actionRow
                 KeyNavigation.backtab: continueCard
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Component {
         id: readyComp
         FocusScope {
@@ -531,7 +482,6 @@ Item {
             anchors.fill: parent
             activeFocusOnTab: true
             objectName: "home.focusScope"
->>>>>>> Stashed changes
 
                 LibraryStatusCard {
                     id: libraryCard
@@ -751,13 +701,10 @@ Item {
         Accessible.name: "Cargando panel de inicio"
     }
 
-<<<<<<< Updated upstream
-=======
     function routeRefresh(route) {
         if (root.bridge) {
             root.bridge.refresh()
         }
-=======
     LoadingState {
         objectName: "homeLoadingState"
         anchors.centerIn: parent
@@ -766,10 +713,6 @@ Item {
         Accessible.name: "Cargando panel de inicio"
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     EmptyState {
         objectName: "homeEmptyState"
         anchors.centerIn: parent
@@ -789,13 +732,5 @@ Item {
         Accessible.name: "Error en panel de inicio"
         showRetry: true
         onRetryRequested: root.refresh()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

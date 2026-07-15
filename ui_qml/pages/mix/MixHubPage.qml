@@ -15,26 +15,14 @@ Item {
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property bool _loading: false
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "MixHubPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "mix.page"
     focus: true
 
     Accessible.role: Accessible.Panel
     Accessible.name: "Mix"
     Accessible.description: "Descubre, revive y explora tu música desde nuevas perspectivas"
-=======
     objectName: "MixHubPage"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Component.onCompleted: {
         if (root.mx && typeof root.mx.refresh !== "undefined")
@@ -42,16 +30,9 @@ Item {
         mixGuard.checkCapability(root.mx)
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     CapabilityGuard {
         id: mixGuard
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Loader {
->>>>>>> Stashed changes
         anchors.fill: parent
         capabilityName: "mix"
 
@@ -78,13 +59,10 @@ Item {
                         }
                         Text {
                             text: "Descubre, revive y explora tu música desde nuevas perspectivas."
-<<<<<<< Updated upstream
-=======
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize
                             width: parent.width * 0.70
                             wrapMode: Text.WordWrap
-=======
     CapabilityGuard {
         id: mixGuard
         anchors.fill: parent
@@ -113,10 +91,6 @@ Item {
                         }
                         Text {
                             text: "Descubre, revive y explora tu música desde nuevas perspectivas."
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                             width: parent.width * 0.70; wrapMode: Text.WordWrap
                         }
@@ -125,10 +99,6 @@ Item {
 
                 SectionHeader {
                     id: yourMixesHeader
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
                     text: "Tus mixes"
                     width: parent.width
                     objectName: "yourMixesHeader"
@@ -195,7 +165,6 @@ Item {
                                 root.mx.loadMix("by_artist")
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
->>>>>>> origin/michi-qml-functional-wave
                         }
                     }
                     MichiButton {
@@ -248,10 +217,8 @@ Item {
                     }
                 }
 
-<<<<<<< HEAD
                 SectionHeader {
                     id: yourMixesSection
->>>>>>> Stashed changes
                     text: "Tus mixes"
                     width: parent.width
                     objectName: "yourMixesHeader"
@@ -318,7 +285,6 @@ Item {
                                 root.mx.loadMix("by_artist")
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
->>>>>>> origin/michi-qml-functional-wave
                         }
                     }
                     MichiButton {
@@ -369,20 +335,16 @@ Item {
                                 navigationBridge.navigate("mix_rule_editor")
                         }
                     }
-=======
                 StatusBadge {
                     visible: root.mx === null
                     text: "Bridge no disponible"
                     kind: "disconnected"
                     objectName: "mixBridgeStatus"
                     Accessible.name: "Bridge de mix no disponible"
->>>>>>> origin/michi-qml-functional-wave
                 }
 
-<<<<<<< HEAD
                 SectionHeader {
                     id: yourMixesSection
->>>>>>> Stashed changes
                     text: "Tus mixes"
                     width: parent.width
                     objectName: "yourMixesHeader"
@@ -499,14 +461,12 @@ Item {
                                 navigationBridge.navigate("mix_rule_editor")
                         }
                     }
-=======
                 StatusBadge {
                     visible: root.mx === null
                     text: "Bridge no disponible"
                     kind: "disconnected"
                     objectName: "mixBridgeStatus"
                     Accessible.name: "Bridge de mix no disponible"
->>>>>>> origin/michi-qml-functional-wave
                 }
 
                 StatusBadge {

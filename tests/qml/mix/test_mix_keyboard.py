@@ -1,14 +1,6 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test MixBridge keyboard navigation support and accessible properties."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test Mix pages keyboard navigation via QML component loading."""
-from pathlib import Path
 
->>>>>>> Stashed changes
 import pytest
 from unittest.mock import MagicMock
 
@@ -133,18 +125,13 @@ class TestMixKeyboard:
             result = bridge.playFromIndex(i)
             assert result["ok"] is True, f"Failed at index {i}"
 
-<<<<<<< Updated upstream
-=======
 def test_mix_generator_key_navigation(engine):
     component = QQmlComponent(engine)
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/mix/MixGeneratorPage.qml")))
     assert component.isReady()
-=======
 """Test MixBridge keyboard navigation support and accessible properties."""
 import pytest
-from unittest.mock import MagicMock
 
-from ui_qml_bridge.mix_bridge import MixBridge
 
 
 @pytest.fixture
@@ -265,21 +252,9 @@ class TestMixKeyboard:
             result = bridge.playFromIndex(i)
             assert result["ok"] is True, f"Failed at index {i}"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_mix_categories_accessible(self, bridge):
         cats = bridge.categories
         for c in cats:
             assert "title" in c
             assert "id" in c
             assert "desc" in c
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

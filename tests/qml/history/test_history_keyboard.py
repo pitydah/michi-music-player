@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test history keyboard navigation via bridge action patterns."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests keyboard navigation, focus, and accessibility for History QML pages."""
->>>>>>> Stashed changes
 import pytest
 import sqlite3
 import time
@@ -76,22 +69,14 @@ def test_clear_all_requires_confirmation_pattern(bridge):
     bridge.clearHistory()
     assert bridge.historyCount == 0
 
-<<<<<<< Updated upstream
-=======
     def test_statistics_page_keyboard(self):
         p = QML_DIR / "pages" / "history" / "HistoryStatisticsPage.qml"
         if p.exists():
             content = p.read_text()
             assert "Keys.onEscapePressed" in content or "Keys.on" in content
-=======
 """Test history keyboard navigation via bridge action patterns."""
 import pytest
-import sqlite3
-import time
-from unittest.mock import MagicMock
 
-from core.history_query_service import HistoryQueryService
-from ui_qml_bridge.history_bridge import HistoryBridge
 
 
 @pytest.fixture
@@ -154,10 +139,6 @@ def test_clear_all_requires_confirmation_pattern(bridge):
     bridge.clearHistory()
     assert bridge.historyCount == 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 def test_remove_item_keyboard_accessible(bridge, hqs):
     bridge.removeHistoryItem("1")
@@ -217,11 +198,3 @@ def test_search_field_clears_on_escape(bridge):
 def test_pagination_keys_work(bridge):
     result = bridge.refresh()
     assert result["count"] >= 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

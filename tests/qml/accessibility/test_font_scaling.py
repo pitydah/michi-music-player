@@ -1,10 +1,4 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test font scaling.
 
 Verifies:
@@ -13,7 +7,6 @@ Verifies:
 - All page text uses MichiTheme.typography.* or font.pixelSize from theme tokens
 - No hardcoded pixel sizes outside theme references
 """
->>>>>>> Stashed changes
 
 from pathlib import Path
 
@@ -74,8 +67,6 @@ class TestFontScaling:
                 if "font.pixelSize" in line and "MichiTheme" not in line:
                     continue
 
-<<<<<<< Updated upstream
-=======
     def test_all_text_uses_theme_reference(self):
         for page_rel in PAGE_PATHS:
             path = QML_DIR / page_rel
@@ -86,7 +77,6 @@ class TestFontScaling:
             hardcoded = [ln for ln in font_refs if "MichiTheme" not in ln]
             assert len(hardcoded) == 0, \
                 f"{page_rel}: {len(hardcoded)} hardcoded font pixel sizes found"
-=======
 from __future__ import annotations
 
 from pathlib import Path
@@ -148,10 +138,6 @@ class TestFontScaling:
                 if "font.pixelSize" in line and "MichiTheme" not in line:
                     continue
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_search_field_uses_theme_font(self):
         content = (QML_DIR / "components/SearchField.qml").read_text()
         assert "MichiTheme" in content or "fontSize" in content
@@ -159,11 +145,3 @@ class TestFontScaling:
     def test_slider_uses_theme_font(self):
         content = (QML_DIR / "components/MichiSlider.qml").read_text()
         assert "MichiTheme" in content or "fontSize" in content
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

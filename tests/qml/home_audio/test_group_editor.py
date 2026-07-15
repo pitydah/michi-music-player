@@ -1,40 +1,20 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test group creation/editing through HomeAudioBridge."""
 from unittest.mock import MagicMock, PropertyMock
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test GroupEditorPage selections, create group logic, accessibility."""
 from pathlib import Path
->>>>>>> Stashed changes
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
-<<<<<<< Updated upstream
-=======
 from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
-=======
 """Test group creation/editing through HomeAudioBridge."""
-from unittest.mock import MagicMock, PropertyMock
 
-from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
-import pytest
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 pytestmark = pytest.mark.isolation
 
 
 @pytest.fixture
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 def mock_ha():
     ha = MagicMock()
     ha.is_connected = True
@@ -49,15 +29,10 @@ def mock_ha():
     ha.join = MagicMock()
     ha.unjoin = MagicMock()
     return ha
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 def engine(qapp):
     e = QQmlEngine(qapp)
     e.addImportPath(str(QML_DIR))
     return e
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -148,8 +123,6 @@ class TestGroupNoController:
         assert result["ok"] is False
 
 
-<<<<<<< Updated upstream
-=======
 def test_group_editor_accessible(engine):
     component = QQmlComponent(engine)
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/home_audio/GroupEditorPage.qml")))
@@ -157,7 +130,6 @@ def test_group_editor_accessible(engine):
     source = (QML_DIR / "pages/home_audio/GroupEditorPage.qml").read_text()
     assert "Accessible.name" in source
     assert "objectName" in source
-=======
 def mock_ha():
     ha = MagicMock()
     ha.is_connected = True
@@ -262,10 +234,6 @@ class TestGroupNoController:
         assert result["ok"] is False
 
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 class TestGroupsProperty:
     def test_groups_populated(self, bridge):
         bridge.refresh()
@@ -279,11 +247,3 @@ class TestGroupsProperty:
         bridge.refresh()
         if bridge.zones:
             assert len(bridge.groups) == len(bridge.zones)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

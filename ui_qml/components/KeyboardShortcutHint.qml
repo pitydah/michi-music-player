@@ -1,13 +1,6 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
->>>>>>> Stashed changes
 import "../theme"
 
 Rectangle {
@@ -25,8 +18,6 @@ Rectangle {
     Accessible.name: label + (shortcut ? " " + shortcut : "")
     Accessible.description: description || label + " atajo de teclado " + shortcut
 
-<<<<<<< Updated upstream
-=======
     Rectangle {
         anchors.fill: parent
         radius: MichiTheme.radiusXs
@@ -34,7 +25,6 @@ Rectangle {
         border.width: MichiTheme.borderWidth
         border.color: MichiTheme.colors.borderSubtle
     }
-=======
 import QtQuick.Controls as QQC2
 import "../theme"
 
@@ -53,10 +43,6 @@ Rectangle {
     Accessible.name: label + (shortcut ? " " + shortcut : "")
     Accessible.description: description || label + " atajo de teclado " + shortcut
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2
     implicitWidth: row.implicitWidth + MichiTheme.spacing.sm * 2
     radius: MichiTheme.radiusSm
@@ -66,14 +52,6 @@ Rectangle {
     border.color: MichiTheme.colors.borderInner
 
     visible: label !== "" || shortcut !== ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Row {
         id: row
@@ -81,47 +59,6 @@ Rectangle {
         spacing: MichiTheme.spacing.xs
 
         Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            anchors.verticalCenter: parent.verticalCenter
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-            text: root.label
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: root.shortcutSize
-            font.weight: MichiTheme.typography.weightMedium
-            visible: text !== ""
-        }
-
-        Rectangle {
-            anchors.verticalCenter: parent.verticalCenter
-            height: rowItem.implicitHeight + MichiTheme.spacing.xs
-            width: rowItem.implicitWidth + MichiTheme.spacing.sm * 2
-            radius: MichiTheme.radiusXs
-            color: MichiTheme.colors.surfaceSubtle
-            border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderInner
-            visible: root.shortcut !== ""
-
-            Text {
-                id: rowItem
-                anchors.centerIn: parent
-                text: root.shortcut
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: root.shortcutSize
-                font.weight: MichiTheme.typography.weightMedium
-            }
-        }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
             anchors.verticalCenter: parent.verticalCenter
             text: root.label
             color: MichiTheme.colors.textMuted
@@ -149,23 +86,38 @@ Rectangle {
                 font.weight: MichiTheme.typography.weightMedium
             }
         }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.label
+            color: MichiTheme.colors.textMuted
+            font.pixelSize: root.shortcutSize
+            font.weight: MichiTheme.typography.weightMedium
+            visible: text !== ""
+        }
+
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            height: rowItem.implicitHeight + MichiTheme.spacing.xs
+            width: rowItem.implicitWidth + MichiTheme.spacing.sm * 2
+            radius: MichiTheme.radiusXs
+            color: MichiTheme.colors.surfaceSubtle
+            border.width: MichiTheme.borderWidth
+            border.color: MichiTheme.colors.borderInner
+            visible: root.shortcut !== ""
+
+            Text {
+                id: rowItem
+                anchors.centerIn: parent
+                text: root.shortcut
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: root.shortcutSize
+                font.weight: MichiTheme.typography.weightMedium
+            }
+        }
 
         QQC2.ToolTip {
             visible: root.hovered && root.description !== ""
             text: root.description || root.label + " (" + root.shortcut + ")"
             delay: 600
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

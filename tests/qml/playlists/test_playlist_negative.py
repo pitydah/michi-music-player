@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test playlist negative paths: missing service, empty playlists, import errors."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Negative tests for Playlists: null bridge, invalid inputs, edge cases, error states."""
->>>>>>> Stashed changes
 import pytest
 import sqlite3
 
@@ -66,8 +59,6 @@ def test_import_confirm_no_service():
     result = bridge.confirmPlaylistImport("/path/to/file.m3u")
     assert not result["ok"]
 
-<<<<<<< Updated upstream
-=======
     def test_add_track_using_selection_context(self):
         sel_ctx = MagicMock()
         sel_ctx.hasSelection = True
@@ -78,13 +69,8 @@ def test_import_confirm_no_service():
         result = bridge.addTrackToPlaylist(1)
         assert result["ok"] is False
         assert result["error"] == "NO_SELECTION"
-=======
 """Test playlist negative paths: missing service, empty playlists, import errors."""
-import pytest
-import sqlite3
 
-from core.playlist_service import PlaylistService
-from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 
 
 def test_bridge_without_db():
@@ -139,10 +125,6 @@ def test_import_confirm_no_service():
     result = bridge.confirmPlaylistImport("/path/to/file.m3u")
     assert not result["ok"]
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 def test_play_playlist_no_db():
     bridge = PlaylistsBridge(db=None)
@@ -305,11 +287,3 @@ def fake_db():
 @pytest.fixture
 def svc_with_db(fake_db):
     return PlaylistService(db=fake_db)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

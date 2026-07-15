@@ -17,25 +17,13 @@ Item {
     property string serverVersion: ""
     property string lastError: ""
     property var caps: []
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property string protocol: "michi-link"
     property double lastContact: 0
     property bool compatible: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string objectName: "connections.detailPage"
-=======
     property string protocol: "michi-link"
     property double lastContact: 0
     property bool compatible: false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     signal backClicked()
     signal reconnectClicked()
@@ -44,17 +32,10 @@ Item {
     signal editClicked()
     signal retryClicked()
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "connectionDetailPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Accessible.role: Accessible.Panel
     Accessible.name: "Detalle de " + root.serverName
     Accessible.description: "Estado: " + root.state + ". Host: " + root.serverHost
->>>>>>> Stashed changes
 
     Accessible.role: Accessible.Pane
     Accessible.name: "Detalle de conexión"
@@ -62,7 +43,6 @@ Item {
     AsyncStateView {
         id: asyncView
         anchors.fill: parent
-<<<<<<< Updated upstream
         state: root.state === "scanning" || root.state === "loading" ? AsyncStateView.LOADING
              : root.state === "error" ? AsyncStateView.ERROR
              : root.state === "unavailable" ? AsyncStateView.UNAVAILABLE
@@ -86,13 +66,11 @@ Item {
                 id: column
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
-=======
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         objectName: root.objectName + ".flickable"
-=======
     objectName: "connectionDetailPage"
 
     Accessible.role: Accessible.Pane
@@ -110,7 +88,6 @@ Item {
         details: "Servidor: " + root.serverName
         retryAvailable: root.state === "error"
         onRetryRequested: root.retryClicked()
->>>>>>> origin/michi-qml-functional-wave
 
         readyContent: Flickable {
             anchors.fill: parent
@@ -121,7 +98,6 @@ Item {
             activeFocusOnTab: true
             objectName: "connectionDetailFlickable"
 
-<<<<<<< HEAD
             MichiButton {
                 id: backBtn
                 text: "< Volver"
@@ -148,16 +124,10 @@ Item {
                 title: "Estado"
                 subtitle: "Detalles de conexión del servidor"
                 objectName: root.objectName + ".statusCard"
-=======
             Column {
                 id: column
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
                 MichiButton {
                     text: "< Volver"
@@ -231,17 +201,11 @@ Item {
                         Text { text: "Último contacto: " + (root.lastContact > 0 ? new Date(root.lastContact * 1000).toLocaleString() : "Nunca"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.lastContact > 0 }
 
                         StatusBadge {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                             text: root.compatible ? "Compatible" : "Versión incompatible"
                             kind: root.compatible ? "success" : "warning"
                             visible: root.serverVersion !== ""
                         }
                     }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                             id: stateBadge
                             text: root.state === "connected" ? "Conectado" : root.state === "error" ? "Error" : root.state === "pairing_required" ? "Vinculación pendiente" : "Desconectado"
                             kind: root.state === "connected" ? "success" : root.state === "error" ? "error" : root.state === "pairing_required" ? "warning" : "disconnected"
@@ -253,16 +217,13 @@ Item {
                     Text { text: "Versión: " + root.serverVersion; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.serverVersion !== ""; objectName: root.objectName + ".version" }
                     Text { text: "Contrato: " + root.contract; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.contract !== ""; objectName: root.objectName + ".contract" }
                     Text { text: "Latencia: " + root.latencyMs + " ms"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; visible: root.latencyMs > 0; objectName: root.objectName + ".latency" }
-=======
                             text: root.compatible ? "Compatible" : "Versión incompatible"
                             kind: root.compatible ? "success" : "warning"
                             visible: root.serverVersion !== ""
                         }
                     }
->>>>>>> origin/michi-qml-functional-wave
                 }
 
-<<<<<<< HEAD
             ConnectionCapabilities {
                 id: capsView
                 width: parent.width
@@ -293,7 +254,6 @@ Item {
                     onClicked: root.reconnectClicked()
                     objectName: root.objectName + ".reconnectButton"
                     Accessible.name: "Reconectar al servidor"
->>>>>>> Stashed changes
                 }
 
                 ConnectionCapabilities {
@@ -314,8 +274,6 @@ Item {
                     onDismissClicked: errorPanel.visible = false
                 }
 
-<<<<<<< Updated upstream
-=======
                 MichiButton {
                     id: forgetBtn
                     text: "Olvidar servidor"
@@ -323,7 +281,6 @@ Item {
                     onClicked: root.forgetServerClicked()
                     objectName: root.objectName + ".forgetButton"
                     Accessible.name: "Olvidar servidor. Esta acción eliminará la configuración guardada."
-=======
                 ConnectionCapabilities {
                     id: capsView
                     width: parent.width
@@ -342,10 +299,6 @@ Item {
                     onDismissClicked: errorPanel.visible = false
                 }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 Row {
                     spacing: MichiTheme.spacing.sm
                     objectName: "detailActions"
@@ -394,14 +347,6 @@ Item {
                         Accessible.description: "Elimina la configuración del servidor"
                         KeyNavigation.backtab: editBtn
                     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

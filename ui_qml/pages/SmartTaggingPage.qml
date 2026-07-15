@@ -20,29 +20,16 @@ Item {
     property bool _confirmApply: false
     property string pageState: "LOADING"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property list<string> _validFormats: ["mp3", "flac", "wav", "ogg", "m4a", "opus", "wma"]
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "smartTagging.page"
     focus: true
->>>>>>> Stashed changes
 
     function isValidAudio(path) {
         if (root.stb && typeof root.stb.detectFormat === "function") {
             var ext = root.stb.detectFormat(path)
             return root._validFormats.indexOf(ext) >= 0
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         return false
-=======
-=======
->>>>>>> Stashed changes
-=======
     property list<string> _validFormats: ["mp3", "flac", "wav", "ogg", "m4a", "opus", "wma"]
 
     function isValidAudio(path) {
@@ -51,11 +38,6 @@ Item {
             return root._validFormats.indexOf(ext) >= 0
         }
         return false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 
     Flickable {
@@ -64,33 +46,19 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         activeFocusOnTab: true
         objectName: "smartTaggingFlickable"
         Accessible.name: "Contenido de etiquetado inteligente"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         objectName: "smartTagging.flickable"
-=======
         activeFocusOnTab: true
         objectName: "smartTaggingFlickable"
         Accessible.name: "Contenido de etiquetado inteligente"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
         Column {
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "Smart Tagging"
                 color: MichiTheme.colors.textPrimary
@@ -104,10 +72,6 @@ Item {
                 width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
                 objectName: "smartTaggingHero"
                 Accessible.name: "Hero de etiquetado inteligente"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Row {
                 id: headerRow
                 width: parent.width
@@ -144,7 +108,6 @@ Item {
 
             HeroMaterial {
                 width: parent.width; height: 100; radius: MichiTheme.radiusLg; showGlow: true
-=======
             Text {
                 text: "Smart Tagging"
                 color: MichiTheme.colors.textPrimary
@@ -158,11 +121,6 @@ Item {
                 width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
                 objectName: "smartTaggingHero"
                 Accessible.name: "Hero de etiquetado inteligente"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
@@ -195,57 +153,26 @@ Item {
             Row {
                 id: fileActionRow
                 spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 objectName: "smartTaggingActionRow"
                 Accessible.name: "Acciones de etiquetado"
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 objectName: "smartTagging.fileActions"
-=======
                 objectName: "smartTaggingActionRow"
                 Accessible.name: "Acciones de etiquetado"
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 MichiButton {
                     id: selectFileBtn
                     text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : "Seleccionar archivo"
                     variant: "primary"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     objectName: "smartTagging.selectFile"
                     Accessible.name: text
                     Accessible.description: "Seleccionar archivo de audio para analizar"
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     objectName: "smartTaggingSelectButton"
                     Accessible.name: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada de biblioteca" : "Seleccionar archivo de audio"
                     activeFocusOnTab: true
                     KeyNavigation.tab: scanBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     onClicked: {
                         if (root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" && root.sel.selectedFilepath) {
                             root.selectedFile = root.sel.selectedFilepath
@@ -257,29 +184,18 @@ Item {
 
                 MichiButton {
                     id: scanBtn
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     text: root.stb && root.stb.status === "scanning" ? "Cancelar" : "Escanear"
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
                     objectName: "smartTagging.scanButton"
                     Accessible.name: root.stb && root.stb.status === "scanning" ? "Cancelar escaneo" : "Escanear archivo"
                     Accessible.description: root.selectedFile !== "" ? "Analizar: " + root.selectedFile : "Selecciona un archivo primero"
-=======
                     text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     objectName: "smartTaggingScanButton"
                     Accessible.name: root.selectedFile ? "Escanear archivo seleccionado" : "Selecciona un archivo primero"
                     Accessible.description: root.selectedFile ? "" : "Debes seleccionar un archivo de audio antes de escanear"
@@ -288,14 +204,6 @@ Item {
                     KeyNavigation.backtab: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? smartTaggingSelectButton : smartTaggingSelectButton
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     onClicked: {
                         if (root.stb && root.stb.status === "scanning" && typeof root.stb.cancelScan !== "undefined") {
                             root.stb.cancelScan()
@@ -314,38 +222,19 @@ Item {
                     text: "Limpiar"
                     variant: "ghost"
                     visible: root.selectedFile !== ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     objectName: "smartTaggingClearButton"
                     Accessible.name: "Limpiar selección"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     objectName: "smartTagging.clearButton"
                     Accessible.name: "Limpiar selección"
                     onClicked: { root.selectedFile = ""; _errorMsg = "" }
-=======
                     objectName: "smartTaggingClearButton"
                     Accessible.name: "Limpiar selección"
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     activeFocusOnTab: true
                     KeyNavigation.tab: root._errorMsg !== "" ? errorMsg : (root.stb && root.stb.status !== "idle" ? statusBadge : suggestionSection)
                     KeyNavigation.backtab: scanBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: { root.selectedFile = ""; root._errorMsg = "" }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
 
@@ -354,18 +243,12 @@ Item {
                 text: root._errorMsg
                 color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 objectName: "smartTaggingError"
                 Accessible.name: "Error: " + root._errorMsg
                 Accessible.role: Accessible.Alert
             }
 
             StatusBadge {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 objectName: "smartTagging.errorMsg"
                 Accessible.name: text
             }
@@ -376,42 +259,23 @@ Item {
                       root.stb && root.stb.status === "review" ? "Revisa las sugerencias" :
                       root.stb && root.stb.status === "completed" ? "Cambios aplicados" :
                       root.stb && root.stb.status === "error" ? "Error en análisis" :
-=======
                 objectName: "smartTaggingError"
                 Accessible.name: "Error: " + root._errorMsg
                 Accessible.role: Accessible.Alert
             }
 
             StatusBadge {
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 id: statusBadge
                 text: root.stb && root.stb.status === "scanning" ? "Escaneando..." :
                       root.stb && root.stb.status === "done" ? "Análisis completado" :
                       root.stb && root.stb.status === "error" ? "Error en escaneo" :
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                       root.stb && root.stb.status === "unavailable" ? "Servicio no disponible" : ""
                 kind: root.stb && root.stb.status === "completed" ? "success" :
                       root.stb && root.stb.status === "review" ? "warning" :
                       root.stb && root.stb.status === "error" || root.stb.status === "unavailable" ? "error" : "info"
                 visible: root.stb && root.stb.status !== "idle"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 objectName: "smartTaggingStatusBadge"
                 Accessible.name: "Estado: " + text
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 objectName: "smartTagging.scanStatus"
             }
 
@@ -420,18 +284,14 @@ Item {
                 value: root.stb ? root.stb.progress : 0
                 visible: root.stb && root.stb.status === "scanning"
                 accessibleName: "Progreso de análisis"
->>>>>>> Stashed changes
             }
 
             SectionHeader {
                 id: suggestionSection
                 text: "Sugerencias"; width: parent.width
-<<<<<<< Updated upstream
                 objectName: "smartTaggingSuggestionsHeader"
                 Accessible.name: "Sugerencias de etiquetado"
-=======
                 objectName: "smartTagging.suggestionsHeader"
-=======
                 objectName: "smartTaggingStatusBadge"
                 Accessible.name: "Estado: " + text
             }
@@ -441,38 +301,21 @@ Item {
                 text: "Sugerencias"; width: parent.width
                 objectName: "smartTaggingSuggestionsHeader"
                 Accessible.name: "Sugerencias de etiquetado"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
 
             Repeater {
                 model: root.stb ? root.stb.suggestions : []
 
                 GlassMaterial {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: "base"
                     objectName: "smartTaggingSuggestion_" + index
                     Accessible.name: modelData.field + ": " + (modelData.current || "vacío") + " → " + (modelData.suggested || "—")
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     width: parent.width; height: 56; radius: MichiTheme.radiusSm; variant: modelData.selected ? "accent" : "base"
                     objectName: "smartTagging.suggestion." + index
 
-=======
                     width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: "base"
                     objectName: "smartTaggingSuggestion_" + index
                     Accessible.name: modelData.field + ": " + (modelData.current || "vacío") + " → " + (modelData.suggested || "—")
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
@@ -515,26 +358,17 @@ Item {
                 text: root.stb && root.stb.suggestions.length === 0 && root.stb && root.stb.status !== "idle" && root.stb.status !== "scanning" ? "No se encontraron sugerencias." :
                       root.stb && root.stb.status === "idle" ? "Selecciona un archivo y presiona Escanear." : ""
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 visible: root.stb && root.stb.suggestions.length === 0
                 objectName: "smartTaggingEmptyState"
                 Accessible.name: "No hay sugerencias"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 visible: text !== ""
->>>>>>> Stashed changes
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
                 objectName: "smartTaggingApplyRow"
                 Accessible.name: "Confirmación de aplicación"
 
-=======
                 visible: root.stb && root.stb.suggestions.length > 0
                 MichiButton {
                     text: "Alta confianza"
@@ -554,11 +388,9 @@ Item {
                     objectName: "smartTagging.selectNone"
                     onClicked: { if (root.stb) root.stb.selectNone() }
                 }
-=======
                 visible: root.stb && root.stb.suggestions.length === 0
                 objectName: "smartTaggingEmptyState"
                 Accessible.name: "No hay sugerencias"
->>>>>>> origin/michi-qml-functional-wave
             }
 
             Row {
@@ -566,29 +398,14 @@ Item {
                 objectName: "smartTaggingApplyRow"
                 Accessible.name: "Confirmación de aplicación"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 MichiButton {
                     text: root._confirmApply ? "Confirmar aplicar" : "Aplicar seleccionados"
                     variant: root._confirmApply ? "danger" : "primary"
                     visible: root.stb && root.stb.suggestions.length > 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     enabled: root.stb ? root.stb.status === "review" || root.stb.status === "batch_review" : false
                     objectName: "smartTagging.applyButton"
                     Accessible.name: root._confirmApply ? "Confirmar aplicar sugerencias" : "Aplicar sugerencias seleccionadas"
                     Accessible.description: root._confirmApply ? "Confirmación final requerida" : ""
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     objectName: "smartTaggingApplyButton"
                     Accessible.name: root._confirmApply ? "Confirmar aplicar todas las sugerencias" : "Aplicar sugerencias"
                     Accessible.description: root._confirmApply ? "Esta acción modificará los metadatos del archivo" : ""
@@ -597,14 +414,6 @@ Item {
                     KeyNavigation.backtab: clearBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     onClicked: {
                         if (!root._confirmApply) {
                             root._confirmApply = true
@@ -622,32 +431,14 @@ Item {
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root._confirmApply
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
                     objectName: "smartTagging.cancelApply"
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
                     objectName: "smartTagging.cancelApply"
-=======
->>>>>>> Stashed changes
                     objectName: "smartTaggingCancelApplyButton"
                     Accessible.name: "Cancelar aplicación de sugerencias"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: smartTaggingApplyButton
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     onClicked: root._confirmApply = false
                 }
             }

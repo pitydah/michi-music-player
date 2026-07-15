@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test history export with real progress: JSON and CSV, cancel, progress tracking."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for HistoryExportDialog: export flows, cancellation, format selection, edge cases."""
->>>>>>> Stashed changes
 import pytest
 import sqlite3
 import time
@@ -141,8 +134,6 @@ class TestHistoryExport:
         data = json.loads(out.read_text())
         assert len(data) == 0
 
-<<<<<<< Updated upstream
-=======
     def test_export_formats_case_sensitive(self):
         db = MagicMock()
         db.conn.execute.return_value.fetchall.return_value = []
@@ -151,16 +142,9 @@ class TestHistoryExport:
         assert result_json["ok"] is True
         result_csv = bridge.exportHistory("/tmp/t.csv", "CSV")
         assert result_csv["ok"] is True
-=======
 """Test history export with real progress: JSON and CSV, cancel, progress tracking."""
 import pytest
-import sqlite3
-import time
-import json
-import os
 
-from core.history_query_service import HistoryQueryService
-from ui_qml_bridge.history_bridge import HistoryBridge
 
 
 @pytest.fixture
@@ -287,10 +271,6 @@ class TestHistoryExport:
         data = json.loads(out.read_text())
         assert len(data) == 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_export_csv_headers(self, bridge, tmp_path):
         out = tmp_path / "headers.csv"
         bridge.exportHistory(str(out), "csv")
@@ -298,11 +278,3 @@ class TestHistoryExport:
         first_line = content.split("\n")[0]
         assert "event_id" in first_line
         assert "track_id" in first_line
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # GlobalSearchBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # Global Search Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `globalSearchBridge` → `GlobalSearchBridge` instance
@@ -65,11 +58,8 @@ None — read-only search.
 ## Cancellation Contract
 - `cancel()`: sets `_active_request_id = 0` (invalidates all pending callbacks), calls `_svc.cancel(owner="global_search")` if available. Clears results and sets `isSearching=False`. Increments `_search_gen`.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - None. Search is read-only.
-=======
 # GlobalSearchBridge Integration Contract
 
 ## Context Property
@@ -129,10 +119,6 @@ None — read-only search.
 ## Cancellation Contract
 - `cancel()`: sets `_active_request_id = 0` (invalidates all pending callbacks), calls `_svc.cancel(owner="global_search")` if available. Clears results and sets `isSearching=False`. Increments `_search_gen`.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED — search is synchronous (blocking) with no WorkerManager integration.
 
@@ -150,11 +136,3 @@ NOT IMPLEMENTED.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

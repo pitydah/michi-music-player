@@ -1,27 +1,13 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test Michi AI keyboard navigation."""
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Test Michi AI keyboard navigation."""
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
 import pytest
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
@@ -62,12 +48,7 @@ def bridge(services):
         diagnostics_service=services["diagnostics_service"],
         worker_manager=services["worker_manager"],
     )
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
->>>>>>> Stashed changes
 
 
 class TestMichiAIKeyboard:
@@ -132,8 +113,6 @@ class TestMichiAIKeyboard:
         bridge.cancel()
         assert bridge.status == "cancelled"
 
-<<<<<<< Updated upstream
-=======
     def test_escape_idle_state(self, bridge):
         bridge.cancel()
         assert bridge.status == "cancelled"
@@ -168,8 +147,6 @@ class TestMichiAIKeyboard:
         bridge._pending_action = {"name": "crear playlist"}
         bridge.sendMessage("cancel")
         assert bridge._pending_action is None
-=======
-from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -273,21 +250,9 @@ class TestMichiAIKeyboard:
         bridge.cancel()
         assert bridge.status == "cancelled"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_tab_navigates_suggestions(self, bridge, services):
         services["context_service"].get_suggestions.return_value = [
             {"title": "A", "description": "B", "action": "c", "route": ""},
         ]
         bridge.refresh()
         assert len(bridge.suggestions) == 1
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

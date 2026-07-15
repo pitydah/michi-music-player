@@ -1,35 +1,15 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test error states: missing service, empty device list, video rejection, etc."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test negative/edge cases: null bridge, empty states, errors."""
 from __future__ import annotations
 
-=======
 """Test error states: missing service, empty device list, video rejection, etc."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from core.device_sync_service import (
     DeviceSyncService,
 )
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-from core.device_sync_service import DeviceSyncService, DeviceIdentity, DeviceProtocol
->>>>>>> Stashed changes
 from ui_qml_bridge.devices_bridge import DevicesBridge
 
 
@@ -223,11 +203,9 @@ def mock_sync_mgr():
     return mgr
 
 
-<<<<<<< Updated upstream
 @pytest.fixture
 def bridge(mock_sync_mgr):
     return DevicesBridge(sync_manager=mock_sync_mgr)
-=======
     def test_storage_info_initial(self):
         b = DevicesBridge()
         assert b.storageInfo == []
@@ -243,11 +221,6 @@ def bridge(mock_sync_mgr):
     def test_bridge_has_error_message_property(self):
         b = DevicesBridge()
         assert hasattr(b, 'errorMessage')
-=======
-from core.device_sync_service import (
-    DeviceSyncService,
-)
-from ui_qml_bridge.devices_bridge import DevicesBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -443,8 +416,3 @@ def mock_sync_mgr():
 @pytest.fixture
 def bridge(mock_sync_mgr):
     return DevicesBridge(sync_manager=mock_sync_mgr)
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes

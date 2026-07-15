@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test playlist keyboard navigation patterns via bridge actions."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests keyboard navigation, focus, and accessibility for Playlists QML pages."""
->>>>>>> Stashed changes
 import pytest
 import sqlite3
 from unittest.mock import MagicMock
@@ -110,20 +103,14 @@ class FakeDb:
         self.conn.commit()
 
 
-<<<<<<< Updated upstream
-=======
     def test_smart_editor_page_keys(self):
         p = QML_DIR / "pages" / "playlists" / "SmartPlaylistEditorPage.qml"
         if p.exists():
             content = p.read_text()
             assert "Keys.onEscapePressed" in content
-=======
 """Test playlist keyboard navigation patterns via bridge actions."""
 import pytest
-import sqlite3
-from unittest.mock import MagicMock
 
-from ui_qml_bridge.playlists_bridge import PlaylistsBridge
 
 
 @pytest.fixture
@@ -222,10 +209,6 @@ class FakeDb:
         self.conn.commit()
 
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 @pytest.fixture
 def fake_db(db_conn):
     return FakeDb(db_conn)
@@ -319,11 +302,3 @@ def test_keyboard_select_and_batch_delete(bridge):
         bridge.deletePlaylist(bridge.playlists[0]["id"])
         bridge.refresh()
         assert len(bridge.playlists) == 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

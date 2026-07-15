@@ -1,13 +1,6 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
->>>>>>> Stashed changes
 import "../theme"
 
 Rectangle {
@@ -101,13 +94,10 @@ Rectangle {
             onClicked: root.actionTriggered()
         }
 
-<<<<<<< Updated upstream
-=======
                 MouseArea {
                     anchors.fill: parent
                     onClicked: root.dismissed()
                 }
-=======
 import QtQuick.Controls as QQC2
 import "../theme"
 
@@ -202,10 +192,6 @@ Rectangle {
             onClicked: root.actionTriggered()
         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         QQC2.AbstractButton {
             id: dismissBtn
             anchors.verticalCenter: parent.verticalCenter
@@ -225,14 +211,6 @@ Rectangle {
             onClicked: {
                 root.message = ""
                 root.dismissed()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

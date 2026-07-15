@@ -9,27 +9,17 @@ Item {
 
     property string mountPoint: ""
     property var storageInfo: ({})
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var compatibilityInfo: ({})
->>>>>>> Stashed changes
 
     signal ejectClicked()
 
     implicitHeight: childrenRect.height
 
-<<<<<<< Updated upstream
     objectName: "DeviceStoragePanel"
     Accessible.role: Accessible.Pane
     Accessible.name: "Almacenamiento del dispositivo"
-=======
     objectName: "devices.storagePanel"
-=======
     property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
 
     signal ejectClicked()
@@ -39,11 +29,6 @@ Item {
     objectName: "DeviceStoragePanel"
     Accessible.role: Accessible.Pane
     Accessible.name: "Almacenamiento del dispositivo"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     GlassMaterial {
         width: parent.width
@@ -62,26 +47,17 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 Accessible.name: "Almacenamiento"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 objectName: "devices.storagePanel.title"
                 Accessible.role: Accessible.Heading
                 Accessible.name: text
->>>>>>> Stashed changes
             }
 
             Text {
                 text: root.mountPoint ? "Punto de montaje: " + root.mountPoint : "Sin dispositivo montado"
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
-<<<<<<< Updated upstream
                 Accessible.name: text
-=======
                 visible: root.mountPoint !== ""
                 objectName: "devices.storagePanel.mountPoint"
             }
@@ -118,7 +94,6 @@ Item {
                     var total = formatBytes(root.storageInfo.total_bytes || 0)
                     return used + " usado de " + total
                 }
-=======
                 Accessible.name: "Almacenamiento"
             }
 
@@ -127,26 +102,14 @@ Item {
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 Accessible.name: text
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             }
 
             Grid {
                 width: parent.width
                 columns: 2
                 columnSpacing: MichiTheme.spacing.md
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 rowSpacing: MichiTheme.spacing.sm
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 rowSpacing: MichiTheme.spacing.xs
->>>>>>> Stashed changes
 
                 Text { text: "Total:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                 Text {
@@ -162,11 +125,8 @@ Item {
 
                 Text { text: "Usado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                 Text {
-<<<<<<< Updated upstream
                     text: root.storageInfo.usedBytes ? formatBytes(root.storageInfo.usedBytes) : "-"
-=======
                     text: root.storageInfo.used_bytes > 0 ? formatBytes(root.storageInfo.used_bytes) : "-"
-=======
                 rowSpacing: MichiTheme.spacing.sm
 
                 Text { text: "Total:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
@@ -184,22 +144,11 @@ Item {
                 Text { text: "Usado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                 Text {
                     text: root.storageInfo.usedBytes ? formatBytes(root.storageInfo.usedBytes) : "-"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Rectangle {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Row {
                 spacing: MichiTheme.spacing.sm
                 visible: root.mountPoint !== ""
@@ -225,21 +174,17 @@ Item {
             }
 
             Flow {
->>>>>>> Stashed changes
                 width: parent.width
                 height: 8
                 radius: MichiTheme.radiusPill
                 color: MichiTheme.colors.controlTrack
                 visible: root.storageInfo.totalBytes && root.storageInfo.totalBytes > 0
 
-<<<<<<< Updated upstream
-=======
                 Repeater {
                     model: root.compatibilityInfo.supported_formats || []
                     delegate: StatusBadge {
                         text: modelData
                         kind: "success"
-=======
             Rectangle {
                 width: parent.width
                 height: 8
@@ -247,10 +192,6 @@ Item {
                 color: MichiTheme.colors.controlTrack
                 visible: root.storageInfo.totalBytes && root.storageInfo.totalBytes > 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 Rectangle {
                     width: Math.min(parent.width, (root.storageInfo.usedBytes || 0) / Math.max(1, root.storageInfo.totalBytes || 1) * parent.width)
                     height: parent.height
@@ -260,21 +201,11 @@ Item {
                         if (ratio > 0.9) return MichiTheme.colors.error
                         if (ratio > 0.75) return MichiTheme.colors.warning
                         return MichiTheme.colors.accentBlue
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
 
             Text {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 text: "Formatos compatibles"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
@@ -303,15 +234,10 @@ Item {
                 text: "Formatos de video no soportados (solo audio)"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.captionSize
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 text: "Información de compatibilidad no disponible"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.captionSize
                 visible: !root.compatibilityInfo.supported_formats || root.compatibilityInfo.supported_formats.length === 0
-=======
                 text: "Formatos compatibles"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
@@ -340,10 +266,6 @@ Item {
                 text: "Formatos de video no soportados (solo audio)"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.captionSize
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 visible: true
 
                 Accessible.name: "Solo se admiten formatos de audio"
@@ -363,36 +285,16 @@ Item {
                 activeFocusOnTab: true
                 Keys.onReturnPressed: clicked()
                 Keys.onSpacePressed: clicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }
 
     function formatBytes(bytes) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         if (!bytes || bytes < 1) return "0 B"
         if (bytes < 1024) return bytes + " B"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         if (!bytes || bytes < 1024) return (bytes || 0) + " B"
-=======
         if (!bytes || bytes < 1) return "0 B"
         if (bytes < 1024) return bytes + " B"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
         if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB"
         return (bytes / 1073741824).toFixed(2) + " GB"

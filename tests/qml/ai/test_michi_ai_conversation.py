@@ -1,36 +1,20 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test Michi AI conversation display and history."""
 
 from __future__ import annotations
 
 import json
-=======
-<<<<<<< HEAD
 from __future__ import annotations
 
-=======
-<<<<<<< HEAD
 from __future__ import annotations
 
->>>>>>> Stashed changes
-=======
 """Test Michi AI conversation display and history."""
 
 from __future__ import annotations
 
-import json
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
@@ -71,12 +55,7 @@ def bridge(services):
         diagnostics_service=services["diagnostics_service"],
         worker_manager=services["worker_manager"],
     )
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("michi_ai")]
->>>>>>> Stashed changes
 
 
 class TestMichiAIConversation:
@@ -139,14 +118,10 @@ class TestMichiAIConversation:
         last = bridge._chat_history[-1]
         assert "cancelada" in last["text"].lower()
 
-<<<<<<< Updated upstream
-=======
     def test_chat_history_no_duplicate_replay(self, bridge):
         bridge.sendMessage("reproduce canción 1")
         count = sum(1 for m in bridge._chat_history if m.get("role") == "user" and "reproduce canción" in m.get("text", ""))
         assert count == 1
-=======
-from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -248,10 +223,6 @@ class TestMichiAIConversation:
         last = bridge._chat_history[-1]
         assert "cancelada" in last["text"].lower()
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_no_pending_confirmation_gives_feedback(self, bridge):
         bridge.sendMessage("sí")
         last = bridge._chat_history[-1]
@@ -273,11 +244,3 @@ class TestMichiAIConversation:
     def test_chat_history_clears_on_cancel(self, bridge):
         bridge.sendMessage("no")
         assert bridge._pending_action is None
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

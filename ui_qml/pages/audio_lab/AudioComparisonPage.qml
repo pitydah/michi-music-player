@@ -15,8 +15,6 @@ Item {
     property var comparisonResult: null
     property string comparisonError: ""
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _state: 0
     property var _fileA: null
     property var _fileB: null
@@ -24,12 +22,7 @@ Item {
     property string _errorMessage: ""
 
     objectName: "AudioComparisonPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "audioComparison.page"
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -79,10 +72,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         objectName: "audioComparison.focusScope"
-=======
     property int _state: 0
     property var _fileA: null
     property var _fileB: null
@@ -139,47 +129,28 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "Comparación de audio"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                 objectName: "comparisonPageTitle"
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
->>>>>>> Stashed changes
 
             Text {
                 text: "Compara variantes por formato, codec, bitrate, sample rate, bit depth, canales, tamaño, loudness, pico"
@@ -257,9 +228,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._swapFiles()
                 }
-<<<<<<< Updated upstream
-=======
-=======
             Text {
                 text: "Comparación de audio"
                 color: MichiTheme.colors.textPrimary
@@ -332,9 +300,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startComparison()
                 }
-<<<<<<< Updated upstream
-=======
-=======
             Text {
                 text: "Comparación de audio"
                 color: MichiTheme.colors.textPrimary
@@ -407,7 +372,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startComparison()
                 }
->>>>>>> Stashed changes
                 MichiButton {
                     text: "Intercambiar A/B"
                     variant: "secondary"
@@ -419,10 +383,6 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._swapFiles()
                 }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
@@ -441,14 +401,6 @@ Item {
                 kind: "disconnected"
                 objectName: "comparisonBridgeStatus"
                 Accessible.name: "Bridge no disponible"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

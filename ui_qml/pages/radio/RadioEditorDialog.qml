@@ -1,18 +1,6 @@
 import QtQuick
 import QtQuick.Controls
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Layouts
-=======
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import "../../theme"
 import "../../components"
 import "../../materials"
@@ -20,15 +8,8 @@ import "../../materials"
 Dialog {
     id: root
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
->>>>>>> Stashed changes
     property var stationData: null
     property string _originalName: ""
     property string _originalUrl: ""
@@ -43,12 +24,9 @@ Dialog {
 
     title: root._isEdit ? "Editar emisora" : "Añadir emisora"
     modal: true
-<<<<<<< Updated upstream
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.8, 480)
-=======
     width: Math.min(parent.width * 0.85, 480)
-=======
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var stationData: null
     property string _originalName: ""
@@ -66,24 +44,12 @@ Dialog {
     modal: true
     closePolicy: Popup.CloseOnEscape
     width: Math.min(parent.width * 0.8, 480)
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
     padding: MichiTheme.spacing.lg
 
     objectName: "radioEditorDialog"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 
->>>>>>> Stashed changes
     Accessible.role: Accessible.Dialog
     Accessible.name: root.title
     Accessible.description: "Completa los campos y presiona Guardar"
@@ -241,11 +207,8 @@ Dialog {
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-=======
             anchors.horizontalCenter: parent.horizontalCenter
             KeyNavigation.tab: nameField
-=======
     Accessible.role: Accessible.Dialog
     Accessible.name: root.title
     Accessible.description: "Completa los campos y presiona Guardar"
@@ -403,10 +366,6 @@ Dialog {
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             visible: root._connectionTestResult !== ""
 
             Text {
@@ -446,28 +405,13 @@ Dialog {
             }
 
             Item { width: parent.width - 220; height: 1 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 objectName: "editorCancelBtn"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 onClicked: root.close()
                 objectName: "radioEditorDialog.cancelButton"
->>>>>>> Stashed changes
                 Accessible.name: "Cancelar"
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
@@ -506,14 +450,8 @@ Dialog {
             }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
     Keys.onEscapePressed: root.close()
-=======
-=======
->>>>>>> Stashed changes
-=======
                 objectName: "editorCancelBtn"
                 Accessible.name: "Cancelar"
                 activeFocusOnTab: true
@@ -555,9 +493,4 @@ Dialog {
     }
 
     Keys.onEscapePressed: root.close()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 }

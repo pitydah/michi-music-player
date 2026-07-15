@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test Connection detail page behavior with mock connection."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for ConnectionDetailPage QML component."""
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
@@ -112,18 +105,13 @@ class TestDetailActions:
         result = bridge.refresh()
         assert result["ok"] is True
 
-<<<<<<< Updated upstream
-=======
     def test_forget_server(self):
         ctrl = MagicMock()
         bridge = ConnectionsBridge(michi_link_ctrl=ctrl)
         result = bridge.forgetServer()
         assert result["ok"] is True
-=======
 """Test Connection detail page behavior with mock connection."""
-from unittest.mock import MagicMock
 
-from ui_qml_bridge.connections_bridge import ConnectionsBridge
 import pytest
 pytestmark = pytest.mark.isolation
 
@@ -226,10 +214,6 @@ class TestDetailActions:
         result = bridge.refresh()
         assert result["ok"] is True
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_scan_populates_discovered(self, bridge):
         bridge.scanForServers()
         assert len(bridge.discoveredServers) >= 1
@@ -249,11 +233,3 @@ class TestDetailNoController:
         b = ConnectionsBridge(michi_link_ctrl=None)
         result = b.reconnect()
         assert result["ok"] is False
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

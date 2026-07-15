@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 # HistoryBridge Integration Contract
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 # History Bridge Contract
->>>>>>> Stashed changes
 
 ## Context Property
 - `historyBridge` → `HistoryBridge` instance
@@ -67,14 +60,11 @@ All slots return `dict` with `ok: bool`.
 ## Cancellation Contract
 - `cancelExport(export_id, filepath)`: removes the export file from disk if `filepath` provided and exists. Returns `cancelled: true`.
 
-<<<<<<< Updated upstream
-=======
 ## Destructive Action Handling
 - `removeHistoryItem`, `removeHistoryEvent` — irreversible single deletions
 - `clearHistory()` — irreversible bulk deletion
 - `applyRetention()` — irreversible automatic policy-based deletion
 - `setHistoryEnabled(false)` — suspends recording (not destructive)
-=======
 # HistoryBridge Integration Contract
 
 ## Context Property
@@ -136,10 +126,6 @@ All slots return `dict` with `ok: bool`.
 ## Cancellation Contract
 - `cancelExport(export_id, filepath)`: removes the export file from disk if `filepath` provided and exists. Returns `cancelled: true`.
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 ## Integration with JobService
 NOT IMPLEMENTED.
 
@@ -157,11 +143,3 @@ NOT IMPLEMENTED.
 
 ## Integration with AccessibilityBridge
 NOT IMPLEMENTED.
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

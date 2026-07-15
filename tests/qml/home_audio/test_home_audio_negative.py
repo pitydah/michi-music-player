@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test negative cases: degraded state, offline zones, partial failure."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Negative tests for Home Audio: null bridge, errors, edge cases."""
->>>>>>> Stashed changes
 from unittest.mock import MagicMock, PropertyMock
 
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
@@ -126,16 +119,11 @@ class TestPartialFailure:
         bridge.refresh()
         assert bridge.homeAssistantState == "error"
 
-<<<<<<< Updated upstream
-=======
     def test_volume_unsupported_when_no_ctrl(self):
         b = HomeAudioBridge()
         assert b.volumeSupported is False
-=======
 """Test negative cases: degraded state, offline zones, partial failure."""
-from unittest.mock import MagicMock, PropertyMock
 
-from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
 pytestmark = pytest.mark.isolation
 
@@ -252,10 +240,6 @@ class TestPartialFailure:
         bridge.refresh()
         assert bridge.homeAssistantState == "error"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_partial_error_message_set(self, bridge):
         bridge.refresh()
         assert bridge.lastError != ""
@@ -281,11 +265,3 @@ class TestPartialFailure:
     def test_partial_disconnect_resets(self, bridge):
         bridge.disconnectHa()
         assert bridge.devices == []
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

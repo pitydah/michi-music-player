@@ -1,20 +1,11 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test NotificationToast — show, dismiss, auto-dismiss, timer states."""
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for NotificationToast QML component states and behavior."""
->>>>>>> Stashed changes
 
 import pytest
 
 from ui_qml_bridge.notification_bridge import NotificationBridge
 
-<<<<<<< Updated upstream
-=======
 QML_DIR = None
 
 
@@ -28,36 +19,23 @@ def qml_dir():
 def engine(qapp):
     return QQmlEngine(qapp)
 
-=======
 """Test NotificationToast — show, dismiss, auto-dismiss, timer states."""
 from __future__ import annotations
 
 import pytest
 
-from ui_qml_bridge.notification_bridge import NotificationBridge
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 @pytest.fixture
 def bridge():
     return NotificationBridge()
 
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 class TestToastShowDismiss:
     def test_show_message_sets_current(self, bridge):
         result = bridge.showMessage("Hola mundo")
         assert result["ok"] is True
         assert bridge.currentNotification is not None
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 @pytest.fixture
 def toast_component(engine, qml_dir):
     engine.addImportPath(str(qml_dir))
@@ -107,16 +85,11 @@ class TestNotificationToastBridgeIntegration:
         bridge.showMessage("Test message")
         assert bridge.currentNotification is not None
         assert bridge.currentNotification["text"] == "Test message"
-=======
 class TestToastShowDismiss:
     def test_show_message_sets_current(self, bridge):
         result = bridge.showMessage("Hola mundo")
         assert result["ok"] is True
         assert bridge.currentNotification is not None
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         assert bridge.currentNotification["text"] == "Hola mundo"
 
     def test_dismiss_clears_current(self, bridge):
@@ -192,11 +165,3 @@ class TestToastKinds:
     def test_invalid_kind_falls_back_to_info(self, bridge):
         bridge.showMessage("Raro", "unknown")
         assert bridge.currentNotification["kind"] == "info"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

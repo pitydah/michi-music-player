@@ -1,27 +1,9 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for home page keyboard navigation — 8+ tests."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Tests for home page keyboard navigation — 8+ tests."""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import pytest
 from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
@@ -63,7 +45,6 @@ def _create_context(engine, comp):
     obj = comp.create()
     return obj
 
->>>>>>> Stashed changes
 
 class TestHomeKeyboard:
     def test_tab_navigation_continue_to_status(self):
@@ -103,8 +84,6 @@ class TestHomeKeyboard:
         navBar.clearSearch()
         navBar.clearSearch.assert_called_once()
 
-<<<<<<< Updated upstream
-=======
     def test_job_banner_keyboard_nav(self, engine):
         comp = _load_page(engine)
         assert comp.isReady()
@@ -115,7 +94,6 @@ class TestHomeKeyboard:
                 assert banner.property("KeyNavigation") is not None or True
         finally:
             obj.deleteLater()
-=======
 
 class TestHomeKeyboard:
     def test_tab_navigation_continue_to_status(self):
@@ -155,10 +133,6 @@ class TestHomeKeyboard:
         navBar.clearSearch()
         navBar.clearSearch.assert_called_once()
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_focus_on_library_card(self):
         card = MagicMock()
         card.activeFocusOnTab = True
@@ -197,11 +171,3 @@ class TestHomeKeyboard:
             obj = MagicMock()
             obj.objectName = name
             assert obj.objectName == name
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -25,18 +25,11 @@ Dialog {
     modal: true
     x: (parent.width - width) / 2
     y: (parent.height - height) / 3
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     width: 400
     objectName: "playlistExportDialog"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "playlist.exportDialog"
     closePolicy: Dialog.CloseOnEscape
 
->>>>>>> Stashed changes
     Accessible.role: Accessible.Dialog
     Accessible.name: "Exportar playlist"
     closePolicy: Popup.CloseOnEscape
@@ -67,15 +60,12 @@ Dialog {
             width: parent.width
             visible: !root._exporting
 
-<<<<<<< Updated upstream
-=======
             Text {
                 text: "Exportar \"" + root.playlistName + "\""
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
                 width: parent.width
-=======
     width: 400
     objectName: "playlistExportDialog"
     Accessible.role: Accessible.Dialog
@@ -108,10 +98,6 @@ Dialog {
             width: parent.width
             visible: !root._exporting
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             TextField {
                 id: pathInput
                 width: parent.width - 80
@@ -120,14 +106,6 @@ Dialog {
                 readOnly: true
                 objectName: "exportPathInput"
                 Accessible.name: "Ruta de destino"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             Text {
@@ -187,12 +165,6 @@ Dialog {
             }
 
             MichiButton {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 id: cancelExportBtn
                 text: "Cancelar exportación"
                 variant: "danger"
@@ -205,11 +177,6 @@ Dialog {
                 objectName: "playlist.exportDialog.cancelBtn"
                 Accessible.name: "Cancelar exportación"
                 KeyNavigation.backtab: progressBar
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 text: "Examinar"
                 variant: "secondary"
                 objectName: "exportBrowseButton"
@@ -218,26 +185,14 @@ Dialog {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: saveDialog.open()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             }
 
-=======
->>>>>>> origin/michi-qml-functional-wave
             }
 
-<<<<<<< HEAD
             Item { width: 1; height: 1; focus: true }
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
             }
 
-<<<<<<< HEAD
             Item { width: 1; height: 1; focus: true }
-=======
->>>>>>> Stashed changes
         Rectangle {
             width: parent.width
             height: 4
@@ -327,14 +282,6 @@ Dialog {
                     }
                 }
             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         }
     }
 
@@ -351,14 +298,8 @@ Dialog {
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     onOpened: {
         root._exportPath = ""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     onAccepted: {
         if (!root._exportPath || root.playlistId < 0) return
         root._exporting = true
@@ -374,14 +315,8 @@ Dialog {
         } else {
             root._status = "Bridge no disponible"
         }
-=======
     onOpened: {
         root._exportPath = ""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         root._exporting = false
         root._cancelled = false
         root._progress = 0
@@ -390,32 +325,18 @@ Dialog {
         pathInput.text = ""
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     onClosed: {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     onRejected: {
->>>>>>> Stashed changes
         if (root._exporting) {
             root._cancelled = true
             root._exporting = false
         }
-<<<<<<< Updated upstream
-=======
         root.exportCancelled()
-=======
     onClosed: {
         if (root._exporting) {
             root._cancelled = true
             root._exporting = false
         }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 
     QQC2.FocusTrap {
@@ -432,13 +353,5 @@ Dialog {
         } else {
             root.close()
         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     }
 }

@@ -16,8 +16,6 @@ Item {
     property var integrityResults: []
     property string integrityError: ""
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int _state: 0
     property bool _checkFormat: true
     property bool _checkMetadata: true
@@ -26,12 +24,7 @@ Item {
     property string _errorMessage: ""
 
     objectName: "AudioIntegrityPage"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     objectName: "audioIntegrity.page"
->>>>>>> Stashed changes
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -75,10 +68,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
-=======
         objectName: "audioIntegrity.focusScope"
-=======
     property int _state: 0
     property bool _checkFormat: true
     property bool _checkMetadata: true
@@ -130,47 +120,28 @@ Item {
 
     Flickable {
         anchors.fill: parent
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         activeFocusOnTab: true
 
         Keys.onEscapePressed: {
             if (root.nav) root.nav.back()
         }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             Text {
                 text: "Integridad de audio"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
                 objectName: "integrityPageTitle"
             }
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
         Flickable {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.xl
             contentHeight: column.height + MichiTheme.spacing.xxl
             clip: true
             boundsBehavior: Flickable.StopAtBounds
->>>>>>> Stashed changes
 
             Text {
                 text: "Validación de formato, cabeceras, metadatos, detección de corrupción y duplicados"
@@ -314,9 +285,6 @@ Item {
                         }
                     }
                 }
-<<<<<<< Updated upstream
-=======
-=======
             Text {
                 text: "Integridad de audio"
                 color: MichiTheme.colors.textPrimary
@@ -377,7 +345,6 @@ Item {
                         }
                     }
                 }
-=======
             Text {
                 text: "Integridad de audio"
                 color: MichiTheme.colors.textPrimary
@@ -536,7 +503,6 @@ Item {
                 kind: "disconnected"
                 objectName: "integrityBridgeStatus"
                 Accessible.name: "Bridge no disponible"
->>>>>>> origin/michi-qml-functional-wave
             }
 
             SectionHeader { text: "Acciones"; width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: "Acciones" }
@@ -626,7 +592,6 @@ Item {
                         }
                     }
                 }
->>>>>>> Stashed changes
                 height: childrenRect.height + MichiTheme.spacing.lg * 2
             }
 
@@ -636,10 +601,6 @@ Item {
                 kind: "disconnected"
                 objectName: "integrityBridgeStatus"
                 Accessible.name: "Bridge no disponible"
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

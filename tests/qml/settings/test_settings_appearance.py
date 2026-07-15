@@ -1,15 +1,7 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Tests for SettingsAppearancePage — accent colors, font scale, toggles."""
 from pathlib import Path
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 from __future__ import annotations
 
-from unittest.mock import MagicMock
->>>>>>> Stashed changes
 
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
@@ -17,23 +9,14 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
-=======
 pytestmark = [pytest.mark.qml_module("settings")]
-=======
 """Tests for SettingsAppearancePage — accent colors, font scale, toggles."""
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
-from PySide6.QtQml import QQmlComponent, QQmlEngine
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 class FakeSettingsBridgeV2(QObject):
     dataChanged = Signal()
@@ -74,29 +57,14 @@ class FakeSettingsBridgeV2(QObject):
     @Slot()
     def refresh(self):
         self.dataChanged.emit()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
 
 @pytest.fixture
 def engine(qapp):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     return QQmlEngine(qapp)
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     engine = QQmlEngine(qapp)
     engine.addImportPath(str(QML_DIR))
     return engine
->>>>>>> Stashed changes
 
 
 @pytest.fixture
@@ -163,8 +131,6 @@ class TestSettingsAppearancePage:
             obj = comp.create()
             assert obj.metaObject().indexOfSignal("closeRequested()") >= 0
 
-<<<<<<< Updated upstream
-=======
 class TestSettingsAppearanceBridge:
     def test_toggle_reduce_motion_updates_bridge(self, engine):
         comp = _load_page(engine, "SettingsAppearancePage.qml")
@@ -201,7 +167,6 @@ class TestSettingsAppearanceAccessible:
             assert swatch is not None
         finally:
             obj.deleteLater()
-=======
     return QQmlEngine(qapp)
 
 
@@ -269,20 +234,8 @@ class TestSettingsAppearancePage:
             obj = comp.create()
             assert obj.metaObject().indexOfSignal("closeRequested()") >= 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_cover_as_backdrop(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
             assert obj.findChild(type(obj).metaObject().superClass(), "coverAsBackdrop") is not None or True
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

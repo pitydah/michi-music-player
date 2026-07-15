@@ -1,10 +1,4 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from __future__ import annotations
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Test reducedMotion support.
 
 Verifies:
@@ -13,21 +7,13 @@ Verifies:
 - Pages reference motion durations via MichiTheme rather than hardcoded values
 - AccessibilityBridge exposes reduceMotion property
 """
-=======
 from __future__ import annotations
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 from pathlib import Path
 
 import pytest
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
 PAGE_PATHS = [
     "pages/home/HomePage.qml",
@@ -43,12 +29,7 @@ PAGE_PATHS = [
     "pages/mix/MixHubPage.qml",
     "pages/assistant/AssistantPage.qml",
 ]
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 pytestmark = [pytest.mark.qml_module("accessibility")]
->>>>>>> Stashed changes
 
 
 class TestReducedMotionSupport:
@@ -89,8 +70,6 @@ class TestReducedMotionSupport:
         if "Behavior" not in content and "reduceMotion" not in content and "motionDuration" not in content:
             pytest.skip("HeroMaterial defers motion to theme/parent")
 
-<<<<<<< Updated upstream
-=======
 class TestReducedMotionBridge:
     def test_bridge_exposes_reduce_motion(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
@@ -138,7 +117,6 @@ class TestReducedMotionPages:
                 if pattern in content:
                     assert "motion" in content.lower() or "MichiTheme.motion" in content, \
                         f"{page_rel} uses {pattern} but doesn't reference motion tokens"
-=======
 
 PAGE_PATHS = [
     "pages/home/HomePage.qml",
@@ -194,19 +172,7 @@ class TestReducedMotionSupport:
         if "Behavior" not in content and "reduceMotion" not in content and "motionDuration" not in content:
             pytest.skip("HeroMaterial defers motion to theme/parent")
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_glass_card_respects_motion(self):
         content = (QML_DIR / "components/GlassCard.qml").read_text()
         if "Behavior" not in content:
             pytest.skip("GlassCard has no animations")
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

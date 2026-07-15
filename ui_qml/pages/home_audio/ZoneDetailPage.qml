@@ -1,19 +1,7 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import QtQuick.Controls as QQC2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
-=======
 import QtQuick.Controls as QQC2
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
@@ -45,17 +33,10 @@ Item {
     signal ungroupClicked(string zoneId)
     signal renameRequested(string zoneId, string newName)
     signal deleteRequested(string zoneId)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
     objectName: "zoneDetailPage"
-=======
->>>>>>> Stashed changes
 
-=======
 
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Accessible.role: Accessible.Pane
     Accessible.name: "Detalle de zona: " + root.zoneName
 
@@ -81,7 +62,6 @@ Item {
             activeFocusOnTab: true
             objectName: "zoneDetailFlickable"
 
-=======
     objectName: "zoneDetailPage"
 
     Accessible.role: Accessible.Pane
@@ -109,22 +89,13 @@ Item {
             activeFocusOnTab: true
             objectName: "zoneDetailFlickable"
 
->>>>>>> origin/michi-qml-functional-wave
             Column {
                 id: column
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
 
                 MichiButton {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     id: backBtn
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
@@ -240,7 +211,6 @@ Item {
                             objectName: "zoneDetailMuteButton"
                             Accessible.name: root.zoneMuted ? "Activar sonido de " + root.zoneName : "Silenciar " + root.zoneName
                         }
-=======
                     id: backBtn
                     text: "< Volver"
                     variant: "ghost"
@@ -285,18 +255,13 @@ Item {
                         }
                         kind: root.zoneStatus === "playing" ? "active" : "disconnected"
                         Accessible.name: "Estado de reproducción: " + text
->>>>>>> origin/michi-qml-functional-wave
                     }
                 }
 
-<<<<<<< Updated upstream
                 GlassMaterial {
                     id: infoCard
-=======
-<<<<<<< HEAD
                 LatencyControl {
                     id: latencyCtrl
->>>>>>> Stashed changes
                     width: parent.width
                     height: infoColumn.height + MichiTheme.spacing.xl * 2
                     radius: MichiTheme.radiusMd
@@ -340,7 +305,6 @@ Item {
                                 }
                             }
                         }
-=======
                     id: backBtn
                     text: "< Volver"
                     variant: "ghost"
@@ -385,13 +349,9 @@ Item {
                         }
                         kind: root.zoneStatus === "playing" ? "active" : "disconnected"
                         Accessible.name: "Estado de reproducción: " + text
->>>>>>> origin/michi-qml-functional-wave
                     }
                 }
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
                 LatencyControl {
                     id: latencyCtrl
                     width: parent.width
@@ -408,7 +368,6 @@ Item {
                     zoneDevices: root.zoneDevices
                 }
 
->>>>>>> Stashed changes
                 Row {
                     id: actionRow
                     spacing: MichiTheme.spacing.sm
@@ -472,14 +431,11 @@ Item {
             }
         }
 
-<<<<<<< Updated upstream
-=======
                 PlaybackTransferDialog {
                     id: transferDialog
                     width: parent.width
                     visible: false
                 }
-=======
                     StatusBadge {
                         text: root.zoneMuted ? "Silenciado" : "Activo"
                         kind: root.zoneMuted ? "warning" : "success"
@@ -663,10 +619,6 @@ Item {
             }
         }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         degradedOverlay: Rectangle {
             color: Qt.rgba(1, 0.75, 0.14, 0.05)
             radius: MichiTheme.radiusMd
@@ -681,14 +633,6 @@ Item {
                 color: MichiTheme.colors.warning
                 font.pixelSize: MichiTheme.typography.captionSize
                 font.weight: MichiTheme.typography.weightMedium
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

@@ -5,15 +5,8 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 Item {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 Drawer {
->>>>>>> Stashed changes
     id: root
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
@@ -28,8 +21,6 @@ Drawer {
     Accessible.role: Accessible.Dialog
     Accessible.name: "Explicación del Mix"
 
-<<<<<<< Updated upstream
-=======
     onOpened: {
         if (root.mx && typeof root.mx.explainCurrentMix !== "undefined") {
             var exp = root.mx.explainCurrentMix()
@@ -43,7 +34,6 @@ Drawer {
             var pf = root.mx.partialFailureReport()
             if (pf && pf.ok) {
                 root._partialResult = pf.has_failures || false
-=======
 Item {
     id: root
 
@@ -59,10 +49,6 @@ Item {
     Accessible.role: Accessible.Dialog
     Accessible.name: "Explicación del Mix"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     function show(mixParams, trackExplanations) {
         root._mixParams = mixParams || {}
         root._trackExplanations = trackExplanations || []
@@ -79,25 +65,11 @@ Item {
             var result = root.mx.explainCurrentMix()
             if (result && result.ok) {
                 root._mixParams = { reasons: result.reasons || [], total: result.total || 0 }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     Rectangle {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     background: Rectangle {
         color: MichiTheme.colors.surfaceCard
         border.color: MichiTheme.colors.borderCard
@@ -105,7 +77,6 @@ Item {
     }
 
     Column {
->>>>>>> Stashed changes
         anchors.fill: parent
         color: MichiTheme.colors.overlayDark
         visible: root._open
@@ -275,10 +246,8 @@ Item {
         }
     }
 
-<<<<<<< Updated upstream
     Keys.onEscapePressed: {
         if (root._open) root.dismiss()
-=======
         SectionHeader { text: "Reglas de selección"; width: parent.width }
 
         ListView {
@@ -317,7 +286,6 @@ Item {
                 width: parent.width
             }
         }
-=======
     Rectangle {
         anchors.fill: parent
         color: MichiTheme.colors.overlayDark
@@ -490,10 +458,5 @@ Item {
 
     Keys.onEscapePressed: {
         if (root._open) root.dismiss()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     }
 }

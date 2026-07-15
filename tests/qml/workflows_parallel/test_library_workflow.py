@@ -1,62 +1,28 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Workflow: Browse albums → select → context menu → play — 8+ tests."""
 from __future__ import annotations
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Workflow test: Search -> select -> context menu -> play -> queue update."""
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-=======
 """Workflow: Browse albums → select → context menu → play — 8+ tests."""
 from __future__ import annotations
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from unittest.mock import MagicMock
 
 import pytest
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from ui_qml_bridge.selection_controller import SelectionController
 from ui_qml_bridge.action_registry import ActionRegistry
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-from ui_qml_bridge.library_bridge import LibraryBridge
-from ui_qml_bridge.selection_controller import SelectionController
 
 pytestmark = [pytest.mark.qml_module("library"), pytest.mark.qml_workflow("library_workflow")]
-=======
-from ui_qml_bridge.selection_controller import SelectionController
-from ui_qml_bridge.action_registry import ActionRegistry
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 
 class TestLibraryWorkflow:
     @pytest.fixture
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     def registry(self):
         return ActionRegistry()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     def tmp_songs(self):
         files = []
         for _ in range(10):
@@ -66,7 +32,6 @@ class TestLibraryWorkflow:
         yield files
         for f in files:
             f.unlink(missing_ok=True)
->>>>>>> Stashed changes
 
     @pytest.fixture
     def sel(self):
@@ -158,8 +123,6 @@ class TestLibraryWorkflow:
         nav.navigateWithParams("library.album_detail", {"album_key": "key123"})
         nav.navigateWithParams.assert_called_once()
 
-<<<<<<< Updated upstream
-=======
     def test_workflow_filter_then_play(self, bridge):
         pb = MagicMock()
         pb.enqueue = MagicMock()
@@ -168,7 +131,6 @@ class TestLibraryWorkflow:
         assert bridge.activeFormatFilter == "FLAC"
         result = bridge.playTrackById(1)
         assert result["ok"] is True
-=======
     def registry(self):
         return ActionRegistry()
 
@@ -262,20 +224,8 @@ class TestLibraryWorkflow:
         nav.navigateWithParams("library.album_detail", {"album_key": "key123"})
         nav.navigateWithParams.assert_called_once()
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_artist_click_opens_detail(self):
         nav = MagicMock()
         nav.navigateWithParams = MagicMock()
         nav.navigateWithParams("library.artist_detail", {"artist": "Artist"})
         nav.navigateWithParams.assert_called_once()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

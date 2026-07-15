@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test history negative paths: missing service, empty history, export cancellation."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Negative tests for History: null bridge, invalid inputs, edge cases, error states."""
->>>>>>> Stashed changes
 import pytest
 
 from ui_qml_bridge.history_bridge import HistoryBridge
@@ -60,17 +53,12 @@ def test_apply_retention_no_service(bridge_no_db):
     result = bridge_no_db.applyRetention('{"max_age_days": 30}')
     assert not result["ok"]
 
-<<<<<<< Updated upstream
-=======
     def test_negative_events_model_null(self):
         bridge = HistoryBridge()
         assert bridge.historyModel is not None
         assert len(bridge.historyModel) == 0 or bridge.historyModel.rowCount() == 0
-=======
 """Test history negative paths: missing service, empty history, export cancellation."""
-import pytest
 
-from ui_qml_bridge.history_bridge import HistoryBridge
 
 
 def test_bridge_without_db_or_service():
@@ -121,10 +109,6 @@ def test_apply_retention_no_service(bridge_no_db):
     result = bridge_no_db.applyRetention('{"max_age_days": 30}')
     assert not result["ok"]
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 def test_empty_history_display(bridge_empty):
     result = bridge_empty.refresh()
@@ -189,11 +173,3 @@ def bridge_no_db():
 @pytest.fixture
 def bridge_empty():
     return HistoryBridge(db=None, history_query_service=None)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

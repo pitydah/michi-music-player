@@ -1,70 +1,36 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import "../theme"
 import "dialogs"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
-=======
 import "../theme"
 import "dialogs"
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 Item {
     id: root
 
     property string title: "Acción destructiva"
     property string message: "Esta acción no se puede deshacer."
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property string confirmKeyword: ""
->>>>>>> Stashed changes
     property string confirmText: "Eliminar"
     property string cancelText: "Cancelar"
     property string keyword: "ELIMINAR"
     property string keywordPrompt: "Escribe \"" + root.keyword + "\" para confirmar:"
     property bool open: false
-<<<<<<< Updated upstream
-=======
     property string objectName: "destructiveActionDialog"
-=======
     property string confirmText: "Eliminar"
     property string cancelText: "Cancelar"
     property string keyword: "ELIMINAR"
     property string keywordPrompt: "Escribe \"" + root.keyword + "\" para confirmar:"
     property bool open: false
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     signal confirmed()
     signal cancelled()
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "DestructiveActionDialog"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     visible: root.open
     focus: root.open
->>>>>>> Stashed changes
 
     Accessible.role: Accessible.Dialog
     Accessible.name: title
@@ -85,11 +51,9 @@ Item {
             root.open = false
             root.confirmed()
         }
-<<<<<<< Updated upstream
         onCancelled: {
             root.open = false
             root.cancelled()
-=======
     }
 
     Rectangle {
@@ -188,7 +152,6 @@ Item {
                     KeyNavigation.backtab: cancelDlgBtn
                 }
             }
-=======
     objectName: "DestructiveActionDialog"
 
     Accessible.role: Accessible.Dialog
@@ -213,11 +176,6 @@ Item {
         onCancelled: {
             root.open = false
             root.cancelled()
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
     }
 }

@@ -6,15 +6,7 @@ import "../../components"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "settingsAboutPage"
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -257,10 +249,7 @@ Item {
                                 text: root.pythonVersion
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
-<<<<<<< Updated upstream
-=======
                                 font.weight: MichiTheme.typography.weightMedium
-=======
     objectName: "settingsAboutPage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -385,8 +374,6 @@ Item {
                             text: "Autor: Cristian · © 2026 Michi Music Player"
                             color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.captionSize
-<<<<<<< Updated upstream
-=======
                         }
                     }
                 }
@@ -545,26 +532,20 @@ Item {
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
->>>>>>> origin/michi-qml-functional-wave
                             }
->>>>>>> Stashed changes
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
                 GlassCard {
                     id: linksCard
                     Layout.fillWidth: true
                     title: "Enlaces"
                     interactive: false
-=======
-<<<<<<< HEAD
                 Rectangle {
                     width: parent.width; height: 1
                     color: MichiTheme.colors.borderSubtle
                 }
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -675,7 +656,6 @@ Item {
                                 text: root.pythonVersion
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
->>>>>>> Stashed changes
                                 Layout.fillWidth: true
                             }
                         }
@@ -715,28 +695,20 @@ Item {
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                             }
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
                 GlassCard {
                     id: dependenciesCard
                     Layout.fillWidth: true
                     title: "Dependencias principales"
                     interactive: false
-=======
-<<<<<<< HEAD
                 Rectangle {
                     width: parent.width; height: 1
                     color: MichiTheme.colors.borderSubtle
                 }
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -769,12 +741,6 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
                 GlassCard {
                     id: dependenciesCard
                     Layout.fillWidth: true
@@ -812,20 +778,8 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

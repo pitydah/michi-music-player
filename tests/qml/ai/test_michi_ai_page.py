@@ -1,33 +1,13 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test Michi AI page states and interactions."""
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-=======
 """Test Michi AI page states and interactions."""
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from contextlib import suppress
 
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 import pytest
 
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
@@ -177,17 +157,12 @@ class TestMichiAIInteractions:
         assert isinstance(history, str)
         assert "reproduce" in history.lower() or "canción" in history.lower() or "1" in history
 
-<<<<<<< Updated upstream
-=======
     def test_bridge_status_valid_on_execute(self, bridge):
         bridge.sendMessage("reproduce canción")
         assert bridge.status in ("idle", "understanding", "planning", "awaiting_confirmation", "executing", "completed", "cancelled", "failed")
-=======
-from contextlib import suppress
 
 import pytest
 
-from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 
 
 pytestmark = pytest.mark.isolation
@@ -334,10 +309,6 @@ class TestMichiAIInteractions:
         assert isinstance(history, str)
         assert "reproduce" in history.lower() or "canción" in history.lower() or "1" in history
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_suggestions_fallback_when_no_context(self):
         b = MichiAIBridge()
         b.refresh()
@@ -352,11 +323,3 @@ class TestMichiAIInteractions:
         ]
         bridge.refresh()
         assert handler.called
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

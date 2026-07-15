@@ -4,15 +4,8 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 Drawer {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 Item {
->>>>>>> Stashed changes
     id: root
 
     property var bridge: null
@@ -54,13 +47,10 @@ Item {
         border.width: 1
     }
 
-<<<<<<< Updated upstream
-=======
         Column {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.lg
-=======
 Drawer {
     id: root
 
@@ -103,10 +93,6 @@ Drawer {
         border.width: 1
     }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     Column {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.lg
@@ -115,31 +101,16 @@ Drawer {
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
             Text {
                 text: "Filtros"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 font.weight: MichiTheme.typography.weightSemiBold
                 anchors.verticalCenter: parent.verticalCenter
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 font.weight: MichiTheme.typography.weightBold
                 Accessible.role: Accessible.Heading
                 Accessible.name: "Filtros de búsqueda"
->>>>>>> Stashed changes
             }
 
             Item { width: parent.width - 120; height: 1 }
@@ -345,11 +316,8 @@ Drawer {
                         "radio": true, "device": false, "server": false,
                         "action": false, "setting": false
                     }
-<<<<<<< Updated upstream
-=======
                     objectName: "searchFilter.reset"
                     Accessible.name: "Restablecer filtros"
-=======
                 font.weight: MichiTheme.typography.weightSemiBold
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -557,24 +525,12 @@ Drawer {
                         "radio": true, "device": false, "server": false,
                         "action": false, "setting": false
                     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     root._yearFrom = 0
                     root._yearTo = 0
                     root._qualityFilter = "any"
                     yearFromField.text = ""
                     yearToField.text = ""
                     root.filtersReset()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
         }

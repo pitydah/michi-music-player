@@ -1,12 +1,5 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test smart playlist editor: rules, groups, preview, save."""
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for SmartPlaylistEditorPage: rule management, preview, save."""
->>>>>>> Stashed changes
 import pytest
 import sqlite3
 
@@ -175,8 +168,6 @@ class TestSmartPlaylist:
         if result.get("ok"):
             assert result["count"] >= 0
 
-<<<<<<< Updated upstream
-=======
     def test_playlist_deleted_refresh(self):
         db = MagicMock()
         db.delete_playlist.return_value = True
@@ -185,12 +176,9 @@ class TestSmartPlaylist:
         bridge._playlists = [{"id": 1, "title": "Old"}]
         bridge.deletePlaylist(1)
         assert len(bridge.playlists) == 0
-=======
 """Test smart playlist editor: rules, groups, preview, save."""
 import pytest
-import sqlite3
 
-from core.playlist_service import PlaylistService
 
 
 @pytest.fixture
@@ -355,19 +343,7 @@ class TestSmartPlaylist:
         if result.get("ok"):
             assert result["count"] >= 0
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_smart_playlist_name_required(self, svc):
         if hasattr(svc, 'create_smart'):
             result = svc.create_smart("", {"match_mode": "all", "rules": []})
             assert not result["ok"]
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

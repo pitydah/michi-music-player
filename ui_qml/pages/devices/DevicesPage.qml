@@ -16,12 +16,6 @@ Item {
     property var devicesBridge: typeof window !== "undefined" && window.devicesBridge ? window.devicesBridge : null
     property var deviceSyncService: typeof window !== "undefined" && window.deviceSyncService ? window.deviceSyncService : null
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     readonly property bool bridgeAvailable: root.devicesBridge !== null
 
     objectName: "devices.page"
@@ -30,25 +24,12 @@ Item {
     Accessible.role: Accessible.Panel
     Accessible.name: "Dispositivos y sincronización"
     Accessible.description: "Gestión de dispositivos y sincronización de música"
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     PageStateManager {
         id: pageState
         route: "devices"
         active: true
         onScrollYChanged: pageState.save()
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Component.onCompleted: {
         if (root.devicesBridge && typeof root.devicesBridge.refresh !== "undefined")
@@ -56,17 +37,10 @@ Item {
         deviceGuard.checkCapability(root.devicesBridge)
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     CapabilityGuard {
         id: deviceGuard
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     Loader {
         id: stateLoader
->>>>>>> Stashed changes
         anchors.fill: parent
         capabilityName: "devices_sync"
 
@@ -114,7 +88,6 @@ Item {
                         else syncStatus.onStartServer()
                     }
                 }
-<<<<<<< Updated upstream
 
                 SectionHeader {
                     id: pairedHeader
@@ -205,9 +178,6 @@ Item {
                     Accessible.name: "Cola de transferencia"
                     activeFocusOnTab: true
                 }
-=======
->>>>>>> Stashed changes
-=======
     CapabilityGuard {
         id: deviceGuard
         anchors.fill: parent
@@ -347,7 +317,6 @@ Item {
                     Accessible.name: "Cola de transferencia"
                     activeFocusOnTab: true
                 }
->>>>>>> origin/michi-qml-functional-wave
             }
         }
     }

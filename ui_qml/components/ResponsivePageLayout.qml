@@ -1,29 +1,17 @@
 import QtQuick
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 import "../theme"
 import "foundations"
 
 Item {
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 import QtQuick.Controls
 import "../theme"
 import "foundations"
 
 FocusScope {
-=======
 import "../theme"
 import "foundations"
 
 Item {
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     id: root
 
     enum Mode {
@@ -33,8 +21,6 @@ Item {
         WIDE
     }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     property int availableWidth: width
     property alias header: headerHost.children
     default property alias content: contentHost.children
@@ -43,12 +29,7 @@ Item {
     property int bottomMargin: responsive.pageMargin
     property bool constrainWidth: true
 
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     readonly property alias mode: modeHelper.mode
->>>>>>> Stashed changes
     readonly property alias responsive: responsive
 
     readonly property int mode: {
@@ -97,14 +78,11 @@ Item {
                 visible: children.length > 0
             }
 
-<<<<<<< Updated upstream
-=======
         Item {
             id: footerHost
             width: parent.width
             height: childrenRect.height
             visible: children.length > 0
-=======
     property int availableWidth: width
     property alias header: headerHost.children
     default property alias content: contentHost.children
@@ -161,10 +139,6 @@ Item {
                 visible: children.length > 0
             }
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             Column {
                 id: contentHost
                 width: parent.width
@@ -177,14 +151,6 @@ Item {
                 height: childrenRect.height
                 visible: children.length > 0
             }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         }
     }
 }

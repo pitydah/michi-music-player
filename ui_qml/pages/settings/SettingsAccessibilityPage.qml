@@ -6,15 +6,7 @@ import "../../components"
 
 Item {
     id: root
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     objectName: "settingsAccessibilityPage"
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
@@ -111,8 +103,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
-=======
                         Switch {
                             id: reduceMotionSwitchAcc
                             objectName: "settings.accessibility.reduceMotion"
@@ -122,7 +112,6 @@ Item {
                             KeyNavigation.tab: announceTrackToggle
                             onClicked: {
                                 if (root.bridge) root.bridge.reduceMotion = checked
-=======
     objectName: "settingsAccessibilityPage"
 
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
@@ -220,10 +209,6 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 2
@@ -252,34 +237,19 @@ Item {
                                     if (!pressed) root._saveValue("accessibility/balance", value)
                                 }
                                 Accessible.description: "Balance entre canal izquierdo y derecho"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                             }
                         }
                     }
                 }
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 GlassCard {
                     id: visionCard
                     Layout.fillWidth: true
                     title: "Visión"
                     interactive: false
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 Column {
                     width: parent.width
                     spacing: MichiTheme.spacing.md
->>>>>>> Stashed changes
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -520,12 +490,6 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
                 GlassCard {
                     id: visionCard
                     Layout.fillWidth: true
@@ -771,20 +735,8 @@ Item {
             }
         }
     }
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     Keys.onEscapePressed: root.closeRequested()
 
     signal closeRequested()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 }

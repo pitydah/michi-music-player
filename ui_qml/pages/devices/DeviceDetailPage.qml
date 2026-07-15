@@ -19,12 +19,6 @@ Item {
     property bool deviceTrusted: false
     property string deviceLastContact: ""
     property var deviceStorage: ({})
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     property var deviceCompatibility: ({})
     property string deviceType: "desktop"
     property string deviceIp: ""
@@ -32,25 +26,12 @@ Item {
     property var transferJobs: []
     property var transferHistory: []
     property var devicesBridge: null
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     property var deviceCapabilities: ({})
 
     property var dv: typeof devicesBridge !== "undefined" ? devicesBridge : null
     property var jb: typeof jobBridge !== "undefined" ? jobBridge : null
 
     property string state: "INITIALIZING"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     signal backClicked()
     signal authorizeClicked()
@@ -60,14 +41,8 @@ Item {
     signal unpairClicked()
     signal syncClicked()
     signal editProfileClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     signal startTransferClicked()
     signal cancelTransferClicked()
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
     signal connectClicked()
     signal pairClicked()
     signal transferClicked(string jobId)
@@ -76,17 +51,13 @@ Item {
     signal clearHistory()
     signal browseFiles()
     signal ejectDevice(string mountPoint)
->>>>>>> Stashed changes
 
     objectName: "DeviceDetailPage"
     Accessible.role: Accessible.Pane
     Accessible.name: deviceLabel || "Detalle de dispositivo"
 
-<<<<<<< Updated upstream
-=======
     Accessible.role: Accessible.Panel
     Accessible.name: "Detalle de dispositivo: " + root.deviceLabel
-=======
     signal startTransferClicked()
     signal cancelTransferClicked()
 
@@ -94,10 +65,6 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: deviceLabel || "Detalle de dispositivo"
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     onDeviceKeyChanged: {
         if (deviceKey) {
             state = "LOADING"
@@ -120,14 +87,6 @@ Item {
             focusScope.children[0].forceActiveFocus()
         }
     }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 
     Flickable {
         id: flickable
@@ -145,12 +104,6 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
             Row {
                 spacing: MichiTheme.spacing.sm
                 width: parent.width
@@ -162,11 +115,6 @@ Item {
                     objectName: "devices.detailPage.backBtn"
                     Accessible.name: "Volver a lista de dispositivos"
                 }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             MichiButton {
                 id: backButton
                 text: "< Volver"
@@ -179,39 +127,21 @@ Item {
                 KeyNavigation.backtab: flickable
                 Keys.onReturnPressed: clicked()
                 Keys.onSpacePressed: clicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             GlassMaterial {
                 id: deviceInfoCard
                 width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 height: deviceInfoColumn.height + MichiTheme.spacing.xl * 2
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 height: headerColumn.height + MichiTheme.spacing.xl * 2
->>>>>>> Stashed changes
                 radius: MichiTheme.radiusMd
                 variant: "elevated"
                 objectName: "deviceInfoCard"
                 Accessible.name: "Información del dispositivo"
 
                 Column {
-<<<<<<< Updated upstream
                     id: deviceInfoColumn
-=======
                     id: headerColumn
-=======
                 height: deviceInfoColumn.height + MichiTheme.spacing.xl * 2
                 radius: MichiTheme.radiusMd
                 variant: "elevated"
@@ -220,27 +150,16 @@ Item {
 
                 Column {
                     id: deviceInfoColumn
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.lg
                     spacing: MichiTheme.spacing.sm
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     Text {
                         text: root.deviceLabel
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.pageTitleSize
                         font.weight: MichiTheme.typography.weightBold
                         Accessible.name: "Nombre del dispositivo: " + root.deviceLabel
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                     Row {
                         spacing: MichiTheme.spacing.md
                         width: parent.width
@@ -284,7 +203,6 @@ Item {
                                 visible: root.deviceVendor !== "" || root.deviceModel !== ""
                             }
                         }
->>>>>>> Stashed changes
                     }
 
                     Text {
@@ -312,11 +230,8 @@ Item {
                         text: "Último contacto: " + root.deviceLastContact
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
-<<<<<<< Updated upstream
                         visible: root.deviceLastContact !== ""
-=======
                         visible: root.deviceIp !== ""
-=======
                     Text {
                         text: root.deviceLabel
                         color: MichiTheme.colors.textPrimary
@@ -351,29 +266,13 @@ Item {
                         color: MichiTheme.colors.textMuted
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: root.deviceLastContact !== ""
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     }
 
                     Row {
                         spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                         StatusBadge { text: root.deviceAuthorized ? "Autorizado" : "No autorizado"; kind: root.deviceAuthorized ? "success" : "disconnected" }
                         StatusBadge { text: root.deviceTrusted ? "Confiado" : "No confiado"; kind: root.deviceTrusted ? "success" : "disconnected" }
                         StatusBadge { text: root.deviceMountPoint !== "" ? "Montado" : "No montado"; kind: root.deviceMountPoint !== "" ? "active" : "disconnected" }
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                         StatusBadge {
                             text: root.deviceAuthorized ? "Autorizado" : "No autorizado"
                             kind: root.deviceAuthorized ? "success" : "disconnected"
@@ -386,14 +285,6 @@ Item {
                             objectName: "trustedBadge"
                             Accessible.name: text
                         }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                     }
                 }
             }
@@ -403,19 +294,8 @@ Item {
                 width: parent.width
                 mountPoint: root.deviceMountPoint
                 storageInfo: root.deviceStorage
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 compatibilityInfo: root.deviceCompatibility
                 onEjectRequested: root.ejectDevice(mountPoint)
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 objectName: "deviceStoragePanel"
                 Accessible.name: "Panel de almacenamiento"
                 activeFocusOnTab: true
@@ -432,14 +312,6 @@ Item {
                 activeFocusOnTab: true
                 KeyNavigation.tab: profileEditor
                 KeyNavigation.backtab: storagePanel
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             DeviceSyncProfileEditor {
@@ -456,18 +328,11 @@ Item {
             Row {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                 objectName: "deviceActionRow"
                 Accessible.name: "Acciones del dispositivo"
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 width: parent.width
                 wrapMode: Text.WordWrap
                 objectName: "devices.detailPage.actions"
->>>>>>> Stashed changes
 
                 MichiButton {
                     id: syncButton
@@ -532,10 +397,7 @@ Item {
                     onClicked: root.unpairClicked()
                     objectName: "unpairButton"
                     Accessible.name: "Desvincular dispositivo"
-<<<<<<< Updated upstream
-=======
                     Accessible.description: "Elimina la vinculación con este dispositivo"
-=======
                 objectName: "deviceActionRow"
                 Accessible.name: "Acciones del dispositivo"
 
@@ -602,46 +464,23 @@ Item {
                     onClicked: root.unpairClicked()
                     objectName: "unpairButton"
                     Accessible.name: "Desvincular dispositivo"
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     activeFocusOnTab: true
                     KeyNavigation.tab: transferPanel
                     KeyNavigation.backtab: profileEditButton
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
                 }
             }
 
             DeviceTransferPanel {
                 id: transferPanel
                 width: parent.width
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 bridge: root.devicesBridge
                 transferJobs: root.transferJobs
                 transferHistory: root.transferHistory
                 onCancelTransfer: root.cancelTransfer(jobId)
                 onRetryTransfer: root.retryTransfer(jobId)
                 onClearHistory: root.clearHistory()
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 deviceKey: root.deviceKey
                 objectName: "deviceTransferPanel"
                 Accessible.name: "Panel de transferencia"
@@ -650,26 +489,12 @@ Item {
                 KeyNavigation.backtab: actionRow
                 onStartTransferClicked: root.startTransferClicked()
                 onCancelTransferClicked: root.cancelTransferClicked()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
 
             DeviceSyncHistory {
                 id: syncHistory
                 width: parent.width
                 deviceKey: root.deviceKey
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
                 historyEntries: root.transferHistory
                 onClearHistoryClicked: root.clearHistory()
             }
@@ -685,24 +510,11 @@ Item {
                 Accessible.role: Accessible.Alert
                 Accessible.name: "Solo audio"
                 Accessible.description: "Este dispositivo solo soporta transferencia de archivos de audio. El video no está disponible."
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 objectName: "deviceSyncHistory"
                 Accessible.name: "Historial de sincronización"
                 activeFocusOnTab: true
                 KeyNavigation.tab: flickable
                 KeyNavigation.backtab: transferPanel
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
             }
         }
     }

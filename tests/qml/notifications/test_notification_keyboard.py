@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 """Test keyboard navigation through notifications in NotificationBridge.
 
 Tests logical keyboard navigation patterns (next/prev, escape, enter)
@@ -8,12 +6,7 @@ applied through bridge methods that keyboard events would trigger.
 from __future__ import annotations
 
 from unittest.mock import MagicMock
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 """Tests for keyboard navigation in notification components."""
->>>>>>> Stashed changes
 
 import pytest
 
@@ -68,12 +61,9 @@ class TestKeyboardNavigation:
         result = b.executeCurrentAction()
         assert result["ok"] is True
 
-<<<<<<< Updated upstream
-=======
     def test_notification_item_has_keynav(self, qml_dir):
         content = (qml_dir / "components" / "NotificationItem.qml").read_text()
         assert "Keys" in content
-=======
 """Test keyboard navigation through notifications in NotificationBridge.
 
 Tests logical keyboard navigation patterns (next/prev, escape, enter)
@@ -81,11 +71,9 @@ applied through bridge methods that keyboard events would trigger.
 """
 from __future__ import annotations
 
-from unittest.mock import MagicMock
 
 import pytest
 
-from ui_qml_bridge.notification_bridge import NotificationBridge
 
 
 @pytest.fixture
@@ -136,10 +124,6 @@ class TestKeyboardNavigation:
         result = b.executeCurrentAction()
         assert result["ok"] is True
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_drain_queue_with_escape(self, bridge):
         bridge.showMessage("A")
         bridge.showMessage("B")
@@ -170,11 +154,3 @@ class TestKeyboardNavigation:
     def test_execute_action_by_id_not_found(self, bridge):
         result = bridge.executeNotificationAction("nonexistent")
         assert result["ok"] is False
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
