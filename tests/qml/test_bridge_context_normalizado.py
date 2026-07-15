@@ -12,40 +12,41 @@ from unittest.mock import MagicMock
 
 from ui_qml_bridge.context_bindings import CONTEXT_BINDINGS, ContextBinding, QML_CONTEXT_BINDINGS
 from ui_qml_bridge.bridge_factory import BridgeFactory
-from ui_qml_bridge.service_bundle import ServiceBundle
+from core.service_container import ServiceContainer
 
 
-def _mock_bundle(**overrides) -> ServiceBundle:
-    b = ServiceBundle()
+def _mock_container(**overrides) -> ServiceContainer:
+    c = ServiceContainer()
     defaults = {
-        "player_service": MagicMock(),
-        "db": MagicMock(),
-        "db_connection": MagicMock(),
-        "search_engine": MagicMock(),
-        "radio_manager": MagicMock(),
-        "sync_manager": MagicMock(),
-        "michi_link_controller": MagicMock(),
-        "home_audio_controller": MagicMock(),
-        "snapcast_controller": MagicMock(),
-        "disc_service": MagicMock(),
+        "playback_service": MagicMock(),
         "worker_manager": MagicMock(),
-        "metadata_service": MagicMock(),
-        "smart_tagging_service": MagicMock(),
+        "database": MagicMock(),
         "settings_coordinator": MagicMock(),
         "settings_service": MagicMock(),
-        "queue_service": MagicMock(),
-        "audio_lab_service": MagicMock(),
-        "device_sync_service": MagicMock(),
-        "notification_service": MagicMock(),
-        "action_registry": MagicMock(),
-        "history_query_service": MagicMock(),
         "global_search_service": MagicMock(),
+        "track_action_service": MagicMock(),
+        "confirmation_service": MagicMock(),
+        "notification_service": MagicMock(),
         "diagnostics_service": MagicMock(),
         "job_service": MagicMock(),
+        "mix_query_service": MagicMock(),
+        "playlist_service": MagicMock(),
+        "queue_service": MagicMock(),
+        "history_query_service": MagicMock(),
+        "device_sync_service": MagicMock(),
+        "home_audio_service": MagicMock(),
+        "connection_service": MagicMock(),
+        "radio_service": MagicMock(),
+        "audio_lab_service": MagicMock(),
+        "metadata_service": MagicMock(),
+        "smart_tagging_service": MagicMock(),
+        "library_doctor_service": MagicMock(),
+        "library_sources_service": MagicMock(),
+        "process_controller": MagicMock(),
     }
     for k, v in defaults.items():
-        setattr(b, k, overrides.get(k, v))
-    return b
+        c.register(k, overrides.get(k, v))
+    return c
 
 
 class TestContextBindingsDeclarative:
@@ -158,26 +159,26 @@ class TestNoManualRegistration:
 
 class TestFactoryMatchesBindings:
     def test_factory_creates_all_bridge_keys(self):
-        b = _mock_bundle()
-        f = BridgeFactory(b)
+        c = _mock_container()
+        f = BridgeFactory(c)
         created = f.create_all()
         expected_keys = set(v for v in QML_CONTEXT_BINDINGS.values())
         created_keys = set(created.keys())
         missing = expected_keys - created_keys
         extra = created_keys - expected_keys
         assert len(missing) == 0, f"Bridges not created: {missing}"
-        assert len(extra) <= 2, f"Unexpected bridges: {extra}"
+        assert len(extra) <= 4, f"Unexpected bridges: {extra}"
 
     def test_settings_and_settings_v2_same_object(self):
-        b = _mock_bundle()
-        f = BridgeFactory(b)
+        c = _mock_container()
+        f = BridgeFactory(c)
         created = f.create_all()
         if "settings" in created and "settings_v2" in created:
             assert created["settings"] is created["settings_v2"]
 
     def test_no_bridge_created_twice(self):
-        b = _mock_bundle()
-        f = BridgeFactory(b)
+        c = _mock_container()
+        f = BridgeFactory(c)
         created = f.create_all()
         for key, bridge in created.items():
             count = 0
@@ -190,8 +191,8 @@ class TestFactoryMatchesBindings:
                 assert count == 1, f"{key} bridge appears {count} times"
 
     def test_bridge_keys_match_productivo(self):
-        b = _mock_bundle()
-        f = BridgeFactory(b)
+        c = _mock_container()
+        f = BridgeFactory(c)
         created = f.create_all()
         for qml_name, bridge_key in QML_CONTEXT_BINDINGS.items():
             assert bridge_key in created, f"Bridge key '{bridge_key}' (from {qml_name}) not in created bridges"

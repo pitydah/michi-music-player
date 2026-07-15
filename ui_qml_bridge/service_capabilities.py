@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ui_qml_bridge.service_bundle import ServiceBundle
+    from core.service_container import ServiceContainer
 
 
 CAPABILITY_STATES = {
@@ -15,7 +15,7 @@ CAPABILITY_STATES = {
 }
 
 
-def compute_capabilities(services: "ServiceBundle") -> dict[str, str]:
+def compute_capabilities(services: "ServiceContainer") -> dict[str, str]:
     """Return dict of capability_name -> state string.
 
     States: AVAILABLE, DEGRADED, UNAVAILABLE, DEFERRED_PHYSICAL.
@@ -23,25 +23,25 @@ def compute_capabilities(services: "ServiceBundle") -> dict[str, str]:
     DEFERRED_PHYSICAL indicates hardware dependency is deferred vs error.
     """
     return {
-        "library": "available" if services.has("db") else "unavailable",
-        "playback": "available" if services.has("player_service") else "unavailable",
-        "nowplaying": "available" if services.has("player_service") else "unavailable",
-        "mix": "available" if services.has("db") else "unavailable",
-        "lyrics": "available" if services.has("worker_manager") else "unavailable",
-        "connections_michilink": "available" if services.has("michi_link_controller") else "unavailable",
-        "home_audio": "available" if services.has("home_audio_controller") else ("deferred_physical" if services.has("snapcast_controller") else "unavailable"),
-        "snapcast": "available" if services.has("snapcast_controller") else "unavailable",
-        "devices_sync": "available" if services.has("sync_manager") else "unavailable",
-        "radio": "available" if services.has("radio_manager") else "unavailable",
-        "playlists": "available" if services.has("db") else "unavailable",
-        "eq": "available" if services.has("player_service") else "unavailable",
+        "library": "available" if services.contains("library_query_service") else "unavailable",
+        "playback": "available" if services.contains("playback_service") else "unavailable",
+        "nowplaying": "available" if services.contains("playback_service") else "unavailable",
+        "mix": "available" if services.contains("library_query_service") else "unavailable",
+        "lyrics": "available" if services.contains("worker_manager") else "unavailable",
+        "connections_michilink": "available" if services.contains("connection_service") else "unavailable",
+        "home_audio": "available" if services.contains("home_audio_service") else "unavailable",
+        "snapcast": "available" if services.contains("home_audio_service") else "unavailable",
+        "devices_sync": "available" if services.contains("device_sync_service") else "unavailable",
+        "radio": "available" if services.contains("radio_service") else "unavailable",
+        "playlists": "available" if services.contains("playlist_service") else "unavailable",
+        "eq": "available" if services.contains("playback_service") else "unavailable",
         "settings": "available",
         "audio_lab": "available",
         "metadata": "available",
-        "smart_tagging": "available" if services.has("smart_tagging_service") else "unavailable",
-        "disc_lab": "available" if services.has("disc_service") else ("deferred_physical" if services.has("db") else "unavailable"),
-        "library_doctor": "available" if services.has("db") else "unavailable",
-        "diagnostics": "available" if services.has("db") else "unavailable",
+        "smart_tagging": "available" if services.contains("smart_tagging_service") else "unavailable",
+        "disc_lab": "available" if services.contains("metadata_service") else "unavailable",
+        "library_doctor": "available" if services.contains("library_doctor_service") else "unavailable",
+        "diagnostics": "available" if services.contains("database") else "unavailable",
         "michi_ai": "available",
         "theme": "available",
         "navigation": "available",
@@ -50,5 +50,5 @@ def compute_capabilities(services: "ServiceBundle") -> dict[str, str]:
         "command_palette": "available",
         "cover": "available",
         "notifications": "available",
-        "global_search": "available" if services.has("search_service") else "unavailable",
+        "global_search": "available" if services.contains("global_search_service") else "unavailable",
     }

@@ -1,0 +1,90 @@
+# X10 V2 Widget Map — comprehensive QtWidgets inventory across entire repo
+# Classifications:
+#   BUSINESS_LOGIC_REMAINS: core service still uses QtWidgets (QApplication, QDialog)
+#   PRODUCTIVE_WIDGET: widget outside ui/ that is still the active implementation
+#   LEGACY_ADAPTER: ui/ controller/adapter that routes to core, no business logic
+#   SAFE_TO_DELETE: QML replacement exists, bridge connected, no imports from Widgets
+#   DELETED: removed from codebase
+#   PHYSICAL_LEGACY_ONLY: physical window/frame/launcher, keep until QML shell is default
+
+sha: b3406c88969c59aa6a3f00280da592d2f735eb5e
+total_found: 49
+
+business_logic_remains:
+  count: 2
+  description: "Core services that still use QtWidgets (QApplication, QDialog) for dialogs — business logic unchanged"
+  files:
+    - core/file_actions.py
+    - core/playback_controller.py
+
+productive_widget:
+  count: 16
+  description: "Widget files outside ui/ that are still the active/productive implementation"
+  files:
+    - audio/eq_advanced.py
+    - audio/eq_band_row.py
+    - audio/eq_basic.py
+    - audio/eq_curve.py
+    - audio/spectrum.py
+    - integrations/artist_metadata/artist_match_dialog.py
+    - integrations/snapcast/receivers.py
+    - library/album_grid.py
+    - library/coverflow.py
+    - library/import_service.py
+    - library/song_grid.py
+    - library/tag_editor.py
+    - michi_ai/ui/michi_ai_page.py
+    - streaming/radio_widget.py
+    - streaming/remote_browser.py
+    - streaming/server_dialog.py
+
+legacy_adapter:
+  count: 30
+  description: "Thin adapters in ui/ that route to core services, no business logic"
+  files:
+    - ui/adaptive_artwork_background.py
+    - ui/ai_assistant_panel.py
+    - ui/artwork_picker.py
+    - ui/audio_lab/vinyl_lab_page.py
+    - ui/controllers/album_controller.py
+    - ui/controllers/audio_output_controller.py
+    - ui/controllers/cast_controller.py
+    - ui/controllers/coverflow_controller.py
+    - ui/controllers/home_audio_handlers.py
+    - ui/controllers/library_controller.py
+    - ui/controllers/playlist_controller.py
+    - ui/controllers/server_browser_controller.py
+    - ui/controllers/shortcut_controller.py
+    - ui/controllers/sidebar_menu_controller.py
+    - ui/controllers/songs_controller.py
+    - ui/controllers/transmit_controller.py
+    - ui/controllers/tray_controller.py
+    - ui/effects/michi_glass.py
+    - ui/effects/michi_hover.py
+    - ui/loading_overlay.py
+    - ui/nowplaying_bar.py
+    - ui/safe_view_factory.py
+    - ui/sidebar_widget.py
+    - ui/theme.py
+    - ui/theme_manager.py
+    - ui/toast_notification.py
+    - ui/view_controller.py
+    - ui/view_navigator.py
+    - ui/view_registry.py
+    - ui/view_switcher.py
+
+safe_to_delete:
+  count: 0
+  description: "QML replacement exists, bridge connected, primary action works — currently none pending deletion in this branch"
+  files: []
+
+deleted:
+  count: 0
+  description: "Widget files already deleted — QML replacement complete"
+  files: []
+
+physical_legacy_only:
+  count: 1
+  description: "Physical window/frame/launcher — keep until QML shell is production-default"
+  files:
+    - ui/window.py

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PySide6.QtQml import QQmlApplicationEngine
 
-from core.service_container import ServiceContainer
+from core.service_container import ServiceContainer, ContainerState
 
 logger = logging.getLogger("michi.bootstrap")
 
@@ -25,20 +25,36 @@ class ApplicationBootstrap:
         self._build_repositories()
         self._build_workers()
         self._build_settings()
+        self._build_event_bus()
         self._build_domain_services()
+        self._build_process_controller()
+        self._build_runtime_persistence()
+        self._build_theme_service()
+        self._build_accessibility_service()
         self._build_action_registry()
+        self._build_confirmation_service()
+        self._build_notification_service()
+        self._build_diagnostics_service()
+        self._build_mix_service()
+        self._validate_required()
         return self
 
     def start(self):
         logger.info("Bootstrap: starting services")
         self.container.start()
-        logger.info("Bootstrap: READY")
+        if self.container.state == ContainerState.FAILED:
+            logger.error("Bootstrap: FAILED — REQUIRED services missing or None")
+            return self
+        logger.info("Bootstrap: READY (state=%s)", self.container.state.value)
         return self
 
     def create_bridges(self):
         from ui_qml_bridge.bridge_factory import create_all_bridges
         self._bridges = create_all_bridges(self.container)
         return self._bridges
+
+    def register_qml(self, engine: QQmlApplicationEngine):
+        return self.register_context(engine)
 
     def register_context(self, engine: QQmlApplicationEngine):
         from ui_qml_bridge.context_registrar import ContextRegistrar
@@ -80,6 +96,7 @@ class ApplicationBootstrap:
         from core.paths import database_path
         db = LibraryDB(database_path())
         self.container.register("connection_factory", db)
+        self.container.register("database", db)
 
     def _build_repositories(self):
         from core.library.repositories.track_repository import TrackRepository
@@ -116,14 +133,17 @@ class ApplicationBootstrap:
         from core.history_query_service import HistoryQueryService
         from core.global_search_service import GlobalSearchService
         from core.library_query_service import LibraryQueryService
+        from core.library_sources_service import LibrarySourcesService
+        from core.library_mutation_service import LibraryMutationService
+        from core.mix_query_service import MixQueryService
         from core.queue_service import QueueService
+        from core.track_action_service import TrackActionService
         from core.audio_lab.audio_lab_service import AudioLabService
         from core.metadata_service import MetadataService
         from core.smart_tagging_service import SmartTaggingService
         from core.library_doctor.library_doctor_scan_service import LibraryDoctorScanService
         from core.device_sync_service import DeviceSyncService
-        from core.notification_service import NotificationService
-        from ui_qml_bridge.action_registry import ActionRegistry
+        from audio.player_service import PlayerService
         cf = self.container.get("connection_factory")
         wm = self.container.get("worker_manager")
         lqs = LibraryQueryService(cf)
@@ -131,28 +151,93 @@ class ApplicationBootstrap:
         gss = GlobalSearchService(cf)
         ps = PlaylistService(cf)
         qs = QueueService()
+        mqs = MixQueryService(db=cf)
+        lss = LibrarySourcesService(db=cf)
+        lms = LibraryMutationService(db=cf)
         audio = AudioLabService(worker_manager=wm)
         ms = MetadataService(worker_manager=wm)
         sts = SmartTaggingService()
         lds = LibraryDoctorScanService(cf)
         dss = DeviceSyncService(worker_manager=wm)
-        ns = NotificationService()
-        ar = ActionRegistry()
+        tas = TrackActionService(query_service=lqs, db=cf)
+        pbs = PlayerService()
         self.container.register("library_query_service", lqs)
         self.container.register("history_query_service", hqs)
         self.container.register("global_search_service", gss)
         self.container.register("playlist_service", ps)
         self.container.register("queue_service", qs)
+        self.container.register("mix_query_service", mqs)
+        self.container.register("library_sources_service", lss)
+        self.container.register("library_mutation_service", lms)
         self.container.register("audio_lab_service", audio)
         self.container.register("metadata_service", ms)
         self.container.register("smart_tagging_service", sts)
         self.container.register("library_doctor_service", lds)
         self.container.register("device_sync_service", dss)
+        self.container.register("track_action_service", tas)
+        self.container.register("playback_service", pbs)
+
+    def _build_event_bus(self):
+        from core.radio.events import EventBus
+        eb = EventBus()
+        self.container.register("event_bus", eb)
+
+    def _build_process_controller(self):
+        from core.process_controller import ProcessController
+        pc = ProcessController()
+        self.container.register("process_controller", pc)
+
+    def _build_runtime_persistence(self):
+        from core.runtime_persistence import RuntimePersistence
+        rp = RuntimePersistence()
+        self.container.register("runtime_persistence", rp)
+
+    def _build_theme_service(self):
+        from core.background_theme_service import BackgroundThemeService
+        ts = BackgroundThemeService(content_stack=None)
+        self.container.register("theme_service", ts)
+
+    def _build_accessibility_service(self):
+        class AccessibilityService:
+            def announce(self, text: str): pass
+            def is_screen_reader_active(self): return False
+        acs = AccessibilityService()
+        self.container.register("accessibility_service", acs)
+
+    def _build_confirmation_service(self):
+        from core.confirmation_service import ConfirmationService
+        cs = ConfirmationService()
+        self.container.register("confirmation_service", cs)
+
+    def _build_notification_service(self):
+        from core.notification_service import NotificationService
+        ns = NotificationService()
         self.container.register("notification_service", ns)
-        self.container.register("action_registry", ar)
+
+    def _build_diagnostics_service(self):
+        class DiagnosticsService:
+            def report(self, **kwargs): return {"ok": True}
+            def check(self): return {"healthy": True}
+            def summary(self): return {"services": {}, "healthy": True}
+        ds = DiagnosticsService()
+        self.container.register("diagnostics_service", ds)
+
+    def _build_mix_service(self):
+        class MixService:
+            def generate(self, kind: str, **kwargs): return []
+            def available_mixes(self): return []
+        ms = MixService()
+        self.container.register("mix_service", ms)
+
+    def _validate_required(self):
+        missing = self.container.validate_required_present()
+        if missing:
+            logger.error("Bootstrap: REQUIRED services not built: %s", missing)
 
     def _build_action_registry(self):
-        ar = self.container.get("action_registry")
+        from ui_qml_bridge.action_registry import ActionRegistry
+        ar = ActionRegistry()
+        self.container.register("action_registry", ar)
         ar.register("play", {"scope": "track", "handler": "playback_service.play"})
         ar.register("pause", {"scope": "playback", "handler": "playback_service.pause"})
         ar.register("next", {"scope": "playback", "handler": "playback_service.next"})

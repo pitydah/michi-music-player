@@ -12,6 +12,10 @@ from typing import Any
 logger = logging.getLogger("michi.service_container")
 
 
+class BuildError(Exception):
+    pass
+
+
 class ContainerState(Enum):
     CREATED = "created"
     BUILDING = "building"
@@ -68,19 +72,19 @@ class ServiceContainer:
             "mix_query_service", "mix_service",
             "track_action_service", "playback_service",
             "queue_service", "metadata_service",
+            "process_controller", "runtime_persistence",
+            "theme_service", "accessibility_service",
+            "action_registry", "confirmation_service",
+            "notification_service", "diagnostics_service",
         }
 
     @staticmethod
     def _optional_names() -> set[str]:
         return {
-            "theme_service", "accessibility_service",
             "audio_lab_service", "smart_tagging_service",
             "library_doctor_service", "device_sync_service",
             "connection_service", "home_audio_service",
             "radio_service", "lyrics_service",
-            "diagnostics_service", "notification_service",
-            "action_registry", "confirmation_service",
-            "runtime_persistence", "process_controller",
         }
 
     @staticmethod
@@ -299,11 +303,38 @@ class ServiceContainer:
         return self._state
 
     def start(self):
-        if self._state == ContainerState.CREATED:
-            self._state = ContainerState.BUILDING
+        if self._state in (ContainerState.READY, ContainerState.DEGRADED, ContainerState.FAILED):
+            return self
         self._state = ContainerState.STARTING
+        missing = self.validate_required_present()
+        if missing:
+            for m in missing:
+                self._failures[m] = "NOT_REGISTERED"
+            self._state = ContainerState.FAILED
+            logger.error("Bootstrap: REQUIRED services missing: %s", missing)
+            return self
+        none_req = self.validate_no_none_required()
+        if none_req:
+            for n in none_req:
+                self._failures[n] = "IS_NONE"
+            self._state = ContainerState.FAILED
+            logger.error("Bootstrap: REQUIRED services are None: %s", none_req)
+            return self
+        try:
+            self.validate_acyclic_graph()
+        except ValueError as e:
+            self._state = ContainerState.FAILED
+            logger.error("Bootstrap: %s", e)
+            return self
+        self.build_start_order()
         required_failures = {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.REQUIRED}
-        self._state = ContainerState.DEGRADED if required_failures else ContainerState.READY
+        if required_failures:
+            self._state = ContainerState.FAILED
+        elif {n for n, e in self._failures.items() if self.priority(n) == ServicePriority.OPTIONAL}:
+            self._state = ContainerState.DEGRADED
+        else:
+            self._state = ContainerState.READY
+        return self
 
     def ready(self) -> bool:
         return self._state in (ContainerState.READY, ContainerState.DEGRADED)
@@ -362,6 +393,78 @@ class ServiceContainer:
                 "capable": self.is_capable(name),
             }
         return result
+
+    def validate_required_present(self) -> list[str]:
+        missing = []
+        for name in self._required_names():
+            if name not in self._services:
+                missing.append(name)
+        return missing
+
+    def validate_dependencies_present(self) -> list[str]:
+        broken = []
+        for name, deps in self._dependencies.items():
+            for dep in deps:
+                if dep not in self._services:
+                    broken.append(f"{name} -> {dep}")
+        return broken
+
+    def validate_no_none_required(self) -> list[str]:
+        bad = []
+        for name in self._required_names():
+            svc = self._services.get(name)
+            if svc is None:
+                bad.append(name)
+        return bad
+
+    def validate_acyclic_graph(self) -> list[str]:
+        all_deps: dict[str, set[str]] = {}
+        for name in self._all_names():
+            all_deps[name] = set(self._dependencies.get(name, ()))
+        for name in self._all_names():
+            if name not in all_deps:
+                all_deps[name] = set()
+        order = self._topological_sort(all_deps)
+        return order
+
+    def _topological_sort(self, deps: dict[str, set[str]]) -> list[str]:
+        visited = set()
+        temp_mark = set()
+        order = []
+
+        def visit(node: str, path: set):
+            if node in visited:
+                return
+            if node in temp_mark:
+                raise ValueError(f"Circular dependency detected: {node}")
+            temp_mark.add(node)
+            for dep in deps.get(node, set()):
+                if dep in deps:
+                    visit(dep, path | {node})
+            temp_mark.discard(node)
+            visited.add(node)
+            order.append(node)
+
+        for node in deps:
+            visit(node, set())
+        remaining = [n for n in self._all_names() if n not in order]
+        order.extend(remaining)
+        return order
+
+    def build_start_order(self) -> list[str]:
+        order = self.validate_acyclic_graph()
+        required_order = [s for s in order if s in self._required_names()]
+        optional_order = [s for s in order if s not in self._required_names()]
+        return required_order + optional_order
+
+    def total_required(self) -> int:
+        return len(self._required_names())
+
+    def total_optional(self) -> int:
+        return len(self._optional_names())
+
+    def total_services(self) -> int:
+        return len(self._services)
 
 
 ServiceRegistry = ServiceContainer

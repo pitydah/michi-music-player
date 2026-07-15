@@ -1,7 +1,7 @@
-"""ServiceBundle — single source of references to all backend services for QML.
+"""ServiceBundle — LEGACY_ONLY. Use ServiceContainer instead.
 
-Contains existing service references only. No service creation.
-No database opening. No backend construction.
+Kept for legacy test compatibility only.
+New code MUST use ServiceContainer.
 """
 from __future__ import annotations
 
@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class ServiceBundle:
+    """LEGACY_ONLY: Use ServiceContainer from core.service_container instead."""
+
     player_service: PlayerService | None = None
     db: Any | None = None
     db_connection: Any | None = None

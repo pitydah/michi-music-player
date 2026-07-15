@@ -1,0 +1,580 @@
+bridges:
+  - context_name: navigationBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_navigation_bridge
+    creation_order: 1
+    routes:
+      - navigation
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: appBridge
+    required_services:
+      - worker_manager
+      - player_service
+      - db
+    optional_services:
+      - sync_manager
+      - home_audio_controller
+      - radio_manager
+    factory_method: create_app_bridge
+    creation_order: 2
+    routes:
+      - app
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: themeBridge
+    required_services: []
+    optional_services:
+      - settings_coordinator
+    factory_method: create_theme_bridge
+    creation_order: 3
+    routes:
+      - theme
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: notificationBridge
+    required_services: []
+    optional_services:
+      - notification_service
+      - diagnostics_service
+    factory_method: create_notification_bridge
+    creation_order: 4
+    routes:
+      - notifications
+    None dependencies:
+      - action_registry
+      - job_bridge
+      - navigation
+    status: ACTIVE
+
+  - context_name: accessibilityBridge
+    required_services: []
+    optional_services:
+      - settings_coordinator
+    factory_method: create_accessibility_bridge
+    creation_order: 5
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: appStateBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_app_state_bridge
+    creation_order: 6
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: routeRegistryBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_route_registry_bridge
+    creation_order: 7
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: actionRegistry
+    required_services: []
+    optional_services: []
+    factory_method: create_action_registry_bridge
+    creation_order: 8
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: capabilityBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_capability_bridge
+    creation_order: 9
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: jobBridge
+    required_services:
+      - worker_manager
+    optional_services:
+      - db
+    factory_method: create_job_bridge
+    creation_order: 10
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: selectionContextBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_selection_context_bridge
+    creation_order: 11
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: libraryBridge
+    required_services:
+      - db
+      - worker_manager
+    optional_services:
+      - player_service
+    factory_method: create_library_bridge
+    creation_order: 12
+    routes:
+      - library
+      - library.tracks
+      - library.albums
+      - library.album_detail
+      - library.artists
+      - library.artist_detail
+      - library.folders
+      - library.folder_detail
+    None dependencies:
+      - query_executor
+      - job_bridge
+    status: ACTIVE
+
+  - context_name: playbackBridge
+    required_services:
+      - player_service
+    optional_services: []
+    factory_method: create_playback_bridge
+    creation_order: 13
+    routes:
+      - playback
+    None dependencies:
+      - nowplaying
+    status: ACTIVE
+
+  - context_name: nowplayingBridge
+    required_services:
+      - player_service
+      - worker_manager
+    optional_services: []
+    factory_method: create_nowplaying_bridge
+    creation_order: 14
+    routes:
+      - playback.nowplaying
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: queueBridge
+    required_services:
+      - player_service
+    optional_services: []
+    factory_method: create_queue_bridge
+    creation_order: 15
+    routes:
+      - queue
+    None dependencies:
+      - playlists
+    status: ACTIVE
+
+  - context_name: historyBridge
+    required_services:
+      - db
+    optional_services:
+      - history_query_service
+    factory_method: create_history_bridge
+    creation_order: 16
+    routes:
+      - history
+    None dependencies:
+      - query_executor
+      - action_registry
+      - navigation
+      - page_state
+      - capability
+      - accessibility
+      - notification
+      - job_bridge
+    status: ACTIVE
+
+  - context_name: mixBridge
+    required_services:
+      - db
+      - player_service
+    optional_services:
+      - mix_query_service
+    factory_method: create_mix_bridge
+    creation_order: 17
+    routes:
+      - mix
+      - mix_detail
+      - mix_generator
+      - mix_result
+      - mix_rule_editor
+    None dependencies:
+      - action_registry
+      - navigation
+      - page_state
+      - capability
+      - accessibility
+    status: ACTIVE
+
+  - context_name: lyricsBridge
+    required_services:
+      - worker_manager
+    optional_services: []
+    factory_method: create_lyrics_bridge
+    creation_order: 18
+    routes:
+      - lyrics
+    None dependencies:
+      - nowplaying
+    status: ACTIVE
+
+  - context_name: globalSearchBridge
+    required_services: []
+    optional_services:
+      - global_search_service
+    factory_method: create_global_search_bridge
+    creation_order: 19
+    routes:
+      - search
+    None dependencies:
+      - query_executor
+      - action_registry
+      - navigation
+      - page_state
+      - capability
+      - accessibility
+      - notification
+    status: ACTIVE
+
+  - context_name: settingsBridge
+    required_services: []
+    optional_services:
+      - settings_service
+    factory_method: create_settings_bridge
+    creation_order: 20
+    routes:
+      - settings
+      - settings.general
+      - settings.appearance
+      - settings.playback
+      - settings.library
+      - settings.accessibility
+      - settings.audio
+      - settings.about
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: settingsBridgeV2
+    required_services: []
+    optional_services:
+      - settings_service
+    factory_method: create_settings_bridge
+    creation_order: 20
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: outputProfilesBridge
+    required_services:
+      - player_service
+    optional_services: []
+    factory_method: create_output_profiles_bridge
+    creation_order: 21
+    routes:
+      - outputs
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: eqBridge
+    required_services:
+      - player_service
+    optional_services: []
+    factory_method: create_eq_bridge
+    creation_order: 22
+    routes:
+      - equalizer
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: connectionsBridge
+    required_services: []
+    optional_services:
+      - michi_link_controller
+    factory_method: create_connections_bridge
+    creation_order: 23
+    routes:
+      - connections
+      - connections.detail
+    None dependencies:
+      - navigation
+    status: ACTIVE
+
+  - context_name: homeAudioBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_home_audio_bridge
+    creation_order: 24
+    routes:
+      - home_audio
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: devicesBridge
+    required_services: []
+    optional_services:
+      - sync_manager
+      - device_sync_service
+      - job_service
+    factory_method: create_devices_bridge
+    creation_order: 25
+    routes:
+      - devices.list
+      - devices.detail
+      - devices.pairing
+    None dependencies:
+      - action_registry
+      - confirmation
+      - navigation
+      - capability
+      - page_state
+      - accessibility
+    status: ACTIVE
+
+  - context_name: radioBridge
+    required_services:
+      - player_service
+    optional_services:
+      - radio_manager
+    factory_method: create_radio_bridge
+    creation_order: 26
+    routes:
+      - radio
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: librarySourcesBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_library_sources_bridge
+    creation_order: 27
+    routes:
+      - library.sources
+    None dependencies:
+      - job_bridge
+    status: ACTIVE
+
+  - context_name: homeBridge
+    required_services:
+      - db
+      - player_service
+    optional_services: []
+    factory_method: create_home_bridge
+    creation_order: 28
+    routes:
+      - home
+    None dependencies:
+      - library
+      - job_bridge
+    status: ACTIVE
+
+  - context_name: audioLabBridge
+    required_services:
+      - worker_manager
+    optional_services:
+      - audio_lab_service
+      - job_service
+      - player_service
+    factory_method: create_audio_lab_bridge
+    creation_order: 29
+    routes:
+      - audio_lab
+      - audio_lab.overview
+      - audio_lab.analysis
+      - audio_lab.conversion
+      - audio_lab.normalization
+      - audio_lab.replaygain
+      - audio_lab.integrity
+      - audio_lab.comparison
+      - audio_lab.jobs
+      - audio_lab.profiles
+    None dependencies:
+      - confirmation
+      - navigation
+      - capability
+    status: ACTIVE
+
+  - context_name: metadataBridge
+    required_services:
+      - worker_manager
+    optional_services:
+      - metadata_service
+      - job_service
+    factory_method: create_metadata_bridge
+    creation_order: 30
+    routes:
+      - metadata.inspector
+      - metadata.batch
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: smartTaggingBridge
+    required_services:
+      - worker_manager
+    optional_services:
+      - smart_tagging_service
+    factory_method: create_smart_tagging_bridge
+    creation_order: 31
+    routes:
+      - tagging
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: libraryDoctorBridge
+    required_services:
+      - db
+      - worker_manager
+    optional_services: []
+    factory_method: create_library_doctor_bridge
+    creation_order: 32
+    routes:
+      - library_doctor
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: michiAiBridge
+    required_services:
+      - worker_manager
+    optional_services: []
+    factory_method: create_michi_ai_bridge
+    creation_order: 33
+    routes:
+      - ai
+      - assistant
+    None dependencies:
+      - action_registry
+      - confirmation
+      - navigation
+      - capability
+      - page_state
+      - accessibility
+    status: ACTIVE
+
+  - context_name: diagnosticsBridge
+    required_services:
+      - db
+      - worker_manager
+    optional_services:
+      - player_service
+    factory_method: create_diagnostics_bridge
+    creation_order: 34
+    routes:
+      - diagnostics
+    None dependencies:
+      - library
+    status: ACTIVE
+
+  - context_name: runtimeQualityBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_runtime_quality_bridge
+    creation_order: 35
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: physicalAudioBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_physical_audio_bridge
+    creation_order: 36
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: commandPaletteBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_command_palette_bridge
+    creation_order: 37
+    routes: []
+    None dependencies:
+      - action_registry
+      - navigation
+      - nowplaying
+      - capability
+      - confirmation
+      - page_state
+    status: ACTIVE
+
+  - context_name: coverProviderBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_cover_provider_bridge
+    creation_order: 38
+    routes: []
+    None dependencies:
+      - cover
+    status: ACTIVE
+
+  - context_name: desktopBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_desktop_bridge
+    creation_order: 39
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: pageStateStore
+    required_services: []
+    optional_services: []
+    factory_method: create_page_state_store
+    creation_order: 40
+    routes: []
+    None dependencies: []
+    status: ACTIVE
+
+  - context_name: playlistsBridge
+    required_services:
+      - db
+    optional_services:
+      - player_service
+      - playlist_service
+    factory_method: create_playlists_bridge
+    creation_order: 41
+    routes:
+      - playlists
+      - playlist_detail
+    None dependencies:
+      - selection_context
+      - action_registry
+      - confirmation
+      - navigation
+      - page_state
+      - capability
+      - accessibility
+      - notification
+      - job_bridge
+    status: ACTIVE
+
+  - context_name: discLabBridge
+    required_services: []
+    optional_services: []
+    factory_method: create_disc_lab_bridge
+    creation_order: 42
+    routes:
+      - disc_lab
+    None dependencies:
+      - disc_detection_service
+    status: DEFERRED
+
+  - context_name: queryExecutor
+    required_services: []
+    optional_services: []
+    factory_method: create_query_executor
+    creation_order: 43
+    routes: []
+    None dependencies:
+      - worker_manager
+    status: ACTIVE
