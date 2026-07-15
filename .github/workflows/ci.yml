@@ -228,6 +228,33 @@ jobs:
           source .venv/bin/activate
           python scripts/qml_hybrid_dependency_audit.py
 
+  context-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Bridge contract audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_bridge_contract_audit.py
+      - name: Route registry audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_route_registry_audit.py
+
   widget-dependency:
     runs-on: ubuntu-latest
     steps:
@@ -259,6 +286,33 @@ jobs:
           source .venv/bin/activate
           python scripts/qml_route_registry_audit.py
 
+  decommission:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            python3-numpy python3-mutagen python3-pil
+      - name: Create venv
+        run: |
+          python3 -m venv --system-site-packages .venv
+          source .venv/bin/activate
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+          python3 -m pip install pytest-timeout
+      - name: Decommission audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_decommission_audit.py
+      - name: Widget retirement audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_widget_retirement_audit.py
+
   vertical-workflows:
     runs-on: ubuntu-latest
     steps:
@@ -284,7 +338,7 @@ jobs:
       - name: QML tests (all)
         run: |
           source .venv/bin/activate
-          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v8.xml
+          QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/qml -q --timeout=300 --junitxml=artifacts/qml-results-v9.xml
 
   isolation-workflows:
     runs-on: ubuntu-latest
@@ -336,7 +390,7 @@ jobs:
           source .venv/bin/activate
           python scripts/check_runtime.py
 
-  performance-10k-50k:
+  performance:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -358,33 +412,14 @@ jobs:
         run: |
           source .venv/bin/activate
           QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 pytest tests/perf -q --timeout=600
-
-  performance-100k:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            python3-numpy python3-mutagen python3-pil
-      - name: Create venv
-        run: |
-          python3 -m venv --system-site-packages .venv
-          source .venv/bin/activate
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -e ".[dev]"
-          python3 -m pip install pytest-timeout
-      - name: Library benchmark
+      - name: Performance benchmark
         run: |
           source .venv/bin/activate
           QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python scripts/qml_library_benchmark.py
 
-  Evidence-V8:
+  Evidence-V9:
     runs-on: ubuntu-latest
-    needs: [qml-load, qml-instance, qml-interaction, vertical-workflows, performance-10k-50k, performance-100k]
+    needs: [qml-load, qml-instance, qml-interaction, service-graph, context-bindings, widget-dependency, decommission, vertical-workflows, isolation-workflows, runtime-quality, performance]
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies
@@ -401,31 +436,35 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install -e ".[dev]"
           python3 -m pip install pytest-timeout
-      - name: Evidence V8 collect
+      - name: Evidence V9 collect
         run: |
           source .venv/bin/activate
-          python scripts/qml_evidence_v8_collect.py --junit artifacts/qml-results-v8.xml --expected-sha ${{ github.sha }}
-      - name: Manifest V8 generate
+          python scripts/qml_evidence_v9_collect.py --junit artifacts/qml-results-v9.xml --expected-sha ${{ github.sha }}
+      - name: Manifest V9 generate
         run: |
           source .venv/bin/activate
-          python scripts/qml_manifest_v8_generate.py
-      - name: Manifest V8 audit
+          python scripts/qml_manifest_v9_generate.py
+      - name: Manifest V9 audit
         run: |
           source .venv/bin/activate
-          python scripts/qml_manifest_v8_audit.py
-      - name: Score V8
+          python scripts/qml_manifest_v9_audit.py
+      - name: Score V9
         run: |
           source .venv/bin/activate
-          python scripts/qml_migration_score_v8.py
-      - name: Save artifacts V8
+          python scripts/qml_migration_score_v9.py
+      - name: Workflow audit
+        run: |
+          source .venv/bin/activate
+          python scripts/qml_workflow_audit.py
+      - name: Save artifacts V9
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: qml-evidence-v8-${{ github.sha }}
+          name: qml-evidence-v9-${{ github.sha }}
           path: |
-            artifacts/qml-results-v8.xml
-            artifacts/qml-evidence-v8.json
-            docs/qml_migration_manifest_v8.json
+            artifacts/qml-results-v9.xml
+            artifacts/qml-evidence-v9.json
+            docs/qml_migration_manifest_v9.json
 
   release-gate:
     needs:
@@ -436,13 +475,14 @@ jobs:
       - qml-instance
       - qml-interaction
       - service-graph
+      - context-bindings
       - widget-dependency
+      - decommission
       - vertical-workflows
       - isolation-workflows
       - runtime-quality
-      - performance-10k-50k
-      - performance-100k
-      - Evidence-V8
+      - performance
+      - Evidence-V9
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -457,16 +497,17 @@ jobs:
           echo "qml-instance: ${{ needs.qml-instance.result }}"
           echo "qml-interaction: ${{ needs.qml-interaction.result }}"
           echo "service-graph: ${{ needs.service-graph.result }}"
+          echo "context-bindings: ${{ needs.context-bindings.result }}"
           echo "widget-dependency: ${{ needs.widget-dependency.result }}"
+          echo "decommission: ${{ needs.decommission.result }}"
           echo "vertical-workflows: ${{ needs.vertical-workflows.result }}"
           echo "isolation-workflows: ${{ needs.isolation-workflows.result }}"
           echo "runtime-quality: ${{ needs.runtime-quality.result }}"
-          echo "performance-10k-50k: ${{ needs.performance-10k-50k.result }}"
-          echo "performance-100k: ${{ needs.performance-100k.result }}"
-          echo "Evidence-V8: ${{ needs.Evidence-V8.result }}"
+          echo "performance: ${{ needs.performance.result }}"
+          echo "Evidence-V9: ${{ needs.Evidence-V9.result }}"
           FAILED=""
-          for job in lint compile core-tests qml-load qml-instance qml-interaction service-graph widget-dependency vertical-workflows isolation-workflows runtime-quality performance-10k-50k performance-100k Evidence-V8; do
-            result_var="\${{ needs.$job.result }}"
+          for job in lint compile core-tests qml-load qml-instance qml-interaction service-graph context-bindings widget-dependency decommission vertical-workflows isolation-workflows runtime-quality performance Evidence-V9; do
+            result_var="${{ needs.$job.result }}"
             if [ "$result_var" != "success" ]; then
               FAILED="$FAILED $job"
             fi

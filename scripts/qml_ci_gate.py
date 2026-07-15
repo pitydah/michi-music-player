@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""QML CI Gate V7 — runs all mandatory jobs, stops at first critical error.
+"""QML CI Gate V9 — runs all mandatory jobs without escapes.
 
-Jobs: lint, compile, core tests, QML load, QML instance, QML interaction,
-service graph, widget dependency audit, vertical workflows, isolation workflows,
-performance, runtime quality, Evidence V7, release gate.
+Jobs: lint, compile, core-tests, qml-load, qml-instance, qml-interaction,
+service-graph, context-bindings, widget-dependency, decommission,
+vertical-workflows, isolation-workflows, runtime-quality, performance,
+Evidence-V9, release-gate.
 
-Release gate depends on ALL. No tolerate: crashes, xfail funcional, skipped
-obligatorio, artifacts stale, scores fuera de 0-100.
+Prohibited: continue-on-error, crashes aceptados, xfail funcional,
+skip obligatorio, artifacts stale, score >100, score <0,
+gate PASS con failed >0.
 
 Output: /tmp/michi_qml_ci_gate.json (results dict).
 """
@@ -19,49 +21,43 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 ENV = {**dict(sorted(os.environ.items())), "QT_QPA_PLATFORM": "offscreen", "MICHI_SAFE_MODE": "1"}
 
-STEPS = [
-    # Phase 0: Lint and compile
-    ("ruff", ["ruff", "check", ".", "--ignore", "E999", "--per-file-ignores", "tests/qml/accessibility/test_accessibility_all_routes.py:E999", "tests/qml/audio_lab/test_audio_analysis.py:E999", "tests/qml/audio_lab/test_audio_analysis_batch.py:E999", "tests/qml/audio_lab/test_audio_integrity.py:E999", "tests/qml/audio_lab/test_audio_lab_service.py:E999", "tests/qml/audio_lab/test_conversion_cancel_qprocess.py:E999", "tests/qml/decommission/test_retiro_ola2.py:E999", "tests/qml/equalizer/test_eq_applied_state_v2.py:E999", "tests/qml/equalizer/test_eq_presets.py:E999", "tests/qml/library/test_fetch_more_model.py:E999", "tests/qml/library/test_library_events.py:E999", "tests/qml/library/test_library_identity.py:E999", "tests/qml/playlists/test_playlists_transaccional_qml.py:E999", "tests/qml/queue/test_queue_full_workflow.py:E999", "tests/qml/queue/test_queue_single_source_of_truth.py:E999", "tests/qml/radio/test_radio_stream_control_v2.py:E999", "tests/qml/runtime/test_qml_harness.py:E999", "tests/qml/search/test_global_search_actions.py:E999", "tests/qml/search/test_global_search_real.py:E999", "tests/qml/search/test_global_search_stale_cancel.py:E999", "tests/qml/settings/test_settings_runtime_adapters.py:E999", "tests/qml/settings/test_settings_runtime_completo.py:E999", "tests/qml/tagging/test_smart_tagging_workflow.py:E999"]),
-    ("compileall", [sys.executable, "-m", "compileall", "-q", "-x", r"\.venv/|\.tmpl\."]),
-
-    # Phase 1: Core tests
-    ("test_schema", [sys.executable, "-m", "pytest", "tests/test_schema.py", "-q"]),
-    ("test_format_probe", [sys.executable, "-m", "pytest", "tests/test_format_probe.py", "-q"]),
-    ("test_packaging", [sys.executable, "-m", "pytest", "tests/test_packaging.py", "-q"]),
-
-    # Phase 2: QML basic
-    ("qml_compile_all", [sys.executable, "scripts/qml_compile_all.py"]),
-    ("qml_instance_all", [sys.executable, "scripts/qml_instance_all.py"]),
-
-    # Phase 3: QML interaction real tests
-    ("qml_interaction_real", [
-        sys.executable, "-m", "pytest", "tests/qml/workflows/test_qml_interaction_real.py",
-        "-q", "--timeout=600",
-    ]),
-
-    # Phase 4: Smoke and startup
-    ("smoke_startup", [sys.executable, "scripts/smoke_startup.py"]),
-    ("smoke_ui_routes", [sys.executable, "scripts/smoke_ui_routes.py"]),
-
-    # Phase 5: Runtime quality
-    ("qml_runtime_quality", [sys.executable, "scripts/qml_runtime_quality_audit.py"]),
-
-    # Phase 6: Audits
-    ("route_registry_audit", [sys.executable, "scripts/qml_route_registry_audit.py"]),
-    ("bridge_contract_audit", [sys.executable, "scripts/qml_bridge_contract_audit.py"]),
-    ("service_graph", [sys.executable, "scripts/qml_productive_service_audit.py"]),
-
-    # Phase 7: Full QML test suite
-    ("pytest_qml", [sys.executable, "-m", "pytest", "tests/qml/", "-q", "-m", "not isolation"]),
-
-    # Phase 8: Existing runtime check
-    ("check_runtime", [sys.executable, "scripts/check_runtime.py"]),
-
-    # Phase 9: Library benchmark
-    ("library_benchmark", [sys.executable, "scripts/qml_library_benchmark.py"]),
+MANDATORY_JOBS = [
+    "ruff",
+    "compileall",
+    "core-tests",
+    "qml-load",
+    "qml-instance",
+    "qml-interaction",
+    "service-graph",
+    "context-bindings",
+    "widget-dependency",
+    "decommission",
+    "vertical-workflows",
+    "isolation-workflows",
+    "runtime-quality",
+    "performance",
+    "Evidence-V9",
 ]
 
-XFAIL_OK = {"qml_compile_all", "qml_instance_all", "check_runtime", "service_graph", "library_benchmark", "smoke_ui_routes", "qml_runtime_quality", "pytest_qml"}
+STEPS = [
+    ("ruff", ["ruff", "check", ".", "--output-format", "concise"]),
+    ("compileall", [sys.executable, "-m", "compileall", "-q", "-x", r"\.venv/|\.tmpl\."]),
+    ("core-tests", [sys.executable, "-m", "pytest", "tests/test_schema.py", "tests/test_format_probe.py", "tests/test_packaging.py", "-q"]),
+    ("qml-load", [sys.executable, "scripts/qml_compile_all.py"]),
+    ("qml-instance", [sys.executable, "scripts/qml_instance_all.py"]),
+    ("qml-interaction", [sys.executable, "-m", "pytest", "tests/qml/workflows/test_qml_interaction_real.py", "-q", "--timeout=600"]),
+    ("service-graph", [sys.executable, "scripts/qml_productive_service_audit.py"]),
+    ("context-bindings", [sys.executable, "scripts/qml_bridge_contract_audit.py"]),
+    ("widget-dependency", [sys.executable, "scripts/qml_hybrid_dependency_audit.py"]),
+    ("decommission", [sys.executable, "scripts/qml_decommission_audit.py"]),
+    ("vertical-workflows", [sys.executable, "-m", "pytest", "tests/qml/workflows", "-q", "--timeout=600"]),
+    ("isolation-workflows", [sys.executable, "-m", "pytest", "tests/qml", "-m", "isolation", "-q", "--timeout=300"]),
+    ("runtime-quality", [sys.executable, "scripts/qml_runtime_quality_audit.py"]),
+    ("performance", [sys.executable, "scripts/qml_library_benchmark.py"]),
+    ("Evidence-V9", [sys.executable, "-m", "pytest", "tests/qml/test_evidence_v9_plugin.py", "-q"]),
+]
+
+XFAIL_OK: set[str] = set()
 
 
 def run() -> dict:
@@ -69,8 +65,6 @@ def run() -> dict:
     failed = False
     for name, cmd in STEPS:
         env = {**ENV}
-        if name == "check_runtime":
-            env.pop("MICHI_SAFE_MODE", None)
         print(f"\n{'='*60}")
         print(f"[{name}] Running: {' '.join(cmd)}")
         print(f"{'='*60}")
@@ -80,7 +74,8 @@ def run() -> dict:
         except subprocess.TimeoutExpired:
             results[name] = {"ok": False, "error": "TIMEOUT", "returncode": -1}
             print(f"[{name}] TIMEOUT")
-            continue
+            failed = True
+            break
         ok = proc.returncode == 0
 
         if name in XFAIL_OK and not ok:
@@ -100,13 +95,14 @@ def run() -> dict:
             print(proc.stdout[-300:])
             print(proc.stderr[-300:])
             failed = True
-            break  # stop at first failure for CI
+            break
 
     return {
         "results": results,
         "passed": not failed,
         "total": len(STEPS),
         "failed_count": sum(1 for v in results.values() if not v.get("ok")),
+        "mandatory_jobs": MANDATORY_JOBS,
     }
 
 
@@ -115,8 +111,16 @@ def main():
     outpath = Path("/tmp/michi_qml_ci_gate.json")
     outpath.write_text(json.dumps(result, indent=2, default=str))
     print(f"\nResults written to {outpath}")
-    print(f"Gate status: {'PASSED' if result['passed'] else 'FAILED'}")
-    return 0 if result['passed'] else 1
+    passed = result["passed"]
+    fc = result["failed_count"]
+    print(f"Gate status: {'PASSED' if passed else 'FAILED'}")
+    if passed and fc > 0:
+        print("ERROR: gate PASS con failed > 0 — forbidden")
+        return 1
+    if not passed and fc == 0:
+        print("ERROR: inconsistent state")
+        return 1
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

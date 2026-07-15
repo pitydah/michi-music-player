@@ -1,0 +1,311 @@
+# Integration Manifest — canonical services, bridges, contexts, models, routes
+# Auto-generated from codebase analysis. DO NOT EDIT MANUALLY.
+
+canonical_services:
+  # From core/ — registered in ServiceContainer
+  - connection_factory
+  - worker_manager
+  - query_executor
+  - job_service
+  - event_bus
+  - settings_coordinator
+  - settings_service
+  - library_query_service
+  - library_sources_service
+  - library_mutation_service
+  - playlist_service
+  - history_query_service
+  - global_search_service
+  - mix_query_service
+  - track_action_service
+  - playback_service
+  - queue_service
+  - metadata_service
+  # Optional services
+  - theme_service
+  - accessibility_service
+  - audio_lab_service
+  - smart_tagging_service
+  - library_doctor_service
+  - device_sync_service
+  - connection_service
+  - home_audio_service
+  - diagnostics_service
+  - notification_service
+  - action_registry
+
+bridges:
+  # From ui_qml_bridge/ — created by BridgeFactory
+  - app
+  - navigation
+  - theme
+  - library
+  - playback
+  - nowplaying
+  - mix
+  - michi_ai
+  - metadata
+  - queue
+  - history
+  - devices
+  - radio
+  - connections
+  - home_audio
+  - home
+  - settings
+  - settings_v2
+  - audio_lab
+  - output_profiles
+  - smart_tagging
+  - library_doctor
+  - disc_lab
+  - lyrics
+  - eq
+  - global_search
+  - notification
+  - accessibility
+  - app_state
+  - route_registry
+  - action_registry
+  - capability
+  - cover_provider
+  - job_bridge
+  - command_palette
+  - diagnostics
+  - runtime_quality
+  - physical_audio
+  - selection_context
+  - library_sources
+  - desktop
+  - page_state
+  - playlists
+
+context_properties:
+  # From context_bindings.py — QML context property → bridge key
+  appBridge: app
+  navigationBridge: navigation
+  themeBridge: theme
+  libraryBridge: library
+  michiAiBridge: michi_ai
+  metadataBridge: metadata
+  mixBridge: mix
+  playbackBridge: playback
+  nowplayingBridge: nowplaying
+  devicesBridge: devices
+  playlistsBridge: playlists
+  audioLabBridge: audio_lab
+  settingsBridge: settings
+  radioBridge: radio
+  connectionsBridge: connections
+  smartTaggingBridge: smart_tagging
+  libraryDoctorBridge: library_doctor
+  discLabBridge: disc_lab
+  selectionContextBridge: selection_context
+  homeAudioBridge: home_audio
+  lyricsBridge: lyrics
+  notificationBridge: notification
+  routeRegistryBridge: route_registry
+  appStateBridge: app_state
+  diagnosticsBridge: diagnostics
+  commandPaletteBridge: command_palette
+  actionRegistry: action_registry
+  globalSearchBridge: global_search
+  coverProviderBridge: cover_provider
+  jobBridge: job_bridge
+  desktopBridge: desktop
+  pageStateStore: page_state
+  queueBridge: queue
+  historyBridge: history
+  homeBridge: home
+  librarySourcesBridge: library_sources
+  capabilityBridge: capability
+  outputProfilesBridge: output_profiles
+  settingsBridgeV2: settings_v2
+  accessibilityBridge: accessibility
+  runtimeQualityBridge: runtime_quality
+  physicalAudioBridge: physical_audio
+
+qml_models:
+  # From ui_qml/models/
+  - BasePagedListModel
+  - QueueListModel
+  - TrackListModel
+  - HistoryListModel
+  - ArtistListModel
+  - AlbumPagedListModel
+  - AlbumListModel
+  - AlbumDetailModel
+  - JobListModel
+  - FolderTreeModel
+
+routes:
+  # From route_registry.py
+  - home
+  - library.tracks
+  - library.albums
+  - library.album_detail
+  - library.artists
+  - library.artist_detail
+  - library.folders
+  - library.folder_detail
+  - library.sources
+  - queue
+  - playlists
+  - playlist_detail
+  - history
+  - mix
+  - mix_detail
+  - search
+  - radio
+  - lyrics
+  - audio_lab.overview
+  - audio_lab.analysis
+  - audio_lab.conversion
+  - audio_lab.normalization
+  - audio_lab.replaygain
+  - audio_lab.integrity
+  - audio_lab.comparison
+  - audio_lab.jobs
+  - audio_lab.profiles
+  - metadata.inspector
+  - metadata.batch
+  - tagging
+  - library_doctor
+  - equalizer
+  - outputs
+  - devices.list
+  - devices.detail
+  - connections
+  - connections.detail
+  - home_audio
+  - settings.general
+  - settings.appearance
+  - settings.playback
+  - settings.library
+  - settings.accessibility
+  - settings.audio
+  - settings.about
+  - diagnostics
+  - ai
+  - assistant
+  - disc_lab
+  - audio_lab
+  - playback
+  - library
+  - settings
+  - placeholder
+
+module_coverage:
+  workflows:
+    services:
+      - worker_manager
+      - event_bus
+    bridges:
+      - navigation
+      - app
+    contexts:
+      - navigationBridge
+      - appBridge
+    models: []
+    routes:
+      - home
+      - library
+  evidence:
+    services:
+      - worker_manager
+    bridges:
+      - diagnostics
+      - runtime_quality
+    contexts:
+      - diagnosticsBridge
+    models: []
+    routes:
+      - diagnostics
+  library:
+    services:
+      - library_query_service
+      - library_sources_service
+      - library_mutation_service
+    bridges:
+      - library
+      - library_sources
+    contexts:
+      - libraryBridge
+      - librarySourcesBridge
+    models:
+      - TrackListModel
+      - AlbumListModel
+      - AlbumPagedListModel
+      - AlbumDetailModel
+      - ArtistListModel
+    routes:
+      - library.tracks
+      - library.albums
+      - library.album_detail
+      - library.artists
+      - library.artist_detail
+      - library.folders
+      - library.folder_detail
+      - library.sources
+  playback:
+    services:
+      - playback_service
+      - queue_service
+    bridges:
+      - playback
+      - nowplaying
+      - queue
+    contexts:
+      - playbackBridge
+      - nowplayingBridge
+      - queueBridge
+    models:
+      - QueueListModel
+    routes:
+      - playback
+      - queue
+  navigation:
+    services: []
+    bridges:
+      - navigation
+      - route_registry
+      - page_state
+    contexts:
+      - navigationBridge
+      - routeRegistryBridge
+      - pageStateStore
+    models: []
+    routes:
+      - home
+      - library
+      - settings
+  settings:
+    services:
+      - settings_service
+      - settings_coordinator
+    bridges:
+      - settings
+      - settings_v2
+    contexts:
+      - settingsBridge
+      - settingsBridgeV2
+    models: []
+    routes:
+      - settings.general
+      - settings.appearance
+      - settings.playback
+      - settings.library
+      - settings.accessibility
+      - settings.audio
+      - settings.about
+  devices:
+    services:
+      - device_sync_service
+    bridges:
+      - devices
+    contexts:
+      - devicesBridge
+    models: []
+    routes:
+      - devices.list
+      - devices.detail

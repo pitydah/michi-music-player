@@ -8,9 +8,9 @@ from core.settings_manager import SETTINGS
 class ThemeBridge(QObject):
     themeChanged = Signal()
 
-    def __init__(self, service=None, parent=None):
+    def __init__(self, service=None, coordinator=None, parent=None):
         super().__init__(parent)
-        self._service = service
+        self._service = service or coordinator
         self._theme = SETTINGS.value("appearance/theme", "dark")
         self._accent_color = SETTINGS.value("appearance/accent_color", "#8FB7FF")
         self._high_contrast = bool(SETTINGS.value("accessibility/high_contrast", False))
