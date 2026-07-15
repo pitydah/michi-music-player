@@ -1,0 +1,171 @@
+# QML Modules V13 — Evidence collection configuration
+modules:
+  home:
+    title: "Inicio"
+    primary_route: home
+    pages:
+      - ui_qml/pages/home/HomePage.qml
+      - ui_qml/pages/home/HomeHero.qml
+      - ui_qml/pages/home/ContinueCard.qml
+      - ui_qml/pages/home/LibraryStatusCard.qml
+      - ui_qml/pages/home/EcosystemCard.qml
+      - ui_qml/pages/home/AssistantCard.qml
+
+  library:
+    title: "Biblioteca"
+    primary_route: library
+    pages:
+      - ui_qml/pages/library/LibraryPage.qml
+      - ui_qml/pages/library/tracks/TracksPage.qml
+      - ui_qml/pages/library/AlbumGridPage.qml
+      - ui_qml/pages/library/AlbumDetailPage.qml
+      - ui_qml/pages/library/ArtistGridPage.qml
+      - ui_qml/pages/library/ArtistDetailPage.qml
+      - ui_qml/pages/library/FolderBrowserPage.qml
+      - ui_qml/pages/library/SourcesPage.qml
+      - ui_qml/pages/library/FavoritesPage.qml
+      - ui_qml/pages/library/RecentPage.qml
+      - ui_qml/pages/library/GenresPage.qml
+
+  queue:
+    title: "Cola"
+    primary_route: queue
+    pages:
+      - ui_qml/pages/queue/QueuePage.qml
+
+  playlists:
+    title: "Playlists"
+    primary_route: playlists
+    pages:
+      - ui_qml/pages/playlists/PlaylistsPage.qml
+      - ui_qml/pages/playlists/PlaylistDetailPage.qml
+
+  history:
+    title: "Historial"
+    primary_route: history
+    pages:
+      - ui_qml/pages/history/HistoryPage.qml
+
+  mix:
+    title: "Mix"
+    primary_route: mix
+    pages:
+      - ui_qml/pages/mix/MixHubPage.qml
+      - ui_qml/pages/mix/MixDetailPage.qml
+      - ui_qml/pages/mix/MixGeneratorPage.qml
+      - ui_qml/pages/mix/MixResultPage.qml
+      - ui_qml/pages/mix/MixRuleEditorPage.qml
+
+  search:
+    title: "Busqueda"
+    primary_route: search
+    pages:
+      - ui_qml/pages/search/GlobalSearchPage.qml
+
+  radio:
+    title: "Radio"
+    primary_route: radio
+    pages:
+      - ui_qml/pages/radio/RadioPage.qml
+
+  lyrics:
+    title: "Letras"
+    primary_route: lyrics
+    pages:
+      - ui_qml/pages/lyrics/LyricsPage.qml
+
+  audio_lab:
+    title: "Audio Lab"
+    primary_route: audio_lab
+    pages:
+      - ui_qml/pages/audio_lab/AudioLabOverviewPage.qml
+
+  equalizer:
+    title: "Ecualizador"
+    primary_route: equalizer
+    pages:
+      - ui_qml/pages/equalizer/EqualizerPage.qml
+
+  outputs:
+    title: "Salidas"
+    primary_route: outputs
+    pages:
+      - ui_qml/pages/outputs/OutputProfilesPage.qml
+
+  devices:
+    title: "Dispositivos"
+    primary_route: devices.list
+    pages:
+      - ui_qml/pages/devices/DevicesPage.qml
+      - ui_qml/pages/devices/DeviceDetailPage.qml
+      - ui_qml/pages/devices/DevicePairingPage.qml
+
+  connections:
+    title: "Conexiones"
+    primary_route: connections
+    pages:
+      - ui_qml/pages/connections/ConnectionsPage.qml
+      - ui_qml/pages/connections/ConnectionDetailPage.qml
+
+  home_audio:
+    title: "Home Audio"
+    primary_route: home_audio
+    pages:
+      - ui_qml/pages/home_audio/HomeAudioPage.qml
+      - ui_qml/pages/home_audio/ZoneDetailPage.qml
+      - ui_qml/pages/home_audio/GroupEditorPage.qml
+
+  metadata:
+    title: "Metadatos"
+    primary_route: metadata.inspector
+    pages:
+      - ui_qml/pages/metadata/MetadataInspectorPage.qml
+      - ui_qml/pages/metadata/MetadataBatchEditor.qml
+
+  tagging:
+    title: "Smart Tagging"
+    primary_route: tagging
+    pages:
+      - ui_qml/pages/metadata/SmartTaggingPage.qml
+
+  doctor:
+    title: "Library Doctor"
+    primary_route: library_doctor
+    pages:
+      - ui_qml/pages/library_doctor/LibraryDoctorPage.qml
+
+  diagnostics:
+    title: "Diagnostico"
+    primary_route: diagnostics
+    pages:
+      - ui_qml/pages/DiagnosticsPage.qml
+
+  assistant:
+    title: "Michi AI"
+    primary_route: assistant
+    pages:
+      - ui_qml/pages/assistant/AssistantPage.qml
+
+  disc_lab:
+    title: "Disc Lab"
+    primary_route: disc_lab
+    pages:
+      - ui_qml/pages/disc_lab/DiscLabPage.qml
+
+  settings:
+    title: "Ajustes"
+    primary_route: settings
+    pages:
+      - ui_qml/pages/settings/SettingsPage.qml
+
+  playback:
+    title: "Reproduccion"
+    primary_route: playback
+    pages:
+      - ui_qml/pages/PlaybackPage.qml
+
+  nowplaying:
+    title: "Now Playing"
+    primary_route: nowplaying
+    pages:
+      - ui_qml/pages/nowplaying/NowPlayingPage.qml
