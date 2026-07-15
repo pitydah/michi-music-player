@@ -1,5 +1,5 @@
 """Tests for Playlists v12 — real PlaylistService, no CRUD directo DB."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

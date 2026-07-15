@@ -1,5 +1,5 @@
 """Tests for Playback v12 — PlaybackService must exist before READY, delegates to NowPlayingBridge."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

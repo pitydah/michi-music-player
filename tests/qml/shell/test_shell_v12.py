@@ -1,9 +1,7 @@
 """Tests for Shell v12 — navigation, view_registry, view_navigator, view_switcher."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
-from PySide6.QtCore import QObject, Signal
 
 
 class TestShellNavigation:
@@ -26,7 +24,6 @@ class TestShellNavigation:
 
     def test_window_dependencies_resolved(self):
         try:
-            from ui.window import MainWindow
             assert True
         except Exception:
             pass
@@ -43,7 +40,6 @@ class TestShellNavigation:
 
     def test_home_reflects_real_services(self):
         from ui_qml_bridge.home_bridge import HomeBridge
-        from unittest.mock import MagicMock
         hb = HomeBridge(
             db=MagicMock(),
             playback_service=MagicMock(),
@@ -71,7 +67,6 @@ class TestShellNavigation:
 class TestHomeReflectsReal:
     def test_home_has_library_stats(self):
         from ui_qml_bridge.home_bridge import HomeBridge
-        from unittest.mock import MagicMock
         hb = HomeBridge(
             db=MagicMock(),
             playback_service=MagicMock(),
@@ -86,7 +81,6 @@ class TestHomeReflectsReal:
 
     def test_home_has_playback_state(self):
         from ui_qml_bridge.home_bridge import HomeBridge
-        from unittest.mock import MagicMock
         hb = HomeBridge(
             db=MagicMock(),
             playback_service=MagicMock(),

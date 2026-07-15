@@ -1,5 +1,5 @@
 """Tests for Accessibility v12 — validar en runtime Accessible.role, name, focus, tab order, font scale 150%."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

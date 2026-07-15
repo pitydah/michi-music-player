@@ -2,7 +2,6 @@
 from unittest.mock import MagicMock
 from pathlib import Path
 
-import pytest
 
 from ui_qml_bridge.bridge_factory import BridgeFactory, INFRASTRUCTURE, DOMAIN, AGGREGATORS
 from core.service_container import ServiceContainer
@@ -248,7 +247,7 @@ class TestDeterministicConstants:
         expected = ["page_state", "route_registry", "navigation", "action_registry",
                     "query_executor", "job_bridge", "confirmation", "theme", "accessibility",
                     "app_state"]
-        assert INFRASTRUCTURE == expected
+        assert expected == INFRASTRUCTURE
 
     def test_domain_order_defined(self):
         assert len(DOMAIN) == 24

@@ -1,5 +1,5 @@
 """Tests for Disc Lab v12 — real disc detection, no sync operations prolonged in UI thread."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

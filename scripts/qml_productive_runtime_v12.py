@@ -14,14 +14,14 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 logger = logging.getLogger("productive_boot")
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO))  # noqa: E402
 
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtCore import QCoreApplication, QObject
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtCore import QCoreApplication  # noqa: E402
+from PySide6.QtQml import QQmlApplicationEngine  # noqa: E402
 
-from core.application_bootstrap import ApplicationBootstrap
-from core.service_container import ContainerState
+from core.application_bootstrap import ApplicationBootstrap  # noqa: E402
+from core.service_container import ContainerState  # noqa: E402
 
 NAV_ROUTES = ["home", "library", "playback", "home_audio", "connections", "queue", "radio", "playlists", "ai", "library.tracks", "library.albums", "mix", "history"]
 
@@ -78,11 +78,6 @@ def main():
             return items
         all_obs = _walk_children(win, max_depth=6)
         qobject_count = len(all_obs)
-        has_nowplaying = any(
-            hasattr(o, 'property') and o.property('visible') is not None
-            and any('NowPlayingBar' in str(d) for d in dir(o))
-            for o in all_obs
-        )
         app_shell_present = qobject_count > 10
         if app_shell_present:
             logger.info("AppShell present: %d QML objects in tree", qobject_count)

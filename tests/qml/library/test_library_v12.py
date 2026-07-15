@@ -1,6 +1,6 @@
 """Tests for Library v12 — query_service, pagination, fetchMore, stale guard, search,
 sort, filters, selection, context actions, scan, cancel."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -121,7 +121,7 @@ class TestPlaybackActions:
 class TestScan:
     def test_add_media(self):
         lb = _make_lib_bridge()
-        import tempfile, os
+        import tempfile
         with tempfile.TemporaryDirectory() as d:
             result = lb.addMedia(d)
             assert isinstance(result, dict)

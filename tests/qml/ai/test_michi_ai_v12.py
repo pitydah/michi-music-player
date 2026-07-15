@@ -1,7 +1,6 @@
 """Tests for Michi AI v12 — no intent_map local, usa MichiAIService V2."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestMichiAIBridgeCreation:

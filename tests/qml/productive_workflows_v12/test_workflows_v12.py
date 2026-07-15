@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import sys
-import tempfile
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from PySide6.QtCore import QObject, Signal, Property, Slot, QTimer, QCoreApplication
-from unittest.mock import MagicMock
+from PySide6.QtCore import QObject, Signal, Property, Slot, QCoreApplication
 QQmlApplicationEngine = MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
@@ -1055,7 +1053,6 @@ class TestWF8Metadata:
 class TestWF9Tagging:
     @pytest.mark.qml_route("tagging")
     def test_tagging_accept(self):
-        from core.smart_tagging_service import SmartTaggingService
         svc = MagicMock()
         svc.analyze.return_value = {"ok": True}
         result = svc.analyze("/test/file.flac")

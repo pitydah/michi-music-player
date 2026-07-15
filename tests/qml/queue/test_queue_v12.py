@@ -1,5 +1,5 @@
 """Tests for Queue v12 — single source of truth, no parallel queue in QML."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

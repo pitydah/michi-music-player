@@ -1,7 +1,6 @@
 """Tests for Global Search v12 — uses GlobalSearchService + QueryExecutor. No fallback sincrono."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestGlobalSearchBridgeCreation:

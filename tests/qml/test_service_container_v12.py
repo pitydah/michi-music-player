@@ -4,7 +4,7 @@ X10.03: ServiceContainer must be the UNICA composicion.
 Validates: required_present, dependencies_present, no_none_required, acyclic_graph, build_start_order.
 If REQUIRED missing: state=FAILED, start() fails, QML NOT loaded.
 """
-from core.service_container import ServiceContainer, ServicePriority, ContainerState
+from core.service_container import ServiceContainer, ContainerState
 
 
 REQUIRED_28 = {

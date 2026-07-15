@@ -1,5 +1,5 @@
 """Tests for Smart Tagging v12 — SmartTaggingService."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

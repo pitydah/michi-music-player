@@ -1,5 +1,5 @@
 """Tests for EQ v12 — enable, bypass, graphic bands, parametric bands, preamp, presets, reset."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

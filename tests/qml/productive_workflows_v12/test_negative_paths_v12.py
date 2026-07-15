@@ -9,8 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from PySide6.QtCore import QObject, Signal, Slot, Property, QCoreApplication
-from unittest.mock import MagicMock
+from PySide6.QtCore import QObject, Signal, Slot, QCoreApplication
 QQmlApplicationEngine = MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))

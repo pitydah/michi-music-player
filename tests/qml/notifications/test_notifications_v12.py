@@ -1,7 +1,6 @@
 """Tests for Notifications v12 — NotificationBridge with ActionRegistry."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestNotificationBridgeCreation:

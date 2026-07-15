@@ -1,5 +1,5 @@
 """Tests for Mix v12 — no generacion sincrona, usa MixService + JobService."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

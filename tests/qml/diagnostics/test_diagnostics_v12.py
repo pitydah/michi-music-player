@@ -1,5 +1,5 @@
 """Tests for Diagnostics v12 — DiagnosticsBridge uses DiagnosticsService, NO db/radio_manager/sync_manager directo."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

@@ -1,8 +1,7 @@
 """Tests for Audio Lab v12 — Bridge depende solo de: audio_lab_service, job_service, process_controller, confirmation_service.
 NO db_conn, NO player_service como orquestador."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestAudioLabBridgeCreation:

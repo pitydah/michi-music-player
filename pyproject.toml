@@ -83,7 +83,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["tests*", "tools*", "ha_custom_component*", "__pycache__*"]
+exclude = ["tests*", "tools*", "ha_custom_component*", "legacy_widgets*", "__pycache__*"]
 
 [tool.ruff]
 line-length = 100
@@ -104,7 +104,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/*" = ["B011", "SIM103"]
+"tests/*" = ["B011", "SIM103", "E402", "F811"]
+"scripts/*" = ["E402"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "michi-widgets-legacy"
+version = "0.2.0a1"
+description = "Michi Music Player — Legacy QtWidgets UI (deprecated, QML-only users skip)"
+readme = "README.md"
+license = {text = "GPL-3.0-or-later"}
+requires-python = ">=3.11"
+
+dependencies = [
+    "PySide6>=6.7",
+    "michi-music-player>=0.2.0a1",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["../../legacy_widgets"]
+include = ["legacy_widgets*"]

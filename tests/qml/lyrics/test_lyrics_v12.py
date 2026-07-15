@@ -1,5 +1,5 @@
 """Tests for Lyrics v12 — LRCLIB lyrics with async search, cache, timeout, cancel."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

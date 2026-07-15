@@ -1,5 +1,5 @@
 """Tests for Radio v12 — sin operaciones sincronas prolongadas en UI thread."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -101,7 +101,8 @@ class TestRadioOperations:
         assert isinstance(result, dict)
 
     def test_export_m3u(self):
-        import tempfile, os
+        import tempfile
+        import os
         from ui_qml_bridge.radio_bridge import RadioBridge
         rb = RadioBridge(player_service=MagicMock())
         rb._stations = [{"name": "Test", "url": "http://stream.url"}]
@@ -111,7 +112,8 @@ class TestRadioOperations:
             os.unlink(f.name)
 
     def test_export_opml(self):
-        import tempfile, os
+        import tempfile
+        import os
         from ui_qml_bridge.radio_bridge import RadioBridge
         rb = RadioBridge(player_service=MagicMock())
         rb._stations = [{"name": "Test", "url": "http://stream.url"}]

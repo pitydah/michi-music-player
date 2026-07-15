@@ -1,7 +1,6 @@
 """Tests for Home v12 — snapshot dashboard con servicios reales."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestHomeBridgeServices:

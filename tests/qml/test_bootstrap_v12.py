@@ -277,7 +277,6 @@ class TestBootstrapV12Lifecycle:
         assert isinstance(bridges, dict)
 
     def test_register_context_returns_registrar(self):
-        from core.service_container import ContainerState
         b = _make_bootstrap()
         with patch.object(b, "_validate_required"):
             b.build()
@@ -296,7 +295,6 @@ class TestBootstrapV12Lifecycle:
         assert callable(b.register_qml)
 
     def test_get_queue_service(self):
-        from core.service_container import ContainerState
         b = _make_bootstrap()
         with patch.object(b, "_validate_required"):
             b.build()

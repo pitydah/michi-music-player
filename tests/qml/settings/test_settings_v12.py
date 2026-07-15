@@ -1,5 +1,5 @@
 """Tests for Settings v12 — SettingsBridgeV2, Outputs, Theme, Accessibility."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

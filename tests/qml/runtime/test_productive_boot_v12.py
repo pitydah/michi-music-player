@@ -9,7 +9,7 @@ os.environ["MICHI_SAFE_MODE"] = "1"
 
 import pytest
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtCore import QCoreApplication, QObject
+from PySide6.QtCore import QCoreApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 REPO = Path(__file__).resolve().parent.parent.parent.parent

@@ -1,8 +1,7 @@
 """Tests for BridgeFactory v12 — ServiceContainer, deterministic order, no ServiceBundle."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from pathlib import Path
 
-import pytest
 
 from ui_qml_bridge.bridge_factory import BridgeFactory, INFRASTRUCTURE, DOMAIN, AGGREGATORS
 from core.service_container import ServiceContainer

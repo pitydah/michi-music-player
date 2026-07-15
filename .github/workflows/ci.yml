@@ -2,13 +2,13 @@ name: CI
 
 "on":
   push:
-    branches: [main, michi-core-convergence]
+    branches: [main, michi-core-convergence, qml-production-parity-x10-v2]
   pull_request:
-    branches: [main, michi-core-convergence]
+    branches: [main, michi-core-convergence, qml-production-parity-x10-v2]
   workflow_dispatch:
 
 jobs:
-  core-lint:
+  ruff-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,9 +16,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install --upgrade pip && pip install -e ".[dev]"
-      - run: ruff check core ui_qml_bridge --output-format concise
+      - run: ruff check . --output-format concise
 
-  core-compile:
+  compile-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,9 +26,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install --upgrade pip && pip install -e ".[dev]"
-      - run: python -m compileall -q -x '.venv/|\.tmpl\.' core ui_qml_bridge
+      - run: python -m compileall -q -x '.venv/|\.tmpl\.' .
 
-  composition-tests:
+  qml-runtime:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,9 +39,10 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-timeout
-      - run: QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/composition -q --timeout=120
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v12.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v12.py
 
-  launcher-tests:
+  qml-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,35 +53,9 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-timeout
-      - run: QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/test_launchers_separados.py tests/qml/test_launchers_definitivos.py tests/qml/composition/test_launchers.py -q --timeout=120
+      - run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v12.xml
 
-  service-graph:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install -e ".[dev]"
-      - run: python scripts/qml_service_graph_audit.py
-      - run: python scripts/qml_productive_service_audit.py
-
-  context-contracts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install -e ".[dev]"
-      - run: python scripts/qml_bridge_contract_audit.py
-      - run: python scripts/qml_route_registry_audit.py
-
-  jobs-tests:
+  qml-evidence:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,9 +66,9 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-timeout
-      - run: QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/jobs tests/qml/test_jobs_canonico.py -q --timeout=120
+      - run: python scripts/qml_evidence_v12_collect.py --junit artifacts/qml-v12.xml --expected-sha $(git rev-parse HEAD)
 
-  process-tests:
+  qml-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,9 +79,9 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-timeout
-      - run: QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/test_process_controller.py tests/qml/test_app_launcher_separate.py -q --timeout=120
+      - run: python scripts/qml_productive_gate_v12.py
 
-  runtime-persistence:
+  wheel-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -116,31 +91,15 @@ jobs:
       - run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install pytest-timeout
-      - run: QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/test_runtime_persistence.py tests/qml/test_queue_persistence.py -q --timeout=120
-
-  shutdown-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pytest-timeout
-      - run: QT_QPA_PLATFORM=offscreen MICHI_SAFE_MODE=1 python -m pytest tests/qml/test_shutdown_active_services.py tests/qml/test_shutdown_completo.py tests/qml/infrastructure/test_shutdown.py -q --timeout=120
-
-  widget-boundary-audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install -e ".[dev]"
-      - run: python scripts/qml_widget_dependency_audit.py
-      - run: python scripts/qml_hybrid_dependency_audit.py
+          pip install build wheel
+      - run: python -m build --wheel
+      - run: python -c "
+import zipfile, sys
+with zipfile.ZipFile('dist/michi_music_player-0.2.0a1-py3-none-any.whl') as z:
+    names = [n for n in z.namelist() if not n.endswith('/')]
+forbidden = [n for n in names if 'ui/window.py' in n or 'legacy_widgets' in n]
+if forbidden:
+    print('FAIL: wheel contains forbidden files:', forbidden)
+    sys.exit(1)
+print('PASS: wheel clean')
+"

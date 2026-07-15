@@ -1,6 +1,6 @@
 """Tests for Devices v12 — contractual, no _normalise_result(None) -> ok True.
 Estados: INITIALIZING..DEFERRED_PHYSICAL. Audio-only."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

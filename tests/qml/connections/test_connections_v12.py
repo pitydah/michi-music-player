@@ -1,8 +1,7 @@
 """Tests for Connections v12 — operaciones async en ConnectionService.
 Bridge solo refleja estado/errores."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 
 class TestConnectionsBridgeCreation:

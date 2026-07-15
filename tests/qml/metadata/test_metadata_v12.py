@@ -1,5 +1,5 @@
 """Tests for Metadata v12 — MetadataBridge with MetadataService."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

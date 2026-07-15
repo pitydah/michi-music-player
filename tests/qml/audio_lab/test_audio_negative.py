@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import os
-import tempfile
 import time
-from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
