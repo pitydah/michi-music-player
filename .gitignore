@@ -33,3 +33,12 @@ package.json
 .webui_secret_key
 package-lock.json
 package.json
+
+# Generated artifacts — not committed
+artifacts/*.xml
+artifacts/*.json
+artifacts/*.log
+artifacts/*.txt
+.pytest_cache/
+.coverage
+htmlcov/
