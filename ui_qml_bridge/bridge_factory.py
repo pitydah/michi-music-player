@@ -393,6 +393,7 @@ class BridgeFactory(QObject):
         if "michi_ai" not in self._bridges:
             from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
             self._bridges["michi_ai"] = MichiAIBridge(
+                michi_ai_service=self._get("michi_ai_service"),
                 job_service=self._get("job_service"),
                 action_registry=self._bridges.get("action_registry"),
                 confirmation_service=self._bridges.get("confirmation"),
