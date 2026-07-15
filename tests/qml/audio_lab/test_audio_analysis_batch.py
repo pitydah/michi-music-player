@@ -1,11 +1,13 @@
-"""Tests for AW — Análisis y batch."""
 from __future__ import annotations
+"""Tests for AW — Análisis y batch."""
 
 import sqlite3
 import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -104,8 +106,6 @@ class TestAudioAnalysisBatch:
 
     def test_batch_pause_resume(self, app, db, wm):
         from core.audio_lab.audio_batch_service import AudioBatchService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         svc = AudioBatchService(db=db, wm=wm)
         batch_id = svc.create_batch(["/a.flac", "/b.flac"])

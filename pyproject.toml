@@ -72,10 +72,13 @@ Repository = "https://github.com/pitydah/michi-music-player.git"
 Issues = "https://github.com/pitydah/michi-music-player/issues"
 
 [project.scripts]
-michi-music-player = "main:main"
+michi = "michi.app_launcher:launch"
+michi-qml = "michi.qml_app:run_qml"
+michi-widgets = "michi.widgets_app:run_widgets"
+michi-qml-verify = "michi.verify_app:run_verify"
+michi-music-player = "michi.app_launcher:launch"
 
 [tool.setuptools]
-py-modules = ["main"]
 include-package-data = true
 
 [tool.setuptools.packages.find]
@@ -126,10 +129,9 @@ markers = [
 ]
 
 # ── EL: Package separation ──
-# michi-core:           audio, core, library, metadata, lyrics, integrations,
-#                       sources, streaming, sync, recognition, recommendation
-# michi-qml:            ui_qml, ui_qml_bridge (NO QtWidgets dependency)
-# michi-widgets-legacy: ui, main.py (depends on michi-core)
+# michi-core:           audio/, core/, michi_ai/, config/
+# michi-qml:            michi/ (launcher), ui_qml/, ui_qml_bridge/ (NO QtWidgets dependency)
+# michi-widgets-legacy: ui/, legacy_widgets/ (depends on michi-core, optional)
 
 # Linux platform extras:
 #   wayland, x11, kde, desktop file, notifications, media keys

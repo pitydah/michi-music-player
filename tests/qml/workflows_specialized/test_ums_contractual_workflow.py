@@ -1,4 +1,4 @@
-"""Contractual UMS workflow test: discover → select → inspect → profile → plan → transfer → progress → cancel → verify cleanup → retry → verify copied audio.
+"""Contractual UMS workflow test: discover  select  inspect  profile  plan  transfer  progress  cancel  verify cleanup  retry  verify copied audio.
 
 No hardware, no physical audio scoring. Audio-only respected.
 """
@@ -52,7 +52,7 @@ def bridge(dev_svc, mock_sync_mgr):
 
 
 class TestUmsContractualWorkflow:
-    """Discover → select → inspect → profile → plan → transfer → progress → cancel → verify cleanup → retry → verify copied audio."""
+    """Discover  select  inspect  profile  plan  transfer  progress  cancel  verify cleanup  retry  verify copied audio."""
 
     def test_workflow_discover(self, dev_svc, tmp_path):
         music = tmp_path / "Music"

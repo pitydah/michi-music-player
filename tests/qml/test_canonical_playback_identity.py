@@ -1,16 +1,14 @@
+from __future__ import annotations
 """Test playback by canonical identity (track_id / track_uid).
-
 Verifies these flows work by ID (not filepath):
-- track → playback
-- album → queue
-- playlist → playback
-- history → playback
-- mix → playback
-- search → playback
-
+- track  playback
+- album  queue
+- playlist  playback
+- history  playback
+- mix  playback
+- search  playback
 The backend resolves filepath internally; public APIs use track_id/track_uid.
 """
-from __future__ import annotations
 
 import sqlite3
 import time
@@ -120,7 +118,7 @@ def library_query(db_with_tracks):
     return qs
 
 
-# ── track → playback ──
+# ── track  playback ──
 
 
 def test_track_to_playback_by_id_play_track(library_query, mock_player, tmp_path):
@@ -154,7 +152,7 @@ def test_track_uid_present(library_query):
     assert track["track_uid"] == "uid_1"
 
 
-# ── album → queue ──
+# ── album  queue ──
 
 
 def test_album_to_queue_by_key(library_query, mock_player):
@@ -181,7 +179,7 @@ def test_album_tracks_resolved_by_id(library_query):
         assert "filepath" in t
 
 
-# ── playlist → playback ──
+# ── playlist  playback ──
 
 
 @pytest.mark.skip(reason="PlaylistBridge needs DB playlist_tracks integration")
@@ -189,7 +187,7 @@ def test_playlist_to_playback():
     pass
 
 
-# ── history → playback ──
+# ── history  playback ──
 
 
 def test_history_item_by_index(library_query, mock_player):
@@ -214,7 +212,7 @@ def test_history_track_id_present(library_query):
     assert row[1] == "uid_1"
 
 
-# ── mix → playback ──
+# ── mix  playback ──
 
 
 def test_mix_playback_by_id(library_query, mock_player):
@@ -229,7 +227,7 @@ def test_mix_playback_by_id(library_query, mock_player):
     assert result["ok"]
 
 
-# ── search → playback ──
+# ── search  playback ──
 
 
 def test_search_to_playback_by_id(library_query, mock_player, tmp_path):
@@ -242,7 +240,7 @@ def test_search_to_playback_by_id(library_query, mock_player, tmp_path):
     track_id = tracks[0]["track_id"]
     bridge = LibraryBridge(db=library_query._db, query_service=library_query, playback_ctrl=mock_player)
     result = bridge.playTrackById(track_id)
-    assert result["ok"], f"search→playback failed: {result.get('error')}"
+    assert result["ok"], f"searchplayback failed: {result.get('error')}"
 
 
 # ── public_ref consistency ──

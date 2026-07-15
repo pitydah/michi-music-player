@@ -4,7 +4,6 @@ import pytest
 pytestmark = [pytest.mark.qml_module("worker_manager")]
 
 
-
 class TestOperationResultContract:
     def test_has_ok_field(self):
         r = OperationResult()

@@ -1,11 +1,13 @@
-"""Tests for AU — AudioLabService orquestado."""
 from __future__ import annotations
+"""Tests for AU — AudioLabService orquestado."""
 
 import sqlite3
 import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -36,8 +38,6 @@ class TestAudioLabOrchestrated:
     @pytest.fixture
     def svc(self, app, db, wm):
         from core.audio_lab.audio_lab_service import AudioLabService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         s = AudioLabService(db=db, worker_manager=wm)
         s.setup()

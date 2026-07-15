@@ -1,4 +1,4 @@
-"""Tests for ThemeStore runtime — settings change → ThemeBridge → ThemeStore → QML color update → persistence."""
+"""Tests for ThemeStore runtime — settings change  ThemeBridge  ThemeStore  QML color update  persistence."""
 from unittest.mock import MagicMock, patch
 
 import pytest

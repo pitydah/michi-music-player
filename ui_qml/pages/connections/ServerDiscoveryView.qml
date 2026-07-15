@@ -9,16 +9,12 @@ Item {
 
     property var discoveredServers: []
     property bool scanning: false
-    property string objectName: "connections.discoveryView"
 
     signal serverSelected(int index)
     signal scanRequested()
     signal addManualClicked()
 
     implicitHeight: 300
-
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Descubrimiento de servidores"
 
     Column {
         anchors.fill: parent
@@ -33,16 +29,12 @@ Item {
                 variant: "primary"
                 enabled: !root.scanning
                 onClicked: root.scanRequested()
-                objectName: root.objectName + ".scanButton"
-                Accessible.name: "Buscar servidores en la red"
             }
 
             MichiButton {
                 text: "Agregar manualmente"
                 variant: "ghost"
                 onClicked: root.addManualClicked()
-                objectName: root.objectName + ".manualButton"
-                Accessible.name: "Agregar servidor manualmente"
             }
         }
 
@@ -62,7 +54,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    objectName: root.objectName + ".sectionTitle"
                 }
 
                 Repeater {
@@ -76,7 +67,6 @@ Item {
                         serverType: modelData.type || "Michi Micro Server"
                         serverStatus: modelData.status || "detected"
                         ctaText: "Conectar"
-                        objectName: root.objectName + ".card." + index
                         onCtaClicked: root.serverSelected(index)
                     }
                 }
@@ -88,7 +78,6 @@ Item {
                     visible: root.discoveredServers.length === 0 && !root.scanning
                     wrapMode: Text.WordWrap
                     width: parent.width
-                    objectName: root.objectName + ".emptyText"
                 }
             }
         }

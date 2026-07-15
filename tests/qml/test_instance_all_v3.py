@@ -1,5 +1,5 @@
-"""DI — Instance audit V3: LOAD_PASS, INSTANCE_PASS, INTERACTION_PASS, CLEANUP_PASS."""
 from __future__ import annotations
+"""DI — Instance audit V3: LOAD_PASS, INSTANCE_PASS, INTERACTION_PASS, CLEANUP_PASS."""
 
 import os
 from pathlib import Path

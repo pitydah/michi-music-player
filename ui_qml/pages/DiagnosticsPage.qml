@@ -9,45 +9,27 @@ Item {
 
     property var diag: typeof diagnosticsBridge !== "undefined" ? diagnosticsBridge : null
 
-    objectName: "diagnostics.page"
-    focus: true
-
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Diagnóstico"
-    Accessible.description: "Panel de diagnóstico del sistema"
-
-    Keys.onEscapePressed: {
-        root.diag && root.diag.refresh && root.diag.refresh()
-    }
-
     function routeEnter(route) {
         if (root.diag) root.diag.refresh()
     }
 
     Flickable {
-        id: flickable
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.xl
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        objectName: "diagnostics.flickable"
 
         Column {
             id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
-            objectName: "diagnostics.column"
 
             Text {
-                id: titleText
                 text: "Diagnóstico"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "diagnostics.title"
-                Accessible.role: Accessible.Heading
-                Accessible.name: "Diagnóstico"
             }
 
             Repeater {
@@ -56,25 +38,19 @@ Item {
                 GlassMaterial {
                     width: parent.width; height: 36; radius: MichiTheme.radiusSm
                     variant: modelData.ok ? "base" : "danger"
-                    objectName: "diagnostics.check." + index
-                    Accessible.name: modelData.key || "check"
-
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { width: 30; text: modelData.ok ? "[OK]" : "[--]"; color: modelData.ok ? MichiTheme.colors.success : MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; Accessible.name: modelData.ok ? "OK" : "Error" }
-                        Text { width: parent.width * 0.35; text: modelData.key || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; Accessible.name: modelData.key || "" }
-                        Text { width: parent.width * 0.50; text: modelData.value || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight; Accessible.name: modelData.value || "" }
+                        Text { width: 30; text: modelData.ok ? "[OK]" : "[--]"; color: modelData.ok ? MichiTheme.colors.success : MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.35; text: modelData.key || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
+                        Text { width: parent.width * 0.50; text: modelData.value || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
                     }
                 }
             }
 
             Row {
-                id: actionRow
                 spacing: MichiTheme.spacing.sm
-                objectName: "diagnostics.actions"
-
-                MichiButton { id: refreshBtn; text: "Refrescar"; variant: "primary"; objectName: "diagnostics.refresh"; Accessible.name: "Refrescar diagnóstico"; onClicked: { if (root.diag) root.diag.refresh() } }
-                MichiButton { id: copyBtn; text: "Copiar diagnóstico"; variant: "ghost"; objectName: "diagnostics.copy"; Accessible.name: "Copiar diagnóstico al portapapeles"; onClicked: { if (root.diag) root.diag.copyDiagnostics() } }
+                MichiButton { text: "Refrescar"; variant: "primary"; onClicked: { if (root.diag) root.diag.refresh() } }
+                MichiButton { text: "Copiar diagnóstico"; variant: "ghost"; onClicked: { if (root.diag) root.diag.copyDiagnostics() } }
             }
 
             GlassMaterial {

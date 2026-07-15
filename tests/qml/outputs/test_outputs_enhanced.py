@@ -1,5 +1,5 @@
-"""CM — Output profiles: create, edit, duplicate, delete, validate, backend compatibility, select, fallback."""
 from __future__ import annotations
+"""CM — Output profiles: create, edit, duplicate, delete, validate, backend compatibility, select, fallback."""
 
 from unittest.mock import MagicMock, patch
 

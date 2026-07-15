@@ -167,6 +167,9 @@ class PlaylistService:
         if not self._can():
             return self._error("NO_DB")
         try:
+            plists = self.list()
+            if not any(p.get("id") == pid for p in plists):
+                return self._error("NOT_FOUND", f"Playlist {pid} not found")
             items = self._get_items_internal(pid)
             tracks = [
                 {

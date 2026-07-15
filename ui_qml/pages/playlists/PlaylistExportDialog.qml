@@ -27,47 +27,6 @@ Dialog {
     y: (parent.height - height) / 3
     width: 400
     objectName: "playlistExportDialog"
-    objectName: "playlist.exportDialog"
-    closePolicy: Dialog.CloseOnEscape
-
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Exportar playlist"
-    closePolicy: Popup.CloseOnEscape
-
-    Column {
-        spacing: MichiTheme.spacing.md
-        width: parent ? parent.width : 360
-
-        Text {
-            text: "Exportar \"" + root.playlistName + "\" como M3U"
-            color: MichiTheme.colors.textSecondary
-            font.pixelSize: MichiTheme.typography.bodySize
-            wrapMode: Text.WordWrap
-            width: parent.width
-        }
-
-        Text {
-            text: "Selecciona la ruta de destino para el archivo .m3u"
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.metaSize
-            wrapMode: Text.WordWrap
-            width: parent.width
-            visible: !root._exporting
-        }
-
-        Row {
-            spacing: MichiTheme.spacing.sm
-            width: parent.width
-            visible: !root._exporting
-
-            Text {
-                text: "Exportar \"" + root.playlistName + "\""
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                width: parent.width
-    width: 400
-    objectName: "playlistExportDialog"
     Accessible.role: Accessible.Dialog
     Accessible.name: "Exportar playlist"
     closePolicy: Popup.CloseOnEscape
@@ -107,76 +66,7 @@ Dialog {
                 objectName: "exportPathInput"
                 Accessible.name: "Ruta de destino"
             }
-
-            Text {
-                text: "Formato: M3U"
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-            }
-
-            Row {
-                spacing: MichiTheme.spacing.sm
-                width: parent.width
-
-                TextField {
-                    id: pathInput
-                    width: parent.width - 80
-                    placeholderText: "Destino del archivo .m3u"
-                    text: root._exportPath
-                    onTextChanged: root._exportPath = text
-                    objectName: "playlist.exportDialog.pathInput"
-                    Accessible.name: "Ruta de exportación"
-                    KeyNavigation.tab: browseBtn
-                }
-
-                MichiButton {
-                    id: browseBtn
-                    text: "Examinar"
-                    variant: "secondary"
-                    onClicked: saveDialog.open()
-                    objectName: "playlist.exportDialog.browseBtn"
-                    Accessible.name: "Examinar ruta de exportación"
-                    KeyNavigation.tab: progressBar
-                    KeyNavigation.backtab: pathInput
-                }
-            }
-
-            MichiProgressBar {
-                id: progressBar
-                width: parent.width
-                value: root._exporting ? 100 : 0
-                indeterminate: root._exporting
-                visible: root._exporting
-                accessibleName: "Progreso de exportación"
-                objectName: "playlist.exportDialog.progressBar"
-                KeyNavigation.tab: cancelExportBtn
-                KeyNavigation.backtab: browseBtn
-            }
-
-            Text {
-                text: root._status
-                color: root._status.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: text !== ""
-                wrapMode: Text.WordWrap
-                width: parent.width
-                Accessible.role: Accessible.StatusBar
-                Accessible.name: root._status
-            }
-
             MichiButton {
-                id: cancelExportBtn
-                text: "Cancelar exportación"
-                variant: "danger"
-                visible: root._exporting
-                onClicked: {
-                    root._exporting = false
-                    root._status = "Exportación cancelada"
-                    root.exportCancelled()
-                }
-                objectName: "playlist.exportDialog.cancelBtn"
-                Accessible.name: "Cancelar exportación"
-                KeyNavigation.backtab: progressBar
                 text: "Examinar"
                 variant: "secondary"
                 objectName: "exportBrowseButton"
@@ -186,13 +76,8 @@ Dialog {
                 Keys.onSpacePressed: onClicked()
                 onClicked: saveDialog.open()
             }
+        }
 
-            }
-
-            Item { width: 1; height: 1; focus: true }
-            }
-
-            Item { width: 1; height: 1; focus: true }
         Rectangle {
             width: parent.width
             height: 4
@@ -288,7 +173,7 @@ Dialog {
     FileDialog {
         id: saveDialog
         fileMode: FileDialog.SaveFile
-        nameFilters: ["M3U playlist (*.m3u)", "M3U8 playlist (*.m3u8)", "All files (*)"]
+        nameFilters: ["M3U playlist (*.m3u)", "All files (*)"]
         defaultSuffix: ".m3u"
         objectName: "exportSaveDialog"
         Accessible.name: "Guardar archivo M3U"
@@ -300,23 +185,6 @@ Dialog {
 
     onOpened: {
         root._exportPath = ""
-    onAccepted: {
-        if (!root._exportPath || root.playlistId < 0) return
-        root._exporting = true
-        root._status = "Exportando..."
-        if (root.bridge && typeof root.bridge.exportM3U !== "undefined") {
-            var result = root.bridge.exportM3U(root.playlistId, root._exportPath)
-            if (result && result.ok) {
-                root._status = "Exportadas " + (result.count || 0) + " canciones"
-                root.exportCompleted(root._exportPath, result.count || 0)
-            } else {
-                root._status = result && result.error ? "Error: " + result.error : "Error al exportar"
-            }
-        } else {
-            root._status = "Bridge no disponible"
-        }
-    onOpened: {
-        root._exportPath = ""
         root._exporting = false
         root._cancelled = false
         root._progress = 0
@@ -326,22 +194,14 @@ Dialog {
     }
 
     onClosed: {
-    onRejected: {
-        if (root._exporting) {
-            root._cancelled = true
-            root._exporting = false
-        }
-        root.exportCancelled()
-    onClosed: {
         if (root._exporting) {
             root._cancelled = true
             root._exporting = false
         }
     }
 
-    QQC2.FocusTrap {
-        active: root.opened
-        focusItem: pathInput
+    Item {
+        focus: root.opened
     }
 
     Keys.onEscapePressed: {

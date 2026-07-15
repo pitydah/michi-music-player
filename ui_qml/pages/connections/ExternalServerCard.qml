@@ -10,15 +10,10 @@ Item {
     property string serverType: ""
     property string badgeText: "Externo"
     property string badgeKind: "info"
-    property string objectName: "connections.externalCard"
 
     signal configureClicked()
 
     implicitHeight: 80
-
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.serverName
-    Accessible.description: "Tipo: " + root.serverType
 
     GlassMaterial {
         anchors.fill: parent
@@ -31,7 +26,6 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.configureClicked()
         }
 
         Row {
@@ -49,14 +43,12 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.cardTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    objectName: root.objectName + ".name"
                 }
 
                 Text {
                     text: root.serverType
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
-                    objectName: root.objectName + ".type"
                 }
             }
 
@@ -70,8 +62,6 @@ Item {
                     text: "Configurar"
                     variant: "ghost"
                     onClicked: root.configureClicked()
-                    objectName: root.objectName + ".configureButton"
-                    Accessible.name: "Configurar " + root.serverName
                 }
             }
         }

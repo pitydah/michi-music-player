@@ -1,11 +1,13 @@
-"""Tests for Library Doctor scanning."""
 from __future__ import annotations
+"""Tests for Library Doctor scanning."""
 
 import time
 import sqlite3
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("library_doctor")]
 
 
 def _process_events(duration=2.0):
@@ -166,8 +168,6 @@ class TestDoctorScan:
 
     def test_healthy_count_positive(self, db):
         from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
-import pytest
-pytestmark = [pytest.mark.qml_module("library_doctor")]
 
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/real/file.flac', 'Real', 'Artist')")
         db.commit()

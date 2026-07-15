@@ -1,11 +1,9 @@
+from __future__ import annotations
 """DN — QueueService canonical injection tests.
-
 QueueService is injected into: QueueBridge, AppBridge, PlaybackService,
 MichiAI, Notifications, CommandPalette.
-
 QueueService is the single source of truth. No parallel queue state.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -18,7 +16,6 @@ from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from ui_qml_bridge.service_bundle import ServiceBundle
 from ui_qml_bridge.bridge_factory import BridgeFactory
 pytestmark = [pytest.mark.qml_module("queue")]
-
 
 
 @pytest.fixture
@@ -133,8 +130,10 @@ def test_bridge_factory_injects_queue_service():
     bundle.player_service = MagicMock()
     bundle.worker_manager = MagicMock()
     bundle.db = MagicMock()
+    bundle.queue_service = QueueService()
     factory = BridgeFactory(bundle)
-    bridge = factory.create_queue_bridge()
+    factory.create_queue_bridge()
+    bridge = factory.get("queue")
     assert hasattr(bridge, 'queue_service')
 
 

@@ -1,5 +1,5 @@
-"""Workflow: Continue playback → open active job → check status — 8+ tests."""
 from __future__ import annotations
+"""Workflow: Continue playback  open active job  check status — 8+ tests."""
 
 from unittest.mock import MagicMock
 

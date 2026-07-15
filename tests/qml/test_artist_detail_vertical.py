@@ -1,5 +1,5 @@
-"""Tests for artist detail: model, bridge methods, route params, unknown artist."""
 from __future__ import annotations
+"""Tests for artist detail: model, bridge methods, route params, unknown artist."""
 
 from unittest.mock import MagicMock
 

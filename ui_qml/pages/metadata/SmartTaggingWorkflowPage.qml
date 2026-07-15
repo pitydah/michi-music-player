@@ -9,7 +9,6 @@ Item {
     id: root
 
     property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null
-    property var mb: typeof metadataBridge !== "undefined" ? metadataBridge : null
     property var sel: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null
     property string _selectedFile: ""
     property bool _confirmApply: false
@@ -45,7 +44,7 @@ Item {
             GlassCard {
                 width: parent.width; height: 70
                 title: root._selectedFile ? "Archivo seleccionado" : "Seleccionar archivo"
-                subtitle: root._selectedFile && root.mb ? root.mb.fileName(root._selectedFile) : (root._selectedFile ? root._selectedFile : "Elige un archivo de audio")
+                subtitle: root._selectedFile ? root._selectedFile.split("/").pop() : "Elige un archivo de audio"
                 variant: root._selectedFile ? "accent" : "base"
                 onClicked: fileDialog.open()
             }
@@ -102,7 +101,7 @@ Item {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
                         Rectangle {
-                            width: 16; height: 16; radius: MichiTheme.radiusXs
+                            width: 16; height: 16; radius: 2
                             color: modelData.selected ? MichiTheme.colors.accentBlue : "transparent"
                             border.color: modelData.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                             anchors.verticalCenter: parent.verticalCenter

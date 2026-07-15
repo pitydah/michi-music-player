@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 import pytest
 
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(REPO))
 
@@ -96,8 +98,6 @@ def test_ola2_core_repositories_exist():
 
 def test_ola2_no_sql_in_ui():
     import re
-import pytest
-pytestmark = [pytest.mark.qml_module("worker_manager")]
 
     ui_files = list((REPO / "ui").rglob("*.py"))
     sql_pat = re.compile(r"\b(SELECT\s+\w+|INSERT\s+INTO\s+\w+|UPDATE\s+\w+\s+SET|DELETE\s+FROM\s+\w+)\b", re.I)

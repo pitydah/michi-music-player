@@ -1,5 +1,5 @@
-"""Tests for library context menu, selection bar, keyboard actions — 12+ tests."""
 from __future__ import annotations
+"""Tests for library context menu, selection bar, keyboard actions — 12+ tests."""
 
 import pytest
 

@@ -1,5 +1,5 @@
-"""Tests for AlbumDetailPage and AlbumPagedListModel — 12+ tests."""
 from __future__ import annotations
+"""Tests for AlbumDetailPage and AlbumPagedListModel — 12+ tests."""
 
 from unittest.mock import MagicMock
 
@@ -8,7 +8,6 @@ from PySide6.QtCore import Qt
 
 from ui_qml.models.AlbumPagedListModel import AlbumPagedListModel
 pytestmark = [pytest.mark.qml_module("album_views")]
-
 
 
 @pytest.fixture

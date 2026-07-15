@@ -72,7 +72,7 @@ Item {
                     anchors.centerIn: parent
                     width: 100
                     height: 100
-                    radius: MichiTheme.radiusPill
+                    radius: 50
                     color: MichiTheme.colors.accentSurface
                     border.color: MichiTheme.colors.borderFocus
                     border.width: 1
@@ -81,7 +81,7 @@ Item {
                         anchors.centerIn: parent
                         text: "MM"
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: MichiTheme.typography.heroTitleSize
+                        font.pixelSize: 28
                         font.weight: MichiTheme.typography.weightBold
                         font.letterSpacing: 2.0
                         opacity: 0.50

@@ -1,6 +1,6 @@
+from __future__ import annotations
 """DV — ReplayGain: track analysis, album analysis, preview, write tags,
 verify, remove tags."""
-from __future__ import annotations
 
 import os
 import tempfile
@@ -8,6 +8,8 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=0.3):
@@ -34,8 +36,6 @@ class TestAudioLabReplayGainV2:
     @pytest.fixture
     def svc(self, app):
         from core.audio_lab.replaygain_service import ReplayGainService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         return ReplayGainService()
 

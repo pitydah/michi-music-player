@@ -6,6 +6,8 @@ import pytest
 from PySide6.QtCore import QObject, Property, Signal, Slot
 from PySide6.QtQml import QQmlEngine
 
+pytestmark = [pytest.mark.qml_module("accessibility")]
+
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
 
@@ -227,8 +229,6 @@ class TestAccessibilityScreenReader:
 
     def test_balance_backend_support(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
-import pytest
-pytestmark = [pytest.mark.qml_module("accessibility")]
 
         bridge = AccessibilityBridge()
         assert hasattr(bridge, "balance")

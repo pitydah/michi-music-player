@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Tests for SettingsAboutPage — version, system info, links, dependencies."""
 from pathlib import Path
-from __future__ import annotations
 
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
@@ -9,12 +9,7 @@ from PySide6.QtQml import QQmlComponent, QQmlEngine
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
 pytestmark = [pytest.mark.qml_module("settings")]
-"""Tests for SettingsAboutPage — version, system info, links, dependencies."""
-from pathlib import Path
 
-import pytest
-
-QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 
 
 class FakeSettingsBridgeV2(QObject):
@@ -144,7 +139,6 @@ class TestSettingsAboutSignals:
             assert len(fired) == 1
         finally:
             obj.deleteLater()
-    return QQmlEngine(qapp)
 
 
 @pytest.fixture

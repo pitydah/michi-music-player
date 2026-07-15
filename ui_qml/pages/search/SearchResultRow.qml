@@ -6,12 +6,6 @@ import "../../components"
 Item {
     id: root
 
-    property string resultType: ""
-    property string resultId: ""
-    property string resultTitle: ""
-    property string resultSubtitle: ""
-    property string resultSection: ""
-    property real resultScore: 0.0
     property string rowType: ""
     property string rowId: ""
     property string rowTitle: ""
@@ -20,69 +14,6 @@ Item {
 
     signal clicked()
     signal playRequested()
-    signal activateRequested()
-
-    implicitHeight: 44
-
-    objectName: "searchResultRow_" + rowType + "_" + (rowId ? rowId : "unknown")
-
-    Accessible.role: Accessible.ListItem
-    Accessible.name: rowTitle + " - " + rowSubtitle
-    Accessible.description: "Tipo: " + rowType + ". Presiona Enter para abrir"
-
-    function getThumbnailText() {
-        switch (root.rowType) {
-            case "track": return "\u266A"
-            case "album": return "\u25C9"
-            case "artist": return "\u266B"
-            case "playlist": return "\u2630"
-            case "folder": return "\u25A0"
-            case "genre": return "\u266C"
-            case "radio": return "\u25E2"
-            case "device": return "\u25D8"
-            case "server": return "\u25CB"
-            case "action": return "\u2192"
-            case "setting": return "\u2699"
-            default: return "\u25CF"
-        }
-    }
-
-    function getTypeLabel() {
-        switch (root.rowType) {
-            case "track": return "Canción"
-            case "album": return "Álbum"
-            case "artist": return "Artista"
-            case "playlist": return "Lista"
-            case "folder": return "Carpeta"
-            case "genre": return "Género"
-            case "radio": return "Radio"
-            case "device": return "Dispositivo"
-            case "server": return "Servidor"
-            case "action": return "Acción"
-            case "setting": return "Ajuste"
-            default: return ""
-        }
-    }
-
-    Rectangle {
-        id: bg
-        anchors.fill: parent
-        radius: MichiTheme.radiusSm
-        color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-        border.color: root.activeFocus ? MichiTheme.colors.borderFocus : "transparent"
-        border.width: root.activeFocus ? MichiTheme.borderWidthFocus : 0
-        border.width: itemFocus.active ? 1 : 0
-        border.color: MichiTheme.colors.borderFocus
-
-        Rectangle {
-            id: itemFocus
-            property bool active: mouseArea.containsMouse || keyboardFocus.active
-            anchors.fill: parent
-            radius: MichiTheme.radiusSm
-            color: "transparent"
-            border.width: active ? MichiTheme.borderWidthFocus : 0
-            border.color: MichiTheme.colors.borderFocus
-        }
 
     implicitHeight: 44
 
@@ -145,18 +76,6 @@ Item {
                 radius: MichiTheme.radiusSm
                 anchors.verticalCenter: parent.verticalCenter
                 color: MichiTheme.colors.accentFaint
-                color: MichiTheme.colors.accentSurface
-
-                Text {
-                    anchors.centerIn: parent
-                    text: root.getThumbnailText()
-                    color: MichiTheme.colors.accent
-                    font.pixelSize: MichiTheme.typography.bodySize
-                }
-
-                Accessible.role: Accessible.Graphic
-                Accessible.name: root.getTypeLabel()
-                color: MichiTheme.colors.accentFaint
 
                 Text {
                     anchors.centerIn: parent
@@ -176,8 +95,6 @@ Item {
 
                 Text {
                     text: root.rowTitle
-                    text: root.resultTitle
-                    text: root.rowTitle
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium
@@ -186,8 +103,6 @@ Item {
                 }
 
                 Text {
-                    text: root.rowSubtitle
-                    text: root.resultSubtitle
                     text: root.rowSubtitle
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
@@ -214,17 +129,11 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 width: 20
                 visible: root.rowType === "track"
-                width: 24
-                visible: root.resultType === "track"
-                width: 20
-                visible: root.rowType === "track"
 
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.playRequested()
-                    Accessible.role: Accessible.Button
-                    Accessible.name: "Reproducir " + root.rowTitle
                     Accessible.role: Accessible.Button
                     Accessible.name: "Reproducir " + root.rowTitle
                 }
@@ -237,22 +146,6 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.clicked()
-            onDoubleClicked: root.playRequested()
-        }
-
-        Keys.onReturnPressed: root.clicked()
-        Keys.onSpacePressed: root.clicked()
-        }
-
-        Keys.onReturnPressed: {
-            root.activateRequested()
-        }
-        Keys.onEnterPressed: {
-            root.activateRequested()
-        }
-
-        focus: true
-        activeFocusOnTab: false
             onDoubleClicked: root.playRequested()
         }
 

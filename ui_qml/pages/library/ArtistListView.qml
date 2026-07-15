@@ -32,13 +32,13 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Rectangle {
-                    width: 40; height: 40; radius: MichiTheme.radiusXl
+                    width: 40; height: 40; radius: 20
                     color: MichiTheme.colors.surfaceCard
                     Text {
                         anchors.centerIn: parent
                         text: (model.name || "?").charAt(0).toUpperCase()
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightBold
+                        font.pixelSize: 18; font.weight: MichiTheme.typography.weightBold
                     }
                 }
 

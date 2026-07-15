@@ -1,17 +1,11 @@
 import QtQuick
 import "../theme"
 import "states"
-import QtQuick.Controls
-import "../theme"
-import "../theme"
-import "states"
 
 Item {
     id: root
 
     enum State {
-        INITIALIZING = 0,
-        INITIALIZING,
         INITIALIZING = 0,
         LOADING,
         READY,
@@ -22,48 +16,6 @@ Item {
     }
 
     property int state: AsyncStateView.INITIALIZING
-    property string title: ""
-    property string message: ""
-    property string details: ""
-    property string iconName: ""
-    property string primaryActionText: ""
-    property string secondaryActionText: ""
-    property string errorCode: ""
-    property string errorSource: ""
-    property bool retryAvailable: true
-    property bool reducedMotion: false
-    property string objectName: "asyncStateView"
-
-    property alias readyContent: readyHost.children
-    property alias degradedOverlay: degradedHost.children
-
-    signal primaryActionRequested()
-    signal secondaryActionRequested()
-    signal retryRequested()
-
-    objectName: "AsyncStateView"
-
-    Accessible.role: Accessible.Grouping
-    Accessible.name: {
-        if (state === AsyncStateView.LOADING) return "Cargando"
-        if (state === AsyncStateView.ERROR) return "Error" + (title ? ": " + title : "")
-        if (state === AsyncStateView.EMPTY) return "Sin contenido" + (title ? ": " + title : "")
-        if (state === AsyncStateView.UNAVAILABLE) return "No disponible"
-        if (state === AsyncStateView.DEGRADED) return "Funcionamiento degradado"
-        return ""
-    }
-    Accessible.description: message + (details ? ". " + details : "")
-
-    Item {
-        id: readyHost
-        anchors.fill: parent
-        visible: root.state === AsyncStateView.READY || root.state === AsyncStateView.DEGRADED
-    }
-
-    Item {
-        id: stateLayer
-        anchors.fill: parent
-        visible: root.state === AsyncStateView.READY
     property string title: ""
     property string message: ""
     property string details: ""

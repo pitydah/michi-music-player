@@ -1,7 +1,7 @@
+from __future__ import annotations
 """Tests for AudioBatchJobsPage — active, completed, failed jobs display and actions."""
 from pathlib import Path
 """Tests for Audio Lab jobs queue — running, queued, completed, failed, cancelled."""
-from __future__ import annotations
 
 
 import pytest

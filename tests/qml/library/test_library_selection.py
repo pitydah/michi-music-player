@@ -1,5 +1,5 @@
-"""Tests for library selection logic — 12+ tests."""
 from __future__ import annotations
+"""Tests for library selection logic — 12+ tests."""
 
 from unittest.mock import MagicMock
 

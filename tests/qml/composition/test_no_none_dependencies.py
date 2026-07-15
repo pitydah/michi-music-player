@@ -4,7 +4,6 @@ import pytest
 pytestmark = [pytest.mark.qml_module("worker_manager")]
 
 
-
 class TestOperationResultNoNone:
     def test_default_ok(self):
         r = OperationResult()

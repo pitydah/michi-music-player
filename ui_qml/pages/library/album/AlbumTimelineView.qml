@@ -41,13 +41,13 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 Rectangle {
-                    width: 40; height: 40; radius: MichiTheme.radiusXs
+                    width: 40; height: 40; radius: 4
                     color: MichiTheme.colors.borderInner
                     Text {
                         anchors.centerIn: parent
                         text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
                         color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.captionSize
+                        font.pixelSize: 12
                     }
                     MouseArea {
                         anchors.fill: parent

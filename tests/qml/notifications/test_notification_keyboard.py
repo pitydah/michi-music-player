@@ -1,9 +1,9 @@
+from __future__ import annotations
+from __future__ import annotations
 """Test keyboard navigation through notifications in NotificationBridge.
-
 Tests logical keyboard navigation patterns (next/prev, escape, enter)
 applied through bridge methods that keyboard events would trigger.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 """Tests for keyboard navigation in notification components."""
@@ -69,11 +69,9 @@ class TestKeyboardNavigation:
 Tests logical keyboard navigation patterns (next/prev, escape, enter)
 applied through bridge methods that keyboard events would trigger.
 """
-from __future__ import annotations
 
 
 import pytest
-
 
 
 @pytest.fixture

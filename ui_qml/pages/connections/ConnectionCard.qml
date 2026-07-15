@@ -14,17 +14,12 @@ Item {
     property string contract: ""
     property string serverVersion: ""
     property bool compatible: false
-    property string objectName: "connections.card"
 
     signal connectClicked()
     signal disconnectClicked()
     signal configureClicked()
 
     implicitHeight: 120
-
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.serverName
-    Accessible.description: "Estado: " + root.state + ". Host: " + root.serverHost
 
     GlassMaterial {
         anchors.fill: parent
@@ -37,7 +32,6 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.configureClicked()
         }
 
         Column {
@@ -60,7 +54,6 @@ Item {
                         font.weight: MichiTheme.typography.weightSemiBold
                         elide: Text.ElideRight
                         width: parent.width
-                        objectName: root.objectName + ".name"
                     }
 
                     Text {
@@ -69,7 +62,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.metaSize
                         elide: Text.ElideRight
                         width: parent.width
-                        objectName: root.objectName + ".host"
                     }
                 }
 
@@ -78,7 +70,6 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     StatusBadge {
-                        id: stateBadge
                         text: {
                             switch (root.state) {
                                 case "connected": return "Conectado"
@@ -97,7 +88,6 @@ Item {
                                 default: return "disconnected"
                             }
                         }
-                        objectName: root.objectName + ".statusBadge"
                     }
                 }
             }
@@ -133,16 +123,12 @@ Item {
                     text: root.state === "connected" ? "Desconectar" : "Conectar"
                     variant: root.state === "connected" ? "secondary" : "primary"
                     onClicked: root.state === "connected" ? root.disconnectClicked() : root.connectClicked()
-                    objectName: root.objectName + ".connectButton"
-                    Accessible.name: root.state === "connected" ? "Desconectar " + root.serverName : "Conectar " + root.serverName
                 }
 
                 MichiButton {
                     text: "Configurar"
                     variant: "ghost"
                     onClicked: root.configureClicked()
-                    objectName: root.objectName + ".configureButton"
-                    Accessible.name: "Configurar " + root.serverName
                 }
             }
         }

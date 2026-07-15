@@ -1,5 +1,5 @@
-"""CL — Smart Tagging enhanced: candidates, confidence, preview, accept/reject, batch, cancel, rollback."""
 from __future__ import annotations
+"""CL — Smart Tagging enhanced: candidates, confidence, preview, accept/reject, batch, cancel, rollback."""
 
 from unittest.mock import MagicMock
 

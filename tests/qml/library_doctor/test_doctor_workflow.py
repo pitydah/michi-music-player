@@ -1,5 +1,5 @@
-"""CL — Library Doctor workflow: scan, issues, dry run, repair, transaction, report, undo."""
 from __future__ import annotations
+"""CL — Library Doctor workflow: scan, issues, dry run, repair, transaction, report, undo."""
 
 import sqlite3
 from unittest.mock import MagicMock

@@ -1,5 +1,5 @@
+from __future__ import annotations
 """Validate the physical audio artifact at artifacts/qml-physical-results.json.
-
 Verifies:
 - File exists and is valid JSON
 - Required fields present (status, sha, date, platform, backend, device)
@@ -8,7 +8,6 @@ Verifies:
 - Each check has id, label, passed, evidence
 - passed + total consistency
 """
-from __future__ import annotations
 
 import json
 from pathlib import Path

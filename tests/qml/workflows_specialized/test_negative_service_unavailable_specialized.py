@@ -1,5 +1,5 @@
-"""MX: Negative — service unavailable for each specialized domain."""
 from __future__ import annotations
+"""MX: Negative — service unavailable for each specialized domain."""
 
 def test_devices_no_sync_manager():
     from ui_qml_bridge.devices_bridge import DevicesBridge

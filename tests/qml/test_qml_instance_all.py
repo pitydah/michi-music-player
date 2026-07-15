@@ -1,5 +1,5 @@
-"""Tests for qml_instance_all.py — verifica carga, instancia e interacción."""
 from __future__ import annotations
+"""Tests for qml_instance_all.py — verifica carga, instancia e interacción."""
 
 import os
 os.environ["QT_QPA_PLATFORM"] = "offscreen"

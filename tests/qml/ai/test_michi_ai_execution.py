@@ -1,8 +1,6 @@
-"""Test Michi AI action execution flow with confirmation."""
-
-"""Test Michi AI action execution flow with confirmation."""
-
 from __future__ import annotations
+"""Test Michi AI action execution flow with confirmation."""
+"""Test Michi AI action execution flow with confirmation."""
 
 from unittest.mock import MagicMock
 

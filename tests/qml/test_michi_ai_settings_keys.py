@@ -1,5 +1,5 @@
-"""Test MichiAIBridge — uses correct Settings Schema keys, never theme/mode or audio/volume."""
 from __future__ import annotations
+"""Test MichiAIBridge — uses correct Settings Schema keys, never theme/mode or audio/volume."""
 
 from unittest.mock import MagicMock
 

@@ -4,7 +4,6 @@ import pytest
 pytestmark = [pytest.mark.qml_module("worker_manager")]
 
 
-
 class TestServiceOrderIsList:
     def test_service_order_is_list(self):
         assert isinstance(SERVICE_ORDER, list)

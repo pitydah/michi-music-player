@@ -1,5 +1,5 @@
-"""MW: Audio Lab — preview analysis, convert file, cancel conversion."""
 from __future__ import annotations
+"""MW: Audio Lab — preview analysis, convert file, cancel conversion."""
 
 from unittest.mock import MagicMock
 

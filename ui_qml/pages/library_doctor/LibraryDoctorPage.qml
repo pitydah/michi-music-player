@@ -48,7 +48,6 @@ Item {
             LibraryDoctorIssueList {
                 width: parent.width
                 doc: root.doc
-                bridge: root.doc
             }
 
             LibraryDoctorFixPreview {

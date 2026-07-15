@@ -1,5 +1,5 @@
-"""Advanced tests for LibraryTrackContextMenu via ActionRegistry — 10+ tests."""
 from __future__ import annotations
+"""Advanced tests for LibraryTrackContextMenu via ActionRegistry — 10+ tests."""
 
 import pytest
 

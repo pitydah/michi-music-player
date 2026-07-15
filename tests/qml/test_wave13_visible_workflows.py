@@ -1,5 +1,5 @@
-"""Wave XIII: visible workflows — Main.qml, library sources, scanner, jobs, smart tagging."""
 from __future__ import annotations
+"""Wave XIII: visible workflows — Main.qml, library sources, scanner, jobs, smart tagging."""
 
 import time
 import sqlite3

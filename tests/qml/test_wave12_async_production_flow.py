@@ -1,5 +1,5 @@
-"""Wave XII: real async production flow — 5000 tracks, WorkerManager, event loop."""
 from __future__ import annotations
+"""Wave XII: real async production flow — 5000 tracks, WorkerManager, event loop."""
 
 import time
 import sqlite3

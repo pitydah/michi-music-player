@@ -2,8 +2,8 @@
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.connections_bridge import ConnectionsBridge
-"""Tests for keyboard navigation in connection components."""
 import pytest
+"""Tests for keyboard navigation in connection components."""
 pytestmark = pytest.mark.isolation
 
 

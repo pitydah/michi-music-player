@@ -1,7 +1,7 @@
+from __future__ import annotations
 """Tests for AudioConversionPage — format selector, codec, quality, preview, convert."""
 from pathlib import Path
 """Tests for Audio Conversion Page — real controls, no static/demo elements."""
-from __future__ import annotations
 
 import tempfile
 

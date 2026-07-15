@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
+import pytest
 
 
 @pytest.fixture
@@ -161,8 +162,6 @@ class TestNullBridge:
         for i in range(1, len(gens)):
             assert gens[i] >= gens[i - 1]
 """Test GlobalSearchBridge negative cases: stale requests, empty results, error, null bridge."""
-import pytest
-
 
 
 @pytest.fixture

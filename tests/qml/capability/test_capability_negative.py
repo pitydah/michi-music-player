@@ -1,7 +1,6 @@
 """Negative tests for capability system: null bridge, unknown capability."""
 
 
-
 def test_capability_guard_null_bridge():
     """CapabilityGuard should handle null bridge gracefully."""
     filepath = "ui_qml/components/CapabilityGuard.qml"

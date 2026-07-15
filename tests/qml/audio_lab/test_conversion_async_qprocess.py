@@ -1,11 +1,9 @@
+from __future__ import annotations
 """DU — Conversión async: NO communicare() en UI thread. QProcess via JobService.
-
 Flujo: QML start -> JobService queue -> worker starts process -> progress signals
 -> QML responsive -> cancel -> terminate -> grace -> kill -> cleanup -> terminal.
-
 Progress: FFmpeg -progress output parsing. Output: temp -> verify -> metadata -> artwork -> fsync -> atomic rename.
 """
-from __future__ import annotations
 
 import os
 import tempfile
@@ -14,6 +12,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -91,8 +91,6 @@ class TestConversionAsyncQProcess:
 
     def test_cancel_lifecycle_transitions(self, bridge, sample_wav):
         from ui_qml_bridge.conversion_bridge import ConversionJob
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         job = ConversionJob("test_cancel_2", sample_wav, "/tmp/out.wav", {})
         job.process = MagicMock()

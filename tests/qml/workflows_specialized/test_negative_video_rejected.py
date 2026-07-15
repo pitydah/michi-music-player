@@ -1,5 +1,5 @@
-"""MX: Negative — video files rejected in audio-only workflows."""
 from __future__ import annotations
+"""MX: Negative — video files rejected in audio-only workflows."""
 
 from ui_qml_bridge.devices_bridge import DevicesBridge
 

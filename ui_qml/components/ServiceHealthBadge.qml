@@ -20,13 +20,14 @@ Rectangle {
     objectName: "ServiceHealthBadge"
 
     Accessible.role: Accessible.StatusBar
-    Accessible.name: serviceName + " " + {
+    Accessible.name: {
+        var healthText = ""
         switch (root.health) {
-            case ServiceHealthBadge.HEALTHY: return healthyLabel
-            case ServiceHealthBadge.DEGRADED: return degradedLabel
-            case ServiceHealthBadge.UNAVAILABLE: return unavailableLabel
+            case ServiceHealthBadge.HEALTHY: healthText = healthyLabel; break
+            case ServiceHealthBadge.DEGRADED: healthText = degradedLabel; break
+            case ServiceHealthBadge.UNAVAILABLE: healthText = unavailableLabel; break
         }
-        return ""
+        return serviceName + " " + healthText
     }
     Accessible.description: "Estado del servicio" + (serviceName ? ": " + serviceName : "")
 

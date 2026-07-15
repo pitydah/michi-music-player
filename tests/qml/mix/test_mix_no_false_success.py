@@ -6,7 +6,6 @@ from ui_qml_bridge.mix_bridge import MixBridge
 pytestmark = [pytest.mark.qml_module("mix")]
 
 
-
 @pytest.fixture
 def mock_query_service():
     mqs = MagicMock()

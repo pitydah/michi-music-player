@@ -7,7 +7,6 @@ from ui_qml_bridge.lyrics_bridge import LyricsBridge, _parse_lrc, _make_cache_ke
 pytestmark = [pytest.mark.qml_module("lyrics")]
 
 
-
 @pytest.fixture
 def mock_nowplaying():
     np = MagicMock()

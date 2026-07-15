@@ -1,5 +1,5 @@
-"""Tests for ApplicationBootstrap productive lifecycle."""
 from __future__ import annotations
+"""Tests for ApplicationBootstrap productive lifecycle."""
 
 import sys
 from pathlib import Path

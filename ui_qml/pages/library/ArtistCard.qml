@@ -34,7 +34,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: artistName.length > 0 ? artistName.charAt(0).toUpperCase() : "?"
                 color: MichiTheme.colors.accentBlue
-                font.pixelSize: MichiTheme.typography.heroTitleSize
+                font.pixelSize: 36
                 font.weight: MichiTheme.typography.weightBold
                 opacity: 0.6
             }

@@ -1,7 +1,7 @@
+from __future__ import annotations
 """EF — Michi AI via ActionRegistry exclusivamente.
 Acciones: search, play, enqueue, playlist, Mix, AudioLab, Metadata, Doctor, Devices, Settings, navigation.
 Sin handler: ACTION_UNAVAILABLE."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -9,7 +9,6 @@ import pytest
 
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 pytestmark = [pytest.mark.qml_module("michi_ai")]
-
 
 
 @pytest.fixture

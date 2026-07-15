@@ -1,23 +1,20 @@
+from __future__ import annotations
 """Workflow tests for EK (hybrid removal audit) + EM (real QML workflows).
-
 EK: Semantic hybrid audit — no ui.* imports in QML, no ui.* imports in core,
-    no QWidget in bridges, no SQL in bridges, no duplicate state, no QML→Widget routes.
+    no QWidget in bridges, no SQL in bridges, no duplicate state, no QMLWidget routes.
     Bridge+QML is NOT duplicación. Real duplicated logic IS detected and removed.
-
 EM: Real QML workflows using qml_test_harness.py (macro DH patterns):
-  - Library: load LibraryPage → type search → select filter → select rows
-            → context menu → click Play → NowPlaying changes → Queue changes
-  - Audio Lab: open conversion page → choose WAV → choose profile → preview
-              → start → progress → cancel → process exits → temp output removed
-  - History: load → filter → play event → export → remove event → clear confirmation
-  - Mix: generate → progress → cancel → regenerate → play → save playlist
-  - Devices: discover UMS → profile → transfer → progress → cancel → cleanup
-  - Settings/Theme: change theme → tokens update → persistence → rollback
-  - Notifications: show job → click Cancel → JobService state changes → notification updates
-
+  - Library: load LibraryPage  type search  select filter  select rows
+             context menu  click Play  NowPlaying changes  Queue changes
+  - Audio Lab: open conversion page  choose WAV  choose profile  preview
+               start  progress  cancel  process exits  temp output removed
+  - History: load  filter  play event  export  remove event  clear confirmation
+  - Mix: generate  progress  cancel  regenerate  play  save playlist
+  - Devices: discover UMS  profile  transfer  progress  cancel  cleanup
+  - Settings/Theme: change theme  tokens update  persistence  rollback
+  - Notifications: show job  click Cancel  JobService state changes  notification updates
 30+ tests using qml_test_harness.
 """
-from __future__ import annotations
 
 import os
 import sqlite3
@@ -29,6 +26,11 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 os.environ["MICHI_SAFE_MODE"] = "1"
 
 import pytest
+
+pytestmark = [
+    pytest.mark.qml_module("workflows_ek_em"),
+    pytest.mark.qml_dimension("interactive_workflow"),
+]
 
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -103,12 +105,6 @@ def _create_schema(conn: sqlite3.Connection):
         );
         INSERT OR IGNORE INTO metadata (key, value) VALUES ('schema_version', '12');
     """)
-
-
-pytestmark = [
-    pytest.mark.qml_module("workflows_ek_em"),
-    pytest.mark.qml_dimension("interactive_workflow"),
-]
 
 
 class HarnessPlayer:
@@ -362,11 +358,11 @@ class TestEKHybridAudit:
 
 
 # ═══════════════════════════════════════════════════════
-# EM — Workflow 1: Library → Play → Queue
+# EM — Workflow 1: Library  Play  Queue
 # ═══════════════════════════════════════════════════════
 
 class TestEMLibraryWorkflow:
-    """Load LibraryPage → search → filter → select → context menu → Play → NP → Queue."""
+    """Load LibraryPage  search  filter  select  context menu  Play  NP  Queue."""
 
     def test_em_library_load_and_search(self, harness_env):
         conn, db_wrapper, player, files, _ = harness_env
@@ -452,7 +448,7 @@ class TestEMLibraryWorkflow:
 # ═══════════════════════════════════════════════════════
 
 class TestEMAudioLabConversion:
-    """Open conversion page → choose WAV → profile → preview → start → cancel → cleanup."""
+    """Open conversion page  choose WAV  profile  preview  start  cancel  cleanup."""
 
     def test_em_audiolab_probe_wav(self, harness_env):
         conn, db_wrapper, player, files, _ = harness_env
@@ -504,7 +500,7 @@ class TestEMAudioLabConversion:
 # ═══════════════════════════════════════════════════════
 
 class TestEMHistoryWorkflow:
-    """Load → filter → play event → export → remove → clear."""
+    """Load  filter  play event  export  remove  clear."""
 
     def test_em_history_load(self, harness_env):
         conn, db_wrapper, player, files, _ = harness_env
@@ -573,7 +569,7 @@ class TestEMHistoryWorkflow:
 # ═══════════════════════════════════════════════════════
 
 class TestEMMixWorkflow:
-    """Generate → progress → cancel → regenerate → play → save playlist."""
+    """Generate  progress  cancel  regenerate  play  save playlist."""
 
     def test_em_mix_categories(self, harness_env):
         from ui_qml_bridge.mix_bridge import MixBridge
@@ -628,7 +624,7 @@ class TestEMMixWorkflow:
 # ═══════════════════════════════════════════════════════
 
 class TestEMDevicesWorkflow:
-    """Discover UMS → profile → transfer → progress → cancel → cleanup."""
+    """Discover UMS  profile  transfer  progress  cancel  cleanup."""
 
     def test_em_devices_bridge_created(self, harness_env):
         from ui_qml_bridge.devices_bridge import DevicesBridge
@@ -661,7 +657,7 @@ class TestEMDevicesWorkflow:
 # ═══════════════════════════════════════════════════════
 
 class TestEMThemeSettingsWorkflow:
-    """Change theme → tokens update → persistence → rollback."""
+    """Change theme  tokens update  persistence  rollback."""
 
     def test_em_theme_change(self, harness_env):
         from ui_qml_bridge.theme_bridge import ThemeBridge
@@ -723,7 +719,7 @@ class TestEMThemeSettingsWorkflow:
 # ═══════════════════════════════════════════════════════
 
 class TestEMNotificationsWorkflow:
-    """Show job → click Cancel → JobService state changes → notification updates."""
+    """Show job  click Cancel  JobService state changes  notification updates."""
 
     def test_em_notification_show_message(self, harness_env):
         from ui_qml_bridge.notification_bridge import NotificationBridge
@@ -777,7 +773,7 @@ class TestEMNotificationsWorkflow:
 # ═══════════════════════════════════════════════════════
 
 class TestEMCrossWorkflow:
-    """Cross-workflow: play from library → history recorded → NowPlaying updates."""
+    """Cross-workflow: play from library  history recorded  NowPlaying updates."""
 
     def test_em_cross_play_records_history(self, harness_env):
         conn, db_wrapper, player, files, _ = harness_env

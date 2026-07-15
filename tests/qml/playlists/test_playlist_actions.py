@@ -4,6 +4,7 @@ import pytest
 import sqlite3
 
 from core.playlist_service import PlaylistService
+import pytest
 
 
 @pytest.fixture
@@ -212,8 +213,6 @@ class TestPlaylistActions:
         assert result["ok"] is False
         assert result["error"] == "UNSUPPORTED"
 """Test playlist CRUD actions: create, rename, duplicate, delete."""
-import pytest
-
 
 
 @pytest.fixture

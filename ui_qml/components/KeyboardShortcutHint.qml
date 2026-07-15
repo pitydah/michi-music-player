@@ -1,31 +1,5 @@
 import QtQuick
 import QtQuick.Controls as QQC2
-import QtQuick.Controls
-import "../theme"
-
-Rectangle {
-    id: root
-
-    property string label: ""
-    property string shortcut: ""
-    property string description: ""
-    property string variant: "info"
-    property int shortcutSize: MichiTheme.typography.badgeSize
-
-    objectName: "KeyboardShortcutHint"
-
-    Accessible.role: Accessible.StaticText
-    Accessible.name: label + (shortcut ? " " + shortcut : "")
-    Accessible.description: description || label + " atajo de teclado " + shortcut
-
-    Rectangle {
-        anchors.fill: parent
-        radius: MichiTheme.radiusXs
-        color: MichiTheme.colors.surfaceCard
-        border.width: MichiTheme.borderWidth
-        border.color: MichiTheme.colors.borderSubtle
-    }
-import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
@@ -59,33 +33,6 @@ Rectangle {
         spacing: MichiTheme.spacing.xs
 
         Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.label
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: root.shortcutSize
-            font.weight: MichiTheme.typography.weightMedium
-            visible: text !== ""
-        }
-
-        Rectangle {
-            anchors.verticalCenter: parent.verticalCenter
-            height: rowItem.implicitHeight + MichiTheme.spacing.xs
-            width: rowItem.implicitWidth + MichiTheme.spacing.sm * 2
-            radius: MichiTheme.radiusXs
-            color: MichiTheme.colors.surfaceSubtle
-            border.width: MichiTheme.borderWidth
-            border.color: MichiTheme.colors.borderInner
-            visible: root.shortcut !== ""
-
-            Text {
-                id: rowItem
-                anchors.centerIn: parent
-                text: root.shortcut
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: root.shortcutSize
-                font.weight: MichiTheme.typography.weightMedium
-            }
-        }
             anchors.verticalCenter: parent.verticalCenter
             text: root.label
             color: MichiTheme.colors.textMuted

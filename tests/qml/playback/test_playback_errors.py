@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test error propagation through playback bridges.
-
-Errors must propagate correctly: PlayerService → NowPlayingBridge → QML.
+Errors must propagate correctly: PlayerService  NowPlayingBridge  QML.
 No falla silenciosa — if backend is unavailable, playback MUST NOT appear to start.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,6 +10,8 @@ import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from ui_qml_bridge.playback_bridge import PlaybackBridge
+
+pytestmark = [pytest.mark.qml_module("playback")]
 
 
 @pytest.fixture
@@ -61,8 +62,6 @@ def test_queue_unavailable_error():
 
 def test_invalid_position_error():
     from ui_qml_bridge.nowplaying_bridge import _safe_message
-import pytest
-pytestmark = [pytest.mark.qml_module("playback")]
 
     msg = _safe_message("INVALID_POSITION")
     assert msg == "Posición inválida"

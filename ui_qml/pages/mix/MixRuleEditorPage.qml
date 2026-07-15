@@ -27,7 +27,7 @@ Item {
         var newRules = root._rules.slice()
         newRules.push({ field: "genre", value: "", operator: "is" })
         root._rules = newRules
-        root._rulesChanged()
+        root._notifyRulesChanged()
     }
 
     function removeRule(index) {
@@ -35,10 +35,10 @@ Item {
         var newRules = root._rules.slice()
         newRules.splice(index, 1)
         root._rules = newRules
-        root._rulesChanged()
+        root._notifyRulesChanged()
     }
 
-    function _rulesChanged() {
+    function _notifyRulesChanged() {
         root._rules = root._rules
     }
 

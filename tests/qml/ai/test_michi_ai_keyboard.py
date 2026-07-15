@@ -1,8 +1,6 @@
-"""Test Michi AI keyboard navigation."""
-
-"""Test Michi AI keyboard navigation."""
-
 from __future__ import annotations
+"""Test Michi AI keyboard navigation."""
+"""Test Michi AI keyboard navigation."""
 
 from unittest.mock import MagicMock
 

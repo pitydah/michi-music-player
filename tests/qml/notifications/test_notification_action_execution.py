@@ -1,5 +1,5 @@
-"""Test notification action execution — bridge callback, job cancel, retry."""
 from __future__ import annotations
+"""Test notification action execution — bridge callback, job cancel, retry."""
 
 from unittest.mock import MagicMock
 

@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test library visibility with real SQLite DB + temp tracks + QML app.
-
 Creates a real DB with 3 tracks (MP3/FLAC/WAV), starts QML, navigates to
 Biblioteca, and verifies the model sees all 3 tracks.
 """
-from __future__ import annotations
 
 import os
 import sqlite3

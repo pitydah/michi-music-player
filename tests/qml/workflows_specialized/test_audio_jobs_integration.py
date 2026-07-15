@@ -1,5 +1,5 @@
-"""MF-MK: Audio jobs integration — job_service integration with AudioLabBridge."""
 from __future__ import annotations
+"""MF-MK: Audio jobs integration — job_service integration with AudioLabBridge."""
 
 import sqlite3
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from __future__ import annotations
 """Test font scaling.
 
 Verifies:
@@ -77,7 +78,6 @@ class TestFontScaling:
             hardcoded = [ln for ln in font_refs if "MichiTheme" not in ln]
             assert len(hardcoded) == 0, \
                 f"{page_rel}: {len(hardcoded)} hardcoded font pixel sizes found"
-from __future__ import annotations
 
 from pathlib import Path
 

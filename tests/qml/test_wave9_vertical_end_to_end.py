@@ -1,5 +1,5 @@
-"""E2E: verify all Wave IX bridges, models, and services import and respond correctly."""
 from __future__ import annotations
+"""E2E: verify all Wave IX bridges, models, and services import and respond correctly."""
 
 import pytest
 from unittest.mock import MagicMock

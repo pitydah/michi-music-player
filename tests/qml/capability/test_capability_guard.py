@@ -1,7 +1,6 @@
 """Tests for CapabilityGuard component — all states."""
 
 
-
 def test_capability_guard_loads():
     """CapabilityGuard QML file should load without syntax errors."""
     import os

@@ -1,4 +1,4 @@
-"""Workflow test: show progress → open center → click cancel → verify job state via NotificationBridge."""
+"""Workflow test: show progress  open center  click cancel  verify job state via NotificationBridge."""
 import pytest
 from unittest.mock import MagicMock
 
@@ -30,7 +30,7 @@ def bridge(job_bridge, action_registry):
 
 
 class TestNotificationsWorkflow:
-    """Complete workflow: show progress → open center → click cancel → verify job state."""
+    """Complete workflow: show progress  open center  click cancel  verify job state."""
 
     def test_wf_show_toast(self, bridge):
         result = bridge.showMessage("Biblioteca actualizada", "success")

@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+pytestmark = [pytest.mark.qml_module("class_mod"), pytest.mark.qml_dimension("integration")]
 
 REPO = Path(__file__).resolve().parent.parent.parent
 SCRIPTS = REPO / "scripts"
@@ -74,7 +75,6 @@ def test_no_markers():
 
 
 class TestWithClassMarker:
-    pytestmark = [pytest.mark.qml_module("class_mod"), pytest.mark.qml_dimension("integration")]
 
     def test_class_marked(self):
         assert True

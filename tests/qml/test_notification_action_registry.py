@@ -1,7 +1,7 @@
+from __future__ import annotations
 """Test NotificationBridge — ActionRegistry integration with action_id, primary/secondary action,
 progress, cancel, update, retry, dismiss, error persistence, accessibility.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

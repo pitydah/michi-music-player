@@ -1,5 +1,6 @@
 """Test Evidence V7 plugin — conftest.py extracts qml_module/qml_dimension markers."""
 import pytest
+pytestmark = [pytest.mark.qml_module("class_mod"), pytest.mark.qml_dimension("integration")]
 
 
 @pytest.mark.qml_module("test_mod")
@@ -23,7 +24,6 @@ def test_no_markers():
 
 
 class TestWithClassMarker:
-    pytestmark = [pytest.mark.qml_module("class_mod"), pytest.mark.qml_dimension("integration")]
 
     def test_class_marked(self):
         assert True

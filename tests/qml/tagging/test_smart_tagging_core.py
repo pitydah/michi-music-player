@@ -1,5 +1,5 @@
-"""DY — Smart Tagging Core: candidates, confidence, preview, accept/reject, batch, cancellation, backup, verify, rollback."""
 from __future__ import annotations
+"""DY — Smart Tagging Core: candidates, confidence, preview, accept/reject, batch, cancellation, backup, verify, rollback."""
 
 from unittest.mock import MagicMock, patch
 

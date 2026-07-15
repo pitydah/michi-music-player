@@ -72,7 +72,6 @@ def test_import_confirm_no_service():
 """Test playlist negative paths: missing service, empty playlists, import errors."""
 
 
-
 def test_bridge_without_db():
     bridge = PlaylistsBridge(db=None)
     assert len(bridge.playlists) == 0

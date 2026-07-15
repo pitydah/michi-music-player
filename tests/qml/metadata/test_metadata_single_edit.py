@@ -1,5 +1,5 @@
-"""Tests for single-track metadata editing."""
 from __future__ import annotations
+"""Tests for single-track metadata editing."""
 
 import time
 

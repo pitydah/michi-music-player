@@ -1,10 +1,9 @@
+from __future__ import annotations
 """DT — AudioLab orquestado: AudioLabService + AudioLabState instancia ÚNICA en AudioLabBridge.
-
 Canonical API: capabilities, inputs, profiles, selectedProfile, preview,
 startAnalysis, startConversion, startReplayGain, startNormalization,
 startIntegrity, startComparison, cancelJob, retryJob, clearInputs, results, errors.
 """
-from __future__ import annotations
 
 import sqlite3
 import time
@@ -12,6 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=0.5):
@@ -63,8 +64,6 @@ class TestAudioLabOrquestado:
     @pytest.fixture
     def bridge(self, app, db, audio_lab_service, audio_lab_state, mock_player):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         return AudioLabBridge(
             db_conn=db,

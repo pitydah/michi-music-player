@@ -1,5 +1,5 @@
-"""Tests for LibraryPage state machine with real SQLite — 10+ tests."""
 from __future__ import annotations
+"""Tests for LibraryPage state machine with real SQLite — 10+ tests."""
 
 import tempfile
 from pathlib import Path

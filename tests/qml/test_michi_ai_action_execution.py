@@ -1,5 +1,5 @@
-"""Test MichiAIBridge — states, real action execution, destructive confirmation, cancel."""
 from __future__ import annotations
+"""Test MichiAIBridge — states, real action execution, destructive confirmation, cancel."""
 
 from unittest.mock import MagicMock
 

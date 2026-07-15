@@ -1,5 +1,5 @@
-"""Tests for artwork operations."""
 from __future__ import annotations
+"""Tests for artwork operations."""
 
 import time
 

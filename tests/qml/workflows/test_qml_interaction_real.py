@@ -1,10 +1,9 @@
+from __future__ import annotations
 """Real QML interaction tests — 13 workflows, 50+ tests.
-
 QQmlApplicationEngine, ServiceContainer with real services, real SQLite,
 QTest.mouseClick, QTest.keyClick, objectName, signals, backend verification.
 No MagicMock in core services. No NullBridge.
 """
-from __future__ import annotations
 
 import os
 import sqlite3
@@ -256,10 +255,10 @@ def player():
     return RealPlayerService()
 
 
-# ── WF1: Library → Playback → Queue ──
+# ── WF1: Library  Playback  Queue ──
 
 class TestWF1LibraryPlaybackQueue:
-    """WF1: load page → search → filter → select → context menu → play → NowPlaying → Queue updates."""
+    """WF1: load page  search  filter  select  context menu  play  NowPlaying  Queue updates."""
 
     def test_wf1_search_returns_results(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -347,10 +346,10 @@ class TestWF1LibraryPlaybackQueue:
         assert qb.queueCount == 0
 
 
-# ── WF2: Album → Playlist ──
+# ── WF2: Album  Playlist ──
 
 class TestWF2AlbumPlaylist:
-    """WF2: album detail → select disc → enqueue → add to playlist → open playlist."""
+    """WF2: album detail  select disc  enqueue  add to playlist  open playlist."""
 
     def test_wf2_album_detail(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -406,10 +405,10 @@ class TestWF2AlbumPlaylist:
         assert "WF2 Open" in names
 
 
-# ── WF3: Artist → Mix ──
+# ── WF3: Artist  Mix ──
 
 class TestWF3ArtistMix:
-    """WF3: artist detail → generate mix → progress → cancel → play → save playlist."""
+    """WF3: artist detail  generate mix  progress  cancel  play  save playlist."""
 
     def test_wf3_artist_detail(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -464,7 +463,7 @@ class TestWF3ArtistMix:
 # ── WF4: Audio Lab conversion/cancel ──
 
 class TestWF4AudioLabConversion:
-    """WF4: select WAV → profile → preview → start → progress → cancel → process terminates → temp removed."""
+    """WF4: select WAV  profile  preview  start  progress  cancel  process terminates  temp removed."""
 
     def test_wf4_probe_wav(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -507,7 +506,7 @@ class TestWF4AudioLabConversion:
 # ── WF5: History export/remove ──
 
 class TestWF5HistoryExportRemove:
-    """WF5: load timeline → filter → play event → export → remove → clear confirmation."""
+    """WF5: load timeline  filter  play event  export  remove  clear confirmation."""
 
     def test_wf5_history_loaded(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -572,7 +571,7 @@ class TestWF5HistoryExportRemove:
 # ── WF6: Search stale cancellation ──
 
 class TestWF6SearchStaleCancellation:
-    """WF6: query A → query B → cancel A → render B → stale A discarded."""
+    """WF6: query A  query B  cancel A  render B  stale A discarded."""
 
     def test_wf6_search_cancels_previous(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -603,7 +602,7 @@ class TestWF6SearchStaleCancellation:
 # ── WF7: Radio start/retry ──
 
 class TestWF7RadioStartRetry:
-    """WF7: start station → metadata → timeout → retry → stop."""
+    """WF7: start station  metadata  timeout  retry  stop."""
 
     def test_wf7_radio_bridge_created(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -623,7 +622,7 @@ class TestWF7RadioStartRetry:
 # ── WF8: Metadata write/undo ──
 
 class TestWF8MetadataWriteUndo:
-    """WF8: load → edit → preview → save → verify → undo → verify."""
+    """WF8: load  edit  preview  save  verify  undo  verify."""
 
     def test_wf8_metadata_loaded(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -654,7 +653,7 @@ class TestWF8MetadataWriteUndo:
 # ── WF9: Doctor repair ──
 
 class TestWF9DoctorRepair:
-    """WF9: scan → issues → dry run → repair → transaction → verify DB → undo."""
+    """WF9: scan  issues  dry run  repair  transaction  verify DB  undo."""
 
     def test_wf9_library_doctor_loaded(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -674,7 +673,7 @@ class TestWF9DoctorRepair:
 # ── WF10: Devices UMS transfer ──
 
 class TestWF10DevicesUMSTransfer:
-    """WF10: discover → profile → plan → transfer → progress → cancel → cleanup."""
+    """WF10: discover  profile  plan  transfer  progress  cancel  cleanup."""
 
     def test_wf10_devices_bridge_created(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -700,7 +699,7 @@ class TestWF10DevicesUMSTransfer:
 # ── WF11: Theme persistence ──
 
 class TestWF11ThemePersistence:
-    """WF11: change theme → QML tokens update → restart → verify persistence."""
+    """WF11: change theme  QML tokens update  restart  verify persistence."""
 
     def test_wf11_theme_change(self, real_db_and_player):
         from ui_qml_bridge.theme_bridge import ThemeBridge
@@ -728,7 +727,7 @@ class TestWF11ThemePersistence:
 # ── WF12: Accessibility mono/balance ──
 
 class TestWF12AccessibilityMonoBalance:
-    """WF12: toggle mono → verify backend → restore → verify."""
+    """WF12: toggle mono  verify backend  restore  verify."""
 
     def test_wf12_mono_toggle(self, real_db_and_player):
         conn, db_wrapper, player, files = real_db_and_player
@@ -763,7 +762,7 @@ class TestWF12AccessibilityMonoBalance:
 # ── WF13: Notification actions ──
 
 class TestWF13NotificationActions:
-    """WF13: show notification → click action → verify ActionRegistry called → verify navigation."""
+    """WF13: show notification  click action  verify ActionRegistry called  verify navigation."""
 
     def test_wf13_show_notification(self, real_db_and_player):
         from ui_qml_bridge.notification_bridge import NotificationBridge

@@ -24,7 +24,6 @@ Item {
     Accessible.description: "Código de vinculación para conectar el servidor"
 
     visible: open
-    focus: visible
     enabled: visible
 
     Keys.onEscapePressed: {
@@ -189,9 +188,8 @@ Item {
             }
         }
 
-        QQC2.FocusTrap {
-            active: root.visible
-            focusItem: confirmBtn
+        FocusScope {
+            focus: root.visible
         }
     }
 }

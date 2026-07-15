@@ -8,7 +8,6 @@ from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
 pytestmark = [pytest.mark.qml_module("accessibility")]
 
 
-
 class FakePlaybackService:
     def __init__(self):
         self.mono_enabled = False

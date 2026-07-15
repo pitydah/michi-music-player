@@ -1,5 +1,5 @@
-"""Tests for ArtistDetailPage and full artist workflow — 10+ tests."""
 from __future__ import annotations
+"""Tests for ArtistDetailPage and full artist workflow — 10+ tests."""
 
 from unittest.mock import MagicMock
 
@@ -7,7 +7,6 @@ import pytest
 
 from ui_qml_bridge.library_bridge import LibraryBridge, LibraryState
 pytestmark = [pytest.mark.qml_module("album_views")]
-
 
 
 @pytest.fixture

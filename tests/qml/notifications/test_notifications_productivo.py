@@ -1,8 +1,8 @@
+from __future__ import annotations
 """Test NotificationBridge productivo — NotificationService as source of truth,
 actions: openJob, cancel, retry, undo, openTrack, openAlbum, openDevice,
-openDiagnostics, openSettings. undoAction() without handler → error.
+openDiagnostics, openSettings. undoAction() without handler  error.
 QML: toast, banner, persistent, progress, action button, dismiss, Notification Center."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,7 +11,6 @@ import pytest
 from core.notification_service import Notification, NotificationService, NotificationType
 from ui_qml_bridge.notification_bridge import NotificationBridge
 pytestmark = [pytest.mark.qml_module("notification")]
-
 
 
 @pytest.fixture

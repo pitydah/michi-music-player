@@ -1,5 +1,6 @@
-"""Test progress notifications — progress updates, updateProgress, cancel."""
 from __future__ import annotations
+from __future__ import annotations
+"""Test progress notifications — progress updates, updateProgress, cancel."""
 
 from unittest.mock import MagicMock
 """Tests for NotificationProgressItem QML component."""
@@ -60,11 +61,9 @@ class TestUpdateProgress:
         result = bridge.updateProgress("j_upd", 0.75, "75% completado")
         assert result["ok"] is True
 """Test progress notifications — progress updates, updateProgress, cancel."""
-from __future__ import annotations
 
 
 import pytest
-
 
 
 @pytest.fixture

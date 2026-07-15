@@ -1,5 +1,5 @@
-"""Test MichiAIBridge — album playback resolves album_key, obtains tracks, plays from track 1."""
 from __future__ import annotations
+"""Test MichiAIBridge — album playback resolves album_key, obtains tracks, plays from track 1."""
 
 from unittest.mock import MagicMock
 

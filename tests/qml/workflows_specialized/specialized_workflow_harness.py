@@ -1,9 +1,8 @@
+from __future__ import annotations
 """MV: Specialized workflow harness.
-
 Same pattern as domain harness but for specialized domains.
 Provides fixtures and helper methods for workflow tests.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

@@ -27,14 +27,14 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 48
             height: 48
-            radius: MichiTheme.radiusMd
+            radius: 12
             color: MichiTheme.colors.accentSurface
 
             Text {
                 anchors.centerIn: parent
                 text: root.sectionGlyph
                 color: MichiTheme.colors.accentBlue
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.pixelSize: 18
                 font.weight: MichiTheme.typography.weightBold
                 font.letterSpacing: 1.5
                 opacity: 0.70

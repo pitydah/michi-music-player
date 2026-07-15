@@ -1,8 +1,5 @@
-"""Workflow test: Command Palette — search → filter → navigate → execute."""
-"""Workflow test: Command Palette — search → filter → navigate → execute."""
-"""Workflow test: Open → search → navigate → activate."""
-
 from __future__ import annotations
+"""Workflow test: Command Palette — search  filter  navigate  execute."""
 
 from unittest.mock import MagicMock
 
@@ -12,7 +9,6 @@ from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
 
-pytestmark = pytest.mark.isolation
 pytestmark = [pytest.mark.qml_workflow("command_palette"), pytest.mark.isolation]
 
 pytestmark = pytest.mark.isolation
@@ -38,39 +34,6 @@ def registry():
 
 @pytest.fixture
 def bridge(registry):
-    nav = MagicMock()
-    return CommandPaletteBridge(action_registry=registry, navigation_bridge=nav)
-
-
-@pytest.fixture
-def handler_registry(registry):
-    for action_id in ("navigate_home", "playback_play", "app_quit"):
-        a = registry.get(action_id)
-        if a:
-            a.handler = MagicMock(return_value={"ok": True})
-    return registry
-    return CommandPaletteBridge(action_registry=registry)
-
-
-class TestCommandPaletteWorkflow:
-    def test_workflow_open_search(self, bridge):
-        results = bridge.searchCommands("")
-        assert len(results) >= 6
-
-    def test_workflow_search_filter_navigation(self, bridge):
-        results = bridge.searchCommands("Ir a")
-        assert len(results) >= 2
-        assert all("ir a" in r["title"].lower() for r in results)
-
-    def test_workflow_search_by_category(self, bridge):
-        results = bridge.searchCommands("playback")
-        assert len(results) >= 2
-        assert all(r["category"] == "playback" for r in results)
-
-    def test_workflow_navigate_to_activate(self, bridge, handler_registry):
-        bridge._registry.get("navigate_home").handler = MagicMock(return_value={"ok": True})
-        result = bridge.executeCommand("navigate_home")
-        assert result["ok"] is True
     nav = MagicMock()
     return CommandPaletteBridge(action_registry=registry, navigation_bridge=nav)
 

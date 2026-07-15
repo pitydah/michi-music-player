@@ -1,38 +1,8 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-"""Test GlobalSearchBridge keyboard navigation patterns (bridge-level focus/activation)."""
-=======
-<<<<<<< HEAD
-"""Test keyboard navigation patterns for GlobalSearchPage components."""
-from unittest.mock import MagicMock
-
->>>>>>> Stashed changes
-import pytest
-=======
-<<<<<<< HEAD
-"""Test keyboard navigation patterns for GlobalSearchPage components."""
->>>>>>> Stashed changes
-from unittest.mock import MagicMock
-
-from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
-
-<<<<<<< Updated upstream
-=======
-pytestmark = [pytest.mark.qml_module("global_search"),
-              pytest.mark.qml_dimension("accessibility")]
-
-=======
-"""Test GlobalSearchBridge keyboard navigation patterns (bridge-level focus/activation)."""
 import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
 
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 @pytest.fixture
 def mock_service():
@@ -41,35 +11,11 @@ def mock_service():
         "ok": True, "request_id": 1,
         "results": [
             {"type": "track", "id": 1, "title": "Song A", "subtitle": "Artist",
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-             "section": "track", "score": 1.0},
-            {"type": "album", "id": 10, "title": "Album A", "subtitle": "",
-             "section": "album", "score": 0.9},
-            {"type": "artist", "id": 20, "title": "Artist A", "subtitle": "",
-             "section": "artist", "score": 0.8},
-=======
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
              "section": "Canciones", "score": 1.0},
             {"type": "track", "id": 2, "title": "Song B", "subtitle": "Artist",
              "section": "Canciones", "score": 0.9},
             {"type": "album", "id": "key1", "title": "Album A", "subtitle": "Artist",
              "section": "Álbumes", "score": 0.8},
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         ],
         "count": 3,
     }
@@ -81,19 +27,9 @@ def bridge(mock_service):
     return GlobalSearchBridge(search_service=mock_service)
 
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-class TestKeyboardNavigation:
-    def test_search_can_be_cancelled(self, bridge):
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
 class TestGlobalSearchKeyboard:
-    """Test keyboard navigation semantics for search."""
 
-    def test_escape_clears_query(self, bridge):
->>>>>>> Stashed changes
+    def test_cancel_search(self, bridge):
         bridge.search("Test")
         assert len(bridge.results) > 0
         bridge.cancel()
@@ -191,12 +127,6 @@ class TestGlobalSearchKeyboard:
     def test_search_then_cancel_then_navigate(self, bridge):
         bridge.search("Nav")
         assert len(bridge.results) > 0
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-=======
 class TestKeyboardNavigation:
     def test_search_can_be_cancelled(self, bridge):
         bridge.search("Test")
@@ -296,10 +226,6 @@ class TestKeyboardNavigation:
     def test_search_then_cancel_then_navigate(self, bridge):
         bridge.search("Nav")
         assert len(bridge.results) > 0
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         bridge.cancel()
         bridge.search("Nav again")
         assert len(bridge.results) > 0
@@ -310,11 +236,3 @@ class TestKeyboardNavigation:
         assert bridge.errorCode != ""
         bridge.search("")
         assert bridge.errorCode == ""
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

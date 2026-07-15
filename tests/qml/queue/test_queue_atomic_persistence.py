@@ -1,10 +1,9 @@
+from __future__ import annotations
 """Test QueueService atomic persistence (write temp + rename).
-
 Persists: track_id, track_uid, source, current_index, position,
 shuffle_order, repeat, context.
 Restores: resolves IDs, marks missing, preserves order.
 """
-from __future__ import annotations
 
 import json
 import os
@@ -15,7 +14,6 @@ import pytest
 
 from core.queue_service import QueueService, _queue_state_path
 pytestmark = [pytest.mark.qml_module("queue")]
-
 
 
 @pytest.fixture(autouse=True)

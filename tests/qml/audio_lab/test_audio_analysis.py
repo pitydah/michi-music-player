@@ -1,11 +1,13 @@
-"""Macrofase F — 13.5: Audio analysis service tests."""
 from __future__ import annotations
+"""Macrofase F — 13.5: Audio analysis service tests."""
 
 import sqlite3
 import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=1.0):
@@ -75,8 +77,6 @@ class TestAudioAnalysis:
 
     def test_analysis_toggle_enabled(self, app, db, wm):
         from core.audio_lab.audio_analysis_service import AudioAnalysisService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         svc = AudioAnalysisService(db=db)
         assert svc.enabled is True

@@ -1,7 +1,6 @@
 """Tests for dialog negative/edge cases: validation, destructive confirmation."""
 
 
-
 def test_input_dialog_required_validation():
     """InputDialog should validate required field."""
     filepath = "ui_qml/components/dialogs/InputDialog.qml"

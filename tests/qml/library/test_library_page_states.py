@@ -1,5 +1,5 @@
-"""Tests for LibraryPage state transitions."""
 from __future__ import annotations
+"""Tests for LibraryPage state transitions."""
 
 from unittest.mock import MagicMock
 

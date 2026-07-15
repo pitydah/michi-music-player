@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test QueueService as single source of truth for queue state.
-
 QueueService owns state; PlayerService executes; QueueListModel observes;
 QueueBridge adapts. No duplicate state.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,6 +10,8 @@ import pytest
 
 from core.queue_service import QueueService
 from ui_qml_bridge.queue_bridge import QueueBridge
+
+pytestmark = [pytest.mark.qml_module("queue")]
 
 
 @pytest.fixture
@@ -60,8 +61,6 @@ def test_queue_listmodel_reads_from_queue_service(service, sample_items):
     player = MagicMock()
     player.get_queue.return_value = sample_items
     from ui_qml.models.QueueListModel import QueueListModel
-import pytest
-pytestmark = [pytest.mark.qml_module("queue")]
 
     model = QueueListModel(player_service=player)
     assert model._fetch_count() == 3
@@ -80,7 +79,7 @@ def test_add_item_updates_queue_service(service):
 def test_remove_item_updates_index(service, sample_items):
     service.set_items(sample_items)
     assert service.current_index == 0
-    service.remove(0)
+    service.remove([0])
     assert service.count == 2
     assert service.items[0]["title"] == "B"
 

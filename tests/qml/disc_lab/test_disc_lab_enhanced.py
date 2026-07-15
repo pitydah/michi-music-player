@@ -1,5 +1,5 @@
-"""CM — Disc Lab: contractual, no físico. Device detection, disc state, tracks, extraction, cancel."""
 from __future__ import annotations
+"""CM — Disc Lab: contractual, no físico. Device detection, disc state, tracks, extraction, cancel."""
 
 from unittest.mock import MagicMock
 

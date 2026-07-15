@@ -1,5 +1,5 @@
-"""Tests for ArtistDetailPage — artist detail, albums, shuffle."""
 from __future__ import annotations
+"""Tests for ArtistDetailPage — artist detail, albums, shuffle."""
 
 from unittest.mock import MagicMock
 

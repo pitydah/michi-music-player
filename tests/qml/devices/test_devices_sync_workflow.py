@@ -15,7 +15,6 @@ import pytest
 pytestmark = pytest.mark.isolation
 
 
-
 @pytest.fixture
 def temp_music(tmp_path):
     music = tmp_path / "Music"

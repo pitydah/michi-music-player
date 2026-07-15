@@ -1,8 +1,6 @@
-"""Workflow test: Prompt → preview → confirm → execute → show result."""
-
-"""Workflow test: Prompt → preview → confirm → execute → show result."""
-
 from __future__ import annotations
+"""Workflow test: Prompt  preview  confirm  execute  show result."""
+"""Workflow test: Prompt  preview  confirm  execute  show result."""
 
 from unittest.mock import MagicMock
 

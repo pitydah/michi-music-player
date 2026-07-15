@@ -12,6 +12,8 @@ import pytest
 
 from core.playlist_service import PlaylistService
 
+pytestmark = [pytest.mark.qml_module("playlists")]
+
 
 @pytest.fixture
 def db_conn():
@@ -242,8 +244,6 @@ def test_detect_missing(svc, tmp_path):
 
 def test_save_queue_from_player(svc):
     from unittest.mock import MagicMock
-import pytest
-pytestmark = [pytest.mark.qml_module("playlists")]
 
     svc.create("SaveQueue")
     mock_player = MagicMock()

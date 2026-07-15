@@ -1,5 +1,5 @@
-"""Tests for QML Hybrid Dependency Audit — verifies audit execution and zero blockers."""
 from __future__ import annotations
+"""Tests for QML Hybrid Dependency Audit — verifies audit execution and zero blockers."""
 
 import json
 import sys

@@ -1,11 +1,10 @@
-"""Productive tests for SelectionController — 15+ tests."""
 from __future__ import annotations
+"""Productive tests for SelectionController — 15+ tests."""
 
 import pytest
 
 from ui_qml_bridge.selection_controller import SelectionController
 pytestmark = [pytest.mark.qml_module("library")]
-
 
 
 class MockSelectionSource:

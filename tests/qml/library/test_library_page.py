@@ -1,5 +1,5 @@
-"""Tests for LibraryPage states, tabs, selection, context menu."""
 from __future__ import annotations
+"""Tests for LibraryPage states, tabs, selection, context menu."""
 
 from unittest.mock import MagicMock
 

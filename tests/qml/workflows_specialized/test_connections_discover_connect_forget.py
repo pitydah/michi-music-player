@@ -1,5 +1,5 @@
-"""MW: Connections — discover servers, connect/request pair, forget server."""
 from __future__ import annotations
+"""MW: Connections — discover servers, connect/request pair, forget server."""
 
 from unittest.mock import MagicMock
 

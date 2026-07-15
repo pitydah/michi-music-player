@@ -1,6 +1,6 @@
+from __future__ import annotations
 """EG — Home minimalista: service state, current source, continuity, recent interruption,
 active jobs, errors, assistant actions, server status. No duplicar Biblioteca."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,7 +11,6 @@ from core.home.home_status import (
 )
 from core.home.home_dashboard_service import HomeDashboardService
 pytestmark = [pytest.mark.qml_module("home")]
-
 
 
 def _make_context_svc():

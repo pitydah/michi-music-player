@@ -9,7 +9,6 @@ from ui_qml_bridge.action_registry import ActionRegistry
 pytestmark = [pytest.mark.qml_module("notification")]
 
 
-
 @pytest.fixture
 def action_registry():
     r = ActionRegistry()

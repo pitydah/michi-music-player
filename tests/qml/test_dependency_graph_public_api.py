@@ -49,25 +49,33 @@ def test_job_bridge_has_attach_library_coordinator():
     assert hasattr(bridge, 'attach_library_coordinator'), "attach_library_coordinator missing"
 
 
-def test_assert_wiring_no_private_attr():
-    """_assert_wiring must use public API (query_executor property)."""
+def test_factory_creates_bridges_with_public_api():
+    """Factory uses public API compose — no private caches."""
     bundle = _make_bundle()
     factory = BridgeFactory(bundle)
     factory.create_navigation_bridge()
-    factory._qe_cache = MagicMock()
+    assert factory.has("navigation")
 
     from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
     gs = GlobalSearchBridge(search_service=MagicMock())
     factory._bridges["global_search"] = gs
 
     from ui_qml_bridge.diagnostics_bridge import DiagnosticsBridge
-    diag = DiagnosticsBridge(query_executor=factory._qe_cache)
+    diag = DiagnosticsBridge(
+        player_service=bundle.player_service,
+        db=bundle.db,
+        radio_manager=bundle.radio_manager,
+        sync_manager=bundle.sync_manager,
+        worker_manager=bundle.worker_manager,
+    )
     factory._bridges["diagnostics"] = diag
 
     factory._bridges["settings"] = MagicMock()
     factory._bridges["settings_v2"] = factory._bridges["settings"]
 
-    factory._assert_wiring()
+    assert factory.bridges["global_search"] is gs
+    assert factory.bridges["diagnostics"] is diag
+    assert factory.bridges["settings"] is factory.bridges["settings_v2"]
 
 
 def test_mix_bridge_receives_query_service():

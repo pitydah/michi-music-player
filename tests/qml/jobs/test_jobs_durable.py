@@ -1,10 +1,9 @@
+from __future__ import annotations
 """DW — Durable JobService tests: contract, state machine, lifecycle.
-
 States: QUEUED, RUNNING, PAUSING, PAUSED, CANCELLING, CANCELLED,
         SUCCEEDED, PARTIAL_SUCCESS, FAILED, INTERRUPTED.
 On restart, RUNNING -> INTERRUPTED.
 """
-from __future__ import annotations
 
 import os
 import tempfile
@@ -12,6 +11,8 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("job_bridge")]
 
 
 def _process_events(duration=0.3):
@@ -138,8 +139,6 @@ class TestJobsDurable:
         assert ok is True
         job = svc.get_job(job_id)
         from core.jobs.job_service import JobState
-import pytest
-pytestmark = [pytest.mark.qml_module("job_bridge")]
 
         assert job.state == JobState.QUEUED
 

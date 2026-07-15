@@ -395,8 +395,9 @@ class UIBuilder:
         w._album_detail_view.open_folder_requested.connect(
             lambda folder, _w=w: _w._album_ctrl.open_folder([folder]))
         w._album_detail_view.open_folder_requested.connect(
-            lambda folder, _w=w: __import__("subprocess").Popen(["xdg-open", folder])
-            if folder else None)
+            lambda folder, _w=w: (
+                __import__("core.external_process", fromlist=["run_process"]).run_process(["xdg-open", folder])
+            ) if folder else None)
 
         w._albums_stack = QStackedWidget()
         w._albums_stack.setObjectName("albumsStack")

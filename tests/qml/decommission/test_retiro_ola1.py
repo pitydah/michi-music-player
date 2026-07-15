@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 import pytest
 
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(REPO))
 
@@ -106,8 +108,6 @@ def test_ola1_widget_dependency_audit_script_exists():
 
 def test_ola1_qml_score_above_92():
     import subprocess
-import pytest
-pytestmark = [pytest.mark.qml_module("worker_manager")]
 
     result = subprocess.run(
         [sys.executable, "scripts/qml_migration_score_v6.py"],

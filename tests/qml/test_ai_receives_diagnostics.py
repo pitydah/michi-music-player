@@ -1,5 +1,5 @@
-"""Test MichiAIBridge — receives Diagnostics created before it, injects correct instance."""
 from __future__ import annotations
+"""Test MichiAIBridge — receives Diagnostics created before it, injects correct instance."""
 
 from unittest.mock import MagicMock
 

@@ -1,12 +1,10 @@
+from __future__ import annotations
 """DN — QueueService atomic persistence tests.
-
 Persist: track_id, track_uid, current_index, position, shuffle_order,
 repeat, source context, schema version.
-
 Write temp file + atomic rename. Restore partial results with missing tracks.
 No phantom tracks.
 """
-from __future__ import annotations
 
 import json
 import os
@@ -17,7 +15,6 @@ import pytest
 
 from core.queue_service import QueueService, _queue_state_path
 pytestmark = [pytest.mark.qml_module("queue")]
-
 
 
 @pytest.fixture(autouse=True)

@@ -10,31 +10,6 @@ Item {
 
     property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-    property var rd: typeof radioBridge !== "undefined" ? radioBridge : null
-    property var stationData: null
-
-    property bool _isPlaying: false
-    property bool _buffering: false
-    property string _state: "STOPPED"
-    property string _metadata: ""
-    property string _error: ""
-    property int _bufferProgress: 0
-    property bool _isFav: stationData ? stationData.favorite : false
-
-    signal playRequested(string url, string name)
-    signal stopRequested()
-    signal toggleFavRequested(int stationId)
-    signal editRequested(var stationData)
-    signal deleteRequested(string url)
-    signal retryRequested()
-
-    implicitHeight: detailColumn.height + MichiTheme.spacing.xl * 2
-
-    Accessible.role: Accessible.Panel
-    Accessible.name: stationData ? stationData.name + " - Detalle de emisora" : "Detalle de emisora"
-    Accessible.description: "Estado: " + _playState
-    property var radioBridge: typeof radioBridge !== "undefined" ? radioBridge : null
-    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var stationData: null
 
     property bool _isPlaying: false
@@ -92,63 +67,12 @@ Item {
         Column {
             id: detailColumn
             width: parent.width
-        objectName: "radioStationDetailPage.card"
-
-        Column {
-            anchors.fill: parent
-        title: ""
-        subtitle: ""
-
-        Column {
-            id: detailColumn
-            width: parent.width
             anchors.margins: MichiTheme.spacing.lg
             spacing: MichiTheme.spacing.md
 
             Row {
                 width: parent.width
                 spacing: MichiTheme.spacing.md
-                spacing: MichiTheme.spacing.sm
-                objectName: "radioStationDetailPage.headerRow"
-
-                Rectangle {
-                    width: 64
-                    height: 64
-                    radius: MichiTheme.radiusMd
-                    color: MichiTheme.colors.accentFaint
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "\u25E2"
-                        color: MichiTheme.colors.accent
-                        font.pixelSize: 28
-                    }
-
-                    Accessible.role: Accessible.Graphic
-                    Accessible.name: "Icono de emisora de radio"
-                }
-
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: MichiTheme.spacing.xs
-
-                    Text {
-                        text: root.stationData ? root.stationData.name || "" : ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.cardTitleSize
-                        font.weight: MichiTheme.typography.weightSemiBold
-                        elide: Text.ElideRight
-                        width: parent.parent.width - 80
-                    }
-
-                    Text {
-                        text: root.stationData ? root.stationData.url || "" : ""
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight
-                        width: parent.parent.width - 80
-                        width: parent.width
-                spacing: MichiTheme.spacing.md
 
                 Rectangle {
                     width: 64
@@ -190,111 +114,6 @@ Item {
                 }
             }
 
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-            Text {
-                text: stationData ? (stationData.genre || "") : ""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.metaSize
-                visible: text !== ""
-                objectName: "radioStationDetailPage.genre"
-            }
-
-            Text {
-                text: stationData ? (stationData.url || "") : ""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.captionSize
-                elide: Text.ElideMiddle
-                visible: text !== ""
-                objectName: "radioStationDetailPage.url"
-            }
-
-            Row {
-                width: parent.width
-                spacing: MichiTheme.spacing.xl
-
-                Column {
-                    spacing: MichiTheme.spacing.xs
-                    visible: root.stationData && (root.stationData.codec || "")
-
-                    Text {
-                        text: "Códec"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                    }
-
-                    Text {
-                        text: root.stationData ? root.stationData.codec || "" : ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-                }
-
-                Column {
-                    spacing: MichiTheme.spacing.xs
-                    visible: root.stationData && (root.stationData.country || "")
-
-                    Text {
-                        text: "País"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                    }
-
-                    Text {
-                        text: root.stationData ? root.stationData.country || "" : ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-                }
-
-                Column {
-                    spacing: MichiTheme.spacing.xs
-                    visible: root.stationData && root.stationData.tags && root.stationData.tags.length > 0
-
-                    Text {
-                        text: "Géneros"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                    }
-
-                    Text {
-                        text: root.stationData ? (root.stationData.tags || []).join(", ") : ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: MichiTheme.typography.weightMedium
-                    }
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-                visible: root._state !== "STOPPED"
-            }
-
-            Column {
-                width: parent.width
-                spacing: MichiTheme.spacing.xs
-                visible: root._state !== "STOPPED"
-
-                Text {
-                    text: {
-                        switch (root._state) {
-                            case "CONNECTING": return "Conectando..."
-                            case "BUFFERING": return "Buffering..."
-                            case "PLAYING": return "Reproduciendo"
-                            case "RECONNECTING": return "Reconectando..."
-                            case "FAILED": return "Error de conexión"
-                            default: return ""
-                        }
-                    }
-                    objectName: "radioStationDetailPage.playButton"
-                    Accessible.name: root._playState === "PLAYING" ? "Detener reproducción" : "Reproducir emisora"
             Rectangle {
                 width: parent.width
                 height: 1
@@ -461,113 +280,6 @@ Item {
                 MichiButton {
                     text: root._isFav ? "\u2605" : "\u2606"
                     variant: "ghost"
-                    objectName: "toggleFavBtn"
-                    tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
-                    onClicked: {
-                        root._isFav = !root._isFav
-                        root.toggleFavRequested()
-                    }
-                    objectName: "radioStationDetailPage.favButton"
-                    Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
-                    activeFocusOnTab: true
-                    onClicked: {
-                        if (root.stationData) {
-                            root.toggleFavRequested(root.stationData.id || 0)
-                            root._isFav = !root._isFav
-                        }
-                    }
-                    Keys.onReturnPressed: onClicked()
-                }
-
-                MichiButton {
-                    text: "\u270E Editar"
-                    variant: "ghost"
-                    objectName: "editStationBtn"
-                    Accessible.name: "Editar emisora"
-                    activeFocusOnTab: true
-                    visible: true
-                    onClicked: root.editRequested(root.stationData)
-                    Keys.onReturnPressed: onClicked()
-                }
-
-                MichiButton {
-                    text: "\u2716"
-                    variant: "danger"
-                    objectName: "deleteStationBtn"
-                    Accessible.name: "Eliminar emisora"
-                    activeFocusOnTab: true
-                    onClicked: {
-                        if (root.stationData) root.deleteRequested(root.stationData.url)
-                    }
-                    Keys.onReturnPressed: onClicked()
-                }
-
-            Item {
-                width: parent.width
-                height: 20
-                visible: root._playState === "BUFFERING" || root._playState === "CONNECTING"
-
-                Rectangle {
-                    width: parent.width * 0.6
-                    height: 6
-                    radius: MichiTheme.radiusXs
-                    color: MichiTheme.colors.controlTrack
-                    anchors.centerIn: parent
-
-                    Rectangle {
-                        width: parent.width * (root._bufferPercent / 100)
-                        height: parent.height
-                        radius: MichiTheme.radiusXs
-                        color: MichiTheme.colors.accent
-                    }
-                }
-            }
-
-            Text {
-                text: root._metadata
-                color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.bodySize
-                width: parent.width
-                wrapMode: Text.WordWrap
-                visible: text !== ""
-                objectName: "radioStationDetailPage.metadata"
-            }
-
-            Text {
-                text: root._errorMessage
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.bodySize
-                width: parent.width
-                wrapMode: Text.WordWrap
-                visible: root._playState === "FAILED" && root._errorMessage !== ""
-                objectName: "radioStationDetailPage.errorText"
-                Accessible.role: Accessible.Alert
-                Accessible.name: "Error: " + root._errorMessage
-            }
-
-            Loader {
-                width: parent.width
-                height: active ? childrenRect.height : 0
-                active: root._playState === "FAILED"
-
-                sourceComponent: Row {
-                    spacing: MichiTheme.spacing.md
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    MichiButton {
-                        text: "Reintentar"
-                        variant: "primary"
-                        onClicked: root.retryRequested()
-                        objectName: "radioStationDetailPage.retryButton"
-                        Accessible.name: "Reintentar reproducción"
-                    }
-
-                    MichiButton {
-                        text: "Cerrar"
-                        variant: "ghost"
-                        onClicked: root.backRequested()
-                        objectName: "radioStationDetailPage.dismissErrorButton"
-                    }
                     objectName: "toggleFavBtn"
                     Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                     activeFocusOnTab: true

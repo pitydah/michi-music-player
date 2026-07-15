@@ -1,5 +1,5 @@
-"""Tests for SelectionController — 12+ tests."""
 from __future__ import annotations
+"""Tests for SelectionController — 12+ tests."""
 
 import pytest
 

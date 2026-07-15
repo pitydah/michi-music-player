@@ -1,7 +1,7 @@
 """Tests for ServiceContainer lifecycle, priorities, and capability enforcement.
 
 15+ tests covering: register, get, require, contains, start, health, cancel_all, shutdown.
-States: CREATED→BUILDING→BUILT→STARTING→READY→DEGRADED→FAILED→STOPPING→STOPPED.
+States: CREATEDBUILDINGBUILTSTARTINGREADYDEGRADEDFAILEDSTOPPINGSTOPPED.
 """
 from unittest.mock import Mock
 from core.service_container import ServiceContainer, ServicePriority, ContainerState
@@ -18,14 +18,15 @@ class TestContainerCreation:
         c = ServiceContainer()
         required = c._required_names()
         expected = {
-            "connection_factory", "worker_manager",
+            "database", "connection_factory", "worker_manager",
             "query_executor", "job_service", "event_bus",
             "settings_coordinator", "settings_service",
             "library_query_service", "library_sources_service",
             "library_mutation_service", "playlist_service",
             "history_query_service", "global_search_service",
-            "mix_query_service", "track_action_service",
-            "playback_service", "queue_service", "metadata_service",
+            "mix_query_service", "mix_service",
+            "track_action_service", "playback_service",
+            "queue_service", "metadata_service",
         }
         assert required == expected
 
@@ -37,8 +38,10 @@ class TestContainerCreation:
             "audio_lab_service", "smart_tagging_service",
             "library_doctor_service", "device_sync_service",
             "connection_service", "home_audio_service",
+            "radio_service", "lyrics_service",
             "diagnostics_service", "notification_service",
-            "action_registry",
+            "action_registry", "confirmation_service",
+            "runtime_persistence", "process_controller",
         }
         assert optional == expected
 

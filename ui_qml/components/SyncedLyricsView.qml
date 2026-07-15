@@ -97,12 +97,12 @@ Item {
             Text {
                 text: root.autoScroll ? "\u25C0\u25B6" : "\u25B6\u25C0"
                 color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.captionSize
+                font.pixelSize: 12
             }
             Text {
                 text: root.autoScroll ? "Auto" : "Manual"
                 color: MichiTheme.colors.textSecondary
-                font.pixelSize: MichiTheme.typography.captionSize
+                font.pixelSize: 12
             }
             MouseArea {
                 anchors.fill: parent

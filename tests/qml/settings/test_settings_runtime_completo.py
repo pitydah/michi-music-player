@@ -1,6 +1,6 @@
+from __future__ import annotations
 """EE — Settings runtime completo: schema, control, validation, adapter, backend, result,
 persistence, consumer update, rollback, restart policy, layouts, no adapter without applied."""
-from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +15,8 @@ from core.settings_adapters import (
 )
 from core.settings_runtime_coordinator import SettingsRuntimeCoordinator
 from core.settings_runtime_coordinator import SettingsApplyResult as CoordinatorApplyResult
+
+pytestmark = [pytest.mark.qml_module("settings")]
 
 
 @pytest.fixture
@@ -206,8 +208,6 @@ class TestLayouts:
 
     def test_settings_row_qml_exists(self):
         from pathlib import Path
-import pytest
-pytestmark = [pytest.mark.qml_module("settings")]
 
         qml = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
         assert (qml / "components/settings/SettingsRow.qml").exists()

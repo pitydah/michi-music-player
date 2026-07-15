@@ -5,10 +5,11 @@ import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.mix_bridge import MixBridge
+import pytest
 
 
 @pytest.fixture
-def mock_mqs():
+def mock_mix_svc():
     mqs = MagicMock()
     mqs.favorites.return_value = [
         {"track_id": i, "title": f"Track {i}", "artist": f"Artist {i}",
@@ -22,14 +23,14 @@ def mock_mqs():
 
 
 @pytest.fixture
-def bridge(mock_mqs):
+def bridge(mock_mix_svc):
     tas = MagicMock()
     tas.play_track.return_value = {"ok": True}
     tas.enqueue_track.return_value = {"ok": True}
     pb = MagicMock()
     pb.createPlaylist.return_value = {"ok": True, "id": 42}
     pb.addTrackToPlaylist.return_value = {"ok": True}
-    return MixBridge(query_service=mock_mqs, track_action_service=tas, playlist_bridge=pb, worker_manager=MagicMock())
+    return MixBridge(query_service=mock_mix_svc, track_action_service=tas, playlist_bridge=pb, worker_manager=MagicMock())
 
 
 class TestMixKeyboard:
@@ -96,7 +97,7 @@ class TestMixKeyboard:
         pb = MagicMock()
         pb.createPlaylist.return_value = {"ok": True, "id": 42}
         pb.addTrackToPlaylist.return_value = {"ok": True}
-        bridge = MixBridge(query_service=bridge._mqs, playlist_bridge=pb, track_action_service=MagicMock())
+        bridge = MixBridge(query_service=bridge._mix_svc, playlist_bridge=pb, track_action_service=MagicMock())
         bridge.loadMix("favorites")
         result = bridge.saveMixAsPlaylist("Keyboard Mix")
         assert result["ok"] is True
@@ -130,12 +131,10 @@ def test_mix_generator_key_navigation(engine):
     component.loadUrl(QUrl.fromLocalFile(str(QML_DIR / "pages/mix/MixGeneratorPage.qml")))
     assert component.isReady()
 """Test MixBridge keyboard navigation support and accessible properties."""
-import pytest
-
 
 
 @pytest.fixture
-def mock_mqs():
+def mock_mix_svc():
     mqs = MagicMock()
     mqs.favorites.return_value = [
         {"track_id": i, "title": f"Track {i}", "artist": f"Artist {i}",
@@ -149,14 +148,14 @@ def mock_mqs():
 
 
 @pytest.fixture
-def bridge(mock_mqs):
+def bridge(mock_mix_svc):
     tas = MagicMock()
     tas.play_track.return_value = {"ok": True}
     tas.enqueue_track.return_value = {"ok": True}
     pb = MagicMock()
     pb.createPlaylist.return_value = {"ok": True, "id": 42}
     pb.addTrackToPlaylist.return_value = {"ok": True}
-    return MixBridge(query_service=mock_mqs, track_action_service=tas, playlist_bridge=pb, worker_manager=MagicMock())
+    return MixBridge(query_service=mock_mix_svc, track_action_service=tas, playlist_bridge=pb, worker_manager=MagicMock())
 
 
 class TestMixKeyboard:
@@ -223,7 +222,7 @@ class TestMixKeyboard:
         pb = MagicMock()
         pb.createPlaylist.return_value = {"ok": True, "id": 42}
         pb.addTrackToPlaylist.return_value = {"ok": True}
-        bridge = MixBridge(query_service=bridge._mqs, playlist_bridge=pb, track_action_service=MagicMock())
+        bridge = MixBridge(query_service=bridge._mix_svc, playlist_bridge=pb, track_action_service=MagicMock())
         bridge.loadMix("favorites")
         result = bridge.saveMixAsPlaylist("Keyboard Mix")
         assert result["ok"] is True

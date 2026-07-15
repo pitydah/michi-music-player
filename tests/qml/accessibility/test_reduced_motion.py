@@ -1,4 +1,5 @@
 from __future__ import annotations
+from __future__ import annotations
 """Test reducedMotion support.
 
 Verifies:
@@ -7,7 +8,6 @@ Verifies:
 - Pages reference motion durations via MichiTheme rather than hardcoded values
 - AccessibilityBridge exposes reduceMotion property
 """
-from __future__ import annotations
 
 from pathlib import Path
 

@@ -1,7 +1,7 @@
+from __future__ import annotations
 """Interactive QML Workflows — QQmlApplicationEngine, context properties REALES,
 SQLite temporal con datos reales, modelos reales, bridges reales, servicios reales,
 QTest.mouseClick, QTest.keyClick, signals, objectName.
-
 Workflows:
 1. Biblioteca: load page -> type search -> click filter -> select -> context menu -> play -> NP -> Queue
 2. Audio Lab: select WAV -> select profile -> preview -> start conversion -> progress -> cancel -> cleanup
@@ -9,7 +9,6 @@ Workflows:
 4. Mix: select category -> generate -> progress -> cancel -> regenerate -> play -> save playlist
 5. Devices contractual: discover virtual UMS -> select profile -> transfer -> progress -> cancel -> cleanup
 """
-from __future__ import annotations
 
 import os
 import sqlite3

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-import subprocess
+
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -82,7 +82,8 @@ class CrashDialog(QDialog):
         if os.path.isdir(folder):
             import contextlib
             with contextlib.suppress(Exception):
-                subprocess.Popen(["xdg-open", folder])
+                from core.external_process import run_process
+                run_process(["xdg-open", folder])
 
     @staticmethod
     def _btn_qss(style: str) -> str:

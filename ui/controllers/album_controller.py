@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
 
 from PySide6.QtWidgets import QInputDialog, QLineEdit
 
@@ -367,11 +366,8 @@ class AlbumController:
                     self._toast("La carpeta no existe", "error")
                     return
                 try:
-                    import subprocess
-                    subprocess.Popen(
-                        ["xdg-open", folder],
-                        start_new_session=True,
-                    )
+                    from core.external_process import run_process
+                    run_process(["xdg-open", folder])
                 except Exception:
                     self._toast("No se pudo abrir la carpeta", "error")
                 return
@@ -384,7 +380,8 @@ class AlbumController:
         self.search_or_change_cover(tracks)
 
     def open_folder(self, folder: str):
-        subprocess.Popen(["xdg-open", folder])
+        from core.external_process import run_process
+        run_process(["xdg-open", folder])
 
     def show_details(self, group):
         tracks = group.data.get("tracks", []) if hasattr(group, "data") and group.data else []

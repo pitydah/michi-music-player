@@ -20,7 +20,7 @@ Item {
         GlassCard {
             width: parent.width
             title: "Archivo"
-            subtitle: root.selectedFile && root.mb && typeof root.mb.fileName === "function" ? root.mb.fileName(root.selectedFile) : (root.selectedFile ? "" : "Ninguno")
+            subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : "Ninguno"
             variant: root.selectedFile ? "accent" : "base"
         }
 

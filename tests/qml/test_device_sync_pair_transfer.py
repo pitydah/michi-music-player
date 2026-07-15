@@ -1,5 +1,5 @@
-"""Test DeviceSyncService — discovery, pairing, authorization, transfer, playlists."""
 from __future__ import annotations
+"""Test DeviceSyncService — discovery, pairing, authorization, transfer, playlists."""
 
 from pathlib import Path
 

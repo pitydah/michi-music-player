@@ -18,7 +18,7 @@ Item {
         variant: "base"
         hovered: mouseArea.containsMouse
         interactive: true
-        radius: MichiTheme.radiusMd
+        radius: 12
 
         MouseArea {
             id: mouseArea

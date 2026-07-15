@@ -1,5 +1,5 @@
-"""DG — AppShell + AppBridge lifecycle: states, shutdown (16 steps), constructor, edge cases."""
 from __future__ import annotations
+"""DG — AppShell + AppBridge lifecycle: states, shutdown (16 steps), constructor, edge cases."""
 
 import os
 import time

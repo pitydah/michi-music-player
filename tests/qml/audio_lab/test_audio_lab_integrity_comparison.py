@@ -1,7 +1,7 @@
+from __future__ import annotations
 """DV — Audio integrity and comparison: VALID, INVALID, UNSUPPORTED,
 CANCELLED, ERROR. Comparison: audio properties, metadata, loudness,
 hashes, file size."""
-from __future__ import annotations
 
 import os
 import tempfile
@@ -9,6 +9,8 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+
+pytestmark = [pytest.mark.qml_module("audio_lab")]
 
 
 def _process_events(duration=0.3):
@@ -96,8 +98,6 @@ class TestAudioLabComparison:
     @pytest.fixture
     def svc(self, app):
         from core.audio_lab.audio_comparison_service import AudioComparisonService
-import pytest
-pytestmark = [pytest.mark.qml_module("audio_lab")]
 
         return AudioComparisonService()
 

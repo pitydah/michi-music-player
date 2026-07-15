@@ -1,5 +1,5 @@
-"""Tests for AlbumDetailPage — album detail, multi-disc, play."""
 from __future__ import annotations
+"""Tests for AlbumDetailPage — album detail, multi-disc, play."""
 
 from unittest.mock import MagicMock
 

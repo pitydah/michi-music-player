@@ -1,6 +1,5 @@
-"""Test MichiAI uses ActionRegistry for ALL actions. Unregistered handler → ACTION_UNAVAILABLE."""
-
 from __future__ import annotations
+"""Test MichiAI uses ActionRegistry for ALL actions. Unregistered handler  ACTION_UNAVAILABLE."""
 
 from unittest.mock import MagicMock
 
@@ -8,7 +7,6 @@ import pytest
 
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
 pytestmark = [pytest.mark.qml_module("michi_ai")]
-
 
 
 @pytest.fixture

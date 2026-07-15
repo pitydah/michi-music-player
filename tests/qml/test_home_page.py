@@ -1,6 +1,6 @@
-"""Tests for home page display and actions — 12+ tests."""
-"""Tests for home page display and actions — 12+ tests."""
 from __future__ import annotations
+"""Tests for home page display and actions — 12+ tests."""
+"""Tests for home page display and actions — 12+ tests."""
 
 from unittest.mock import MagicMock
 

@@ -1,81 +1,22 @@
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-"""Tests for CommandPalette — positive, capability, recent, sections."""
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
-"""Tests for CommandPalette — positive, capability, recent, sections."""
-=======
->>>>>>> Stashed changes
-"""Test command palette search, navigation, activation."""
-
 from __future__ import annotations
+"""Test command palette search, navigation, activation."""
 
 from unittest.mock import MagicMock
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
 import pytest
 
 from ui_qml_bridge.command_palette_bridge import CommandPaletteBridge
 from ui_qml_bridge.action_registry import ActionRegistry, ActionDescriptor
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-
-pytestmark = pytest.mark.isolation
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-pytestmark = [pytest.mark.qml_module("command_palette"), pytest.mark.qml_dimension("functional")]
-=======
-
-pytestmark = pytest.mark.isolation
->>>>>>> origin/michi-qml-functional-wave
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-
 
 @pytest.fixture
 def registry():
     r = ActionRegistry()
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-<<<<<<< HEAD
-    r.register(ActionDescriptor("custom_test", "Test Command", "testing", "test", shortcut="Ctrl+T"))
-=======
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
-    r.register(ActionDescriptor("custom_test", "Test Command", "testing", "test", shortcut="Ctrl+T"))
-=======
->>>>>>> Stashed changes
     r.register(ActionDescriptor("test_play", "Reproducir", "playback", "play", "Ctrl+P"))
     r.register(ActionDescriptor("test_pause", "Pausar", "playback", "pause", "Ctrl+Space"))
     r.register(ActionDescriptor("test_search", "Buscar", "navigation", "search", "Ctrl+F"))
     r.register(ActionDescriptor("test_quit", "Salir", "system", "quit", "Ctrl+Q"))
     r.register(ActionDescriptor("test_volume_up", "Subir volumen", "playback", "volume_up"))
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
     return r
 
 
@@ -84,44 +25,9 @@ def bridge(registry):
     return CommandPaletteBridge(action_registry=registry)
 
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-class TestCommandPaletteSearch:
-    def test_search_returns_all_on_empty(self, bridge):
-        results = bridge.searchCommands("")
-=======
-=======
->>>>>>> Stashed changes
-<<<<<<< HEAD
-class TestCommandPalettePositive:
-    def test_initial_commands_nonempty(self, bridge):
-        assert len(bridge.commands) >= 10
+class TestCommandPalette:
 
-    def test_search_by_full_title(self, bridge):
-        results = bridge.searchCommands("Inicio")
-        assert len(results) >= 1
-        assert any("Inicio" in r["title"] for r in results)
-
-    def test_search_by_partial_title(self, bridge):
-        results = bridge.searchCommands("Bibli")
-        assert len(results) >= 1
-
-    def test_search_by_category(self, bridge):
-        results = bridge.searchCommands("navigation")
->>>>>>> Stashed changes
-        assert len(results) >= 5
-
-    def test_search_by_title_exact(self, bridge):
-        results = bridge.searchCommands("Reproducir")
-        assert len(results) >= 1
-        assert any("Reproducir" in r["title"] for r in results)
-
-<<<<<<< Updated upstream
-=======
-    def test_action_has_required_fields(self, bridge):
-=======
-class TestCommandPaletteSearch:
-    def test_search_returns_all_on_empty(self, bridge):
+    def test_search_all_commands(self, bridge):
         results = bridge.searchCommands("")
         assert len(results) >= 5
 
@@ -130,10 +36,6 @@ class TestCommandPaletteSearch:
         assert len(results) >= 1
         assert any("Reproducir" in r["title"] for r in results)
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_search_by_title_partial(self, bridge):
         results = bridge.searchCommands("Repro")
         assert len(results) >= 1
@@ -236,29 +138,10 @@ class TestCommandPaletteActivation:
 
 class TestCommandPaletteNavigation:
     def test_commands_have_all_required_fields(self, bridge):
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
         for cmd in bridge.commands:
             assert "id" in cmd
             assert "title" in cmd
             assert "category" in cmd
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-            assert "shortcut" in cmd
-            assert "destructive" in cmd
-            assert "requires_confirmation" in cmd
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
-<<<<<<< HEAD
->>>>>>> Stashed changes
             assert "enabled" in cmd
             assert "visible" in cmd
 
@@ -275,60 +158,9 @@ class TestCommandPaletteNavigation:
         assert len(playback) >= 3
         assert all(c["category"] == "playback" for c in playback)
 
-<<<<<<< Updated upstream
-=======
-
-class TestCommandPaletteRecent:
-    def test_recent_actions_empty_initially(self, bridge):
-        pass  # bridge has no recent tracking — tracked in QML layer
-
-    def test_bridge_execute_updates_state(self, registry):
-        result = registry.execute("navigate_home")
-        assert result["ok"] is False
-        assert "NO_HANDLER" in result["error"]
-
-    def test_registry_execute_disabled_action(self, registry):
-        action = registry.get("navigate_home")
-        if action:
-            action.enabled = False
-        result = registry.execute("navigate_home")
-        assert result["ok"] is False
-        assert result["error"] == "NOT_FOUND"
-=======
-            assert "shortcut" in cmd
-            assert "destructive" in cmd
-            assert "requires_confirmation" in cmd
-            assert "enabled" in cmd
-            assert "visible" in cmd
-
-    def test_commands_list_only_visible(self, bridge, registry):
-        action = registry.get("test_quit")
-        assert action is not None
-        action.visible = False
-        visible = bridge.commands
-        assert all(c["visible"] for c in visible)
-        assert not any(c["id"] == "test_quit" for c in visible)
-
-    def test_get_by_category(self, bridge):
-        playback = bridge._registry.get_by_category("playback")
-        assert len(playback) >= 3
-        assert all(c["category"] == "playback" for c in playback)
-
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     def test_empty_registry(self):
         r = ActionRegistry()
         r._actions.clear()
         b = CommandPaletteBridge(action_registry=r)
         assert b.commands == []
         assert b.searchCommands("") == []
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes
-=======
->>>>>>> origin/michi-qml-functional-wave
->>>>>>> Stashed changes

@@ -1,15 +1,14 @@
-"""Test Michi AI conversation display and history."""
-
 from __future__ import annotations
+from __future__ import annotations
+from __future__ import annotations
+from __future__ import annotations
+"""Test Michi AI conversation display and history."""
 
 import json
-from __future__ import annotations
 
-from __future__ import annotations
 
 """Test Michi AI conversation display and history."""
 
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 

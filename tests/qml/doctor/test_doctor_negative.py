@@ -1,5 +1,5 @@
-"""Negative and edge-case tests for Library Doctor."""
 from __future__ import annotations
+"""Negative and edge-case tests for Library Doctor."""
 
 import pytest
 

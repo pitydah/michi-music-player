@@ -1,5 +1,5 @@
-"""Tests for FolderTreeModel and folder browsing — 8+ tests."""
 from __future__ import annotations
+"""Tests for FolderTreeModel and folder browsing — 8+ tests."""
 
 from unittest.mock import MagicMock
 
@@ -7,7 +7,6 @@ import pytest
 
 from ui_qml.models.FolderTreeModel import FolderTreeModel
 pytestmark = [pytest.mark.qml_module("library")]
-
 
 
 @pytest.fixture

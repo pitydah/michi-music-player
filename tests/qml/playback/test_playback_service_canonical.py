@@ -1,9 +1,8 @@
+from __future__ import annotations
 """Test that PlaybackService is the SINGLE canonical facade for all playback control.
-
 No bridge should duplicate play/pause/stop/seek/next/prev/shuffle/repeat logic.
 Bridges must delegate to PlaybackService, NOT implement their own control logic.
 """
-from __future__ import annotations
 
 from unittest.mock import MagicMock
 
@@ -11,7 +10,6 @@ import pytest
 
 from audio.player_service import PlayerService
 pytestmark = [pytest.mark.qml_module("playback")]
-
 
 
 @pytest.fixture

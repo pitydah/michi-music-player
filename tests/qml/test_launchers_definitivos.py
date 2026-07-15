@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Tests for HC — Launchers definitivos.
 Verifies qml_app, widgets_app, app_launcher, verify_app contracts."""
-from __future__ import annotations
 
 import os
 import sys

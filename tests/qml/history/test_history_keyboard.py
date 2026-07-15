@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 from core.history_query_service import HistoryQueryService
 from ui_qml_bridge.history_bridge import HistoryBridge
+import pytest
 
 
 @pytest.fixture
@@ -75,8 +76,6 @@ def test_clear_all_requires_confirmation_pattern(bridge):
             content = p.read_text()
             assert "Keys.onEscapePressed" in content or "Keys.on" in content
 """Test history keyboard navigation via bridge action patterns."""
-import pytest
-
 
 
 @pytest.fixture

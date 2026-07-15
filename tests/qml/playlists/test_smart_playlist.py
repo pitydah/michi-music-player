@@ -4,6 +4,7 @@ import pytest
 import sqlite3
 
 from core.playlist_service import PlaylistService
+import pytest
 
 
 @pytest.fixture
@@ -177,8 +178,6 @@ class TestSmartPlaylist:
         bridge.deletePlaylist(1)
         assert len(bridge.playlists) == 0
 """Test smart playlist editor: rules, groups, preview, save."""
-import pytest
-
 
 
 @pytest.fixture

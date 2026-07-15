@@ -9,7 +9,7 @@ Item {
     property string titleText: ""
     property string iconText: ""
     property bool open: false
-    property int closePolicy: CloseOnEscape
+    property int closePolicy: 1
 
     property Item contentItem: null
     property Item buttonsItem: null
@@ -23,15 +23,15 @@ Item {
     Accessible.name: titleText
     Accessible.description: "Diálogo"
 
-    readonly property int CloseOnEscape: 1
-    readonly property int CloseOnClickOutside: 2
-    readonly property int CloseOnEscapeOrClickOutside: 3
+    readonly property int closeOnEscape: 1
+    readonly property int closeOnClickOutside: 2
+    readonly property int closeOnEscapeOrClickOutside: 3
 
     visible: open
     enabled: visible
 
     Keys.onEscapePressed: {
-        if (root.closePolicy & root.CloseOnEscape) {
+        if (root.closePolicy & root.closeOnEscape) {
             root.open = false
             root.rejected()
         }
@@ -104,7 +104,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                if (root.closePolicy & root.CloseOnClickOutside) {
+                if (root.closePolicy & root.closeOnClickOutside) {
                     root.open = false
                     root.rejected()
                 }
@@ -188,9 +188,9 @@ Item {
             }
         }
 
-        QQC2.FocusTrap {
-            active: root.visible
-            focusItem: {
+        FocusScope {
+            activeFocusOnTab: root.visible
+            function getFocusItem() {
                 var candidate = (root.contentItem && root.contentItem.focus) ? root.contentItem :
                                (root.buttonsItem && root.buttonsItem.focus) ? root.buttonsItem : null
                 return candidate || root

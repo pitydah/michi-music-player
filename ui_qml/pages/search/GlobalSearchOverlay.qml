@@ -14,7 +14,7 @@ Item {
     property int _requestGen: 0
     property int _debounceTimer: 0
 
-    signal openFullSearch()
+    signal navigateTo(string type, string id, string title)
     signal closeRequested()
     signal openFullSearch()
 
@@ -23,13 +23,6 @@ Item {
     Accessible.role: Accessible.Dialog
     Accessible.name: "Búsqueda rápida"
     Accessible.description: "Presiona Escape para cerrar"
-
-    objectName: "globalSearchOverlay"
-    focus: true
-
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Búsqueda rápida"
-    Accessible.description: "Búsqueda rápida con resultados limitados"
 
     function search(text) {
         root._requestGen++
@@ -40,51 +33,11 @@ Item {
             root._debounceTimer = 0
         }
 
-        if (root._debounceTimer) {
-            root._debounceTimer = 0
-        }
-        if (root._debounceTimer) {
-            root._debounceTimer = 0
-        }
-
-        if (root._debounceTimer) {
-            root._debounceTimer = 0
-        }
-
         if (!text || text.trim() === "") {
             root._results = []
             root._searching = false
             return
         }
-
-        root._searching = true
-        root._debounceTimer = Qt.callLater(function() {
-            if (gen !== root._requestGen) return
-            if (root._debounceTimer) {
-                root._debounceTimer = 0
-            }
-            root._searching = true
-
-            if (root.bridge && typeof root.bridge.search !== "undefined") {
-                var result = root.bridge.search(text)
-                if (gen !== root._requestGen) return
-                if (result && result.ok) {
-                    var allResults = root.bridge.results || []
-                    var preview = {}
-                    for (var i = 0; i < allResults.length; i++) {
-                        var sec = allResults[i].section || "Otros"
-                        if (!preview[sec]) preview[sec] = []
-                        if (preview[sec].length < 3) preview[sec].push(allResults[i])
-                    }
-                    var flat = []
-                    for (var secKey in preview) {
-                        for (var j = 0; j < preview[secKey].length; j++) {
-                            flat.push(preview[secKey][j])
-                        }
-                    }
-                    root._results = flat
-                }
-            }
 
         root._debounceTimer = Qt.callLater(function() {
             if (gen !== root._requestGen) return
@@ -132,44 +85,15 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(0, 0, 0, 0.5)
-    Rectangle {
-        anchors.fill: parent
-        color: MichiTheme.colors.overlayDark
-    function openFullSearchFromOverlay() {
-        root.openFullSearch()
-        root.closeRequested()
-    }
-
-    NumberAnimation on y {
-        from: -root.height
-        to: 0
-        duration: MichiTheme.motionNormal
-        easing.type: Easing.OutCubic
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.5)
 
         MouseArea {
             anchors.fill: parent
             onClicked: root.closeRequested()
             cursorShape: Qt.ArrowCursor
-            cursorShape: Qt.ArrowCursor
         }
     }
 
     Rectangle {
-        id: overlay
-        width: parent.width * 0.6
-        height: Math.min(parent.height * 0.75, 500)
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: MichiTheme.spacing.xl
-        id: overlayPanel
-        width: parent.width * 0.65
-        height: Math.min(parent.height * 0.85, 500)
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: -height
         id: overlay
         width: parent.width * 0.6
         height: Math.min(parent.height * 0.75, 500)
@@ -180,18 +104,6 @@ Item {
         border.color: MichiTheme.colors.borderCard
         border.width: 1
 
-        objectName: "searchOverlayPanel"
-        Accessible.role: Accessible.Grouping
-        Accessible.name: "Panel de búsqueda rápida"
-        PropertyAnimation {
-            target: overlayPanel
-            property: "y"
-            from: -overlayPanel.height
-            to: parent.height * 0.1
-            duration: MichiTheme.motion.normal
-            easing.type: Easing.OutCubic
-            running: root.visible
-        }
         objectName: "searchOverlayPanel"
         Accessible.role: Accessible.Grouping
         Accessible.name: "Panel de búsqueda rápida"
@@ -212,8 +124,6 @@ Item {
                     objectName: "quickSearchInput"
                     Accessible.name: "Búsqueda rápida"
                     Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
-                    placeholderText: "Buscar canciones, álbumes, artistas..."
-                    fieldFocused: true
                     onSearchTextChanged: root.search(text)
                     activeFocusOnTab: true
                     Keys.onEscapePressed: root.closeRequested()
@@ -287,200 +197,6 @@ Item {
                         }
                     }
                 }
-                    placeholderText: "Búsqueda rápida (Ctrl+F)..."
-                    objectName: "quickSearchInput"
-                    Accessible.name: "Búsqueda rápida"
-                    Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
-                    onSearchTextChanged: root.search(text)
-                    activeFocusOnTab: true
-                    Keys.onEscapePressed: root.closeRequested()
-                    Keys.onReturnPressed: {
-                        if (root._results.length > 0) {
-                            root.navigateTo(root._results[0].type || "", root._results[0].id || "", root._results[0].title || "")
-                        }
-                    }
-                }
-
-                MichiButton {
-                    text: "Cerrar"
-                    variant: "ghost"
-                    anchors.verticalCenter: parent.verticalCenter
-                    Keys.onEscapePressed: root.closeRequested()
-                    onClicked: root.closeRequested()
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-                visible: root._results.length > 0 || root._searching
-            }
-
-            Text {
-                visible: root._searching
-                text: "Buscando..."
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Buscando"
-            }
-
-            Text {
-                visible: !root._searching && root._query !== "" && root._results.length === 0
-                text: "Sin resultados para \"" + root._query + "\""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Sin resultados"
-            }
-
-            Flickable {
-                width: parent.width
-                height: parent.height - 100
-                contentHeight: previewColumn.height
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                visible: root._results.length > 0
-
-                Column {
-                    id: previewColumn
-                    width: parent.width
-                    spacing: MichiTheme.spacing.xs
-
-                    Repeater {
-                        model: root._results
-
-                        SearchResultRow {
-                            width: parent.width
-                            rowType: modelData.type || ""
-                            rowId: modelData.id || ""
-                            rowTitle: modelData.title || ""
-                            rowSubtitle: modelData.subtitle || ""
-                            bridge: root.bridge
-                            objectName: "quickSearchResult_" + index
-                            Accessible.name: (modelData.title || "Resultado") + " - " + (modelData.subtitle || "")
-                            activeFocusOnTab: true
-                            onClicked: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
-                            Keys.onReturnPressed: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
-                        }
-                    }
-                }
-                    placeholderText: "Búsqueda rápida (Ctrl+F)..."
-                    objectName: "quickSearchInput"
-                    Accessible.name: "Búsqueda rápida"
-                    Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
-                    onSearchTextChanged: root.search(text)
-                    activeFocusOnTab: true
-                    Keys.onEscapePressed: root.closeRequested()
-                    Keys.onReturnPressed: {
-                        if (root._results.length > 0) {
-                            root.navigateTo(root._results[0].type || "", root._results[0].id || "", root._results[0].title || "")
-                        }
-                    }
-                }
-
-                MichiButton {
-                    text: "Cerrar"
-                    variant: "ghost"
-                    anchors.verticalCenter: parent.verticalCenter
-                    Keys.onEscapePressed: root.closeRequested()
-                    onClicked: root.closeRequested()
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-                visible: root._results.length > 0 || root._searching
-            }
-
-            Text {
-                visible: root._searching
-                text: "Buscando..."
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Buscando"
-            }
-
-            Text {
-                visible: !root._searching && root._query !== "" && root._results.length === 0
-                text: "Sin resultados para \"" + root._query + "\""
-                color: MichiTheme.colors.textMuted
-                font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Sin resultados"
-            }
-
-            Flickable {
-                width: parent.width
-                height: parent.height - 100
-                contentHeight: previewColumn.height
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                visible: root._results.length > 0
-
-                Column {
-                    id: previewColumn
-                    width: parent.width
-                    spacing: MichiTheme.spacing.xs
-
-                    Repeater {
-                        model: root._results
-
-                        SearchResultRow {
-                            width: parent.width
-                            rowType: modelData.type || ""
-                            rowId: modelData.id || ""
-                            rowTitle: modelData.title || ""
-                            rowSubtitle: modelData.subtitle || ""
-                            bridge: root.bridge
-                            objectName: "quickSearchResult_" + index
-                            Accessible.name: (modelData.title || "Resultado") + " - " + (modelData.subtitle || "")
-                            activeFocusOnTab: true
-                            onClicked: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
-                            Keys.onReturnPressed: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-                visible: root._results.length > 0
-            }
-
-            MichiButton {
-                text: "Abrir búsqueda completa \u2192"
-                variant: "ghost"
-                anchors.horizontalCenter: parent.horizontalCenter
-                objectName: "openFullSearchBtn"
-                Accessible.name: "Abrir búsqueda completa"
-                visible: root._results.length > 0
-                activeFocusOnTab: true
-                onClicked: root.openFullSearchFromOverlay()
-                Keys.onReturnPressed: root.openFullSearchFromOverlay()
-                Keys.onSpacePressed: root.openFullSearchFromOverlay()
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: MichiTheme.colors.borderSubtle
-                visible: root._results.length > 0
-            }
-
-            MichiButton {
-                text: "Abrir búsqueda completa \u2192"
-                variant: "ghost"
-                anchors.horizontalCenter: parent.horizontalCenter
-                objectName: "openFullSearchBtn"
-                Accessible.name: "Abrir búsqueda completa"
-                visible: root._results.length > 0
-                activeFocusOnTab: true
-                onClicked: root.openFullSearchFromOverlay()
-                Keys.onReturnPressed: root.openFullSearchFromOverlay()
-                Keys.onSpacePressed: root.openFullSearchFromOverlay()
             }
 
             Rectangle {
@@ -505,25 +221,5 @@ Item {
         }
     }
 
-    Keys.onEscapePressed: root.closeRequested()
-    function _getTopResults() {
-        if (root._results.length === 0) return []
-        var sections = {}
-        var items = root._results
-        for (var i = 0; i < items.length; i++) {
-            var s = items[i].section || "Otros"
-            if (!sections[s]) sections[s] = []
-            if (sections[s].length < 3) {
-                sections[s].push(items[i])
-            }
-        }
-        var flat = []
-        for (var key in sections) {
-            for (var j = 0; j < sections[key].length; j++) {
-                flat.push(sections[key][j])
-            }
-        }
-        return flat
-    }
     Keys.onEscapePressed: root.closeRequested()
 }

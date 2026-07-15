@@ -5,6 +5,7 @@ import sqlite3
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+import pytest
 
 
 @pytest.fixture
@@ -109,8 +110,6 @@ class FakeDb:
             content = p.read_text()
             assert "Keys.onEscapePressed" in content
 """Test playlist keyboard navigation patterns via bridge actions."""
-import pytest
-
 
 
 @pytest.fixture

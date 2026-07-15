@@ -1,5 +1,5 @@
-"""Tests for Library Doctor — scan types, progress, cancel, results, states."""
 from __future__ import annotations
+"""Tests for Library Doctor — scan types, progress, cancel, results, states."""
 
 import sqlite3
 from unittest.mock import MagicMock

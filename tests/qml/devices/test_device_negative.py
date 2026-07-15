@@ -1,6 +1,6 @@
+from __future__ import annotations
 """Test error states: missing service, empty device list, video rejection, etc."""
 """Test negative/edge cases: null bridge, empty states, errors."""
-from __future__ import annotations
 
 """Test error states: missing service, empty device list, video rejection, etc."""
 from unittest.mock import MagicMock

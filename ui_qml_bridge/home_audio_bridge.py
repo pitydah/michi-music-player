@@ -95,6 +95,7 @@ class HomeAudioBridge(QObject):
     def zones(self):
         return self._zones
 
+    @Slot(result="QVariantList")
     def receivers(self):
         return self._receivers
 
@@ -324,6 +325,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(str, result=dict)
     def groupZones(self, zone_ids: str = ""):
         if not zone_ids:
             return {"ok": False, "error": "EMPTY_ZONES"}
@@ -338,6 +340,7 @@ class HomeAudioBridge(QObject):
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    @Slot(result=dict)
     def recoverFromOffline(self):
         self._offline = False
         self.refresh()
@@ -346,6 +349,7 @@ class HomeAudioBridge(QObject):
     @Slot(result=dict)
     def getLatencyReport(self):
         return {"ok": True, "latency_ms": self._latency_ms, "offline": self._offline}
+
     @Slot(str, result=dict)
     def ungroupZone(self, zone_id: str = ""):
         if not zone_id:

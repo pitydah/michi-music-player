@@ -8,7 +8,7 @@ Rectangle {
     property int bitDepth: 0
     property int bitrate: 0
 
-    width: 36; height: 18; radius: MichiTheme.radiusXs
+    width: 36; height: 18; radius: 3
     visible: format !== ""
     color: {
         if (format === "DSD") return MichiTheme.colors.warning
@@ -35,7 +35,7 @@ Rectangle {
             if (bitDepth >= 24) return MichiTheme.colors.accentBlue
             return MichiTheme.colors.textMuted
         }
-        font.pixelSize: MichiTheme.typography.badgeSize
+        font.pixelSize: 9
         font.weight: MichiTheme.typography.weightSemiBold
     }
 }

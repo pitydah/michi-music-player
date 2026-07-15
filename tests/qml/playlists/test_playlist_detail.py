@@ -4,6 +4,7 @@ import pytest
 import sqlite3
 
 from core.playlist_service import PlaylistService
+import pytest
 
 
 @pytest.fixture
@@ -201,8 +202,6 @@ class TestPlaylistDetail:
         assert PlaylistsBridge._format_duration(7200) == "2h 0m"
         assert PlaylistsBridge._format_duration(3661) == "1h 1m"
 """Test playlist detail page with track list, metadata, missing tracks."""
-import pytest
-
 
 
 @pytest.fixture

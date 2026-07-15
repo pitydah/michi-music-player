@@ -35,18 +35,18 @@ Item {
                     Text {
                         text: model.isExpandable ? (model.expanded ? "▼" : "▶") : " "
                         color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.badgeSize
+                        font.pixelSize: 10
                         width: 16
                     }
 
                     Rectangle {
-                        width: 20; height: 20; radius: MichiTheme.radiusXs
+                        width: 20; height: 20; radius: 4
                         color: MichiTheme.colors.borderInner
                         Text {
                             anchors.centerIn: parent
                             text: "FD"
                             color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.badgeSize
+                            font.pixelSize: 8
                             font.weight: MichiTheme.typography.weightBold
                         }
                     }

@@ -1,5 +1,5 @@
-"""Tests for LibraryBridge state management — 20+ tests covering all states."""
 from __future__ import annotations
+"""Tests for LibraryBridge state management — 20+ tests covering all states."""
 
 from unittest.mock import MagicMock
 

@@ -16,7 +16,6 @@ from core.settings_runtime_coordinator import SettingsApplyResult as Coordinator
 pytestmark = [pytest.mark.qml_module("settings")]
 
 
-
 @pytest.fixture
 def coordinator():
     c = SettingsRuntimeCoordinator(player_service=MagicMock())

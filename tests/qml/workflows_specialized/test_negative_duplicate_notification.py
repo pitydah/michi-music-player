@@ -1,5 +1,5 @@
-"""MX: Negative — duplicate notification handling."""
 from __future__ import annotations
+"""MX: Negative — duplicate notification handling."""
 
 from unittest.mock import MagicMock
 

@@ -8,6 +8,7 @@ import os
 
 from core.history_query_service import HistoryQueryService
 from ui_qml_bridge.history_bridge import HistoryBridge
+import pytest
 
 
 @pytest.fixture
@@ -143,8 +144,6 @@ class TestHistoryExport:
         result_csv = bridge.exportHistory("/tmp/t.csv", "CSV")
         assert result_csv["ok"] is True
 """Test history export with real progress: JSON and CSV, cancel, progress tracking."""
-import pytest
-
 
 
 @pytest.fixture

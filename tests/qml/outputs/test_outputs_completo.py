@@ -1,5 +1,5 @@
-"""DY — Output Profiles completo: create, edit, duplicate, delete, validate, device, backend, sample rate, bit depth, channels, exclusive mode, bit-perfect, DSP policy, fallback, restart-required."""
 from __future__ import annotations
+"""DY — Output Profiles completo: create, edit, duplicate, delete, validate, device, backend, sample rate, bit depth, channels, exclusive mode, bit-perfect, DSP policy, fallback, restart-required."""
 
 from unittest.mock import MagicMock, patch
 

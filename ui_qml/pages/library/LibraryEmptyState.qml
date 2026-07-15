@@ -20,13 +20,13 @@ Item {
 
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 64; height: 64; radius: MichiTheme.radiusLg
+            width: 64; height: 64; radius: 16
             color: MichiTheme.colors.accentSurface
             Text {
                 anchors.centerIn: parent
                 text: "BL"
                 color: MichiTheme.colors.accentBlue
-                font.pixelSize: MichiTheme.typography.sectionTitleSize
+                font.pixelSize: 24
                 font.weight: MichiTheme.typography.weightBold
                 opacity: 0.7
             }

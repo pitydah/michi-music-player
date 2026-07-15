@@ -1,5 +1,5 @@
-"""MX: Negative — stale callback / stale generation guard tests."""
 from __future__ import annotations
+"""MX: Negative — stale callback / stale generation guard tests."""
 
 from unittest.mock import MagicMock
 
