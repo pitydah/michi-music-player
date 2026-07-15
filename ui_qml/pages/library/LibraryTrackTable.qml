@@ -18,6 +18,14 @@ Item {
     signal trackPlayRequested(int trackId)
     signal trackContextMenuRequested(int trackId, int x, int y)
 
+    property bool _loading: root.trackModel ? !root.trackModel.initialized : true
+    property bool _empty: root.trackModel && root.trackModel.initialized && root.trackModel.count === 0
+    property bool _error: false
+
+    objectName: "library.trackTable"
+    Accessible.role: Accessible.Table
+    Accessible.name: "Lista de canciones"
+
     Column {
         anchors.fill: parent; spacing: 0
 
@@ -27,6 +35,46 @@ Item {
             bridge: root.bridge
             sortKey: root.bridge ? root.bridge.activeSortKey : "title"
             sortAsc: root.bridge ? root.bridge.activeSortAscending : true
+            objectName: "library.trackHeader"
+        }
+
+        Item {
+            width: parent.width
+            height: parent.height - header.height - loadMoreBar.height
+            visible: root._loading
+            anchors.centerIn: undefined
+
+            Column {
+                anchors.centerIn: parent
+                spacing: MichiTheme.spacing.sm
+                BusyIndicator {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    running: true
+                    Accessible.name: "Cargando canciones"
+                }
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Cargando canciones..."
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.metaSize
+                }
+            }
+        }
+
+        Item {
+            width: parent.width
+            height: parent.height - header.height - loadMoreBar.height
+            visible: root._error
+
+            LibraryErrorState {
+                anchors.centerIn: parent
+                title: "Error al cargar canciones"
+                message: "No se pudieron cargar las canciones"
+                actionText: "Reintentar"
+                onActionRequested: {
+                    if (root.trackModel) root.trackModel.refresh()
+                }
+            }
         }
 
         ListView {
@@ -38,6 +86,9 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             cacheBuffer: 200
             focus: true
+            visible: !root._loading && !root._error
+            objectName: "library.trackList"
+            keyNavigationWraps: false
 
             Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Shift) root._shiftPressed = true
@@ -46,6 +97,13 @@ Item {
                 }
                 if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
                     selectAll()
+                }
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    if (root.trackModel && root.selectionController && root.selectionController.count > 0) {
+                        var first = root.selectionController.selectedIds[0]
+                        if (root.bridge && root.bridge.playTrackById)
+                            root.bridge.playTrackById(first)
+                    }
                 }
             }
 
@@ -98,10 +156,8 @@ Item {
                     if (root.selectionController) {
                         root.selectionController.replace([model.trackId || 0])
                     }
-                    if (root.actionRegistry) {
-                        contextMenu.x = mx; contextMenu.y = my
-                        contextMenu.open()
-                    }
+                    contextMenu.x = mx; contextMenu.y = my
+                    contextMenu.open()
                 }
 
                 onSelectionToggled: function(id, ctrl, shift) {
@@ -124,6 +180,7 @@ Item {
             width: parent.width; height: 28; spacing: MichiTheme.spacing.sm
             leftPadding: MichiTheme.spacing.md
             visible: root.trackModel && root.trackModel.hasMore
+            objectName: "library.loadMoreBar"
 
             Text {
                 text: "Mostrando " + (root.trackModel ? root.trackModel.count : 0) + " de " + (root.trackModel ? root.trackModel.totalCount : 0)
@@ -134,6 +191,8 @@ Item {
 
             MichiButton {
                 text: "Cargar más"; variant: "ghost"; height: 24
+                objectName: "library.loadMoreButton"
+                Accessible.name: "Cargar más canciones"
                 onClicked: {
                     if (root.trackModel && root.trackModel.hasMore && !root.trackModel.loadingMore) {
                         root.trackModel.fetchMore()
@@ -145,7 +204,7 @@ Item {
         Item {
             width: parent.width
             height: parent.height > 0 ? parent.height - listView.height - header.height - loadMoreBar.height : 0
-            visible: root.trackModel && root.trackModel.count === 0 && root.trackModel.initialized
+            visible: root.trackModel && root.trackModel.initialized && root.trackModel.count === 0
 
             LibraryEmptyState {
                 anchors.centerIn: parent
@@ -162,6 +221,7 @@ Item {
         bridge: root.bridge
         selectionController: root.selectionController
         trackModel: root.trackModel
+        objectName: "library.trackContextMenu"
     }
 
     function selectAll() {

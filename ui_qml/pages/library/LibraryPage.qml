@@ -13,9 +13,13 @@ Item {
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
     property var sel: typeof librarySelectionController !== "undefined" ? librarySelectionController : (typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null)
     property var act: typeof actionRegistry !== "undefined" ? actionRegistry : null
-    property string _labelArtists: "Artistas"
-    property string _labelFolders: "Carpetas"
-    property string _labelRefresh: "Refrescar"
+
+    objectName: "library.page"
+    focus: true
+
+    Accessible.role: Accessible.Panel
+    Accessible.name: "Biblioteca"
+    Accessible.description: "Panel principal de la biblioteca musical"
 
     function refreshData() {
         if (root.lib && typeof root.lib.refresh !== "undefined") {
@@ -75,60 +79,148 @@ Item {
         }
     }
 
-    Column {
-        anchors.fill: parent; spacing: 0
+    FocusScope {
+        id: focusScope
+        anchors.fill: parent
+        objectName: "library.focusScope"
+        activeFocusOnTab: true
 
-        LibraryNavigationBar {
-            id: navBar; width: parent.width
-            onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
+        Keys.onEscapePressed: {
+            root.clearFilters()
         }
 
-        LibraryFilterBar {
-            id: filterBar; width: parent.width
-            onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt) }
-            onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre) }
-            onYearFilterChanged: function(year) { if (root.lib) root.lib.setYearFilter(year) }
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Tab) {
+                if (focusScope.focus) {
+                    navBar.forceActiveFocus()
+                }
+            }
         }
 
-        LibraryStatusHeader {
-            id: statusHeader; width: parent.width
-            visible: root.lib && (root.lib.songCount > 0 || root.lib.state !== "READY")
-            songCount: root.lib ? root.lib.songCount : 0
-            albumCount: root.lib ? root.lib.albumCount : 0
-            artistCount: root.lib ? root.lib.artistCount : 0
-            state: root.lib ? root.lib.state : "INITIALIZING"
-        }
+        Column {
+            anchors.fill: parent
+            spacing: 0
 
-        StackLayout {
-            id: stackContainer
-            width: parent.width
-            height: parent.height - navBar.height - filterBar.height - statusHeader.height
-            currentIndex: navBar.currentTab
-
-            LibraryTrackTable {
-                id: tracksView
-                trackModel: root.lib ? root.lib.trackModel : null
-                bridge: root.lib
-                notif: root.notif
-                actionRegistry: root.act
-                selectionController: root.sel
+            LibraryNavigationBar {
+                id: navBar
+                width: parent.width
+                objectName: "library.navBar"
+                Accessible.name: "Barra de navegación de biblioteca"
+                onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text) }
+                KeyNavigation.tab: filterBar
+                KeyNavigation.down: filterBar
             }
 
-            AlbumGridPage {
-                albumModel: root.lib ? root.lib.albumModel : null
-                bridge: root.lib
-                onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+            LibraryFilterBar {
+                id: filterBar
+                width: parent.width
+                objectName: "library.filterBar"
+                Accessible.name: "Barra de filtros"
+                onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt) }
+                onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre) }
+                onYearFilterChanged: function(year) { if (root.lib) root.lib.setYearFilter(year) }
+                KeyNavigation.tab: statusHeader
+                KeyNavigation.backtab: navBar
+                KeyNavigation.down: statusHeader
             }
 
-            ArtistGridPage {
-                artistModel: root.lib ? root.lib.artistModel : null
-                bridge: root.lib
-                onArtistClicked: function(name) { root.showArtistDetail(name) }
+            LibraryStatusHeader {
+                id: statusHeader
+                width: parent.width
+                objectName: "library.statusHeader"
+                Accessible.name: "Estado de la biblioteca"
+                visible: root.lib && (root.lib.songCount > 0 || root.lib.state !== "READY")
+                songCount: root.lib ? root.lib.songCount : 0
+                albumCount: root.lib ? root.lib.albumCount : 0
+                artistCount: root.lib ? root.lib.artistCount : 0
+                state: root.lib ? root.lib.state : "INITIALIZING"
+                KeyNavigation.tab: stackContainer
+                KeyNavigation.backtab: filterBar
+                KeyNavigation.down: stackContainer
             }
 
-            FolderBrowserPage {
-                folderModel: root.lib ? root.lib.folderModel : null
-                bridge: root.lib
+            StackLayout {
+                id: stackContainer
+                width: parent.width
+                height: parent.height - navBar.height - filterBar.height - statusHeader.height
+                currentIndex: navBar.currentTab
+                objectName: "library.stackContainer"
+
+                FocusScope {
+                    id: tracksTabScope
+                    objectName: "library.tracksTabScope"
+                    Accessible.name: "Pestaña de canciones"
+
+                    LibraryTrackTable {
+                        id: tracksView
+                        anchors.fill: parent
+                        trackModel: root.lib ? root.lib.trackModel : null
+                        bridge: root.lib
+                        notif: root.notif
+                        actionRegistry: root.act
+                        selectionController: root.sel
+                        KeyNavigation.backtab: statusHeader
+                        Keys.onPressed: function(event) {
+                            if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier)) {
+                                navBar.forceActiveFocus()
+                            }
+                        }
+                    }
+                }
+
+                FocusScope {
+                    id: albumsTabScope
+                    objectName: "library.albumsTabScope"
+                    Accessible.name: "Pestaña de álbumes"
+
+                    AlbumGridPage {
+                        anchors.fill: parent
+                        albumModel: root.lib ? root.lib.albumModel : null
+                        bridge: root.lib
+                        onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+                        KeyNavigation.backtab: statusHeader
+                    }
+                }
+
+                FocusScope {
+                    id: artistsTabScope
+                    objectName: "library.artistsTabScope"
+                    Accessible.name: "Pestaña de artistas"
+
+                    ArtistGridPage {
+                        anchors.fill: parent
+                        artistModel: root.lib ? root.lib.artistModel : null
+                        bridge: root.lib
+                        onArtistClicked: function(name) { root.showArtistDetail(name) }
+                        KeyNavigation.backtab: statusHeader
+                    }
+                }
+
+                FocusScope {
+                    id: foldersTabScope
+                    objectName: "library.foldersTabScope"
+                    Accessible.name: "Pestaña de carpetas"
+
+                    FolderBrowserPage {
+                        anchors.fill: parent
+                        folderModel: root.lib ? root.lib.folderModel : null
+                        bridge: root.lib
+                        KeyNavigation.backtab: statusHeader
+                    }
+                }
+
+                FocusScope {
+                    id: sourcesTabScope
+                    objectName: "library.sourcesTabScope"
+                    Accessible.name: "Pestaña de fuentes"
+                    visible: navBar.currentTab === 4
+
+                    SourcesPage {
+                        anchors.fill: parent
+                        bridge: root.lib
+                        lib: root.lib
+                    }
+                }
             }
         }
     }
@@ -136,40 +228,47 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.NO_SOURCES
-        sourceComponent: Text {
-            text: "No hay fuentes configuradas"
-            color: MichiTheme.textMuted
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryEmptyState {
+            title: "Sin fuentes configuradas"
+            message: "Agrega carpetas de música para comenzar"
+            actionText: "Añadir fuente"
+            onActionRequested: {
+                if (typeof navigationBridge !== "undefined")
+                    navigationBridge.navigate("library.sources")
+            }
         }
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.FILTERED_EMPTY
-        sourceComponent: Text {
-            text: "No se encontraron resultados con los filtros actuales"
-            color: MichiTheme.textMuted
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryEmptyState {
+            title: "Sin resultados"
+            message: "No se encontraron resultados con los filtros actuales"
+            actionText: "Limpiar filtros"
+            onActionRequested: root.clearFilters()
         }
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.SOURCE_OFFLINE
-        sourceComponent: Text {
-            text: "Fuente de biblioteca no disponible"
-            color: MichiTheme.textMuted
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryErrorState {
+            title: "Fuente no disponible"
+            message: "La fuente de biblioteca no está disponible actualmente"
+            actionText: "Reintentar"
+            onActionRequested: root.refreshData()
         }
     }
 
     Loader {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.QUERY_ERROR || libraryState === LibraryPage.DATABASE_ERROR
-        sourceComponent: Text {
-            text: "Error al cargar la biblioteca"
-            color: MichiTheme.errorColor
-            font.pixelSize: MichiTheme.fontSizeLarge
+        sourceComponent: LibraryErrorState {
+            title: "Error al cargar la biblioteca"
+            message: "Ocurrió un error al consultar la base de datos"
+            actionText: "Reintentar"
+            onActionRequested: root.refreshData()
         }
     }
 
@@ -177,16 +276,25 @@ Item {
         anchors.centerIn: parent
         active: libraryState === LibraryPage.INITIALIZING || libraryState === LibraryPage.LOADING || libraryState === LibraryPage.SCANNING
         sourceComponent: Item {
-            width: 120; height: 120
-            BusyIndicator { anchors.centerIn: parent; running: true }
+            width: 120
+            height: 120
+            BusyIndicator {
+                anchors.centerIn: parent
+                running: true
+                Accessible.name: "Cargando biblioteca"
+                Accessible.description: "La biblioteca se está cargando"
+            }
         }
     }
 
     LibrarySelectionBar {
-        id: selectionBar; width: parent.width; height: 40
+        id: selectionBar
+        width: parent.width
+        height: 40
         z: 10
         visible: root.sel ? root.sel.hasSelection : false
         count: root.sel ? root.sel.count : 0
         selectionController: root.sel
+        objectName: "library.selectionBar"
     }
 }

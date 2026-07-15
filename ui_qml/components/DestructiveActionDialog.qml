@@ -1,0 +1,139 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../theme"
+
+Item {
+    id: root
+
+    property string title: "Acción destructiva"
+    property string message: "Esta acción no se puede deshacer."
+    property string confirmKeyword: ""
+    property string confirmText: "Eliminar"
+    property string cancelText: "Cancelar"
+    property int affectedCount: 0
+    property bool open: false
+    property string objectName: "destructiveActionDialog"
+
+    signal confirmed()
+    signal cancelled()
+
+    visible: root.open
+    focus: root.open
+
+    Accessible.role: Accessible.Dialog
+    Accessible.name: root.title
+    Accessible.description: root.message + (root.affectedCount > 0 ? ". " + root.affectedCount + " afectados" : "")
+
+    Keys.onEscapePressed: {
+        root.open = false
+        root.cancelled()
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: MichiTheme.colors.overlayDark
+        z: 9990
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                root.open = false
+                root.cancelled()
+            }
+        }
+    }
+
+    Rectangle {
+        anchors.centerIn: parent
+        width: Math.min(400, parent.width * 0.9)
+        radius: MichiTheme.radiusMd
+        color: MichiTheme.colors.surfacePopup
+        border.width: 1
+        border.color: MichiTheme.colors.error
+        z: 9991
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: MichiTheme.spacing.lg
+            spacing: MichiTheme.spacing.md
+
+            Row {
+                spacing: MichiTheme.spacing.sm
+                Text {
+                    text: "\u26A0"
+                    font.pixelSize: 24
+                    color: MichiTheme.colors.error
+                }
+                Text {
+                    text: root.title
+                    color: MichiTheme.colors.textPrimary
+                    font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightSemiBold
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            Text {
+                text: root.message
+                color: MichiTheme.colors.textSecondary
+                font.pixelSize: MichiTheme.typography.bodySize
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+
+            Text {
+                text: root.affectedCount > 0 ? root.affectedCount + " elemento" + (root.affectedCount !== 1 ? "s" : "") + " afectado" + (root.affectedCount !== 1 ? "s" : "") : ""
+                color: MichiTheme.colors.error
+                font.pixelSize: MichiTheme.typography.captionSize
+                font.weight: MichiTheme.typography.weightMedium
+                visible: root.affectedCount > 0
+            }
+
+            Text {
+                text: root.confirmKeyword !== "" ? "Escribe \"" + root.confirmKeyword + "\" para confirmar:" : ""
+                color: MichiTheme.colors.textMuted
+                font.pixelSize: MichiTheme.typography.captionSize
+                visible: root.confirmKeyword !== ""
+            }
+
+            TextField {
+                id: keywordInput
+                visible: root.confirmKeyword !== ""
+                Layout.fillWidth: true
+                placeholderText: root.confirmKeyword
+                font.pixelSize: MichiTheme.typography.bodySize
+                color: MichiTheme.colors.textPrimary
+                focus: true
+            }
+
+            Item { height: 1; Layout.fillWidth: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: MichiTheme.spacing.sm
+
+                Item { Layout.fillWidth: true }
+
+                MichiButton {
+                    text: root.cancelText
+                    variant: "ghost"
+                    onClicked: {
+                        root.open = false
+                        root.cancelled()
+                    }
+                }
+
+                MichiButton {
+                    text: root.confirmText
+                    variant: "danger"
+                    enabled: root.confirmKeyword === "" || keywordInput.text === root.confirmKeyword
+                    onClicked: {
+                        root.open = false
+                        root.confirmed()
+                    }
+                }
+            }
+        }
+    }
+}

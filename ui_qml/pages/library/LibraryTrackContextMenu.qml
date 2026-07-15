@@ -5,38 +5,66 @@ import "../../theme"
 import "../../components"
 import "../../materials"
 
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../theme"
+import "../../components"
+
 Menu {
     id: root
 
     property var bridge: null
     property var selectionController: null
     property var trackModel: null
-    property var actionRegistry: typeof actionRegistry !== "undefined" ? actionRegistry : null
+
+    objectName: "libraryTrackContextMenu"
+    Accessible.role: Accessible.PopupMenu
+    Accessible.name: "Menú contextual"
 
     function _selectedIds() {
         return root.selectionController ? root.selectionController.selectedIds : []
     }
 
+    function _findTrackData(trackId, roleKey) {
+        if (!root.trackModel) return ""
+        for (var i = 0; i < root.trackModel.count; i++) {
+            var idx = root.trackModel.index(i, 0)
+            var tid = root.trackModel.data(idx, 0x0101)
+            if (tid === trackId) {
+                var mapping = {
+                    "albumKey": 0x0106, "artist": 0x0104
+                }
+                var role = mapping[roleKey]
+                if (role) return root.trackModel.data(idx, role)
+                break
+            }
+        }
+        return ""
+    }
+
     MenuItem {
-        text: "Reproducir"; icon.source: ""
+        text: "Reproducir"
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playTrackById)
                 root.bridge.playTrackById(ids[0])
         }
+        Accessible.name: "Reproducir"
     }
 
     MenuItem {
-        text: "Reproducir siguiente"; icon.source: ""
+        text: "Reproducir siguiente"
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playNextTrackById)
                 root.bridge.playNextTrackById(ids[0])
         }
+        Accessible.name: "Reproducir siguiente"
     }
 
     MenuItem {
-        text: "Añadir a la cola"; icon.source: ""
+        text: "Añadir a la cola"
         onTriggered: {
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {
@@ -44,10 +72,11 @@ Menu {
                     root.bridge.enqueueTrackById(ids[i])
             }
         }
+        Accessible.name: "Añadir a la cola"
     }
 
     MenuItem {
-        text: "Reemplazar cola"; icon.source: ""
+        text: "Reemplazar cola"
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playTrackById)
@@ -57,12 +86,13 @@ Menu {
                     root.bridge.enqueueTrackById(ids[i])
             }
         }
+        Accessible.name: "Reemplazar cola"
     }
 
     MenuSeparator {}
 
     MenuItem {
-        text: "Favorito"; icon.source: ""
+        text: "Favorito"
         onTriggered: {
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {
@@ -70,68 +100,60 @@ Menu {
                     root.bridge.toggleFavoriteById(ids[i])
             }
         }
+        Accessible.name: "Marcar como favorito"
     }
 
     MenuItem {
-        text: "Añadir a playlist..."; icon.source: ""
+        text: "Añadir a playlist..."
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("playlists")
         }
+        Accessible.name: "Añadir a playlist"
     }
 
     MenuSeparator {}
 
     MenuItem {
-        text: "Abrir álbum"; icon.source: ""
+        text: "Ir al álbum"
         onTriggered: {
             var ids = root._selectedIds()
-            if (ids.length > 0 && root.trackModel) {
-                var idx = root.trackModel.index(0, 0)
-                for (var i = 0; i < root.trackModel.count; i++) {
-                    var tid = root.trackModel.data(root.trackModel.index(i, 0), 0x0101)
-                    if (tid === ids[0]) {
-                        var ak = root.trackModel.data(root.trackModel.index(i, 0), 0x0106)
-                        if (ak && typeof navigationBridge !== "undefined")
-                            navigationBridge.navigateWithParams("library.album_detail", {album_key: ak})
-                        break
-                    }
-                }
+            if (ids.length > 0) {
+                var ak = root._findTrackData(ids[0], "albumKey")
+                if (ak && typeof navigationBridge !== "undefined")
+                    navigationBridge.navigateWithParams("library.album_detail", {album_key: ak})
             }
         }
+        Accessible.name: "Ir al álbum"
     }
 
     MenuItem {
-        text: "Abrir artista"; icon.source: ""
+        text: "Ir al artista"
         onTriggered: {
             var ids = root._selectedIds()
-            if (ids.length > 0 && root.trackModel) {
-                for (var i = 0; i < root.trackModel.count; i++) {
-                    var tid = root.trackModel.data(root.trackModel.index(i, 0), 0x0101)
-                    if (tid === ids[0]) {
-                        var artist = root.trackModel.data(root.trackModel.index(i, 0), 0x0104)
-                        if (artist && typeof navigationBridge !== "undefined")
-                            navigationBridge.navigateWithParams("library.artist_detail", {artist: artist})
-                        break
-                    }
-                }
+            if (ids.length > 0) {
+                var artist = root._findTrackData(ids[0], "artist")
+                if (artist && typeof navigationBridge !== "undefined")
+                    navigationBridge.navigateWithParams("library.artist_detail", {artist: artist})
             }
         }
+        Accessible.name: "Ir al artista"
     }
 
+    MenuSeparator {}
+
     MenuItem {
-        text: "Abrir carpeta"; icon.source: ""
+        text: "Mostrar en carpeta"
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.revealTrackById)
                 root.bridge.revealTrackById(ids[0])
         }
+        Accessible.name: "Mostrar en carpeta"
     }
 
-    MenuSeparator {}
-
     MenuItem {
-        text: "Editar metadatos"; icon.source: ""
+        text: "Editar metadatos"
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && typeof navigationBridge !== "undefined") {
@@ -140,44 +162,49 @@ Menu {
                 navigationBridge.navigate("metadata_inspector")
             }
         }
+        Accessible.name: "Editar metadatos"
     }
 
     MenuItem {
-        text: "Audio Lab"; icon.source: ""
+        text: "Audio Lab"
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("audio_lab")
         }
+        Accessible.name: "Abrir Audio Lab"
     }
 
     MenuItem {
-        text: "Verificar integridad"; icon.source: ""
+        text: "Verificar integridad"
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("library_doctor")
         }
+        Accessible.name: "Verificar integridad"
     }
 
     MenuItem {
-        text: "Enviar a dispositivo"; icon.source: ""
+        text: "Enviar a dispositivo"
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("devices")
         }
+        Accessible.name: "Enviar a dispositivo"
     }
 
     MenuSeparator {}
 
     MenuItem {
-        text: "Propiedades"; icon.source: ""
+        text: "Propiedades"
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("metadata_inspector")
         }
+        Accessible.name: "Ver propiedades"
     }
 
     MenuItem {
-        text: "Eliminar de biblioteca"; icon.source: ""
+        text: "Eliminar de biblioteca"
         onTriggered: {
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {
@@ -185,5 +212,7 @@ Menu {
                     root.bridge.toggleFavoriteById(ids[i])
             }
         }
+        Accessible.name: "Eliminar de biblioteca"
+        Accessible.description: "Elimina las canciones seleccionadas de la biblioteca"
     }
 }

@@ -14,6 +14,8 @@ from unittest.mock import patch
 import pytest
 from PySide6.QtCore import QCoreApplication
 
+pytestmark = [pytest.mark.qml_module("metadata")]
+
 
 def _process_events(duration=0.3):
     deadline = time.time() + duration
@@ -204,8 +206,6 @@ class TestMetadataServiceReal:
         svc.edit_field(sample_file, "title", "To Undo")
         backup_path = sample_file + ".bak"
         import shutil
-import pytest
-pytestmark = [pytest.mark.qml_module("metadata")]
 
         shutil.copy2(sample_file, backup_path)
         state = svc._active.get(sample_file)

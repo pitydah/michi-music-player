@@ -4,7 +4,6 @@ import sqlite3
 import pytest
 
 from core.library.repositories.album_repository import AlbumRepository
-import pytest
 pytestmark = [pytest.mark.qml_module("library")]
 
 

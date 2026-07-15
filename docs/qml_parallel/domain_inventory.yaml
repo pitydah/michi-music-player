@@ -1,0 +1,847 @@
+# Domain Parity Inventory — Michi QML Migration
+# Generated: July 2026
+# Status legend:
+#   SHELL_ONLY   = placeholder page, no real bridge integration
+#   PARTIAL      = bridge connected but significant missing functions
+#   FUNCTIONAL   = core workflow works, some edge cases missing
+#   PARITY       = feature-complete with widget equivalent
+
+domains:
+
+  - domain: devices
+    qml_routes:
+      - devices
+      - devices.detail
+      - devices.pairing
+      - devices.transfer
+      - devices.sync_profile
+      - devices.compatibility
+      - devices.storage
+    legacy_widget: ui/devices_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 75
+    bridge: devicesBridge
+    widget_functions:
+      - discover
+      - pair
+      - transfer
+      - cancel
+      - profile
+    qml_functions:
+      - discover (peers list via bridge)
+      - pair (DevicePairingDialog signals)
+      - transfer (DeviceTransferQueue component)
+      - start_stop_server (SyncStatusPanel)
+    missing:
+      - cancel (transfer cancellation)
+      - full sync profile editor (DeviceSyncProfileEditor is shell)
+      - authorized/trusted flow in main page (only in DeviceDetailPage)
+      - storage management (DeviceStorageView is shell)
+    service_contract:
+      context: devicesBridge
+
+  - domain: notifications
+    qml_routes:
+      - (global — notificationBridge is a cross-cutting concern)
+    legacy_widget: N/A (signal-based in widgets)
+    qml_status: FUNCTIONAL
+    estimated_percent: 85
+    bridge: notificationBridge
+    widget_functions:
+      - show_message
+      - show_error
+      - show_toast
+      - confirm_action
+    qml_functions:
+      - showMessage (used across all pages)
+      - error/success/info toasts
+      - persistent error display
+    missing:
+      - action confirmation dialogs from bridge
+      - notification history/queue UI
+    service_contract:
+      context: notificationBridge
+
+  - domain: connections
+    qml_routes:
+      - connections
+      - connections.detail
+    legacy_widget: N/A (embedded in various controllers)
+    qml_status: FUNCTIONAL
+    estimated_percent: 70
+    bridge: connectionsBridge
+    widget_functions:
+      - scan_for_servers
+      - add_manual_server
+      - request_pair
+      - refresh
+      - disconnect
+    qml_functions:
+      - scanForServers
+      - addManualServer
+      - requestPair
+      - refresh
+      - externalServer list via bridge
+      - discoveredServers list via bridge
+    missing:
+      - connection editing/deletion
+      - server detail page (ConnectionDetailPage may exist but bridge integration unknown)
+      - credential management
+    service_contract:
+      context: connectionsBridge
+
+  - domain: home_audio
+    qml_routes:
+      - home_audio
+      - home_audio.zone_detail
+    legacy_widget: ui/hubs/home_audio_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 65
+    bridge: homeAudioBridge
+    widget_functions:
+      - refresh
+      - configure_home_assistant
+      - open_diagnostics
+      - group_devices
+      - latency_test
+      - transfer_playback
+    qml_functions:
+      - refresh
+      - configureHomeAssistant
+      - openDiagnostics
+      - device list via bridge
+      - HomeAudioModeSelector with mode switching
+    missing:
+      - latency control (LatencyControl is shell)
+      - PlaybackTransferDialog integration
+      - GroupEditor (component exists but unconnected)
+      - zone detail page signals not connected to bridge
+    service_contract:
+      context: homeAudioBridge
+
+  - domain: mix
+    qml_routes:
+      - mix
+      - mix_detail
+      - mix_rule_editor
+    legacy_widget: ui/mix/
+    qml_status: FUNCTIONAL
+    estimated_percent: 75
+    bridge: mixBridge
+    widget_functions:
+      - load_mix
+      - play_mix
+      - enqueue_mix
+      - save_mix_as_playlist
+      - explain_current_mix
+      - cancel_generation
+      - play_from_index
+      - refresh
+    qml_functions:
+      - loadMix
+      - playMix
+      - enqueueMix
+      - saveMixAsPlaylist
+      - explainCurrentMix
+      - cancelGeneration
+      - playFromIndex
+      - refresh
+      - categories list via bridge
+    missing:
+      - MixRuleEditor (component exists but bridge unconnected)
+      - MixFeedbackControls (component exists but bridge unconnected)
+      - MixExplanationPanel (shell)
+    service_contract:
+      context: mixBridge
+
+  - domain: global_search
+    qml_routes:
+      - global_search
+    legacy_widget: ui/search/
+    qml_status: FUNCTIONAL
+    estimated_percent: 70
+    bridge: globalSearchBridge
+    widget_functions:
+      - search
+      - results
+      - navigate_to_result
+    qml_functions:
+      - search (synchronous bridge call)
+      - grouped results display
+    missing:
+      - asynchronous search (currently synchronous)
+      - result navigation (onResultClicked → navigate)
+      - search suggestions (component exists)
+      - recent queries (component exists)
+    service_contract:
+      context: globalSearchBridge
+
+  - domain: radio
+    qml_routes:
+      - radio
+    legacy_widget: ui/radio/
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: radioBridge
+    widget_functions:
+      - list_stations
+      - play_station
+      - add_station
+      - delete_station
+      - toggle_favorite
+      - search
+      - history
+      - refresh
+    qml_functions:
+      - refresh
+      - playStation
+      - addStation
+      - deleteStation
+      - toggleFavorite
+      - doSearch (client-side filter)
+      - station list via bridge
+      - favorites list via bridge
+      - history list via bridge
+    missing:
+      - radio import/export (RadioImportExportPanel exists)
+      - edit station (RadioEditDialog exists)
+      - RadioSearchView (exists but not used in page)
+    service_contract:
+      context: radioBridge
+
+  - domain: audio_lab
+    qml_routes:
+      - audio_lab
+      - audio_lab_analysis
+      - audio_lab_conversion
+      - audio_lab_normalization
+      - audio_lab_replaygain
+      - audio_lab_integrity
+      - audio_lab_comparison
+      - audio_lab_jobs
+      - audio_lab_profiles
+    legacy_widget: ui/audio_lab/
+    qml_status: PARTIAL
+    estimated_percent: 40
+    bridge: audioLabBridge
+    widget_functions:
+      - analyze
+      - convert
+      - normalize
+      - replaygain_analyze
+      - replaygain_write
+      - verify_integrity
+      - compare_files
+      - job_management
+      - profile_management
+      - waveform_view
+    qml_functions:
+      - refresh (bridge refresh for status)
+      - navigation sub-pages
+      - selectionContextBridge for file selection
+      - jobBridge for job listing/clear
+    missing:
+      - actual analysis execution (buttons exist but not connected)
+      - conversion (entirely UI-only)
+      - normalization (entirely UI-only)
+      - replaygain (entirely UI-only)
+      - integrity verification (entirely UI-only)
+      - comparison (entirely UI-only)
+      - waveform rendering
+      - batch jobs start/cancel
+    service_contract:
+      context: audioLabBridge
+
+  - domain: history
+    qml_routes:
+      - history
+    legacy_widget: ui/history_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 85
+    bridge: historyBridge
+    widget_functions:
+      - refresh
+      - remove_item
+      - clear_all
+      - set_retention
+      - export
+      - filter
+    qml_functions:
+      - refresh
+      - removeHistoryItem
+      - clearHistory
+      - historyModel via bridge
+      - historyQueryService.fetchHistory (export)
+      - retention dialog
+      - filter bar
+      - timeline + table views
+      - play from history (via playbackBridge)
+    missing:
+      - advanced filters (date range, source type)
+      - batch delete from selection
+    service_contract:
+      context: historyBridge
+
+  - domain: playlists
+    qml_routes:
+      - playlists
+      - playlist_detail
+    legacy_widget: ui/playlists_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 85
+    bridge: playlistsBridge
+    widget_functions:
+      - list_playlists
+      - create_playlist
+      - delete_playlist
+      - duplicate_playlist
+      - play_playlist
+      - add_selected_tracks
+      - import_m3u
+      - export_m3u
+      - edit_smart_playlist
+    qml_functions:
+      - refresh
+      - createPlaylist
+      - deletePlaylist
+      - duplicatePlaylist
+      - playPlaylist
+      - addSelectedTrackToPlaylist
+      - import M3U (PlaylistImportDialog)
+      - export dialog (PlaylistExportDialog exists)
+      - selection mode
+      - batch delete
+    missing:
+      - smart playlist editing (SmartPlaylistEditor exists but bridge unconnected)
+      - export M3U execution (dialog exists)
+      - PlaylistDetailPage full bridge integration
+    service_contract:
+      context: playlistsBridge
+
+  - domain: library
+    qml_routes:
+      - library
+      - library.tracks
+      - library.album_detail
+      - library.artist_detail
+      - library.composer_detail
+      - library.genre_detail
+    legacy_widget: ui/library_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: libraryBridge
+    widget_functions:
+      - refresh
+      - search
+      - filter (format, genre, year)
+      - load_tracks
+      - load_albums
+      - load_artists
+      - load_folders
+      - get_album_detail
+      - get_artist_detail
+      - navigate_with_params
+    qml_functions:
+      - refresh
+      - search
+      - clearFilters
+      - setFormatFilter
+      - setGenreFilter
+      - setYearFilter
+      - trackModel via bridge
+      - albumModel via bridge
+      - artistModel via bridge
+      - folderModel via bridge
+      - getAlbumDetail
+      - getArtistDetail
+      - navigateWithParams (album/artist detail)
+      - libraryState machine (9 states)
+      - selectionContextBridge + actionRegistry integration
+    missing:
+      - favorites page (FavoritesPage exists but bridge unconnected)
+      - most played page (exists but unconnected)
+      - recent/unplayed pages (exist but unconnected)
+      - composer/genre detail pages (bridge integration)
+      - folder browser full CRUD
+      - years page (YearsPage exists)
+    service_contract:
+      context: libraryBridge
+
+  - domain: albums
+    qml_routes:
+      - (sub-route of library)
+    legacy_widget: ui/library_page.py (album tab)
+    qml_status: FUNCTIONAL
+    estimated_percent: 75
+    bridge: libraryBridge (albumModel)
+    widget_functions:
+      - list_albums
+      - filter_albums
+      - album_detail
+      - album_grid/views
+    qml_functions:
+      - albumModel via bridge
+      - AlbumGridView, AlbumListView, AlbumGrid
+      - AlbumViewHost with view selector
+      - AlbumCoverFlowView
+      - AlbumMagazineView
+      - AlbumTimelineView
+      - AlbumVinylWallView
+      - album detail (loadAlbum, getAlbumDetail)
+    missing:
+      - sorting (LibrarySortMenu)
+      - column selection (LibraryColumnSelector)
+    service_contract:
+      context: libraryBridge
+
+  - domain: artists
+    qml_routes:
+      - (sub-route of library)
+    legacy_widget: ui/library_page.py (artist tab)
+    qml_status: FUNCTIONAL
+    estimated_percent: 70
+    bridge: libraryBridge (artistModel)
+    widget_functions:
+      - list_artists
+      - artist_detail
+      - artist_grid
+    qml_functions:
+      - artistModel via bridge
+      - ArtistGridPage
+      - ArtistDetailPage (loadArtist, shuffleArtist)
+      - ArtistCard, ArtistList, ArtistListView
+    missing:
+      - composer detail (ComposerDetailPage exists)
+      - genre detail (GenresPage, GenreDetailPage exist)
+      - artist filtering/sorting
+    service_contract:
+      context: libraryBridge
+
+  - domain: folders
+    qml_routes:
+      - (sub-route of library)
+    legacy_widget: ui/folder_browser.py
+    qml_status: PARTIAL
+    estimated_percent: 50
+    bridge: libraryBridge (folderModel)
+    widget_functions:
+      - browse
+      - navigate
+      - tree_view
+      - context_menu
+      - folder_health
+    qml_functions:
+      - folderModel via bridge
+      - FolderBrowserPage with breadcrumb
+      - FolderTreeView
+      - FolderContextMenu
+      - FolderContentView
+    missing:
+      - folder health diagnostics
+      - folder integrity checks
+      - source badge (FolderSourceBadge exists but unconnected)
+    service_contract:
+      context: libraryBridge
+
+  - domain: sources
+    qml_routes:
+      - library.sources
+      - library.source_detail
+      - library.source_exclusions
+    legacy_widget: ui/sources_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: librarySourcesBridge (via settings) / libraryBridge (via SourcesPage)
+    widget_functions:
+      - list_sources
+      - add_source
+      - remove_source
+      - edit_source
+      - scan_source
+      - toggle_enabled
+      - set_priority
+      - set_watch_mode
+      - set_exclusions
+    qml_functions:
+      - getSourcesList
+      - addFolder
+      - removeSource
+      - editSource
+      - scanSource
+      - toggleSource
+      - setSourcePriority
+      - setSourceWatchMode
+      - source exclusions (SourceExclusionEditor)
+      - SourceScanProgress
+    missing:
+      - LibrarySourcesPage (alternative route) integration with sources bridge
+      - SourceDetailPage integration
+    service_contract:
+      context: libraryBridge
+
+  - domain: command_palette
+    qml_routes:
+      - (overlay component, no page route)
+    legacy_widget: N/A (keyboard shortcut in widgets)
+    qml_status: FUNCTIONAL
+    estimated_percent: 60
+    bridge: commandPaletteBridge
+    widget_functions:
+      - search_commands
+      - execute_command
+    qml_functions:
+      - searchCommands
+      - executeCommand
+      - Escape/Return keyboard handling
+    missing:
+      - keyboard navigation within results (up/down arrows)
+      - command categories/descriptions
+      - accessible properties
+    service_contract:
+      context: commandPaletteBridge
+
+  - domain: michi_ai
+    qml_routes:
+      - assistant
+    legacy_widget: N/A (new feature, no widget equivalent)
+    qml_status: FUNCTIONAL
+    estimated_percent: 65
+    bridge: michiAiBridge
+    widget_functions:
+      - send_message
+      - get_suggestions
+      - refresh
+      - responseReceived signal
+    qml_functions:
+      - refresh
+      - sendMessage
+      - suggestions via bridge
+      - responseReceived signal connection
+      - contextChanged signal
+      - ChatBubble rendering
+    missing:
+      - streaming responses (currently signal-based)
+      - conversation history persistence
+      - suggestionCard full bridge integration
+    service_contract:
+      context: michiAiBridge
+
+  - domain: metadata
+    qml_routes:
+      - metadata_inspector
+      - metadata_editor
+    legacy_widget: ui/metadata_editor.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 75
+    bridge: metadataBridge
+    widget_functions:
+      - load_metadata
+      - inspect_track
+      - save_changes
+      - apply_changes
+      - set_field
+      - batch_set_field
+      - replace_artwork
+      - remove_artwork
+      - has_artwork
+      - refresh
+    qml_functions:
+      - loadMetadata
+      - inspectTrack
+      - saveChanges
+      - applyChanges
+      - setField
+      - batchSetField
+      - replaceArtwork
+      - removeArtwork
+      - hasArtwork
+      - refresh
+      - field grid (MetadataFieldGrid)
+      - diff view (MetadataDiffView)
+      - write progress (MetadataWriteProgress)
+      - conflict detection (MetadataConflictView)
+    missing:
+      - batch file selection from library (currently requires selectionContextBridge)
+      - artwork extraction from tags (button exists but function placeholder)
+    service_contract:
+      context: metadataBridge
+
+  - domain: tagging
+    qml_routes:
+      - smart_tagging
+    legacy_widget: ui/smart_tagging_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 75
+    bridge: smartTaggingBridge
+    widget_functions:
+      - scan_track
+      - cancel_scan
+      - set_suggestion_selected
+      - select_high_confidence
+      - select_all
+      - apply_selected
+      - refresh
+    qml_functions:
+      - scanTrack
+      - cancelScan
+      - setSuggestionSelected
+      - selectHighConfidence
+      - selectAll
+      - applySelected
+      - suggestions with confidence display
+      - progress bar
+      - status badges (idle/scanning/review/completed/error)
+    missing:
+      - batch workflow (multiple files)
+      - file dialog integration (exists but separate from library selection)
+    service_contract:
+      context: smartTaggingBridge
+
+  - domain: library_doctor
+    qml_routes:
+      - library_doctor
+    legacy_widget: ui/library_doctor_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 65
+    bridge: libraryDoctorBridge
+    widget_functions:
+      - refresh
+      - scan
+      - fix_issue
+      - export_report
+    qml_functions:
+      - refresh
+      - component sub-pages (Overview, ScanPage, IssueList, FixPreview, Progress, Report)
+    missing:
+      - scan execution (button exists but bridge call placeholder)
+      - fix execution
+      - issue detail navigation
+      - real report generation
+    service_contract:
+      context: libraryDoctorBridge
+
+  - domain: eq
+    qml_routes:
+      - eq
+      - dsp_chain
+    legacy_widget: ui/equalizer_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: eqBridge
+    widget_functions:
+      - toggle_bypass
+      - reset
+      - set_preamp
+      - set_graphic_band
+      - set_parametric_band
+      - load_preset
+      - backend_available
+    qml_functions:
+      - toggleBypass
+      - reset
+      - setPreamp
+      - setGraphicBand
+      - graphicBands via bridge
+      - preamp via bridge
+      - backendAvailable, bitperfectConflict
+      - EqualizerGraph
+      - EqualizerBandControl
+      - EqualizerPresetBrowser
+      - DSPChainPage (DSPChainPage, DSPModuleCard, DSPConflictWarning)
+    missing:
+      - parametric EQ mode
+      - EQ save/delete presets
+    service_contract:
+      context: eqBridge
+
+  - domain: outputs
+    qml_routes:
+      - output_profiles
+    legacy_widget: ui/output_profiles_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: outputProfilesBridge
+    widget_functions:
+      - list_profiles
+      - set_active_profile
+      - create_profile
+      - duplicate_profile
+      - delete_profile
+      - edit_profile
+    qml_functions:
+      - refresh
+      - setActiveProfile
+      - duplicateProfile
+      - deleteProfile
+      - profiles list via bridge
+      - activeProfileId via bridge
+      - OutputProfileCard with actions
+      - OutputProfileEditor (create/edit)
+    missing:
+      - OutputProfileDetail (component exists but may be unused)
+      - OutputTestResult (component exists but unconnected)
+    service_contract:
+      context: outputProfilesBridge
+
+  - domain: settings
+    qml_routes:
+      - settings (PlaceholderPage)
+      - library_sources
+    legacy_widget: ui/settings_pages.py
+    qml_status: SHELL_ONLY
+    estimated_percent: 15
+    bridge: settingsBridge
+    widget_functions:
+      - get_setting
+      - set_setting
+      - list_categories
+      - reset
+    qml_functions:
+      - librarySourcesPage (independent bridge via librarySourcesBridge)
+    missing:
+      - settings page (PlaceholderPage only)
+      - all setting categories (audio, library, appearance, shortcuts, etc.)
+      - SettingsPage.qml does not exist
+    service_contract:
+      context: settingsBridge
+
+  - domain: home
+    qml_routes:
+      - home
+    legacy_widget: ui/hubs/home_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 60
+    bridge: homeBridge
+    widget_functions:
+      - build_snapshot
+      - refresh
+      - get_library_status
+      - get_playback_status
+      - get_audio_status
+      - get_ecosystem_status
+      - get_alerts
+      - get_assistant_suggestions
+    qml_functions:
+      - navigationBridge navigation (library, connections, home_audio, assistant)
+    missing:
+      - homeBridge integration (currently no bridge calls in HomePage)
+      - real library stats (albums/artists/tracks hardcoded to 0)
+      - playback continue card (ContinueCard has no bridge)
+      - ecosystem card (microServerState hardcoded)
+      - alerts
+      - assistant suggestions from bridge
+    service_contract:
+      context: homeBridge
+
+  - domain: lyrics
+    qml_routes:
+      - lyrics
+    legacy_widget: ui/lyrics_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: lyricsBridge
+    widget_functions:
+      - search_current_track
+      - search_manual
+      - edit_lyrics
+      - save_lyrics
+      - synced_lyrics
+    qml_functions:
+      - searchCurrentTrack
+      - status (idle/searching/done/not_found/error)
+      - hasSyncedLyrics
+      - lyrics plain text
+      - source display
+      - offset slider for synced lyrics
+      - SyncedLyricsView (synced lyrics display)
+      - LyricsEditDialog
+    missing:
+      - manual search dialog (LyricsSearchDialog exists but unverified)
+      - edit/save round-trip
+    service_contract:
+      context: lyricsBridge
+
+  - domain: disc_lab
+    qml_routes:
+      - disc_lab
+    legacy_widget: N/A (new feature)
+    qml_status: PARTIAL
+    estimated_percent: 35
+    bridge: discLabBridge
+    widget_functions:
+      - refresh
+      - scan_disc
+      - rip_cd
+      - detect_drive
+    qml_functions:
+      - refresh
+      - scanDisc
+      - drive detection (via refresh)
+      - track list display
+    missing:
+      - rip functionality (button disabled)
+      - CDDB/ MusicBrainz lookup
+      - track editing before rip
+    service_contract:
+      context: discLabBridge
+
+  - domain: nowplaying
+    qml_routes:
+      - nowplaying
+    legacy_widget: ui/nowplaying_bar.py + ui/nowplaying_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 85
+    bridge: nowplayingBridge / playbackBridge
+    widget_functions:
+      - toggle_play
+      - previous
+      - next
+      - toggle_shuffle
+      - toggle_repeat
+      - set_volume
+      - toggle_mute
+      - refresh
+    qml_functions:
+      - togglePlay
+      - previous
+      - next
+      - toggleShuffle
+      - toggleRepeat
+      - setVolume
+      - toggleMute
+      - hasTrack, isPlaying
+      - coverPath, formatLabel, sampleRate, bitDepth, bitrate
+      - qualityInfoAvailable
+      - error display with Connections
+      - NowPlayingHeader, Metadata, Artwork, Progress, Controls, Volume
+      - NowPlayingQueuePreview, NowPlayingLyricsPane
+      - NowPlayingTechnicalInfo, NowPlayingOutputSelector
+    missing:
+      - NowPlayingOutputSelector full profile switching
+      - MPD backend status display
+    service_contract:
+      context: nowplayingBridge
+
+  - domain: queue
+    qml_routes:
+      - queue
+    legacy_widget: ui/queue_page.py
+    qml_status: FUNCTIONAL
+    estimated_percent: 80
+    bridge: queueBridge
+    widget_functions:
+      - refresh
+      - clear
+      - remove_item
+      - move_item
+      - play_item
+      - save_as_playlist
+    qml_functions:
+      - refresh
+      - QueueHeader, QueueActions, QueueListView
+      - QueueItem, QueueEmptyState, QueueHistorySection
+    missing:
+      - drag-and-drop reorder (QueueListView bridge integration)
+      - save as playlist (QueueActions bridge integration)
+    service_contract:
+      context: queueBridge

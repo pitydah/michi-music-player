@@ -8,91 +8,188 @@ Item {
 
     property var model: null
     property var bridge: null
-    property var _selectedItems: []
-    property bool selectionMode: false
 
-    signal playRequested(int trackId, string title)
-    signal removeRequested(int trackId)
+    signal playRequested(int eventId, int trackId, string title)
+    signal queueRequested(int eventId, int trackId)
+    signal openTrackRequested(int trackId)
+    signal openAlbumRequested(string albumKey)
+    signal removeRequested(int eventId)
 
-    function toggleSelection(trackId) {
-        var idx = root._selectedItems.indexOf(trackId)
-        if (idx >= 0) root._selectedItems.splice(idx, 1)
-        else root._selectedItems.push(trackId)
-    }
+    Rectangle {
+        anchors.fill: parent
+        color: MichiTheme.colors.surface
+        radius: MichiTheme.radiusSm
 
-    ListView {
-        id: tableView; anchors.fill: parent; clip: true; spacing: 1
-        model: root.model
-        delegate: Rectangle {
-            width: tableView.width; height: 44
-            color: root._selectedItems.indexOf(model.trackId || model.track_id || 0) >= 0
-                   ? MichiTheme.colors.accentFaint : mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-            radius: MichiTheme.radiusSm
+        Column {
+            anchors.fill: parent
+            spacing: 0
 
-            Row {
-                anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
+            Rectangle {
+                width: parent.width
+                height: 32
+                color: MichiTheme.colors.surfaceHover
 
-                CheckBox {
-                    width: 24; anchors.verticalCenter: parent.verticalCenter
-                    visible: root.selectionMode
-                    checked: root._selectedItems.indexOf(model.trackId || model.track_id || 0) >= 0
-                    onCheckedChanged: root.toggleSelection(model.trackId || model.track_id || 0)
-                }
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.sm
+                    spacing: MichiTheme.spacing.sm
 
-                Text {
-                    width: parent.width * 0.30; text: model.title || ""
-                    color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
-                    font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideRight
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                    width: parent.width * 0.20; text: model.artist || ""
-                    color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                    width: parent.width * 0.20; text: model.album || ""
-                    color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                    width: 80; text: model.playedAt || ""
-                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                    width: 60; text: model.device || ""
-                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter; visible: model.device !== ""
-                }
-                Text {
-                    width: 24; text: "▶"; color: MichiTheme.colors.accent
-                    font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.playRequested(model.trackId || model.track_id || 0, model.title || "")
-                    }
-                }
-                Text {
-                    width: 24; text: "[X]"; color: MichiTheme.colors.error
-                    font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.removeRequested(model.trackId || model.track_id || 0)
-                    }
+                    Text { width: parent.width * 0.30; text: "Título"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
+                    Text { width: parent.width * 0.18; text: "Artista"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
+                    Text { width: parent.width * 0.18; text: "Álbum"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
+                    Text { width: 80; text: "Fecha"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
+                    Text { width: 60; text: "Disp."; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
+                    Text { width: 100; text: "Acciones"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium }
                 }
             }
 
-            MouseArea {
-                id: mouseArea; anchors.fill: parent; hoverEnabled: true
-                acceptedButtons: Qt.NoButton
-            }
-        }
+            ListView {
+                id: tableView
+                width: parent.width
+                height: parent.height - 32
+                clip: true
+                spacing: 0
+                model: root.model
 
-        Text {
-            anchors.centerIn: parent; visible: tableView.count === 0
-            text: "No hay registros de historial"
-            color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
+                delegate: Rectangle {
+                    width: tableView.width
+                    height: 40
+                    color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
+                    radius: 0
+
+                    objectName: "history.tableItem." + index
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: (modelData.title || model.title || "") + " por " + (modelData.artist || model.artist || "")
+
+                    Row {
+                        anchors.fill: parent
+                        anchors.margins: MichiTheme.spacing.sm
+                        spacing: MichiTheme.spacing.sm
+
+                        Text {
+                            width: parent.width * 0.30
+                            text: modelData.title || model.title || ""
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            elide: Text.ElideRight
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            width: parent.width * 0.18
+                            text: modelData.artist || model.artist || ""
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            elide: Text.ElideRight
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            width: parent.width * 0.18
+                            text: modelData.album || model.album || ""
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            elide: Text.ElideRight
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            width: 80
+                            text: modelData.playedAt || model.played_at || ""
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            elide: Text.ElideRight
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            width: 60
+                            text: modelData.device || model.device || ""
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            elide: Text.ElideRight
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: text !== ""
+                        }
+                        Row {
+                            width: 100
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 4
+
+                            Text {
+                                text: "\u25B6"; color: MichiTheme.colors.accent
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                width: 20; height: 20
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.playRequested(
+                                        modelData.eventId || modelData.id || model.eventId || model.id || 0,
+                                        modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0,
+                                        modelData.title || model.title || "")
+                                }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Reproducir"
+                            }
+                            Text {
+                                text: "\uD83D\uDD0A"; color: MichiTheme.colors.accent
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                width: 20; height: 20
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.queueRequested(
+                                        modelData.eventId || modelData.id || model.eventId || model.id || 0,
+                                        modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0)
+                                }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Agregar a la cola"
+                            }
+                            Text {
+                                text: "\uD83C\uDFB5"; color: MichiTheme.colors.accent
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                width: 20; height: 20
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.openTrackRequested(
+                                        modelData.trackId || modelData.track_id || model.trackId || model.track_id || 0)
+                                }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Abrir pista"
+                            }
+                            Text {
+                                text: "\u2716"; color: MichiTheme.colors.error
+                                font.pixelSize: MichiTheme.typography.metaSize
+                                width: 20; height: 20
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.removeRequested(
+                                        modelData.eventId || modelData.id || model.eventId || model.id || 0)
+                                }
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Eliminar registro"
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: mouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: tableView.count === 0
+                    text: "No hay registros de historial"
+                    color: MichiTheme.colors.textMuted
+                    font.pixelSize: MichiTheme.typography.bodySize
+                }
+            }
         }
     }
 }

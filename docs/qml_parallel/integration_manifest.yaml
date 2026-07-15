@@ -1,0 +1,386 @@
+# Integration Manifest — Michi QML Domain Migration Wave
+# Generated: July 2026
+# Covers all 30 modules modified in this wave.
+
+modules:
+
+  - module: devices
+    bridge: DevicesBridge
+    source: ui_qml_bridge/devices_bridge.py
+    required_dependencies:
+      - sync_manager
+      - device_sync_service
+      - job_service
+      - action_registry
+      - navigation_bridge
+    context_name: devicesBridge
+    models:
+      - DeviceListModel
+      - DeviceTransferModel
+    new_routes:
+      - devices
+      - devices.detail
+      - devices.transfer
+      - devices.pairing
+    composition_change_required: true
+
+  - module: notifications
+    bridge: NotificationBridge
+    source: ui_qml_bridge/notification_bridge.py
+    required_dependencies:
+      - action_registry
+      - job_bridge
+      - notification_service
+      - navigation_bridge
+      - diagnostics_service
+    context_name: notificationBridge
+    models: []
+    new_routes: []
+    composition_change_required: false
+
+  - module: connections
+    bridge: ConnectionsBridge
+    source: ui_qml_bridge/connections_bridge.py
+    required_dependencies:
+      - michi_link_controller
+      - navigation_bridge
+    context_name: connectionsBridge
+    models: []
+    new_routes:
+      - connections
+      - connections.detail
+    composition_change_required: true
+
+  - module: home_audio
+    bridge: HomeAudioBridge
+    source: ui_qml_bridge/home_audio_bridge.py
+    required_dependencies:
+      - ha_controller
+      - snapcast_controller
+    context_name: homeAudioBridge
+    models:
+      - ZoneListModel
+      - DeviceListModel
+    new_routes:
+      - home_audio
+      - zone_detail
+      - group_editor
+    composition_change_required: true
+
+  - module: mix
+    bridge: MixBridge
+    source: ui_qml_bridge/mix_bridge.py
+    required_dependencies:
+      - query_service
+      - worker_manager
+      - track_action_service
+      - playlist_bridge
+    context_name: mixBridge
+    models:
+      - MixCategoryModel
+      - MixTrackModel
+    new_routes:
+      - mix
+      - mix_detail
+      - mix_generator
+      - mix_result
+    composition_change_required: true
+
+  - module: global_search
+    bridge: GlobalSearchBridge
+    source: ui_qml_bridge/global_search_bridge.py
+    required_dependencies:
+      - search_service
+    context_name: globalSearchBridge
+    models:
+      - SearchResultModel
+    new_routes:
+      - search
+    composition_change_required: true
+
+  - module: radio
+    bridge: RadioBridge
+    source: ui_qml_bridge/radio_bridge.py
+    required_dependencies:
+      - radio_manager
+      - player_service
+    context_name: radioBridge
+    models:
+      - RadioStationModel
+    new_routes:
+      - radio
+    composition_change_required: true
+
+  - module: audio_lab
+    bridge: AudioLabBridge
+    source: ui_qml_bridge/audio_lab_bridge.py
+    required_dependencies:
+      - audio_lab_service
+      - audio_lab_state
+      - selection_context_bridge
+      - job_bridge
+    context_name: audioLabBridge
+    models:
+      - AudioProfileModel
+      - AudioJobModel
+    new_routes:
+      - audio_lab
+      - audio_lab.overview
+      - audio_lab.analysis
+      - audio_lab.conversion
+      - audio_lab.normalization
+      - audio_lab.replaygain
+      - audio_lab.integrity
+      - audio_lab.comparison
+      - audio_lab.jobs
+      - audio_lab.profiles
+    composition_change_required: true
+
+  - module: history
+    bridge: HistoryBridge
+    source: ui_qml_bridge/history_bridge.py
+    required_dependencies:
+      - db
+      - history_query_service
+      - query_executor
+      - playback_service
+      - action_registry
+    context_name: historyBridge
+    models:
+      - HistoryListModel
+    new_routes:
+      - history
+    composition_change_required: true
+
+  - module: playlists
+    bridge: PlaylistsBridge
+    source: ui_qml_bridge/playlists_bridge.py
+    required_dependencies:
+      - db
+      - selection_context
+      - player_service
+      - playlist_service
+    context_name: playlistsBridge
+    models:
+      - PlaylistListModel
+      - PlaylistTrackModel
+    new_routes:
+      - playlists
+      - playlist_detail
+    composition_change_required: true
+
+  - module: library
+    bridge: LibraryBridge
+    source: ui_qml_bridge/library_bridge.py
+    required_dependencies:
+      - query_service
+      - query_executor
+      - selection_controller
+      - playback_controller
+      - navigation_bridge
+      - action_registry
+    context_name: libraryBridge
+    models:
+      - TrackTableModel
+      - AlbumModel
+      - ArtistModel
+      - FolderModel
+      - GenreModel
+    new_routes:
+      - library
+      - library.tracks
+      - library.albums
+      - library.album_detail
+      - library.artists
+      - library.artist_detail
+      - library.folders
+      - library.sources
+    composition_change_required: true
+
+  - module: albums
+    bridge: LibraryBridge
+    source: ui_qml_bridge/library_bridge.py
+    required_dependencies:
+      - query_service
+      - album_repository
+    context_name: libraryBridge
+    models:
+      - AlbumGridModel
+    new_routes:
+      - (sub-route of library)
+    composition_change_required: false
+
+  - module: artists
+    bridge: LibraryBridge
+    source: ui_qml_bridge/library_bridge.py
+    required_dependencies:
+      - query_service
+      - artist_repository
+    context_name: libraryBridge
+    models:
+      - ArtistGridModel
+    new_routes:
+      - (sub-route of library)
+    composition_change_required: false
+
+  - module: folders
+    bridge: LibraryBridge
+    source: ui_qml_bridge/library_bridge.py
+    required_dependencies:
+      - query_service
+      - folder_repository
+    context_name: libraryBridge
+    models:
+      - FolderTreeModel
+    new_routes:
+      - (sub-route of library)
+    composition_change_required: false
+
+  - module: sources
+    bridge: LibrarySourcesBridge
+    source: ui_qml_bridge/library_sources_bridge.py
+    required_dependencies:
+      - library_sources_service
+      - job_bridge
+    context_name: librarySourcesBridge
+    models:
+      - SourceListModel
+    new_routes:
+      - library.sources
+    composition_change_required: true
+
+  - module: command_palette
+    bridge: CommandPaletteBridge
+    source: ui_qml_bridge/command_palette_bridge.py
+    required_dependencies:
+      - action_registry
+      - navigation_bridge
+      - nowplaying_bridge
+    context_name: commandPaletteBridge
+    models: []
+    new_routes:
+      - (overlay component, no page route)
+    composition_change_required: false
+
+  - module: michi_ai
+    bridge: MichiAIBridge
+    source: ui_qml_bridge/michi_ai_bridge.py
+    required_dependencies:
+      - ai_controller
+      - context_service
+      - plan_builder
+      - tool_registry
+      - action_registry
+      - navigation_bridge
+      - track_action_service
+      - playlist_service
+      - global_search_service
+      - settings_service
+    context_name: michiAiBridge
+    models:
+      - ConversationModel
+      - SuggestionModel
+    new_routes:
+      - ai
+      - assistant
+    composition_change_required: true
+
+  - module: metadata
+    bridge: MetadataBridge
+    source: ui_qml_bridge/metadata_bridge.py
+    required_dependencies:
+      - metadata_service
+      - job_service
+    context_name: metadataBridge
+    models:
+      - MetadataFieldModel
+      - BatchEditModel
+    new_routes:
+      - metadata.inspector
+      - metadata.batch
+    composition_change_required: true
+
+  - module: tagging
+    bridge: SmartTaggingBridge
+    source: ui_qml_bridge/smart_tagging_bridge.py
+    required_dependencies:
+      - tag_adapter
+      - metadata_tag_adapter
+    context_name: smartTaggingBridge
+    models:
+      - SuggestionModel
+      - TagFieldModel
+    new_routes:
+      - tagging
+    composition_change_required: true
+
+  - module: library_doctor
+    bridge: LibraryDoctorBridge
+    source: ui_qml_bridge/library_doctor_bridge.py
+    required_dependencies:
+      - doctor_scan_repository
+      - db
+    context_name: libraryDoctorBridge
+    models:
+      - IssueModel
+      - RepairModel
+    new_routes:
+      - library_doctor
+    composition_change_required: true
+
+  - module: eq
+    bridge: EqBridge
+    source: ui_qml_bridge/eq_bridge.py
+    required_dependencies:
+      - player_service
+    context_name: eqBridge
+    models:
+      - BandModel
+      - PresetModel
+    new_routes:
+      - equalizer
+    composition_change_required: true
+
+  - module: outputs
+    bridge: OutputProfilesBridge
+    source: ui_qml_bridge/output_profiles_bridge.py
+    required_dependencies:
+      - player_service
+    context_name: outputProfilesBridge
+    models:
+      - OutputProfileModel
+    new_routes:
+      - outputs
+    composition_change_required: true
+
+  - module: settings
+    bridge: SettingsBridge
+    source: ui_qml_bridge/settings_bridge.py
+    required_dependencies: []
+    context_name: settingsBridge
+    models: []
+    new_routes:
+      - settings
+      - settings.general
+      - settings.appearance
+      - settings.playback
+      - settings.library
+      - settings.accessibility
+      - settings.audio
+      - settings.about
+    composition_change_required: true
+
+  - module: home
+    bridge: HomeBridge
+    source: ui_qml_bridge/home_bridge.py
+    required_dependencies:
+      - db
+      - player_service
+      - library_bridge
+      - library_sources_service
+      - job_bridge
+    context_name: homeBridge
+    models: []
+    new_routes:
+      - home
+    composition_change_required: true

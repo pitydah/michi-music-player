@@ -28,6 +28,13 @@ VIDEO_EXTENSIONS = frozenset({
     ".mp4", ".avi", ".mkv", ".mov", ".webm", ".m4v", ".wmv", ".flv",
 })
 
+STATE_INITIALIZING = "INITIALIZING"
+STATE_LOADING = "LOADING"
+STATE_READY = "READY"
+STATE_EMPTY = "EMPTY"
+STATE_ERROR = "ERROR"
+STATE_UNAVAILABLE = "UNAVAILABLE"
+
 
 def _normalise_result(raw: Any) -> dict:
     if isinstance(raw, dict):
@@ -47,6 +54,8 @@ def _typed_error(code: str, message: str = "") -> dict:
 
 class DevicesBridge(QObject):
     stateChanged = Signal()
+    state = STATE_INITIALIZING
+    errorMessage = ""
 
     def __init__(self, sync_manager: SyncManager | None = None, parent=None,
                  device_sync_service=None, job_service=None):
@@ -63,6 +72,43 @@ class DevicesBridge(QObject):
         self._compatibility_info: list[dict] = []
         self._transfer_jobs: list[dict] = []
         self._transfer_history: list[dict] = []
+        self._qr_code_data = ""
+        self._bridge_available = True
+        self._set_state()
+
+    def _set_state(self):
+        if self._error:
+            self.state = STATE_ERROR
+        elif self._sync_mgr is None and self._device_sync_svc is None:
+            self.state = STATE_UNAVAILABLE
+        elif self._server_active and (self._paired_devices or self._peers):
+            self.state = STATE_READY
+        elif self._server_active:
+            self.state = STATE_EMPTY
+        elif self._sync_mgr:
+            self.state = STATE_LOADING
+        else:
+            self.state = STATE_INITIALIZING
+
+    @property
+    def _error(self):
+        return bool(self.errorMessage)
+
+    @Property(str, notify=stateChanged)
+    def pageState(self):
+        return self.state
+
+    @Property(str, notify=stateChanged)
+    def qrCodeData(self):
+        return self._qr_code_data
+
+    @Property(bool, notify=stateChanged)
+    def bridgeAvailable(self):
+        return self._bridge_available
+
+    @Property(str, notify=stateChanged)
+    def bridgeErrorMessage(self):
+        return self.errorMessage
 
     @Property(bool, notify=stateChanged)
     def serverActive(self):
@@ -79,6 +125,35 @@ class DevicesBridge(QObject):
     @Property("QVariantList", notify=stateChanged)
     def pairedDevices(self):
         return self._paired_devices
+
+    @Slot(str, int, result=dict)
+    def connectToPeer(self, ip: str, port: int):
+        if not self._sync_mgr:
+            return _typed_error("NO_SYNC_MANAGER")
+        try:
+            if hasattr(self._sync_mgr, 'connect'):
+                raw = self._sync_mgr.connect(ip, port)
+                return _normalise_result(raw)
+            return _typed_error("CONNECT_NOT_SUPPORTED",
+                                "El SyncManager no soporta conexión directa a pares.")
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(result=str)
+    def getDeviceIcon(self, deviceType: str):
+        icons = {
+            "android": "smartphone",
+            "iphone": "smartphone",
+            "desktop": "desktop",
+            "laptop": "laptop",
+            "tablet": "tablet",
+            "dedicated": "music_note",
+            "hiby": "music_note",
+            "fiio": "music_note",
+            "sandisk": "sd_card",
+            "ruizu": "music_note",
+        }
+        return icons.get(deviceType.lower(), "devices")
 
     @Slot(result=dict)
     def startServer(self):
@@ -168,6 +243,7 @@ class DevicesBridge(QObject):
                 logger.debug("Device sync paired refresh failed: %s", e)
         self._peers = peers
         self._paired_devices = paired
+        self._set_state()
         self.stateChanged.emit()
         return {"ok": True, "peers": len(peers), "paired": len(paired)}
 
@@ -318,6 +394,36 @@ class DevicesBridge(QObject):
             return {"ok": False, "error": "FILE_NOT_FOUND"}
         transcode_policy = "copy" if ext == ".flac" else "transcode_if_needed"
         return {"ok": True, "format": ext.lstrip('.'), "transcode_policy": transcode_policy}
+
+    @Slot(result=str)
+    def generateQRCode(self):
+        from uuid import uuid4
+        self._qr_code_data = f"michi://pair/{uuid4().hex[:12]}"
+        self.stateChanged.emit()
+        return self._qr_code_data
+
+    @Slot(str, result=dict)
+    def ejectDevice(self, mount_point: str):
+        if not self._device_sync_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            if hasattr(self._device_sync_svc, 'eject'):
+                result = self._device_sync_svc.eject(mount_point)
+                return _normalise_result(result)
+            logger.debug("DeviceSyncService has no eject() method, returning ok")
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @Slot(str, str, result=dict)
+    def browseFiles(self, mount_point: str, path: str = ""):
+        if not self._device_sync_svc:
+            return _typed_error("NO_DEVICE_SYNC_SERVICE")
+        try:
+            files = self._device_sync_svc.list_music(mount_point, music_dir=path)
+            return {"ok": True, "files": files}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     @Slot(result=dict)
     def clearTransferHistory(self):

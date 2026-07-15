@@ -4,16 +4,69 @@ import QtQuick.Layouts
 import "../theme"
 import "../components"
 import "../materials"
+import "outputs"
 
 Item {
     id: root
 
-    property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
-    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
-    property string _activeProfile: root.stg ? root.stg.getActiveProfile() : ""
+    objectName: "outputProfilesPage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Perfiles de salida"
 
-    function refreshActive() {
-        _activeProfile = root.stg ? root.stg.getActiveProfile() : ""
+    property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
+    property var op: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null
+    property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null
+    property bool _showEditor: false
+    property var _editProfile: null
+    property string _state: "LOADING"
+
+    function refresh() {
+        if (root.op && typeof root.op.refresh === "function")
+            root.op.refresh()
+    }
+
+    function selectProfile(profileId) {
+        if (root.op && typeof root.op.setActiveProfile === "function") {
+            var r = root.op.setActiveProfile(profileId)
+            if (r.ok) {
+                if (root.notif) root.notif.showMessage("Perfil activado", "success")
+            } else {
+                if (root.notif) {
+                    var msg = r.message || r.error || "Error al cambiar perfil"
+                    if (r.fallback) msg += " (fallback)"
+                    root.notif.showMessage(msg, "error")
+                }
+            }
+        }
+    }
+
+    function duplicate(profileId) {
+        if (root.op && typeof root.op.duplicateProfile === "function") {
+            var r = root.op.duplicateProfile(profileId)
+            if (r.ok) {
+                root.refresh()
+                if (root.notif) root.notif.showMessage("Perfil duplicado", "success")
+            } else if (root.notif) {
+                root.notif.showMessage(r.error, "error")
+            }
+        }
+    }
+
+    function remove(profileId) {
+        if (root.op && typeof root.op.deleteProfile === "function") {
+            var r = root.op.deleteProfile(profileId)
+            if (r.ok) {
+                root.refresh()
+                if (root.notif) root.notif.showMessage("Perfil eliminado", "success")
+            } else if (root.notif) {
+                root.notif.showMessage(r.error, "error")
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        root.refresh()
+        root._state = root.op ? "READY" : "READY"
     }
 
     Flickable {
@@ -22,6 +75,7 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        focus: true
 
         Column {
             id: column
@@ -43,79 +97,71 @@ Item {
                 wrapMode: Text.WordWrap
             }
 
+            Row {
+                spacing: MichiTheme.spacing.sm
+                MichiButton {
+                    text: "Crear perfil"
+                    variant: "primary"
+                    objectName: "outputCreateProfileButton"
+                    Accessible.name: "Crear nuevo perfil de salida"
+                    onClicked: {
+                        root._editProfile = null
+                        root._showEditor = true
+                    }
+                }
+
+                MichiButton {
+                    text: "Refrescar"
+                    variant: "ghost"
+                    objectName: "outputRefreshButton"
+                    Accessible.name: "Refrescar lista de perfiles"
+                    onClicked: root.refresh()
+                }
+            }
+
+            Row {
+                spacing: MichiTheme.spacing.sm
+                visible: root.op !== null
+                Text {
+                    text: "Perfil activo:"
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                StatusBadge {
+                    text: root.op ? root.op.activeProfileId || "ninguno" : "ninguno"
+                    kind: root.op && root.op.activeProfileId ? "success" : "info"
+                }
+            }
+
             Repeater {
-                model: root.stg ? root.stg.outputProfiles : []
+                model: root.op ? root.op.profiles : []
 
-                GlassCard {
+                OutputProfileCard {
                     width: parent.width
-                    height: 100
-                    title: modelData.name || ""
-                    subtitle: modelData.description || ""
-                    variant: modelData.key === root._activeProfile ? "accent" : "base"
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: MichiTheme.spacing.md
-                        spacing: MichiTheme.spacing.xs
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.name || ""
-                            color: MichiTheme.colors.textPrimary
-                            font.pixelSize: MichiTheme.typography.bodySize
-                            font.weight: modelData.key === root._activeProfile ? FontWeight.Medium : FontWeight.Normal
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.description || ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: 2
-                            elide: Text.ElideRight
-                        }
-
-                        RowLayout {
-                            spacing: MichiTheme.spacing.xs
-                            visible: modelData.dsd_mode || modelData.bitperfect || modelData.preferred_backend
-
-                            StatusBadge {
-                                text: "DSD: " + modelData.dsd_mode
-                                kind: "experimental"
-                                visible: modelData.dsd_mode && modelData.dsd_mode !== ""
-                            }
-
-                            StatusBadge {
-                                text: "Bit-Perfect"
-                                kind: "success"
-                                visible: modelData.bitperfect
-                            }
-
-                            StatusBadge {
-                                text: modelData.preferred_backend || ""
-                                kind: "info"
-                                visible: modelData.preferred_backend && modelData.preferred_backend !== "auto"
-                            }
-                        }
+                    profileData: modelData
+                    isActive: modelData.id === (root.op ? root.op.activeProfileId : "")
+                    onCardSelected: root.selectProfile(modelData.id)
+                    onEditRequested: {
+                        root._editProfile = modelData
+                        root._showEditor = true
                     }
+                    onDuplicateRequested: root.duplicate(modelData.id)
+                    onDeleteRequested: root.remove(modelData.id)
+                }
+            }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.stg && typeof root.stg.setActiveProfile === "function") {
-                                var result = root.stg.setActiveProfile(modelData.key)
-                                if (result && result.ok) {
-                                    root._activeProfile = modelData.key
-                                    if (root.notif)
-                                        root.notif.showMessage("Perfil activado: " + modelData.name, "success")
-                                } else if (result && !result.ok && root.notif) {
-                                    root.notif.showMessage("Error: " + (result.error || "desconocido"), "error")
-                                }
-                            }
-                        }
-                    }
+            OutputProfileEditor {
+                id: editor
+                width: parent.width
+                visible: root._showEditor
+                profileData: root._editProfile
+                opBridge: root.op
+                notif: root.notif
+                onClose: {
+                    root._showEditor = false
+                    root._editProfile = null
+                    root.refresh()
                 }
             }
 

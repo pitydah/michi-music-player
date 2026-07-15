@@ -1,17 +1,33 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../theme"
 import "../components"
 import "../materials"
+import "library_doctor"
 
 Item {
     id: root
 
+    objectName: "libraryDoctorPage"
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Diagnóstico de biblioteca"
+
     property var doc: typeof libraryDoctorBridge !== "undefined" ? libraryDoctorBridge : null
+    property string _state: "LOADING"
+    property string _currentCategory: ""
+    property int _scanProgress: 0
+    property int _scanTotal: 0
+
+    function _cap() { return root.doc !== null }
 
     Component.onCompleted: {
-        if (root.doc && typeof root.doc.refresh !== "undefined")
+        if (root.doc && typeof root.doc.refresh !== "undefined") {
             root.doc.refresh()
+            root._state = root.doc.status === "done" ? "READY" : "idle" ? "READY" : "READY"
+        } else {
+            root._state = "READY"
+        }
     }
 
     Flickable {
@@ -20,6 +36,13 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        focus: true
+
+        Keys.onEscapePressed: function(event) {
+            if (root.doc && typeof root.doc.cancelScan !== "undefined")
+                root.doc.cancelScan()
+            event.accepted = true
+        }
 
         Column {
             id: column
@@ -46,8 +69,15 @@ Item {
                 spacing: MichiTheme.spacing.md
                 Text { text: "Estado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 StatusBadge {
-                    text: root.doc ? root.doc.status : "idle"
-                    kind: root.doc && root.doc.status === "done" ? "success" : root.doc && root.doc.status === "scanning" ? "warning" : "info"
+                    text: root.doc ? root.doc.status : "no disponible"
+                    kind: root.doc && root.doc.status === "done" ? "success" :
+                          root.doc && root.doc.status === "scanning" ? "warning" :
+                          root.doc && root.doc.status === "repairing" ? "error" :
+                          root.doc && root.doc.status === "error" ? "error" : "info"
+                }
+                StatusBadge {
+                    text: "Solo lectura"
+                    kind: "info"
                 }
             }
 
@@ -66,64 +96,116 @@ Item {
                 Text { text: "OK: " + (root.doc ? root.doc.healthyCount : 0); color: MichiTheme.colors.success; font.pixelSize: MichiTheme.typography.metaSize }
             }
 
-            SectionHeader { text: "Problemas detectados"; width: parent.width }
-
-            Repeater {
-                model: root.doc ? root.doc.issues : []
-
-                GlassMaterial {
-                    width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: root.doc && root.doc.issueCount > 0 ? "danger" : "base"
-                    Row {
-                        anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                        Text { width: parent.width * 0.25; text: modelData.type || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
-                        Text { width: parent.width * 0.50; text: modelData.detail || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
-                        Text {
-                            width: parent.width * 0.15; text: "Abrir >"; color: MichiTheme.colors.accentBlue
-                            font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
-                            visible: modelData.type === "missing_metadata"
-                        }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        enabled: modelData.type === "missing_metadata" && modelData.filepath
-                        onClicked: {
-                            if (typeof selectionContextBridge !== "undefined" && selectionContextBridge) {
-                                selectionContextBridge.setSelected({"filepath": modelData.filepath, "title": modelData.detail})
-                            }
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("metadata_inspector")
-                        }
-                    }
-                }
-            }
-
-            Text {
-                text: root.doc && root.doc.issues.length === 0 ? (root.doc.status === "idle" ? "Presiona \"Escanear\" para comenzar." : "No se detectaron problemas.") : ""
-                color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                visible: text !== ""
-            }
-
             Row {
                 spacing: MichiTheme.spacing.sm
+
                 MichiButton {
-                    text: root.doc && root.doc.status === "scanning" ? "Escaneando..." : "Escanear biblioteca"
+                    text: root._state === "SCANNING" ? "Escaneando..." : "Escanear biblioteca"
                     variant: "primary"
+                    objectName: "doctorScanButton"
+                    Accessible.name: "Iniciar escaneo de biblioteca"
+                    enabled: root._state !== "SCANNING" && root._cap()
                     onClicked: {
                         if (root.doc && typeof root.doc.scan !== "undefined") {
+                            root._state = "SCANNING"
+                            root._scanProgress = 0
+                            root._scanTotal = 0
                             root.doc.scan()
                             if (typeof notificationBridge !== "undefined" && notificationBridge)
                                 notificationBridge.showMessage("Escaneando biblioteca...", "info")
                         }
                     }
                 }
+
+                MichiButton {
+                    text: "Cancelar"
+                    variant: "ghost"
+                    objectName: "doctorCancelButton"
+                    Accessible.name: "Cancelar escaneo"
+                    visible: root._state === "SCANNING"
+                    onClicked: {
+                        if (root.doc && typeof root.doc.cancelScan !== "undefined") {
+                            root.doc.cancelScan()
+                            root._state = "READY"
+                        }
+                    }
+                }
+
                 MichiButton {
                     text: "Refrescar"
                     variant: "ghost"
+                    objectName: "doctorRefreshButton"
+                    Accessible.name: "Refrescar estado del diagnóstico"
                     onClicked: {
                         if (root.doc && typeof root.doc.refresh !== "undefined")
                             root.doc.refresh()
                     }
+                }
+            }
+
+            LoadingState {
+                width: parent.width
+                visible: root._state === "LOADING"
+                text: "Cargando diagnóstico..."
+            }
+
+            DoctorRepairProgress {
+                id: repairProgress
+                width: parent.width
+                doc: root.doc
+                visible: root.doc && root.doc.status === "repairing"
+                onCancelRequested: {
+                    if (root.doc && typeof root.doc.cancelScan !== "undefined")
+                        root.doc.cancelScan()
+                }
+            }
+
+            DoctorIssueList {
+                id: issueList
+                width: parent.width
+                doc: root.doc
+                visible: root.doc && root.doc.status === "done" && root.doc.issues.length > 0
+                onIssueSelected: function(id, data) {
+                    issueDetail.showIssue(data)
+                }
+            }
+
+            DoctorIssueDetail {
+                id: issueDetail
+                width: parent.width
+                doc: root.doc
+                onFixAccepted: function(id) {
+                    if (root.doc && typeof root.doc.setIssueSelected !== "undefined")
+                        root.doc.setIssueSelected(id, true)
+                }
+                onFixRejected: function(id) {
+                    if (root.doc && typeof root.doc.setIssueSelected !== "undefined")
+                        root.doc.setIssueSelected(id, false)
+                }
+            }
+
+            DoctorDryRunPage {
+                id: dryRunPage
+                width: parent.width
+                doc: root.doc
+                visible: root.doc && root.doc.status === "done" && root.doc.issueCount > 0
+                onConfirmRepair: {
+                    if (root.doc && typeof root.doc.repairSelected !== "undefined")
+                        root.doc.repairSelected()
+                    dryRunPage.reset()
+                }
+                onCancelRepair: {
+                    dryRunPage.reset()
+                }
+            }
+
+            DoctorReportPage {
+                id: reportPage
+                width: parent.width
+                doc: root.doc
+                onExportReport: {
+                    if (typeof notificationBridge !== "undefined" && notificationBridge)
+                        notificationBridge.showMessage("Reporte exportado", "success")
                 }
             }
 

@@ -9,11 +9,16 @@ Column {
     property string subtitle: ""
     property string actionText: ""
     property bool showAction: false
+    property string objectName: "emptyState"
 
     signal actionClicked()
 
     spacing: MichiTheme.spacing.md
     anchors.centerIn: parent ? undefined : undefined
+
+    Accessible.role: Accessible.StaticText
+    Accessible.name: root.title
+    Accessible.description: root.subtitle
 
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -52,5 +57,6 @@ Column {
         variant: "primary"
         visible: root.showAction && root.actionText !== ""
         onClicked: root.actionClicked()
+        Accessible.name: root.actionText
     }
 }
