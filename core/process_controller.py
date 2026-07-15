@@ -1,15 +1,13 @@
-"""ProcessController — singleton controller for all external processes.
+"""ProcessController — centralizes external process management.
 
-FFmpeg, FFprobe, integrity checks, Disc Lab. Thread-safe, never blocks UI thread.
-No subprocess.run() in Qt slots. No blocking communicate() in QML slots.
+API: start, stdout, stderr, progress, PID, timeout, terminate, kill, cleanup.
+Thread-safe, never blocks UI thread. No subprocess.run() in Qt slots.
 """
-
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
-import subprocess
 import time
 from typing import Any
 
@@ -32,12 +30,16 @@ class ManagedProcess:
         self.env = dict(env or {})
         self.started_at = time.monotonic()
         self._exit_status: int | None = None
+        self._stdout_lines: list[str] = []
         self._stderr_lines: list[str] = []
         self._cancelled = False
-        self._process: subprocess.Popen | None = None
+        self._process: asyncio.subprocess.Process | None = None
 
     def exit_status(self) -> int | None:
         return self._exit_status
+
+    def stdout(self) -> list[str]:
+        return list(self._stdout_lines)
 
     def stderr(self) -> list[str]:
         return list(self._stderr_lines)
@@ -50,11 +52,9 @@ class ManagedProcess:
     def cleanup(self):
         self._cancelled = True
         if self._process and self._process.returncode is None:
-            try:
+            import contextlib
+            with contextlib.suppress(Exception):
                 self._process.kill()
-                self._process.wait(timeout=5)
-            except Exception:
-                pass
         self._exit_status = -1
 
 
@@ -70,14 +70,16 @@ class ProcessController:
         args: list[str] | None = None,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
+        capture_stdout: bool = False,
     ) -> ManagedProcess:
         all_args = [cmd] + (args or [])
         full_env = {**os.environ, **(env or {})}
+        stdout_dest = asyncio.subprocess.PIPE if capture_stdout else asyncio.subprocess.DEVNULL
         proc = await asyncio.create_subprocess_exec(
             *all_args,
             cwd=cwd,
             env=full_env,
-            stdout=asyncio.subprocess.DEVNULL,
+            stdout=stdout_dest,
             stderr=asyncio.subprocess.PIPE,
         )
         mp = ManagedProcess(
@@ -92,9 +94,23 @@ class ProcessController:
             self._counter += 1
             self._processes[proc.pid] = mp
         loop = asyncio.get_event_loop()
+        if capture_stdout:
+            loop.create_task(self._collect_stdout(proc, mp))
         loop.create_task(self._collect_stderr(proc, mp))
         loop.create_task(self._wait_exit(proc, mp))
         return mp
+
+    async def _collect_stdout(self, proc: asyncio.subprocess.Process, mp: ManagedProcess):
+        try:
+            while True:
+                line = await asyncio.wait_for(proc.stdout.readline(), timeout=300)
+                if not line:
+                    break
+                mp._stdout_lines.append(line.decode("utf-8", errors="replace").rstrip())
+        except asyncio.TimeoutError:
+            pass
+        except Exception as e:
+            logger.debug("stdout collector: %s", e)
 
     async def _collect_stderr(self, proc: asyncio.subprocess.Process, mp: ManagedProcess):
         try:
@@ -108,13 +124,26 @@ class ProcessController:
         except Exception as e:
             logger.debug("stderr collector: %s", e)
 
-    async def _wait_exit(self, proc: asyncio.subprocess.Process, mp: ManagedProcess):
+    async     def _wait_exit(self, proc: asyncio.subprocess.Process, mp: ManagedProcess):
         try:
             returncode = await proc.wait()
             mp._exit_status = returncode
         except Exception as e:
             logger.debug("wait exit: %s", e)
             mp._exit_status = -1
+        proc._transport = None  # noqa: SIM105
+
+    async def stdout(self, pid: int) -> list[str]:
+        mp = await self._get(pid)
+        if not mp:
+            return []
+        return mp.stdout()
+
+    async def stderr(self, pid: int) -> list[str]:
+        mp = await self._get(pid)
+        if not mp:
+            return []
+        return mp.stderr()
 
     async def terminate(self, pid: int) -> bool:
         mp = await self._get(pid)
@@ -156,12 +185,6 @@ class ProcessController:
             if pid in self._processes:
                 del self._processes[pid]
         return True
-
-    async def stderr(self, pid: int) -> list[str]:
-        mp = await self._get(pid)
-        if not mp:
-            return []
-        return mp.stderr()
 
     async def exit_status(self, pid: int) -> int | None:
         mp = await self._get(pid)

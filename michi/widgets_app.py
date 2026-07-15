@@ -1,4 +1,4 @@
-"""Widgets application entry point (fallback legacy). All logic via core/services."""
+"""Widgets application entry point (fallback legacy). Does NOT create QQmlApplicationEngine."""
 from __future__ import annotations
 
 import logging

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
+import time
 from importlib.metadata import version, PackageNotFoundError
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger("michi.app_bridge")
 
 
 def get_app_version() -> str:
@@ -53,6 +57,7 @@ class AppBridge(QObject):
         self._ui_mode = "qml"
         self._phase = self.BOOTSTRAP
         self._accepting_new = True
+        self._shutdown_executed = False
 
     def receive_services(self, *services):
         self._services = list(services)
@@ -164,22 +169,71 @@ class AppBridge(QObject):
         self.statusChanged.emit("shutting_down")
         self._ordered_shutdown()
 
+    SHUTDOWN_TIMEOUT_S = 5.0
+
     def _ordered_shutdown(self):
-        steps = []
+        if self._shutdown_executed:
+            logger.warning("Shutdown already executed, skipping")
+            return
+        self._shutdown_executed = True
+
+        step_defs = [
+            ("set_phase_shutting_down", lambda: self.setPhase(self.SHUTTING_DOWN)),
+            ("cancel_all_tasks", self.cancelAllTasks),
+            ("shutdown_queue_service", lambda: self._shutdown_service("queue_service")),
+            ("shutdown_notification_service", lambda: self._shutdown_service("notification_service")),
+            ("shutdown_device_sync_service", lambda: self._shutdown_service("device_sync_service")),
+            ("shutdown_audio_lab_service", lambda: self._shutdown_service("audio_lab_service")),
+            ("shutdown_playback_service", lambda: self._shutdown_service("playback_service")),
+            ("shutdown_background_workers", lambda: self._shutdown_service("worker_manager")),
+            ("shutdown_settings_service", lambda: self._shutdown_service("settings_service")),
+            ("shutdown_job_service", lambda: self._shutdown_service("job_service")),
+            ("shutdown_service_container", lambda: self._shutdown_service("service_container")),
+            ("shutdown_database", lambda: self._shutdown_service("connection_factory")),
+            ("stop_accepting_new", lambda: setattr(self, '_accepting_new', False)),
+            ("set_phase_stopped", lambda: self.setPhase(self.STOPPED)),
+            ("quit_core_app", lambda: self._call_quit()),
+        ]
+
+        results = []
+        for step_name, step_fn in step_defs:
+            start = time.monotonic()
+            result = {"step": step_name, "ok": True, "duration_s": 0.0}
+            try:
+                step_fn()
+                result["duration_s"] = round(time.monotonic() - start, 3)
+            except Exception as e:
+                result["ok"] = False
+                result["error"] = str(e)
+                result["duration_s"] = round(time.monotonic() - start, 3)
+                logger.error("Shutdown step '%s' failed: %s", step_name, e)
+            results.append(result)
+
+        if self._shutdown_log(results):
+            self.statusChanged.emit("stopped")
+
+    def _shutdown_service(self, name: str):
         for svc in self._services:
-            steps.append(svc)
+            svc_name = getattr(svc, '__class__', type(svc)).__name__
+            if svc_name.lower().startswith(name.lower().replace("_", "").replace("service", "")):
+                continue
+        for svc in self._services:
+            if hasattr(svc, 'shutdown'):
+                svc.shutdown()
 
-        import contextlib
-        for step in steps:
-            if hasattr(step, 'shutdown'):
-                with contextlib.suppress(Exception):
-                    step.shutdown()
-
-        self._phase = self.STOPPED
-        self.statusChanged.emit("stopped")
-
+    def _call_quit(self):
         from PySide6.QtCore import QCoreApplication
         QCoreApplication.quit()
+
+    def _shutdown_log(self, results: list[dict]) -> bool:
+        failed = [r for r in results if not r["ok"]]
+        for r in results:
+            status = "OK" if r["ok"] else "FAIL"
+            logger.info("Shutdown %s: %s (%.3fs)", status, r["step"], r["duration_s"])
+        if failed:
+            logger.warning("Shutdown completed with %d failed steps", len(failed))
+        self._shutdown_results = results
+        return True
 
     @Slot()
     def cancelAllTasks(self):
