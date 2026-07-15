@@ -16,6 +16,42 @@ class CapabilityResolver:
             permission=permission,
         )
 
+    def set_available(self, name: str) -> None:
+        cap = self._capabilities.get(name)
+        if cap:
+            self._capabilities[name] = Capability(
+                name=name, available=True, degraded=False,
+                reason="", requires_confirmation=cap.requires_confirmation,
+                permission=cap.permission,
+            )
+
+    def set_degraded(self, name: str, reason: str = "degraded") -> None:
+        cap = self._capabilities.get(name)
+        if cap:
+            self._capabilities[name] = Capability(
+                name=name, available=True, degraded=True,
+                reason=reason, requires_confirmation=cap.requires_confirmation,
+                permission=cap.permission,
+            )
+
+    def set_unavailable(self, name: str, reason: str = "unavailable") -> None:
+        cap = self._capabilities.get(name)
+        if cap:
+            self._capabilities[name] = Capability(
+                name=name, available=False, degraded=False,
+                reason=reason, requires_confirmation=cap.requires_confirmation,
+                permission=cap.permission,
+            )
+
+    def set_confirmation_required(self, name: str, required: bool = True) -> None:
+        cap = self._capabilities.get(name)
+        if cap:
+            self._capabilities[name] = Capability(
+                name=name, available=cap.available, degraded=cap.degraded,
+                reason=cap.reason, requires_confirmation=required,
+                permission=cap.permission,
+            )
+
     def register_from_gateways(self, gateways: dict[str, Any]) -> None:
         capability_map: dict[str, str] = {
             "playback": "playback.control",
@@ -134,5 +170,14 @@ class CapabilityResolver:
             "preview_setting_change": ["settings.read"],
             "apply_setting_change": ["settings.modify"],
             "navigate": ["navigation.request"],
+            "enqueue": ["queue.modify"],
+            "device_sync": ["devices.sync"],
+            "settings_navigation": ["navigation.request"],
+            "diagnostics_open": ["diagnostics.read"],
+            "route_navigation": ["navigation.request"],
+            "mix_generate": ["mix.generate"],
+            "playlist_create": ["playlist.modify"],
+            "audio_analysis": ["audio_lab.analyze"],
+            "metadata_preview": ["metadata.read"],
         }
         return mapping.get(intent_id, [])

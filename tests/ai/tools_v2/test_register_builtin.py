@@ -36,7 +36,7 @@ class TestRegisterBuiltinTools:
         register_builtin_tools(registry, gws)
 
         tools = registry.list_tools()
-        assert len(tools) >= 55, f"Expected >=55 tools, got {len(tools)}"
+        assert len(tools) >= 62, f"Expected >=62 tools, got {len(tools)}"
 
     def test_all_tools_have_handlers(self):
         registry = ToolRegistryV2()

@@ -13,19 +13,23 @@ class TestConfirmationPolicyV2:
         assert policy.requires_confirmation(step) is False
 
     def test_always_mode_always_requires(self):
-        policy = ConfirmationPolicyV2(mode=ConfirmationMode.ALWAYS)
+        policy = ConfirmationPolicyV2(mode=ConfirmationMode.EXPLICIT)
         step = PlanStep(step_id="s1", tool="play_track")
         assert policy.requires_confirmation(step) is True
 
     def test_destructive_action_requires(self):
-        policy = ConfirmationPolicyV2(mode=ConfirmationMode.PER_DESTRUCTIVE_STEP)
-        step = PlanStep(step_id="s1", tool="delete_track")
-        assert policy.requires_confirmation(step) is True
+        from michi_ai.v2.core.models import ToolDefinition, PermissionLevel
+        policy = ConfirmationPolicyV2(mode=ConfirmationMode.DESTRUCTIVE)
+        step = PlanStep(step_id="s1", tool="delete_playlist")
+        tool_defn = ToolDefinition(name="delete_playlist", description="", destructive=True, permission=PermissionLevel.DESTRUCTIVE)
+        assert policy.requires_confirmation(step, tool_defn=tool_defn) is True
 
     def test_read_only_action_no_confirmation(self):
-        policy = ConfirmationPolicyV2(mode=ConfirmationMode.PER_DESTRUCTIVE_STEP)
+        from michi_ai.v2.core.models import ToolDefinition, PermissionLevel
+        policy = ConfirmationPolicyV2(mode=ConfirmationMode.DESTRUCTIVE)
         step = PlanStep(step_id="s1", tool="search_library")
-        assert policy.requires_confirmation(step) is False
+        tool_defn = ToolDefinition(name="search_library", description="", permission=PermissionLevel.READ_ONLY)
+        assert policy.requires_confirmation(step, tool_defn=tool_defn) is False
 
     def test_issue_creates_request(self):
         policy = ConfirmationPolicyV2()
@@ -88,6 +92,6 @@ class TestConfirmationPolicyV2:
         assert policy.pending_count() == 0
 
     def test_plan_requires_confirmation(self):
-        policy = ConfirmationPolicyV2(mode=ConfirmationMode.ONCE_PER_PLAN)
+        policy = ConfirmationPolicyV2(mode=ConfirmationMode.SOFT)
         step = PlanStep(step_id="s1", tool="play_track")
         assert policy.requires_confirmation(step, plan_requires=True) is True

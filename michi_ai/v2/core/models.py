@@ -109,10 +109,10 @@ class PermissionLevel(str, Enum):
 
 class ConfirmationMode(str, Enum):
     NONE = "NONE"
-    ONCE_PER_SESSION = "ONCE_PER_SESSION"
-    ONCE_PER_PLAN = "ONCE_PER_PLAN"
-    PER_DESTRUCTIVE_STEP = "PER_DESTRUCTIVE_STEP"
-    ALWAYS = "ALWAYS"
+    SOFT = "SOFT"
+    EXPLICIT = "EXPLICIT"
+    DESTRUCTIVE = "DESTRUCTIVE"
+    IRREVERSIBLE = "IRREVERSIBLE"
 
 
 class PrivacyLevel(str, Enum):
@@ -268,14 +268,31 @@ class ToolDefinition:
     output_schema: dict[str, Any] = field(default_factory=dict)
     permission: PermissionLevel = PermissionLevel.READ_ONLY
     capabilities: tuple[str, ...] = ()
+    required_capabilities: tuple[str, ...] = ()
     requires_confirmation: bool = False
+    confirmation_policy: str = "NONE"
     destructive: bool = False
     idempotent: bool = True
     cancellable: bool = False
     timeout_seconds: int = 30
     rollback_tool: str = ""
+    gateway: str = ""
     tags: tuple[str, ...] = ()
     handler: Any = None
+
+    def with_handler(self, handler: Any) -> ToolDefinition:
+        return ToolDefinition(
+            name=self.name, description=self.description, version=self.version,
+            input_schema=self.input_schema, output_schema=self.output_schema,
+            permission=self.permission, capabilities=self.capabilities,
+            required_capabilities=self.required_capabilities,
+            requires_confirmation=self.requires_confirmation,
+            confirmation_policy=self.confirmation_policy,
+            destructive=self.destructive, idempotent=self.idempotent,
+            cancellable=self.cancellable, timeout_seconds=self.timeout_seconds,
+            rollback_tool=self.rollback_tool, gateway=self.gateway,
+            tags=self.tags, handler=handler,
+        )
 
 
 @dataclass(frozen=True)
@@ -332,6 +349,7 @@ class PlanStep:
     rollback: str = ""
     timeout: int = 30
     cancellable: bool = False
+    compensate: str = ""
 
 
 @dataclass(frozen=True)
@@ -380,6 +398,7 @@ class PlanExecutionResult:
     error: str = ""
     code: ErrorCode = ErrorCode.OK
     duration_ms: float = 0.0
+    correlation_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -511,6 +530,7 @@ class EntityType(str, Enum):
     YEAR = "year"
     DECADE = "decade"
     DEVICE = "device"
+    SETTING = "setting"
     SERVER = "server"
     OUTPUT = "output"
     FORMAT = "format"

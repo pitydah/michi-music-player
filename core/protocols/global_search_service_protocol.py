@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+
+class GlobalSearchServiceProtocol(Protocol):
+    def search(self, query: str, owner: str = "global_search", timeout_ms: int = 5000) -> dict[str, Any]: ...
+    def cancel(self, owner: str = "global_search") -> None: ...
+    def cancel_request(self, request_id: int) -> bool: ...
