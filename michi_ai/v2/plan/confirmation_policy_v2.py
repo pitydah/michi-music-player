@@ -6,20 +6,22 @@ from typing import Any
 
 from michi_ai.v2.core.models import (
     ConfirmationMode, ConfirmationRequest, ErrorCode, OperationResult,
-    PlanStep,
+    PlanStep, ToolDefinition,
 )
 
 
 class ConfirmationPolicyV2:
     DEFAULT_TTL_SECONDS = 120
-    ALWAYS_CONFIRM_ACTIONS: frozenset[str] = frozenset({
-        "delete", "remove", "clear", "overwrite", "repair", "transfer",
-        "convert", "modify_metadata", "clean_history", "disconnect",
-        "apply_plan", "start_conversion", "apply_library_repair",
-        "start_device_sync", "apply_setting_change",
+    DESTRUCTIVE_ACTIONS: frozenset[str] = frozenset({
+        "delete_playlist", "clear_queue", "replace_queue",
+        "apply_library_repair", "start_conversion",
+        "apply_setting_change", "start_device_sync",
+    })
+    IRREVERSIBLE_ACTIONS: frozenset[str] = frozenset({
+        "delete_playlist",
     })
 
-    def __init__(self, mode: ConfirmationMode = ConfirmationMode.PER_DESTRUCTIVE_STEP, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> None:
+    def __init__(self, mode: ConfirmationMode = ConfirmationMode.DESTRUCTIVE, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> None:
         self._mode = mode
         self._ttl_seconds = ttl_seconds
         self._issued: dict[str, ConfirmationRequest] = {}
@@ -32,19 +34,25 @@ class ConfirmationPolicyV2:
     def set_mode(self, mode: ConfirmationMode) -> None:
         self._mode = mode
 
-    def requires_confirmation(self, step: PlanStep, plan_requires: bool = False) -> bool:
+    def requires_confirmation(self, step: PlanStep, plan_requires: bool = False, tool_defn: ToolDefinition | None = None) -> bool:
         if self._mode == ConfirmationMode.NONE:
             return False
 
-        if self._mode == ConfirmationMode.ALWAYS:
+        if self._mode == ConfirmationMode.SOFT and plan_requires:
             return True
 
-        if plan_requires and self._mode in (ConfirmationMode.ONCE_PER_PLAN, ConfirmationMode.PER_DESTRUCTIVE_STEP):
+        if self._mode == ConfirmationMode.EXPLICIT:
             return True
 
-        return step.tool in self.ALWAYS_CONFIRM_ACTIONS or any(
-            keyword in step.tool for keyword in self.ALWAYS_CONFIRM_ACTIONS
-        )
+        if self._mode == ConfirmationMode.DESTRUCTIVE:
+            if tool_defn and tool_defn.destructive:
+                return True
+            return plan_requires and step.tool in self.DESTRUCTIVE_ACTIONS
+
+        if self._mode == ConfirmationMode.IRREVERSIBLE:
+            return step.tool in self.IRREVERSIBLE_ACTIONS
+
+        return False
 
     def issue(self, plan_id: str, summary: str = "", affected_resources: tuple[str, ...] = (), risks: tuple[str, ...] = (), required_phrase: str = "", plan: Any | None = None) -> ConfirmationRequest:
         confirmation_id = uuid.uuid4().hex[:16]

@@ -69,10 +69,11 @@ class TestAdversarialPrivacy:
 
     def test_try_confirmation_bypass(self):
         from michi_ai.v2.plan.confirmation_policy_v2 import ConfirmationPolicyV2
-        from michi_ai.v2.core.models import ConfirmationMode, PlanStep
-        policy = ConfirmationPolicyV2(mode=ConfirmationMode.PER_DESTRUCTIVE_STEP)
+        from michi_ai.v2.core.models import ConfirmationMode, PlanStep, ToolDefinition, PermissionLevel
+        policy = ConfirmationPolicyV2(mode=ConfirmationMode.DESTRUCTIVE)
         step = PlanStep(step_id="s1", tool="delete_all_tracks")
-        assert policy.requires_confirmation(step) is True
+        tool_defn = ToolDefinition(name="delete_all_tracks", description="", destructive=True, permission=PermissionLevel.DESTRUCTIVE)
+        assert policy.requires_confirmation(step, tool_defn=tool_defn) is True
 
 
 class TestAdversarialBoundaries:

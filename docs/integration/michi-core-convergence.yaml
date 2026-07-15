@@ -1,0 +1,111 @@
+branch: michi-core-convergence
+description: "Core convergence — protocols, result, shutdown, CI, preflight, evidence"
+version: 1.0
+created: "2026-07-14"
+
+services:
+  - job_service
+  - action_registry
+  - confirmation_service
+  - playback_service
+  - queue_service
+  - device_sync_service
+  - audio_lab_service
+  - mix_query_service
+  - global_search_service
+  - notification_service
+  - michi_ai_service
+
+bridges:
+  - app
+  - navigation
+  - library
+  - playback
+  - nowplaying
+  - mix
+  - queue
+  - notification
+  - michi_ai
+  - audio_lab
+  - metadata
+
+contexts:
+  - appBridge
+  - navigationBridge
+  - libraryBridge
+  - playbackBridge
+  - nowplayingBridge
+  - mixBridge
+  - queueBridge
+  - notificationBridge
+  - michiAiBridge
+  - audioLabBridge
+  - metadataBridge
+
+routes:
+  - home
+  - library
+  - playback
+  - queue
+  - mix
+  - settings
+  - ai
+  - audio_lab
+
+protocols:
+  - JobServiceProtocol
+  - ActionRegistryProtocol
+  - ConfirmationServiceProtocol
+  - NavigationProtocol
+  - PlaybackServiceProtocol
+  - QueueServiceProtocol
+  - DeviceSyncServiceProtocol
+  - AudioLabServiceProtocol
+  - MixServiceProtocol
+  - GlobalSearchServiceProtocol
+  - NotificationServiceProtocol
+  - MichiAIServiceProtocol
+
+files:
+  - core/result.py
+  - core/protocols/__init__.py
+  - core/protocols/job_service_protocol.py
+  - core/protocols/action_registry_protocol.py
+  - core/protocols/confirmation_service_protocol.py
+  - core/protocols/navigation_protocol.py
+  - core/protocols/playback_service_protocol.py
+  - core/protocols/queue_service_protocol.py
+  - core/protocols/device_sync_service_protocol.py
+  - core/protocols/audio_lab_service_protocol.py
+  - core/protocols/mix_service_protocol.py
+  - core/protocols/global_search_service_protocol.py
+  - core/protocols/notification_service_protocol.py
+  - core/protocols/michi_ai_service_protocol.py
+  - ui_qml_bridge/app_bridge.py
+  - .github/workflows/ci.yml
+  - scripts/qml_integration_preflight.py
+  - scripts/qml_widget_dependency_audit.py
+  - scripts/qml_runtime_quality_gate.py
+  - scripts/qml_evidence_v9_collect.py
+  - docs/integration/michi-core-convergence.yaml
+  - tests/qml/infrastructure/test_protocols.py
+  - tests/qml/infrastructure/test_result.py
+  - tests/qml/infrastructure/test_shutdown.py
+  - tests/qml/infrastructure/test_ci_config.py
+  - tests/qml/infrastructure/test_preflight.py
+
+tests:
+  - tests/qml/composition/test_bootstrap.py
+  - tests/qml/composition/test_bridge_factory.py
+  - tests/qml/composition/test_context_registrar.py
+  - tests/qml/composition/test_launchers.py
+  - tests/qml/infrastructure/test_protocols.py
+  - tests/qml/infrastructure/test_result.py
+  - tests/qml/infrastructure/test_shutdown.py
+  - tests/qml/infrastructure/test_ci_config.py
+  - tests/qml/infrastructure/test_preflight.py
+
+incompatibilities:
+  - AppBridge.shutdown is now idempotent with 14+ tracked steps
+  - core/result.py OperationResult added; legacy core/results.py OperationResult retained for backwards compat
+  - core/protocols/ added; existing core/interfaces.py ABCs retained

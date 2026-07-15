@@ -604,4 +604,97 @@ BUILTIN_TOOL_DEFINITIONS: list[ToolDefinition] = [
         permission=PermissionLevel.READ_ONLY, capabilities=("navigation.request",),
         idempotent=True, timeout_seconds=5,
     ),
+    ToolDefinition(
+        name="enqueue", version="2.0.0",
+        description="Add a track to the playback queue",
+        input_schema=_schema(
+            required=["track_id"],
+            properties={"track_id": {"type": "string"}, "position": {"type": "integer", "description": "Queue position (optional)"}},
+        ),
+        permission=PermissionLevel.PLAYBACK_CONTROL, capabilities=("queue.modify",),
+        idempotent=True, timeout_seconds=10,
+    ),
+    ToolDefinition(
+        name="device_sync", version="2.0.0",
+        description="Synchronize library or playlist with a device",
+        input_schema=_schema(
+            required=["device_id"],
+            properties={"device_id": {"type": "string"}, "playlist_id": {"type": "string"}, "full_sync": {"type": "boolean"}},
+        ),
+        permission=PermissionLevel.DEVICE_TRANSFER, capabilities=("devices.sync",),
+        requires_confirmation=True, destructive=False, cancellable=True, timeout_seconds=300,
+    ),
+    ToolDefinition(
+        name="settings_navigation", version="2.0.0",
+        description="Navigate to a settings section",
+        input_schema=_schema(
+            required=["section"],
+            properties={"section": {"type": "string"}, "param": {"type": "string"}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("navigation.request",),
+        idempotent=True, timeout_seconds=5,
+    ),
+    ToolDefinition(
+        name="diagnostics_open", version="2.0.0",
+        description="Open the diagnostics view for a subsystem",
+        input_schema=_schema(
+            required=["subsystem"],
+            properties={"subsystem": {"type": "string", "enum": ["audio", "network", "ecosystem", "library", "devices"]}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("diagnostics.read",),
+        idempotent=True, timeout_seconds=5,
+    ),
+    ToolDefinition(
+        name="route_navigation", version="2.0.0",
+        description="Navigate to a specific route in the application",
+        input_schema=_schema(
+            required=["route"],
+            properties={"route": {"type": "string"}, "params": {"type": "object"}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("navigation.request",),
+        idempotent=True, timeout_seconds=5,
+    ),
+    ToolDefinition(
+        name="mix_generate", version="2.0.0",
+        description="Generate a smart mix based on criteria",
+        input_schema=_schema(
+            properties={
+                "seed_track_id": {"type": "string"}, "genre": {"type": "string"},
+                "decade": {"type": "string"}, "mood": {"type": "string"},
+                "limit": {"type": "integer", "default": 20},
+            },
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("mix.generate",),
+        cancellable=True, idempotent=False, timeout_seconds=30,
+    ),
+    ToolDefinition(
+        name="playlist_create", version="2.0.0",
+        description="Create a new playlist",
+        input_schema=_schema(
+            required=["name"],
+            properties={"name": {"type": "string", "maxLength": 200}, "description": {"type": "string"}, "track_ids": {"type": "array", "maxItems": 500}},
+        ),
+        permission=PermissionLevel.LIBRARY_MUTATION, capabilities=("playlist.modify",),
+        requires_confirmation=False, destructive=False, idempotent=False, timeout_seconds=15,
+    ),
+    ToolDefinition(
+        name="audio_analysis", version="2.0.0",
+        description="Run audio analysis on a track",
+        input_schema=_schema(
+            required=["track_id"],
+            properties={"track_id": {"type": "string"}, "analysis_type": {"type": "string", "enum": ["full", "bpm", "key", "loudness", "spectral"]}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("audio_lab.analyze",),
+        idempotent=True, timeout_seconds=60,
+    ),
+    ToolDefinition(
+        name="metadata_preview", version="2.0.0",
+        description="Preview metadata changes for a track or album",
+        input_schema=_schema(
+            required=["track_id"],
+            properties={"track_id": {"type": "string"}, "changes": {"type": "object"}},
+        ),
+        permission=PermissionLevel.READ_ONLY, capabilities=("metadata.read",),
+        idempotent=True, timeout_seconds=15,
+    ),
 ]

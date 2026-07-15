@@ -65,7 +65,10 @@ def _make_handler(gateway: Any | None, method_name: str, error_message: str = ""
         method = getattr(gateway, method_name, None)
         if method is None:
             return {"ok": False, "error": f"Method '{method_name}' not found", "code": "INTERNAL_ERROR"}
-        return method(**kwargs)
+        result = method(**kwargs)
+        if result is None:
+            return {"ok": False, "error": f"Gateway method '{method_name}' returned None", "code": "TOOL_FAILED"}
+        return result
     handler.__name__ = f"handler_{method_name}"
     return handler
 
@@ -161,6 +164,21 @@ def register_builtin_tools(
         "restore_setting": ("settings", "suggest_change"),
         # navigation
         "navigate": ("navigation", "request_navigation"),
+        "settings_navigation": ("navigation", "request_navigation"),
+        "route_navigation": ("navigation", "request_navigation"),
+        "diagnostics_open": ("diagnostics", "get_diagnostics"),
+        # new playback tools
+        "enqueue": ("queue", "add_to_queue"),
+        # device sync
+        "device_sync": ("device", "start_sync"),
+        # mix generate
+        "mix_generate": ("mix", "create_mix"),
+        # playlist create
+        "playlist_create": ("playlist", "create_playlist"),
+        # audio analysis
+        "audio_analysis": ("audio_lab", "analyze_audio"),
+        # metadata preview
+        "metadata_preview": ("library", "find_metadata_gaps"),
     }
 
     _HANDLER_CACHE: dict[str, callable] = {}
