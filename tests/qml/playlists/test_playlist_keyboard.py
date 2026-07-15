@@ -5,7 +5,6 @@ import sqlite3
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-import pytest
 
 
 @pytest.fixture

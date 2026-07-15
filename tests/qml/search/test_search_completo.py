@@ -3,7 +3,6 @@ QML debounce, request generation, stale guard, partial results,
 domain-specific searches across tracks/albums/artists/playlists/
 folders/genres/radio/devices/connections/actions/settings.
 """
-import time
 from unittest.mock import MagicMock
 
 import pytest

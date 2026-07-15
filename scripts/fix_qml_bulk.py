@@ -25,9 +25,7 @@ def is_duplicated(content: str) -> bool:
     first_half = "\n".join(lines[:half])
     second_half = "\n".join(lines[half:half + half])
     # If first_half appears inside second_half, it's duplicated
-    if first_half.strip() and first_half.strip() in second_half:
-        return True
-    return False
+    return bool(first_half.strip() and first_half.strip() in second_half)
 
 
 def remove_duplicated(content: str) -> str:
@@ -48,11 +46,9 @@ def fix_stray_imports(content: str) -> str:
     """Remove stray import statements inside component bodies (not at top)."""
     lines = content.splitlines()
     # Find the first top-level { after the initial imports
-    brace_depth = 0
     imports_done = False
     fixed_lines = []
-    in_top_level = False
-    for i, line in enumerate(lines):
+    for _i, line in enumerate(lines):
         stripped = line.strip()
         if not imports_done:
             if stripped.startswith("import "):
@@ -76,7 +72,7 @@ def fix_duplicate_signals(content: str) -> str:
     # Find property declarations and their auto-generated change signals
     props = re.findall(r'^\s*property\s+\w+\s+(\w+)', content, re.MULTILINE)
     prop_signals = {p for p in props}
-    
+
     # Remove explicit signal declarations that conflict with property change signals
     lines = content.splitlines()
     fixed = []
@@ -96,7 +92,7 @@ def fix_duplicate_signals(content: str) -> str:
 def fix_balance_slider_signal(content: str) -> str:
     """Fix BalanceSlider.qml: remove explicit signal balanceChanged since it's auto-generated from property."""
     # The property balance generates an implicit balanceChanged signal
-    # Remove explicit `signal balanceChanged(real value)` 
+    # Remove explicit `signal balanceChanged(real value)`
     return re.sub(
         r'\n\s*signal balanceChanged\([^)]*\)',
         '',
@@ -134,7 +130,7 @@ def fix_connection_setup_wizard(content: str) -> str:
 def fix_base_dialog_uppercase_props(content: str) -> str:
     """Fix BaseDialog.qml: rename uppercase properties."""
     # Replace property names that start with uppercase
-    content = re.sub(r'\bproperty\s+\w+\s+([A-Z]\w+)\b', 
+    content = re.sub(r'\bproperty\s+\w+\s+([A-Z]\w+)\b',
                      lambda m: m.group(0).replace(m.group(1), m.group(1)[0].lower() + m.group(1)[1:]),
                      content)
     return content
@@ -152,7 +148,6 @@ def fix_notification_toast(content: str) -> str:
     lines = content.splitlines()
     seen_assignments = {}
     fixed = []
-    in_component = False
     for line in lines:
         stripped = line.strip()
         # Track property value assignments at top level of root Item
@@ -244,7 +239,7 @@ def main():
                 for line in lines:
                     m = re.match(r'^(\s*)(\w+)\s*:\s', line)
                     if m:
-                        indent, prop = m.group(1), m.group(2)
+                        _indent, prop = m.group(1), m.group(2)
                         if prop not in ('id', 'objectName', 'anchors', 'children', 'Accessible', 'visible', 'enabled', 'clip', 'z', 'opacity', 'focus', 'activeFocusOnTab', 'hoverEnabled', 'Keys', 'Keys.onSpacePressed', 'Keys.onReturnPressed', 'Keys.onEnterPressed', 'Keys.onEscapePressed', 'Keys.onUpPressed', 'Keys.onDownPressed', 'Keys.onLeftPressed', 'Keys.onRightPressed', 'Keys.onTabPressed', 'Keys.onBacktabPressed', 'Keys.onDeletePressed', 'Keys.onBackspacePressed', 'Layout', 'width', 'height', 'implicitWidth', 'implicitHeight', 'minimumWidth', 'minimumHeight', 'maximumWidth', 'maximumHeight', 'Layout.preferredWidth', 'Layout.preferredHeight', 'Layout.fillWidth', 'Layout.fillHeight', 'Layout.minimumWidth', 'Layout.minimumHeight', 'Layout.maximumWidth', 'Layout.maximumHeight', 'Layout.alignment', 'Layout.margins', 'Layout.leftMargin', 'Layout.rightMargin', 'Layout.topMargin', 'Layout.bottomMargin'):
                             if prop in seen:
                                 continue

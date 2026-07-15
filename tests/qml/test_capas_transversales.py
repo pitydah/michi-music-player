@@ -279,7 +279,6 @@ class TestAccessibilityBridgeIntegrations:
         ab = AccessibilityBridge()
         old = ab.fontScale
         ab.fontScale = "large" if old != "large" else "small"
-        val_before = ab.fontScale
         ab.refresh()
         assert isinstance(ab.fontScale, str)
 

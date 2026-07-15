@@ -60,7 +60,7 @@ def test_pz_frozen_adapter_files_exist():
 def test_pz_qml_page_exists_for_safe_modules():
     safe = _safe_to_delete_files()
     pages_dir = REPO / "ui_qml" / "pages"
-    bridge_dir = REPO / "ui_qml_bridge"
+    REPO / "ui_qml_bridge"
     qml_pages = set()
     for p in pages_dir.rglob("*.qml"):
         qml_pages.add(p.stem.lower())

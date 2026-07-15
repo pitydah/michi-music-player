@@ -3,9 +3,7 @@ from unittest.mock import MagicMock, PropertyMock
 from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 
 """Full workflow: select zones -> group -> change volume -> ungroup."""
-from unittest.mock import MagicMock, PropertyMock
 
-from ui_qml_bridge.home_audio_bridge import HomeAudioBridge
 import pytest
 pytestmark = pytest.mark.isolation
 

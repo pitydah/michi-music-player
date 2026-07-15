@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 from ui_qml_bridge.bridge_factory import BridgeFactory
 from ui_qml_bridge.service_bundle import ServiceBundle
 
-import pytest
 
 BRIDGE_FACTORY_PATH = Path(__file__).resolve().parent.parent.parent / "ui_qml_bridge" / "bridge_factory.py"
 

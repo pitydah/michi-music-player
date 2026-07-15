@@ -246,7 +246,6 @@ def test_generation_guard_prevents_stale_callbacks(bridge, mock_service, mock_wm
     bridge.scanDisc()
     bridge.setDestination("/music/rips")
     bridge.startExtraction()
-    gen = bridge._extraction_gen
     call_kwargs = mock_wm.run_task.call_args[1]
     on_done = call_kwargs.get("on_done")
     bridge._extraction_gen += 1

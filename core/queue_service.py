@@ -139,7 +139,7 @@ class QueueService:
         self._save_undo()
         for idx in sorted(indices, reverse=True):
             if 0 <= idx < len(self._items):
-                removed = self._items.pop(idx)
+                self._items.pop(idx)
                 if self._current_index == idx:
                     self._current_index = min(idx, len(self._items) - 1) if self._items else -1
                 elif self._current_index > idx:

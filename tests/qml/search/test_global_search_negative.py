@@ -4,7 +4,6 @@ import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.global_search_bridge import GlobalSearchBridge
-import pytest
 
 
 @pytest.fixture

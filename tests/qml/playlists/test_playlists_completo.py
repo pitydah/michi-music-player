@@ -6,7 +6,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -118,7 +118,7 @@ class FakeDb:
         if 0 <= from_index < len(ids) and 0 <= to_index < len(ids):
             val = positions.pop(from_index)
             positions.insert(to_index, val)
-            for tid, pos in zip(ids, positions):
+            for tid, pos in zip(ids, positions, strict=False):
                 self.conn.execute("UPDATE playlist_tracks SET position=? WHERE id=?", (pos, tid))
             self.conn.commit()
 
@@ -193,7 +193,6 @@ class TestCreateRenameDuplicate:
 
 class TestDeleteClear:
     def test_delete_requires_confirmation_when_bridge_present(self, populated_bridge):
-        cid = "test_cid"
         confirmation = MagicMock()
         confirmation.requestConfirmation = MagicMock(return_value=True)
         populated_bridge._confirmation = confirmation
@@ -450,7 +449,7 @@ class TestScore:
 class TestRefresh:
     def test_refresh(self, svc, bridge):
         svc.create("New")
-        result = bridge.refresh()
+        bridge.refresh()
         assert bridge._playlists
         assert len(bridge._playlists) >= 1
 

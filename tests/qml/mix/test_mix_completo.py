@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock
 
-from ui_qml_bridge.mix_bridge import MixBridge, MixState, MIX_CATEGORIES
+from ui_qml_bridge.mix_bridge import MixBridge, MixState
 
 
 @pytest.fixture

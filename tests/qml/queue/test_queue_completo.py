@@ -4,7 +4,6 @@ Covers: reorder, remove, clear, undo, play item, selection, save playlist,
 restore after restart, missing tracks, partial restore.
 """
 
-import json
 import os
 
 from unittest.mock import MagicMock

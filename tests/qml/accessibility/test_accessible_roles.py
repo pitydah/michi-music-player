@@ -58,4 +58,4 @@ class TestAccessibleRoles:
         qml_path = QML_DIR / page_path
         if not qml_path.exists():
             pytest.skip(f"{page_path} not found")
-        content = qml_path.read_text()
+        qml_path.read_text()

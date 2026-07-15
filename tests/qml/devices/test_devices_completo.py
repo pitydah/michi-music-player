@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -11,10 +11,6 @@ from ui_qml_bridge.devices_bridge import (
     STATE_EMPTY,
     STATE_READY,
     STATE_PAIRING,
-    STATE_PLANNING,
-    STATE_TRANSFERRING,
-    STATE_CANCELLING,
-    STATE_PARTIAL_SUCCESS,
     STATE_ERROR,
     STATE_DEFERRED_PHYSICAL,
 )

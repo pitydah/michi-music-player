@@ -4,7 +4,6 @@ import pytest
 import sqlite3
 
 from core.playlist_service import PlaylistService
-import pytest
 
 
 @pytest.fixture

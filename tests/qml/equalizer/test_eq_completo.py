@@ -337,7 +337,7 @@ def test_error_on_backend_exception(bridge, mock_player):
 
 def test_refresh_fallback_presets(bridge):
     with patch(f"{PRESETS_MODULE}.get_preset_names") as names, \
-         patch(f"{PRESETS_MODULE}.load_graphic_preset") as load:
+         patch(f"{PRESETS_MODULE}.load_graphic_preset"):
         names.side_effect = Exception("DB error")
         result = bridge.refresh()
         assert result["ok"] is True
@@ -348,7 +348,7 @@ def test_refresh_fallback_presets(bridge):
 def test_graphic_bands_property_includes_freq(bridge):
     bands = bridge.graphicBands
     assert len(bands) == GRAPHIC_BAND_COUNT
-    for i, b in enumerate(bands):
+    for _i, b in enumerate(bands):
         assert b["freq"] > 0
         assert "gain" in b
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Extract first clean copy from QML files with duplicate content.
 
-Strategy: scan lines, skip everything after we see a second 
+Strategy: scan lines, skip everything after we see a second
 'import' block in the file body (not at the top).
 """
-import re
 from pathlib import Path
 
 QML_DIR = Path("ui_qml")
@@ -12,7 +11,7 @@ QML_DIR = Path("ui_qml")
 
 def extract_first_copy(content: str) -> str:
     lines = content.splitlines()
-    
+
     # Phase 1: collect all top-level imports (lines 0..N where line starts with "import ")
     import_end = 0
     for i, line in enumerate(lines):
@@ -20,14 +19,14 @@ def extract_first_copy(content: str) -> str:
             import_end = i + 1
         else:
             break
-    
+
     # Phase 2: find the opening brace of the root item (first non-import line)
     root_start = import_end
     for i in range(import_end, len(lines)):
         if "{" in lines[i]:
             root_start = i
             break
-    
+
     # Phase 3: track brace depth from root_start
     # Stop when we see an import statement AFTER the root has started
     depth = 0
@@ -35,23 +34,23 @@ def extract_first_copy(content: str) -> str:
     for i in range(root_start, len(lines)):
         line = lines[i]
         stripped = line.strip()
-        
+
         # If we see import after root started, this is the second copy
         if stripped.startswith("import ") and depth == 0:
             first_copy_end = i
             break
-        
+
         depth += line.count("{")
         depth -= line.count("}")
-        
+
         if depth == 0 and i > root_start:
             # Root item closed
             first_copy_end = i + 1
             break
-    
+
     if first_copy_end is None:
         return content
-    
+
     kept = lines[:first_copy_end]
     return "\n".join(kept) + "\n"
 
@@ -86,7 +85,7 @@ def main():
         "pages/playlists/PlaylistEditorDialog.qml",
         "pages/search/SearchResultRow.qml",
     ]
-    
+
     for rel in files:
         p = QML_DIR / rel
         if not p.exists():

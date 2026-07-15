@@ -8,7 +8,6 @@ import os
 
 from core.history_query_service import HistoryQueryService
 from ui_qml_bridge.history_bridge import HistoryBridge
-import pytest
 
 
 @pytest.fixture

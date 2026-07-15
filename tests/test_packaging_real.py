@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-IGNORE_DIRS = {"__pycache__", ".venv", "node_modules", "__pycache__"}
+IGNORE_DIRS = {"__pycache__", ".venv", "node_modules"}
 
 MICH_PACKAGE = REPO / "michi"
 CORE_DIRS = ["core", "audio", "library", "metadata", "lyrics",
@@ -77,7 +77,6 @@ class TestAppLauncher:
     """PF — michi/app_launcher.py rules."""
 
     def test_default_mode_is_qml(self):
-        from michi.app_launcher import launch
         import os
         if "MICHI_UI" in os.environ:
             del os.environ["MICHI_UI"]
@@ -195,7 +194,7 @@ class TestMichiQmlNoUiDir:
                     continue
                 if "from ui " in s or "from ui." in s or "import ui" in s:
                     violations.append(f"{_get_rel(pyfile)}: {s}")
-        assert len(violations) == 0, f"QML imports ui/:\n" + "\n".join(violations)
+        assert len(violations) == 0, "QML imports ui/:\n" + "\n".join(violations)
 
 
 class TestMichiQmlNoQtWidgetsReal:
@@ -234,7 +233,7 @@ class TestMichiCoreNoUiDir:
                     rel = _get_rel(pyfile)
                     if rel not in KNOWN_CORE_UI_IMPORTS:
                         violations.append(f"{rel}: {s}")
-        assert len(violations) == 0, f"New (undocumented) core imports ui/:\n" + "\n".join(violations)
+        assert len(violations) == 0, "New (undocumented) core imports ui/:\n" + "\n".join(violations)
 
     def test_core_no_new_ui_imports_ast(self):
         files = _walk_py(REPO, CORE_DIRS)

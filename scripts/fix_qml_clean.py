@@ -41,10 +41,10 @@ def main():
 
         # Keep lines 0..end_line inclusive
         kept = lines[:end_line + 1]
-        
+
         # Add closing braces
         kept.append("}" * extra_closes)
-        
+
         new_content = "\n".join(kept) + "\n"
         p.write_text(new_content, encoding="utf-8")
         print(f"  [FIX] {rel} (kept {len(kept)} lines, +{extra_closes} braces)")

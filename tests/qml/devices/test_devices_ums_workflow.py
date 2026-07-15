@@ -1,6 +1,6 @@
 """Test Devices UMS workflow through DevicesBridge and DeviceSyncService.
 
-Contractual UMS workflow: discover  identify  profile  calculate storage 
+Contractual UMS workflow: discover  identify  profile  calculate storage
 plan  transfer  cancel  cleanup  retry  verify files.
 Audio-only: validate extensions and MIME. No video.
 Strategy for unsupported codec: skip, warn, transcode audio optional.

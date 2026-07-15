@@ -183,9 +183,8 @@ def main():
     passed = loaded == total and len(errs) == 0
     if not args.quiet:
         print(f"  Gate: {'PASSED' if passed else 'FAILED'}")
-        if not passed:
-            if loaded != total:
-                print(f"    -> {total - loaded} file(s) not loaded ({len(errs)} errors)")
+        if not passed and loaded != total:
+            print(f"    -> {total - loaded} file(s) not loaded ({len(errs)} errors)")
     print(f"  Total={total}  Loaded={loaded}  Errors={len(errs)}")
     print(f"{'=' * 60}\n")
 
