@@ -116,6 +116,9 @@ class TestAudioIntegrity:
         p2 = self._tmp_file(".wav", b"\xff" * 512)
         try:
             from core.audio_lab.audio_integrity_service import AudioIntegrityService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
             svc = AudioIntegrityService(db=db, wm=wm)
             groups = svc.check_duplicate_content([p1, p2])
             assert len(groups) == 0

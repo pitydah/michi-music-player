@@ -94,6 +94,9 @@ class TestEqAppliedStateV2:
 
     def test_import_preset(self, mock_player, tmp_path):
         import json
+import pytest
+pytestmark = [pytest.mark.qml_module("eq_dsp")]
+
         preset_file = tmp_path / "test_preset.json"
         preset_file.write_text(json.dumps({
             "name": "Test",

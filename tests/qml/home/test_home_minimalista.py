@@ -2,14 +2,16 @@
 active jobs, errors, assistant actions, server status. No duplicar Biblioteca."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from core.home.home_status import (
-    AssistantSuggestion, HomeCardError, HomeDashboardSnapshot, LibraryHomeStatus,
+    AssistantSuggestion, HomeCardError, LibraryHomeStatus,
 )
 from core.home.home_dashboard_service import HomeDashboardService
+pytestmark = [pytest.mark.qml_module("home")]
+
 
 
 def _make_context_svc():

@@ -3,6 +3,8 @@ import pytest
 import sqlite3
 
 from core.playlist_service import PlaylistService
+pytestmark = [pytest.mark.qml_module("playlists")]
+
 
 
 @pytest.fixture

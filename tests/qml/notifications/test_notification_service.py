@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.notification_service import Notification, NotificationService, NotificationType
+pytestmark = [pytest.mark.qml_module("notification")]
+
 
 
 @pytest.fixture

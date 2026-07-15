@@ -7,6 +7,8 @@ import pytest
 from PySide6.QtCore import Qt
 
 from ui_qml.models.AlbumPagedListModel import AlbumPagedListModel
+pytestmark = [pytest.mark.qml_module("album_views")]
+
 
 
 @pytest.fixture

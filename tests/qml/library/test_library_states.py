@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 
 
 from ui_qml_bridge.library_bridge import LibraryBridge, LibraryState
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 def test_initial_state():

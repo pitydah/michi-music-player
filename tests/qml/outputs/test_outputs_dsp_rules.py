@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ui_qml_bridge.output_profiles_bridge import OutputProfilesBridge
+pytestmark = [pytest.mark.qml_module("output_profiles")]
+
 
 PROFILES_MODULE = "audio.output_profiles"
 

@@ -1,5 +1,8 @@
 
 from core.results import OperationResult, OperationError, ValidationResult, JobResult
+import pytest
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
 
 
 class TestOperationResultContract:

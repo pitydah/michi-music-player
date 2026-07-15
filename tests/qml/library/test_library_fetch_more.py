@@ -7,6 +7,8 @@ import pytest
 from PySide6.QtCore import QCoreApplication
 
 from ui_qml.models.TrackListModel import TrackListModel
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 @pytest.fixture

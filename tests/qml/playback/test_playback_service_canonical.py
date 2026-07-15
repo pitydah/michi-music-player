@@ -10,6 +10,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from audio.player_service import PlayerService
+pytestmark = [pytest.mark.qml_module("playback")]
+
 
 
 @pytest.fixture

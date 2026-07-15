@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 from ui_qml_bridge.mix_bridge import MixBridge
 from ui_qml_bridge.query_executor import QueryExecutor
 from core.worker_manager import WorkerManager
+pytestmark = [pytest.mark.qml_module("mix")]
+
 
 
 @pytest.fixture

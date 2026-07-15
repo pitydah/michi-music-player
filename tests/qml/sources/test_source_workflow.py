@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ui_qml_bridge.library_bridge import LibraryBridge
+pytestmark = [pytest.mark.qml_module("library")]
+
 
 
 @pytest.fixture

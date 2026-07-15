@@ -75,6 +75,9 @@ def test_bulk_remove(svc):
 
 def test_retention_removes_old(svc):
     import time
+import pytest
+pytestmark = [pytest.mark.qml_module("history")]
+
     old_time = time.time() - 10000000
     svc._db.conn.execute("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)", ("very_old", old_time))
     svc._db.conn.commit()

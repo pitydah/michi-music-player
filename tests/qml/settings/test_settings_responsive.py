@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import QUrl, QObject, Property, Signal, Slot
 from PySide6.QtQml import QQmlComponent, QQmlEngine
+pytestmark = [pytest.mark.qml_module("settings")]
+
 
 QML_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
 

@@ -4,6 +4,8 @@ import sqlite3
 import pytest
 
 from core.library.repositories.genre_repository import GenreRepository
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 @pytest.fixture

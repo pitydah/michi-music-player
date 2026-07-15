@@ -3,6 +3,8 @@ import pytest
 import sqlite3
 
 from core.global_search_service import GlobalSearchService, SearchStaleError
+import pytest
+pytestmark = [pytest.mark.qml_module("global_search")]
 
 
 @pytest.fixture

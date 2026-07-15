@@ -9,6 +9,8 @@ import pytest
 import sqlite3
 
 from ui_qml_bridge.library_bridge import LibraryBridge, LibraryState
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 @pytest.fixture

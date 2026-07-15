@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 
 
 from ui_qml_bridge.library_bridge import LibraryBridge
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 def test_selection_bar_toggle():

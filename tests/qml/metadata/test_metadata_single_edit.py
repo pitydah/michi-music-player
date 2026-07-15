@@ -22,6 +22,9 @@ class TestMetadataSingleEdit:
     @pytest.fixture
     def bridge(self):
         from ui_qml_bridge.metadata_bridge import MetadataBridge
+import pytest
+pytestmark = [pytest.mark.qml_module("metadata")]
+
         return MetadataBridge(worker_manager=None)
 
     def test_load_metadata_returns_ok(self, bridge):

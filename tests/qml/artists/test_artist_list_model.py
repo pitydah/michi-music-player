@@ -7,6 +7,8 @@ import pytest
 from PySide6.QtCore import Qt
 
 from ui_qml.models.ArtistListModel import ArtistListModel
+pytestmark = [pytest.mark.qml_module("album_views")]
+
 
 
 @pytest.fixture

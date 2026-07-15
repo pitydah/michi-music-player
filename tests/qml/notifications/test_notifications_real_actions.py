@@ -6,6 +6,8 @@ import pytest
 
 from ui_qml_bridge.notification_bridge import NotificationBridge
 from ui_qml_bridge.action_registry import ActionRegistry
+pytestmark = [pytest.mark.qml_module("notification")]
+
 
 
 @pytest.fixture

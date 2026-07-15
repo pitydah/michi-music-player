@@ -83,6 +83,9 @@ class TestReplayGain:
 
     def test_replaygain_album_computation(self, app, db, wm):
         from core.audio_lab.replaygain_service import ReplayGainService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         svc = ReplayGainService(db=db, wm=wm)
         results = svc.analyze_album(["/missing1.flac", "/missing2.flac"])
         assert len(results) == 2

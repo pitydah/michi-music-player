@@ -3,6 +3,8 @@ import pytest
 from unittest.mock import MagicMock
 
 from ui_qml_bridge.mix_bridge import MixBridge
+pytestmark = [pytest.mark.qml_module("mix")]
+
 
 
 @pytest.fixture

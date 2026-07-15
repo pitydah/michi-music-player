@@ -9,6 +9,8 @@ from ui_qml_bridge.queue_bridge import QueueBridge, _queue_state_path
 from ui_qml_bridge.app_bridge import AppBridge
 from ui_qml_bridge.bridge_factory import BridgeFactory
 from ui_qml_bridge.service_bundle import ServiceBundle
+pytestmark = [pytest.mark.qml_module("queue")]
+
 
 
 @pytest.fixture

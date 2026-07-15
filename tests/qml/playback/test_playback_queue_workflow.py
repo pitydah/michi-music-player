@@ -133,4 +133,7 @@ def test_queue_service_persistence_roundtrip(queue_service):
 
 def _queue_state_path():
     from core.queue_service import _queue_state_path as qsp
+import pytest
+pytestmark = [pytest.mark.qml_module("playback")]
+
     return qsp()

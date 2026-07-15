@@ -13,6 +13,8 @@ from core.settings_adapters import (
 )
 from core.settings_runtime_coordinator import SettingsRuntimeCoordinator
 from core.settings_runtime_coordinator import SettingsApplyResult as CoordinatorApplyResult
+pytestmark = [pytest.mark.qml_module("settings")]
+
 
 
 @pytest.fixture

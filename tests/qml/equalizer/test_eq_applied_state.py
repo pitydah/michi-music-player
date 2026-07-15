@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.eq_bridge import EqBridge, GRAPHIC_BAND_COUNT
+pytestmark = [pytest.mark.qml_module("eq_dsp")]
+
 
 
 @pytest.fixture

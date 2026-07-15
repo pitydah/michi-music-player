@@ -46,6 +46,9 @@ class TestAudioLabAnalysisV2:
     @pytest.fixture
     def svc(self, app, db, wm):
         from core.audio_lab.audio_analysis_service import AudioAnalysisService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         return AudioAnalysisService(db=db, wm=wm)
 
     def test_analysis_returns_codec(self, svc, sample_flac):

@@ -1,7 +1,7 @@
 {
   "counts": {
     "REQUIRED_FALLBACK": 1,
-    "MIGRATION_PENDING": 66,
+    "MIGRATION_PENDING": 65,
     "UNSAFE_HYBRID": 0,
     "DUPLICATED_LOGIC": 25,
     "REMOVABLE": 13

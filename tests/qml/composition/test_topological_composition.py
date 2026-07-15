@@ -5,6 +5,9 @@ from unittest.mock import Mock
 from core.service_container import ServiceContainer
 from ui_qml_bridge.bridge_factory import BridgeFactory
 from ui_qml_bridge.service_bundle import ServiceBundle
+import pytest
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
 
 
 def _make_container(**overrides) -> ServiceContainer:

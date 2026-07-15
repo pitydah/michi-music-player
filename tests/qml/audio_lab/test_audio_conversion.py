@@ -102,6 +102,9 @@ class TestAudioConversion:
 
     def test_conversion_signal_connectivity(self, app, db, wm):
         from core.audio_lab.audio_conversion_service import AudioConversionService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         svc = AudioConversionService(db=db, wm=wm)
         signals = []
         svc.conversionStarted.connect(lambda j: signals.append(("start", j)))

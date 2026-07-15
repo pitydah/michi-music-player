@@ -4,6 +4,8 @@ from __future__ import annotations
 import pytest
 
 from ui_qml_bridge.selection_controller import SelectionController
+pytestmark = [pytest.mark.qml_module("library")]
+
 
 
 class MockSelectionSource:

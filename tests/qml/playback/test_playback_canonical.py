@@ -11,6 +11,8 @@ import pytest
 
 from audio.player_service import PlayerService
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+pytestmark = [pytest.mark.qml_module("playback")]
+
 
 
 @pytest.fixture

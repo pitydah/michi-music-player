@@ -17,6 +17,8 @@ from ui_qml_bridge.app_bridge import AppBridge
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
 from ui_qml_bridge.service_bundle import ServiceBundle
 from ui_qml_bridge.bridge_factory import BridgeFactory
+pytestmark = [pytest.mark.qml_module("queue")]
+
 
 
 @pytest.fixture

@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
+pytestmark = [pytest.mark.qml_module("accessibility")]
+
 
 
 class FakePlaybackService:

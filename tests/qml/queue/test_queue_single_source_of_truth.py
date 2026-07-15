@@ -60,6 +60,9 @@ def test_queue_listmodel_reads_from_queue_service(service, sample_items):
     player = MagicMock()
     player.get_queue.return_value = sample_items
     from ui_qml.models.QueueListModel import QueueListModel
+import pytest
+pytestmark = [pytest.mark.qml_module("queue")]
+
     model = QueueListModel(player_service=player)
     assert model._fetch_count() == 3
     page = model._fetch_page(0, 10)

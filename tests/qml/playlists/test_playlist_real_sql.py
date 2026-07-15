@@ -4,6 +4,8 @@ import sqlite3
 from unittest.mock import patch
 
 from core.playlist_service import PlaylistService
+pytestmark = [pytest.mark.qml_module("playlists")]
+
 
 
 @pytest.fixture

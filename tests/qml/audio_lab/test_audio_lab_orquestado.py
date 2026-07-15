@@ -63,6 +63,9 @@ class TestAudioLabOrquestado:
     @pytest.fixture
     def bridge(self, app, db, audio_lab_service, audio_lab_state, mock_player):
         from ui_qml_bridge.audio_lab_bridge import AudioLabBridge
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         return AudioLabBridge(
             db_conn=db,
             player_service=mock_player,

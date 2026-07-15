@@ -1,5 +1,8 @@
 
 from core.dependency_graph import SERVICE_ORDER, SERVICE_DEPENDENCIES, resolve_order
+import pytest
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
 
 
 class TestServiceOrderIsList:

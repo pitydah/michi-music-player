@@ -227,6 +227,9 @@ class TestAccessibilityScreenReader:
 
     def test_balance_backend_support(self):
         from ui_qml_bridge.accessibility_bridge import AccessibilityBridge
+import pytest
+pytestmark = [pytest.mark.qml_module("accessibility")]
+
         bridge = AccessibilityBridge()
         assert hasattr(bridge, "balance")
         assert -100 <= bridge.balance <= 100

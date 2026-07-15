@@ -4,6 +4,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 class TestLibraryPageStates:

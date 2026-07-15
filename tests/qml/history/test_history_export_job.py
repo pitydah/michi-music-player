@@ -7,6 +7,8 @@ import json
 from core.history_query_service import HistoryQueryService
 from core.job_service import JobService, JobStatus
 from ui_qml_bridge.history_bridge import HistoryBridge
+pytestmark = [pytest.mark.qml_module("history")]
+
 
 
 @pytest.fixture

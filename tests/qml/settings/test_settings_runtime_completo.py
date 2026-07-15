@@ -206,6 +206,9 @@ class TestLayouts:
 
     def test_settings_row_qml_exists(self):
         from pathlib import Path
+import pytest
+pytestmark = [pytest.mark.qml_module("settings")]
+
         qml = Path(__file__).resolve().parent.parent.parent.parent / "ui_qml"
         assert (qml / "components/settings/SettingsRow.qml").exists()
 

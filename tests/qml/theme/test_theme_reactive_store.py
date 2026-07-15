@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.theme_bridge import ThemeBridge
+pytestmark = [pytest.mark.qml_module("theme")]
+
 
 
 class TestThemeReactiveStore:

@@ -5,6 +5,8 @@ import time
 import pytest
 
 from core.library.repositories.track_repository import TrackRepository
+import pytest
+pytestmark = [pytest.mark.qml_module("library")]
 
 
 @pytest.fixture

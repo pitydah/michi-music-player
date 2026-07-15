@@ -91,6 +91,9 @@ class TestConversionAsyncQProcess:
 
     def test_cancel_lifecycle_transitions(self, bridge, sample_wav):
         from ui_qml_bridge.conversion_bridge import ConversionJob
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         job = ConversionJob("test_cancel_2", sample_wav, "/tmp/out.wav", {})
         job.process = MagicMock()
         job.process.pid = 9999

@@ -204,6 +204,9 @@ class TestMetadataServiceReal:
         svc.edit_field(sample_file, "title", "To Undo")
         backup_path = sample_file + ".bak"
         import shutil
+import pytest
+pytestmark = [pytest.mark.qml_module("metadata")]
+
         shutil.copy2(sample_file, backup_path)
         state = svc._active.get(sample_file)
         state.backup_path = backup_path

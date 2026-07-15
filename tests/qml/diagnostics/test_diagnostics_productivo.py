@@ -78,6 +78,9 @@ class TestDBHealth:
 
     def test_library_status_with_tracks(self):
         import sqlite3
+import pytest
+pytestmark = [pytest.mark.qml_module("diagnostics")]
+
         conn = sqlite3.connect(":memory:")
         conn.execute("CREATE TABLE media_items (id INTEGER PRIMARY KEY, filepath TEXT, title TEXT, artist TEXT, deleted_at REAL)")
         conn.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/a.mp3', 'A', 'X')")

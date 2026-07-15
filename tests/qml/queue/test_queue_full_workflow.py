@@ -102,6 +102,9 @@ def test_queue_bridge_save_as_playlist_no_name(mock_player):
 
 def test_queue_bridge_save_as_playlist(mock_player):
     from unittest.mock import MagicMock
+import pytest
+pytestmark = [pytest.mark.qml_module("queue")]
+
     mock_pb = MagicMock()
     mock_pb.saveQueueAsPlaylist.return_value = {"ok": True}
     bridge = QueueBridge(player_service=mock_player, playlists_bridge=mock_pb)

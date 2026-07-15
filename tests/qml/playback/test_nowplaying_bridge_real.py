@@ -10,6 +10,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.nowplaying_bridge import NowPlayingBridge
+pytestmark = [pytest.mark.qml_module("playback")]
+
 
 
 @pytest.fixture

@@ -10,6 +10,8 @@ import pytest
 
 from core.notification_service import Notification, NotificationService, NotificationType
 from ui_qml_bridge.notification_bridge import NotificationBridge
+pytestmark = [pytest.mark.qml_module("notification")]
+
 
 
 @pytest.fixture

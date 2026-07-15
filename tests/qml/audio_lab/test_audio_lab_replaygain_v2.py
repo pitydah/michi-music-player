@@ -34,6 +34,9 @@ class TestAudioLabReplayGainV2:
     @pytest.fixture
     def svc(self, app):
         from core.audio_lab.replaygain_service import ReplayGainService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         return ReplayGainService()
 
     def test_track_analysis_missing_file(self, svc):

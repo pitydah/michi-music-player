@@ -31,6 +31,9 @@ class TestBridgeFactoryNoPrivatePatching:
 
     def test_attach_library_coordinator_exists(self):
         import ui_qml_bridge.job_bridge as jb_module
+import pytest
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
         with open(jb_module.__file__) as f:
             src = f.read()
         assert 'def attach_library_coordinator' in src

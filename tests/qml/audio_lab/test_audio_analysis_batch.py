@@ -104,6 +104,9 @@ class TestAudioAnalysisBatch:
 
     def test_batch_pause_resume(self, app, db, wm):
         from core.audio_lab.audio_batch_service import AudioBatchService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         svc = AudioBatchService(db=db, wm=wm)
         batch_id = svc.create_batch(["/a.flac", "/b.flac"])
         assert svc.pause(batch_id) is False

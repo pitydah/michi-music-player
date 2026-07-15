@@ -4,6 +4,8 @@ import sqlite3
 import time
 
 from core.history_query_service import HistoryQueryService
+pytestmark = [pytest.mark.qml_module("history")]
+
 
 
 @pytest.fixture

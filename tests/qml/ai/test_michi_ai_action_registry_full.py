@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.michi_ai_bridge import MichiAIBridge
+pytestmark = [pytest.mark.qml_module("michi_ai")]
+
 
 
 @pytest.fixture

@@ -1,6 +1,9 @@
 """Tests for ServiceContainer lifecycle, priorities, and capability enforcement."""
 
 from core.service_container import ServiceContainer, ServicePriority
+import pytest
+pytestmark = [pytest.mark.qml_module("worker_manager")]
+
 
 
 class TestContainerCreation:

@@ -5,6 +5,8 @@ import sqlite3
 import pytest
 
 from ui_qml_bridge.diagnostics_repository import DiagnosticsRepository
+pytestmark = [pytest.mark.qml_module("diagnostics")]
+
 
 
 @pytest.fixture

@@ -79,6 +79,9 @@ def test_import_preset(mock_save, mock_player):
 
 def test_export_preset(mock_player):
     import pathlib
+import pytest
+pytestmark = [pytest.mark.qml_module("eq_dsp")]
+
     original = pathlib.Path.write_text
     pathlib.Path.write_text = lambda self, data: None
     try:

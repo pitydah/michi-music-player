@@ -5,6 +5,8 @@ import time
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+import pytest
+pytestmark = [pytest.mark.qml_module("smart_tagging")]
 
 
 def _process_events(duration=2.0):

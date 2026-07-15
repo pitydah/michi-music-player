@@ -36,6 +36,9 @@ class TestAudioLabOrchestrated:
     @pytest.fixture
     def svc(self, app, db, wm):
         from core.audio_lab.audio_lab_service import AudioLabService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         s = AudioLabService(db=db, worker_manager=wm)
         s.setup()
         return s

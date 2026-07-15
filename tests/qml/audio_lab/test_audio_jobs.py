@@ -39,6 +39,9 @@ class TestAudioLabJobs:
         from core.audio_lab.audio_integrity_service import AudioIntegrityService
         from core.audio_lab.audio_comparison_service import AudioComparisonService
         from core.audio_lab.replaygain_service import ReplayGainService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         return AudioLabJobAdapter(
             db=db, wm=wm,
             probe=AudioProbeService(),

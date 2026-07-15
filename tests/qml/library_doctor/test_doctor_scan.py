@@ -166,6 +166,9 @@ class TestDoctorScan:
 
     def test_healthy_count_positive(self, db):
         from ui_qml_bridge.library_doctor_bridge import LibraryDoctorBridge
+import pytest
+pytestmark = [pytest.mark.qml_module("library_doctor")]
+
         db.execute("INSERT INTO media_items (filepath, title, artist) VALUES ('/real/file.flac', 'Real', 'Artist')")
         db.commit()
         class FakeDB:

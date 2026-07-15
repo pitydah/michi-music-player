@@ -6,6 +6,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml.models.AlbumPagedListModel import AlbumPagedListModel
+pytestmark = [pytest.mark.qml_module("album_views")]
+
 
 
 @pytest.fixture

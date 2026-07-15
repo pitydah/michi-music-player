@@ -138,6 +138,9 @@ class TestJobsDurable:
         assert ok is True
         job = svc.get_job(job_id)
         from core.jobs.job_service import JobState
+import pytest
+pytestmark = [pytest.mark.qml_module("job_bridge")]
+
         assert job.state == JobState.QUEUED
 
     def test_retry_nonretryable_returns_false(self, svc):

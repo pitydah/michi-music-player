@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from ui_qml_bridge.lyrics_bridge import LyricsBridge, _parse_lrc
+pytestmark = [pytest.mark.qml_module("lyrics")]
+
 
 
 @pytest.fixture

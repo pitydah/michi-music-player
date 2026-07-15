@@ -75,6 +75,9 @@ class TestAudioAnalysis:
 
     def test_analysis_toggle_enabled(self, app, db, wm):
         from core.audio_lab.audio_analysis_service import AudioAnalysisService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         svc = AudioAnalysisService(db=db)
         assert svc.enabled is True
         svc.enabled = False

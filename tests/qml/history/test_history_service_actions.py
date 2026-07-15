@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 
 from core.history_query_service import HistoryQueryService
 from ui_qml_bridge.history_bridge import HistoryBridge
+pytestmark = [pytest.mark.qml_module("history")]
+
 
 
 @pytest.fixture

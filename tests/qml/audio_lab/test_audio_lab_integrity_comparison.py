@@ -96,6 +96,9 @@ class TestAudioLabComparison:
     @pytest.fixture
     def svc(self, app):
         from core.audio_lab.audio_comparison_service import AudioComparisonService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         return AudioComparisonService()
 
     def test_compare_missing_files(self, svc):

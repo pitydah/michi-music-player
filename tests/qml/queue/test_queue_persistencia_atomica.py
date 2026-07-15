@@ -16,6 +16,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.queue_service import QueueService, _queue_state_path
+pytestmark = [pytest.mark.qml_module("queue")]
+
 
 
 @pytest.fixture(autouse=True)

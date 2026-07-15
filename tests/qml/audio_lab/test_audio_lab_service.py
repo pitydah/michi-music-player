@@ -103,6 +103,9 @@ class TestAudioLabService:
 
     def test_comparison_service_independent(self, app, db, wm):
         from core.audio_lab.audio_comparison_service import AudioComparisonService
+import pytest
+pytestmark = [pytest.mark.qml_module("audio_lab")]
+
         svc = AudioComparisonService()
         result = svc.compare("/nonexistent/a.flac", "/nonexistent/b.flac")
         assert "FILE_NOT_FOUND" in result.error
