@@ -3,7 +3,6 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Connection Status Badge"
     objectName: "connectionStatusBadge"
     focus: true
     id: root
@@ -20,14 +19,10 @@ Rectangle {
     property string reconnectingLabel: "Reconectando\u2026"
     property string serviceName: ""
 
-
-        switch (root.status) {
-            case ConnectionStatusBadge.CONNECTED: return connectedLabel
-            case ConnectionStatusBadge.DISCONNECTED: return disconnectedLabel
-            case ConnectionStatusBadge.RECONNECTING: return reconnectingLabel
-        }
-        return ""
-    }
+    Accessible.name: root.status === ConnectionStatusBadge.CONNECTED ? root.connectedLabel :
+                     root.status === ConnectionStatusBadge.DISCONNECTED ? root.disconnectedLabel :
+                     root.status === ConnectionStatusBadge.RECONNECTING ? root.reconnectingLabel :
+                     root.disconnectedLabel
     Accessible.description: (serviceName ? serviceName + ": " : "") + Accessible.name
 
     implicitHeight: 22

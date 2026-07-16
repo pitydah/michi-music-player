@@ -3,7 +3,6 @@ import "../theme"
 
 Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Service Health Badge"
     objectName: "serviceHealthBadge"
     focus: true
     id: root
@@ -21,15 +20,9 @@ Rectangle {
     property string unavailableLabel: "No disponible"
     property bool showPulse: false
 
-
-        var healthText = ""
-        switch (root.health) {
-            case ServiceHealthBadge.HEALTHY: healthText = healthyLabel; break
-            case ServiceHealthBadge.DEGRADED: healthText = degradedLabel; break
-            case ServiceHealthBadge.UNAVAILABLE: healthText = unavailableLabel; break
-        }
-        return serviceName + " " + healthText
-    }
+    Accessible.name: root.health === ServiceHealthBadge.DEGRADED ? root.serviceName + " " + root.degradedLabel :
+                     root.health === ServiceHealthBadge.UNAVAILABLE ? root.serviceName + " " + root.unavailableLabel :
+                     root.serviceName + " " + root.healthyLabel
     Accessible.description: "Estado del servicio" + (serviceName ? ": " + serviceName : "")
 
     implicitHeight: 22

@@ -4,7 +4,6 @@ import "states"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Async State View"
     objectName: "asyncStateView"
     focus: true
     id: root
@@ -38,13 +37,11 @@ Item {
     signal secondaryActionRequested()
     signal retryRequested()
 
-
-return state === AsyncStateView.LOADING ? "Cargando" :
-               state === AsyncStateView.ERROR ? "Error" + (title ? ": " + title : "") :
-               state === AsyncStateView.EMPTY ? "Sin contenido" + (title ? ": " + title : "") :
-               state === AsyncStateView.UNAVAILABLE ? "No disponible" :
-               state === AsyncStateView.DEGRADED ? "Funcionamiento degradado" : ""
-    }
+    Accessible.name: state === AsyncStateView.LOADING ? "Cargando" :
+                     state === AsyncStateView.ERROR ? "Error" + (title ? ": " + title : "") :
+                     state === AsyncStateView.EMPTY ? "Sin contenido" + (title ? ": " + title : "") :
+                     state === AsyncStateView.UNAVAILABLE ? "No disponible" :
+                     state === AsyncStateView.DEGRADED ? "Funcionamiento degradado" : ""
     Accessible.description: message + (details ? ". " + details : "")
 
     Item {

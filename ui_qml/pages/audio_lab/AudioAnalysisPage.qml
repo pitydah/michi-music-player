@@ -20,9 +20,6 @@ Item {
     property string _errorMessage: ""
     property bool _compareMode: false
 
-    focus: true
-
-
     readonly property int stateIdle: 0
     readonly property int stateAnalyzing: 1
     readonly property int stateCancelling: 2

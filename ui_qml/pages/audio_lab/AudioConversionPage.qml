@@ -38,9 +38,6 @@ Item {
     property var _previewResult: null
     property string _errorMessage: ""
 
-    focus: true
-
-
     readonly property int stateInputReady: 0
     readonly property int statePreviewing: 1
     readonly property int stateConverting: 2
@@ -179,7 +176,6 @@ Item {
                 width: parent.width
                 model: root._formatOptions
                 textRole: "label"
-                focusPolicy: Qt.StrongFocus
                 activeFocusOnTab: true
                 onCurrentIndexChanged: {
                     var item = root._formatOptions[currentIndex]

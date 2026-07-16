@@ -21,9 +21,6 @@ Item {
     property var _previewResult: null
     property string _errorMessage: ""
 
-    focus: true
-
-
     readonly property int stateIdle: 0
     readonly property int statePreviewing: 1
     readonly property int stateApplying: 2

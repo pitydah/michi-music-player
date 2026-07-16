@@ -114,7 +114,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/output_device_id", currentText)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }
@@ -159,7 +158,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/sample_rate", parseInt(currentText))
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
 
@@ -194,7 +192,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/bit_depth", currentText.toLowerCase())
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
 
@@ -271,7 +268,6 @@ Item {
                                     return 1
                                 }
                                 onActivated: root._saveValue("audio/resample_quality", currentValue)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }

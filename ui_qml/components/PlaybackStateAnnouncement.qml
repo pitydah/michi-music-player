@@ -4,7 +4,6 @@ import "."
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Playback State Announcement"
     objectName: "playbackStateAnnouncement"
     focus: true
     id: root
@@ -15,12 +14,10 @@ Item {
 
     signal announcementFinished()
 
-
-        if (root.playbackState === "playing") return "Reproduciendo: " + root.trackTitle + " - " + root.trackArtist
-        if (root.playbackState === "paused") return "Pausado: " + root.trackTitle
-        if (root.playbackState === "stopped") return "Reproducción detenida"
-        return "Estado de reproducción desconocido"
-    }
+    Accessible.name: root.playbackState === "playing" ? "Reproduciendo: " + root.trackTitle + " - " + root.trackArtist :
+                     root.playbackState === "paused" ? "Pausado: " + root.trackTitle :
+                     root.playbackState === "stopped" ? "Reproducción detenida" :
+                     "Estado de reproducción desconocido"
     Accessible.description: "Estado del reproductor"
 
     visible: false

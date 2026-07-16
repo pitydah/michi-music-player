@@ -20,9 +20,6 @@ Item {
     property var _comparisonResult: null
     property string _errorMessage: ""
 
-    focus: true
-
-
     readonly property int stateIdle: 0
     readonly property int stateComparing: 1
     readonly property int stateCompleted: 2

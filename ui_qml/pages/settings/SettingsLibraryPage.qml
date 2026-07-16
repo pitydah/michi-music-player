@@ -250,7 +250,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("library/indexer_mode", currentValue)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }
@@ -301,7 +300,6 @@ Item {
                                     return 2
                                 }
                                 onActivated: root._saveValue("library/cover_art_mode", currentValue)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }

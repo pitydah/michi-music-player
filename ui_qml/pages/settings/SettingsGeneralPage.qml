@@ -138,7 +138,6 @@ Item {
                                 }
                                 onActivated: root._saveValue("general/language", currentValue)
                                 Accessible.description: "Selecciona el idioma de la interfaz"
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }
@@ -189,7 +188,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("appearance/theme", currentValue)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }

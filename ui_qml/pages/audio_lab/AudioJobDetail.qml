@@ -15,8 +15,6 @@ Item {
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
     objectName: "AudioJobDetail"
-    focus: true
-
 
     visible: root.jobData !== null
 

@@ -108,7 +108,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/output_device_id", currentText)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
 
@@ -143,7 +142,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/profile", currentText)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }
@@ -320,7 +318,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("playback/replaygain", currentValue)
-                                focusPolicy: Qt.StrongFocus
                             }
                         }
                     }

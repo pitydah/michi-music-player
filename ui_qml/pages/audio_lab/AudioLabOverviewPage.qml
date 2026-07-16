@@ -16,9 +16,6 @@ Item {
 
     property int _state: root.alab && root.alab.backendInfo && root.alab.backendInfo.available ? 1 : 0
 
-    focus: true
-
-
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
     readonly property int stateError: 2

@@ -25,9 +25,6 @@ Item {
     property int _profileChannels: 2
     property string _validationError: ""
 
-    focus: true
-
-
     property var _formatOptions: [
         { label: "FLAC", codec: "flac", lossless: true },
         { label: "MP3", codec: "libmp3lame", lossless: false },

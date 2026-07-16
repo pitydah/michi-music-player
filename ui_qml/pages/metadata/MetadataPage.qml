@@ -19,8 +19,6 @@ Item {
     property var _selectedFiles: []
     property string pageState: "LOADING"
 
-    focus: true
-
     Accessible.description: "Gestiona los metadatos de tus archivos de audio"
 
     Component.onCompleted: {
