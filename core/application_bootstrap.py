@@ -279,7 +279,7 @@ class ApplicationBootstrap:
             from integrations.michi_link.client import MichiLinkClient
             eb = self.container.get("event_bus")
             disc_mgr = DiscoveryManager()
-            conn_mgr = ConnectionManager(disc_mgr)
+            conn_mgr = ConnectionManager()
             creds = CredentialsStore()
             michi = MichiLinkClient()
             cs = ConnectionService(connection_manager=conn_mgr,
