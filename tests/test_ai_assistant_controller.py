@@ -11,7 +11,7 @@ def db():
 
 @pytest.fixture
 def ctrl(db):
-    from ui.controllers.ai_assistant_controller import AiAssistantController
+    from legacy_widgets.ui.controllers.legacy_controllers.ai_assistant_controller import AiAssistantController
     ctrl = AiAssistantController(db=db, worker_manager=None, playback=None,
                                   safe_mode=False)
     ctrl._pending = False

@@ -1,7 +1,7 @@
 """Integration tests: AiAssistantController → AIAssistantService → ToolRegistry."""
 
 from unittest.mock import MagicMock
-from ui.controllers.ai_assistant_controller import AiAssistantController
+from legacy_widgets.ui.controllers.legacy_controllers.ai_assistant_controller import AiAssistantController
 
 
 def test_assistant_controller_builds_service_with_context(monkeypatch):

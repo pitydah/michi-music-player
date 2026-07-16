@@ -1,7 +1,7 @@
 """Tests: AiAssistantController uses set_context_service, not self._win."""
 
 from unittest.mock import MagicMock
-from ui.controllers.ai_assistant_controller import AiAssistantController
+from legacy_widgets.ui.controllers.legacy_controllers.ai_assistant_controller import AiAssistantController
 
 
 class TestAiAssistantControllerContext:
