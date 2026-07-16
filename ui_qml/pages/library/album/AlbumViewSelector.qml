@@ -22,6 +22,10 @@ RowLayout {
         ]
 
         MichiButton {
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             text: modelData.label
             variant: currentView === index ? "primary" : "ghost"
             implicitHeight: 28

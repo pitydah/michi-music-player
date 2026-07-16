@@ -46,6 +46,10 @@ Item {
                 }
 
                 MichiProgressBar {
+                    Accessible.role: Accessible.ProgressBar
+
+                    activeFocusOnTab: true
+
                     width: parent.width
                     value: root.total > 0 ? root.progress / root.total * 100 : 0
                     indeterminate: root.total === 0
@@ -66,6 +70,10 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         text: root._cancelling ? "Cancelando..." : "Cancelar"
@@ -74,6 +82,10 @@ Item {
                         onClicked: {
                             root._cancelling = true
                             root.cancelRequested()
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         }
                     }
 

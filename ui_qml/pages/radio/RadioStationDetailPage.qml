@@ -239,6 +239,10 @@ Item {
                 }
 
                 MichiProgressBar {
+                    Accessible.role: Accessible.ProgressBar
+
+                    activeFocusOnTab: true
+
                     width: parent.width
                     indeterminate: root._buffering && root._bufferProgress === 0
                     value: root._bufferProgress / 100.0
@@ -264,6 +268,8 @@ Item {
             Row {
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
+                    Accessible.role: Accessible.Button
+
 
                 MichiButton {
                     text: root._isPlaying ? "\u25A0 Detener" : "\u25B6 Reproducir"
@@ -272,6 +278,8 @@ Item {
                     onClicked: root._isPlaying ? root.stop() : root.play()
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                 }
 
                 MichiButton {
@@ -284,6 +292,8 @@ Item {
                             root._isFav = !root._isFav
                         }
                     }
+                    Accessible.role: Accessible.Button
+
                     Keys.onReturnPressed: onClicked()
                 }
 
@@ -292,6 +302,8 @@ Item {
                     variant: "ghost"
                     activeFocusOnTab: true
                     visible: true
+                    Accessible.role: Accessible.Button
+
                     onClicked: root.editRequested(root.stationData)
                     Keys.onReturnPressed: onClicked()
                 }
@@ -301,6 +313,10 @@ Item {
                     variant: "danger"
                     activeFocusOnTab: true
                     onClicked: {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                         if (root.stationData) root.deleteRequested(root.stationData.url)
                     }
                     Keys.onReturnPressed: onClicked()

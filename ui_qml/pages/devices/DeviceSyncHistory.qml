@@ -44,6 +44,10 @@ Item {
                 }
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Limpiar"
                     variant: "ghost"
                     onClicked: root.clearHistoryClicked()

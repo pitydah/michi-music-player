@@ -74,6 +74,10 @@ Item {
                     }
 
                     MichiProgressBar {
+                        Accessible.role: Accessible.ProgressBar
+
+                        activeFocusOnTab: true
+
                         width: parent.width
                         value: root.jobData && root.jobData.progress ? root.jobData.progress * 100 : 0
                         from: 0; to: 100
@@ -119,6 +123,8 @@ Item {
                     }
 
                     Row {
+                            Accessible.role: Accessible.Button
+
                         spacing: MichiTheme.spacing.sm
                         MichiButton {
                             text: "Cancelar"
@@ -127,6 +133,8 @@ Item {
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
+                            Accessible.role: Accessible.Button
+
                             onClicked: root._cancelJob()
                         }
                         MichiButton {
@@ -135,6 +143,8 @@ Item {
                             enabled: root.jobData && (root.jobData.state === "failed" || root.jobData.state === "cancelled")
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
+                            Accessible.role: Accessible.Button
+
                             Keys.onSpacePressed: onClicked()
                             onClicked: root._retryJob()
                         }

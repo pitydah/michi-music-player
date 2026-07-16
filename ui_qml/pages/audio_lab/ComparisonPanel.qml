@@ -31,6 +31,8 @@ Item {
         }
 
         MichiButton {
+            Accessible.role: Accessible.Button
+
             text: "Iniciar comparación"
             variant: "primary"
             enabled: refInput.selectedFiles.length > 0 && targetInput.selectedFiles.length > 0

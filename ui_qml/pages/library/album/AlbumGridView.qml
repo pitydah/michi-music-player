@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "../../../theme"
 import "../../../components"
+import "../../../components/foundations"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -14,11 +15,19 @@ Item {
     property var bridge: null
     signal albumClicked(string albumKey, string title, string artist, int year)
 
+    MichiResponsive { id: responsive; availableWidth: root.width }
+
     GridView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "GridView"
+
+        activeFocusOnTab: true
+
         anchors.fill: parent
         model: root.albumModel
-        cellWidth: 180
-        cellHeight: 240
+        cellWidth: Math.max(140, Math.floor((root.width - MichiTheme.spacing.md * (responsive.columnCount - 1)) / responsive.columnCount))
+        cellHeight: cellWidth + 60
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 

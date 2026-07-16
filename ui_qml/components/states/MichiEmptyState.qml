@@ -55,6 +55,10 @@ Column {
     }
 
     MichiProgressBar {
+        Accessible.role: Accessible.ProgressBar
+
+        activeFocusOnTab: true
+
         anchors.horizontalCenter: parent.horizontalCenter
         width: 160
         indeterminate: true
@@ -67,9 +71,17 @@ Column {
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: MichiTheme.spacing.sm
         visible: root.primaryActionText !== "" || root.secondaryActionText !== ""
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
 
         MichiButton {
             text: root.primaryActionText
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             visible: text !== ""
             onClicked: root.primaryActionRequested()
         }

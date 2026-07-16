@@ -43,6 +43,10 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
@@ -110,6 +114,10 @@ Item {
                                 text: modelData.streamId === root.activeStreamId ? "Stream activo" : "Stream alterno"
                                 kind: modelData.streamId === root.activeStreamId ? "success" : "disconnected"
                             }
+                                Accessible.role: Accessible.Button
+
+                                activeFocusOnTab: true
+
 
                             MichiButton {
                                 anchors.verticalCenter: parent.verticalCenter

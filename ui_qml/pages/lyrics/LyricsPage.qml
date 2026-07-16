@@ -76,15 +76,27 @@ Item {
                 visible: root.lb && root.lb.status === "done"
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Buscar otra versión"
                     variant: "ghost"
                     onClicked: searchDialog.open()
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 MichiButton {
                     text: root.showSynced ? "Ver texto plano" : "Ver sincronizada"
                     variant: "ghost"
                     visible: root.lb && root.lb.hasSyncedLyrics
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     onClicked: root.showSynced = !root.showSynced
                 }
 
@@ -151,6 +163,10 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 visible: root.lb && root.lb.status === "done" && root.showSynced
+                    Accessible.role: Accessible.Slider
+
+                    activeFocusOnTab: true
+
                 Text {
                     text: "Offset (ms):"
                     color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
@@ -164,6 +180,10 @@ Item {
                 Text {
                     text: root._offsetMs >= 0 ? "+" + root._offsetMs : "" + root._offsetMs
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     anchors.verticalCenter: parent.verticalCenter
                 }
             }

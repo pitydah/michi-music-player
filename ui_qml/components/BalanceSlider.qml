@@ -34,6 +34,12 @@ Item {
         }
 
         Slider {
+            Accessible.role: Accessible.Slider
+
+            Accessible.name: "Slider"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             id: balanceSlider
             Layout.fillWidth: true

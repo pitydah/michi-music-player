@@ -147,7 +147,11 @@ Rectangle {
             visible: root.notification && (root.notification.action || root.notification.job_id || root.notification.kind === "progress")
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 id: primaryActionBtn
+                activeFocusOnTab: true
+
                 text: {
                     if (!root.notification) return ""
                     if (root.notification.actionText) return root.notification.actionText
@@ -167,6 +171,10 @@ Rectangle {
                 }
 
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 id: cancelBtn

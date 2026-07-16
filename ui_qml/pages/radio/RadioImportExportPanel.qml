@@ -24,10 +24,18 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Importar OPML"
                 variant: "ghost"
                 onClicked: importOpmlDialog.open()
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: "Exportar OPML"
@@ -40,10 +48,18 @@ Item {
                         else if (!r.ok && root.notif)
                             root.notif.showMessage(r.error, "error")
                     }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 }
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Importar JSON"
                 variant: "ghost"
                 onClicked: importJsonDialog.open()

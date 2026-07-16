@@ -229,6 +229,12 @@ Item {
                         height: Math.min(200, (root.ps ? root.ps.queue.length : 0) * 28 + 10)
 
                         ListView {
+                            Accessible.role: Accessible.List
+
+                            Accessible.name: "ListView"
+
+                            activeFocusOnTab: true
+
                             focusPolicy: Qt.StrongFocus
                             id: queueView
                             anchors.fill: parent
@@ -274,6 +280,12 @@ Item {
                     Item {
                         Layout.fillWidth: true
                         height: Math.min(150, (root.ps ? root.ps.history.length : 0) * 24 + 10)
+                            Accessible.role: Accessible.List
+
+                            Accessible.name: "ListView"
+
+                            activeFocusOnTab: true
+
                         visible: root.ps && root.ps.history && root.ps.history.length > 0
 
                         ListView {

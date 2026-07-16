@@ -28,6 +28,10 @@ Item {
 
 
     ListView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "ListView"
+
         focusPolicy: Qt.StrongFocus
         id: trackList
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
@@ -48,6 +52,8 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm; width: parent.width
+                    Accessible.role: Accessible.Button
+
 
                 MichiButton {
                     text: "Volver"; variant: "ghost"
@@ -64,6 +70,8 @@ Item {
             }
 
             Row {
+                    Accessible.role: Accessible.Button
+
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
@@ -73,6 +81,8 @@ Item {
                     KeyNavigation.tab: enqueueAllBtn
                     KeyNavigation.backtab: resultBackBtn
                     enabled: root._songs.length > 0
+                    Accessible.role: Accessible.Button
+
                     onClicked: root.playAllRequested()
                 }
 
@@ -82,6 +92,8 @@ Item {
                     activeFocusOnTab: true
                     KeyNavigation.tab: saveAsPlaylistBtn
                     KeyNavigation.backtab: playAllBtn
+                    Accessible.role: Accessible.Button
+
                     enabled: root._songs.length > 0
                     onClicked: root.enqueueAllRequested()
                 }
@@ -91,6 +103,10 @@ Item {
                     text: "Guardar como playlist"; variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: regenerateBtn
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     KeyNavigation.backtab: enqueueAllBtn
                     enabled: root._songs.length > 0
                     onClicked: root.saveAsPlaylistRequested()

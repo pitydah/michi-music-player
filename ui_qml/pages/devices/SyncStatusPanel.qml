@@ -53,7 +53,11 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 id: toggleServerButton
+                activeFocusOnTab: true
+
                 text: root.serverActive ? "Detener servidor" : "Iniciar servidor"
                 variant: root.serverActive ? "secondary" : "primary"
                 onClicked: root.serverActive ? root.stopServer() : root.startServer()

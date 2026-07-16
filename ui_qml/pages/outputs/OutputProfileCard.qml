@@ -76,14 +76,26 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Editar"
                     variant: "ghost"
                     onClicked: root.editRequested()
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 MichiButton {
                     text: "Duplicar"
                     variant: "ghost"
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     onClicked: root.duplicateRequested()
                 }
 

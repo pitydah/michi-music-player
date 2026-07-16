@@ -47,6 +47,12 @@ Item {
             }
 
             TextField {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 id: profileNameField
                 width: parent.width
@@ -54,6 +60,12 @@ Item {
                 text: root.profileName
                 onTextChanged: root.profileName = text
             }
+                Accessible.role: Accessible.ComboBox
+
+                Accessible.name: "ComboBox"
+
+                activeFocusOnTab: true
+
 
             Text { text: "Política de transcodificación"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
             ComboBox {
@@ -61,12 +73,24 @@ Item {
                 id: transcodeCombo
                 width: parent.width
                 model: ["never", "always", "unsupported_only"]
+                Accessible.role: Accessible.ComboBox
+
+                Accessible.name: "ComboBox"
+
+                activeFocusOnTab: true
+
                 currentIndex: model.indexOf(root.transcodePolicy)
                 onCurrentTextChanged: root.transcodePolicy = currentText
             }
 
             Text { text: "Política de colisión"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
             ComboBox {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 id: collisionCombo
                 width: parent.width
@@ -100,6 +124,10 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 CheckBox { id: fullSyncCb; checked: root.fullSync; onCheckedChanged: root.fullSync = checked; enabled: !incrementalSyncCb.checked; objectName: "fullSyncCheckBox"; Accessible.name: "Sincronización completa" }
                 Text { text: "Sincronización completa"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
             }
 
             Row {
@@ -115,6 +143,10 @@ Item {
                     text: "Guardar perfil"
                     variant: "primary"
                     onClicked: {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                         root.profileSaved(root.deviceKey, {
                             profile_name: root.profileName,
                             transcode_policy: root.transcodePolicy,

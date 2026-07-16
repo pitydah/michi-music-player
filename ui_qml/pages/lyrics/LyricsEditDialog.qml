@@ -5,7 +5,15 @@ import "../../components"
 import "../../materials"
 
 Dialog {
+    Accessible.role: Accessible.Dialog
+
+    Accessible.name: "Dialog"
+
     id: root
+    closePolicy: Popup.CloseOnEscape
+
+    activeFocusOnTab: true
+
 
     property var lyricsBridge: null
 
@@ -34,6 +42,12 @@ Dialog {
 
         ScrollView {
             focusPolicy: Qt.StrongFocus
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
             width: parent.width
             height: parent.height - 100
 
@@ -47,9 +61,21 @@ Dialog {
                 color: MichiTheme.colors.textPrimary
                 wrapMode: Text.WordWrap
             }
+                Accessible.role: Accessible.Button
+
+                Accessible.name: "Button"
+
+                activeFocusOnTab: true
+
         }
 
         Row {
+                Accessible.role: Accessible.Button
+
+                Accessible.name: "Button"
+
+                activeFocusOnTab: true
+
             spacing: MichiTheme.spacing.sm
             anchors.horizontalCenter: parent.horizontalCenter
 

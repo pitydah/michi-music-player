@@ -28,6 +28,12 @@ Item {
     }
 
     ListView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "ListView"
+
+        activeFocusOnTab: true
+
         focusPolicy: Qt.StrongFocus
         id: tableView
         anchors.fill: parent
@@ -47,6 +53,14 @@ Item {
             Row {
                 anchors.fill: parent
                 anchors.margins: MichiTheme.spacing.sm
+                    Accessible.role: Accessible.CheckBox
+
+                    Accessible.name: "CheckBox"
+
+                    Accessible.checked: root.checked
+
+                    activeFocusOnTab: true
+
                 spacing: MichiTheme.spacing.sm
 
                 CheckBox {
@@ -155,17 +169,51 @@ Item {
 
             MouseArea {
                 id: mouseArea
+                Accessible.role: Accessible.PopupMenu
+
+                Accessible.name: "Menu"
+
+                activeFocusOnTab: true
+
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
                 anchors.fill: parent
                 hoverEnabled: true
                 acceptedButtons: Qt.RightButton
                 onClicked: contextMenu.popup()
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
             }
+
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
 
             Menu {
                 id: contextMenu
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
 
                 MenuItem {
                     text: "Reproducir"
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
                     onTriggered: root.playRequested(
                         model.trackId || modelData.track_id || model.track_id || 0,
                         model.title || modelData.title || "")

@@ -36,18 +36,30 @@ Item {
             spacing: MichiTheme.spacing.xs
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "\u25B6"
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: "Reproducir"
                 onClicked: root.playRequested()
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: root._isFav ? "\u2605" : "\u2606"
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
                 tooltipText: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 onClicked: root.toggleFavRequested()
             }
 
@@ -55,6 +67,10 @@ Item {
                 text: "\u270E"
                 variant: "ghost"
                 implicitWidth: 32; implicitHeight: 32
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 tooltipText: "Editar"
                 visible: true
                 onClicked: root.editRequested()

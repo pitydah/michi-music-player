@@ -119,6 +119,12 @@ Item {
             SectionHeader { text: "Canciones"; width: parent.width }
 
             ListView {
+                Accessible.role: Accessible.List
+
+                Accessible.name: "ListView"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 id: tracksList
                 width: parent.width

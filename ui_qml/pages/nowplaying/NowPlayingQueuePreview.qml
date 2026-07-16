@@ -35,11 +35,21 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Ver todo"
                 variant: "ghost"
                 onClicked: { if (root.nav) root.nav.navigate("queue") }
             }
         }
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
 
         ListView {
             focusPolicy: Qt.StrongFocus

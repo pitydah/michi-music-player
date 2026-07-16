@@ -5,6 +5,10 @@ import "../../theme"
 
 Popup {
     id: root
+    closePolicy: Popup.CloseOnEscape
+
+    activeFocusOnTab: true
+
 
     property var visibleColumns: ["title", "artist", "album", "duration", "format", "year"]
     property var allColumns: [

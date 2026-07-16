@@ -196,12 +196,20 @@ Item {
                         Item { width: parent.width - 320; height: 1 }
 
                         MichiButton {
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                             text: "Filtros"
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             iconText: "\u2630"
                             onClicked: filterDrawer.open()
                         }
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
 
                         MichiButton {
                             text: "Limpiar"
@@ -212,6 +220,8 @@ Item {
                                 globalSearchInput.text = ""
                                 root.clearQuery()
                             }
+                        Accessible.role: Accessible.EditableText
+
                         }
                     }
 

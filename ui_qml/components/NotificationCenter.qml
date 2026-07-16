@@ -52,7 +52,11 @@ Rectangle {
                 Item { width: 1; height: 1 }
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     id: dismissAllBtn
+                    activeFocusOnTab: true
+
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Descartar todas"
                     variant: "ghost"
@@ -87,6 +91,12 @@ Rectangle {
                 visible: emptyStateItem.visible
             }
         }
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
 
         ListView {
             focusPolicy: Qt.StrongFocus

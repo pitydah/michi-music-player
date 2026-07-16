@@ -91,6 +91,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Rip CD"
                 variant: "ghost"
                 width: parent.width

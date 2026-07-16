@@ -116,6 +116,8 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 SearchField {
+                    Accessible.role: Accessible.EditableText
+
                     id: searchField
                     width: parent.width - 80
                     placeholderText: "Búsqueda rápida (Ctrl+F)..."
@@ -129,6 +131,10 @@ Item {
                         }
                     }
                 }
+
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
 
                 MichiButton {
                     text: "Cerrar"
@@ -196,6 +202,8 @@ Item {
                 height: 1
                 color: MichiTheme.colors.borderSubtle
                 visible: root._results.length > 0
+                Accessible.role: Accessible.Button
+
             }
 
             MichiButton {

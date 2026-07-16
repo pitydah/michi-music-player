@@ -68,9 +68,17 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         text: "Volver a escanear"
                         variant: "secondary"
                         onClicked: { if (root.doc && typeof root.doc.scan !== "undefined") root.doc.scan() }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                     }
                     MichiButton {
                         text: "Exportar reporte"

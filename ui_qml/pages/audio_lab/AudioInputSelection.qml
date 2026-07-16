@@ -80,6 +80,8 @@ Item {
         Row {
             spacing: MichiTheme.spacing.sm
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 text: "Desde biblioteca"
                 variant: "secondary"
                 activeFocusOnTab: true
@@ -90,6 +92,8 @@ Item {
                         navigationBridge.navigate("library")
                 }
             }
+                Accessible.role: Accessible.Button
+
             MichiButton {
                 text: "Seleccionar archivos"
                 variant: "secondary"
@@ -100,6 +104,8 @@ Item {
                     if (root.libBridge && root.libBridge.selectFiles)
                         root.libBridge.selectFiles()
                 }
+                Accessible.role: Accessible.Button
+
             }
             MichiButton {
                 text: "Pegar ruta"
@@ -170,6 +176,8 @@ Item {
                         width: parent.width - 60
                         text: typeof modelData === "string" ? modelData : modelData.name || modelData.filepath || ""
                         color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize
+                        Accessible.role: Accessible.Button
+
                         elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                     }
                     MichiButton {
@@ -180,6 +188,8 @@ Item {
                         onClicked: root.removeFile(index)
                     }
                 }
+            Accessible.role: Accessible.Button
+
             }
         }
 

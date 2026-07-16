@@ -101,6 +101,8 @@ Item {
                     id: smartMixRow
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
                         id: mixArtistBtn
                         text: "+ Mix por artista"; variant: "secondary"
                         activeFocusOnTab: true
@@ -115,6 +117,8 @@ Item {
                                 navigationBridge.navigate("mix_detail")
                         }
                     }
+                        Accessible.role: Accessible.Button
+
                     MichiButton {
                         id: mixGenreBtn
                         text: "+ Mix por género"; variant: "secondary"
@@ -129,6 +133,8 @@ Item {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
                         }
+                        Accessible.role: Accessible.Button
+
                     }
                     MichiButton {
                         id: mixDecadeBtn
@@ -143,6 +149,8 @@ Item {
                                 root.mx.loadMix("by_decade")
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("mix_detail")
+                        Accessible.role: Accessible.Button
+
                         }
                     }
                     MichiButton {

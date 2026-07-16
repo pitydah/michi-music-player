@@ -32,6 +32,10 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         MichiIconButton {
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
             iconText: ""
             tooltipText: root.shuffleSupported ? "Aleatorio" : "No soportado por el backend actual"
@@ -41,6 +45,10 @@ Item {
             opacity: root.shuffleSupported ? 1.0 : 0.35
             onClicked: { if (root.shuffleSupported) root.shuffleClicked() }
         }
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
 
         MichiIconButton {
             iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
@@ -87,6 +95,10 @@ Item {
                 hoverEnabled: root.playPauseSupported
                 cursorShape: root.playPauseSupported ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: { if (root.playPauseSupported) root.playClicked() }
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             }
         }
 
@@ -95,6 +107,10 @@ Item {
             iconText: ""
             tooltipText: root.nextSupported ? "Siguiente" : "No soportado por el backend actual"
             btnSize: 34
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             enabled: root.nextSupported
             opacity: root.nextSupported ? 1.0 : 0.35
             onClicked: { if (root.nextSupported) root.nextClicked() }

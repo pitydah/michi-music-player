@@ -16,6 +16,12 @@ Item {
     signal artistSelected(string artistName)
 
     GridView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "GridView"
+
+        activeFocusOnTab: true
+
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
         model: root.artists

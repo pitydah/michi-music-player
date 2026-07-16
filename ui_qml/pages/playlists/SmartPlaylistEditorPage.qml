@@ -102,6 +102,8 @@ Item {
             RowLayout {
                 width: parent.width
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: "Volver"
                     variant: "ghost"
                     activeFocusOnTab: true
@@ -130,6 +132,10 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
             TextField {
                 focusPolicy: Qt.StrongFocus
                 id: nameInput
@@ -144,6 +150,8 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
+                    Accessible.role: Accessible.Button
+
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
@@ -151,6 +159,8 @@ Item {
                     variant: root.matchMode === "all" ? "primary" : "secondary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.matchMode = "all"
                 }
@@ -192,6 +202,12 @@ Item {
                                 text: "Grupo " + (index + 1)
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                                 font.weight: MichiTheme.typography.weightMedium
                             }
                             Item { Layout.fillWidth: true }
@@ -201,6 +217,10 @@ Item {
                                 id: groupOpCombo
                                 model: ["and", "or"]
                                 currentIndex: modelData.operator === "or" ? 1 : 0
+                                Accessible.role: Accessible.Button
+
+                                activeFocusOnTab: true
+
                                 Layout.preferredWidth: 80
                                 onCurrentTextChanged: {
                                     var groups = root.ruleGroups.slice()
@@ -213,6 +233,12 @@ Item {
                                 variant: "ghost"
                                 onClicked: root.removeRuleGroup(index)
                             }
+                                    Accessible.role: Accessible.ComboBox
+
+                                    Accessible.name: "ComboBox"
+
+                                    activeFocusOnTab: true
+
                         }
 
                         Repeater {
@@ -221,6 +247,12 @@ Item {
                             RowLayout {
                                 width: parent.width
                                 spacing: MichiTheme.spacing.sm
+
+                                    Accessible.role: Accessible.ComboBox
+
+                                    Accessible.name: "ComboBox"
+
+                                    activeFocusOnTab: true
 
                                 ComboBox {
                                     focusPolicy: Qt.StrongFocus
@@ -231,6 +263,12 @@ Item {
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].field = currentText
+                                    Accessible.role: Accessible.EditableText
+
+                                    Accessible.name: "Campo de texto"
+
+                                    activeFocusOnTab: true
+
                                         root.ruleGroups = groups
                                     }
                                 }
@@ -239,12 +277,20 @@ Item {
                                     id: opCombo
                                     model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                                     currentIndex: Math.max(0, opCombo.find(modelData.operator))
+                                    Accessible.role: Accessible.Button
+
+                                    activeFocusOnTab: true
+
                                     Layout.preferredWidth: 80
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].operator = currentText
                                         root.ruleGroups = groups
                                     }
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                                 }
                                 TextField {
                                     focusPolicy: Qt.StrongFocus
@@ -255,6 +301,10 @@ Item {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].value = text
                                         root.ruleGroups = groups
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                                     }
                                 }
                                 MichiButton {
@@ -277,6 +327,10 @@ Item {
                 }
             }
 
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "SpinBox"
+
             MichiButton {
                 text: "+ Añadir grupo de reglas"
                 variant: "ghost"
@@ -298,6 +352,12 @@ Item {
                 Text {
                     text: "Limitar a:"
                     color: MichiTheme.colors.textPrimary
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
+                    activeFocusOnTab: true
+
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -310,6 +370,10 @@ Item {
                     onValueChanged: root.limitCount = value
                 }
                 Text {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "(0 = sin límite)"
                     color: MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.metaSize
@@ -317,6 +381,10 @@ Item {
                 }
 
                 Item { Layout.fillWidth: true }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 Text {
                     text: "Ordenar por:"

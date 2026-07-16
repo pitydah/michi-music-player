@@ -54,6 +54,12 @@ Item {
     Component {
         id: editComponent
         TextField {
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             width: parent.width
             text: root.fieldValue

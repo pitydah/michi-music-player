@@ -53,9 +53,17 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         text: root.state === "not_configured" ? "Configurar Home Assistant" : "Abrir Home Assistant"
                         variant: "primary"
                         onClicked: root.configureClicked()
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                     }
                     MichiButton {
                         text: "Diagnóstico"

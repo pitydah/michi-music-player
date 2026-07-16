@@ -49,6 +49,10 @@ Item {
                 }
 
                 MichiProgressBar {
+                    Accessible.role: Accessible.ProgressBar
+
+                    activeFocusOnTab: true
+
                     width: parent.width
                     value: root._dryRunTotal > 0
                            ? root._dryRunProgress / root._dryRunTotal * 100 : 0
@@ -89,6 +93,10 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         text: root._running ? "Procesando..." : "Confirmar reparación"
@@ -97,6 +105,10 @@ Item {
                         onClicked: {
                             root._running = true
                             root.confirmRepair()
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         }
                     }
 

@@ -53,6 +53,10 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: root.eq && root.eq.bypass ? "Activado" : "Desactivado"
                     variant: root.eq && root.eq.bypass ? "danger" : "primary"
                     enabled: root.eq ? root.eq.backendAvailable : false

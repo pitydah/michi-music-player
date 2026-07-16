@@ -33,6 +33,10 @@ Item {
                 }
 
                 MichiProgressBar {
+                    Accessible.role: Accessible.ProgressBar
+
+                    activeFocusOnTab: true
+
                     width: parent.width
                     indeterminate: true
                 }

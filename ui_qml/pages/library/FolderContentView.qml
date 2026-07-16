@@ -41,6 +41,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true
             model: root._tracks

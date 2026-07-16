@@ -43,7 +43,13 @@ BaseDialog {
         }
 
         QQC2.CheckBox {
+            Accessible.checked: root.checked
+
             id: dontAskCheck
+            Accessible.name: "CheckBox"
+
+            activeFocusOnTab: true
+
             Layout.fillWidth: true
             visible: root.showDontAskAgain
             text: "No volver a preguntar"
@@ -84,7 +90,11 @@ BaseDialog {
     buttonsItem: RowLayout {
         spacing: MichiTheme.spacing.sm
         Layout.alignment: Qt.AlignRight
+            Accessible.role: Accessible.Button
+
         property bool confirmEnabled: true
+            activeFocusOnTab: true
+
 
         MichiButton {
             id: cancelBtn
@@ -95,6 +105,10 @@ BaseDialog {
             Accessible.description: "Cancelar acción"
             onClicked: {
                 root.open = false
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
                 root.cancelled()
             }
         }

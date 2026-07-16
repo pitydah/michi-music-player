@@ -67,10 +67,18 @@ Item {
                 StatusBadge { text: root.statusText; kind: root.statusKind }
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Configurar"
                     variant: "secondary"
                     onClicked: root.configureClicked()
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 MichiButton {
                     text: "Desconectar"

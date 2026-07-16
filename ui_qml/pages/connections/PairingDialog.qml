@@ -122,7 +122,11 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
                         id: confirmBtn
+                        activeFocusOnTab: true
+
                         text: root.pairingStatus === "paired" ? "Cerrar" : "Confirmar"
                         variant: "primary"
                         onClicked: {
@@ -139,6 +143,10 @@ Item {
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
                     }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         id: rejectBtn
@@ -155,6 +163,10 @@ Item {
                         Keys.onEscapePressed: {
                             root.open = false
                             root.pairRejected()
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         }
                     }
 

@@ -5,7 +5,15 @@ import "../../components"
 import "../../materials"
 
 Dialog {
+    Accessible.role: Accessible.Dialog
+
+    Accessible.name: "Dialog"
+
     id: root
+    closePolicy: Popup.CloseOnEscape
+
+    activeFocusOnTab: true
+
 
     property var radioBridge: null
     property var stationData: null
@@ -37,8 +45,20 @@ Dialog {
         SearchField { id: countryField; width: parent.width; placeholderText: "País" }
 
         Row {
+                Accessible.role: Accessible.Button
+
+                Accessible.name: "Button"
+
+                activeFocusOnTab: true
+
             spacing: MichiTheme.spacing.sm
             anchors.horizontalCenter: parent.horizontalCenter
+
+                Accessible.role: Accessible.Button
+
+                Accessible.name: "Button"
+
+                activeFocusOnTab: true
 
             Button {
                 text: "Cancelar"

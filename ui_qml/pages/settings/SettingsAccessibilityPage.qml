@@ -84,7 +84,15 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
                                 id: monoMode
+                                activeFocusOnTab: true
+
                                 checked: root._loadValue("accessibility/mono", false)
                                 onClicked: root._saveValue("accessibility/mono", checked)
                                 Accessible.description: "Mezclar canales estéreo a mono"
@@ -110,6 +118,10 @@ Item {
                                     text: balanceSlider.value.toFixed(1)
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
+                                Accessible.role: Accessible.Slider
+
+                                activeFocusOnTab: true
+
                                 }
                             }
 
@@ -155,6 +167,10 @@ Item {
                                 }
                                 Label {
                                     text: fontScaleSlider.value + "%"
+                                Accessible.role: Accessible.Slider
+
+                                activeFocusOnTab: true
+
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -179,6 +195,14 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                             spacing: MichiTheme.spacing.md
                             Label {
                                 text: "Alto contraste"
@@ -194,6 +218,14 @@ Item {
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
+
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
@@ -222,6 +254,14 @@ Item {
                     Layout.fillWidth: true
                     title: "Lector de pantalla"
                     interactive: false
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -249,7 +289,15 @@ Item {
                 }
 
                 GlassCard {
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
                     id: announcementsCard
+                                activeFocusOnTab: true
+
                     Layout.fillWidth: true
                     title: "Anuncios"
                     interactive: false
@@ -265,6 +313,14 @@ Item {
                             Label {
                                 text: "Anuncios de notificaciones"
                                 color: MichiTheme.colors.textPrimary
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
                             }
@@ -281,6 +337,14 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                             spacing: MichiTheme.spacing.md
                             Label {
                                 text: "Anuncios de errores"
@@ -308,6 +372,14 @@ Item {
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
                             }
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                             Switch {
                                 id: playbackAnnouncements
                                 checked: root._loadValue("accessibility/announce_playback", true)

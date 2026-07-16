@@ -67,6 +67,10 @@ Drawer {
     focus: true
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Cerrar"
                 variant: "ghost"
                 anchors.verticalCenter: parent.verticalCenter
@@ -110,6 +114,14 @@ Drawer {
                 Row {
                     width: parent.width
                     spacing: MichiTheme.spacing.sm
+                        Accessible.role: Accessible.CheckBox
+
+                        Accessible.name: "CheckBox"
+
+                        Accessible.checked: root.checked
+
+                        activeFocusOnTab: true
+
 
                     CheckBox {
                         id: typeCheck
@@ -160,6 +172,10 @@ Drawer {
             font.pixelSize: MichiTheme.typography.bodySize
             font.weight: MichiTheme.typography.weightMedium
         }
+                Accessible.role: Accessible.EditableText
+
+                activeFocusOnTab: true
+
 
         Row {
             width: parent.width
@@ -172,6 +188,10 @@ Drawer {
                 text: root._yearFrom > 0 ? String(root._yearFrom) : ""
                 onTextChangedByUser: root._yearFrom = parseInt(text) || 0
             }
+
+                Accessible.role: Accessible.EditableText
+
+                activeFocusOnTab: true
 
             Text {
                 text: "\u2013"
@@ -206,6 +226,10 @@ Drawer {
             width: parent.width
             spacing: MichiTheme.spacing.sm
 
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
             Repeater {
                 model: [
                     {key: "any", label: "Cualquiera"},
@@ -219,12 +243,20 @@ Drawer {
                     text: modelData.label
                     variant: root._qualityFilter === modelData.key ? "primary" : "ghost"
                     implicitHeight: 28
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                     onClicked: root._qualityFilter = modelData.key
                 }
             }
         }
 
         Item { width: 1; height: MichiTheme.spacing.md }
+
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
 
         Row {
             width: parent.width

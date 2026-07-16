@@ -3,6 +3,12 @@ import QtQuick.Controls
 import "../../theme"
 
 TextField {
+    Accessible.role: Accessible.EditableText
+
+    Accessible.name: "Campo de texto"
+
+    activeFocusOnTab: true
+
     focusPolicy: Qt.StrongFocus
     id: root
 

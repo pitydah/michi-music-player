@@ -47,6 +47,10 @@ Item {
         }
 
         MichiButton {
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             text: root._showCustom ? "Cancelar" : "Guardar como preset personalizado"
             variant: "ghost"
             visible: root.enabled
@@ -57,11 +61,19 @@ Item {
             width: parent.width
             spacing: MichiTheme.spacing.sm
             visible: root._showCustom && root.enabled
+                Accessible.role: Accessible.EditableText
+
+                activeFocusOnTab: true
+
 
             SearchField {
                 id: nameField
                 width: parent.width * 0.6
                 placeholderText: "Nombre del preset"
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 onTextChangedByUser: root._customName = text
             }
 
@@ -84,10 +96,18 @@ Item {
                 }
             }
         }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
         Row {
             spacing: MichiTheme.spacing.sm
             visible: root.enabled
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: "Importar preset"

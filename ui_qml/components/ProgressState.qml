@@ -42,6 +42,10 @@ Item {
         }
 
         MichiProgressBar {
+            Accessible.role: Accessible.ProgressBar
+
+            activeFocusOnTab: true
+
             anchors.horizontalCenter: parent.horizontalCenter
             width: parent.width
             value: root.progress
@@ -63,6 +67,10 @@ Item {
             font.pixelSize: MichiTheme.typography.captionSize
             horizontalAlignment: Text.AlignHCenter
         }
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
 
         MichiButton {
             anchors.horizontalCenter: parent.horizontalCenter

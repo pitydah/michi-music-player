@@ -144,7 +144,11 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 id: actionBtn
+                activeFocusOnTab: true
+
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.notification && root.notification.actionText ? root.notification.actionText : ""
                 variant: "ghost"
@@ -187,6 +191,10 @@ Item {
                 Keys.onEscapePressed: root.dismissToast()
             }
         }
+            Accessible.role: Accessible.ProgressBar
+
+            activeFocusOnTab: true
+
 
         MichiProgressBar {
             id: progressBar

@@ -103,10 +103,18 @@ Item {
                     spacing: MichiTheme.spacing.sm
 
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         text: "Exportar reporte"
                         variant: "primary"
                         onClicked: root.exportReport()
                     }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         text: "Deshacer todo"

@@ -29,6 +29,10 @@ Item {
                 model: root.suggestions
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: modelData; variant: "ghost"
                     onClicked: root.suggestionClicked(modelData)
                 }

@@ -84,6 +84,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Cancelar"
                 variant: "ghost"
                 onClicked: root.cancelRequested()

@@ -115,6 +115,8 @@ Item {
                 }
 
                 SearchField {
+                    Accessible.role: Accessible.EditableText
+
                     id: radioSearch
                     width: parent.width
                     placeholderText: "Buscar emisoras..."
@@ -201,6 +203,8 @@ Item {
                     visible: root.rd && root.rd.stations.length === 0
                 }
 
+                    Accessible.role: Accessible.Button
+
                 MichiButton {
                     id: addStationBtn
                     objectName: "addStationToggleButton"
@@ -221,17 +225,29 @@ Item {
                     visible: _showAddStation
 
                     Rectangle { width: parent.width; height: 1; color: MichiTheme.colors.borderSubtle }
+                        Accessible.role: Accessible.EditableText
+
+                        activeFocusOnTab: true
+
 
                     SearchField {
+                        Accessible.role: Accessible.EditableText
+
                         placeholderText: "Nombre"; width: parent.width; onTextChangedByUser: _newName = text
                         activeFocusOnTab: true
                     }
+                        Accessible.role: Accessible.EditableText
+
                     SearchField {
                         placeholderText: "URL del stream"; width: parent.width; onTextChangedByUser: _newUrl = text
                         activeFocusOnTab: true
+                        Accessible.role: Accessible.EditableText
+
                     }
                     SearchField {
                         placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onTextChangedByUser: _newCodec = text
+                        Accessible.role: Accessible.Button
+
                         activeFocusOnTab: true
                     }
                     SearchField {

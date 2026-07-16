@@ -54,6 +54,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true
             model: root._sources
@@ -105,6 +111,14 @@ Item {
     SourceEditorDialog {
         id: editDialog
         bridge: root.lib
+        Accessible.role: Accessible.Dialog
+
+        Accessible.name: "Popup"
+
+        closePolicy: Popup.CloseOnEscape
+
+        activeFocusOnTab: true
+
     }
 
     Popup {
@@ -132,6 +146,10 @@ Item {
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 width: parent.width
             }
 
@@ -139,6 +157,10 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 anchors.horizontalCenter: parent.horizontalCenter
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Sí"
                     variant: "danger"
                     onClicked: {

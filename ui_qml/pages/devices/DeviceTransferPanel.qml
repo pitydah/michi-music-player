@@ -91,6 +91,10 @@ Item {
                                 }
 
                                 MichiProgressBar {
+                                    Accessible.role: Accessible.ProgressBar
+
+                                    activeFocusOnTab: true
+
                                     width: parent.width
                                     height: 4
                                     value: (modelData.total_bytes || modelData.totalBytes || 1) > 0
@@ -134,6 +138,10 @@ Item {
                                         }
                                     }
                                 }
+                                    Accessible.role: Accessible.Button
+
+                                    activeFocusOnTab: true
+
 
                                 MichiButton {
                                     text: "Cancelar"
@@ -147,6 +155,10 @@ Item {
                                             root.dv.cancelTransfer(modelData.job_id || "")
                                         }
                                         root.cancelTransferClicked()
+                                    Accessible.role: Accessible.Button
+
+                                    activeFocusOnTab: true
+
                                     }
                                 }
 
@@ -173,6 +185,10 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.transferJobs.length === 0
             }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -180,6 +196,8 @@ Item {
 
                 MichiButton {
                     text: "Iniciar transferencia"
+                    Accessible.role: Accessible.Button
+
                     variant: "primary"
                     onClicked: root.startTransferClicked()
                     activeFocusOnTab: true

@@ -68,6 +68,12 @@ Dialog {
                 anchors.verticalCenter: parent.verticalCenter
             }
             ComboBox {
+                Accessible.role: Accessible.ComboBox
+
+                Accessible.name: "ComboBox"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 id: formatCombo
                 model: ["json", "csv"]
@@ -89,11 +95,21 @@ Dialog {
         Row {
             spacing: MichiTheme.spacing.sm
             width: parent.width
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
             visible: !root._exporting
 
             TextField {
                 focusPolicy: Qt.StrongFocus
                 id: pathInput
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 width: parent.width - 80
                 placeholderText: "Selecciona ruta de destino..."
                 readOnly: true
@@ -145,6 +161,8 @@ Dialog {
             visible: text !== ""
             wrapMode: Text.WordWrap
             width: parent.width
+                Accessible.role: Accessible.Button
+
         }
 
         Row {
@@ -181,6 +199,8 @@ Dialog {
                             root.exportCompleted(root._exportPath, result.count || 0)
                         } else {
                             root._status = result && result.error ? "Error: " + result.error : "Error al exportar"
+                Accessible.role: Accessible.Button
+
                         }
                     } else {
                         root._status = "Error: servicio no disponible"

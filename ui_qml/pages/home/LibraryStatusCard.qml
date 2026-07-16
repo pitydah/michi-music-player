@@ -51,6 +51,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Explorar biblioteca"
                 variant: "secondary"
                 onClicked: root.openLibrary()

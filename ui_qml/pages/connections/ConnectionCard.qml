@@ -124,10 +124,18 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: root.state === "connected" ? "Desconectar" : "Conectar"
                     variant: root.state === "connected" ? "secondary" : "primary"
                     onClicked: root.state === "connected" ? root.disconnectClicked() : root.connectClicked()
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 MichiButton {
                     text: "Configurar"

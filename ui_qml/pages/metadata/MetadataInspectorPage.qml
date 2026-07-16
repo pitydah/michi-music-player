@@ -138,6 +138,10 @@ Item {
                         Item { Layout.fillWidth: true; width: 1; height: 1 }
 
                         MichiButton {
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                             text: root._editing ? "Cancelar" : "Editar"
                             variant: "ghost"
                             onClicked: root._editing ? root.cancelEdit() : root.startEdit()
@@ -208,6 +212,10 @@ Item {
                         text: root.md && root.md.errorMessage ? "Error: " + root.md.errorMessage : ""
                         color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.bodySize; visible: text !== ""
                     }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         text: "Sugerir etiquetas (Smart Tagging)"

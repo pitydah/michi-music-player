@@ -20,6 +20,12 @@ Item {
     signal addToQueueRequested(int trackId)
 
     ListView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "ListView"
+
+        activeFocusOnTab: true
+
         focusPolicy: Qt.StrongFocus
         id: timelineView
         anchors.fill: parent
@@ -116,17 +122,51 @@ Item {
                 hoverEnabled: true
                 acceptedButtons: Qt.RightButton
                 onClicked: contextMenu.popup()
+                Accessible.role: Accessible.PopupMenu
+
+                Accessible.name: "Menu"
+
+                activeFocusOnTab: true
+
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
             }
 
             Menu {
                 id: contextMenu
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
 
                 MenuItem {
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
                     text: "Reproducir"
                     onTriggered: root.playRequested(
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
                         model.trackId || modelData.track_id || model.track_id || 0,
                         model.title || modelData.title || "")
                 }
+                    Accessible.role: Accessible.MenuItem
+
+                    Accessible.name: "MenuItem"
+
+                    activeFocusOnTab: true
+
                 MenuItem {
                     text: "Añadir a la cola"
                     onTriggered: root.addToQueueRequested(

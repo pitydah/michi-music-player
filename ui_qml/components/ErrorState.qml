@@ -129,15 +129,27 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: root.primaryActionText
                 visible: root.primaryActionText !== ""
                 onClicked: root.primaryActionRequested()
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: root.secondaryActionText
                 variant: "ghost"
                 visible: root.secondaryActionText !== ""
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 onClicked: root.secondaryActionRequested()
             }
 

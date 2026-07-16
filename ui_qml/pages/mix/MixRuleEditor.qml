@@ -40,6 +40,12 @@ Item {
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                 Text { text: "Campo"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 ComboBox {
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
+                    activeFocusOnTab: true
+
                     focusPolicy: Qt.StrongFocus
                     id: fieldCombo; width: parent.width
                     model: ["genre", "artist", "album", "decade", "year", "folder", "quality", "playcount", "rating", "added"]
@@ -47,6 +53,12 @@ Item {
                     onCurrentTextChanged: root._ruleField = currentText
                 }
             }
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                 Text { text: "Valor"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 TextField {
@@ -57,6 +69,12 @@ Item {
                 }
             }
         }
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
+                    activeFocusOnTab: true
+
 
         Row {
             spacing: MichiTheme.spacing.md; width: parent.width
@@ -81,10 +99,20 @@ Item {
                     focusPolicy: Qt.StrongFocus
             }
         }
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
 
         Row {
             spacing: MichiTheme.spacing.md; width: parent.width
             CheckBox { text: "Excluir recientes"; checked: root._excludeRecent; onCheckedChanged: root._excludeRecent = checked }
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             Text {
                 text: "Seed (opcional)"; color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter

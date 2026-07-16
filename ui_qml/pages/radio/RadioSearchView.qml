@@ -34,6 +34,10 @@ Item {
         SectionHeader { text: "Buscar emisoras"; width: parent.width }
 
         SearchField {
+            Accessible.role: Accessible.EditableText
+
+            activeFocusOnTab: true
+
             width: parent.width
             placeholderText: "Nombre de emisora..."
             onTextChangedByUser: root._query = text
@@ -41,14 +45,26 @@ Item {
         }
 
         Row {
+                Accessible.role: Accessible.EditableText
+
+                activeFocusOnTab: true
+
             spacing: MichiTheme.spacing.sm
             SearchField {
                 width: parent.width * 0.45
+                Accessible.role: Accessible.EditableText
+
+                activeFocusOnTab: true
+
                 placeholderText: "País..."
                 onTextChangedByUser: root._countryFilter = text
             }
             SearchField {
                 width: parent.width * 0.45
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
                 placeholderText: "Etiqueta..."
                 onTextChangedByUser: root._tagFilter = text
             }

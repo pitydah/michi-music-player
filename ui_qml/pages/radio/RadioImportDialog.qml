@@ -95,6 +95,8 @@ Dialog {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 text: "Seleccionar archivo"
                 variant: "primary"
                 activeFocusOnTab: true
@@ -141,6 +143,12 @@ Dialog {
             visible: root._importedStations.length > 0
         }
 
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
         ListView {
             focusPolicy: Qt.StrongFocus
             width: parent.width
@@ -154,6 +162,14 @@ Dialog {
                 height: 40
 
                 Row {
+                        Accessible.role: Accessible.CheckBox
+
+                        Accessible.name: "CheckBox"
+
+                        Accessible.checked: root.checked
+
+                        activeFocusOnTab: true
+
                     anchors.fill: parent
                     spacing: MichiTheme.spacing.sm
 
@@ -233,6 +249,10 @@ Dialog {
             spacing: MichiTheme.spacing.sm
             visible: root._importing
 
+                Accessible.role: Accessible.ProgressBar
+
+                activeFocusOnTab: true
+
             Text {
                 text: "Importando... " + root._importProgress + "/" + root._importTotal
                 color: MichiTheme.colors.textSecondary
@@ -248,6 +268,10 @@ Dialog {
         }
 
         Rectangle {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
             width: parent.width
             height: 1
             color: MichiTheme.colors.borderSubtle
@@ -261,6 +285,8 @@ Dialog {
                 text: "Seleccionar todo"
                 variant: "ghost"
                 visible: root._importedStations.length > 0 && !root._importing
+                Accessible.role: Accessible.Button
+
                 activeFocusOnTab: true
                 onClicked: {
                     root._selectedStations = root._importedStations.slice()
@@ -271,6 +297,8 @@ Dialog {
             }
 
             Item { width: parent.width - 220; height: 1 }
+
+                Accessible.role: Accessible.Button
 
             MichiButton {
                 text: "Cancelar"

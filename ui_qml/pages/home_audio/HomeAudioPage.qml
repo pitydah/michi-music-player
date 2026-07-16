@@ -103,7 +103,11 @@ Item {
                     }
 
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
                         id: createGroupBtn
+                        activeFocusOnTab: true
+
                         text: "Crear grupo"
                         variant: "primary"
                         visible: root.ha && root.ha.zonesSupported

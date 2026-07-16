@@ -76,10 +76,18 @@ Item {
             visible: root.primaryActionText !== "" || root.secondaryActionText !== ""
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: root.primaryActionText
                 visible: text !== ""
                 onClicked: root.primaryActionRequested()
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: root.secondaryActionText

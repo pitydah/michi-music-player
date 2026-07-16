@@ -172,6 +172,10 @@ Item {
             SectionHeader { text: "Formato destino"; width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }
 
             ComboBox {
+                Accessible.role: Accessible.ComboBox
+
+                Accessible.name: "ComboBox"
+
                 focusPolicy: Qt.StrongFocus
                 width: parent.width
                 model: root._formatOptions
@@ -203,6 +207,10 @@ Item {
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                         Text { text: "Bitrate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
@@ -213,6 +221,10 @@ Item {
                             Component.onCompleted: currentIndex = 2
                         }
                     }
+                            Accessible.role: Accessible.Slider
+
+                            activeFocusOnTab: true
+
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
                         Text { text: "Calidad VBR (0-10): " + root._selectedQuality.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
@@ -222,6 +234,12 @@ Item {
                             activeFocusOnTab: true
                             onMoved: root._selectedQuality = value
                         }
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
+                            activeFocusOnTab: true
+
                     }
 
                     Row {
@@ -232,6 +250,10 @@ Item {
                             model: root._sampleRateOptions
                             width: parent.width - 100
                             activeFocusOnTab: true
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                             onCurrentIndexChanged: root._selectedSampleRate = root._sampleRateOptions[currentIndex]
                             Component.onCompleted: currentIndex = 4
                         }
@@ -243,6 +265,10 @@ Item {
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._bitDepthOptions
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                             width: parent.width - 100
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._selectedBitDepth = root._bitDepthOptions[currentIndex]
@@ -261,6 +287,14 @@ Item {
                             onCurrentIndexChanged: root._selectedChannels = root._channelsOptions[currentIndex]
                             Component.onCompleted: currentIndex = 1
                         }
+                            Accessible.role: Accessible.CheckBox
+
+                            Accessible.name: "CheckBox"
+
+                            Accessible.checked: root.checked
+
+                            activeFocusOnTab: true
+
                     }
                 }
             }
@@ -268,6 +302,14 @@ Item {
             SectionHeader { text: "Metadatos y carátula"; width: parent.width; objectName: "metadataHeader"; Accessible.name: "Metadatos y carátula" }
 
             GlassMaterial {
+                            Accessible.role: Accessible.CheckBox
+
+                            Accessible.name: "CheckBox"
+
+                            Accessible.checked: root.checked
+
+                            activeFocusOnTab: true
+
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
@@ -285,6 +327,10 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
+                            Accessible.role: Accessible.EditableText
+
+                            Accessible.name: "Campo de texto"
+
                             checked: root._keepArtwork
                             text: "Conservar carátula"
                             activeFocusOnTab: true
@@ -293,6 +339,10 @@ Item {
                             onCheckedChanged: root._keepArtwork = checked
                         }
                     }
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                 }
             }
 
@@ -306,6 +356,12 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Carpeta:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
+                            Accessible.role: Accessible.EditableText
+
+                            Accessible.name: "Campo de texto"
+
+                            activeFocusOnTab: true
+
                             focusPolicy: Qt.StrongFocus
                             width: parent.width - 160
                             text: root._outputDir
@@ -317,6 +373,10 @@ Item {
                         }
                         MichiButton {
                             text: "..."; variant: "ghost"; implicitWidth: 36
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -345,6 +405,8 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Colisiones:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                    Accessible.role: Accessible.Button
+
                             focusPolicy: Qt.StrongFocus
                             model: root._collisionOptions
                             width: parent.width - 100
@@ -353,6 +415,10 @@ Item {
                             Component.onCompleted: currentIndex = 1
                         }
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
             }
 
@@ -365,12 +431,18 @@ Item {
                     anchors.centerIn: parent
                     text: root._previewResult
                           ? "Estimado: " + (root._previewResult.estimated_size ? (root._previewResult.estimated_size / 1048576).toFixed(1) + " MB" : "desconocido")
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                             + " | Espacio libre: " + (root._previewResult.free_space ? (root._previewResult.free_space / 1073741824).toFixed(1) + " GB" : "desconocido")
                           : "Selecciona archivo y perfil para previsualizar"
                     color: root._previewResult ? MichiTheme.colors.textPrimary : MichiTheme.colors.textMuted
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
             }
+
+                    Accessible.role: Accessible.Button
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -397,6 +469,10 @@ Item {
                             root._startConversion()
                     }
                 }
+                        Accessible.role: Accessible.ProgressBar
+
+                        activeFocusOnTab: true
+
                 MichiButton {
                     text: "Reintentar"
                     variant: "secondary"

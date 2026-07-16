@@ -45,11 +45,19 @@ Item {
             }
 
             SearchField {
+                Accessible.role: Accessible.EditableText
+
                 id: nameField
+                activeFocusOnTab: true
+
                 width: parent.width
                 placeholderText: "Nombre del perfil"
                 text: root._isNew ? "" : (root.profileData.name || "")
             }
+                Accessible.role: Accessible.EditableText
+
+                activeFocusOnTab: true
+
 
             SearchField {
                 id: descField
@@ -57,6 +65,12 @@ Item {
                 placeholderText: "Descripción"
                 text: root._isNew ? "" : (root.profileData.description || "")
             }
+
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
+                    activeFocusOnTab: true
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -66,6 +80,12 @@ Item {
                     id: backendCombo
                     model: ["auto", "gstreamer", "mpd"]
                     currentIndex: root._isNew ? 0 : Math.max(0, find(root.profileData.backend || root.profileData.preferred_backend || "auto"))
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
+                    activeFocusOnTab: true
+
                 }
             }
 
@@ -74,7 +94,13 @@ Item {
                 Text { text: "Frecuencia:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
                     id: sampleRateCombo
+                    activeFocusOnTab: true
+
                     model: ["Automático", "44100", "48000", "96000", "192000"]
                     currentIndex: 0
                 }
@@ -82,6 +108,12 @@ Item {
 
             Row {
                 spacing: MichiTheme.spacing.sm
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
+                    activeFocusOnTab: true
+
                 Text { text: "Bits:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
@@ -90,15 +122,35 @@ Item {
                     currentIndex: 0
                 }
             }
+                    Accessible.role: Accessible.CheckBox
+
+                    Accessible.name: "CheckBox"
+
+                    Accessible.checked: root.checked
+
+                    activeFocusOnTab: true
+
 
             Row {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
+                    Accessible.role: Accessible.CheckBox
+
+                    Accessible.name: "CheckBox"
+
+                    Accessible.checked: root.checked
+
+                    activeFocusOnTab: true
+
                     focusPolicy: Qt.StrongFocus
                     id: channelsCombo
                     model: ["Automático", "2", "6", "8"]
                     currentIndex: 0
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
             }
 
@@ -128,7 +180,11 @@ Item {
                     enabled: nameField.text.trim() !== ""
                     onClicked: {
                         var data = {
+                    Accessible.role: Accessible.Button
+
                             id: root._isNew ? "" : root.profileData.id,
+                    activeFocusOnTab: true
+
                             name: nameField.text.trim(),
                             description: descField.text.trim(),
                             backend: backendCombo.currentText,

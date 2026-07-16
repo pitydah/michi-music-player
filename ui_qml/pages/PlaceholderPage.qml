@@ -71,6 +71,10 @@ Item {
             spacing: MichiTheme.spacing.md
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Volver"
                 variant: "ghost"
                 KeyNavigation.tab: openClassicBtn
@@ -81,6 +85,10 @@ Item {
                         root.goBack()
                 }
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 id: openClassicBtn

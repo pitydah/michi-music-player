@@ -64,6 +64,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             id: listView
             width: parent.width

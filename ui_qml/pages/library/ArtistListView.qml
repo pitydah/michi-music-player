@@ -18,6 +18,12 @@ Item {
     signal artistClicked(string name)
 
     ListView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "ListView"
+
+        activeFocusOnTab: true
+
         focusPolicy: Qt.StrongFocus
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md

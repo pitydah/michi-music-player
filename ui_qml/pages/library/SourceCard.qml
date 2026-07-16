@@ -90,6 +90,10 @@ Rectangle {
             spacing: MichiTheme.spacing.xs
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: root.sourceEnabled ? "Desactivar" : "Activar"
                 variant: "ghost"; height: 24
                 onClicked: root.toggleEnabled()

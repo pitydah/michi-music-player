@@ -113,6 +113,12 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         ListView {
+                            Accessible.role: Accessible.List
+
+                            Accessible.name: "ListView"
+
+                            activeFocusOnTab: true
+
                             focusPolicy: Qt.StrongFocus
                             Layout.fillWidth: true
                             Layout.preferredHeight: Math.min(contentHeight, 300)
@@ -138,6 +144,10 @@ Item {
                                         font.pixelSize: MichiTheme.typography.bodySize
                                         elide: Text.ElideMiddle
                                         Layout.fillWidth: true
+                                        Accessible.role: Accessible.Button
+
+                                        activeFocusOnTab: true
+
                                     }
 
                                     MichiButton {
@@ -157,6 +167,10 @@ Item {
                                     text: "No hay carpetas configuradas"
                                     color: MichiTheme.colors.textSecondary
                                     font.pixelSize: MichiTheme.typography.bodySize
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                                 }
                             }
                         }
@@ -183,6 +197,14 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                             Label {
                                 text: "Vigilar cambios en carpetas"
                                 color: MichiTheme.colors.textPrimary
@@ -197,6 +219,14 @@ Item {
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -221,6 +251,12 @@ Item {
                             spacing: MichiTheme.spacing.md
 
                             ColumnLayout {
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                                 Layout.fillWidth: true
                                 spacing: MichiTheme.spacing.xxs
                                 Label {
@@ -267,6 +303,12 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                             spacing: MichiTheme.spacing.md
 
                             ColumnLayout {
@@ -304,6 +346,14 @@ Item {
                         }
                     }
                 }
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
 
                 GlassCard {
                     Layout.fillWidth: true
@@ -320,6 +370,10 @@ Item {
                             spacing: MichiTheme.spacing.md
                             Label {
                                 text: "Enriquecimiento automático"
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
                                 Layout.fillWidth: true
@@ -327,7 +381,11 @@ Item {
                             Switch {
                                 checked: root._loadValue("artist_enrichment/enabled", false)
                                 onClicked: root._saveValue("artist_enrichment/enabled", checked)
+                            Accessible.role: Accessible.Button
+
                                 Accessible.description: "Obtener metadatos de MusicBrainz y otras fuentes"
+                            activeFocusOnTab: true
+
                                 focusPolicy: Qt.StrongFocus
                             }
                         }

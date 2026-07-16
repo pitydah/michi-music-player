@@ -139,7 +139,11 @@ Rectangle {
         }
 
         MichiProgressBar {
+            Accessible.role: Accessible.ProgressBar
+
             id: progressBar
+            activeFocusOnTab: true
+
             width: parent.width
             value: root.notification && root.notification.progress !== undefined && root.notification.progress >= 0 ? root.notification.progress : 0
             from: 0
@@ -162,6 +166,10 @@ Rectangle {
             }
 
             Item { width: 1; height: 1 }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 id: cancelBtn

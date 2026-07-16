@@ -49,6 +49,10 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         TextField {
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
             focusPolicy: Qt.StrongFocus
             id: nameInput
             width: parent.width
@@ -63,6 +67,10 @@ Dialog {
             text: "Descripción (opcional)"
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.bodySize
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
         }
         TextArea {
             focusPolicy: Qt.StrongFocus
@@ -81,12 +89,22 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         Row {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
             spacing: MichiTheme.spacing.sm
             width: parent.width
 
             TextField {
                 focusPolicy: Qt.StrongFocus
+                Accessible.role: Accessible.Button
+
                 id: coverInput
+                activeFocusOnTab: true
+
                 width: parent.width - 80
                 placeholderText: "Ruta de imagen o álbum"
                 text: root._coverPath
@@ -106,6 +124,8 @@ Dialog {
             text: root._validationError
             color: MichiTheme.colors.error
             font.pixelSize: MichiTheme.typography.metaSize
+                Accessible.role: Accessible.Button
+
             visible: root._validationError !== ""
         }
 
@@ -136,6 +156,10 @@ Dialog {
                             var result = root.bridge.createPlaylist(name)
                             var newId = result && result.id ? result.id : -1
                             root.saved(newId, name)
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                         } else {
                             root.saved(-1, name)
                         }

@@ -34,6 +34,10 @@ Item {
         }
 
         MichiSlider {
+            Accessible.role: Accessible.Slider
+
+            activeFocusOnTab: true
+
             width: 200
             from: -24; to: 24; value: root.gain
             stepSize: 0.5

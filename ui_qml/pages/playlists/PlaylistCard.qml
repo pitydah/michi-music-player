@@ -86,10 +86,30 @@ Item {
     }
 
     Menu {
+        Accessible.role: Accessible.PopupMenu
+
+        Accessible.name: "Menu"
+
+            Accessible.role: Accessible.MenuItem
+
         id: contextMenu
+        activeFocusOnTab: true
+
         MenuItem {
+            Accessible.role: Accessible.MenuItem
+
+            Accessible.name: "MenuItem"
+
+            activeFocusOnTab: true
+
             text: "Reproducir"
             onTriggered: root.contextMenuRequested("shuffle")
+            Accessible.role: Accessible.MenuItem
+
+            Accessible.name: "MenuItem"
+
+            activeFocusOnTab: true
+
         }
         MenuItem {
             text: "Duplicar"

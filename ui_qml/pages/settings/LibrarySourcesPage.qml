@@ -32,6 +32,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             id: sourceList
             Layout.fillWidth: true
@@ -58,6 +64,14 @@ Item {
                         Label { text: modelData.path || ""; font.pixelSize: MichiTheme.typography.bodySize; color: MichiTheme.colors.textPrimary; font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideMiddle }
                         Label { text: modelData.available ? "Disponible" : "No disponible"; font.pixelSize: MichiTheme.typography.captionSize; color: modelData.available ? MichiTheme.colors.accentGreen : MichiTheme.colors.textMuted }
                         Label { text: modelData.file_count + " archivos"; visible: modelData.file_count > 0; font.pixelSize: MichiTheme.typography.captionSize; color: MichiTheme.colors.textSecondary }
+                        Accessible.role: Accessible.CheckBox
+
+                        Accessible.name: "Switch"
+
+                        Accessible.checked: root.checked
+
+                        activeFocusOnTab: true
+
                     }
 
                     Switch {

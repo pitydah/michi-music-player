@@ -54,6 +54,8 @@ Item {
                     width: parent.width
 
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
                         text: "Volver"
                         variant: "ghost"
                         activeFocusOnTab: true
@@ -75,6 +77,8 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.md
                     width: parent.width
+
+                        Accessible.role: Accessible.Button
 
                     MichiButton {
                         id: scanBtn
@@ -117,6 +121,10 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.rightMargin: MichiTheme.spacing.md
                             spacing: MichiTheme.spacing.sm
+                                Accessible.role: Accessible.Button
+
+                                activeFocusOnTab: true
+
 
                             MichiButton {
                                 text: "Vincular"

@@ -90,12 +90,20 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter; spacing: MichiTheme.spacing.sm
 
                     MichiIconButton {
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
                         iconText: "S"; tooltipText: "Aleatorio"
                         selected: root.ps ? root.ps.shuffleEnabled : false
                         btnSize: 36; enabled: root._canPlay
                         onClicked: { if (root.ps) root.ps.toggleShuffle() }
                     }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiIconButton {
                         iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
@@ -117,11 +125,19 @@ Item {
                             id: maP; anchors.fill: parent
                             hoverEnabled: root._canPlay; cursorShape: root._canPlay ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: { if (root._canPlay && root.ps) root.ps.togglePlay() }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         }
                     }
 
                     MichiIconButton {
                         iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         iconText: ">>"; tooltipText: "Siguiente"
                         btnSize: 36; enabled: root._canPlay
                         onClicked: { if (root.ps) root.ps.next() }

@@ -54,10 +54,18 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Reintentar"
                     variant: "primary"
                     onClicked: root.retryClicked()
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 MichiButton {
                     text: "Descartar"

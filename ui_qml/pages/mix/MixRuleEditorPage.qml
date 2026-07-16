@@ -65,6 +65,8 @@ Item {
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: "Volver"; variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: logicCombo
@@ -101,6 +103,10 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
                 }
 
+                    Accessible.role: Accessible.ComboBox
+
+                    Accessible.name: "ComboBox"
+
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     id: logicCombo; width: 120
@@ -118,6 +124,8 @@ Item {
             }
 
             Row {
+                    Accessible.role: Accessible.Button
+
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
@@ -127,6 +135,10 @@ Item {
                     KeyNavigation.tab: rulesList
                     KeyNavigation.backtab: logicCombo
                     onClicked: root.addRule()
+                Accessible.role: Accessible.List
+
+                Accessible.name: "ListView"
+
                 }
             }
 
@@ -155,6 +167,12 @@ Item {
                     Keys.onReturnPressed: removeBtn.clicked()
                     Keys.onSpacePressed: removeBtn.clicked()
 
+                                    Accessible.role: Accessible.ComboBox
+
+                                    Accessible.name: "ComboBox"
+
+                                    activeFocusOnTab: true
+
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
 
@@ -164,6 +182,10 @@ Item {
                                     focusPolicy: Qt.StrongFocus
                                     width: 130
                                     model: ["genre", "artist", "album", "decade", "year", "folder", "quality", "playcount", "rating", "added"]
+                                    Accessible.role: Accessible.ComboBox
+
+                                    Accessible.name: "ComboBox"
+
                                     currentIndex: {
                                         var idx = model.indexOf(modelData.field)
                                         return idx >= 0 ? idx : 0
@@ -174,6 +196,12 @@ Item {
 
                                 ComboBox {
                                     focusPolicy: Qt.StrongFocus
+                                    Accessible.role: Accessible.EditableText
+
+                                    Accessible.name: "Campo de texto"
+
+                                    activeFocusOnTab: true
+
                                     width: 100
                                     model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                                     currentIndex: {
@@ -181,6 +209,8 @@ Item {
                                         return idx >= 0 ? idx : 0
                                     }
                                     onCurrentTextChanged: modelData.operator = currentText
+                            Accessible.role: Accessible.Button
+
                                     activeFocusOnTab: true
                                 }
 
@@ -198,6 +228,8 @@ Item {
                             id: removeBtn
                             text: "X"; variant: "ghost"
                             width: 36; height: 36
+                        Accessible.role: Accessible.Button
+
                             anchors.verticalCenter: parent.verticalCenter
                             activeFocusOnTab: true
                             onClicked: root.removeRule(index)
@@ -207,6 +239,8 @@ Item {
             }
 
             Column {
+                        Accessible.role: Accessible.Button
+
                 width: parent.width; spacing: MichiTheme.spacing.md
 
                 Row {

@@ -103,6 +103,10 @@ Rectangle {
         }
 
         MichiProgressBar {
+            Accessible.role: Accessible.ProgressBar
+
+            activeFocusOnTab: true
+
             width: parent.width
             value: root.progress
             from: root.from

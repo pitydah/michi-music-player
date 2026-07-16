@@ -52,6 +52,10 @@ Item {
                         focusPolicy: Qt.StrongFocus
                 }
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Ejecutar búsqueda y reemplazo"
                     variant: "secondary"
                     onClicked: {
@@ -93,6 +97,10 @@ Item {
         }
 
         Row {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
             spacing: MichiTheme.spacing.sm
             MichiButton {
                 text: root._confirmApply ? "Confirmar aplicar lotes" : "Aplicar cambios"
@@ -102,6 +110,10 @@ Item {
                         root._confirmApply = true
                     } else {
                         root._confirmApply = false
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                     }
                 }
             }
