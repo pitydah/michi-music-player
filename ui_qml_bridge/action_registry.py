@@ -134,18 +134,20 @@ class ActionRegistry(QObject):
         self._actions[action.id] = action
         self.registryChanged.emit()
 
+    def get(self, action_id: str) -> ActionDescriptor | None:
+        return self._actions.get(action_id) if isinstance(self._actions.get(action_id), ActionDescriptor) else None
+
     @Slot(str, result=dict)
-    def get(self, action_id: str) -> dict:
+    def qmlGet(self, action_id: str) -> dict:
         action = self._actions.get(action_id)
-        if action:
-            return {"id": action.action_id, "title": action.title,
+        if isinstance(action, ActionDescriptor):
+            return {"id": action.id, "title": action.title,
                     "category": action.category, "enabled": action.enabled,
                     "visible": action.visible, "handler_exists": action.handler is not None}
         return {}
 
     def find(self, action_id: str) -> ActionDescriptor | None:
-        action = self._actions.get(action_id)
-        return action if isinstance(action, ActionDescriptor) else None
+        return self.get(action_id)
 
     @Property("QVariantList", notify=registryChanged)
     def actions(self):

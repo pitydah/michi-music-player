@@ -1,7 +1,9 @@
-"""E2E workflow: Mix + Michi AI + Settings — bridge interactions with ok=True verification."""
+"""E2E workflow: Mix + Michi AI + Settings — bridge interactions + QTest."""
 from __future__ import annotations
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 
 pytestmark = [
     pytest.mark.qml_module("mix"),
@@ -80,3 +82,13 @@ class TestMixAiSettingsE2E:
         assert nav.currentRoute == "settings", (
             f"Expected 'settings', got '{nav.currentRoute}'"
         )
+
+    def test_qtest_navigate_settings(self, nav, root_window):
+        from .conftest import find_qml_item
+        nav.navigate("settings")
+        assert nav.currentRoute == "settings"
+        header = find_qml_item(root_window, "settingsGeneralPage")
+        if header is not None:
+            header.forceActiveFocus()
+            QTest.keyClick(header, Qt.Key_Down)
+            QTest.qWait(50)

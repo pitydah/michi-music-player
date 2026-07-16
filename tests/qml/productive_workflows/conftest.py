@@ -107,7 +107,7 @@ def bootstrap():
     return bs
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def engine(bootstrap):
     engine = QQmlApplicationEngine()
     from ui_qml_bridge.context_registrar import ContextRegistrar
@@ -126,13 +126,12 @@ def engine(bootstrap):
     engine.deleteLater()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def root_window(engine) -> QQuickWindow:
     root = engine.rootObjects()[0]
     assert isinstance(root, QQuickWindow), f"Root object is {type(root)}, expected QQuickWindow"
     if "offscreen" not in _QT_QPA_ORIGINAL:
         root.show()
-        QTest.qWaitForWindowExposed(root)
     return root
 
 
@@ -169,3 +168,8 @@ def action_registry(bootstrap):
 @pytest.fixture(scope="session")
 def all_bridges(bootstrap) -> dict[str, Any]:
     return dict(bootstrap._bridges)
+
+
+@pytest.fixture(scope="session")
+def bridges(bootstrap) -> dict[str, Any]:
+    return bootstrap._bridges

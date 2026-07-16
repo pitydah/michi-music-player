@@ -5,7 +5,7 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
-from conftest import find_qml_item
+
 
 pytestmark = [
     pytest.mark.qml_module("library"),
@@ -101,6 +101,7 @@ class TestLibraryE2E:
         assert isinstance(play_result, dict)
 
     def test_qtest_navigate_search_keyboard(self, nav, root_window):
+        from .conftest import find_qml_item
         nav.navigate("library")
         assert nav.currentRoute == "library"
         search_field = find_qml_item(root_window, "libraryNavigationBar")
@@ -111,3 +112,10 @@ class TestLibraryE2E:
             QTest.keyClick(search_field, Qt.Key_Return)
             QTest.qWait(50)
             assert nav.currentRoute == "library"
+
+    def test_qtest_click_refresh(self, nav, root_window):
+        from .conftest import find_qml_item, qtest_click_item
+        nav.navigate("library")
+        refresh_btn = find_qml_item(root_window, "libraryRefreshButton")
+        if refresh_btn is not None:
+            qtest_click_item(refresh_btn, root_window)

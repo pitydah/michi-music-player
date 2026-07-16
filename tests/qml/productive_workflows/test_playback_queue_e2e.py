@@ -1,7 +1,9 @@
-"""E2E workflow: Playback + Queue — all controls, ok=True verification."""
+"""E2E workflow: Playback + Queue — all controls, ok=True verification + QTest."""
 from __future__ import annotations
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 
 pytestmark = [
     pytest.mark.qml_module("playback"),
@@ -83,3 +85,13 @@ class TestPlaybackQueueE2E:
         playback_bridge.toggleRepeat()
         playback_bridge.seek(10)
         playback_bridge.setVolume(50)
+
+    def test_qtest_navigate_playback(self, nav, root_window):
+        from .conftest import find_qml_item
+        nav.navigate("playback")
+        assert nav.currentRoute == "playback"
+        now_playing = find_qml_item(root_window, "nowPlayingControls")
+        if now_playing is not None:
+            now_playing.forceActiveFocus()
+            QTest.keyClick(now_playing, Qt.Key_Space)
+            QTest.qWait(50)

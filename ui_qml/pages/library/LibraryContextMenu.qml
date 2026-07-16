@@ -84,8 +84,8 @@ Popup {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.leftMargin: MichiTheme.spacing.sm
                         text: modelData.label
-                        color: root.actionRegistry && root.actionRegistry.get("track_" + modelData.action)
-                               ? (root.actionRegistry.get("track_" + modelData.action).destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary)
+                        color: root.actionRegistry && root.actionRegistry.qmlGet("track_" + modelData.action)
+                               ? (root.actionRegistry.qmlGet("track_" + modelData.action).destructive ? MichiTheme.colors.error : MichiTheme.colors.textPrimary)
                                : MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                     }
