@@ -6,6 +6,12 @@ import "../components"
 
 Item {
     id: root
+    objectName: "settingsPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ajustes"
+
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : (typeof settingsBridge !== "undefined" ? settingsBridge : null)
     property string selectedCategoryId: ""
     property var selectedCategory: null

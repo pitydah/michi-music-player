@@ -7,6 +7,7 @@ import "../../materials"
 
 Item {
     id: root
+    objectName: "mixHubPage"
     focus: true
 
     Accessible.role: Accessible.Pane
@@ -14,8 +15,6 @@ Item {
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null
     property bool _loading: false
-
-    objectName: "MixHubPage"
 
     Component.onCompleted: {
         if (root.mx && typeof root.mx.refresh !== "undefined")

@@ -8,6 +8,11 @@ import "."
 
 Item {
     id: root
+    objectName: "outputProfilesPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Perfiles de salida"
 
     property var stg: typeof settingsBridge !== "undefined" ? settingsBridge : null
     property var op: typeof outputProfilesBridge !== "undefined" ? outputProfilesBridge : null

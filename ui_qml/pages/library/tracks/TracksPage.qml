@@ -7,6 +7,11 @@ import "../"
 
 Item {
     id: root
+    objectName: "tracksPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Canciones"
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

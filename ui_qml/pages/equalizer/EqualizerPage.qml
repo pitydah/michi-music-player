@@ -8,6 +8,11 @@ import "."
 
 Item {
     id: root
+    objectName: "equalizerPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ecualizador"
 
     property var eq: typeof eqBridge !== "undefined" ? eqBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null

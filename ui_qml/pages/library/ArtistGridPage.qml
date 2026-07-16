@@ -7,6 +7,11 @@ import "../../materials"
 
 Item {
     id: root
+    objectName: "artistGridPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Artistas"
 
     property var artistModel: null
     property var bridge: null

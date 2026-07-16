@@ -6,6 +6,11 @@ import "../materials"
 
 Item {
     id: root
+    objectName: "diagnosticsPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Diagnóstico"
 
     property var diag: typeof diagnosticsBridge !== "undefined" ? diagnosticsBridge : null
 

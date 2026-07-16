@@ -28,6 +28,8 @@ Item {
     property int _yearTo: 0
     property string _qualityFilter: "any"
 
+    objectName: "globalSearchPage"
+
     PageStateManager {
         id: pageState
         route: "search"
@@ -35,8 +37,6 @@ Item {
         onSearchTextChanged: pageState.save()
         onScrollYChanged: pageState.save()
     }
-
-    objectName: "globalSearchPage"
 
     function search(text) {
         root._requestGen++

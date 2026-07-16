@@ -7,6 +7,11 @@ import "."
 
 Item {
     id: root
+    objectName: "nowPlayingPage"
+    focus: true
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Reproducción"
 
     property var ps: typeof nowplayingBridge !== "undefined" ? nowplayingBridge
                    : (typeof playbackBridge !== "undefined" ? playbackBridge : null)
