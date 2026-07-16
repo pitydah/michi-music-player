@@ -18,6 +18,6 @@ QtObject {
         readonly property int exit: Easing.InCubic
         readonly property int inOut: Easing.InOutCubic
         readonly property int out: Easing.OutCubic
-        readonly property int in: Easing.InCubic
+        readonly property int _in: Easing.InCubic
     }
 }
