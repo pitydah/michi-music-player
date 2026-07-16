@@ -29,7 +29,7 @@ Item {
         color: MichiTheme.colors.surface
         radius: MichiTheme.radiusSm
         border.color: MichiTheme.colors.border
-        border.width: 1
+        border.width: MichiTheme.borderWidth
 
         Row {
             anchors.fill: parent

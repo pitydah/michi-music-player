@@ -22,7 +22,7 @@ Item {
         anchors.fill: parent; spacing: 0
 
         Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 32
+            Layout.fillWidth: true; Layout.preferredHeight: MichiTheme.spacing.xxxl
             color: MichiTheme.colors.surfaceCard
 
             RowLayout {

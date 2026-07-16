@@ -100,7 +100,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Balance"
                                     color: MichiTheme.colors.textPrimary
@@ -147,7 +147,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Escala de fuente"
                                     color: MichiTheme.colors.textPrimary

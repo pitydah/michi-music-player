@@ -46,7 +46,7 @@ Rectangle {
                 anchors.centerIn: parent
                 text: root.sourceType === "local" ? "HD" : root.sourceType === "subsonic" ? "SV" : "SR"
                 color: root.sourceEnabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                font.pixelSize: 14; font.weight: MichiTheme.typography.weightBold
+                font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightBold
             }
         }
 

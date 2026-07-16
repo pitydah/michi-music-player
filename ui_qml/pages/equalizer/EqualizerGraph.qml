@@ -23,7 +23,7 @@ Item {
         Row {
             anchors.fill: parent
             anchors.margins: MichiTheme.spacing.sm
-            spacing: 2
+            spacing: MichiTheme.spacing.xxs
 
             Repeater {
                 model: root.eqBridge ? root.eqBridge.graphicBands : []
@@ -43,11 +43,11 @@ Item {
                         x: 2; width: parent.width - 4
                         y: root.gain >= 0 ? barY : parent.height * 0.85
                         height: Math.max(2, root.barHeight)
-                        radius: 2
+                        radius: MichiTheme.radius.xs
                         color: root.gain >= 0
                             ? (root.gain > 6 ? MichiTheme.colors.warning : MichiTheme.colors.accentBlue)
                             : MichiTheme.colors.error
-                        opacity: 0.8
+                        opacity: MichiTheme.opacity.hover
                     }
 
                     Rectangle {

@@ -34,7 +34,7 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: 2
-                color: Qt.rgba(1.0, 1.0, 1.0, 0.10)
+                color: MichiTheme.colors.controlTrack
                 clip: true
 
                 Rectangle {

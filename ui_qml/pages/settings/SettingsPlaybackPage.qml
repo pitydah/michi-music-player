@@ -85,7 +85,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Dispositivo de salida"
                                     color: MichiTheme.colors.textPrimary
@@ -119,7 +119,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Perfil de audio"
                                     color: MichiTheme.colors.textPrimary
@@ -163,7 +163,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Volumen predeterminado"
                                     color: MichiTheme.colors.textPrimary
@@ -244,7 +244,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Crossfade"
                                     color: MichiTheme.colors.textPrimary
@@ -288,7 +288,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Normalización de volumen"
                                     color: MichiTheme.colors.textPrimary
@@ -339,7 +339,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Tamaño de buffer"
                                     color: MichiTheme.colors.textPrimary

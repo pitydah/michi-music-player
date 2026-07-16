@@ -26,7 +26,7 @@ Item {
         color: root.itemIsCurrent ? MichiTheme.colors.surfaceCardHighlight : MichiTheme.colors.surfaceCard
         radius: MichiTheme.radius.sm
         border.width: root.itemIsCurrent ? 1 : 0
-        border.color: root.itemIsCurrent ? MichiTheme.colors.accent : "transparent"
+        border.color: root.itemIsCurrent ? MichiTheme.colors.accentBlue : "transparent"
 
         RowLayout {
             anchors.fill: parent
@@ -35,7 +35,7 @@ Item {
 
             Text {
                 text: (root.itemIndex + 1) + "."
-                color: root.itemIsCurrent ? MichiTheme.colors.accent : MichiTheme.colors.textMuted
+                color: root.itemIsCurrent ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 width: 28
             }
@@ -47,7 +47,7 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: root.itemTitle || "—"
-                    color: root.itemIsCurrent ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
+                    color: root.itemIsCurrent ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: root.itemIsCurrent ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
                     elide: Text.ElideRight

@@ -26,12 +26,12 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 64; height: 64; radius: 16
             color: MichiTheme.colors.error
-            opacity: 0.15
+            opacity: MichiTheme.opacity.muted
             Text {
                 anchors.centerIn: parent
                 text: "!"
                 color: MichiTheme.colors.error
-                font.pixelSize: 28
+                font.pixelSize: MichiTheme.typography.heroTitleSize
                 font.weight: MichiTheme.typography.weightBold
             }
         }

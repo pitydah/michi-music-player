@@ -53,7 +53,7 @@ Item {
                     radius: MichiTheme.radiusSm
                     color: mouseArea.containsMouse ? MichiTheme.colors.accentSurface : "transparent"
                     border.color: MichiTheme.colors.border
-                    border.width: 1
+                    border.width: MichiTheme.borderWidth
 
                     MouseArea {
                         id: mouseArea

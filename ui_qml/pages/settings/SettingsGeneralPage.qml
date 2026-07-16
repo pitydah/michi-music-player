@@ -105,7 +105,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Idioma de la interfaz"
                                     color: MichiTheme.colors.textPrimary
@@ -159,7 +159,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Modo de tema"
                                     color: MichiTheme.colors.textPrimary
@@ -328,7 +328,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Tamaño de caché"
                                     color: MichiTheme.colors.textPrimary

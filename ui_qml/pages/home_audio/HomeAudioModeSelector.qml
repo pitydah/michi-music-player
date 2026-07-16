@@ -65,9 +65,9 @@ Item {
                                 anchors.centerIn: parent
                                 text: modelData.glyph
                                 color: root.selectedMode === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                                font.pixelSize: 14
+                                font.pixelSize: MichiTheme.typography.bodySize
                                 font.weight: MichiTheme.typography.weightSemiBold
-                                font.letterSpacing: 1.5
+                                font.letterSpacing: MichiTheme.spacing.xxs
                             }
                         }
 

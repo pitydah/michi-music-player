@@ -17,7 +17,7 @@ Item {
         anchors.centerIn: parent
         text: root.favorite ? "★" : root.missing ? "[X]" : ""
         color: root.favorite ? MichiTheme.colors.warning : root.missing ? MichiTheme.colors.error : "transparent"
-        font.pixelSize: 12
+        font.pixelSize: MichiTheme.typography.captionSize
         visible: root.favorite || root.missing
     }
 }

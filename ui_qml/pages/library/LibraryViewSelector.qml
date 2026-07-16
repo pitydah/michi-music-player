@@ -33,7 +33,7 @@ RowLayout {
                 anchors.centerIn: parent
                 text: modelData.icon.substring(5, 6).toUpperCase()
                 color: root.currentView === index ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                font.pixelSize: 12
+                font.pixelSize: MichiTheme.typography.captionSize
             }
 
             MouseArea {
