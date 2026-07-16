@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 
 from ui_qml.models.BasePagedListModel import BasePagedListModel
 
@@ -39,9 +39,11 @@ class FolderTreeModel(BasePagedListModel):
             return item.get(key, "")
         return None
 
+    @Slot(str, result=dict)
     def refresh(self, parent_path: str = ""):
         self._parent_path = parent_path
         super().refresh(parent_path=parent_path)
+        return {"ok": True, "parent_path": parent_path}
 
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:

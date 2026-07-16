@@ -16,7 +16,7 @@ Item {
 
     function reload() {
         if (root.lib && root.lib.trackModel) {
-            root.lib.trackModel.refresh("sort", "play_count", "play_count", false)
+            root.lib.trackModel.refreshForSort("play_count", false)
         }
     }
 

@@ -26,10 +26,10 @@ Item {
     function loadArtist(name) {
         artistName = name
         if (root.lib && root.lib.trackModel) {
-            root.lib.trackModel.refresh("artist", name, "year", true)
+            root.lib.trackModel.refreshForArtist(name)
         }
-        if (root.lib && root.lib.albumModel) {
-            root.lib.albumModel.refresh("search", name, "", false)
+        if (root.lib && root.lib.albumModel && root.lib.albumModel.refreshForArtist) {
+            root.lib.albumModel.refreshForArtist(name)
         }
         if (root.lib && root.lib.getArtistDetail) {
             var detail = root.lib.getArtistDetail(name)
@@ -92,7 +92,7 @@ Item {
                 MichiButton { text: "Mezclar"; variant: "ghost" }
                 MichiButton { text: "Añadir a cola"; variant: "ghost"; onClicked: {
                     if (root.lib && root.lib.trackModel) {
-                        root.lib.trackModel.refresh("artist", root.artistName, "", false)
+                        root.lib.trackModel.refreshForArtist(root.artistName)
                     }
                 }}
             }

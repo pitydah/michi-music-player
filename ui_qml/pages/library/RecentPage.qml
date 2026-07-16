@@ -16,7 +16,7 @@ Item {
 
     function reload() {
         if (root.lib && root.lib.trackModel) {
-            root.lib.trackModel.refresh("sort", "date_added", "date_added", false)
+            root.lib.trackModel.refreshForSort("date_added", false)
         }
     }
 

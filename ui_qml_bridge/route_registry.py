@@ -65,7 +65,6 @@ ROUTES: dict[str, dict] = {
     "diagnostics": {"title": "Diagnstico", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "functional"},
     "diagnostics.bitperfect": {"title": "Monitor Bit-Perfect", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "functional"},
     "diagnostics.identifier": {"title": "Identificador de msica", "source": "../pages/DiagnosticsPage.qml", "category": "system", "status": "functional"},
-    "discover": {"title": "Descubrir", "source": "../pages/library/GenresPage.qml", "category": "library", "status": "functional"},
     "ecosystem": {"title": "Ecosistema Michi", "source": "../pages/home/EcosystemCard.qml", "category": "core", "status": "functional"},
     "ai": {"title": "Michi AI", "source": "../pages/assistant/AssistantPage.qml", "category": "core", "status": "functional"},
     "assistant": {"title": "Michi AI", "source": "../pages/assistant/AssistantPage.qml", "category": "core", "status": "functional"},

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 
 from ui_qml.models.BasePagedListModel import BasePagedListModel
 
@@ -44,6 +44,16 @@ class AlbumListModel(BasePagedListModel):
         if role == Qt.DisplayRole:
             return item.get("title", "")
         return None
+
+    @Slot(str, str, bool, result=dict)
+    def refresh(self, search: str = "", sort: str = "year", asc: bool = False):
+        kw = dict(search=search, sort=sort, asc=asc)
+        super().refresh(**kw)
+        return {"ok": True, "search": search, "sort": sort, "asc": asc}
+
+    @Slot(str, result=dict)
+    def refreshForArtist(self, artist: str):
+        return self.refresh(search=artist, sort="year", asc=True)
 
     def _fetch_count(self, **kwargs) -> int:
         if not self._qs:

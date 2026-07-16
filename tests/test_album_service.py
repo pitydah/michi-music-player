@@ -84,6 +84,45 @@ class TestAlbumService:
         assert result["ok"] is True
         assert result["count"] == 1
 
+    def test_play_next_album(self, db):
+        playback = type('_FakePb', (), {'play_list': lambda self, tracks: None})()
+        lq = type('_FakeLq', (), {'tracks_for_album': lambda self, ak: [{"filepath": "/music/a1.flac"}, {"filepath": "/music/a2.flac"}]})()
+        svc = AlbumService(db=db, playback_service=playback, library_query_service=lq)
+        result = svc.play_next_album("Artist X / Album A")
+        assert result["ok"] is True
+
+    def test_play_next_album_last(self, db):
+        playback = type('_FakePb', (), {'play_list': lambda self, tracks: None})()
+        lq = type('_FakeLq', (), {'tracks_for_album': lambda self, ak: []})()
+        svc = AlbumService(db=db, playback_service=playback, library_query_service=lq)
+        result = svc.play_next_album("ZZZZ")
+        assert result["ok"] is False
+
+    def test_search_cover(self, db):
+        svc = AlbumService(db=db)
+        result = svc.search_cover("Album A", "Artist X")
+        assert result["ok"] is True
+
+    def test_analyze_album_quality(self, db):
+        svc = AlbumService(db=db)
+        result = svc.analyze_album_quality([])
+        assert result["ok"] is True
+        assert result["count"] == 0
+
+    def test_open_album_folder(self, db):
+        svc = AlbumService(db=db)
+        result = svc.open_album_folder("")
+        assert result["ok"] is False
+
+    def test_tracks_from_group(self, db):
+        svc = AlbumService(db=db)
+        result = svc.tracks_from_group("Artist X / Album A")
+        assert len(result) == 2
+
+    def test_shutdown(self, db):
+        svc = AlbumService(db=db)
+        svc.shutdown()
+
     def test_health(self, db):
         svc = AlbumService(db=db)
         assert svc.health()["available"] is True

@@ -77,6 +77,22 @@ class TestLibraryService:
         assert result["ok"] is True
         assert result["count"] == 3
 
+    def test_apply_filters(self, db):
+        svc = LibraryService(db=db)
+        result = svc.apply_filters()
+        assert result["ok"] is True
+        assert result["count"] == 5
+
+    def test_health(self, db):
+        svc = LibraryService(db=db)
+        assert svc.health()["available"] is True
+        svc2 = LibraryService(db=None)
+        assert svc2.health()["available"] is False
+
+    def test_shutdown(self, db):
+        svc = LibraryService(db=db)
+        svc.shutdown()
+
     def test_empty_library(self):
         c = sqlite3.connect(":memory:")
         c.execute("""

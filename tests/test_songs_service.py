@@ -95,6 +95,32 @@ class TestSongsService:
         result = svc.toggle_favorite("/music/song1.flac")
         assert result["ok"] is False
 
+    def test_play_items(self, db):
+        pb = type('_FakePb', (), {'play': lambda self, fp: None})()
+        svc = SongsService(db=db, playback_service=pb)
+        items = [{"filepath": "/music/song1.flac"}]
+        result = svc.play_items(items)
+        assert result["ok"] is True
+        assert result["count"] == 1
+
+    def test_play_items_no_items(self, db):
+        svc = SongsService(db=db)
+        result = svc.play_items([])
+        assert result["ok"] is False
+
+    def test_queue_items(self, db):
+        pb = type('_FakePb', (), {'enqueue': lambda self, fps, play_now: None})()
+        svc = SongsService(db=db, playback_service=pb)
+        items = [{"filepath": "/music/song1.flac"}, {"filepath": "/music/song2.mp3"}]
+        result = svc.queue_items(items)
+        assert result["ok"] is True
+        assert result["count"] == 2
+
+    def test_queue_items_no_items(self, db):
+        svc = SongsService(db=db)
+        result = svc.queue_items([])
+        assert result["ok"] is False
+
     def test_health(self, db):
         svc = SongsService(db=db)
         assert svc.health()["available"] is True
