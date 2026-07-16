@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from core.settings_manager import get_bool, get_str, set_ as sset, get_int
 from integrations.home_assistant.client import HomeAssistantClient, entity_to_device
-from integrations.snapcast.receivers import ReceiverWizard
+from legacy_widgets.snapcast_stubs.receivers import ReceiverWizard
 
 log = logging.getLogger(__name__)
 

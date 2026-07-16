@@ -6,8 +6,8 @@ from streaming.subsonic_client import (
     SubsonicClient, load_servers, save_servers,
     SubsonicError, AuthError, ServerNotFoundError,
 )
-from streaming.server_dialog import ServerDialog
-from streaming.remote_browser import RemoteBrowser
+from legacy_widgets.streaming_stubs.server_dialog import ServerDialog
+from legacy_widgets.streaming_stubs.remote_browser import RemoteBrowser
 
 
 class ServerBrowserController:
