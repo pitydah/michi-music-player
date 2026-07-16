@@ -83,7 +83,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-exclude = ["tests*", "tools*", "ha_custom_component*", "legacy_widgets*", "__pycache__*"]
+exclude = ["tests*", "tools*", "ha_custom_component*", "legacy_widgets*", "ui*", "michi_ai/ui*", "__pycache__*"]
 
 [tool.ruff]
 line-length = 100

@@ -377,6 +377,85 @@ class ApplicationBootstrap:
         except Exception:
             pass
 
+    def _build_micro_server_service(self):
+        try:
+            from core.micro_server_service import MicroServerService
+            db = self.container.get("database")
+            self.container.register("micro_server_service", MicroServerService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_mobile_sync_service(self):
+        try:
+            from core.mobile_sync_service import MobileSyncService
+            db = self.container.get("database")
+            self.container.register("mobile_sync_service", MobileSyncService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_cover_art_service(self):
+        try:
+            from core.cover_art_service import CoverArtService
+            self.container.register("cover_art_service", CoverArtService(),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_metadata_editor_service(self):
+        try:
+            from core.metadata_editor_service import MetadataEditorService
+            db = self.container.get("database")
+            self.container.register("metadata_editor_service", MetadataEditorService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_player_bar_service(self):
+        try:
+            from core.player_bar_service import PlayerBarService
+            ps = self.container.get("playback_service")
+            self.container.register("player_bar_service", PlayerBarService(player_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_navigation_service(self):
+        try:
+            from core.navigation_service import NavigationService
+            self.container.register("navigation_service", NavigationService(),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_history_export_service(self):
+        try:
+            from core.history_export_service import HistoryExportService
+            db = self.container.get("database")
+            self.container.register("history_export_service", HistoryExportService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_notification_action_service(self):
+        try:
+            from core.notification_action_service import NotificationActionService
+            nav = self.container.get("navigation_service")
+            self.container.register("notification_action_service", NotificationActionService(navigation_service=nav),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_quality_analysis_service(self):
+        try:
+            from core.quality_analysis_service import QualityAnalysisService
+            db = self.container.get("database")
+            self.container.register("quality_analysis_service", QualityAnalysisService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
     def _build_domain_services(self):
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
@@ -401,6 +480,15 @@ class ApplicationBootstrap:
         self._build_library_data_service()
         self._build_output_profile_service()
         self._build_equalizer_service()
+        self._build_micro_server_service()
+        self._build_mobile_sync_service()
+        self._build_cover_art_service()
+        self._build_metadata_editor_service()
+        self._build_player_bar_service()
+        self._build_navigation_service()
+        self._build_history_export_service()
+        self._build_notification_action_service()
+        self._build_quality_analysis_service()
 
     def _build_action_registry(self):
         ar = self.container.get("action_registry")
