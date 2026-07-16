@@ -87,16 +87,16 @@ Item {
                     radius: MichiTheme.radiusMd
                     color: MichiTheme.colors.surfaceInput
                     border.color: MichiTheme.colors.borderCard
-                    border.width: 1
+                    border.width: MichiTheme.borderWidth
                     visible: root.pairingCode !== ""
 
                     Text {
                         anchors.centerIn: parent
                         text: root.pairingCode
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: 36
+                        font.pixelSize: MichiTheme.typography.displaySize
                         font.weight: MichiTheme.typography.weightBold
-                        font.letterSpacing: 8
+                        font.letterSpacing: 2
                     }
                 }
 

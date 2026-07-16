@@ -102,7 +102,7 @@ Item {
                         border.color: root.selectedZoneIds.indexOf(modelData.id) >= 0
                             ? MichiTheme.colors.accentBlue
                             : "transparent"
-                        border.width: 1
+                        border.width: MichiTheme.borderWidth
                         Accessible.description: root.selectedZoneIds.indexOf(modelData.id) >= 0
                             ? "Seleccionada" : "No seleccionada"
 

@@ -91,7 +91,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Dispositivo de salida"
                                     color: MichiTheme.colors.textPrimary
@@ -135,7 +135,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Frecuencia de muestreo"
                                     color: MichiTheme.colors.textPrimary
@@ -169,7 +169,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Profundidad de bits"
                                     color: MichiTheme.colors.textPrimary
@@ -203,7 +203,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Tamaño de buffer"
                                     color: MichiTheme.colors.textPrimary
@@ -238,7 +238,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Calidad de resample"
                                     color: MichiTheme.colors.textPrimary

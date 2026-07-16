@@ -62,7 +62,7 @@ Item {
                         anchors.centerIn: parent
                         text: root.artistName.length > 0 ? root.artistName.charAt(0).toUpperCase() : "?"
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: 22; font.weight: MichiTheme.typography.weightBold
+                        font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightBold
                     }
                 }
 

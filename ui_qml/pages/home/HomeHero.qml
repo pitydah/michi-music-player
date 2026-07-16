@@ -76,19 +76,19 @@ Item {
                     anchors.centerIn: parent
                     width: 100
                     height: 100
-                    radius: 50
+                    radius: width / 2
                     color: MichiTheme.colors.accentSurface
                     border.color: MichiTheme.colors.borderFocus
-                    border.width: 1
+                    border.width: MichiTheme.borderWidth
 
                     Text {
                         anchors.centerIn: parent
                         text: "MM"
                         color: MichiTheme.colors.accentBlue
-                        font.pixelSize: 28
+                        font.pixelSize: MichiTheme.typography.sectionTitleSize
                         font.weight: MichiTheme.typography.weightBold
-                        font.letterSpacing: 2.0
-                        opacity: 0.50
+                        font.letterSpacing: MichiTheme.spacing.xxs
+                        opacity: MichiTheme.opacity.muted
                     }
                 }
             }

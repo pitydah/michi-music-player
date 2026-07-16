@@ -58,7 +58,7 @@ Item {
                     color: root.selectedZoneIds.indexOf(modelData.id) >= 0 ? MichiTheme.colors.accentSurface : "transparent"
                     radius: MichiTheme.radiusSm
                     border.color: root.selectedZoneIds.indexOf(modelData.id) >= 0 ? MichiTheme.colors.accentBlue : "transparent"
-                    border.width: 1
+                    border.width: MichiTheme.borderWidth
 
                     MouseArea {
                         anchors.fill: parent

@@ -36,7 +36,7 @@ Item {
 
                 Text {
                     text: "Error de conexión"
-                    color: MichiTheme.colors.statusError
+                    color: MichiTheme.colors.error
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }

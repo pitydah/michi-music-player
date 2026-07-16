@@ -91,8 +91,8 @@ Item {
                 color: MichiTheme.colors.accentSurface
                 Text {
                     anchors.centerIn: parent; text: "MI"
-                    color: MichiTheme.colors.accentBlue; font.pixelSize: 18
-                    font.weight: MichiTheme.typography.weightBold; font.letterSpacing: 1.5; opacity: 0.70
+                    color: MichiTheme.colors.accentBlue; font.pixelSize: MichiTheme.typography.cardTitleSize
+                    font.weight: MichiTheme.typography.weightBold; font.letterSpacing: MichiTheme.spacing.xxs; opacity: MichiTheme.opacity.pressed
                 }
             }
 

@@ -53,18 +53,19 @@ Item {
         }
 
         Item {
-            width: 44
-            height: 44
+            width: MichiTheme.minimumInteractiveSize
+            height: MichiTheme.minimumInteractiveSize
 
             Rectangle {
+                objectName: "playPauseButton"
                 anchors.fill: parent
                 radius: MichiTheme.radiusPill
                 color: root.playPauseSupported && maPlay.containsMouse
                        ? MichiTheme.colors.accentBlue
                        : root.playPauseSupported
                          ? MichiTheme.colors.accentBlue
-                         : Qt.rgba(0.561, 0.718, 1.0, 0.25)
-                opacity: root.playPauseSupported ? 1.0 : 0.35
+                         : MichiTheme.colors.accentSurface
+                opacity: root.playPauseSupported ? MichiTheme.opacity.enabled : MichiTheme.opacity.disabled
                 Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
 
                 Image {

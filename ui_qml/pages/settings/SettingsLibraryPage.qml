@@ -222,7 +222,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Modo de indexación"
                                     color: MichiTheme.colors.textPrimary
@@ -271,7 +271,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Extracción de carátulas"
                                     color: MichiTheme.colors.textPrimary

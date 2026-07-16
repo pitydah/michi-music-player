@@ -64,7 +64,7 @@ Item {
 
                 Text {
                     text: modelData.title || "—"
-                    color: modelData.is_current ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
+                    color: modelData.is_current ? MichiTheme.colors.accentBlue : MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.metaSize
                     elide: Text.ElideRight
                     Layout.fillWidth: true

@@ -30,9 +30,9 @@ Item {
                 anchors.centerIn: parent
                 text: "BL"
                 color: MichiTheme.colors.accentBlue
-                font.pixelSize: 24
+                font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightBold
-                opacity: 0.7
+                opacity: MichiTheme.opacity.hover
             }
         }
 

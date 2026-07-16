@@ -106,7 +106,7 @@ Item {
 
                     Rectangle {
                         width: 48; height: 48; radius: MichiTheme.radiusPill
-                        color: root._canPlay && maP.containsMouse ? Qt.rgba(1,1,1,0.12) : root._canPlay ? MichiTheme.colors.accentBlue : Qt.rgba(0.561, 0.718, 1.0, 0.25)
+                        color: root._canPlay && maP.containsMouse ? MichiTheme.colors.surfacePressed : root._canPlay ? MichiTheme.colors.accentBlue : MichiTheme.colors.accentSurface
                         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
                         Image {
                             anchors.centerIn: parent; width: 22; height: 22

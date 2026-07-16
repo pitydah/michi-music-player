@@ -83,7 +83,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Color de acento"
                                     color: MichiTheme.colors.textPrimary
@@ -147,7 +147,7 @@ Item {
 
                             ColumnLayout {
                                 Layout.fillWidth: true
-                                spacing: 2
+                                spacing: MichiTheme.spacing.xxs
                                 Label {
                                     text: "Escala de fuente"
                                     color: MichiTheme.colors.textPrimary

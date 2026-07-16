@@ -12,12 +12,12 @@ Rectangle {
     property int bitDepth: 0
     property int bitrate: 0
 
-    width: 36; height: 18; radius: 3
+    width: 36; height: 18; radius: MichiTheme.radiusXs
     visible: format !== ""
     color: {
         if (format === "DSD") return MichiTheme.colors.warning
-        if (bitDepth >= 24) return Qt.rgba(143/255, 183/255, 1, 0.2)
-        if (format === "FLAC" || format === "ALAC") return Qt.rgba(143/255, 183/255, 1, 0.12)
+        if (bitDepth >= 24) return MichiTheme.colors.accentSurface
+        if (format === "FLAC" || format === "ALAC") return MichiTheme.colors.surfaceSubtle
         return "transparent"
     }
     border.color: {
@@ -25,7 +25,7 @@ Rectangle {
         if (bitDepth >= 24) return MichiTheme.colors.accentBlue
         return "transparent"
     }
-    border.width: visible ? 1 : 0
+    border.width: visible ? MichiTheme.borderWidth : 0
 
     Text {
         anchors.centerIn: parent
@@ -39,7 +39,7 @@ Rectangle {
             if (bitDepth >= 24) return MichiTheme.colors.accentBlue
             return MichiTheme.colors.textMuted
         }
-        font.pixelSize: 9
+        font.pixelSize: MichiTheme.typography.badgeSize
         font.weight: MichiTheme.typography.weightSemiBold
     }
 }
