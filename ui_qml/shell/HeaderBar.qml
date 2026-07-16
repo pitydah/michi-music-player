@@ -50,6 +50,8 @@ Item {
                     btnSize: 28
                     enabled: root.canGoBack
                     onClicked: root.backClicked()
+                    objectName: "backButton"
+                    accessibleName: "Atrás"
                 }
 
                 MichiIconButton {
@@ -58,6 +60,48 @@ Item {
                     btnSize: 28
                     enabled: root.canGoForward
                     onClicked: root.forwardClicked()
+                    objectName: "forwardButton"
+                    accessibleName: "Adelante"
+                }
+
+                Item { width: MichiTheme.spacing.sm; height: 1 }
+
+                Row {
+                    id: breadcrumbRow
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: MichiTheme.spacing.xs
+                    visible: root.routeHistory.length > 0
+
+                    Repeater {
+                        model: root.routeHistory
+
+                        delegate: Row {
+                            spacing: MichiTheme.spacing.xs
+
+                            Text {
+                                text: modelData
+                                color: index < root.routeHistory.length - 1 ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
+                                font.pixelSize: MichiTheme.typography.secondarySize
+                                font.weight: index < root.routeHistory.length - 1 ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightSemiBold
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: "/"
+                                color: MichiTheme.colors.textMeta
+                                font.pixelSize: MichiTheme.typography.secondarySize
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: index < root.routeHistory.length - 1
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: index < root.routeHistory.length - 1
+                                onClicked: root.breadcrumbClicked(modelData)
+                            }
+                        }
+                    }
                 }
 
                 Text {
@@ -66,13 +110,16 @@ Item {
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
-                    leftPadding: MichiTheme.spacing.sm
+                    leftPadding: root.routeHistory.length > 0 ? 0 : MichiTheme.spacing.sm
+                    visible: root.routeHistory.length === 0 || routeHistory[root.routeHistory.length - 1] !== root.pageTitle
                 }
 
                 StatusBadge {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Experimental"
                     kind: "experimental"
+                    objectName: "experimentalBadge"
+                    Accessible.name: "Experimental"
                 }
             }
 
@@ -82,6 +129,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 placeholderText: "Buscar en Michi..."
                 implicitWidth: Math.min(280, root.width * 0.25)
+                objectName: "searchField"
+                Accessible.name: "Buscar en Michi"
             }
         }
     }
