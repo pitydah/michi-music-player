@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """SnapcastController — Snapcast zone management and lifecycle."""
 import logging
 

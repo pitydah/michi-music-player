@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """HomeAudioController — Home Assistant device management and casting."""
 import logging
 

@@ -34,10 +34,9 @@ class ConnectionsBridge(QObject):
                  navigation_bridge: NavigationBridge | None = None,
                  connection_service=None, parent=None):
         super().__init__(parent)
-        self._ctrl = michi_link_ctrl
-        self._connection_service = connection_service
+        self._connection_service = connection_service or michi_link_ctrl
         self._nav_bridge = navigation_bridge
-        self._state = _SERVICE_UNAVAILABLE if michi_link_ctrl is None else "not_configured"
+        self._state = _SERVICE_UNAVAILABLE if self._connection_service is None else "not_configured"
         self._alias = ""
         self._contract = ""
         self._last_error = ""

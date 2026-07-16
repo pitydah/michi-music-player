@@ -1,4 +1,6 @@
-"""DevicesController — coordinates device scanning, storage views, and device navigation."""
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente.
+
+DevicesController — coordinates device scanning, storage views, and device navigation."""
 
 from __future__ import annotations
 

@@ -13,8 +13,8 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Dispositivos y sincronización"
 
-    property var devicesBridge: typeof window !== "undefined" && window.devicesBridge ? window.devicesBridge : null
-    property var deviceSyncService: typeof window !== "undefined" && window.deviceSyncService ? window.deviceSyncService : null
+    property var devicesBridge: typeof devicesBridge !== "undefined" ? devicesBridge : null
+    property var deviceSyncService: devicesBridge
 
     PageStateManager {
         id: pageState

@@ -42,6 +42,7 @@ Item {
             "library": "../pages/library/LibraryPage.qml",
             "audio_lab": "../pages/audio_lab/AudioLabOverviewPage.qml",
             "radio": "../pages/radio/RadioPage.qml",
+            "group_editor": "../pages/home_audio/GroupEditorPage.qml",
             "playlists": "../pages/playlists/PlaylistsPage.qml",
             "playlist_detail": "../pages/playlists/PlaylistDetailPage.qml",
             "metadata_inspector": "../pages/metadata/MetadataInspectorPage.qml",

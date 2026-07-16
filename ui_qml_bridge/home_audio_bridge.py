@@ -64,19 +64,13 @@ class HomeAudioBridge(QObject):
     def homeAssistantAvailable(self):
         return self._ha_svc is not None
 
-    @Property(bool, constant=True)
+    @Property(bool, notify=stateChanged)
     def snapcastAvailable(self):
-        return False
+        return self._ha_svc is not None and hasattr(self._ha_svc, '_group_mgr') and self._ha_svc._group_mgr is not None
 
     @Property(bool, notify=stateChanged)
     def receiversAvailable(self):
-        if self._snapcast_ctrl:
-            try:
-                raw = getattr(self._snapcast_ctrl, 'is_available', False)
-                return raw() if callable(raw) else bool(raw)
-            except Exception:
-                pass
-        return self._ha_ctrl is not None
+        return self._ha_svc is not None and self._ha_svc.available
 
     @Property(bool, constant=True)
     def zonesSupported(self):
@@ -280,7 +274,7 @@ class HomeAudioBridge(QObject):
     @Slot(result=dict)
     def openDiagnostics(self):
         self._last_error = ""
-        self._offline = not (self._ha_ctrl is not None or self._snapcast_ctrl is not None)
+        self._offline = not (self._ha_svc is not None and self._ha_svc.available)
         self.stateChanged.emit()
         return {
             "ok": True,
@@ -292,8 +286,8 @@ class HomeAudioBridge(QObject):
             "streams": len(self._streams),
             "latency_ms": self._latency_ms,
             "offline": self._offline,
-            "ha_available": self._ha_ctrl is not None,
-            "snapcast_available": self._snapcast_ctrl is not None,
+            "ha_available": self._ha_svc is not None,
+            "snapcast_available": self._ha_svc is not None and hasattr(self._ha_svc, '_group_mgr') and self._ha_svc._group_mgr is not None,
         }
 
     @Slot(str, float, result=dict)

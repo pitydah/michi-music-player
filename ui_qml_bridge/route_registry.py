@@ -55,6 +55,7 @@ ROUTES: dict[str, dict] = {
     "connections": {"title": "Conexiones", "source": "../pages/connections/ConnectionsPage.qml", "category": "core", "status": "functional"},
     "connections.detail": {"title": "Conexin", "source": "../pages/connections/ConnectionDetailPage.qml", "category": "detail", "status": "functional", "params": {"connection_id": {"required": True, "type": "string"}}},
     "home_audio": {"title": "Home Audio", "source": "../pages/home_audio/HomeAudioPage.qml", "category": "core", "status": "functional"},
+    "group_editor": {"title": "Editor de grupos", "source": "../pages/home_audio/GroupEditorPage.qml", "category": "detail", "status": "functional"},
     "settings.general": {"title": "Ajustes generales", "source": "../pages/settings/SettingsGeneralPage.qml", "category": "settings", "status": "functional"},
     "settings.appearance": {"title": "Apariencia", "source": "../pages/settings/SettingsAppearancePage.qml", "category": "settings", "status": "functional"},
     "settings.playback": {"title": "Reproduccin", "source": "../pages/settings/SettingsPlaybackPage.qml", "category": "settings", "status": "functional"},

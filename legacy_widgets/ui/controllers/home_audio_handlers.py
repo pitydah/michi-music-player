@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Home Audio Handlers — extracted from window.py.
 
 Plain class (not QObject, no signals) that receives the window reference

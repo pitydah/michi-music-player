@@ -428,7 +428,7 @@ class DevicesBridge(QObject):
                 "supports_playlists": getattr(caps, 'supports_playlists', False) if caps else False,
             }]
             self.stateChanged.emit()
-            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+            return {"ok": True, "compatibility": self._compatibility_info}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -685,13 +685,10 @@ class DevicesBridge(QObject):
 
     @Slot(str, result=dict)
     def confirmDestructive(self, action: str):
+        valid_actions = {"unpair", "clear_history", "overwrite", "replace", "delete", "eject"}
+        if action not in valid_actions:
+            return {"ok": False, "confirmed": False, "error": "UNKNOWN_ACTION"}
         if action == "unpair":
-            return {"ok": True, "confirmed": True, "action": "unpair"}
-        if action == "clear_history":
-            return {"ok": True, "confirmed": True, "action": "clear_history"}
-        if action == "overwrite":
-            return {"ok": True, "confirmed": True, "action": "overwrite"}
-        if action == "replace":
             return {"ok": True, "confirmed": True, "action": "replace"}
         return _typed_error("UNKNOWN_ACTION", f"Accion destructiva desconocida: {action}")
 

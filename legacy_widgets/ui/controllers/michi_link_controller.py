@@ -1,8 +1,8 @@
-"""MichiLinkController — Michi Micro Server, sync, diagnostics, and HTTP API coordination.
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente.
 
+MichiLinkController — Michi Micro Server, sync, diagnostics, and HTTP API coordination.
 Centralizes services from integrations/michi_link/services/ and
-the HTTP API bridge, keeping window.py free of Michi Link logic.
-"""
+the HTTP API bridge, keeping window.py free of Michi Link logic."""
 
 from __future__ import annotations
 

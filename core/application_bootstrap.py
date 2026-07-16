@@ -273,8 +273,20 @@ class ApplicationBootstrap:
     def _build_connection_services(self):
         try:
             from core.connection_service import ConnectionService
+            from integrations.connections.connection_manager import ConnectionManager
+            from integrations.connections.discovery_manager import DiscoveryManager
+            from integrations.connections.credentials_store import CredentialsStore
+            from integrations.michi_link.client import MichiLinkClient
             eb = self.container.get("event_bus")
-            cs = ConnectionService(event_bus=eb)
+            disc_mgr = DiscoveryManager()
+            conn_mgr = ConnectionManager(disc_mgr)
+            creds = CredentialsStore()
+            michi = MichiLinkClient()
+            cs = ConnectionService(connection_manager=conn_mgr,
+                                   discovery_manager=disc_mgr,
+                                   credentials_store=creds,
+                                   michi_link_client=michi,
+                                   event_bus=eb)
             self.container.register("connection_service", cs, priority=ServicePriority.OPTIONAL)
         except Exception:
             self.container.register("connection_service", None, priority=ServicePriority.OPTIONAL)
@@ -282,8 +294,17 @@ class ApplicationBootstrap:
     def _build_home_audio_services(self):
         try:
             from core.home_audio_service import HomeAudioService
+            from integrations.snapcast.group_manager import GroupManager
+            from integrations.snapcast.discovery import SnapClientDiscovery
+            from integrations.snapcast.snapserver_manager import SnapServerManager
             eb = self.container.get("event_bus")
-            ha = HomeAudioService(event_bus=eb)
+            disc = SnapClientDiscovery()
+            snapserver = SnapServerManager()
+            group_mgr = GroupManager()
+            ha = HomeAudioService(snapcast_group_manager=group_mgr,
+                                  snapcast_discovery=disc,
+                                  snapserver_manager=snapserver,
+                                  event_bus=eb)
             self.container.register("home_audio_service", ha, priority=ServicePriority.OPTIONAL)
         except Exception:
             self.container.register("home_audio_service", None, priority=ServicePriority.OPTIONAL)
