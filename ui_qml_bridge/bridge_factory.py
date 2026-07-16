@@ -16,7 +16,7 @@ logger = logging.getLogger("michi.bridge_factory")
 INFRASTRUCTURE = [
     "page_state", "route_registry", "navigation", "action_registry",
     "query_executor", "job_bridge", "confirmation", "theme", "accessibility",
-    "capability", "app_state",
+    "notification", "capability", "app_state",
 ]
 
 DOMAIN = [
@@ -28,7 +28,7 @@ DOMAIN = [
 ]
 
 AGGREGATORS = [
-    "notification", "command_palette", "home",
+    "command_palette", "home",
     "app", "desktop", "runtime_quality", "physical_audio",
 ]
 
@@ -557,7 +557,6 @@ class BridgeFactory(QObject):
         self.create_michi_ai_bridge()
 
         # 3. Agregadores
-        self.create_notification_bridge()
         self.create_command_palette_bridge()
         self.create_home_bridge()
         self.create_app_bridge()

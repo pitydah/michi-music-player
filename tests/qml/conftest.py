@@ -1,4 +1,4 @@
-"""pytest configuration for QML tests — registers V9 markers and user_properties plugin."""
+"""pytest configuration for QML tests — registers V18 markers and user_properties plugin."""
 
 
 def pytest_configure(config):

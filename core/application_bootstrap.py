@@ -458,6 +458,36 @@ class ApplicationBootstrap:
                                      handler=_handler("settings_service", "open")))
         ar.register(ActionDescriptor(action_id="diagnostics.open", title="Diagnostics", category="navigation",
                                      handler=_handler("diagnostics_service", "check_all")))
+        ar.register(ActionDescriptor(action_id="track.metadata.edit", title="Edit metadata",
+                                     category="track", handler=_handler("metadata_service", "edit_file")))
+        ar.register(ActionDescriptor(action_id="track.tagging.open", title="Smart tagging",
+                                     category="track", handler=_handler("smart_tagging_service", "identify")))
+        ar.register(ActionDescriptor(action_id="track.doctor.open", title="Library doctor",
+                                     category="track", handler=_handler("library_doctor_service", "scan")))
+        ar.register(ActionDescriptor(action_id="queue.reorder", title="Reorder", category="queue",
+                                     handler=_handler("queue_service", "reorder")))
+        ar.register(ActionDescriptor(action_id="queue.undo", title="Undo", category="queue",
+                                     handler=_handler("queue_service", "undo")))
+        ar.register(ActionDescriptor(action_id="playlist.duplicate", title="Duplicate", category="playlist",
+                                     handler=_handler("playlist_service", "duplicate")))
+        ar.register(ActionDescriptor(action_id="playlist.reorder", title="Reorder", category="playlist",
+                                     handler=_handler("playlist_service", "reorder")))
+        ar.register(ActionDescriptor(action_id="history.clear", title="Clear history", category="history",
+                                     handler=_handler("history_query_service", "clear_all")))
+        ar.register(ActionDescriptor(action_id="mix.save", title="Save mix", category="mix",
+                                     handler=_handler("mix_service", "save")))
+        ar.register(ActionDescriptor(action_id="device.pair", title="Pair device", category="devices",
+                                     handler=_handler("device_sync_service", "pair")))
+        ar.register(ActionDescriptor(action_id="device.sync.plan", title="Sync plan", category="devices",
+                                     handler=_handler("device_sync_service", "build_manifest")))
+        ar.register(ActionDescriptor(action_id="connection.forget", title="Forget", category="connections",
+                                     handler=_handler("connection_service", "forget")))
+        ar.register(ActionDescriptor(action_id="home_audio.group", title="Group zones", category="home_audio",
+                                     handler=_handler("home_audio_service", "create_group")))
+        ar.register(ActionDescriptor(action_id="home_audio.ungroup", title="Ungroup", category="home_audio",
+                                     handler=_handler("home_audio_service", "delete_group")))
+        ar.register(ActionDescriptor(action_id="home_audio.transfer", title="Transfer", category="home_audio",
+                                     handler=_handler("home_audio_service", "transfer_playback")))
 
     def _build_michi_ai(self):
         try:
