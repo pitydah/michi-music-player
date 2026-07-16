@@ -192,6 +192,8 @@ Item {
                 font.pixelSize: MichiTheme.typography.metaSize
             }
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 id: statsBtn
                 text: "Estadísticas"
                 variant: "ghost"
@@ -202,6 +204,8 @@ Item {
                 Keys.onSpacePressed: onClicked()
                 onClicked: root.openStatistics()
             }
+                Accessible.role: Accessible.Button
+
             MichiButton {
                 id: viewToggleBtn
                 text: root._viewMode === "timeline" ? "Vista tabla" : "Vista línea"
@@ -212,6 +216,8 @@ Item {
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: root._viewMode = root._viewMode === "timeline" ? "table" : "timeline"
+                Accessible.role: Accessible.Button
+
             }
             MichiButton {
                 id: retentionBtn
@@ -222,6 +228,8 @@ Item {
                 KeyNavigation.backtab: viewToggleBtn
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
+                Accessible.role: Accessible.Button
+
                 onClicked: root.openRetentionDialog()
             }
             MichiButton {
@@ -233,6 +241,8 @@ Item {
                 KeyNavigation.tab: clearAllBtn
                 KeyNavigation.backtab: retentionBtn
                 Keys.onReturnPressed: onClicked()
+                Accessible.role: Accessible.Button
+
                 Keys.onSpacePressed: onClicked()
                 onClicked: root.clearFiltered()
             }
@@ -243,6 +253,8 @@ Item {
                 activeFocusOnTab: true
                 KeyNavigation.tab: exportBtn
                 KeyNavigation.backtab: clearFilteredBtn
+                Accessible.role: Accessible.Button
+
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
                 onClicked: confirmClearDialog.open()
@@ -349,6 +361,10 @@ Item {
             }
         }
 
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: MichiTheme.rowHeightCompact
@@ -369,6 +385,10 @@ Item {
             Text {
                 text: "Página " + (root._currentPage + 1) + " de " +
                       Math.max(1, Math.ceil(root._totalCount / root._pageSize))
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
@@ -413,6 +433,12 @@ Item {
             root._statusMsg = "Exportadas " + count + " entradas a " + path
         }
         onExportCancelled: {
+        Accessible.role: Accessible.Dialog
+
+        Accessible.name: "Dialog"
+
+        activeFocusOnTab: true
+
             root._statusMsg = "Exportación cancelada"
         }
     }

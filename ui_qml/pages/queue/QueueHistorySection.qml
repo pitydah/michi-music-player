@@ -40,6 +40,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(150, (root.ps ? root.ps.history.length : 0) * 24 + 10)

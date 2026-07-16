@@ -27,6 +27,10 @@ Item {
             StatusBadge { text: "Audible"; kind: "success"; anchors.verticalCenter: parent.verticalCenter }
             Item { width: 1; height: 1 }
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Limpiar"
                 variant: "ghost"
                 anchors.verticalCenter: parent.verticalCenter

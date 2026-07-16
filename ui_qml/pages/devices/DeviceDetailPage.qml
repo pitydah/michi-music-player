@@ -80,6 +80,8 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 id: backButton
                 text: "< Volver"
                 variant: "ghost"
@@ -185,6 +187,8 @@ Item {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
 
+                    Accessible.role: Accessible.Button
+
                 MichiButton {
                     id: syncButton
                     text: "Sincronizar"
@@ -196,6 +200,8 @@ Item {
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
                 }
+                    Accessible.role: Accessible.Button
+
 
                 MichiButton {
                     id: authButton
@@ -207,6 +213,8 @@ Item {
                     KeyNavigation.backtab: syncButton
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
+                    Accessible.role: Accessible.Button
+
                 }
 
                 MichiButton {
@@ -218,6 +226,8 @@ Item {
                     KeyNavigation.tab: profileEditButton
                     KeyNavigation.backtab: authButton
                     Keys.onReturnPressed: clicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: clicked()
                 }
 
@@ -229,6 +239,8 @@ Item {
                     activeFocusOnTab: true
                     KeyNavigation.tab: unpairButton
                     KeyNavigation.backtab: trustButton
+                    Accessible.role: Accessible.Button
+
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
                 }
@@ -323,6 +335,10 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "No se pudo cargar la información del dispositivo."
                 color: MichiTheme.colors.textSecondary
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 font.pixelSize: MichiTheme.typography.bodySize
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -333,6 +349,10 @@ Item {
                 text: "Reintentar"
                 onClicked: {
                     state = "LOADING"
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                     if (root.dv && typeof root.dv.loadDeviceDetail === "function") {
                         var r = root.dv.loadDeviceDetail(deviceKey)
                         state = r && r.ok ? "READY" : "ERROR"

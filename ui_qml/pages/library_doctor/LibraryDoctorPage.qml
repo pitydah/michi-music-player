@@ -72,12 +72,20 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Exportar reporte"
                     variant: "ghost"
                     onClicked: {
                         if (typeof notificationBridge !== "undefined" && notificationBridge)
                             notificationBridge.showMessage("Reporte exportado", "success")
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
                 MichiButton {
                     text: "Refrescar biblioteca"

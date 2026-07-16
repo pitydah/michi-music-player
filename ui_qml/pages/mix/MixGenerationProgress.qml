@@ -27,7 +27,11 @@ Item {
             anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.md
 
             MichiProgressBar {
+                Accessible.role: Accessible.ProgressBar
+
                 id: progressBar; width: parent.width - 80; anchors.verticalCenter: parent.verticalCenter
+                activeFocusOnTab: true
+
                 from: 0; to: root.total; value: root.progress
             }
 

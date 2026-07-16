@@ -58,11 +58,19 @@ Dialog {
             visible: !root._exporting
 
             TextField {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80
                 placeholderText: "Destino del archivo .m3u"
                 text: root._exportPath
+                Accessible.role: Accessible.Button
+
                 readOnly: true
             }
             MichiButton {
@@ -108,6 +116,8 @@ Dialog {
 
         Row {
             spacing: MichiTheme.spacing.sm
+                Accessible.role: Accessible.Button
+
             width: parent.width
             layoutDirection: Qt.RightToLeft
 
@@ -139,6 +149,8 @@ Dialog {
                     } else {
                         root._status = "Error: servicio no disponible"
                     }
+                Accessible.role: Accessible.Button
+
                     root._exporting = false
                 }
             }

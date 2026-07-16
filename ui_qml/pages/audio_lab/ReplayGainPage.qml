@@ -125,6 +125,8 @@ Item {
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
                         Text { text: "Preamp: " + root._preamp.toFixed(1) + " dB"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
+                            Accessible.role: Accessible.Slider
+
                             width: parent.width
                             from: -12; to: 12; value: root._preamp; stepSize: 0.5
                             activeFocusOnTab: true
@@ -134,6 +136,8 @@ Item {
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
                         Text { text: "Headroom: " + root._headroom.toFixed(1) + " dB"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                            Accessible.role: Accessible.Slider
+
                         MichiSlider {
                             width: parent.width
                             from: 0; to: 6; value: root._headroom; stepSize: 0.5
@@ -147,6 +151,8 @@ Item {
             SectionHeader { text: "Acciones"; width: parent.width; objectName: "rgActionsHeader"; Accessible.name: "Acciones" }
 
             Row {
+                    Accessible.role: Accessible.Button
+
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar"
@@ -155,6 +161,8 @@ Item {
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     onClicked: root._startAnalysis()
                 }
                 MichiButton {
@@ -163,6 +171,8 @@ Item {
                     enabled: root._results !== null && root._state === root.stateCompleted
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._applyTags()
                 }
@@ -204,6 +214,10 @@ Item {
 
             StatusBadge {
                 visible: root.labService === null
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Bridge no disponible"
                 kind: "disconnected"
             }

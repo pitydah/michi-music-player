@@ -30,6 +30,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             id: jobList; Layout.fillWidth: true; Layout.fillHeight: true
             model: root.jobListModel ? root.jobListModel : (root.bridge ? root.bridge.jobs : [])

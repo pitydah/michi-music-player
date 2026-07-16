@@ -155,6 +155,10 @@ Item {
                 }
 
                 MichiIconButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     iconText: ""
                     iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
                     tooltipText: "Reproducción"

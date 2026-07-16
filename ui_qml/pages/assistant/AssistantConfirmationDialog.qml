@@ -110,12 +110,16 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: root.destructive ? "Eliminar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirmed()
                 }
+
+                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     text: "Cancelar"

@@ -67,6 +67,10 @@ Item {
                 }
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Configurar"
                     variant: "ghost"
                     onClicked: root.configureClicked()

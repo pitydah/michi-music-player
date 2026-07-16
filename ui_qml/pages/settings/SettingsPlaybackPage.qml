@@ -99,6 +99,12 @@ Item {
                             }
 
                             ComboBox {
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                                 focusPolicy: Qt.StrongFocus
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Predeterminado"]
                                 currentIndex: {
@@ -130,6 +136,12 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                             }
 
                             ComboBox {
@@ -171,6 +183,10 @@ Item {
                                 }
                                 Label {
                                     text: defaultVolumeSlider.value + "%"
+                                Accessible.role: Accessible.Slider
+
+                                activeFocusOnTab: true
+
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
@@ -194,6 +210,14 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                             spacing: MichiTheme.spacing.md
                             Label {
                                 text: "Recordar volumen"
@@ -218,6 +242,14 @@ Item {
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.lg
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                         spacing: MichiTheme.spacing.md
 
                         RowLayout {
@@ -241,6 +273,10 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
+
+                                Accessible.role: Accessible.Slider
+
+                                activeFocusOnTab: true
 
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -284,6 +320,12 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                             spacing: MichiTheme.spacing.md
 
                             ColumnLayout {
@@ -332,6 +374,10 @@ Item {
                         anchors.fill: parent
                         anchors.margins: MichiTheme.spacing.lg
                         spacing: MichiTheme.spacing.md
+                                Accessible.role: Accessible.Slider
+
+                                activeFocusOnTab: true
+
 
                         RowLayout {
                             Layout.fillWidth: true

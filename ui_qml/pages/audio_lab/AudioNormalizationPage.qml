@@ -91,6 +91,8 @@ Item {
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
                         Text { text: "Nivel objetivo (LUFS): " + root._targetLufs.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
+                            Accessible.role: Accessible.Slider
+
                             width: parent.width
                             from: -30; to: -5; value: root._targetLufs; stepSize: 0.5
                             activeFocusOnTab: true
@@ -100,6 +102,8 @@ Item {
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
                         Text { text: "Límite de pico real (dBTP): " + root._truePeakLimit.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
+                            Accessible.role: Accessible.Slider
+
                         MichiSlider {
                             width: parent.width
                             from: -6; to: 0; value: root._truePeakLimit; stepSize: 0.1
@@ -109,6 +113,8 @@ Item {
                     }
 
                     Column { width: parent.width; spacing: MichiTheme.spacing.xs
+                            Accessible.role: Accessible.Slider
+
                         Text { text: "Umbral de puerta (dB): " + root._gateThreshold.toFixed(1); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
                         MichiSlider {
                             width: parent.width
@@ -122,6 +128,8 @@ Item {
 
             SectionHeader { text: "Acciones"; width: parent.width; objectName: "normActionsHeader"; Accessible.name: "Acciones" }
 
+                    Accessible.role: Accessible.Button
+
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
@@ -130,6 +138,8 @@ Item {
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.statePreviewing && root._state !== root.stateApplying
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._measureLoudness()
                 }
@@ -138,6 +148,8 @@ Item {
                     variant: "primary"
                     enabled: root._state === root.stateCompleted && root._previewResult !== null
                     activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._applyNormalization()

@@ -78,6 +78,10 @@ Item {
                     visible: root.issueData !== null
 
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         text: "Aceptar corrección"
                         variant: "primary"
                         onClicked: {
@@ -85,6 +89,10 @@ Item {
                                 root.fixAccepted(root.issueData.id)
                         }
                     }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         text: "Rechazar"

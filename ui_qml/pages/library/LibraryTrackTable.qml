@@ -54,6 +54,12 @@ Item {
         }
 
         ListView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             id: listView
             width: parent.width
@@ -180,6 +186,10 @@ Item {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
                 anchors.verticalCenter: parent.verticalCenter
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
             }
 
             MichiButton {

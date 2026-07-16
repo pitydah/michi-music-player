@@ -47,6 +47,10 @@ Column {
     }
 
     MichiButton {
+        Accessible.role: Accessible.Button
+
+        activeFocusOnTab: true
+
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.actionText
         variant: "primary"

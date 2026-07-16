@@ -31,6 +31,10 @@ Item {
             visible: root.doc && root.doc.issues.length > 0
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Seleccionar todos"
                 variant: "ghost"
                 onClicked: {
@@ -38,6 +42,10 @@ Item {
                         root.doc.selectAll()
                 }
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: "Deseleccionar todos"

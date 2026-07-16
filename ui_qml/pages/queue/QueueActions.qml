@@ -21,6 +21,10 @@ Item {
         spacing: MichiTheme.spacing.sm
 
         MichiButton {
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             text: "Reproducir desde inicio"
             variant: "ghost"
             onClicked: {
@@ -33,6 +37,10 @@ Item {
         }
 
         Item { Layout.fillWidth: true }
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
 
         MichiButton {
             text: "Deshacer"

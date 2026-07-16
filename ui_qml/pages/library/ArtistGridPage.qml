@@ -41,7 +41,13 @@ Item {
         }
 
         GridView {
+            Accessible.role: Accessible.List
+
+            Accessible.name: "GridView"
+
             id: gridView
+            activeFocusOnTab: true
+
             Layout.fillWidth: true; Layout.fillHeight: true
             anchors.margins: MichiTheme.spacing.md
             model: root.artistModel

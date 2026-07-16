@@ -49,6 +49,10 @@ Item {
             }
 
             QQC2.TextField {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
                 id: field
                 height: parent.height
                 width: parent.width - clearBtn.width - MichiTheme.spacing.sm - parent.spacing - parent.anchors.leftMargin - parent.anchors.rightMargin
@@ -88,6 +92,10 @@ Item {
                     }
                 }
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiIconButton {
                 id: clearBtn

@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../theme"
 import "../../components"
+import "../../components/foundations"
 import "."
 
 Item {
@@ -27,6 +28,8 @@ Item {
     property int homeState: HomePage.LOADING
     property string statusMessage: ""
 
+    MichiResponsive { id: responsive; availableWidth: root.width }
+
     function refresh() {
         if (root.hb && typeof root.hb.refresh !== "undefined") {
             root.hb.refresh()
@@ -42,7 +45,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: MichiTheme.spacing.xl
+        anchors.margins: responsive.pageMargin
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -78,7 +81,7 @@ Item {
                 trackArtist: root.hb ? root.hb.currentArtist : "—"
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
                 activeFocusOnTab: true
-                KeyNavigation.tab: statusGrid
+                KeyNavigation.tab: cardGrid
                 KeyNavigation.backtab: column
                 Keys.onReturnPressed: activate()
                 Keys.onSpacePressed: activate()
@@ -88,17 +91,17 @@ Item {
                 }
             }
 
-            Row {
-                id: statusGrid
+            Flow {
+                id: cardGrid
                 width: parent.width
                 spacing: MichiTheme.spacing.lg
                 activeFocusOnTab: true
-                KeyNavigation.tab: actionRow
+                KeyNavigation.tab: playbackCard
                 KeyNavigation.backtab: continueCard
 
                 LibraryStatusCard {
                     id: libraryCard
-                    width: parent.width * 0.48
+                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
                     albums: root.hb ? root.hb.libraryAlbums : 0
                     artists: root.hb ? root.hb.libraryArtists : 0
                     tracks: root.hb ? root.hb.libraryTracks : 0
@@ -114,7 +117,7 @@ Item {
 
                 EcosystemCard {
                     id: ecosystemCard
-                    width: parent.width * 0.48
+                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
                     microServerState: root.cb ? root.cb.microServerState : "not_configured"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onOpenConnections()
@@ -128,18 +131,10 @@ Item {
                             navigationBridge.navigate("home_audio")
                     }
                 }
-            }
-
-            Row {
-                id: actionRow
-                width: parent.width
-                spacing: MichiTheme.spacing.lg
-                KeyNavigation.tab: microCard
-                KeyNavigation.backtab: statusGrid
 
                 GlassCard {
                     id: microCard
-                    width: parent.width * 0.48
+                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
                     implicitHeight: 80
                     activeFocusOnTab: true
 
@@ -164,7 +159,7 @@ Item {
 
                 GlassCard {
                     id: jobsCard
-                    width: parent.width * 0.48
+                    width: responsive.compact ? parent.width : (parent.width - MichiTheme.spacing.lg) / 2
                     implicitHeight: 80
                     activeFocusOnTab: true
                     Keys.onReturnPressed: {
@@ -194,6 +189,10 @@ Item {
                         Item { Layout.fillWidth: true }
 
                         MichiButton {
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                             text: "Ver trabajos"
                             variant: "ghost"
                             onClicked: {
@@ -257,6 +256,10 @@ Item {
                         }
                         kind: root.hb && root.hb.hasPlayback ? "active" : "disconnected"
                     }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                     MichiButton {
                         text: "Reanudar"

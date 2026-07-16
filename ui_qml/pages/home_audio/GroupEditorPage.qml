@@ -46,7 +46,11 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     id: backBtn
+                    activeFocusOnTab: true
+
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.groupCancelled()
@@ -60,6 +64,12 @@ Item {
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                 }
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
 
                 QQC2.TextField {
                     id: groupNameField
@@ -178,6 +188,10 @@ Item {
                     font.pixelSize: MichiTheme.typography.captionSize
                     visible: root.selectedZoneIds.length < 2
                 }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                 Row {
                     spacing: MichiTheme.spacing.sm
@@ -195,6 +209,10 @@ Item {
                             }
                         }
                         Accessible.description: root.groupName.trim() === "" ? "Escribe un nombre para el grupo" : ""
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         KeyNavigation.tab: cancelBtn
                         KeyNavigation.backtab: zoneList
                         Keys.onReturnPressed: onClicked()

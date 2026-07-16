@@ -82,6 +82,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: root.ctaText
                 variant: "secondary"
                 onClicked: root.ctaClicked()

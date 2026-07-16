@@ -62,7 +62,11 @@ Item {
                 spacing: MichiTheme.spacing.lg
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     id: backBtn
+                    activeFocusOnTab: true
+
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
@@ -127,6 +131,10 @@ Item {
                             font.weight: MichiTheme.typography.weightMedium
                             width: 80
                         }
+                            Accessible.role: Accessible.Slider
+
+                            activeFocusOnTab: true
+
 
                         MichiSlider {
                             id: volumeSlider
@@ -151,6 +159,10 @@ Item {
                             color: MichiTheme.colors.textSecondary
                             font.pixelSize: MichiTheme.typography.bodySize
                             width: 40
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                             horizontalAlignment: Text.AlignRight
                         }
 
@@ -212,6 +224,10 @@ Item {
                         }
                     }
                 }
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
 
                 Row {
                     id: actionRow
@@ -219,12 +235,20 @@ Item {
 
                     MichiButton {
                         id: reconnBtn
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         text: "Reconectar"
                         variant: "primary"
                         onClicked: root.reconnectClicked(root.zoneId)
                         KeyNavigation.tab: groupBtn
                         KeyNavigation.backtab: muteBtn
                     }
+
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
 
                     MichiButton {
                         id: groupBtn
@@ -233,6 +257,10 @@ Item {
                         onClicked: root.groupClicked(root.zoneId)
                         KeyNavigation.tab: ungroupBtn
                         KeyNavigation.backtab: reconnBtn
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                     }
 
                     MichiButton {
@@ -240,6 +268,10 @@ Item {
                         text: "Desagrupar"
                         variant: "ghost"
                         onClicked: root.ungroupClicked(root.zoneId)
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         KeyNavigation.tab: renameBtn
                         KeyNavigation.backtab: groupBtn
                     }

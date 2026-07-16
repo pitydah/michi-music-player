@@ -58,6 +58,8 @@ Item {
                     width: parent.width
 
                     MichiButton {
+                        Accessible.role: Accessible.Button
+
                         text: "Volver"
                         variant: "ghost"
                         activeFocusOnTab: true
@@ -116,6 +118,8 @@ Item {
                             }
                         }
 
+                            Accessible.role: Accessible.Slider
+
                         MichiSlider {
                             id: latencySlider
                             width: parent.width
@@ -149,6 +153,8 @@ Item {
                 Row {
                     spacing: MichiTheme.spacing.sm
                     width: parent.width
+                        Accessible.role: Accessible.Button
+
 
                     MichiButton {
                         id: applyBtn
@@ -170,6 +176,8 @@ Item {
                         }
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
+                        Accessible.role: Accessible.Button
+
                     }
 
                     MichiButton {

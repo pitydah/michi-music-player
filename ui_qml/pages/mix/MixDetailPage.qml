@@ -89,6 +89,8 @@ Item {
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: "Volver"; variant: "ghost"
                     activeFocusOnTab: true
                     KeyNavigation.tab: detailPlayBtn
@@ -115,6 +117,8 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
+                    Accessible.role: Accessible.Button
+
                 MichiButton {
                     id: detailPlayBtn
                     text: "Reproducir"; variant: "primary"
@@ -129,6 +133,8 @@ Item {
                             root.mx.playMix()
                     }
                 }
+                    Accessible.role: Accessible.Button
+
 
                 MichiButton {
                     id: detailEnqueueBtn
@@ -143,6 +149,8 @@ Item {
                         if (root.mx && typeof root.mx.enqueueMix !== "undefined")
                             root.mx.enqueueMix()
                     }
+                    Accessible.role: Accessible.Button
+
                 }
 
                 MichiButton {
@@ -159,6 +167,8 @@ Item {
                     KeyNavigation.backtab: detailEnqueueBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     onClicked: root.generateMix()
                 }
 
@@ -170,6 +180,8 @@ Item {
                     KeyNavigation.tab: detailExplainBtn
                     KeyNavigation.backtab: detailRegenerateBtn
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: saveDialog.open()
                 }
@@ -181,6 +193,8 @@ Item {
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailCancelBtn
                     KeyNavigation.backtab: detailSaveBtn
+                    Accessible.role: Accessible.Button
+
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.explainMix()
@@ -205,6 +219,10 @@ Item {
                 cancellable: root._generating
                 onCancelRequested: root.cancelGeneration()
             }
+
+                Accessible.role: Accessible.List
+
+                Accessible.name: "ListView"
 
             Text {
                 text: root._songs.length + " canciones"; color: MichiTheme.colors.textSecondary
@@ -307,10 +325,24 @@ Item {
                         : "Mix vacío. Selecciona un tipo de mix para generar contenido."
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 }
+        Accessible.role: Accessible.Dialog
+
+        Accessible.name: "Dialog"
+
+        closePolicy: Popup.CloseOnEscape
+
+        activeFocusOnTab: true
+
             }
 
             MixFeedbackControls {
                 width: parent.width; visible: root._songs.length > 0
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
             }
         }
     }

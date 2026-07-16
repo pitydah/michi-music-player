@@ -37,6 +37,12 @@ Item {
             }
 
             TextField {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 id: groupNameField
                 width: parent.width
@@ -85,11 +91,19 @@ Item {
             }
 
             Row {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
                     text: "Crear grupo"
                     variant: "primary"
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     enabled: root.selectedZoneIds.length > 1
                     onClicked: root.groupCreated(groupNameField.text || "Grupo", root.selectedZoneIds)
                 }

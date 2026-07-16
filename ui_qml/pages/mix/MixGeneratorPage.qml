@@ -140,6 +140,8 @@ Item {
                 spacing: MichiTheme.spacing.sm; width: parent.width
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: "Volver"; variant: "ghost"
                     activeFocusOnTab: true
                     onClicked: root.backRequested()
@@ -171,6 +173,10 @@ Item {
                     Column { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Tipo de Mix"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             id: mixTypeCombo; width: parent.width
@@ -201,6 +207,10 @@ Item {
                     }
 
                     Column { spacing: MichiTheme.spacing.sm; width: parent.width
+                            Accessible.role: Accessible.EditableText
+
+                            Accessible.name: "Campo de texto"
+
                         Text { text: "Seed (opcional)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
                         TextField {
@@ -215,6 +225,12 @@ Item {
                             enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                         }
                     }
+                            Accessible.role: Accessible.EditableText
+
+                            Accessible.name: "Campo de texto"
+
+                            activeFocusOnTab: true
+
 
                     Column { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Artista semilla"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
@@ -228,6 +244,12 @@ Item {
                             activeFocusOnTab: true
                             KeyNavigation.tab: exclusionsField
                             KeyNavigation.backtab: seedField
+                            Accessible.role: Accessible.EditableText
+
+                            Accessible.name: "Campo de texto"
+
+                            activeFocusOnTab: true
+
                             enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                         }
                     }
@@ -247,6 +269,12 @@ Item {
                             KeyNavigation.backtab: seedArtistField
                             enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                         }
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "SpinBox"
+
+                                activeFocusOnTab: true
+
                     }
                 }
 
@@ -258,6 +286,10 @@ Item {
                             Text { text: "Duración (min)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             SpinBox {
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "SpinBox"
+
                                 focusPolicy: Qt.StrongFocus
                                 id: durationSpin; width: parent.width; from: 5; to: 480; stepSize: 5; value: root._durationMinutes
                                 onValueChanged: root._durationMinutes = value
@@ -273,6 +305,10 @@ Item {
 
                             SpinBox {
                                 focusPolicy: Qt.StrongFocus
+                                    Accessible.role: Accessible.Slider
+
+                                    Accessible.name: "Slider"
+
                                 id: trackLimitSpin; width: parent.width; from: 5; to: 200; value: root._trackLimit
                                 onValueChanged: root._trackLimit = value
                                 activeFocusOnTab: true
@@ -288,6 +324,10 @@ Item {
                             Text { text: "Variedad"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             Row { spacing: MichiTheme.spacing.sm
+                                    Accessible.role: Accessible.Slider
+
+                                    Accessible.name: "Slider"
+
                                 Slider {
                                     focusPolicy: Qt.StrongFocus
                                     id: varietySlider; width: 120; from: 0; to: 100; value: root._variety
@@ -303,6 +343,10 @@ Item {
 
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: "Familiaridad"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
+
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
 
                             Row { spacing: MichiTheme.spacing.sm
                                 Slider {
@@ -324,6 +368,10 @@ Item {
                             Text { text: "Calidad mínima"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             ComboBox {
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
                                 focusPolicy: Qt.StrongFocus
                                 id: qualityCombo; width: parent.width
                                 model: [
@@ -356,6 +404,12 @@ Item {
                                     { text: "Clásica", value: "classical" },
                                     { text: "Electrónica", value: "electronic" },
                                     { text: "Hip Hop", value: "hip hop" },
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "SpinBox"
+
+                                activeFocusOnTab: true
+
                                     { text: "R&B", value: "rnb" },
                                     { text: "Metal", value: "metal" },
                                     { text: "Folk", value: "folk" },
@@ -367,6 +421,10 @@ Item {
                                 textRole: "text"; valueRole: "value"
                                 currentIndex: 0
                                 onCurrentValueChanged: root._genreFilter = currentValue
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "SpinBox"
+
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: yearFromSpin
                                 KeyNavigation.backtab: qualityCombo
@@ -377,6 +435,12 @@ Item {
 
                     Row { spacing: MichiTheme.spacing.md; width: parent.width
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
+                        Accessible.role: Accessible.CheckBox
+
+                        Accessible.name: "CheckBox"
+
+                        Accessible.checked: root.checked
+
                             Text { text: "Año desde"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             SpinBox {
@@ -389,6 +453,8 @@ Item {
                                 enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                             }
                         }
+
+                    Accessible.role: Accessible.Button
 
                         Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                             Text { text: "Año hasta"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
@@ -415,6 +481,10 @@ Item {
                         KeyNavigation.backtab: yearToSpin
                         enabled: root._state !== "GENERATING" && root._state !== "CANCELLING"
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
             }
 
@@ -441,6 +511,10 @@ Item {
                     onClicked: {
                         if (root._state === "CANCELLED" || root._state === "NO_CANDIDATES") {
                             root.retry()
+                            Accessible.role: Accessible.ProgressBar
+
+                            activeFocusOnTab: true
+
                         } else {
                             root.generate()
                         }
@@ -514,6 +588,10 @@ Item {
                             color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize
                             wrapMode: Text.WordWrap; width: parent.width
                         }
+                    Accessible.role: Accessible.List
+
+                    Accessible.name: "ListView"
+
                     }
                 }
             }
@@ -602,12 +680,20 @@ Item {
                                 font.pixelSize: MichiTheme.typography.metaSize; anchors.verticalCenter: parent.verticalCenter
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                                     onClicked: {
                                         if (root.mx && typeof root.mx.playFromIndex === "function")
                                             root.mx.playFromIndex(index)
                                     }
                                 }
                             }
+
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
 
                             Text {
                                 width: 24; text: "+"; color: MichiTheme.colors.textMuted

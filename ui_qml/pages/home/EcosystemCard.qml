@@ -75,9 +75,17 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Ver servidores"
                     variant: "primary"
                     onClicked: root.openConnections()
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
                 MichiButton {
                     text: "Home Audio"

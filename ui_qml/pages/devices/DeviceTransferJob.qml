@@ -57,6 +57,10 @@ Item {
                 }
 
                 MichiProgressBar {
+                    Accessible.role: Accessible.ProgressBar
+
+                    activeFocusOnTab: true
+
                     width: parent.width
                     height: 4
                     value: root.totalBytes > 0 ? root.transferredBytes / root.totalBytes : 0
@@ -88,11 +92,19 @@ Item {
                         }
                     }
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root.status === "queued" || root.status === "transferring"
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     onClicked: root.cancelClicked(root.jobId)
                 }
 

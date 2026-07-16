@@ -13,6 +13,8 @@ import "../../components"
 
 Menu {
     id: root
+    activeFocusOnTab: true
+
 
     property var bridge: null
     property var selectionController: null
@@ -43,18 +45,36 @@ Menu {
         return ""
     }
 
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
     MenuItem {
         text: "Reproducir"
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playTrackById)
                 root.bridge.playTrackById(ids[0])
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
         }
     }
 
     MenuItem {
         text: "Reproducir siguiente"
         onTriggered: {
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playNextTrackById)
                 root.bridge.playNextTrackById(ids[0])
@@ -63,6 +83,12 @@ Menu {
 
     MenuItem {
         text: "Añadir a la cola"
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
         onTriggered: {
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {
@@ -75,6 +101,12 @@ Menu {
     MenuItem {
         text: "Reemplazar cola"
         onTriggered: {
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
             var ids = root._selectedIds()
             if (ids.length > 0 && root.bridge && root.bridge.playTrackById)
                 root.bridge.playTrackById(ids[0])
@@ -83,6 +115,12 @@ Menu {
                     root.bridge.enqueueTrackById(ids[i])
             }
         }
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
     }
 
     MenuSeparator {}
@@ -90,6 +128,12 @@ Menu {
     MenuItem {
         text: "Favorito"
         onTriggered: {
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
             var ids = root._selectedIds()
             for (var i = 0; i < ids.length; i++) {
                 if (root.bridge && root.bridge.toggleFavoriteById)
@@ -99,6 +143,12 @@ Menu {
     }
 
     MenuItem {
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
         text: "Añadir a playlist..."
         onTriggered: {
             if (typeof navigationBridge !== "undefined")
@@ -110,12 +160,24 @@ Menu {
 
     MenuItem {
         text: "Ir al álbum"
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0) {
                 var ak = root._findTrackData(ids[0], "albumKey")
                 if (ak && typeof navigationBridge !== "undefined")
                     navigationBridge.navigateWithParams("library.album_detail", {album_key: ak})
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
             }
         }
     }
@@ -125,16 +187,34 @@ Menu {
         onTriggered: {
             var ids = root._selectedIds()
             if (ids.length > 0) {
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
                 var artist = root._findTrackData(ids[0], "artist")
                 if (artist && typeof navigationBridge !== "undefined")
                     navigationBridge.navigateWithParams("library.artist_detail", {artist: artist})
             }
         }
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
     }
 
     MenuSeparator {}
 
     MenuItem {
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
         text: "Mostrar en carpeta"
         onTriggered: {
             var ids = root._selectedIds()
@@ -142,11 +222,23 @@ Menu {
                 root.bridge.revealTrackById(ids[0])
         }
     }
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
 
     MenuItem {
         text: "Editar metadatos"
         onTriggered: {
             var ids = root._selectedIds()
+        Accessible.role: Accessible.MenuItem
+
+        Accessible.name: "MenuItem"
+
+        activeFocusOnTab: true
+
             if (ids.length > 0 && typeof navigationBridge !== "undefined") {
                 if (typeof selectionContextBridge !== "undefined")
                     selectionContextBridge.setSelected({"id": ids[0]})

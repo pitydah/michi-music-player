@@ -29,11 +29,19 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: root.scanning ? "Buscando..." : "Buscar servidores"
                 variant: "primary"
                 enabled: !root.scanning
                 onClicked: root.scanRequested()
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiButton {
                 text: "Agregar manualmente"

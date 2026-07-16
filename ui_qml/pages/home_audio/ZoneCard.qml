@@ -81,6 +81,10 @@ Item {
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: root.isMuted ? "Activar sonido" : "Silenciar"
                     variant: root.isMuted ? "secondary" : "ghost"
                     onClicked: root.zoneMuteToggled()

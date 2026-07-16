@@ -45,6 +45,10 @@ BaseDialog {
 
         QQC2.TextField {
             id: inputField
+            Accessible.name: "Campo de texto"
+
+            activeFocusOnTab: true
+
             Layout.fillWidth: true
             height: MichiTheme.rowHeightComfortable
             placeholderText: root.placeholderText
@@ -101,6 +105,10 @@ BaseDialog {
         spacing: MichiTheme.spacing.sm
         Layout.alignment: Qt.AlignRight
         property bool confirmEnabled: !root.validationError
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
 
         MichiButton {
             id: cancelBtn
@@ -110,6 +118,10 @@ BaseDialog {
             onClicked: {
                 root.open = false
                 root.cancelled()
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             }
         }
 

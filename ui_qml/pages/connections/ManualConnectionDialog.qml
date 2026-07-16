@@ -73,7 +73,13 @@ Item {
                 }
 
                 QQC2.TextField {
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
                     id: hostField
+                    activeFocusOnTab: true
+
                     width: parent.width
                     height: MichiTheme.rowHeightComfortable
                     placeholderText: "Host o dirección IP"
@@ -95,6 +101,12 @@ Item {
                     }
                     KeyNavigation.tab: portField
                     KeyNavigation.backtab: cancelBtn
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
                 }
 
                 QQC2.TextField {
@@ -114,6 +126,12 @@ Item {
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
                     }
                     KeyNavigation.tab: aliasField
                     KeyNavigation.backtab: hostField
@@ -132,6 +150,12 @@ Item {
 
                     background: Rectangle {
                         radius: MichiTheme.radiusSm
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
                         color: MichiTheme.colors.surfaceInput
                         border.width: parent.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
@@ -150,6 +174,12 @@ Item {
                     text: root.dialogUser
                     onTextChanged: root.dialogUser = text
                     Accessible.description: "Nombre de usuario para autenticación"
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
 
                     background: Rectangle {
                         radius: MichiTheme.radiusSm
@@ -180,6 +210,10 @@ Item {
                         border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
                     }
                     KeyNavigation.tab: connectBtn
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                     KeyNavigation.backtab: userField
                 }
 
@@ -196,6 +230,10 @@ Item {
 
                     MichiButton {
                         id: connectBtn
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                         text: "Conectar"
                         variant: "primary"
                         onClicked: {

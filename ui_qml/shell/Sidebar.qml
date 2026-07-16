@@ -3,6 +3,7 @@ import QtQuick.Controls
 import "../theme"
 import "../materials"
 import "../components"
+import "../components/foundations"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -12,9 +13,11 @@ Item {
     id: root
 
     property string currentRoute: "home"
-    property bool collapsed: false
     property bool deliveryMode: typeof appStateBridge !== "undefined" && appStateBridge ? appStateBridge.deliveryMode : false
     signal routeRequested(string route)
+
+    MichiResponsive { id: responsive; availableWidth: root.width }
+    property bool collapsed: responsive.sidebarAutoCollapse
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
     Behavior on width { NumberAnimation { duration: MichiTheme.motion.durationNormal; easing.type: Easing.OutCubic } }

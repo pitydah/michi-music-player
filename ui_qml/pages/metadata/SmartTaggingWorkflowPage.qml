@@ -56,6 +56,10 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Analizar"
                     variant: "primary"
                     enabled: root._selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
@@ -63,6 +67,10 @@ Item {
                         if (root.stb && typeof root.stb.scanTrack !== "undefined" && root._selectedFile)
                             root.stb.scanTrack(root._selectedFile)
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
                 MichiButton {
                     text: root.stb && root.stb.status === "scanning" ? "Cancelar" : "Limpiar"
@@ -84,6 +92,10 @@ Item {
                 kind: root.stb && root.stb.status === "completed" ? "success" :
                       root.stb && root.stb.status === "error" ? "error" :
                       root.stb && root.stb.status === "review" ? "warning" : "info"
+                Accessible.role: Accessible.ProgressBar
+
+                activeFocusOnTab: true
+
                 visible: root.stb && root.stb.status !== "idle"
             }
 
@@ -144,9 +156,17 @@ Item {
                       root.stb && root.stb.status === "idle" ? "Selecciona un archivo y presiona Analizar." : ""
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
             }
 
             Row {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 spacing: MichiTheme.spacing.sm
                 visible: root.stb && root.stb.suggestions.length > 0
                 MichiButton {
@@ -154,6 +174,10 @@ Item {
                     variant: "ghost"
                     onClicked: { if (root.stb) root.stb.selectHighConfidence() }
                 }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 MichiButton {
                     text: "Seleccionar todos"
                     variant: "ghost"
@@ -167,6 +191,10 @@ Item {
                     text: root._confirmApply ? "Confirmar aplicar" : "Aplicar seleccionados"
                     variant: root._confirmApply ? "danger" : "primary"
                     visible: root.stb && root.stb.suggestions.length > 0
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     enabled: root.stb ? root.stb.status === "review" || root.stb.status === "batch_review" : false
                     onClicked: {
                         if (!root._confirmApply) {

@@ -5,6 +5,8 @@ import "../theme"
 
 QQC2.Popup {
     id: root
+    activeFocusOnTab: true
+
 
     property var actions: []
     property int highlightedIndex: -1

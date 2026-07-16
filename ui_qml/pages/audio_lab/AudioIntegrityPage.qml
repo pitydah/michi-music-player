@@ -92,6 +92,12 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
+                            Accessible.role: Accessible.CheckBox
+
+                            Accessible.name: "CheckBox"
+
+                            Accessible.checked: root.checked
+
                             checked: root._checkFormat; text: "Validación de formato"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
@@ -99,6 +105,12 @@ Item {
                             onCheckedChanged: root._checkFormat = checked
                         }
                     }
+                            Accessible.role: Accessible.CheckBox
+
+                            Accessible.name: "CheckBox"
+
+                            Accessible.checked: root.checked
+
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
@@ -106,6 +118,14 @@ Item {
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
+                            Accessible.role: Accessible.CheckBox
+
+                            Accessible.name: "CheckBox"
+
+                            Accessible.checked: root.checked
+
+                            activeFocusOnTab: true
+
                             onCheckedChanged: root._checkMetadata = checked
                         }
                     }
@@ -117,12 +137,18 @@ Item {
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
                             onCheckedChanged: root._checkHeader = checked
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                         }
                     }
                 }
             }
 
             SectionHeader { text: "Acciones"; width: parent.width; objectName: "integrityActionsHeader"; Accessible.name: "Acciones" }
+
+                    Accessible.role: Accessible.Button
 
             Row {
                 spacing: MichiTheme.spacing.sm
@@ -132,6 +158,10 @@ Item {
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.stateChecking
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startCheck(false)
                 }
@@ -173,6 +203,10 @@ Item {
                                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
                                 Text {
                                     width: parent.width * 0.45; text: modelData.filepath || ""
+                                    Accessible.role: Accessible.Button
+
+                                    activeFocusOnTab: true
+
                                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize
                                     elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                                 }

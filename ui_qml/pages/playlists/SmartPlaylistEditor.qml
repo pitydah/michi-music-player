@@ -5,7 +5,15 @@ import "../../theme"
 import "../../components"
 
 Dialog {
+    Accessible.role: Accessible.Dialog
+
+    Accessible.name: "Dialog"
+
     id: root
+    closePolicy: Popup.CloseOnEscape
+
+    activeFocusOnTab: true
+
 
     property var bridge: null
     property var rules: []
@@ -43,6 +51,12 @@ Dialog {
             anchors.horizontalCenter: parent.horizontalCenter
 
             Text {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
                 text: "Nombre"; color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
             }
@@ -52,8 +66,16 @@ Dialog {
                 placeholderText: "Nombre de la smart playlist"
             }
 
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
             Text {
                 text: "Coincidir"; color: MichiTheme.colors.textPrimary
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             Row {
@@ -72,6 +94,12 @@ Dialog {
                 spacing: MichiTheme.spacing.sm; width: parent.width
                 Text {
                     text: "Reglas"; color: MichiTheme.colors.textPrimary
+                        Accessible.role: Accessible.ComboBox
+
+                        Accessible.name: "ComboBox"
+
+                        activeFocusOnTab: true
+
                     font.pixelSize: MichiTheme.typography.bodySize
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -79,6 +107,12 @@ Dialog {
             }
 
             Repeater {
+                        Accessible.role: Accessible.ComboBox
+
+                        Accessible.name: "ComboBox"
+
+                        activeFocusOnTab: true
+
                 model: root.rules
                 delegate: Row {
                     spacing: MichiTheme.spacing.sm; width: parent.width
@@ -86,6 +120,12 @@ Dialog {
                         focusPolicy: Qt.StrongFocus
                         id: fieldCombo; width: 100
                         model: ["genre", "artist", "album", "year", "rating", "playcount", "lastplayed"]
+                        Accessible.role: Accessible.EditableText
+
+                        Accessible.name: "Campo de texto"
+
+                        activeFocusOnTab: true
+
                         currentIndex: {
                             var idx = fieldCombo.find(modelData.field)
                             return idx >= 0 ? idx : 0
@@ -105,6 +145,12 @@ Dialog {
                     TextField {
                         focusPolicy: Qt.StrongFocus
                         width: 80; text: modelData.value || ""
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "SpinBox"
+
+                activeFocusOnTab: true
+
                         placeholderText: "Valor"
                         onTextChanged: root.rules[index].value = text
                     }
@@ -113,6 +159,12 @@ Dialog {
                         font.pixelSize: MichiTheme.typography.bodySize
                         anchors.verticalCenter: parent.verticalCenter
                         MouseArea {
+                Accessible.role: Accessible.ComboBox
+
+                Accessible.name: "ComboBox"
+
+                activeFocusOnTab: true
+
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: root.removeRule(index)
                         }

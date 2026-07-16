@@ -42,6 +42,8 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 id: backButton
                 text: "< Volver"
                 variant: "ghost"
@@ -88,6 +90,8 @@ Item {
                         wrapMode: Text.WordWrap
                         width: parent.width
                     }
+
+                        Accessible.role: Accessible.Button
 
                     MichiButton {
                         text: "Escanear red"
@@ -147,6 +151,10 @@ Item {
                                         visible: modelData.ip
                                     }
                                 }
+                                    Accessible.role: Accessible.Button
+
+                                    activeFocusOnTab: true
+
 
                                 MichiButton {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -212,6 +220,12 @@ Item {
                             Text {
                                 text: "Dirección IP"
                                 color: MichiTheme.colors.textSecondary
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "Campo de texto"
+
+                                activeFocusOnTab: true
+
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
 
@@ -229,6 +243,12 @@ Item {
                         Column {
                             width: parent.width * 0.25
                             spacing: MichiTheme.spacing.xs
+
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "Campo de texto"
+
+                                activeFocusOnTab: true
 
                             Text {
                                 text: "Puerto"
@@ -249,6 +269,12 @@ Item {
                         }
 
                         Column {
+                                Accessible.role: Accessible.EditableText
+
+                                Accessible.name: "Campo de texto"
+
+                                activeFocusOnTab: true
+
                             width: parent.width * 0.30
                             spacing: MichiTheme.spacing.xs
 
@@ -257,6 +283,8 @@ Item {
                                 color: MichiTheme.colors.textSecondary
                                 font.pixelSize: MichiTheme.typography.metaSize
                             }
+
+                        Accessible.role: Accessible.Button
 
                             TextField {
                                 focusPolicy: Qt.StrongFocus
@@ -333,6 +361,10 @@ Item {
                             }
                         }
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
 
                     Text {
                         text: root.discoveredDeviceName ? "Dispositivo: " + root.discoveredDeviceName : ""
@@ -342,6 +374,10 @@ Item {
                     }
                 }
             }
+
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
 
             Row {
                 spacing: MichiTheme.spacing.sm

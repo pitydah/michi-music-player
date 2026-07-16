@@ -35,7 +35,11 @@ Item {
         spacing: 2
 
         MichiButton {
+            Accessible.role: Accessible.Button
+
             objectName: "michiDoubleSpinBoxDecrement"
+            activeFocusOnTab: true
+
             text: "-"
             implicitWidth: 32
             implicitHeight: parent.height
@@ -50,6 +54,10 @@ Item {
                 }
             }
         }
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
 
         QQC2.TextField {
             id: field
@@ -102,6 +110,10 @@ Item {
                     root.valueModified()
                 }
                 event.accepted = true
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             }
         }
 

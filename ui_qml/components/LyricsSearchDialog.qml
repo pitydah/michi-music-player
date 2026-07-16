@@ -4,7 +4,15 @@ import "../theme"
 import "../materials"
 
 Dialog {
+    Accessible.role: Accessible.Dialog
+
+    Accessible.name: "Dialog"
+
     id: root
+    closePolicy: Popup.CloseOnEscape
+
+    activeFocusOnTab: true
+
 
     property var lyricsBridge: null
 
@@ -18,6 +26,12 @@ Dialog {
     padding: MichiTheme.spacing.lg
 
     Column {
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
+            activeFocusOnTab: true
+
         spacing: MichiTheme.spacing.md
         width: parent.width
 
@@ -32,9 +46,21 @@ Dialog {
                     root.close()
                 }
             }
+                Accessible.role: Accessible.Button
+
+                Accessible.name: "Button"
+
+                activeFocusOnTab: true
+
         }
 
         Row {
+                Accessible.role: Accessible.Button
+
+                Accessible.name: "Button"
+
+                activeFocusOnTab: true
+
             spacing: MichiTheme.spacing.sm
             anchors.horizontalCenter: parent.horizontalCenter
 

@@ -15,6 +15,12 @@ Item {
     signal albumClicked(string albumKey, string title, string artist, int year)
 
     ListView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "ListView"
+
+        activeFocusOnTab: true
+
         focusPolicy: Qt.StrongFocus
         id: listView
         anchors.fill: parent

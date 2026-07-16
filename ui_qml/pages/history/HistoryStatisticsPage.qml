@@ -96,6 +96,8 @@ Drawer {
     focus: true
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     id: exportStatsBtn
                     text: "Exportar"
                     variant: "ghost"
@@ -106,6 +108,8 @@ Drawer {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.exportRequested()
                 }
+
+                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     id: closeStatsBtn
@@ -260,6 +264,10 @@ Drawer {
                             font.pixelSize: MichiTheme.typography.metaSize
                             anchors.verticalCenter: parent.verticalCenter
                         }
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
 
                         MichiButton {
                             width: MichiTheme.minimumInteractiveSize

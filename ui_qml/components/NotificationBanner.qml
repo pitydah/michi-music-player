@@ -96,7 +96,11 @@ Rectangle {
         }
 
         MichiButton {
+            Accessible.role: Accessible.Button
+
             id: actionBtn
+            activeFocusOnTab: true
+
             anchors.verticalCenter: parent.verticalCenter
             text: root.actionText
             variant: "ghost"

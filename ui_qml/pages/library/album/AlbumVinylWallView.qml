@@ -15,6 +15,12 @@ Item {
     signal albumClicked(string albumKey, string title, string artist, int year)
 
     GridView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "GridView"
+
+        activeFocusOnTab: true
+
         anchors.fill: parent
         model: root.albumModel
         cellWidth: 150

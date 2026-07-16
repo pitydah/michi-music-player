@@ -158,12 +158,24 @@ Rectangle {
 
     Component { id: textCtl
         TextField {
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
+            activeFocusOnTab: true
+
             focusPolicy: Qt.StrongFocus
             text: root.originalValue !== null ? String(root.originalValue) : ""
             placeholderText: root.entry.placeholder || ""
             onTextEdited: root.scheduleSave(text)
         }
     }
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "SpinBox"
+
+            activeFocusOnTab: true
+
 
     Component { id: intCtl
         SpinBox {
@@ -172,6 +184,10 @@ Rectangle {
             from: root.entry.min_value !== null ? root.entry.min_value : 0
             to: root.entry.max_value !== null ? root.entry.max_value : 999999
             editable: true
+            Accessible.role: Accessible.Pane
+
+            activeFocusOnTab: true
+
             onValueModified: root.doSave(value)
         }
     }
@@ -179,9 +195,23 @@ Rectangle {
     Component { id: floatCtl
         MichiDoubleSpinBox {
             value: root.originalValue !== null ? parseFloat(root.originalValue) || 0 : 0
+            Accessible.role: Accessible.CheckBox
+
+            Accessible.name: "Switch"
+
+            Accessible.checked: root.checked
+
+            activeFocusOnTab: true
+
             from: root.entry.min_value || 0
             to: root.entry.max_value || 999999
             onValueModified: root.doSave(value)
+            Accessible.role: Accessible.ComboBox
+
+            Accessible.name: "ComboBox"
+
+            activeFocusOnTab: true
+
         }
     }
 
@@ -202,6 +232,10 @@ Rectangle {
                 var val = root.originalValue
                 var opts = root.entry.options || []
                 for (var i = 0; i < opts.length; i++) {
+                Accessible.role: Accessible.Slider
+
+                activeFocusOnTab: true
+
                     if (String(opts[i].value) === String(val)) return i
                 }
                 return 0
@@ -215,6 +249,12 @@ Rectangle {
     Component { id: sliderCtl
         RowLayout {
             spacing: MichiTheme.spacing.sm
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
             Layout.fillWidth: true
             MichiSlider {
                 id: slider
@@ -245,9 +285,19 @@ Rectangle {
                     border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
                     border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
                 }
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
                 validator: DoubleValidator {
                     bottom: slider.from
                     top: slider.to
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 }
                 onEditingFinished: {
                     var v = parseFloat(text)
@@ -260,9 +310,19 @@ Rectangle {
                 }
             }
         }
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
     }
 
     Component { id: fileCtl
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
         RowLayout { spacing: MichiTheme.spacing.xs
             TextField {
                 focusPolicy: Qt.StrongFocus
@@ -274,17 +334,35 @@ Rectangle {
                 text: "..."
                 implicitWidth: 32
                 onClicked: fileDialog.open()
+            Accessible.role: Accessible.EditableText
+
+            Accessible.name: "Campo de texto"
+
+            activeFocusOnTab: true
+
             }
             FileDialog {
                 id: fileDialog
                 onAccepted: root.doSave(selectedFile.toLocalFile())
             }
         }
+                    Accessible.role: Accessible.CheckBox
+
+                    Accessible.name: "CheckBox"
+
+                    Accessible.checked: root.checked
+
+                    activeFocusOnTab: true
+
     }
 
     Component { id: dirCtl
         RowLayout { spacing: MichiTheme.spacing.xs
             TextField {
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 text: root.originalValue || ""
                 readOnly: true
@@ -302,6 +380,12 @@ Rectangle {
         }
     }
 
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
+                activeFocusOnTab: true
+
     Component { id: secretCtl
         TextField {
             focusPolicy: Qt.StrongFocus
@@ -313,7 +397,13 @@ Rectangle {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 anchors.rightMargin: 4
                 CheckBox {
+                Accessible.role: Accessible.EditableText
+
+                Accessible.name: "Campo de texto"
+
                     id: revealButton
+                activeFocusOnTab: true
+
                     text: ""
                 }
             }

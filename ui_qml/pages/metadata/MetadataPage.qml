@@ -77,6 +77,10 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Edición individual"
                     variant: root._mode === "single" ? "primary" : "ghost"
                     onClicked: {
@@ -86,6 +90,10 @@ Item {
                             if (root.mb) root.mb.loadMetadata(root._selectedFile)
                         }
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
                 MichiButton {
                     text: "Edición por lotes"

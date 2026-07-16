@@ -171,11 +171,19 @@ Item {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
 
                 SearchField {
+                    Accessible.role: Accessible.EditableText
+
                     id: searchFieldDesktop
+                    activeFocusOnTab: true
+
                     Layout.fillWidth: true
                     placeholderText: "Buscar ajustes..."
                     onSearchTextChanged: root.searchCategories(text)
                 }
+                    Accessible.role: Accessible.List
+
+                    Accessible.name: "ListView"
+
 
                 ListView {
                     focusPolicy: Qt.StrongFocus
@@ -215,6 +223,10 @@ Item {
                 }
 
                 Rectangle {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle
                 }
 
@@ -292,6 +304,10 @@ Item {
                     MichiButton { text: "< Volver"; variant: "ghost"; onClicked: root.back(); Accessible.name: "Volver" }
                     Label {
                         text: root.selectedEntry ? root.selectedEntry.label :
+                        Accessible.role: Accessible.Button
+
+                        activeFocusOnTab: true
+
                               root.selectedSection ? root.selectedSection.title :
                               root.selectedCategory ? root.selectedCategory.title : ""
                         font.pixelSize: root.selectedEntry ? MichiTheme.typography.bodySize : MichiTheme.typography.sectionTitleSize
@@ -330,9 +346,19 @@ Item {
 
         Rectangle {
             Layout.preferredWidth: root.selectedCategory === null ? parent.width : 200
+                    Accessible.role: Accessible.EditableText
+
+                    activeFocusOnTab: true
+
             Layout.fillHeight: true
             color: MichiTheme.colors.surfaceCard
             visible: root.selectedCategory === null || root.width >= 700
+
+                    Accessible.role: Accessible.List
+
+                    Accessible.name: "ListView"
+
+                    activeFocusOnTab: true
 
             ColumnLayout {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
@@ -407,6 +433,10 @@ Item {
                             return categoryDetailView
                         }
                     }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 }
             }
         }
@@ -421,6 +451,10 @@ Item {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.md
             MichiButton {
                 text: "< Volver"
+            Accessible.role: Accessible.EditableText
+
+            activeFocusOnTab: true
+
                 variant: "ghost"
                 visible: root.selectedCategory !== null
                 onClicked: root.back()
@@ -447,6 +481,10 @@ Item {
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true
             Loader {
                 sourceComponent: {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                     if (root.selectedCategory === null) return compactList
                     if (root.selectedEntry) return entryDetailView
                     if (root.selectedSection) return sectionDetailView
@@ -478,6 +516,12 @@ Item {
                 color: MichiTheme.colors.textPrimary; Layout.fillWidth: true
                 elide: Text.ElideRight
                 horizontalAlignment: Text.AlignHCenter
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             }
         }
 
@@ -489,6 +533,12 @@ Item {
                     if (root.selectedCategory === null) return compactList
                     if (root.selectedEntry) return entryDetailView
                     if (root.selectedSection) return sectionDetailView
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
                     return compactCategoryDetail
                 }
             }
@@ -541,6 +591,12 @@ Item {
     Component { id: sectionDetailView
         ColumnLayout {
             spacing: MichiTheme.spacing.sm
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
             Repeater {
                 model: root.selectedSection ? root.selectedSection.entries : []
                 SettingsRow {
@@ -551,6 +607,12 @@ Item {
             }
             Item { Layout.fillHeight: true }
         }
+            Accessible.role: Accessible.List
+
+            Accessible.name: "ListView"
+
+            activeFocusOnTab: true
+
     }
 
     Component { id: entryDetailView

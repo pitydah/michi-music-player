@@ -33,7 +33,13 @@ Item {
     }
 
     TextInput {
+        Accessible.role: Accessible.EditableText
+
+        Accessible.name: "Campo de texto"
+
         id: searchInput
+        activeFocusOnTab: true
+
         anchors.fill: parent
         anchors.leftMargin: MichiTheme.spacing.md
         anchors.rightMargin: MichiTheme.spacing.md

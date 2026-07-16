@@ -244,6 +244,10 @@ Item {
                     border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
 
                     TextInput {
+                        Accessible.role: Accessible.EditableText
+
+                        Accessible.name: "Campo de texto"
+
                         id: chatInput
                         anchors.fill: parent
                         anchors.leftMargin: MichiTheme.spacing.md
@@ -279,6 +283,8 @@ Item {
                         }
                     }
                 }
+                    Accessible.role: Accessible.Button
+
 
                 MichiIconButton {
                     id: sendBtn

@@ -73,6 +73,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.hasPlayback ? "Reproducir" : "Sin reproducción"
                 variant: root.hasPlayback ? "accent" : "secondary"

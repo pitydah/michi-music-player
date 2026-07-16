@@ -91,6 +91,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 text: "Entendido"
                 variant: "ghost"
                 visible: root.dismissible

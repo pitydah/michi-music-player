@@ -119,6 +119,12 @@ Item {
                             }
 
                             ComboBox {
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                                 focusPolicy: Qt.StrongFocus
                                 model: ListModel {
                                     ListElement { text: "Español"; value: "es" }
@@ -170,6 +176,12 @@ Item {
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
                                 }
+                                Accessible.role: Accessible.ComboBox
+
+                                Accessible.name: "ComboBox"
+
+                                activeFocusOnTab: true
+
                             }
 
                             ComboBox {
@@ -207,6 +219,14 @@ Item {
                             Layout.fillWidth: true
                             spacing: MichiTheme.spacing.md
                             Label {
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                                 text: "Cerrar a la bandeja"
                                 color: MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
@@ -220,6 +240,14 @@ Item {
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -235,6 +263,14 @@ Item {
                                 onClicked: root._saveValue("general/start_minimized", checked)
                                 focusPolicy: Qt.StrongFocus
                             }
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -249,6 +285,14 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                                 checked: root._loadValue("general/remember_session", true)
                                 onClicked: root._saveValue("general/remember_session", checked)
                                 focusPolicy: Qt.StrongFocus
@@ -273,11 +317,23 @@ Item {
                             }
                         }
                     }
+                                Accessible.role: Accessible.CheckBox
+
+                                Accessible.name: "Switch"
+
+                                Accessible.checked: root.checked
+
+                                activeFocusOnTab: true
+
                 }
 
                 GlassCard {
                     Layout.fillWidth: true
                     title: "Actualizaciones"
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                     interactive: false
 
                     ColumnLayout {
@@ -314,6 +370,10 @@ Item {
 
                 GlassCard {
                     Layout.fillWidth: true
+                                Accessible.role: Accessible.Button
+
+                                activeFocusOnTab: true
+
                     title: "Caché"
                     interactive: false
 

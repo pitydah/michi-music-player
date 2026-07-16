@@ -32,7 +32,15 @@ Item {
         }
 
         Switch {
+            Accessible.role: Accessible.CheckBox
+
+            Accessible.name: "Switch"
+
+            Accessible.checked: root.checked
+
             id: monoSwitch
+            activeFocusOnTab: true
+
             checked: root.monoEnabled
             Accessible.onPressAction: toggle()
 

@@ -132,6 +132,8 @@ Item {
             }
 
             SearchField {
+                Accessible.role: Accessible.EditableText
+
                 id: playlistSearch
                 width: parent.width * 0.5
                 placeholderText: "Buscar playlists..."
@@ -145,6 +147,8 @@ Item {
             Row {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
+                    Accessible.role: Accessible.Button
+
                 MichiButton {
                     id: createPlaylistBtn
                     objectName: "createPlaylistButton"
@@ -156,6 +160,8 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.openEditor()
+                    Accessible.role: Accessible.Button
+
                 }
                 MichiButton {
                     id: smartPlaylistBtn
@@ -167,6 +173,8 @@ Item {
                     KeyNavigation.backtab: createPlaylistBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     onClicked: smartPlaylistDialog.open()
                 }
                 MichiButton {
@@ -178,6 +186,8 @@ Item {
                     KeyNavigation.tab: selectPlaylistBtn
                     KeyNavigation.backtab: smartPlaylistBtn
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: root.openImport()
                 }
@@ -190,6 +200,8 @@ Item {
                     KeyNavigation.tab: deletePlaylistBtn
                     KeyNavigation.backtab: importPlaylistBtn
                     Keys.onReturnPressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._selectionMode = !root._selectionMode
                     highlighted: root._selectionMode
@@ -202,6 +214,10 @@ Item {
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
                     activeFocusOnTab: true
                     KeyNavigation.tab: refreshBtn
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     KeyNavigation.backtab: selectPlaylistBtn
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -365,6 +381,12 @@ Item {
             root.refresh()
             smartPlaylistDialog.visible = false
             forceActiveFocus()
+        Accessible.role: Accessible.Dialog
+
+        Accessible.name: "Dialog"
+
+        activeFocusOnTab: true
+
         }
         onBackRequested: {
             smartPlaylistDialog.visible = false

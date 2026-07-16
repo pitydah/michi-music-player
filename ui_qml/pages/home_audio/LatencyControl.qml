@@ -45,7 +45,11 @@ Item {
             }
 
             MichiSlider {
+                Accessible.role: Accessible.Slider
+
                 id: latencySlider
+                activeFocusOnTab: true
+
                 width: parent.width
                 from: root.minLatency
                 to: root.maxLatency

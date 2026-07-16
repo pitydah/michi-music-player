@@ -103,6 +103,8 @@ Item {
                 layoutDirection: Qt.RightToLeft
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     id: confirmBtn
                     text: root.destructive ? "Sí, continuar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
@@ -110,6 +112,8 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirm()
                 }
+
+                    Accessible.role: Accessible.Button
 
                 MichiButton {
                     text: "Cancelar"

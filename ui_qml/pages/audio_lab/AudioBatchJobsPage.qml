@@ -138,6 +138,8 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: "Limpiar completados"
                     variant: "secondary"
                     activeFocusOnTab: true
@@ -145,6 +147,8 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: { if (root.jobBr) root.jobBr.clearCompleted() }
                 }
+                    Accessible.role: Accessible.Button
+
                 MichiButton {
                     text: "Limpiar fallidos"
                     variant: "danger"
@@ -152,6 +156,8 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: { if (root.jobBr) root.jobBr.clearFailed() }
+                    Accessible.role: Accessible.Button
+
                 }
                 MichiButton {
                     text: "Volver"

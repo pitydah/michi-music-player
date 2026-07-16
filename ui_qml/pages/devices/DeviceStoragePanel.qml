@@ -122,6 +122,8 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
                 text: "Expulsar dispositivo"
                 variant: "secondary"
                 visible: root.mountPoint !== ""

@@ -144,6 +144,10 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiButton {
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                             text: "Página principal"
                             variant: "ghost"
                             Layout.fillWidth: true
@@ -151,6 +155,10 @@ Item {
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
 
                         MichiButton {
                             text: "GitHub"
@@ -158,6 +166,10 @@ Item {
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player")
                         }
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
 
@@ -165,6 +177,10 @@ Item {
                             text: "Reportar un problema"
                             variant: "ghost"
                             Layout.fillWidth: true
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/issues")
                         }
 
@@ -183,6 +199,10 @@ Item {
                     id: updatesCard
                     Layout.fillWidth: true
                     title: "Actualizaciones"
+                            Accessible.role: Accessible.Button
+
+                            activeFocusOnTab: true
+
                     interactive: false
 
                     ColumnLayout {

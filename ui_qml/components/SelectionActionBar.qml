@@ -69,6 +69,10 @@ Rectangle {
         }
 
         MichiIconButton {
+            Accessible.role: Accessible.Button
+
+            activeFocusOnTab: true
+
             anchors.verticalCenter: parent.verticalCenter
             iconText: "\u00D7"
             tooltipText: "Deseleccionar todo"

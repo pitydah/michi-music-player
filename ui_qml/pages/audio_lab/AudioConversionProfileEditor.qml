@@ -142,6 +142,12 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField {
+                            Accessible.role: Accessible.EditableText
+
+                            Accessible.name: "Campo de texto"
+
+                            activeFocusOnTab: true
+
                             focusPolicy: Qt.StrongFocus
                             width: parent.width - 100; text: root._profileName
                             placeholderText: "Nombre del perfil"
@@ -153,6 +159,10 @@ Item {
                     }
 
                     Row {
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Formato:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
@@ -167,6 +177,12 @@ Item {
                             }
                         }
                     }
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
+                            activeFocusOnTab: true
+
 
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
@@ -176,6 +192,10 @@ Item {
                             model: root._bitrateOptions
                             width: parent.width - 100
                             activeFocusOnTab: true
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                             onCurrentIndexChanged: root._profileBitrate = root._bitrateOptions[currentIndex]
                         }
                     }
@@ -186,6 +206,10 @@ Item {
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._sampleRateOptions
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                             width: parent.width - 100
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._profileSampleRate = root._sampleRateOptions[currentIndex]
@@ -196,6 +220,10 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Bit depth:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            Accessible.role: Accessible.ComboBox
+
+                            Accessible.name: "ComboBox"
+
                             focusPolicy: Qt.StrongFocus
                             model: root._bitDepthOptions
                             width: parent.width - 100
@@ -207,6 +235,8 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
+                    Accessible.role: Accessible.Button
+
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             model: root._channelsOptions
@@ -215,6 +245,10 @@ Item {
                             onCurrentIndexChanged: root._profileChannels = root._channelsOptions[currentIndex]
                         }
                     }
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 }
             }
 
@@ -222,6 +256,8 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
                     text: "Guardar perfil"
+                    Accessible.role: Accessible.Button
+
                     variant: "primary"
                     enabled: root._profileName.trim() !== ""
                     activeFocusOnTab: true

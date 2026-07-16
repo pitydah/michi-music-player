@@ -54,6 +54,10 @@ Item {
             }
 
             MichiButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Abrir"
                 variant: "accent"

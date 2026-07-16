@@ -100,6 +100,12 @@ Item {
             SectionHeader { text: "Álbumes"; width: parent.width }
 
             ListView {
+                Accessible.role: Accessible.List
+
+                Accessible.name: "ListView"
+
+                activeFocusOnTab: true
+
                 focusPolicy: Qt.StrongFocus
                 width: parent.width
                 height: Math.min(300, (root.lib && root.lib.albumModel ? root.lib.albumModel.count : 0) * 56)
@@ -131,6 +137,12 @@ Item {
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor }
                 }
             }
+
+                Accessible.role: Accessible.List
+
+                Accessible.name: "ListView"
+
+                activeFocusOnTab: true
 
             SectionHeader { text: "Canciones"; width: parent.width }
 

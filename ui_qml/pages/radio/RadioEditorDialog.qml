@@ -91,6 +91,8 @@ Dialog {
             }
 
             SearchField {
+                Accessible.role: Accessible.EditableText
+
                 id: nameField
                 width: parent.width
                 placeholderText: "Ej: Jazz FM"
@@ -109,6 +111,8 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.metaSize
                 font.weight: MichiTheme.typography.weightMedium
             }
+
+                Accessible.role: Accessible.EditableText
 
             SearchField {
                 id: urlField
@@ -144,6 +148,8 @@ Dialog {
                     font.pixelSize: MichiTheme.typography.metaSize
                     font.weight: MichiTheme.typography.weightMedium
                 }
+                    Accessible.role: Accessible.EditableText
+
 
                 SearchField {
                     id: codecField
@@ -163,6 +169,10 @@ Dialog {
                     color: MichiTheme.colors.textSecondary
                     font.pixelSize: MichiTheme.typography.metaSize
                     font.weight: MichiTheme.typography.weightMedium
+                    Accessible.role: Accessible.EditableText
+
+                    activeFocusOnTab: true
+
                 }
 
                 SearchField {
@@ -196,6 +206,8 @@ Dialog {
             color: MichiTheme.colors.borderSubtle
         }
 
+                Accessible.role: Accessible.Button
+
         Row {
             width: parent.width
             spacing: MichiTheme.spacing.sm
@@ -212,6 +224,8 @@ Dialog {
                         root._testingConnection = false
                         root._connectionTestResult = "Conexión exitosa"
                     }, 1500)
+                Accessible.role: Accessible.Button
+
                 }
             }
 
@@ -222,6 +236,8 @@ Dialog {
                 variant: "ghost"
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
+                Accessible.role: Accessible.Button
+
                 onClicked: {
                     root.close()
                     root.cancelled()

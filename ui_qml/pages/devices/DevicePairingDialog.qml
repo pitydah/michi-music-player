@@ -53,6 +53,12 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogNameLabel" }
                 TextField {
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
+                    activeFocusOnTab: true
+
                     focusPolicy: Qt.StrongFocus
                     id: pairingNameField
                     width: 200
@@ -67,10 +73,18 @@ Item {
             }
 
             Row {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                 spacing: MichiTheme.spacing.sm
 
                 MichiButton {
                     text: "Vincular"
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     variant: "primary"
                     onClicked: root.pairRequested(root.detectedDeviceName, root.detectedDeviceType)
                 }

@@ -143,6 +143,10 @@ Item {
                 border.width: searchField.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
 
                 TextInput {
+                    Accessible.role: Accessible.EditableText
+
+                    Accessible.name: "Campo de texto"
+
                     id: searchField
                     anchors.fill: parent
                     anchors.leftMargin: MichiTheme.spacing.md
@@ -181,6 +185,10 @@ Item {
                 repeat: false
                 onTriggered: searchCommands(root._filterText)
             }
+                Accessible.role: Accessible.List
+
+                Accessible.name: "ListView"
+
 
             ListView {
                 focusPolicy: Qt.StrongFocus

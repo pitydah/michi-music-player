@@ -98,6 +98,8 @@ Item {
             Row {
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
                     text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar selección"
                     variant: "primary"
                     enabled: root._state !== root.stateAnalyzing && root._state !== root.stateCancelling && root.labService !== null && inputSelection.selectedFiles.length > 0
@@ -106,6 +108,8 @@ Item {
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._startAnalysis()
                 }
+                    Accessible.role: Accessible.Button
+
                 MichiButton {
                     text: "Cancelar"
                     variant: "danger"
@@ -114,6 +118,8 @@ Item {
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
                     onClicked: root._cancelAnalysis()
+                    Accessible.role: Accessible.Button
+
                 }
                 MichiButton {
                     text: root._compareMode ? "Salir de comparación" : "Comparar con otro archivo"
@@ -121,6 +127,8 @@ Item {
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
+                    Accessible.role: Accessible.Button
+
                     onClicked: root._startCompare()
                 }
                 MichiButton {

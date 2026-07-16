@@ -24,11 +24,23 @@ Item {
         color: MichiTheme.colors.surfaceCard
 
         TabBar {
+            Accessible.role: Accessible.PageTabList
+
+            Accessible.name: "TabBar"
+
             id: tabBar
+            activeFocusOnTab: true
+
             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
             anchors.leftMargin: MichiTheme.spacing.md
             height: parent.height
             background: Rectangle { color: "transparent" }
+
+                    Accessible.role: Accessible.PageTab
+
+                    Accessible.name: "TabButton"
+
+                    activeFocusOnTab: true
 
             Repeater {
                 model: ["Canciones", "Álbumes", "Artistas", "Carpetas"]
@@ -49,6 +61,10 @@ Item {
                             visible: tabBar.currentIndex === index
                         }
                     }
+            Accessible.role: Accessible.EditableText
+
+            activeFocusOnTab: true
+
                     onClicked: { root.currentTab = index; tabBar.currentIndex = index }
                 }
             }

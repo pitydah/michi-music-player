@@ -16,6 +16,12 @@ Item {
     property var notif: null
 
     ListView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "ListView"
+
+        activeFocusOnTab: true
+
         focusPolicy: Qt.StrongFocus
         id: queueList
         anchors.fill: parent

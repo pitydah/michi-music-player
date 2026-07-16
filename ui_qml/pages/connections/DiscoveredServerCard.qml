@@ -71,6 +71,10 @@ Item {
                 }
 
                 MichiButton {
+                    Accessible.role: Accessible.Button
+
+                    activeFocusOnTab: true
+
                     text: "Conectar"
                     variant: "accent"
                     onClicked: root.connectClicked()

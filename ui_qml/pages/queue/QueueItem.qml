@@ -70,6 +70,10 @@ Item {
             }
 
             MichiIconButton {
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
                 iconSource: "../../icons/nowplaying_clean/warm_play_32.png"
                 iconText: ""
                 tooltipText: "Reproducir"
@@ -82,6 +86,10 @@ Item {
                     }
                 }
             }
+                Accessible.role: Accessible.Button
+
+                activeFocusOnTab: true
+
 
             MichiIconButton {
                 iconSource: "../../icons/sidebar_clean/close_32.png"

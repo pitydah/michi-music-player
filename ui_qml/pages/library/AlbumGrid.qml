@@ -16,6 +16,12 @@ Item {
     signal albumClicked(string key, string title, string artist, int year)
 
     GridView {
+        Accessible.role: Accessible.List
+
+        Accessible.name: "GridView"
+
+        activeFocusOnTab: true
+
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
         model: root.albums
