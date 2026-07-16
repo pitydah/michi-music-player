@@ -1024,7 +1024,7 @@ class LibraryBridge(QObject):
     @Slot(result=dict)
     def playAllFiltered(self):
         svc = getattr(self, '_playback_ctrl', None)
-        if svc and hasattr(svc, 'play'):
+        if svc and hasattr(svc, 'play') and hasattr(svc, 'enqueue'):
             try:
                 conn = self._query_svc._get_conn() if hasattr(self._query_svc, '_get_conn') else None
                 if conn:
@@ -1043,15 +1043,17 @@ class LibraryBridge(QObject):
                     if self._filter_favorites:
                         clauses.append("filepath IN (SELECT track_id FROM favorites)")
                     if self._filter_unplayed:
-                        clauses.append("(filepath NOT IN (SELECT track_id FROM favorites) OR 1=1)")
+                        clauses.append("(filepath NOT IN (SELECT track_id FROM play_history "
+                                        "WHERE played_at IS NOT NULL) OR last_played IS NULL)")
                     where = " AND ".join(clauses) if clauses else "1=1"
                     rows = conn.execute(
                         f"SELECT filepath FROM media_items WHERE {where} ORDER BY title LIMIT 500",
                         params
                     ).fetchall()
                     if rows:
-                        svc.play(rows[0][0])
-                        return {"ok": True, "count": len(rows)}
+                        filepaths = [r[0] for r in rows]
+                        svc.enqueue(filepaths, play_now=True)
+                        return {"ok": True, "count": len(filepaths)}
                 return {"ok": False, "error": "NO_TRACKS"}
             except Exception as e:
                 return {"ok": False, "error": str(e)}

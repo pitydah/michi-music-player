@@ -19,7 +19,7 @@ class MicroServerService:
         try:
             rows = self._db.conn.execute(
                 "SELECT filepath FROM media_items WHERE deleted_at IS NULL "
-                "AND (album || '/' || artist)=?",
+                "AND album_key=?",
                 (album_key,)).fetchall()
             return [r[0] for r in rows]
         except Exception:

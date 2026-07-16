@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
+
+from conftest import find_qml_item
 
 pytestmark = [
     pytest.mark.qml_module("library"),
@@ -95,3 +99,15 @@ class TestLibraryE2E:
         library_bridge.getSongsPage(0, 20)
         play_result = playback_bridge.togglePlay()
         assert isinstance(play_result, dict)
+
+    def test_qtest_navigate_search_keyboard(self, nav, root_window):
+        nav.navigate("library")
+        assert nav.currentRoute == "library"
+        search_field = find_qml_item(root_window, "libraryNavigationBar")
+        if search_field is not None:
+            search_field.forceActiveFocus()
+            QTest.keyClicks(search_field, "queen")
+            QTest.qWait(50)
+            QTest.keyClick(search_field, Qt.Key_Return)
+            QTest.qWait(50)
+            assert nav.currentRoute == "library"

@@ -48,8 +48,10 @@ def qml_item_type_names(item: QQuickItem, depth: int = 0) -> list[str]:
     return lines
 
 
-def qtest_click_item(item: QQuickItem, button: Qt.MouseButton = Qt.LeftButton) -> None:
-    QTest.mouseClick(item, button)
+def qtest_click_item(item: QQuickItem, window: QQuickWindow | None = None,
+                     button: Qt.MouseButton = Qt.LeftButton) -> None:
+    center = item.mapToScene(item.width / 2, item.height / 2)
+    QTest.mouseClick(window or item, button, Qt.NoModifier, center)
     QTest.qWait(50)
 
 

@@ -21,6 +21,9 @@ class NavigationService:
     def go_forward(self) -> dict[str, Any]:
         return {"ok": True, "code": "NAVIGATION_REQUESTED", "action": "forward"}
 
+    def peek_last_request(self) -> dict[str, Any] | None:
+        return self._last_request
+
     def current_route(self) -> str | None:
         if self._last_request:
             return self._last_request["route"]

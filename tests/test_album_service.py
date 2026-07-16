@@ -18,15 +18,17 @@ def db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filepath TEXT UNIQUE NOT NULL,
             title TEXT, artist TEXT, album TEXT,
-            year INTEGER, deleted_at REAL
+            year INTEGER, deleted_at REAL,
+            album_key TEXT,
+            track_number INTEGER
         )
     """)
     conn.execute("""
-        INSERT INTO media_items (filepath, title, artist, album, year)
+        INSERT INTO media_items (filepath, title, artist, album, year, album_key)
         VALUES
-        ('/music/a1.flac', 'Track 1', 'Artist X', 'Album A', 2020),
-        ('/music/a2.flac', 'Track 2', 'Artist X', 'Album A', 2020),
-        ('/music/b1.flac', 'Track 1', 'Artist Y', 'Album B', 2021)
+        ('/music/a1.flac', 'Track 1', 'Artist X', 'Album A', 2020, 'Artist X / Album A'),
+        ('/music/a2.flac', 'Track 2', 'Artist X', 'Album A', 2020, 'Artist X / Album A'),
+        ('/music/b1.flac', 'Track 1', 'Artist Y', 'Album B', 2021, 'Artist Y / Album B')
     """)
     conn.commit()
     fdb = type("FakeDB", (), {"conn": conn})

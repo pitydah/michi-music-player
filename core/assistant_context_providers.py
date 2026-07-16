@@ -108,7 +108,7 @@ class NavigationContextProvider:
         if self._nav is None:
             return {"available": False}
         try:
-            req = self._nav.pop_last_request() if hasattr(self._nav, "pop_last_request") else None
+            req = self._nav.peek_last_request() if hasattr(self._nav, "peek_last_request") else None
             route = req.get("route", "") if req else ""
             return {"current_section": route}
         except Exception as e:

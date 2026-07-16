@@ -10,6 +10,9 @@ logger = logging.getLogger("michi.album_service")
 def _album_key(album: str, artist: str) -> str:
     return f"{artist or '?'} / {album or '?'}"
 
+def _canonical_album_key(albumartist: str, artist: str, album: str) -> str:
+    return f"{albumartist or artist or '?'} / {album or '?'}"
+
 
 class AlbumService:
     def __init__(self, db=None, playback_service=None, library_query_service=None,
@@ -33,16 +36,16 @@ class AlbumService:
         try:
             if artist:
                 row = self._db.conn.execute(
-                    "SELECT DISTINCT album, artist FROM media_items "
+                    "SELECT album_key FROM media_items "
                     "WHERE deleted_at IS NULL AND album=? AND artist=? LIMIT 1",
                     (title, artist)).fetchone()
             else:
                 row = self._db.conn.execute(
-                    "SELECT DISTINCT album, artist FROM media_items "
+                    "SELECT album_key FROM media_items "
                     "WHERE deleted_at IS NULL AND album=? LIMIT 1",
                     (title,)).fetchone()
             if row:
-                return _album_key(row[0], row[1] or "")
+                return row[0]
             return None
         except Exception as e:
             logger.debug("AlbumService._fetch_album_key failed: %s", e)
@@ -63,15 +66,13 @@ class AlbumService:
         if not self._db:
             return {"ok": False, "error": "NO_DB"}
         try:
-            rows = self._db.conn.execute(
-                "SELECT DISTINCT album, artist FROM media_items "
+            row = self._db.conn.execute(
+                "SELECT album_key FROM media_items "
                 "WHERE deleted_at IS NULL AND album IS NOT NULL AND album != '' "
-                "AND (album || '/' || artist) > ? "
-                "ORDER BY album, artist LIMIT 1",
-                (current_album_key,)).fetchall()
-            if rows:
-                ak = _album_key(rows[0][0], rows[0][1] or "")
-                tracks = self._tracks_for_album(ak)
+                "AND album_key > ? ORDER BY album_key LIMIT 1",
+                (current_album_key,)).fetchone()
+            if row:
+                tracks = self._tracks_for_album(row[0])
                 return self.play_album(tracks)
             return {"ok": False, "error": "NO_NEXT_ALBUM"}
         except Exception as e:
@@ -135,7 +136,7 @@ class AlbumService:
         try:
             rows = self._db.conn.execute(
                 "SELECT filepath, title, artist, album FROM media_items "
-                "WHERE deleted_at IS NULL AND (album || '/' || artist)=? ORDER BY track_number",
+                "WHERE deleted_at IS NULL AND album_key=? ORDER BY track_number",
                 (group_id,)).fetchall()
             return [{"filepath": r[0], "title": r[1], "artist": r[2], "album": r[3]} for r in rows]
         except Exception:
