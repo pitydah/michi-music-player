@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Filter Bar"
+    objectName: "libraryFilterBar"
+    focus: true
     id: root
     width: parent.width; height: 30
 

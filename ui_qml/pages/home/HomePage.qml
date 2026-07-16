@@ -6,6 +6,7 @@ import "../../components"
 import "."
 
 Item {
+    objectName: "homePage"
     id: root
     focus: true
 

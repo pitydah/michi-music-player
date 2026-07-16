@@ -4,6 +4,10 @@ import "../theme"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Placeholder"
+    objectName: "placeholderPage"
+    focus: true
     id: root
 
     property string sectionTitle: "Sección en migración"

@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Multiroom Status"
+    objectName: "multiroomStatus"
+    focus: true
     id: root
 
     property string zoneId: ""

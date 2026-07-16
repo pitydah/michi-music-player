@@ -4,6 +4,10 @@ import "../theme"
 import "../components"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Job Progress Card"
+    objectName: "jobProgressCard"
+    focus: true
     id: root
 
     property string jobTitle: ""

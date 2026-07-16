@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Continue Card"
+    objectName: "continueCard"
+    focus: true
     id: root
 
     property string trackTitle: "—"

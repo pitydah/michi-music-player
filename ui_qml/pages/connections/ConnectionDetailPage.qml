@@ -5,6 +5,9 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Connection Detail"
+    objectName: "connectionDetailPage"
     id: root
     focus: true
 

@@ -6,6 +6,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Stream Routing"
+    objectName: "streamRoutingPage"
     id: root
     focus: true
 

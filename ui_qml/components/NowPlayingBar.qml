@@ -5,6 +5,10 @@ import "../theme"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Bar"
+    objectName: "nowPlayingBar"
+    focus: true
     id: root
 
     property var ps: typeof nowplayingBridge !== "undefined" && nowplayingBridge

@@ -3,6 +3,10 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Cancellation Banner"
+    objectName: "cancellationBanner"
+    focus: true
     id: root
 
     property string title: "Cancelando\u2026"

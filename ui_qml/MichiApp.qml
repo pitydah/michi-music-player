@@ -6,6 +6,10 @@ import "shell"
 import "materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi App"
+    objectName: "michiApp"
+    focus: true
     id: appRoot
 
     property bool bridgesReady: false

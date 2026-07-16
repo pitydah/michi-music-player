@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Inline Validation"
+    objectName: "inlineValidation"
+    focus: true
     id: root
 
     enum Variant {

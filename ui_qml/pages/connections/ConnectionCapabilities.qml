@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Connection Capabilities"
+    objectName: "connectionCapabilities"
+    focus: true
     id: root
 
     property var capabilities: []

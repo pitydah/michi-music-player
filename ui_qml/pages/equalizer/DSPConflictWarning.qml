@@ -4,6 +4,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "DSPConflict Warning"
+    objectName: "dSPConflictWarning"
+    focus: true
     id: root
 
     property string message: ""

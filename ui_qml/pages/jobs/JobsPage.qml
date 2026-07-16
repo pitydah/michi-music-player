@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Jobs"
+    objectName: "jobsPage"
+    focus: true
     id: root
     property var bridge: typeof jobBridge !== "undefined" ? jobBridge : null
     property var jobListModel: null

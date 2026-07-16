@@ -5,6 +5,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Manual Connection"
+    objectName: "manualConnectionDialog"
     id: root
     focus: true
 

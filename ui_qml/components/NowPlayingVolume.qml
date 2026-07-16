@@ -5,6 +5,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Volume"
+    objectName: "nowPlayingVolume"
+    focus: true
     id: root
 
     property int volume: 80

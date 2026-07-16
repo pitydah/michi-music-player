@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Conflict View"
+    objectName: "metadataConflictView"
+    focus: true
     id: root
 
     property var mb: null

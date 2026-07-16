@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Zone Card"
+    objectName: "zoneCard"
+    focus: true
     id: root
 
     property string zoneName: ""

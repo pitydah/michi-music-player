@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Input Material"
+    objectName: "inputMaterial"
+    focus: true
     id: root
 
     property bool focused: false

@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Connection Status Badge"
+    objectName: "connectionStatusBadge"
+    focus: true
     id: root
 
     enum Status {

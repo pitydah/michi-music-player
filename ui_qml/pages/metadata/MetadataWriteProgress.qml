@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Write Progress"
+    objectName: "metadataWriteProgress"
+    focus: true
     id: root
 
     property var mb: null

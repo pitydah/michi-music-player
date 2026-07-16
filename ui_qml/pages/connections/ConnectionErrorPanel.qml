@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Connection Error"
+    objectName: "connectionErrorPanel"
+    focus: true
     id: root
 
     property string errorText: ""

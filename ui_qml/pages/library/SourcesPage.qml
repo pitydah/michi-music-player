@@ -8,6 +8,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sources"
+    objectName: "sourcesPage"
+    focus: true
     id: root
 
     property var bridge: null

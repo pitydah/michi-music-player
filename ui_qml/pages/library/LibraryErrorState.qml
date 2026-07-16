@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Error State"
+    objectName: "libraryErrorState"
+    focus: true
     id: root
 
     property string title: "Error al cargar la biblioteca"

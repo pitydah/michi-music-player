@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Breadcrumbs"
+    objectName: "breadcrumbs"
+    focus: true
     id: root
 
     property var routeHistory: []

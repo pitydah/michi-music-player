@@ -31,6 +31,10 @@ FocusScope {
     Keys.onSpacePressed: root.clicked()
 
     Rectangle { anchors.fill: parent; radius: MichiTheme.radiusMd; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard }
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Album Tile"
+    objectName: "michiAlbumTile"
+    focus: true
     Image { id: cover; x: MichiTheme.spacing.md; y: x; width: parent.width - x * 2; height: width; source: root.coverSource; fillMode: Image.PreserveAspectCrop; visible: source.toString() !== "" }
     MichiIcon { anchors.fill: cover; iconName: "album"; visible: !cover.visible; accessibleName: "Sin portada" }
     Column {

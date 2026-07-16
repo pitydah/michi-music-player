@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Artist List View"
+    objectName: "artistListView"
+    focus: true
     id: root
 
     property var artistModel: null

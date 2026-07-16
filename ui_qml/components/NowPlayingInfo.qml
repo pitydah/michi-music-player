@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Info"
+    objectName: "nowPlayingInfo"
+    focus: true
     id: root
 
     property string trackTitle: "—"

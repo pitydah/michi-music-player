@@ -3,6 +3,10 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Notification Toast"
+    objectName: "notificationToast"
+    focus: true
     id: root
 
     property var bridge: typeof notificationBridge !== "undefined" ? notificationBridge : null

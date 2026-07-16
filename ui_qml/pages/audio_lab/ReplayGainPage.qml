@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Replay Gain"
+    objectName: "replayGainPage"
+    focus: true
     id: root
 
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null

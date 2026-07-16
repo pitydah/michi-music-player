@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Folder Tree View"
+    objectName: "folderTreeView"
+    focus: true
     id: root
 
     property var folderModel: null

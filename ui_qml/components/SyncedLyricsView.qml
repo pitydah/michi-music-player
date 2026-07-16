@@ -4,6 +4,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Synced Lyrics View"
+    objectName: "syncedLyricsView"
+    focus: true
     id: root
 
     property var lyricsBridge: null

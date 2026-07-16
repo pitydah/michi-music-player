@@ -4,6 +4,10 @@ import "../../../theme"
 import "../../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Album Grid View"
+    objectName: "albumGridView"
+    focus: true
     id: root
 
     property var albumModel: null

@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Track Row"
+    objectName: "libraryTrackRow"
+    focus: true
     id: root
 
     property int trackId: 0

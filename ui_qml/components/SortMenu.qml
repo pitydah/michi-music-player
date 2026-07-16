@@ -35,6 +35,10 @@ QQC2.Popup {
         spacing: MichiTheme.spacing.xs
 
         Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sort Menu"
+    objectName: "sortMenu"
+    focus: true
             width: parent.width
             height: MichiTheme.rowHeightComfortable
 

@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Queue Header"
+    objectName: "queueHeader"
+    focus: true
     property var qb: null
     property var notif: null
     property var nav: null

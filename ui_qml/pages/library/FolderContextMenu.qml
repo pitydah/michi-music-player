@@ -32,6 +32,10 @@ Popup {
             ]
 
             Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Folder Context Menu"
+    objectName: "folderContextMenu"
+    focus: true
                 width: parent.width; height: 32; color: "transparent"
                 Text {
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter

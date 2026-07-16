@@ -3,6 +3,10 @@ import "../../theme"
 import "../foundations"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Responsive Grid"
+    objectName: "michiResponsiveGrid"
+    focus: true
     id: root
 
     property int requestedColumns: 0

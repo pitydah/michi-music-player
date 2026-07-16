@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Section Header"
+    objectName: "sectionHeader"
+    focus: true
     id: root
 
     property string text: ""

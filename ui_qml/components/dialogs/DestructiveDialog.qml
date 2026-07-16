@@ -66,6 +66,10 @@ BaseDialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Destructive"
+    objectName: "destructiveDialog"
+    focus: true
             Layout.fillWidth: true
             height: 36
             radius: MichiTheme.radiusSm

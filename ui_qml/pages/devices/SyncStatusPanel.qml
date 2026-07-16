@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sync Status"
+    objectName: "syncStatusPanel"
+    focus: true
     id: root
 
     property bool serverActive: false

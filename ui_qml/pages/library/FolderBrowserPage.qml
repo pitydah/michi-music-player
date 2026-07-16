@@ -7,6 +7,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Folder Browser"
+    objectName: "folderBrowserPage"
+    focus: true
     id: root
 
     property var folderModel: null

@@ -4,6 +4,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Glass Card"
+    objectName: "glassCard"
+    focus: true
     id: root
 
     property string title: ""

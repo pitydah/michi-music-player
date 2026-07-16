@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Metadata"
+    objectName: "nowPlayingMetadata"
+    focus: true
     property var ps: null
 
     implicitHeight: metadataColumn.height

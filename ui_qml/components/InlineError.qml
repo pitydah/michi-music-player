@@ -3,6 +3,10 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Inline Error"
+    objectName: "inlineError"
+    focus: true
     id: root
 
     property string message: ""

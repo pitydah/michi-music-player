@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Radio Station Detail"
+    objectName: "radioStationDetail"
+    focus: true
     id: root
 
     property var stationData: null

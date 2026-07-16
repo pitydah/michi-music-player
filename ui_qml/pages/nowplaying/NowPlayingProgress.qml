@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Progress"
+    objectName: "nowPlayingProgress"
+    focus: true
     property var ps: null
 
     implicitHeight: 36

@@ -6,6 +6,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    objectName: "connectionDiscoveryPage"
     id: root
     focus: true
 

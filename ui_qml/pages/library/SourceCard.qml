@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Source Card"
+    objectName: "sourceCard"
+    focus: true
     id: root
 
     property int sourceId: 0

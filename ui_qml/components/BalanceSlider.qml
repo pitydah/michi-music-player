@@ -5,6 +5,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Balance Slider"
+    objectName: "balanceSlider"
+    focus: true
     id: root
 
     property real balance: 0.0

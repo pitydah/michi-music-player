@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Metadata Line"
+    objectName: "michiMetadataLine"
+    focus: true
     id: root
 
     property string label: ""

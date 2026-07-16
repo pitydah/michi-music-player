@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Waveform Summary"
+    objectName: "audioWaveformSummary"
+    focus: true
     id: root
 
     property var waveformData: null

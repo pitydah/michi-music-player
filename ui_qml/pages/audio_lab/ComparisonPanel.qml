@@ -5,6 +5,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    focus: true
     id: root
 
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null

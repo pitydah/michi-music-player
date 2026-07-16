@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Hero Material"
+    objectName: "heroMaterial"
+    focus: true
     id: root
 
     property int radius: MichiTheme.radiusLg

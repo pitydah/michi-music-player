@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Field Row"
+    objectName: "metadataFieldRow"
+    focus: true
     id: root
 
     property string fieldLabel: ""

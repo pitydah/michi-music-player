@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Header"
+    objectName: "nowPlayingHeader"
+    focus: true
     property var ps: null
     property var nav: null
 

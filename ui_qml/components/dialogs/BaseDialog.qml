@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Base"
+    objectName: "baseDialog"
+    focus: true
     id: root
 
     property string titleText: ""

@@ -5,6 +5,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Reduced Motion Toggle"
+    objectName: "reducedMotionToggle"
+    focus: true
     id: root
 
     property bool reduceMotion: false

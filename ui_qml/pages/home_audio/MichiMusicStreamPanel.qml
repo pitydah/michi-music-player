@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Music Stream"
+    objectName: "michiMusicStreamPanel"
+    focus: true
     id: root
 
     property string streamState: "concept"

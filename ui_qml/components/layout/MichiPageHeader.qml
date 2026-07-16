@@ -4,6 +4,10 @@ import "../../theme"
 import "../foundations"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Header"
+    objectName: "michiPageHeader"
+    focus: true
     id: root
 
     property string title: ""

@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Lyrics Pane"
+    objectName: "nowPlayingLyricsPane"
+    focus: true
     property var ps: null
 
     ColumnLayout {

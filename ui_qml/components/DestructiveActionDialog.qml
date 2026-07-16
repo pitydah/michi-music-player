@@ -3,6 +3,10 @@ import "../theme"
 import "dialogs"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Destructive Action"
+    objectName: "destructiveActionDialog"
+    focus: true
     id: root
 
     property string title: "Acción destructiva"

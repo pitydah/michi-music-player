@@ -49,6 +49,10 @@ FocusScope {
                 visible: text !== ""
             }
             Item { id: searchHost; Layout.fillWidth: true; height: childrenRect.height }
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Toolbar"
+    objectName: "michiToolbar"
+    focus: true
             Row { id: secondaryHost; spacing: MichiTheme.spacing.xs; visible: !root.compactMode }
             Row { id: primaryHost; spacing: MichiTheme.spacing.xs }
             Row { id: overflowHost; spacing: MichiTheme.spacing.xs; visible: root.compactMode }

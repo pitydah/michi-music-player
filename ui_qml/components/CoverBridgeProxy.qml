@@ -2,6 +2,10 @@ import QtQuick
 import QtQuick.Controls
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Cover Bridge Proxy"
+    objectName: "coverBridgeProxy"
+    focus: true
     id: root
     property bool ready: typeof coverBridge !== "undefined" && coverBridge !== null
 

@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Single Editor"
+    objectName: "metadataSingleEditor"
+    focus: true
     id: root
 
     property var mb: null

@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Composers"
+    objectName: "composersPage"
+    focus: true
     id: root
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null

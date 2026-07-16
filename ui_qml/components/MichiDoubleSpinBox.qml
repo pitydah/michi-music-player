@@ -5,6 +5,10 @@ import QtQuick.Layouts
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Double Spin Box"
+    objectName: "michiDoubleSpinBox"
+    focus: true
     id: root
 
     property real from: 0

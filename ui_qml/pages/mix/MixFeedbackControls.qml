@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Mix Feedback Controls"
+    objectName: "mixFeedbackControls"
+    focus: true
     id: root
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null

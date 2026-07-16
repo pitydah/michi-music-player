@@ -198,6 +198,10 @@ Dialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Radio Editor"
+    objectName: "radioEditorDialog"
+    focus: true
             width: parent.width
             height: 1
             color: MichiTheme.colors.borderSubtle

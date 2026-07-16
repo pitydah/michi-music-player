@@ -4,6 +4,10 @@ import "../theme"
 import "states"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Capability Guard"
+    objectName: "capabilityGuard"
+    focus: true
     id: root
 
     property string capabilityName: ""

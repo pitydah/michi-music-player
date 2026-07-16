@@ -6,6 +6,10 @@ import "../materials"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Expanded Now Playing"
+    objectName: "expandedNowPlayingPanel"
+    focus: true
     id: root
 
     property var ps: typeof nowplayingBridge !== "undefined" && nowplayingBridge

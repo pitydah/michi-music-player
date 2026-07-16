@@ -36,6 +36,10 @@ Popup {
         anchors.fill: parent; spacing: 0
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Column Selector"
+    objectName: "libraryColumnSelector"
+    focus: true
             width: parent.width; height: 32
             color: MichiTheme.colors.surfaceCard
             Text {

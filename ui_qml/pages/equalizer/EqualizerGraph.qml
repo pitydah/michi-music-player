@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Equalizer Graph"
+    objectName: "equalizerGraph"
+    focus: true
     id: root
 
     property var eqBridge: null

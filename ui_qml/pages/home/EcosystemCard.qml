@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Ecosystem Card"
+    objectName: "ecosystemCard"
+    focus: true
     id: root
 
     property string microServerState: "not_configured"

@@ -3,6 +3,10 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Notification Banner"
+    objectName: "notificationBanner"
+    focus: true
     id: root
 
     property string kind: "info"

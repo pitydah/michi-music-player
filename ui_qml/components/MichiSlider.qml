@@ -3,6 +3,10 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Slider"
+    objectName: "michiSlider"
+    focus: true
     id: root
 
     property real from: 0

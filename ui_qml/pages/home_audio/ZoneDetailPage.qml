@@ -6,6 +6,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Zone Detail"
+    objectName: "zoneDetailPage"
     id: root
     focus: true
 

@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Search Suggestions"
+    objectName: "searchSuggestions"
+    focus: true
     id: root
 
     property var suggestions: ["reciente", "favoritos", "nuevo", "jazzy", "relajante"]

@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Device Sync Profile Editor"
+    objectName: "deviceSyncProfileEditor"
+    focus: true
     id: root
 
     property string deviceKey: ""

@@ -4,6 +4,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Notification Announcement"
+    objectName: "notificationAnnouncement"
+    focus: true
     id: root
 
     property string message: ""

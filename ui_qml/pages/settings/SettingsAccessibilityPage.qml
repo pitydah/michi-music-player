@@ -5,6 +5,9 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Settings Accessibility"
+    focus: true
     id: root
     objectName: "settingsAccessibilityPage"
 

@@ -7,6 +7,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    objectName: "playlistDetailPage"
     id: root
     focus: true
 

@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Queue Empty State"
+    objectName: "queueEmptyState"
+    focus: true
     implicitHeight: 120
 
     ColumnLayout {

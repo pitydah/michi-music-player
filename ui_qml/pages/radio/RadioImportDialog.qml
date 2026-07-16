@@ -129,6 +129,10 @@ Dialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Radio Import"
+    objectName: "radioImportDialog"
+    focus: true
             width: parent.width
             height: 1
             color: MichiTheme.colors.borderSubtle

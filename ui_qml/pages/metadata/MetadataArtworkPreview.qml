@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Artwork Preview"
+    objectName: "metadataArtworkPreview"
+    focus: true
     id: root
 
     property string artworkStatus: ""

@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sidebar Item"
+    objectName: "sidebarItem"
+    focus: true
     id: root
 
     property string iconSource: ""

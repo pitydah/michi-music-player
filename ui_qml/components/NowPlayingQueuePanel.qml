@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Queue"
+    objectName: "nowPlayingQueuePanel"
+    focus: true
     id: root
 
     property var playbackState: typeof nowplayingBridge !== "undefined" ? nowplayingBridge : null

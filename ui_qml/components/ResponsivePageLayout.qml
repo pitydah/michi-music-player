@@ -3,6 +3,10 @@ import "../theme"
 import "foundations"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Responsive Layout"
+    objectName: "responsivePageLayout"
+    focus: true
     id: root
 
     enum Mode {

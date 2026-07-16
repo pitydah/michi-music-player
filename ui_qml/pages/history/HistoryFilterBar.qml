@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "History Filter Bar"
+    objectName: "historyFilterBar"
+    focus: true
     id: root
 
     property string artistFilter: ""

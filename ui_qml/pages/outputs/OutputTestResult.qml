@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Output Test Result"
+    objectName: "outputTestResult"
+    focus: true
     id: root
 
     property var testResult: null

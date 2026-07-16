@@ -3,6 +3,10 @@ import "../../theme"
 import "../foundations"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi"
+    objectName: "michiPage"
+    focus: true
     id: root
 
     property bool scrollable: true

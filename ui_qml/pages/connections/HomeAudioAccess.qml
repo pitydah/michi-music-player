@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Home Audio Access"
+    objectName: "homeAudioAccess"
+    focus: true
     id: root
 
     signal openHomeAudio()

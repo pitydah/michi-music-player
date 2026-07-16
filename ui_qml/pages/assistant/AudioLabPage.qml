@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Lab"
+    objectName: "audioLabPage"
+    focus: true
     id: root
 
     property var alab: typeof audioLabBridge !== "undefined" ? audioLabBridge : null

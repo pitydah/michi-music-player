@@ -3,6 +3,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Discovery Result Card"
+    objectName: "discoveryResultCard"
+    focus: true
     id: root
 
     property string serverName: ""

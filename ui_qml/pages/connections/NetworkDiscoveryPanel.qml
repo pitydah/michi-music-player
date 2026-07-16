@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Network Discovery"
+    objectName: "networkDiscoveryPanel"
+    focus: true
     id: root
 
     property var discoveredServers: []

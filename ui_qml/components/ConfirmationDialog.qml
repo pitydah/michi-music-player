@@ -3,6 +3,10 @@ import "../theme"
 import "dialogs"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Confirmation"
+    objectName: "confirmationDialog"
+    focus: true
     id: root
 
     property string title: "Confirmar acción"

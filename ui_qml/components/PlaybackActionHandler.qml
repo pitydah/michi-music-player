@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playback Action Handler"
+    objectName: "playbackActionHandler"
+    focus: true
     id: root
 
     property var notificationBridge: typeof notificationBridge !== "undefined" ? notificationBridge : null

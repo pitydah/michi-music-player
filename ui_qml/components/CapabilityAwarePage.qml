@@ -4,6 +4,10 @@ import "../theme"
 import "states"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Capability Aware"
+    objectName: "capabilityAwarePage"
+    focus: true
     id: root
 
     property var capabilityBridge: null

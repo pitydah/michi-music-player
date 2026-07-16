@@ -4,6 +4,10 @@ import "../theme"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Controls"
+    objectName: "nowPlayingControls"
+    focus: true
     id: root
 
     property bool isPlaying: false

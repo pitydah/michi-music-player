@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Diff View"
+    objectName: "metadataDiffView"
+    focus: true
     id: root
 
     property var mb: null

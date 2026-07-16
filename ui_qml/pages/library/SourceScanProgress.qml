@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Source Scan Progress"
+    objectName: "sourceScanProgress"
+    focus: true
     id: root
 
     property string sourceName: ""

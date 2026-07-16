@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Equalizer Band Control"
+    objectName: "equalizerBandControl"
+    focus: true
     id: root
 
     property real freq: 0

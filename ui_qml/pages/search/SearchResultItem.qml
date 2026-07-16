@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Search Result Item"
+    objectName: "searchResultItem"
+    focus: true
     id: root
 
     property string resultType: ""

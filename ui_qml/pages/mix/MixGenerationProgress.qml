@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Mix Generation Progress"
+    objectName: "mixGenerationProgress"
+    focus: true
     id: root
 
     property int progress: 0

@@ -13,6 +13,10 @@ Column {
     spacing: MichiTheme.spacing.md
 
     Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Section"
+    objectName: "michiSection"
+    focus: true
         width: parent.width
         height: Math.max(titleColumn.implicitHeight, actionHost.implicitHeight)
 

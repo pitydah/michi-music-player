@@ -118,6 +118,10 @@ Dialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "History Export"
+    objectName: "historyExportDialog"
+    focus: true
             width: parent.width
             height: 4
             radius: MichiTheme.radiusPill

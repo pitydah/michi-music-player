@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Popup Material"
+    objectName: "popupMaterial"
+    focus: true
     id: root
 
     property int radius: MichiTheme.radiusLg

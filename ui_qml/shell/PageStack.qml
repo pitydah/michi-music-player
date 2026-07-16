@@ -4,6 +4,10 @@ import "../theme"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Stack"
+    objectName: "pageStack"
+    focus: true
     id: root
 
     property var registry: typeof routeRegistryBridge !== "undefined" ? routeRegistryBridge : null

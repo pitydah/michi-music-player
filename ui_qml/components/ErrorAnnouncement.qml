@@ -3,6 +3,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Error Announcement"
+    objectName: "errorAnnouncement"
+    focus: true
     id: root
 
     property string errorTitle: ""

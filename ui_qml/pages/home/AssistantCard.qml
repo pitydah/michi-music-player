@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Assistant Card"
+    objectName: "assistantCard"
+    focus: true
     id: root
 
     signal openAssistant()

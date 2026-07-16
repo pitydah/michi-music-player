@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Selection Bar"
+    objectName: "librarySelectionBar"
+    focus: true
     id: root
 
     property var bridge: null

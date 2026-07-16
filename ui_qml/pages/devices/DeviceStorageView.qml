@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Device Storage View"
+    objectName: "deviceStorageView"
+    focus: true
     id: root
 
     property string mountPoint: ""

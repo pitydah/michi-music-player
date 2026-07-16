@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Equalizer Preset Browser"
+    objectName: "equalizerPresetBrowser"
+    focus: true
     id: root
 
     property var eqBridge: null

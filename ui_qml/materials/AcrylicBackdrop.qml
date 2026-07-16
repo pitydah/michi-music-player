@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Acrylic Backdrop"
+    objectName: "acrylicBackdrop"
+    focus: true
     id: root
 
     property string textureHint: "dark"

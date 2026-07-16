@@ -3,6 +3,10 @@ import "../theme"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Header"
+    objectName: "pageHeader"
+    focus: true
     id: root
 
     property string title: ""

@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Cover"
+    objectName: "nowPlayingCover"
+    focus: true
     id: root
 
     property string coverKey: ""

@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playlist Track List"
+    objectName: "playlistTrackList"
+    focus: true
     id: root
 
     property var bridge: null

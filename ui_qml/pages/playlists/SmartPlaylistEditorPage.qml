@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Smart Playlist Editor"
+    objectName: "smartPlaylistEditorPage"
+    focus: true
     id: root
 
     property var bridge: null

@@ -4,6 +4,10 @@ import "../../theme"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Chat Bubble"
+    objectName: "chatBubble"
+    focus: true
     id: root
 
     property string messageText: ""

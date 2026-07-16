@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Connection Card"
+    objectName: "connectionCard"
+    focus: true
     id: root
 
     property string serverName: ""

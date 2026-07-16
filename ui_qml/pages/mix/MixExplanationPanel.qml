@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Mix Explanation"
+    objectName: "mixExplanationPanel"
+    focus: true
     id: root
 
     property var mx: typeof mixBridge !== "undefined" ? mixBridge : null

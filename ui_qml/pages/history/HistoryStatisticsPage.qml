@@ -94,6 +94,8 @@ Drawer {
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
+    Accessible.role: Accessible.Pane
+    focus: true
 
                 MichiButton {
                     id: exportStatsBtn

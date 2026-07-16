@@ -7,6 +7,10 @@ import "../../materials"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "DSPChain"
+    objectName: "dSPChainPage"
+    focus: true
     id: root
 
     property var eq: typeof eqBridge !== "undefined" ? eqBridge : null

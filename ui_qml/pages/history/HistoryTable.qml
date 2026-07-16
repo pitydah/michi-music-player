@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "History Table"
+    objectName: "historyTable"
+    focus: true
     id: root
 
     property var model: null

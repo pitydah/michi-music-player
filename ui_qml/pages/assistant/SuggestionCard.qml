@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Suggestion Card"
+    objectName: "suggestionCard"
+    focus: true
     id: root
 
     property string suggestionTitle: ""

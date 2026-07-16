@@ -29,6 +29,10 @@ Popup {
         Repeater {
             model: root.model
             Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Sort Menu"
+    objectName: "librarySortMenu"
+    focus: true
                 width: parent.width; height: 32; color: "transparent"
                 Text {
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter

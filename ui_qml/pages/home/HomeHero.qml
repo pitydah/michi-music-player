@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Home Hero"
+    objectName: "homeHero"
+    focus: true
     id: root
 
     implicitHeight: 200

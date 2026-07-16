@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Home Assistant"
+    objectName: "homeAssistantPanel"
+    focus: true
     id: root
 
     property string state: "not_configured"

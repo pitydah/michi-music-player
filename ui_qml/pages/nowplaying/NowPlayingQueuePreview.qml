@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Queue Preview"
+    objectName: "nowPlayingQueuePreview"
+    focus: true
     property var ps: null
     property var nav: null
 

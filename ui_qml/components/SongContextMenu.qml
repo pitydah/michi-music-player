@@ -4,6 +4,10 @@ import "../theme"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Song Context Menu"
+    objectName: "songContextMenu"
+    focus: true
     id: root
 
     property string trackTitle: ""

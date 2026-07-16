@@ -4,6 +4,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Assistant Confirmation"
+    objectName: "assistantConfirmationDialog"
+    focus: true
     id: root
 
     property string actionName: ""

@@ -5,6 +5,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Mono Toggle"
+    objectName: "monoToggle"
+    focus: true
     id: root
 
     property bool monoEnabled: false

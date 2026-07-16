@@ -6,6 +6,7 @@ import "../../components"
 import "."
 
 Item {
+    objectName: "devicesPage"
     id: root
     focus: true
 

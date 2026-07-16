@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Navigation Bar"
+    objectName: "libraryNavigationBar"
+    focus: true
     id: root
     width: parent.width; height: 38
 

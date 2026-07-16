@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Song Table"
+    objectName: "songTable"
+    focus: true
     id: root
 
     property var songs: []

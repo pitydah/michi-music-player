@@ -2,9 +2,9 @@ name: CI
 
 "on":
   push:
-    branches: [main, qml-total-functional-convergence-x10-v7]
+    branches: [main, qml-total-software-migration-x10-v8]
   pull_request:
-    branches: [main, qml-total-functional-convergence-x10-v7]
+    branches: [main, qml-total-software-migration-x10-v8]
   workflow_dispatch:
 
 jobs:
@@ -20,17 +20,20 @@ jobs:
           pip install pytest-timeout build wheel
       - run: python -m compileall -q -x '.venv/|\.tmpl\.' .
       - run: ruff check . --output-format concise
-      - run: python scripts/qml_placeholder_audit_v18.py
-      - run: python scripts/qml_fake_bridge_audit_v18.py
-      - run: python scripts/qml_widget_dependency_audit_v18.py
-      - run: python scripts/qml_vertical_function_audit_v18.py
-      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v18.py
-      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v18.py
-      - run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v18.xml
-      - run: python scripts/qml_evidence_v18_collect.py --junit artifacts/qml-v18.xml --expected-sha $(git rev-parse HEAD)
-      - run: python scripts/qml_productive_gate_v18.py
+      - run: python scripts/qml_placeholder_audit_v19.py
+      - run: python scripts/qml_action_handler_audit_v19.py
+      - run: python scripts/qml_fake_bridge_audit_v19.py
+      - run: python scripts/qml_widget_dependency_audit_v19.py
+      - run: python scripts/qml_real_engine_workflow_audit_v19.py
+      - run: python scripts/qml_legacy_business_logic_audit_v19.py
+      - run: python scripts/qml_vertical_function_audit_v19.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v19.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v19.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v19.xml
+      - run: python scripts/qml_evidence_v19_collect.py --junit artifacts/qml-v19.xml --expected-sha $(git rev-parse HEAD)
+      - run: python scripts/qml_productive_gate_v19.py
       - uses: actions/upload-artifact@v4
-        with: {name: qml-evidence-v18, path: artifacts/}
+        with: {name: qml-evidence-v19, path: artifacts/}
 
   package-main:
     runs-on: ubuntu-latest

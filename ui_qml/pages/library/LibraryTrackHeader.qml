@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Track Header"
+    objectName: "libraryTrackHeader"
+    focus: true
     id: root
     width: parent.width; height: 28
 

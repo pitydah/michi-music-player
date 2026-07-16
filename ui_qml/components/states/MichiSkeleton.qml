@@ -2,6 +2,10 @@ import QtQuick
 import "../../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Skeleton"
+    objectName: "michiSkeleton"
+    focus: true
     id: root
 
     property string title: "Cargando"

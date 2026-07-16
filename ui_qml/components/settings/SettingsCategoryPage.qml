@@ -5,6 +5,10 @@ import "../../theme"
 import "../"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Settings Category"
+    objectName: "settingsCategoryPage"
+    focus: true
     id: root
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null
     property string categoryId: ""

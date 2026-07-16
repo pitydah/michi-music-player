@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Global Search Overlay"
+    objectName: "globalSearchOverlay"
+    focus: true
     id: root
 
     property var bridge: typeof globalSearchBridge !== "undefined" ? globalSearchBridge : null

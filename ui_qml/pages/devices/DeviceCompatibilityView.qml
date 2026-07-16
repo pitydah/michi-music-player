@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Device Compatibility View"
+    objectName: "deviceCompatibilityView"
+    focus: true
     id: root
 
     property string protocol: ""

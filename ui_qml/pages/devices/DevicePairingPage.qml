@@ -5,6 +5,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Device Pairing"
+    objectName: "devicePairingPage"
     id: root
     focus: true
 

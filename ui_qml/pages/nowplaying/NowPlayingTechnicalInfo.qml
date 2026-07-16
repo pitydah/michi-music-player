@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Technical Info"
+    objectName: "nowPlayingTechnicalInfo"
+    focus: true
     property var ps: null
 
     implicitHeight: infoColumn.height

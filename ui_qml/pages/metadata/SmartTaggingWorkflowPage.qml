@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Smart Tagging Workflow"
+    objectName: "smartTaggingWorkflowPage"
+    focus: true
     id: root
 
     property var stb: typeof smartTaggingBridge !== "undefined" ? smartTaggingBridge : null

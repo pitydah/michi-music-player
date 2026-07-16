@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Folder Breadcrumb"
+    objectName: "folderBreadcrumb"
+    focus: true
     id: root
     width: parent.width; height: 32
 

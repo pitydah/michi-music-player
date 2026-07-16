@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Output Profile Editor"
+    objectName: "outputProfileEditor"
+    focus: true
     id: root
 
     property var profileData: null

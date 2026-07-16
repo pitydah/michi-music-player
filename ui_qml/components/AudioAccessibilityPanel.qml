@@ -5,6 +5,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Accessibility"
+    objectName: "audioAccessibilityPanel"
+    focus: true
     id: root
 
     property var audioBridge: null

@@ -4,6 +4,10 @@ import "../../../theme"
 import "../../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Album Vinyl Wall View"
+    objectName: "albumVinylWallView"
+    focus: true
     id: root
 
     property var albumModel: null

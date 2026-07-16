@@ -79,6 +79,10 @@ Dialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playlist Export"
+    objectName: "playlistExportDialog"
+    focus: true
             width: parent.width
             height: 4
             radius: MichiTheme.radiusPill

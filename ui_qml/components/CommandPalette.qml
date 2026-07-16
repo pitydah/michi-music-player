@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Command Palette"
+    objectName: "commandPalette"
+    focus: true
     id: root
 
     property var cpb: typeof commandPaletteBridge !== "undefined" ? commandPaletteBridge : null

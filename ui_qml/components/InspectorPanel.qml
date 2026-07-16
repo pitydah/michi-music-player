@@ -3,6 +3,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Inspector"
+    objectName: "inspectorPanel"
+    focus: true
     id: root
 
     property string panelTitle: "Inspector"

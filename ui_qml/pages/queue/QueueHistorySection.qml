@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Queue History Section"
+    objectName: "queueHistorySection"
+    focus: true
     property var ps: null
     property var nav: null
 

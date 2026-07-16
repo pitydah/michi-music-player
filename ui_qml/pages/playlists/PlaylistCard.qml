@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playlist Card"
+    objectName: "playlistCard"
+    focus: true
     id: root
 
     property string playlistTitle: ""

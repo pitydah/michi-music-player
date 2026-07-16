@@ -3,6 +3,10 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Error State"
+    objectName: "errorState"
+    focus: true
     id: root
 
     property string title: "Error"

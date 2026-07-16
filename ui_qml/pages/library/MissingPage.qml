@@ -6,6 +6,10 @@ import "../../components"
 import "../library"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Missing"
+    objectName: "missingPage"
+    focus: true
     id: root
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null

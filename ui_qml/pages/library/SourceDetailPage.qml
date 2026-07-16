@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Source Detail"
+    objectName: "sourceDetailPage"
+    focus: true
     id: root
 
     property int sourceId: 0

@@ -5,6 +5,8 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Batch Jobs"
     id: root
 
     property var jobBr: typeof jobBridge !== "undefined" ? jobBridge : null

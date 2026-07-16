@@ -2,6 +2,10 @@ import QtQuick
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Deferred Physical State"
+    objectName: "michiDeferredPhysicalState"
+    focus: true
     id: root
 
     property string title: "Requiere hardware físico"

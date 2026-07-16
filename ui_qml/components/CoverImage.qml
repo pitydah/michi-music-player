@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Cover Image"
+    objectName: "coverImage"
+    focus: true
     id: root
 
     property string coverKey: ""

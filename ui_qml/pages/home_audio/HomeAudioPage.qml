@@ -6,6 +6,7 @@ import "../../components"
 import "."
 
 Item {
+    objectName: "homeAudioPage"
     id: root
     focus: true
 

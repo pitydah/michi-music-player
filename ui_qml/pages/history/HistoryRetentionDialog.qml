@@ -126,6 +126,10 @@ Dialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "History Retention"
+    objectName: "historyRetentionDialog"
+    focus: true
             Layout.fillWidth: true
             height: 1
             color: MichiTheme.colors.borderSubtle

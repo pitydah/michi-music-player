@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Route Transition"
+    objectName: "routeTransition"
+    focus: true
     id: root
 
     property Item target

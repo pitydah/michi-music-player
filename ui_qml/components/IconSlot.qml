@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Icon Slot"
+    objectName: "iconSlot"
+    focus: true
     id: root
 
     property string iconText: ""

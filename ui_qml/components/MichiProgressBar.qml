@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Progress Bar"
+    objectName: "michiProgressBar"
+    focus: true
     id: root
 
     property real value: 0

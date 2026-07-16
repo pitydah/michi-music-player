@@ -6,6 +6,10 @@ import "../components"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Header Bar"
+    objectName: "headerBar"
+    focus: true
     id: root
 
     property string pageTitle: "Inicio"

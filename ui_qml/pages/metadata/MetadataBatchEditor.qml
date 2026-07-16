@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Batch Editor"
+    objectName: "metadataBatchEditor"
+    focus: true
     id: root
 
     property var mb: null

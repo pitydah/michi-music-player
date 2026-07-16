@@ -7,6 +7,7 @@ import "../../materials"
 import "."
 
 Item {
+    objectName: "radioPage"
     id: root
     focus: true
 

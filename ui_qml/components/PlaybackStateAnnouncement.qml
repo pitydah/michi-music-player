@@ -3,6 +3,10 @@ import "../theme"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playback State Announcement"
+    objectName: "playbackStateAnnouncement"
+    focus: true
     id: root
 
     property string playbackState: "stopped"

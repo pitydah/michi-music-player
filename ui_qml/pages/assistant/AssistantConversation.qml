@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Assistant Conversation"
+    objectName: "assistantConversation"
+    focus: true
     id: root
 
     property var chatHistory: []

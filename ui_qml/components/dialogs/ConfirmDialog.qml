@@ -63,6 +63,10 @@ BaseDialog {
                 border.color: dontAskCheck.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
 
                 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Confirm"
+    objectName: "confirmDialog"
+    focus: true
                     anchors.centerIn: parent
                     width: 10; height: 10
                     radius: 2

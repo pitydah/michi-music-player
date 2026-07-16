@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Progress State"
+    objectName: "progressState"
+    focus: true
     id: root
 
     property real progress: 0

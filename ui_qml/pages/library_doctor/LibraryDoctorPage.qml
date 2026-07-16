@@ -7,6 +7,10 @@ import "../../materials"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Doctor"
+    objectName: "libraryDoctorPage"
+    focus: true
     id: root
 
     property var doc: typeof libraryDoctorBridge !== "undefined" ? libraryDoctorBridge : null

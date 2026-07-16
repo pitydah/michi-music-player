@@ -6,6 +6,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Sources"
+    objectName: "librarySourcesPage"
+    focus: true
     id: root
     property var bridge: typeof librarySourcesBridge !== "undefined" ? librarySourcesBridge : null
     property var notif: typeof notificationBridge !== "undefined" ? notificationBridge : null

@@ -6,6 +6,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    objectName: "latencyPage"
     id: root
     focus: true
 

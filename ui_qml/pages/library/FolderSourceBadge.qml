@@ -2,6 +2,10 @@ import QtQuick
 import "../../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Folder Source Badge"
+    objectName: "folderSourceBadge"
+    focus: true
     id: root
 
     property string sourceName: ""

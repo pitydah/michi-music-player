@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Group Editor"
+    objectName: "groupEditor"
+    focus: true
     id: root
 
     property var availableZones: []

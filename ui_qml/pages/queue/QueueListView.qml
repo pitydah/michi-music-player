@@ -6,6 +6,10 @@ import "../../components"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Queue List View"
+    objectName: "queueListView"
+    focus: true
     property var qb: null
     property var ps: null
     property var nav: null

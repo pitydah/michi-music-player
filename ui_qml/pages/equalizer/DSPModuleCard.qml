@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "DSPModule Card"
+    objectName: "dSPModuleCard"
+    focus: true
     id: root
 
     property string title: ""

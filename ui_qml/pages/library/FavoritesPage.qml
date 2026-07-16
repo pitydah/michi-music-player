@@ -6,6 +6,10 @@ import "../../components"
 import "../library"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Favorites"
+    objectName: "favoritesPage"
+    focus: true
     id: root
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null

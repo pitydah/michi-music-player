@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Comparison"
+    objectName: "audioComparisonPage"
+    focus: true
     id: root
 
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null

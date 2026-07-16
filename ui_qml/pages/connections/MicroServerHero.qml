@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Micro Server Hero"
+    objectName: "microServerHero"
+    focus: true
     id: root
 
     property string state: "not_configured"

@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Job Status Banner"
+    objectName: "jobStatusBanner"
+    focus: true
     id: root
     property var jobBridge: typeof jobBridge !== "undefined" ? jobBridge : null
     property int _activeCount: 0

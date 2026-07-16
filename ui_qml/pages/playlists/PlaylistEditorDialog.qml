@@ -192,6 +192,9 @@ Dialog {
     }
 
     Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playlist Editor"
+    objectName: "playlistEditorDialog"
         focus: root.opened
     }
 

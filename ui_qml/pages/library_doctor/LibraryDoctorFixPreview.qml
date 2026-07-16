@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Doctor Fix Preview"
+    objectName: "libraryDoctorFixPreview"
+    focus: true
     id: root
 
     property var doc: null

@@ -5,6 +5,10 @@ import "../components"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Eq"
+    objectName: "eqPage"
+    focus: true
     id: root
 
     property var eq: typeof eqBridge !== "undefined" ? eqBridge : null

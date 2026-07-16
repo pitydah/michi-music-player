@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Lab Results"
+    objectName: "audioLabResultsPage"
+    focus: true
     id: root
 
     property var results: null

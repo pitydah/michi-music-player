@@ -6,6 +6,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    objectName: "assistantPage"
     id: root
     focus: true
 

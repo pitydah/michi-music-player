@@ -45,6 +45,10 @@ QQC2.Popup {
                     : actionRow.implicitHeight + MichiTheme.spacing.sm * 2
 
             Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Context Action Menu"
+    objectName: "contextActionMenu"
+    focus: true
                 id: separatorItem
                 width: parent.width
                 height: modelData.separator === true || modelData.divider === true ? 1 : 0

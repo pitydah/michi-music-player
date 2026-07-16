@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Track Status Indicators"
+    objectName: "trackStatusIndicators"
+    focus: true
     id: root
     width: 20; height: 20
 

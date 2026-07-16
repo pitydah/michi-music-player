@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Latency Control"
+    objectName: "latencyControl"
+    focus: true
     id: root
 
     property int currentLatencyMs: 0

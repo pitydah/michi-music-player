@@ -5,6 +5,9 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Device Transfer Queue"
+    focus: true
     id: root
 
     property var transferJobs: []

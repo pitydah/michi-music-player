@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Glass Material"
+    objectName: "glassMaterial"
+    focus: true
     id: root
 
     property string variant: "base"

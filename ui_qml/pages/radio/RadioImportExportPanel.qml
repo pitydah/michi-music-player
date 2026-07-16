@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Radio Import Export"
+    objectName: "radioImportExportPanel"
+    focus: true
     id: root
 
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null

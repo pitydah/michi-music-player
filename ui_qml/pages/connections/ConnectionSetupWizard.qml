@@ -6,6 +6,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Connection Setup Wizard"
+    objectName: "connectionSetupWizard"
     id: root
     focus: true
 

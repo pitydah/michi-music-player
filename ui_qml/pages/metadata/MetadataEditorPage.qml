@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Metadata Editor"
+    objectName: "metadataEditorPage"
+    focus: true
     id: root
 
     property var mb: typeof metadataBridge !== "undefined" ? metadataBridge : null

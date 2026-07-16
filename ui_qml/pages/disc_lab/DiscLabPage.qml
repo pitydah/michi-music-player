@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Disc Lab"
+    objectName: "discLabPage"
+    focus: true
     id: root
 
     property var disc: typeof discLabBridge !== "undefined" ? discLabBridge : null

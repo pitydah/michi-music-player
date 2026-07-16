@@ -2,6 +2,10 @@ import QtQuick
 import "../../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Focus Ring"
+    objectName: "michiFocusRing"
+    focus: true
     id: root
 
     property Item control: null

@@ -6,6 +6,10 @@ import "../../theme"
 import "../"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Settings Row"
+    objectName: "settingsRow"
+    focus: true
     id: root
     property var entry: null
     property var bridge: typeof settingsBridgeV2 !== "undefined" ? settingsBridgeV2 : null

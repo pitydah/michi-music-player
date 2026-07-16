@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Device Pairing"
+    objectName: "devicePairingDialog"
+    focus: true
     id: root
 
     property bool dialogVisible: true

@@ -64,6 +64,8 @@ Drawer {
             }
 
             Item { width: parent.width - 120; height: 1 }
+    Accessible.role: Accessible.Pane
+    focus: true
 
             MichiButton {
                 text: "Cerrar"

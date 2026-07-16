@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Artist Detail"
+    objectName: "artistDetailPage"
+    focus: true
     id: root
 
     property string artistName: ""

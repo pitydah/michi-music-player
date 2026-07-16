@@ -5,6 +5,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Job Detail"
+    focus: true
     id: root
 
     property var jobData: null

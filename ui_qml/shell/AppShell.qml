@@ -6,6 +6,10 @@ import "../components"
 import "."
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "App Shell"
+    objectName: "appShell"
+    focus: true
     id: root
 
     property alias currentRoute: sidebar.currentRoute

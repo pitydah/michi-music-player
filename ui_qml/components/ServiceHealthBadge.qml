@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Service Health Badge"
+    objectName: "serviceHealthBadge"
+    focus: true
     id: root
 
     enum Health {

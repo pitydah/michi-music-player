@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "History Stats"
+    objectName: "historyStats"
+    focus: true
     id: root
 
     property int totalCount: 0

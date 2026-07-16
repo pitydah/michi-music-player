@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Track Table"
+    objectName: "libraryTrackTable"
+    focus: true
     id: root
 
     property var trackModel: null

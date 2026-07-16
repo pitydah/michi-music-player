@@ -3,6 +3,10 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Shortcut Layer"
+    objectName: "shortcutLayer"
+    focus: true
     id: root
 
     property var cmdPalette: null

@@ -70,6 +70,10 @@ Popup {
             ]
 
             Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Context Menu"
+    objectName: "libraryContextMenu"
+    focus: true
                 width: parent.width
                 height: 32
 

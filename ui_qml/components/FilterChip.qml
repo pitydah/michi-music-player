@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Filter Chip"
+    objectName: "filterChip"
+    focus: true
     id: root
 
     property string text: ""

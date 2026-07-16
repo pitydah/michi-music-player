@@ -3,6 +3,10 @@ import "../../theme"
 import "../foundations"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi Split View"
+    objectName: "michiSplitView"
+    focus: true
     id: root
 
     property real primaryRatio: 0.62

@@ -3,6 +3,9 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Selection Action Bar"
+    focus: true
     id: root
 
     property int count: 0

@@ -3,6 +3,9 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Degraded State"
+    focus: true
     id: root
 
     property string title: "Servicio degradado"

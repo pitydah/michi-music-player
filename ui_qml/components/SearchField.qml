@@ -4,6 +4,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Search Field"
+    objectName: "searchField"
+    focus: true
     id: root
 
     property string placeholderText: "Buscar..."

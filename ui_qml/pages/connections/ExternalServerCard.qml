@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "External Server Card"
+    objectName: "externalServerCard"
+    focus: true
     id: root
 
     property string serverName: ""

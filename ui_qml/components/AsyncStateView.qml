@@ -3,6 +3,10 @@ import "../theme"
 import "states"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Async State View"
+    objectName: "asyncStateView"
+    focus: true
     id: root
 
     enum State {

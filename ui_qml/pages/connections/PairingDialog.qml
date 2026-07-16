@@ -5,6 +5,9 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Pairing"
+    objectName: "pairingDialog"
     id: root
     focus: true
 

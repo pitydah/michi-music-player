@@ -4,6 +4,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Status Card"
+    objectName: "libraryStatusCard"
+    focus: true
     id: root
 
     property int albums: 0

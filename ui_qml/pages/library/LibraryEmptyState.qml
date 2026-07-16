@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Library Empty State"
+    objectName: "libraryEmptyState"
+    focus: true
     id: root
 
     property string title: "Biblioteca vacía"

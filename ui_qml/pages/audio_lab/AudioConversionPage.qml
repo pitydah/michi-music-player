@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Conversion"
+    objectName: "audioConversionPage"
+    focus: true
     id: root
 
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null

@@ -5,6 +5,10 @@ import "../../theme"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Folder Content View"
+    objectName: "folderContentView"
+    focus: true
     id: root
 
     property var bridge: null

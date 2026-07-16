@@ -5,6 +5,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    objectName: "globalSearchPage"
     id: root
     focus: true
 

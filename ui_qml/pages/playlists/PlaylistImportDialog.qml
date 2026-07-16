@@ -94,6 +94,10 @@ Dialog {
         }
 
         Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Playlist Import"
+    objectName: "playlistImportDialog"
+    focus: true
             width: parent.width
             height: 4
             radius: MichiTheme.radiusPill

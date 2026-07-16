@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Assistant Execution Result"
+    objectName: "assistantExecutionResult"
+    focus: true
     id: root
 
     property string status: "" // success, partial, failure

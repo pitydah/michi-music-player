@@ -5,6 +5,10 @@ import "../materials"
 import "../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sidebar"
+    objectName: "sidebar"
+    focus: true
     id: root
 
     property string currentRoute: "home"

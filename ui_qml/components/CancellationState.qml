@@ -3,6 +3,7 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
+    focus: true
     id: root
 
     property string message: "Cancelando..."

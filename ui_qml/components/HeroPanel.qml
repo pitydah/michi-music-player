@@ -4,6 +4,10 @@ import "../theme"
 import "../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Hero"
+    objectName: "heroPanel"
+    focus: true
     id: root
 
     property string heroTitle: ""

@@ -5,6 +5,10 @@ import "../../materials"
 import "../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Assistant Action Preview"
+    objectName: "assistantActionPreview"
+    focus: true
     id: root
 
     property string actionName: ""

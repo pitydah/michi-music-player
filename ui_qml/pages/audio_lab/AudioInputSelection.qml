@@ -5,6 +5,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Audio Input Selection"
+    objectName: "audioInputSelection"
+    focus: true
     id: root
 
     property var selCtx: typeof selectionContextBridge !== "undefined" ? selectionContextBridge : null

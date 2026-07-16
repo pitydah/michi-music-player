@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Output Capability View"
+    objectName: "outputCapabilityView"
+    focus: true
     id: root
 
     property var profileData: null

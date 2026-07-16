@@ -6,6 +6,7 @@ import "../../components"
 import "../../materials"
 
 Item {
+    objectName: "historyPage"
     id: root
     focus: true
 

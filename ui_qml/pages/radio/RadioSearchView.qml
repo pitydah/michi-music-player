@@ -6,6 +6,10 @@ import "../../components"
 import "../../materials"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Radio Search View"
+    objectName: "radioSearchView"
+    focus: true
     id: root
 
     property var rd: typeof radioBridge !== "undefined" ? radioBridge : null

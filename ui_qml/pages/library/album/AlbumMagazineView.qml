@@ -4,6 +4,10 @@ import "../../../theme"
 import "../../../components"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Album Magazine View"
+    objectName: "albumMagazineView"
+    focus: true
     id: root
 
     property var albumModel: null

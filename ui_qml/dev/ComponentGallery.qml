@@ -9,6 +9,10 @@ import "../components/layout"
 import "../components/content"
 
 Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Component Gallery"
+    objectName: "componentGallery"
+    focus: true
     id: root
 
     property bool reducedMotion: false

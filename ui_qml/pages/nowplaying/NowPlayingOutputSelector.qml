@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Output Selector"
+    objectName: "nowPlayingOutputSelector"
+    focus: true
     property var ps: null
 
     implicitHeight: outputColumn.height

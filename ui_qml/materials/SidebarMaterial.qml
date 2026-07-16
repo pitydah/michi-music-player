@@ -2,6 +2,10 @@ import QtQuick
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Sidebar Material"
+    objectName: "sidebarMaterial"
+    focus: true
     id: root
 
     property int radius: 0

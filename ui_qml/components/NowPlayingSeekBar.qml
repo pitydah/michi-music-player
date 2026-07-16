@@ -4,6 +4,10 @@ import QtQuick.Layouts
 import "../theme"
 
 Item {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Now Playing Seek Bar"
+    objectName: "nowPlayingSeekBar"
+    focus: true
     id: root
 
     property int position: 0

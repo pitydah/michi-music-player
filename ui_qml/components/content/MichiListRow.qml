@@ -33,6 +33,10 @@ FocusScope {
     Keys.onSpacePressed: root.clicked()
 
     Rectangle {
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Michi List Row"
+    objectName: "michiListRow"
+    focus: true
         anchors.fill: parent
         radius: MichiTheme.radiusSm
         color: root.selected ? MichiTheme.colors.accentSelection
