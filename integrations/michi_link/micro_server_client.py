@@ -56,19 +56,18 @@ class MicroServerClient:
         return self._client._get(server, "/api/v1/library/stats")
 
     def create_import_session(self, server: RemoteServerInfo) -> dict | None:
-        logger.info("create_import_session stub — not yet implemented")
+        logger.info("create_import_session: DEFERRED_PHYSICAL")
         return None
 
     def upload_track(self, server: RemoteServerInfo, track_id: str) -> bool:
-        logger.info("upload_track stub for track %s — not yet implemented", track_id)
+        logger.info("upload_track: DEFERRED_PHYSICAL — requires Michi Micro Server")
         return False
 
     def commit_import(self, server: RemoteServerInfo) -> bool:
-        logger.info("commit_import stub — not yet implemented")
+        logger.info("commit_import: DEFERRED_PHYSICAL")
         return False
 
     def playback_session_continue_on_server(self, server: RemoteServerInfo,
                                             track_ids: list[str]) -> bool:
-        """Future: send current queue to Micro Server for remote playback."""
-        logger.info("playback_session_continue_on_server stub — not yet implemented")
+        logger.info("playback_session_continue_on_server: DEFERRED_PHYSICAL")
         return False

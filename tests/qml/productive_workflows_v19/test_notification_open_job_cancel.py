@@ -16,6 +16,6 @@ class TestNotification:
             assert hasattr(svc, 'open_job') or hasattr(svc, 'open_track')
             assert hasattr(svc, 'open_settings') or hasattr(svc, 'open_diagnostics')
 
-    def test_notification_bridge_exists(self, bootstrap):
-        nb = bootstrap._bridges.get("notification")
+    def test_notification_bridge_exists(self, bootstrap, bridges):
+        nb = bridges.get("notification")
         assert nb is not None

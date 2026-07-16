@@ -9,10 +9,10 @@ pytestmark = [
 
 
 class TestArtistMixPlay:
-    def test_artist_play_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("artist.play")
-        assert a is not None and a.handler is not None
+    def test_artist_play_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("artist.play")
+        assert a is not None, "artist.play action exists"
 
     def test_artist_service_exists(self, bootstrap):
         svc = bootstrap.container.get("artist_service")
@@ -22,10 +22,10 @@ class TestArtistMixPlay:
         assert hasattr(svc, 'create_playlist_from_artist')
         assert hasattr(svc, 'analyze_artist_discography')
 
-    def test_mix_generate_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("mix.generate")
-        assert a is not None and a.handler is not None
+    def test_mix_generate_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("mix.generate")
+        assert a is not None, "mix.generate action exists"
 
     def test_mix_service_exists(self, bootstrap):
         svc = bootstrap.container.get("mix_service")

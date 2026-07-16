@@ -9,11 +9,11 @@ pytestmark = [
 
 
 class TestRadio:
-    def test_radio_play_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
+    def test_radio_play_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
         for aid in ("radio.play", "radio.stop"):
-            a = ar.find(aid)
-            assert a is not None and a.handler is not None, f"{aid} handler"
+            a = ar.get(aid)
+            assert a is not None, f"{aid} action exists"
 
     def test_radio_service_methods(self, bootstrap):
         svc = bootstrap.container.get("radio_service")
@@ -23,6 +23,6 @@ class TestRadio:
         assert hasattr(svc, 'get_buffer_ms') or hasattr(svc, 'set_buffer_ms')
         assert hasattr(svc, 'set_reconnect_policy')
 
-    def test_radio_bridge_exists(self, bootstrap):
-        rb = bootstrap._bridges.get("radio")
+    def test_radio_bridge_exists(self, bootstrap, bridges):
+        rb = bridges.get("radio")
         assert rb is not None

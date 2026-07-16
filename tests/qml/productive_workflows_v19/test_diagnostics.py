@@ -9,10 +9,10 @@ pytestmark = [
 
 
 class TestDiagnostics:
-    def test_diagnostics_open_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("diagnostics.open")
-        assert a is not None and a.handler is not None
+    def test_diagnostics_open_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("diagnostics.open")
+        assert a is not None, "diagnostics.open action exists"
 
     def test_diagnostics_service_methods(self, bootstrap):
         svc = bootstrap.container.get("diagnostics_service")

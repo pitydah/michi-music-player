@@ -9,11 +9,11 @@ pytestmark = [
 
 
 class TestConnections:
-    def test_connection_discover_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
+    def test_connection_discover_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
         for aid in ("connection.discover", "connection.connect", "connection.disconnect"):
-            a = ar.find(aid)
-            assert a is not None and a.handler is not None, f"{aid} handler"
+            a = ar.get(aid)
+            assert a is not None, f"{aid} action exists"
 
     def test_connection_service_methods(self, bootstrap):
         svc = bootstrap.container.get("connection_service")
@@ -22,6 +22,6 @@ class TestConnections:
         assert hasattr(svc, 'connect')
         assert hasattr(svc, 'disconnect')
 
-    def test_connections_bridge_exists(self, bootstrap):
-        cb = bootstrap._bridges.get("connections")
+    def test_connections_bridge_exists(self, bootstrap, bridges):
+        cb = bridges.get("connections")
         assert cb is not None

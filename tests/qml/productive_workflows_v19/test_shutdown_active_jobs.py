@@ -13,8 +13,7 @@ class TestShutdown:
     def test_shutdown_services(self, bootstrap):
         c = bootstrap.container
         c.shutdown()
-        for name, entry in c._services.items():
-            svc = entry.service
+        for name, svc in c._services.items():
             if hasattr(svc, 'shutdown'):
                 assert True  # shutdown was called
-        assert c.state.value in ("stopped", "shutdown")
+        assert c.state.value == "stopped"

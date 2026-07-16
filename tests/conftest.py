@@ -2,7 +2,11 @@
 import sqlite3
 from unittest.mock import MagicMock
 import pytest
-from ui.controllers.artist_repository import ArtistRepository
+
+try:
+    from ui.controllers.artist_repository import ArtistRepository
+except ImportError:
+    from legacy_widgets.ui.controllers.legacy_controllers.artist_repository import ArtistRepository  # type: ignore
 
 
 class MockAppContext:

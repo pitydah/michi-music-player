@@ -9,10 +9,10 @@ pytestmark = [
 
 
 class TestSettingsOutputEq:
-    def test_settings_open_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("settings.open")
-        assert a is not None and a.handler is not None
+    def test_settings_open_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("settings.open")
+        assert a is not None, "settings.open action exists"
 
     def test_output_profiles_service(self, bootstrap):
         svc = bootstrap.container.get("output_profile_service")

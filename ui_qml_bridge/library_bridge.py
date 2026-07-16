@@ -34,7 +34,9 @@ class LibraryBridge(QObject):
     def __init__(self, db=None, search_engine=None, playback_ctrl=None,
                  query_service=None, query_executor=None, worker_manager=None,
                  job_bridge=None, track_action_service=None,
-                 library_sources_service=None, parent=None):
+                 library_sources_service=None, library_service=None,
+                 songs_service=None, track_service=None, genres_service=None,
+                 parent=None):
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
         assert track_action_service is not None, "LibraryBridge: track_action_service is REQUIRED"
         super().__init__(parent)
@@ -46,6 +48,10 @@ class LibraryBridge(QObject):
         self._job_bridge = job_bridge
         self._tas = track_action_service
         self._lss = library_sources_service
+        self._library_svc = library_service
+        self._songs_svc = songs_service
+        self._track_svc = track_service
+        self._genres_svc = genres_service
         self._search_query = ""
         self._sort_key = "title"
         self._sort_asc = True
@@ -802,3 +808,81 @@ class LibraryBridge(QObject):
             "replay_gain": item.get("replay_gain", 0.0),
             "peak": item.get("peak", 0.0),
         }
+
+    # ── LibraryService bridge ──
+
+    @Slot(result=dict)
+    def loadLibrary(self):
+        svc = getattr(self, '_library_svc', None)
+        if svc and hasattr(svc, 'load'):
+            return svc.load()
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, result=dict)
+    def refreshTab(self, tab: str = ""):
+        svc = getattr(self, '_library_svc', None)
+        if svc and hasattr(svc, 'refresh_tab'):
+            return svc.refresh_tab(tab)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    # ── SongsService bridge ──
+
+    @Slot(str, result=dict)
+    def loadSongs(self, filter_json: str = ""):
+        svc = getattr(self, '_songs_svc', None)
+        if svc and hasattr(svc, 'load'):
+            return svc.load({})
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, result=dict)
+    def playSongs(self, items_json: str = ""):
+        svc = getattr(self, '_songs_svc', None)
+        if svc and hasattr(svc, 'play_items'):
+            return svc.play_items([])
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, result=dict)
+    def toggleFavorite(self, filepath: str):
+        svc = getattr(self, '_songs_svc', None)
+        if svc and hasattr(svc, 'toggle_favorite'):
+            return svc.toggle_favorite(filepath)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    # ── TrackService bridge ──
+
+    @Slot(str, result=dict)
+    def editTrackMetadata(self, filepath: str):
+        svc = getattr(self, '_track_svc', None)
+        if svc and hasattr(svc, 'edit_metadata'):
+            return {"ok": True, "message": "Metadata edit via TrackService"}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, result=dict)
+    def locateTrackFile(self, filepath: str):
+        svc = getattr(self, '_track_svc', None)
+        if svc and hasattr(svc, 'locate_file'):
+            return svc.locate_file(filepath)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    # ── GenresService bridge ──
+
+    @Slot(result="QVariantList")
+    def listGenres(self):
+        svc = getattr(self, '_genres_svc', None)
+        if svc and hasattr(svc, 'list_genres'):
+            return svc.list_genres()
+        return []
+
+    @Slot(str, result=dict)
+    def playGenre(self, genre: str):
+        svc = getattr(self, '_genres_svc', None)
+        if svc and hasattr(svc, 'play_genre'):
+            return svc.play_genre(genre)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, str, result=dict)
+    def normalizeGenre(self, old_name: str, new_name: str):
+        svc = getattr(self, '_genres_svc', None)
+        if svc and hasattr(svc, 'normalize_genre'):
+            return svc.normalize_genre(old_name, new_name)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}

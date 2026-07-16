@@ -23,12 +23,12 @@ class TestStartupHomeLibrary:
         assert lb is not None, "LibraryBridge should exist"
 
     def test_library_service_exists(self, bootstrap):
-        svc = bootstrap.container.get("library_service")
-        assert svc is not None, "LibraryService should exist"
+        svc = bootstrap.container.get("library_data_service")
+        assert svc is not None, "LibraryDataService should exist"
 
     def test_songs_service_exists(self, bootstrap):
-        svc = bootstrap.container.get("songs_service")
-        assert svc is not None, "SongsService should exist"
+        svc = bootstrap.container.get("library_query_service")
+        assert svc is not None, "LibraryQueryService should exist"
 
     def test_navigation_bridge_exists(self, bootstrap):
         nb = bootstrap._bridges.get("navigation")

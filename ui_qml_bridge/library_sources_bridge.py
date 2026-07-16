@@ -14,10 +14,11 @@ class LibrarySourcesBridge(QObject):
     dataChanged = Signal()
 
     def __init__(self, service: LibrarySourcesService,
-                 job_bridge=None, parent=None):
+                 job_bridge=None, folder_service=None, parent=None):
         super().__init__(parent)
         self._svc = service
         self._jb = job_bridge
+        self._folder_svc = folder_service
         self._status = "ready"
         self._exclusions: list[str] = []
 
@@ -124,6 +125,18 @@ class LibrarySourcesBridge(QObject):
         else:
             subprocess.Popen(["xdg-open", path])
         return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+
+    @Slot(str, result=dict)
+    def scanFolder(self, path: str):
+        if self._folder_svc and hasattr(self._folder_svc, 'scan'):
+            return self._folder_svc.scan(path)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, result=dict)
+    def checkIntegrity(self, path: str):
+        if self._folder_svc and hasattr(self._folder_svc, 'integrity_check'):
+            return self._folder_svc.integrity_check(path)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     def root_paths(self) -> list[str]:
         return self._svc.root_paths()

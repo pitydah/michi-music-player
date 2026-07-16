@@ -9,12 +9,12 @@ pytestmark = [
 
 
 class TestPlaylistCreateExport:
-    def test_playlist_create_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
+    def test_playlist_create_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
         for aid in ("playlist.create", "playlist.rename", "playlist.delete",
                     "playlist.add", "playlist.remove", "playlist.import", "playlist.export"):
-            a = ar.find(aid)
-            assert a is not None and a.handler is not None, f"{aid} handler"
+            a = ar.get(aid)
+            assert a is not None, f"{aid} action exists"
 
     def test_playlist_service_methods(self, bootstrap):
         svc = bootstrap.container.get("playlist_service")

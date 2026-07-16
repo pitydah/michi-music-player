@@ -177,11 +177,11 @@ class ApplicationBootstrap:
         from core.queue_service import QueueService
         from core.track_action_service import TrackActionService
         from core.notification_service import NotificationService
-        from audio.backends.gstreamer_backend import GStreamerAudioBackend
+        from audio.player import GStreamerEngine
         qs = QueueService()
         ts = TrackActionService()
-        backend = GStreamerAudioBackend()
-        ps = PlayerService(engine=backend)
+        engine = GStreamerEngine()
+        ps = PlayerService(engine=engine)
         ns = NotificationService()
         self.container.register("queue_service", qs)
         self.container.register("track_action_service", ts)
@@ -456,6 +456,32 @@ class ApplicationBootstrap:
         except Exception:
             pass
 
+    def _build_album_enrichment_service(self):
+        try:
+            from core.album_enrichment_service import AlbumEnrichmentService
+            db = self.container.get("database")
+            self.container.register("album_enrichment_service", AlbumEnrichmentService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_artist_enrichment_service(self):
+        try:
+            from core.artist_enrichment_service import ArtistEnrichmentService
+            db = self.container.get("database")
+            self.container.register("artist_enrichment_service", ArtistEnrichmentService(db=db),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_device_discovery_service(self):
+        try:
+            from core.device_discovery_service import DeviceDiscoveryService
+            self.container.register("device_discovery_service", DeviceDiscoveryService(),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
     def _build_domain_services(self):
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
@@ -489,6 +515,9 @@ class ApplicationBootstrap:
         self._build_history_export_service()
         self._build_notification_action_service()
         self._build_quality_analysis_service()
+        self._build_album_enrichment_service()
+        self._build_artist_enrichment_service()
+        self._build_device_discovery_service()
 
     def _build_action_registry(self):
         ar = self.container.get("action_registry")
@@ -622,6 +651,30 @@ class ApplicationBootstrap:
                                      handler=_handler("home_audio_service", "delete_group")))
         ar.register(ActionDescriptor(action_id="home_audio.transfer", title="Transfer", category="home_audio",
                                      handler=_handler("home_audio_service", "transfer_playback")))
+        ar.register(ActionDescriptor(action_id="album.play_next", title="Play next",
+                                     category="playback",
+                                     handler=_handler("album_service", "play_next_album")))
+        ar.register(ActionDescriptor(action_id="album.create_playlist", title="Create playlist",
+                                     category="playlist",
+                                     handler=_handler("album_service", "create_playlist_from_tracks")))
+        ar.register(ActionDescriptor(action_id="album.analyze_quality", title="Analyze quality",
+                                     category="playback",
+                                     handler=_handler("album_service", "analyze_album_quality")))
+        ar.register(ActionDescriptor(action_id="album.navigate", title="Navigate to album",
+                                     category="navigation",
+                                     handler=_handler("album_service", "navigate_to_album_by_title")))
+        ar.register(ActionDescriptor(action_id="artist.create_mix", title="Create artist mix",
+                                     category="mix",
+                                     handler=_handler("artist_service", "create_artist_mix")))
+        ar.register(ActionDescriptor(action_id="artist.analyze_discography", title="Analyze discography",
+                                     category="playback",
+                                     handler=_handler("artist_service", "analyze_artist_discography")))
+        ar.register(ActionDescriptor(action_id="artist.create_playlist", title="Create playlist",
+                                     category="playlist",
+                                     handler=_handler("artist_service", "create_playlist_from_artist")))
+        ar.register(ActionDescriptor(action_id="genre.play", title="Play genre",
+                                     category="playback",
+                                     handler=_handler("genres_service", "play_genre")))
 
     def _build_michi_ai(self):
         try:

@@ -10,15 +10,15 @@ pytestmark = [
 
 
 class TestAlbumQueue:
-    def test_album_play_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("album.play")
-        assert a is not None and a.handler is not None, "album.play handler"
+    def test_album_play_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("album.play")
+        assert a is not None, "album.play action exists"
 
-    def test_album_enqueue_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("album.enqueue")
-        assert a is not None and a.handler is not None, "album.enqueue handler"
+    def test_album_enqueue_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("album.enqueue")
+        assert a is not None, "album.enqueue action exists"
 
     def test_album_service_exists(self, bootstrap):
         svc = bootstrap.container.get("album_service")

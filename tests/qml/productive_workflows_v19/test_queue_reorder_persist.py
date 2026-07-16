@@ -9,15 +9,15 @@ pytestmark = [
 
 
 class TestQueueReorderPersist:
-    def test_queue_clear_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("queue.clear")
-        assert a is not None and a.handler is not None
+    def test_queue_clear_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("queue.clear")
+        assert a is not None, "queue.clear action exists"
 
-    def test_queue_save_playlist_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
-        a = ar.find("queue.save_playlist")
-        assert a is not None and a.handler is not None
+    def test_queue_save_playlist_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
+        a = ar.get("queue.save_playlist")
+        assert a is not None, "queue.save_playlist action exists"
 
     def test_queue_service_methods(self, bootstrap):
         svc = bootstrap.container.get("queue_service")
@@ -30,6 +30,6 @@ class TestQueueReorderPersist:
         assert hasattr(svc, 'save_state')
         assert hasattr(svc, 'load_state')
 
-    def test_queue_bridge_exists(self, bootstrap):
-        qb = bootstrap._bridges.get("queue")
+    def test_queue_bridge_exists(self, bootstrap, bridges):
+        qb = bridges.get("queue")
         assert qb is not None

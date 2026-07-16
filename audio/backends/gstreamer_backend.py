@@ -7,6 +7,9 @@ logger = logging.getLogger("michi.audio.gstreamer")
 
 
 class GStreamerAudioBackend:
+    backend_id = "gstreamer"
+    name = "GStreamer"
+
     def __init__(self):
         self._pipeline = None
         self._playing = False

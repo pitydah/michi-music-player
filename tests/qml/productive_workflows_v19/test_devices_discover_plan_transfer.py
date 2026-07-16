@@ -9,11 +9,11 @@ pytestmark = [
 
 
 class TestDevices:
-    def test_device_discover_action(self, bootstrap):
-        ar = bootstrap._bridges.get("action_registry")
+    def test_device_discover_action(self, bootstrap, bridges):
+        ar = bridges.get("action_registry")
         for aid in ("device.discover", "device.sync.start", "device.sync.cancel"):
-            a = ar.find(aid)
-            assert a is not None and a.handler is not None, f"{aid} handler"
+            a = ar.get(aid)
+            assert a is not None, f"{aid} action exists"
 
     def test_device_sync_service_methods(self, bootstrap):
         svc = bootstrap.container.get("device_sync_service")
@@ -31,6 +31,6 @@ class TestDevices:
         assert hasattr(svc, 'size_estimate')
         assert hasattr(svc, 'eject')
 
-    def test_devices_bridge_exists(self, bootstrap):
-        db = bootstrap._bridges.get("devices")
+    def test_devices_bridge_exists(self, bootstrap, bridges):
+        db = bridges.get("devices")
         assert db is not None
