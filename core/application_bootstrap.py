@@ -827,10 +827,7 @@ class ApplicationBootstrap:
 
     def _build_michi_ai(self):
         try:
-            from core.navigation_service import NavigationService
-            nav_svc = NavigationService()
-            self.container.register("navigation_service", nav_svc,
-                                    priority=ServicePriority.OPTIONAL)
+            nav_svc = self.container.get("navigation_service")
             from core.assistant_initializer import create_assistant_composition
             comp = create_assistant_composition(
                 metadata_service=self.container.get("metadata_service"),
@@ -849,6 +846,7 @@ class ApplicationBootstrap:
                 lyrics_service=self.container.get("lyrics_service"),
                 connection_service=self.container.get("connection_service"),
                 home_audio_service=self.container.get("home_audio_service"),
+                library_doctor_service=self.container.get("library_doctor_service"),
             )
             self.container.register("michi_ai_service", comp.core_service,
                                     priority=ServicePriority.CAPABILITY_GATED)

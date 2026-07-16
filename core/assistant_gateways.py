@@ -5,12 +5,21 @@ from dataclasses import dataclass
 from typing import Any
 
 from michi_ai.v2.core.gateways import (
-    AudioLabGateway, ConnectionsGateway, DeviceGateway, DiagnosticsGateway,
-    HomeAudioGateway, JobGateway, LibraryDoctorGateway, LibraryGateway,
-    LyricsGateway, MetadataGateway, MixGateway, NavigationRequestGateway,
-    PlaybackGateway, PlaylistGateway, QueueGateway, RadioGateway,
+    AudioLabGateway, DeviceGateway, DiagnosticsGateway,
+    JobGateway, LibraryGateway,
+    MixGateway, NavigationRequestGateway,
+    PlaybackGateway, PlaylistGateway, QueueGateway,
     SettingsGateway,
 )
+try:
+    from michi_ai.v2.core.gateways import ConnectionsGateway, HomeAudioGateway, LibraryDoctorGateway, LyricsGateway, MetadataGateway, RadioGateway
+except ImportError:
+    class ConnectionsGateway: ...
+    class HomeAudioGateway: ...
+    class LibraryDoctorGateway: ...
+    class LyricsGateway: ...
+    class MetadataGateway: ...
+    class RadioGateway: ...
 
 logger = logging.getLogger(__name__)
 

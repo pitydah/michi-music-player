@@ -30,20 +30,21 @@ def run_qml() -> int:
     engine.addImportPath(os.path.join(os.path.dirname(__file__), "..", "ui_qml"))
 
     bootstrap = ApplicationBootstrap()
-    bootstrap.build()
-    bootstrap.start()
-    bootstrap.create_bridges()
-    bootstrap.register_context(engine)
-    bootstrap.load_qml(engine)
+    try:
+        bootstrap.build()
+        bootstrap.start()
+        bootstrap.create_bridges()
+        bootstrap.register_context(engine)
+        bootstrap.load_qml(engine)
 
-    if not engine.rootObjects():
-        logger.error("Failed to load QML root objects")
-        return 1
+        if not engine.rootObjects():
+            logger.error("Failed to load QML root objects")
+            return 1
 
-    logger.info("Michi Music Player QML — READY")
-    code = app.exec()
-
-    logger.info("Shutting down...")
-    bootstrap.shutdown()
-    logger.info("Stopped.")
-    return code
+        logger.info("Michi Music Player QML — READY")
+        return app.exec()
+    finally:
+        try:
+            bootstrap.shutdown()
+        except Exception as shutdown_err:
+            logger.warning("Shutdown error: %s", shutdown_err)

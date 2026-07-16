@@ -14,7 +14,7 @@ pytestmark = [
 
 class TestHomeWorkflow:
     def test_home_page_loads(self, qml_app, bootstrap, engine):
-        main_qml = str(bootstrap._bridges.get("app_qml", "ui_qml/Main.qml"))
+        main_qml = str(bootstrap._bridges.get("app", "ui_qml/Main.qml"))
         engine.load(QUrl.fromLocalFile(main_qml))
         assert engine.rootObjects(), "QML root objects should load"
 

@@ -101,14 +101,15 @@ class SelectionContextProvider:
 
 
 class NavigationContextProvider:
-    def __init__(self, navigation_bridge: Any = None) -> None:
-        self._nav = navigation_bridge
+    def __init__(self, navigation_service: Any = None) -> None:
+        self._nav = navigation_service
 
     def get_context(self) -> dict[str, Any]:
         if self._nav is None:
             return {"available": False}
         try:
-            route = self._nav.currentRoute if hasattr(self._nav, "currentRoute") else ""
+            req = self._nav.pop_last_request() if hasattr(self._nav, "pop_last_request") else None
+            route = req.get("route", "") if req else ""
             return {"current_section": route}
         except Exception as e:
             logger.debug("NavigationContextProvider error: %s", e)
@@ -188,7 +189,7 @@ def register_all_context_providers(assembler: Any, services: dict[str, Any]) -> 
     assembler.register("queue", QueueContextProvider(services.get("player_service")))
     assembler.register("library", LibraryContextProvider(services.get("library_db")))
     assembler.register("selection", SelectionContextProvider(services.get("selection_service")))
-    assembler.register("navigation", NavigationContextProvider(services.get("navigation_bridge")))
+    assembler.register("navigation", NavigationContextProvider(services.get("navigation_service")))
     assembler.register("devices", DeviceContextProvider(services.get("sync_manager")))
     assembler.register("servers", ServerContextProvider(services.get("subsonic_client")))
     assembler.register("settings", SettingsContextProvider(services.get("settings_service")))

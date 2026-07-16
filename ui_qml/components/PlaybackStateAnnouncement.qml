@@ -5,7 +5,7 @@ import "."
 Item {
     Accessible.role: Accessible.Pane
     objectName: "playbackStateAnnouncement"
-    focus: true
+    focus: false
     id: root
 
     property string playbackState: "stopped"

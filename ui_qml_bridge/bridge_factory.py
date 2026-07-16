@@ -72,7 +72,9 @@ class BridgeFactory(QObject):
     def create_navigation_bridge(self):
         if "navigation" not in self._bridges:
             from ui_qml_bridge.navigation_bridge import NavigationBridge
-            self._bridges["navigation"] = NavigationBridge()
+            self._bridges["navigation"] = NavigationBridge(
+                navigation_service=self._get("navigation_service"),
+            )
 
     def create_job_bridge(self):
         if "job_bridge" not in self._bridges:

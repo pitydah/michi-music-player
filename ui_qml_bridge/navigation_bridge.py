@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Property, Slot
+from typing import Any
+
+from PySide6.QtCore import QObject, QTimer, Signal, Property, Slot
 from .route_registry import ROUTES, CAPABILITY_MAP
 
 
@@ -12,17 +14,39 @@ class NavigationBridge(QObject):
     routeRefreshRequested = Signal(str)
     invalidRouteError = Signal(str, str)
 
-    def __init__(self, parent=None):
+    def __init__(self, navigation_service: Any = None, parent=None):
         super().__init__(parent)
+        self._nav_service = navigation_service
         self._current_route = "home"
         self._current_params: dict = {}
         self._back_stack: list[tuple[str, dict]] = []
         self._forward_stack: list[tuple[str, dict]] = []
         self._max_history = 50
         self._capabilities: set[str] = set()
+        self._poll_timer: QTimer | None = None
+        if navigation_service is not None:
+            self._poll_timer = QTimer(self)
+            self._poll_timer.setInterval(100)
+            self._poll_timer.timeout.connect(self._poll_navigation_service)
+            self._poll_timer.start()
 
     def set_capabilities(self, caps: set[str]):
         self._capabilities = caps
+
+    def _poll_navigation_service(self):
+        if self._nav_service is None:
+            return
+        req = self._nav_service.pop_last_request()
+        if req is not None:
+            route = req.get("route", "")
+            params = req.get("params", {})
+            action = req.get("action", "")
+            if action == "back":
+                self.back()
+            elif action == "forward":
+                self.forward()
+            elif route:
+                self._navigate_internal(route, params)
 
     def _route_matches_capability(self, route: str) -> bool:
         for pattern, cap in CAPABILITY_MAP.items():

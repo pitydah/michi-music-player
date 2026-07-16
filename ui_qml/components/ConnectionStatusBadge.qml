@@ -4,7 +4,7 @@ import "../theme"
 Rectangle {
     Accessible.role: Accessible.Pane
     objectName: "connectionStatusBadge"
-    focus: true
+    focus: false
     id: root
 
     enum Status {
