@@ -40,8 +40,8 @@ Item {
             var filepath = typeof inputSelection.selectedFiles[i] === "string"
                 ? inputSelection.selectedFiles[i]
                 : inputSelection.selectedFiles[i].filepath || ""
-            if (root.labService && root.labService.integrityCheck) {
-                var result = root.labService.integrityCheck(filepath, quick)
+            if (root.labService && root.labService.previewIntegrity) {
+                var result = root.labService.previewIntegrity(filepath)
                 root._results.push(result)
             }
         }

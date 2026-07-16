@@ -35,11 +35,11 @@ Item {
         }
         root._state = root.stateAnalyzing
         root._errorMessage = ""
-        if (root.labService && root.labService.analyzeFile) {
+        if (root.labService && root.labService.previewReplayGain) {
             var filepath = typeof inputSelection.selectedFiles[0] === "string"
                 ? inputSelection.selectedFiles[0]
                 : inputSelection.selectedFiles[0].filepath || ""
-            var result = root.labService.analyzeFile(filepath)
+            var result = root.labService.previewReplayGain(filepath)
             if (result && result.error) {
                 root._errorMessage = result.error
                 root._state = root.stateFailed

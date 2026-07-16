@@ -34,8 +34,20 @@ Item {
             return
         }
         root._state = root.statePreviewing
-        root._previewResult = { target: root._targetLufs, peak: root._truePeakLimit, gate: root._gateThreshold }
-        root._state = root.stateCompleted
+        var filepath = inputSelection.selectedFiles[0]
+        if (root.labService && root.labService.previewNormalization) {
+            var result = root.labService.previewNormalization(filepath)
+            if (result && result.ok) {
+                root._previewResult = result
+                root._state = root.stateCompleted
+            } else {
+                root._errorMessage = (result && result.error) || "Error al medir loudness"
+                root._state = root.stateFailed
+            }
+        } else {
+            root._previewResult = { target: root._targetLufs, peak: root._truePeakLimit, gate: root._gateThreshold }
+            root._state = root.stateCompleted
+        }
     }
 
     function _applyNormalization() {

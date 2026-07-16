@@ -496,7 +496,7 @@ class PlaylistsBridge(QObject):
             return {"ok": True, "count": len(fps)}
         return {"ok": False, "error": "UNSUPPORTED"}
 
-    @Slot(int, result=dict)
+    @Slot(int, str, result=dict)
     def setCover(self, pid: int, cover_path: str):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}
@@ -572,7 +572,7 @@ class PlaylistsBridge(QObject):
             return result
         return {"ok": False, "error": "NO_SERVICE"}
 
-    @Slot(str, result=dict)
+    @Slot(int, str, result=dict)
     def setSmartRule(self, pid: int, rule_json: str):
         if not self._can():
             return {"ok": False, "error": "NO_DB"}

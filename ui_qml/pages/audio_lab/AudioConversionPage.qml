@@ -13,7 +13,7 @@ Item {
     id: root
 
     property var labService: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
-    property var convBridge: typeof conversionBridge !== "undefined" ? conversionBridge : null
+    property var convBridge: typeof audioLabBridge !== "undefined" ? audioLabBridge : null
     property var nav: typeof navigationBridge !== "undefined" ? navigationBridge : null
 
     property int _state: 0
