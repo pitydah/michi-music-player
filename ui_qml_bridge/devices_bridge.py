@@ -689,8 +689,16 @@ class DevicesBridge(QObject):
         if action not in valid_actions:
             return {"ok": False, "confirmed": False, "error": "UNKNOWN_ACTION"}
         if action == "unpair":
-            return {"ok": True, "confirmed": True, "action": "replace"}
-        return _typed_error("UNKNOWN_ACTION", f"Accion destructiva desconocida: {action}")
+            return {"ok": True, "confirmed": True, "action": "unpair"}
+        if action == "clear_history":
+            return {"ok": True, "confirmed": True, "action": "clear_history"}
+        if action == "overwrite":
+            return {"ok": True, "confirmed": True, "action": "overwrite"}
+        if action == "delete":
+            return {"ok": True, "confirmed": True, "action": "delete"}
+        if action == "eject":
+            return {"ok": True, "confirmed": True, "action": "eject"}
+        return {"ok": False, "error": "UNKNOWN_ACTION"}
 
     @Slot(str, result=dict)
     def retry(self, job_id: str):

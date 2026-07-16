@@ -105,17 +105,17 @@ class TestLibraryE2E:
         nav.navigate("library")
         assert nav.currentRoute == "library"
         search_field = find_qml_item(root_window, "libraryNavigationBar")
-        if search_field is not None:
-            search_field.forceActiveFocus()
-            QTest.keyClicks(search_field, "queen")
-            QTest.qWait(50)
-            QTest.keyClick(search_field, Qt.Key_Return)
-            QTest.qWait(50)
-            assert nav.currentRoute == "library"
+        assert search_field is not None, "libraryNavigationBar not found"
+        search_field.forceActiveFocus()
+        QTest.keyClicks(search_field, "queen")
+        QTest.qWait(50)
+        QTest.keyClick(search_field, Qt.Key_Return)
+        QTest.qWait(50)
+        assert nav.currentRoute == "library"
 
     def test_qtest_click_refresh(self, nav, root_window):
         from .conftest import find_qml_item, qtest_click_item
         nav.navigate("library")
         refresh_btn = find_qml_item(root_window, "libraryRefreshButton")
-        if refresh_btn is not None:
-            qtest_click_item(refresh_btn, root_window)
+        assert refresh_btn is not None, "libraryRefreshButton not found"
+        qtest_click_item(refresh_btn, root_window)

@@ -66,7 +66,7 @@ class TestConnectionsDevicesE2E:
         nav.navigate("connections")
         assert nav.currentRoute == "connections"
         page = find_qml_item(root_window, "connectionsPage")
-        if page is not None:
-            page.forceActiveFocus()
-            QTest.keyClick(page, Qt.Key_Down)
-            QTest.qWait(50)
+        assert page is not None, "connectionsPage not found"
+        page.forceActiveFocus()
+        QTest.keyClick(page, Qt.Key_Down)
+        QTest.qWait(50)

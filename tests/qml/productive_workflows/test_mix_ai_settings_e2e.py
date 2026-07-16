@@ -88,7 +88,7 @@ class TestMixAiSettingsE2E:
         nav.navigate("settings")
         assert nav.currentRoute == "settings"
         header = find_qml_item(root_window, "settingsGeneralPage")
-        if header is not None:
-            header.forceActiveFocus()
-            QTest.keyClick(header, Qt.Key_Down)
-            QTest.qWait(50)
+        assert header is not None, "settingsGeneralPage not found"
+        header.forceActiveFocus()
+        QTest.keyClick(header, Qt.Key_Down)
+        QTest.qWait(50)
