@@ -5,11 +5,13 @@ import "../theme"
 QQC2.Button {
     id: root
 
+    objectName: "michiIconButton"
+
     property string iconText: ""
     property string iconSource: ""
     property string tooltipText: ""
     property bool selected: false
-    property int btnSize: 36
+    property int btnSize: MichiTheme.minimumInteractiveSize
     property string accessibleName: tooltipText
     property string accessibleDescription: tooltipText
 
@@ -17,13 +19,14 @@ QQC2.Button {
     height: width
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
+    activeFocusOnTab: enabled
 
     Accessible.role: Accessible.Button
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
     background: Rectangle {
-        radius: MichiTheme.radiusPill
+        radius: MichiTheme.radius.pill
         color: !root.enabled ? "transparent"
              : root.down ? MichiTheme.colors.surfacePressed
              : root.selected ? MichiTheme.colors.accentSurface

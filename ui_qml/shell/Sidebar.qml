@@ -17,7 +17,7 @@ Item {
     signal routeRequested(string route)
 
     width: collapsed ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
-    Behavior on width { NumberAnimation { duration: MichiTheme.motion.normal; easing.type: Easing.OutCubic } }
+    Behavior on width { NumberAnimation { duration: MichiTheme.motion.durationNormal; easing.type: Easing.OutCubic } }
 
     SidebarMaterial {
         anchors.fill: parent
@@ -70,15 +70,22 @@ Item {
                 anchors.leftMargin: collapsed ? (parent.width - implicitWidth) / 2 : MichiTheme.spacing.lg
                 text: collapsed ? "E" : "Experimental"
                 kind: "experimental"
+                objectName: "statusBadge"
+                Accessible.name: "Estado: Experimental"
             }
 
-            Item { width: parent.width; height: 40
-                Rectangle { anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
+            Item { id: collapseItem; width: parent.width; height: 40
+                Rectangle { id: collapseBg; anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
                     color: collapseBtn.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                    border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
+                    border.color: MichiTheme.colors.borderFocus
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
                     Text { anchors.centerIn: parent; text: root.collapsed ? ">" : "<"; color: MichiTheme.colors.textMuted; font.pixelSize: 14; font.weight: MichiTheme.typography.weightBold }
                     MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
                 }
+                Accessible.role: Accessible.Button
+                Accessible.name: root.collapsed ? "Expandir sidebar" : "Colapsar sidebar"
+                Accessible.onPressAction: root.collapsed = !root.collapsed
             }
         }
     }

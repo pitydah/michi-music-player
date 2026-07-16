@@ -10,16 +10,19 @@ Item {
 
     property Item target
     property int duration: MichiTheme.motion.fast
+    property bool reducedMotion: false
 
     onTargetChanged: {
         if (target) {
-            target.opacity = 0.0
-            var anim = Qt.createQmlObject(
-                "import QtQuick; NumberAnimation { to: 1.0; duration: " + duration + "; easing.type: Easing.OutCubic }",
-                root, "routeFade")
-            anim.target = target
-            anim.property = "opacity"
-            anim.start()
+            target.opacity = root.reducedMotion ? 1.0 : 0.0
+            if (!root.reducedMotion) {
+                var anim = Qt.createQmlObject(
+                    "import QtQuick; NumberAnimation { to: 1.0; duration: " + root.duration + "; easing.type: Easing.OutCubic }",
+                    root, "routeFade")
+                anim.target = target
+                anim.property = "opacity"
+                anim.start()
+            }
         }
     }
 }

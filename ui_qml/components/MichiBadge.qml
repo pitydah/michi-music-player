@@ -2,27 +2,31 @@ import QtQuick
 import "../theme"
 
 Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Badge"
-    objectName: "michiBadge"
-    focus: true
     id: root
+
+    objectName: "michiBadge"
 
     property string badgeText: ""
     property string variant: "info"
     property int badgeSize: MichiTheme.typography.badgeSize
+    property string accessibleName: ""
+    property string accessibleDescription: ""
 
     height: 20
     width: textItem.width + MichiTheme.spacing.sm * 2
-    radius: MichiTheme.radiusPill
+    radius: MichiTheme.radius.pill
+
+    Accessible.role: Accessible.StatusBar
+    Accessible.name: root.accessibleName !== "" ? root.accessibleName : root.badgeText
+    Accessible.description: root.accessibleDescription
 
     color: {
         switch (root.variant) {
             case "success": return MichiTheme.colors.badgeActiveBg
             case "warning": return MichiTheme.colors.badgeWarningBg
+            case "error":
             case "danger": return MichiTheme.colors.badgeDangerBg
-            case "experimental": return MichiTheme.colors.badgeExperimentalBg
-            case "muted": return MichiTheme.colors.badgeMutedBg
+            case "neutral": return MichiTheme.colors.badgeMutedBg
             default: return MichiTheme.colors.badgeInfoBg
         }
     }
@@ -39,9 +43,9 @@ Rectangle {
             switch (root.variant) {
                 case "success": return MichiTheme.colors.badgeActiveText
                 case "warning": return MichiTheme.colors.warning
+                case "error":
                 case "danger": return MichiTheme.colors.error
-                case "experimental": return MichiTheme.colors.badgeExperimentalText
-                case "muted": return MichiTheme.colors.textMuted
+                case "neutral": return MichiTheme.colors.textMuted
                 default: return MichiTheme.colors.badgeInfoText
             }
         }

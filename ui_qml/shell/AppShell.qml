@@ -138,14 +138,18 @@ Item {
         color: MichiTheme.colors.overlayDark
         z: 9999
         visible: pageStack.loading
+        objectName: "loadingOverlay"
 
         Column {
             anchors.centerIn: parent
-            spacing: MichiTheme.spacing.md
+            spacing: MichiTheme.spacing.lg
+            width: Math.min(320, parent.width * 0.6)
 
-            BusyIndicator {
+            MichiProgressBar {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 40; height: 40
+                width: parent.width
+                indeterminate: true
+                objectName: "loadingProgressBar"
             }
 
             Text {
@@ -153,8 +157,53 @@ Item {
                 text: "Cargando..."
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
+                font.weight: MichiTheme.typography.weightMedium
             }
         }
+
+        Accessible.role: Accessible.AlertMessage
+        Accessible.name: "Cargando contenido"
+    }
+
+    Rectangle {
+        id: errorOverlay
+        anchors.fill: parent
+        color: MichiTheme.colors.overlayDark
+        z: 9999
+        visible: pageStack.lastError !== "" && !root.fatalError
+
+        Column {
+            anchors.centerIn: parent
+            spacing: MichiTheme.spacing.lg
+            width: Math.min(420, parent.width * 0.8)
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Error de carga"
+                color: MichiTheme.colors.error
+                font.pixelSize: MichiTheme.typography.pageTitleSize
+                font.weight: MichiTheme.typography.weightBold
+            }
+
+            Text {
+                width: parent.width
+                text: pageStack.lastError
+                color: MichiTheme.colors.textPrimary
+                font.pixelSize: MichiTheme.typography.bodySize
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            MichiButton {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Reintentar"
+                variant: "accent"
+                onClicked: pageStack.loadRoute(pageStack.currentRoute)
+            }
+        }
+
+        Accessible.role: Accessible.AlertMessage
+        Accessible.name: "Error de carga de página"
     }
 
     Rectangle {
@@ -163,6 +212,7 @@ Item {
         color: MichiTheme.colors.bgApp
         z: 9999
         visible: root.fatalError
+        objectName: "fatalOverlay"
 
         Column {
             anchors.centerIn: parent
@@ -183,6 +233,7 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
             }
 
             MichiButton {
@@ -192,6 +243,9 @@ Item {
                 onClicked: root.dismissFatal()
             }
         }
+
+        Accessible.role: Accessible.AlertMessage
+        Accessible.name: "Error fatal de la aplicación"
     }
 
     Connections {
@@ -217,6 +271,30 @@ Item {
     DropArea {
         anchors.fill: parent
         keys: ["text/uri-list"]
+
+        Rectangle {
+            anchors.fill: parent
+            color: MichiTheme.colors.accentSurface
+            border.width: 2
+            border.color: MichiTheme.colors.accentBlue
+            radius: MichiTheme.radiusLg
+            visible: parent.containsDrag
+            z: 10000
+
+            Column {
+                anchors.centerIn: parent
+                spacing: MichiTheme.spacing.md
+
+                Text {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Soltar archivos para añadir a la biblioteca"
+                    color: MichiTheme.colors.accentBlue
+                    font.pixelSize: MichiTheme.typography.bodySize
+                    font.weight: MichiTheme.typography.weightMedium
+                }
+            }
+        }
+
         onDropped: function(drop) {
             if (drop.hasUrls) {
                 var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
@@ -236,5 +314,8 @@ Item {
                 drop.accept()
             }
         }
+
+        Accessible.role: Accessible.Pane
+        Accessible.name: "Área de soltar archivos"
     }
 }

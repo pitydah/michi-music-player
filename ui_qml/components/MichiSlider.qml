@@ -1,13 +1,10 @@
 import QtQuick
-import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Slider"
-    objectName: "michiSlider"
-    focus: true
     id: root
+
+    objectName: "michiSlider"
 
     property real from: 0
     property real to: 100
@@ -15,18 +12,22 @@ Rectangle {
     property real stepSize: 1
     property bool hovered: ma.containsMouse
     property bool pressed: ma.pressed
-    property string accessibleName: "Control deslizante"
+    property bool loading: false
+    property string accessibleName: "Volumen: " + Math.round(root.value) + "%"
     property string accessibleDescription: ""
 
     signal moved(real value)
 
     implicitHeight: MichiTheme.minimumInteractiveSize
-    radius: MichiTheme.radiusPill
-color: root.activeFocus ? MichiTheme.colors.focusHalo
-        : (root.hovered ? MichiTheme.colors.surfacePressed : MichiTheme.colors.controlTrack)
-    opacity: 1.0
-    activeFocusOnTab: true
+    radius: MichiTheme.radius.pill
+    color: root.activeFocus ? MichiTheme.colors.focusHalo
+           : (root.hovered ? MichiTheme.colors.surfacePressed : MichiTheme.colors.controlTrack)
+    opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
+    activeFocusOnTab: enabled
+    enabled: !root.loading
 
+    Accessible.role: Accessible.Slider
+    Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
     function _range() {
@@ -86,10 +87,22 @@ color: root.activeFocus ? MichiTheme.colors.focusHalo
         event.accepted = true
     }
 
+    Keys.onHomePressed: function(event) {
+        if (!root.enabled) return
+        root._setValue(root.from, true)
+        event.accepted = true
+    }
+
+    Keys.onEndPressed: function(event) {
+        if (!root.enabled) return
+        root._setValue(root.to, true)
+        event.accepted = true
+    }
+
     Rectangle {
         height: parent.height
         width: root._ratioForValue(root.value) * parent.width
-        radius: MichiTheme.radiusPill
+        radius: MichiTheme.radius.pill
         color: root.enabled ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
     }
 

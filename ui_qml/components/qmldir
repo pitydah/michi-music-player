@@ -15,6 +15,20 @@ MichiIconButton 1.0 MichiIconButton.qml
 MichiSlider 1.0 MichiSlider.qml
 MichiBadge 1.0 MichiBadge.qml
 MichiProgressBar 1.0 MichiProgressBar.qml
+MichiDoubleSpinBox 1.0 MichiDoubleSpinBox.qml
+MichiTextField 1.0 MichiTextField.qml
+MichiSearchField 1.0 MichiSearchField.qml
+MichiComboBox 1.0 MichiComboBox.qml
+MichiSwitch 1.0 MichiSwitch.qml
+MichiCheckBox 1.0 MichiCheckBox.qml
+MichiRadioButton 1.0 MichiRadioButton.qml
+MichiCard 1.0 MichiCard.qml
+MichiPanel 1.0 MichiPanel.qml
+MichiDialog 1.0 MichiDialog.qml
+MichiMenu 1.0 MichiMenu.qml
+MichiMenuItem 1.0 MichiMenuItem.qml
+MichiTabBar 1.0 MichiTabBar.qml
+MichiTooltip 1.0 MichiTooltip.qml
 JobStatusBanner 1.0 JobStatusBanner.qml
 MichiIcon 1.0 IconSlot.qml
 MichiSearchField 1.0 SearchField.qml
@@ -38,7 +52,7 @@ ConfirmActionDialog 1.0 ConfirmActionDialog.qml
 # content
 MichiAlbumTile 1.0 content/MichiAlbumTile.qml
 MichiArtistTile 1.0 content/MichiArtistTile.qml
-MichiListRow 1.0 content/MichiListRow.qml
+MichiListRow 1.0 MichiListRow.qml
 MichiMetadataLine 1.0 content/MichiMetadataLine.qml
 MichiStatCard 1.0 content/MichiStatCard.qml
 MichiTrackRow 1.0 content/MichiTrackRow.qml

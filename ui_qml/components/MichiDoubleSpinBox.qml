@@ -1,27 +1,30 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import "../theme"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Double Spin Box"
-    objectName: "michiDoubleSpinBox"
-    focus: true
     id: root
+
+    objectName: "michiDoubleSpinBox"
 
     property real from: 0
     property real to: 100
     property real value: 0
     property real stepSize: 0.1
     property int decimals: 1
+    property bool loading: false
+    property string accessibleName: "Valor: " + root._formatValue(root.value)
+    property string accessibleDescription: ""
 
     signal valueModified()
 
     implicitWidth: 160
     implicitHeight: MichiTheme.minimumInteractiveSize
 
+    Accessible.role: Accessible.Pane
+    Accessible.name: root.accessibleName
+    Accessible.description: root.accessibleDescription
 
     function _formatValue(v) {
         return Number(v).toFixed(root.decimals)
@@ -32,10 +35,12 @@ Item {
         spacing: 2
 
         MichiButton {
+            objectName: "michiDoubleSpinBoxDecrement"
             text: "-"
             implicitWidth: 32
             implicitHeight: parent.height
             variant: "ghost"
+            enabled: root.enabled && !root.loading
             onClicked: {
                 var next = Math.max(root.from, root.value - root.stepSize)
                 next = Math.round(next / root.stepSize) * root.stepSize
@@ -46,22 +51,24 @@ Item {
             }
         }
 
-        TextField {
-            focusPolicy: Qt.StrongFocus
+        QQC2.TextField {
             id: field
+            objectName: "michiDoubleSpinBoxField"
             Layout.fillWidth: true
             Layout.fillHeight: true
             text: root._formatValue(root.value)
             horizontalAlignment: Text.AlignHCenter
             font.pixelSize: MichiTheme.typography.bodySize
             color: MichiTheme.colors.textPrimary
+            enabled: root.enabled && !root.loading
+            activeFocusOnTab: enabled
             background: Rectangle {
                 color: MichiTheme.colors.surfaceInput
                 radius: MichiTheme.radius.sm
-                border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-                border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+                border.width: field.activeFocus ? MichiTheme.focusWidth : MichiTheme.borderWidth
+                border.color: field.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
             }
-            validator: DoubleValidator {
+            validator: QQC2.DoubleValidator {
                 bottom: root.from
                 top: root.to
                 decimals: root.decimals
@@ -78,13 +85,33 @@ Item {
                 }
                 text = root._formatValue(root.value)
             }
+            Keys.onUpPressed: function(event) {
+                var next = Math.min(root.to, root.value + root.stepSize)
+                next = Math.round(next / root.stepSize) * root.stepSize
+                if (next !== root.value) {
+                    root.value = next
+                    root.valueModified()
+                }
+                event.accepted = true
+            }
+            Keys.onDownPressed: function(event) {
+                var next = Math.max(root.from, root.value - root.stepSize)
+                next = Math.round(next / root.stepSize) * root.stepSize
+                if (next !== root.value) {
+                    root.value = next
+                    root.valueModified()
+                }
+                event.accepted = true
+            }
         }
 
         MichiButton {
+            objectName: "michiDoubleSpinBoxIncrement"
             text: "+"
             implicitWidth: 32
             implicitHeight: parent.height
             variant: "ghost"
+            enabled: root.enabled && !root.loading
             onClicked: {
                 var next = Math.min(root.to, root.value + root.stepSize)
                 next = Math.round(next / root.stepSize) * root.stepSize

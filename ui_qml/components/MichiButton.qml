@@ -5,6 +5,8 @@ import "../theme"
 QQC2.Button {
     id: root
 
+    objectName: "michiButton"
+
     property string variant: "primary"
     property string iconText: ""
     property string iconSource: ""
@@ -22,26 +24,36 @@ QQC2.Button {
     implicitHeight: Math.max(MichiTheme.minimumInteractiveSize,
                              contentRow.implicitHeight + topPadding + bottomPadding)
     focusPolicy: Qt.StrongFocus
+    activeFocusOnTab: enabled
 
     Accessible.role: Accessible.Button
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
-    font.pixelSize: MichiTheme.typography.bodySize
-    font.weight: MichiTheme.typography.weightMedium
+    font.pixelSize: MichiTheme.typography.buttonSize
+    font.weight: root.variant === "primary" || root.variant === "danger" || root.variant === "success"
+                 ? MichiTheme.typography.weightSemiBold
+                 : MichiTheme.typography.weightMedium
 
     background: Rectangle {
-        radius: MichiTheme.radiusMd
+        radius: MichiTheme.radius.md
         color: {
             if (!root.enabled) return MichiTheme.colors.surfaceDisabled
             if (root.down) return MichiTheme.colors.surfacePressed
             if (root.hovered) return MichiTheme.colors.surfaceHover
             if (root.variant === "primary") return MichiTheme.colors.accentBlue
             if (root.variant === "danger") return MichiTheme.colors.error
-            return MichiTheme.colors.badgeMutedBg
+            if (root.variant === "success") return MichiTheme.colors.success
+            if (root.variant === "ghost") return "transparent"
+            return MichiTheme.colors.surfaceCard
         }
         border.width: root.variant === "ghost" ? 0 : MichiTheme.borderWidth
-        border.color: root.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
+        border.color: {
+            if (!root.enabled) return "transparent"
+            if (root.activeFocus) return MichiTheme.colors.borderFocus
+            if (root.variant === "secondary") return MichiTheme.colors.borderCard
+            return "transparent"
+        }
     }
 
     contentItem: Item {
@@ -49,6 +61,7 @@ QQC2.Button {
             id: contentRow
             anchors.centerIn: parent
             spacing: root.spacing
+            opacity: root.loading ? 0 : 1
 
             Image {
                 width: MichiTheme.typography.cardTitleSize
@@ -57,26 +70,38 @@ QQC2.Button {
                 visible: root.iconSource !== ""
                 fillMode: Image.PreserveAspectFit
             }
+
             Text {
                 text: root.iconText
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 color: {
                     if (!root.enabled) return MichiTheme.colors.textMuted
-                    if (root.variant === "primary") return MichiTheme.colors.textOnAccent
+                    if (root.variant === "primary" || root.variant === "danger" || root.variant === "success")
+                        return MichiTheme.colors.textOnAccent
                     return MichiTheme.colors.textPrimary
                 }
                 visible: root.iconSource === "" && root.iconText !== ""
             }
+
             Text {
                 text: root.text
                 font: root.font
                 color: {
                     if (!root.enabled) return MichiTheme.colors.textMuted
-                    if (root.variant === "primary") return MichiTheme.colors.textOnAccent
+                    if (root.variant === "primary" || root.variant === "danger" || root.variant === "success")
+                        return MichiTheme.colors.textOnAccent
                     return MichiTheme.colors.textPrimary
                 }
                 visible: root.text !== ""
             }
+        }
+
+        QQC2.BusyIndicator {
+            anchors.centerIn: parent
+            width: MichiTheme.typography.cardTitleSize
+            height: width
+            running: root.loading
+            visible: root.loading
         }
     }
 
