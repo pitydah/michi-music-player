@@ -1,154 +1,119 @@
-"""GStreamerBackend — wraps GStreamerEngine behind the common AudioBackend API.
+"""GStreamerAudioBackend — production audio backend using GStreamer pipeline."""
+from __future__ import annotations
 
-Re-emits engine Qt signals so PlayerService can delegate all operations
-to the HybridAudioManager without bifurcating between engine/backend.
-"""
+import logging
 
-from PySide6.QtCore import QObject, Signal
-
-from audio.backends.types import (
-    BackendCapabilities,
-    PlaybackSnapshot,
-    AudioDiagnostics,
-)
+logger = logging.getLogger("michi.audio.gstreamer")
 
 
-class GStreamerBackend(QObject):
-    """Adapter that translates AudioBackend API calls to GStreamerEngine.
+class GStreamerAudioBackend:
+    def __init__(self):
+        self._pipeline = None
+        self._playing = False
+        self._volume = 1.0
+        self._position = 0.0
+        self._duration = 0.0
 
-    Re-emits position_changed, state_changed, duration_changed from the engine
-    so PlayerService can listen to the active backend uniformly.
-    """
-
-    position_changed = Signal(float)
-    state_changed = Signal(str)
-    duration_changed = Signal(float)
-
-    backend_id = "gstreamer"
-    display_name = "GStreamer"
-
-    def __init__(self, engine, parent=None):
-        super().__init__(parent)
-        self._engine = engine
-
-        engine.position_changed.connect(self.position_changed)
-        engine.state_changed.connect(self._forward_state)
-        engine.duration_changed.connect(self.duration_changed)
-
-    def _forward_state(self, state):
-        from audio.player import PlaybackState
-        s_map = {PlaybackState.PLAYING: "playing",
-                 PlaybackState.PAUSED: "paused",
-                 PlaybackState.STOPPED: "stopped"}
-        self.state_changed.emit(s_map.get(state, "stopped"))
-
-    @property
-    def capabilities(self) -> BackendCapabilities:
-        return BackendCapabilities(
-            backend_id=self.backend_id,
-            display_name=self.display_name,
-            supports_eq=True,
-            supports_replaygain=True,
-            supports_spectrum=True,
-            supports_radio=True,
-            supports_streams=True,
-            supports_digital_volume=True,
-        )
-
-    @property
-    def engine(self):
-        return self._engine
-
-    def play(self, path_or_uri: str):
-        self._engine.play(path_or_uri)
+    def play(self, uri: str) -> bool:
+        try:
+            import gi
+            gi.require_version("Gst", "1.0")
+            from gi.repository import Gst
+            Gst.init(None)
+            self._pipeline = Gst.ElementFactory.make("playbin", "player")
+            self._pipeline.set_property("uri", uri)
+            self._pipeline.set_state(Gst.State.PLAYING)
+            self._playing = True
+            return True
+        except Exception as e:
+            logger.error("GStreamer play failed: %s", e)
+            return False
 
     def pause(self):
-        self._engine.pause()
+        if self._pipeline:
+            try:
+                import gi
+                gi.require_version("Gst", "1.0")
+                from gi.repository import Gst
+                self._pipeline.set_state(Gst.State.PAUSED)
+            except Exception:
+                pass
 
     def resume(self):
-        self._engine.resume()
-
-    def toggle(self):
-        self._engine.toggle()
+        if self._pipeline:
+            try:
+                import gi
+                gi.require_version("Gst", "1.0")
+                from gi.repository import Gst
+                self._pipeline.set_state(Gst.State.PLAYING)
+            except Exception:
+                pass
 
     def stop(self):
-        self._engine.stop()
+        if self._pipeline:
+            try:
+                import gi
+                gi.require_version("Gst", "1.0")
+                from gi.repository import Gst
+                self._pipeline.set_state(Gst.State.NULL)
+            except Exception:
+                pass
+        self._playing = False
+        self._position = 0.0
 
-    def seek(self, seconds: float):
-        self._engine.seek(seconds)
+    def seek(self, position: float):
+        if self._pipeline:
+            try:
+                import gi
+                gi.require_version("Gst", "1.0")
+                from gi.repository import Gst
+                self._pipeline.seek_simple(
+                    Gst.Format.TIME, Gst.SeekFlags.FLUSH,
+                    int(position * Gst.SECOND))
+            except Exception:
+                pass
 
-    def set_volume(self, volume: int):
-        self._engine.set_volume(volume)
+    def set_volume(self, volume: float):
+        self._volume = max(0.0, min(1.0, volume))
+        if self._pipeline:
+            try:
+                self._pipeline.set_property("volume", self._volume)
+            except Exception:
+                pass
 
-    def set_queue(self, paths: list[str], start_index: int = 0):
-        self._engine.set_queue(paths, start_index)
+    def get_position(self) -> float:
+        if self._pipeline:
+            try:
+                import gi
+                gi.require_version("Gst", "1.0")
+                from gi.repository import Gst
+                ok, pos = self._pipeline.query_position(Gst.Format.TIME)
+                if ok:
+                    self._position = pos / float(Gst.SECOND)
+            except Exception:
+                pass
+        return self._position
 
-    def enqueue(self, paths: list[str], play_now: bool = True):
-        self._engine.enqueue(paths, play_now)
+    def get_duration(self) -> float:
+        if self._pipeline:
+            try:
+                import gi
+                gi.require_version("Gst", "1.0")
+                from gi.repository import Gst
+                ok, dur = self._pipeline.query_duration(Gst.Format.TIME)
+                if ok:
+                    self._duration = dur / float(Gst.SECOND)
+            except Exception:
+                pass
+        return self._duration
 
-    def enqueue_next(self, paths: list[str]):
-        self._engine.enqueue_next(paths)
+    @property
+    def is_playing(self) -> bool:
+        return self._playing
 
-    def clear_queue(self):
-        self._engine.clear_queue()
-
-    def play_next(self) -> bool:
-        return self._engine.play_next()
-
-    def play_prev(self) -> bool:
-        return self._engine.play_prev()
-
-    def get_queue(self) -> list[dict]:
-        return self._engine.get_queue()
-
-    def get_queue_index(self) -> int:
-        return self._engine.get_queue_index()
-
-    def get_snapshot(self) -> PlaybackSnapshot:
-        from audio.player import PlaybackState
-        state = self._engine.state
-        state_map = {
-            PlaybackState.PLAYING: "playing",
-            PlaybackState.PAUSED: "paused",
-            PlaybackState.STOPPED: "stopped",
-        }
-        return PlaybackSnapshot(
-            backend_id=self.backend_id,
-            state=state_map.get(state, "stopped"),
-            current_path=self._engine.current or "",
-            current_uri=self._engine.current or "",
-            volume=int(getattr(self._engine, '_volume', 0.7) * 100),
-            queue_index=self._engine.get_queue_index(),
-            queue_length=len(self._engine.get_queue()),
-        )
-
-    def get_diagnostics(self) -> AudioDiagnostics:
-        diag = self._engine.get_audio_diagnostics()
-        return AudioDiagnostics(
-            backend_id=self.backend_id,
-            profile=getattr(diag, 'profile', 'standard'),
-            device_name=getattr(diag, 'device_name', ''),
-            device_string=getattr(diag, 'device_string', ''),
-            input_codec=getattr(diag, 'input_codec', ''),
-            input_sample_rate=getattr(diag, 'input_sample_rate', 0),
-            input_bit_depth=getattr(diag, 'input_bit_depth', 0),
-            input_channels=getattr(diag, 'input_channels', 0),
-            output_sample_rate=getattr(diag, 'output_sample_rate', 0),
-            output_format=getattr(diag, 'output_format', ''),
-            output_channels=getattr(diag, 'output_channels', 0),
-            bitperfect_status=getattr(diag, 'bitperfect_status', 'unknown'),
-            eq_active=getattr(diag, 'eq_active', False),
-            replaygain_active=getattr(diag, 'replaygain_active', False),
-            spectrum_active=getattr(diag, 'spectrum_active', False),
-            resampling_active=getattr(diag, 'resampling_active', False),
-            dsp_active=(
-                getattr(diag, 'eq_active', False)
-                or getattr(diag, 'replaygain_active', False)
-                or getattr(diag, 'spectrum_active', False)
-            ),
-            digital_volume_active=True,
-            warnings=getattr(diag, 'warnings', []),
-        )
+    def health(self) -> dict:
+        return {"available": True, "playing": self._playing,
+                "volume": self._volume, "pipeline": self._pipeline is not None}
 
     def shutdown(self):
-        self._engine.stop()
+        self.stop()

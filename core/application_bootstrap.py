@@ -177,9 +177,11 @@ class ApplicationBootstrap:
         from core.queue_service import QueueService
         from core.track_action_service import TrackActionService
         from core.notification_service import NotificationService
+        from audio.backends.gstreamer_backend import GStreamerAudioBackend
         qs = QueueService()
         ts = TrackActionService()
-        ps = PlayerService(engine=None)
+        backend = GStreamerAudioBackend()
+        ps = PlayerService(engine=backend)
         ns = NotificationService()
         self.container.register("queue_service", qs)
         self.container.register("track_action_service", ts)

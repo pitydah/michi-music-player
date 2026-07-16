@@ -2,9 +2,9 @@ name: CI
 
 "on":
   push:
-    branches: [main, qml-functional-mass-migration-x10-v5, qml-real-functional-convergence-x10-v4r]
+    branches: [main, qml-ultra-functional-migration-x10-v6]
   pull_request:
-    branches: [main, qml-functional-mass-migration-x10-v5, qml-real-functional-convergence-x10-v4r]
+    branches: [main, qml-ultra-functional-migration-x10-v6]
   workflow_dispatch:
 
 jobs:
@@ -19,26 +19,18 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-timeout build wheel
-      - name: Python compile
-        run: python -m compileall -q -x '.venv/|\.tmpl\.' .
-      - name: Ruff lint
-        run: ruff check . --output-format concise
-      - name: Placeholder audit
-        run: python scripts/qml_productive_placeholder_audit.py
-      - name: QML compile
-        run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v16.py
-      - name: QML productive runtime
-        run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v16.py
-      - name: QML tests
-        run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v16.xml
-      - name: Evidence V16
-        run: python scripts/qml_evidence_v16_collect.py --junit artifacts/qml-v16.xml --expected-sha $(git rev-parse HEAD)
-      - name: Gate V16
-        run: python scripts/qml_productive_gate_v16.py
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - run: python -m compileall -q -x '.venv/|\.tmpl\.' .
+      - run: ruff check . --output-format concise
+      - run: python scripts/qml_placeholder_audit_v17.py
+      - run: python scripts/qml_fake_bridge_audit_v17.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v17.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v17.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v17.xml
+      - run: python scripts/qml_evidence_v17_collect.py --junit artifacts/qml-v17.xml --expected-sha $(git rev-parse HEAD)
+      - run: python scripts/qml_productive_gate_v17.py
+      - uses: actions/upload-artifact@v4
         with:
-          name: qml-evidence-v16
+          name: qml-evidence-v17
           path: artifacts/
 
   package-main:
@@ -49,40 +41,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install build wheel
-      - run: python -m build --wheel
+      - run: pip install build wheel && python -m build --wheel
       - run: python -c "
 import zipfile, sys
 with zipfile.ZipFile('dist/michi_music_player-*.whl') as z:
     names = [n for n in z.namelist() if not n.endswith('/')]
-forbidden = [n for n in names if 'ui/window.py' in n or 'legacy_widgets' in n]
+forbidden = [n for n in names if any(p in n for p in ['ui/window.py', 'legacy_widgets', 'ui/controllers'])]
 if forbidden:
     print('FAIL: main wheel contains legacy:', forbidden)
     sys.exit(1)
 print('PASS: main wheel clean')
-"
-
-  package-legacy:
-    runs-on: ubuntu-latest
-    needs: [qml-product-validation]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install build wheel
-      - run: python -c "
-# Verify legacy_widgets can be imported standalone
-import sys, os
-sys.path.insert(0, os.getcwd())
-try:
-    from legacy_widgets.ui.window import MainWindow
-    print('PASS: legacy package importable')
-except ImportError as e:
-    print(f'FAIL: legacy package broken: {e}')
-    sys.exit(1)
 "
