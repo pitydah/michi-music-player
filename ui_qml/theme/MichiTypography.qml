@@ -2,14 +2,18 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    readonly property int displaySize: 32
     readonly property int heroTitleSize: 28
     readonly property int pageTitleSize: 22
-    readonly property int sectionTitleSize: 18
-    readonly property int cardTitleSize: 15
-    readonly property int bodySize: 13
+    readonly property int sectionTitleSize: 20
+    readonly property int cardTitleSize: 16
+    readonly property int bodySize: 14
+    readonly property int secondarySize: 13
     readonly property int captionSize: 12
     readonly property int metaSize: 11
     readonly property int badgeSize: 10
+    readonly property int buttonSize: 14
+    readonly property int monospaceSize: 13
 
     readonly property int weightLight: 300
     readonly property int weightNormal: 400

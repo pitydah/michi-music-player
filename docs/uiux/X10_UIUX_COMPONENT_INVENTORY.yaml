@@ -1,0 +1,1858 @@
+# X10 UI/UX Component Inventory
+# Generado: 2026-07-16
+# Status: UNREVIEWED — valores booleanos determinados por static analysis (grep)
+
+components:
+  - path: ui_qml/components/AsyncStateView.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/AudioAccessibilityPanel.qml
+    category: panel
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/BalanceSlider.qml
+    category: input
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/Breadcrumbs.qml
+    category: navigation
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CancellationBanner.qml
+    category: banner
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CancellationState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CapabilityAwarePage.qml
+    category: page
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CapabilityGuard.qml
+    category: guard
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CommandPalette.qml
+    category: palette
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ConfirmActionDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ConfirmationDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ConnectionStatusBadge.qml
+    category: badge
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/content/MichiAlbumTile.qml
+    category: content
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/content/MichiArtistTile.qml
+    category: content
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/content/MichiListRow.qml
+    category: content
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: true
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/content/MichiMetadataLine.qml
+    category: content
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/content/MichiStatCard.qml
+    category: content
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/content/MichiTrackRow.qml
+    category: content
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: true
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ContextActionMenu.qml
+    category: menu
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CoverBridgeProxy.qml
+    category: bridge
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/CoverImage.qml
+    category: media
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/DegradedState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/DestructiveActionDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/dialogs/BaseDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/dialogs/ConfirmDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/dialogs/DestructiveDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/dialogs/InputDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/DiscoveryResultCard.qml
+    category: card
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/EmptyState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: true
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ErrorAnnouncement.qml
+    category: feedback
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ErrorState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ExpandedNowPlayingPanel.qml
+    category: panel
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/FilterChip.qml
+    category: chip
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/foundations/MichiFocusRing.qml
+    category: foundation
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/foundations/MichiReducedMotion.qml
+    category: foundation
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/foundations/MichiResponsive.qml
+    category: foundation
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: true
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/foundations/MichiVisualState.qml
+    category: foundation
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/GlassCard.qml
+    category: card
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/GlassPanel.qml
+    category: panel
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/HeroPanel.qml
+    category: panel
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/IconSlot.qml
+    category: icon
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/InlineError.qml
+    category: feedback
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/InlineValidation.qml
+    category: feedback
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/InspectorPanel.qml
+    category: panel
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/JobProgressCard.qml
+    category: card
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/JobStatusBanner.qml
+    category: banner
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/KeyboardShortcutHint.qml
+    category: hint
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/layout/MichiPageHeader.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/layout/MichiPage.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/layout/MichiResponsiveGrid.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/layout/MichiSection.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/layout/MichiSplitView.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/layout/MichiToolbar.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/LibraryPageStateGuard.qml
+    category: guard
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/LoadingState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/LyricsSearchDialog.qml
+    category: dialog
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MichiBadge.qml
+    category: badge
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MichiButton.qml
+    category: button
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MichiDoubleSpinBox.qml
+    category: input
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MichiIconButton.qml
+    category: button
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: true
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MichiProgressBar.qml
+    category: progress
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MichiSlider.qml
+    category: input
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: true
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/MonoToggle.qml
+    category: toggle
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NotificationAnnouncement.qml
+    category: notification
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NotificationBanner.qml
+    category: banner
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NotificationCenter.qml
+    category: notification
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NotificationItem.qml
+    category: notification
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NotificationProgressItem.qml
+    category: notification
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NotificationToast.qml
+    category: notification
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingBar.qml
+    category: bar
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingControls.qml
+    category: controls
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingCover.qml
+    category: media
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingInfo.qml
+    category: info
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingQueuePanel.qml
+    category: panel
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingSeekBar.qml
+    category: seekbar
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/NowPlayingVolume.qml
+    category: input
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/PageHeader.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/PageStateManager.qml
+    category: manager
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/PlaybackActionHandler.qml
+    category: handler
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/PlaybackStateAnnouncement.qml
+    category: feedback
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ProgressState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ReducedMotionToggle.qml
+    category: toggle
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ResponsivePageLayout.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ResponsiveToolbar.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SearchField.qml
+    category: input
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SectionHeader.qml
+    category: layout
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SelectionActionBar.qml
+    category: bar
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ServiceHealthBadge.qml
+    category: badge
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/settings/SettingsCategoryPage.qml
+    category: settings
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/settings/SettingsRow.qml
+    category: settings
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: true
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SidebarItem.qml
+    category: navigation
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SongContextMenu.qml
+    category: menu
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SortMenu.qml
+    category: menu
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: true
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: true
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/states/MichiDeferredPhysicalState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/states/MichiEmptyState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/states/MichiErrorState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/states/MichiLoadingState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/states/MichiSkeleton.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/states/MichiUnavailableState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: false
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: false
+    accessible_role: false
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/StatusBadge.qml
+    category: badge
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/SyncedLyricsView.qml
+    category: media
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/ToastHost.qml
+    category: notification
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
+
+  - path: ui_qml/components/UnavailableState.qml
+    category: state
+    consumers: []
+    visual_tokens: { colors: [], radius: [], spacing: [], typography: [] }
+    local_hardcoded_values: []
+    hover_state: false
+    pressed_state: false
+    focus_state: true
+    disabled_state: false
+    loading_state: false
+    error_state: false
+    accessible_name: true
+    accessible_role: true
+    keyboard_support: false
+    responsive_support: false
+    duplication: false
+    status: UNREVIEWED
