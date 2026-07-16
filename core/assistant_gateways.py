@@ -49,6 +49,11 @@ class AssistantGateways:
             "diagnostics": self.diagnostics,
             "navigation": self.navigation,
             "job": self.jobs,
+            "lyrics": self.lyrics,
+            "metadata": self.metadata,
+            "library_doctor": self.library_doctor,
+            "connections": self.connections,
+            "home_audio": self.home_audio,
         }
 
 
@@ -583,9 +588,19 @@ class ProductionJobGateway(JobGateway):
             return {"ok": False, "error": str(e)}
 
 
+class ProductionNavigationGateway(NavigationRequestGateway):
+    def __init__(self, nav_service: Any = None) -> None:
+        self._nav = nav_service
+
+    def request_navigation(self, target: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        if self._nav is None:
+            return {"ok": False, "code": "CAPABILITY_UNAVAILABLE", "message": "NavigationService not available"}
+        return self._nav.navigate(target, params)
+
+
 class UnavailableNavigationGateway(NavigationRequestGateway):
     def request_navigation(self, target: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        return {"ok": True, "status": "REQUEST_ACCEPTED", "route": target}
+        return {"ok": False, "code": "CAPABILITY_UNAVAILABLE", "message": "NavigationService not available"}
 
 
 class UnavailableRadioGateway:

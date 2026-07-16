@@ -26,14 +26,33 @@ from core.assistant_gateways import (
     ProductionAudioLabGateway, ProductionDeviceGateway,
     ProductionDiagnosticsGateway, ProductionJobGateway,
     ProductionLibraryGateway, ProductionMixGateway,
-    ProductionPlaybackGateway, ProductionSettingsGateway,
-    UnavailableNavigationGateway, UnavailableRadioGateway,
+    ProductionNavigationGateway, ProductionPlaybackGateway,
+    ProductionSettingsGateway, UnavailableRadioGateway,
     ProductionPlaylistServiceGateway, ProductionQueueServiceGateway,
 )
 from core.assistant_metadata_gateway import ProductionMetadataGateway
 from core.assistant_context_providers import register_all_context_providers
 
 logger = logging.getLogger(__name__)
+
+
+def _make_gateway(gateway_class_name: str, service: Any) -> Any:
+    if service is None:
+        return None
+    from michi_ai.v2.tools.tool_definitions import (
+        CONNECTIONS_GATEWAY, HOME_AUDIO_GATEWAY, LYRICS_GATEWAY,
+        LIBRARY_DOCTOR_GATEWAY,
+    )
+    mapping = {
+        "LyricsGateway": LYRICS_GATEWAY,
+        "LibraryDoctorGateway": LIBRARY_DOCTOR_GATEWAY,
+        "ConnectionsGateway": CONNECTIONS_GATEWAY,
+        "HomeAudioGateway": HOME_AUDIO_GATEWAY,
+    }
+    cls = mapping.get(gateway_class_name)
+    if cls is None:
+        return None
+    return cls(service)
 
 
 @dataclass(frozen=True)
@@ -61,7 +80,10 @@ def create_assistant_composition(
     sync_manager: Any = None,
     diagnostics_service: Any = None,
     mix_service: Any = None,
-    navigation_bridge: Any = None,
+    navigation_service: Any = None,
+    lyrics_service: Any = None,
+    connection_service: Any = None,
+    home_audio_service: Any = None,
 ) -> AssistantComposition:
     tool_registry = ToolRegistryV2()
     capability_resolver = CapabilityResolver()
@@ -83,13 +105,17 @@ def create_assistant_composition(
         diagnostics=ProductionDiagnosticsGateway(diagnostics_service),
         mix=ProductionMixGateway(mix_service),
         jobs=ProductionJobGateway(job_service),
-        navigation=UnavailableNavigationGateway(),
+        navigation=ProductionNavigationGateway(navigation_service),
         radio=UnavailableRadioGateway(),
         metadata=ProductionMetadataGateway(
             metadata_service=metadata_service,
             confirmation_service=confirmation_service,
             job_service=job_service,
         ) if metadata_service else None,
+        lyrics=_make_gateway("LyricsGateway", lyrics_service),
+        library_doctor=_make_gateway("LibraryDoctorGateway", diagnostics_service),
+        connections=_make_gateway("ConnectionsGateway", connection_service),
+        home_audio=_make_gateway("HomeAudioGateway", home_audio_service),
     )
 
     register_builtin_tools(tool_registry, gateways, capabilities=capability_resolver)

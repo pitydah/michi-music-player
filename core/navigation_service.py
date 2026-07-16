@@ -1,33 +1,32 @@
-"""NavigationService — route management, history, deep links."""
+"""NavigationService — UI-agnostic navigation request service.
+
+Emits navigation requests that a UI bridge (NavigationBridge) can consume.
+"""
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger("michi.navigation")
+from typing import Any
 
 
 class NavigationService:
     def __init__(self):
-        self._history: list[str] = []
-        self._max_history = 50
+        self._last_request: dict[str, Any] | None = None
 
-    def navigate(self, route: str) -> dict:
-        self._history.append(route)
-        if len(self._history) > self._max_history:
-            self._history.pop(0)
-        return {"ok": True, "route": route}
+    def navigate(self, route: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        self._last_request = {"route": route, "params": params or {}}
+        return {"ok": True, "code": "NAVIGATION_REQUESTED", "route": route}
 
-    def back(self) -> dict:
-        if len(self._history) > 1:
-            self._history.pop()
-            return {"ok": True, "route": self._history[-1] if self._history else "home"}
-        return {"ok": False, "error": "NO_HISTORY"}
+    def go_back(self) -> dict[str, Any]:
+        return {"ok": True, "code": "NAVIGATION_REQUESTED", "action": "back"}
 
-    def history(self) -> list[str]:
-        return list(self._history)
+    def go_forward(self) -> dict[str, Any]:
+        return {"ok": True, "code": "NAVIGATION_REQUESTED", "action": "forward"}
 
-    def health(self) -> dict:
-        return {"available": True}
+    def current_route(self) -> str | None:
+        if self._last_request:
+            return self._last_request["route"]
+        return None
 
-    def shutdown(self):
-        self._history.clear()
+    def pop_last_request(self) -> dict[str, Any] | None:
+        r = self._last_request
+        self._last_request = None
+        return r
