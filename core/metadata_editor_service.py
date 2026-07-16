@@ -21,7 +21,7 @@ class MetadataEditorService:
             for key, value in changes.items():
                 if key in ("title", "artist", "album", "genre", "year", "track_number"):
                     self._db.conn.execute(
-                        f"UPDATE tracks SET {key}=? WHERE filepath=?", (value, filepath))
+                        f"UPDATE media_items SET {key}=? WHERE filepath=?", (value, filepath))
             return {"ok": True, "applied": list(changes.keys())}
         except Exception as e:
             return {"ok": False, "error": str(e)}
@@ -31,7 +31,7 @@ class MetadataEditorService:
             return {"ok": False, "error": "NO_DB"}
         try:
             self._db.conn.execute(
-                f"UPDATE tracks SET {field}=? WHERE filepath=?", (previous_value, filepath))
+                f"UPDATE media_items SET {field}=? WHERE filepath=?", (previous_value, filepath))
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
