@@ -19,8 +19,6 @@ Rectangle {
     property int variant: InlineValidation.ERROR
     property string message: ""
     property bool dismissible: false
-    property string objectName: "inlineValidation"
-
     signal dismissed()
 
     implicitHeight: visible ? layout.implicitHeight + MichiTheme.spacing.sm * 2 : 0

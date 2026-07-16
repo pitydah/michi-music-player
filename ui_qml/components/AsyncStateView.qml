@@ -39,12 +39,11 @@ Item {
     signal retryRequested()
 
 
-        if (state === AsyncStateView.LOADING) return "Cargando"
-        if (state === AsyncStateView.ERROR) return "Error" + (title ? ": " + title : "")
-        if (state === AsyncStateView.EMPTY) return "Sin contenido" + (title ? ": " + title : "")
-        if (state === AsyncStateView.UNAVAILABLE) return "No disponible"
-        if (state === AsyncStateView.DEGRADED) return "Funcionamiento degradado"
-        return ""
+return state === AsyncStateView.LOADING ? "Cargando" :
+               state === AsyncStateView.ERROR ? "Error" + (title ? ": " + title : "") :
+               state === AsyncStateView.EMPTY ? "Sin contenido" + (title ? ": " + title : "") :
+               state === AsyncStateView.UNAVAILABLE ? "No disponible" :
+               state === AsyncStateView.DEGRADED ? "Funcionamiento degradado" : ""
     }
     Accessible.description: message + (details ? ". " + details : "")
 

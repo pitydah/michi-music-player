@@ -211,5 +211,4 @@ Rectangle {
     Keys.onReturnPressed: root.activatePrimaryAction()
     Keys.onEnterPressed: root.activatePrimaryAction()
     Keys.onEscapePressed: root.dismissItem()
-    focus: true
 }

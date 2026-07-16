@@ -22,12 +22,10 @@ Rectangle {
 
     implicitHeight: MichiTheme.minimumInteractiveSize
     radius: MichiTheme.radiusPill
-    color: root.activeFocus
-        ? MichiTheme.colors.focusHalo
+color: root.activeFocus ? MichiTheme.colors.focusHalo
         : (root.hovered ? MichiTheme.colors.surfacePressed : MichiTheme.colors.controlTrack)
-    opacity: root.enabled ? 1.0 : MichiTheme.opacityDisabled
-    focus: root.enabled
-    activeFocusOnTab: root.enabled
+    opacity: 1.0
+    activeFocusOnTab: true
 
     Accessible.description: root.accessibleDescription
 
