@@ -167,14 +167,14 @@ class ApplicationBootstrap:
         cf = self.container.get("connection_factory")
         from core.library.library_query_service import LibraryQueryService
         from core.library_sources_service import LibrarySourcesService
-        from core.library_mutation_service import LibraryMutationService
+        from core.metadata_editor_service import MetadataEditorService
         from core.library_service import LibraryService
         db = self.container.get("database")
         wm = self.container.get("worker_manager")
         lqs = LibraryQueryService(cf)
         self.container.register("library_query_service", lqs)
         self.container.register("library_sources_service", LibrarySourcesService(cf))
-        self.container.register("library_mutation_service", LibraryMutationService(cf))
+        self.container.register("library_mutation_service", MetadataEditorService(db=db))
         self.container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
 
     def _build_playback_services(self):
@@ -315,15 +315,6 @@ class ApplicationBootstrap:
             db = self.container.get("database")
             ps = self.container.get("playback_service")
             self.container.register("artist_service", ArtistService(db=db, playback_service=ps),
-                                    priority=ServicePriority.OPTIONAL)
-        except Exception:
-            pass
-
-    def _build_library_data_service(self):
-        try:
-            from core.library_data_service import LibraryDataService
-            db = self.container.get("database")
-            self.container.register("library_data_service", LibraryDataService(db=db),
                                     priority=ServicePriority.OPTIONAL)
         except Exception:
             pass
@@ -514,7 +505,6 @@ class ApplicationBootstrap:
         self._build_track_service()
         self._build_genres_service()
         self._build_folder_service()
-        self._build_library_data_service()
         self._build_output_profile_service()
         self._build_equalizer_service()
         self._build_micro_server_service()

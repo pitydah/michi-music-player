@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
+
 """AudioLabController — lazy-init + navigation for Audio Lab pages and sub-pages."""
 
-from __future__ import annotations
 
 import os
 import logging

@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 import pytest
 
 try:
-    from legacy_widgets.ui.controllers.legacy_controllers.artist_repository import ArtistRepository
+    from legacy_widgets.ui.controllers.artist_repository import ArtistRepository  # legacy
 except ImportError:
-    from legacy_widgets.ui.controllers.legacy_controllers.artist_repository import ArtistRepository  # type: ignore
+    from core.library.repositories.artist_repository import ArtistRepository
 
 
 class MockAppContext:

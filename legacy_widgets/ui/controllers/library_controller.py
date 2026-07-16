@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
+
 """LibraryController — data loading, filtering, and tab refresh orchestration."""
 
-from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING

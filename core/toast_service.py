@@ -1,26 +1,27 @@
-"""Toast service — unified toast notification API for Michi Music Player."""
-from legacy_widgets.ui.toast_notification import ToastNotification
+"""Toast service — unified toast notification API for Michi Music Player.
+QML runtime delegates to NotificationBridge; QtWidgets runtime uses legacy toast.
+"""
+import logging
+
+logger = logging.getLogger("michi.toast_service")
 
 
 class ToastService:
-    """Wraps ToastNotification classmethods into a simple service interface."""
-
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, notification_bridge=None):
         self._parent = parent
+        self._notif = notification_bridge
 
     def set_parent(self, parent):
         self._parent = parent
 
+    def set_notification_bridge(self, bridge):
+        self._notif = bridge
+
     def show(self, text: str, level: str = "info", duration: int = None):
-        """Show a toast notification. Level: info, success, warning, error."""
-        if level == "success":
-            return ToastNotification.success(text, self._parent, duration or 3000)
-        elif level == "warning":
-            return ToastNotification.warning(text, self._parent, duration or 5000)
-        elif level == "error":
-            return ToastNotification.error(text, self._parent, duration or 6000)
-        else:
-            return ToastNotification.info(text, self._parent, duration or 4000)
+        if self._notif and hasattr(self._notif, 'showMessage'):
+            return self._notif.showMessage(text, level)
+        logger.debug("Toast (no bridge): [%s] %s", level, text)
+        return {"ok": True, "level": level, "text": text}
 
     def info(self, text: str):
         return self.show(text, "info")

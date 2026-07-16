@@ -1,3 +1,5 @@
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
+
 """Artist controller — artist grid and detail navigation logic."""
 import os
 import random

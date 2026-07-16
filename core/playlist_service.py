@@ -259,7 +259,7 @@ class PlaylistService:
         if not filepath or not Path(filepath).is_file():
             return self._error("FILE_NOT_FOUND")
         try:
-            from legacy_widgets.ui.playlist_io import parse_playlist_entries
+            from core.playlist_io import parse_playlist_entries
             entries = parse_playlist_entries(filepath)
             valid = sum(1 for e in entries if Path(e.filepath if hasattr(e, 'filepath') else str(e)).is_file())
             return self._ok(
@@ -281,7 +281,7 @@ class PlaylistService:
             entries = []
             p = Path(filepath)
             if p.is_file():
-                from legacy_widgets.ui.playlist_io import parse_playlist_entries
+                from core.playlist_io import parse_playlist_entries
                 entries = parse_playlist_entries(filepath)
             playlist_name = name or p.stem
             pid = self._db.create_playlist(playlist_name)
@@ -304,7 +304,7 @@ class PlaylistService:
         if not self._can():
             return self._error("NO_DB")
         try:
-            from legacy_widgets.ui.playlist_io import export_m3u
+            from core.playlist_io import export_m3u
             items = self._get_items_internal(pid)
             if not items:
                 return self._error("NO_TRACKS")

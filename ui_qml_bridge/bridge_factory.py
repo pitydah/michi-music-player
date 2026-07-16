@@ -127,7 +127,7 @@ class BridgeFactory(QObject):
                 job_bridge=self._bridges.get("job_bridge"),
                 track_action_service=self._get("track_action_service"),
                 library_sources_service=self._get("library_sources_service"),
-                library_service=self._get("library_service") or self._get("library_data_service"),
+                library_service=self._get("library_service"),
                 songs_service=self._get("songs_service"),
                 track_service=self._get("track_service"),
                 genres_service=self._get("genres_service"),

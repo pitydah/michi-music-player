@@ -1,10 +1,13 @@
+from __future__ import annotations
+
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
+
 """HomeController — manages the Home dashboard page refresh lifecycle.
 
 Uses HomeDashboardService to build a typed snapshot and delegates
 visual rendering to HomePage.
 """
 
-from __future__ import annotations
 
 import logging
 import os

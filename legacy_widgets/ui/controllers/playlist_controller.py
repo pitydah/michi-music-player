@@ -1,3 +1,5 @@
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
+
 """Playlist controller — Hub actions, import/export, smart playlists."""
 import os
 
