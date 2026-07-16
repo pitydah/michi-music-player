@@ -1,0 +1,47 @@
+# QML Modules V16 — Evidence collection with dimension tracking
+version: v16
+modules:
+  home: {title: "Inicio", primary_route: home, status: functional}
+  library: {title: "Biblioteca", primary_route: library, status: functional}
+  queue: {title: "Cola", primary_route: queue, status: functional}
+  playlists: {title: "Playlists", primary_route: playlists, status: functional}
+  history: {title: "Historial", primary_route: history, status: functional}
+  mix: {title: "Mix", primary_route: mix, status: functional}
+  search: {title: "Busqueda", primary_route: search, status: functional}
+  radio: {title: "Radio", primary_route: radio, status: functional}
+  lyrics: {title: "Letras", primary_route: lyrics, status: functional}
+  audio_lab: {title: "Audio Lab", primary_route: audio_lab, status: functional}
+  equalizer: {title: "Ecualizador", primary_route: equalizer, status: functional}
+  outputs: {title: "Salidas", primary_route: outputs, status: functional}
+  devices: {title: "Dispositivos", primary_route: devices.list, status: functional}
+  connections: {title: "Conexiones", primary_route: connections, status: functional}
+  home_audio: {title: "Home Audio", primary_route: home_audio, status: functional}
+  metadata: {title: "Metadatos", primary_route: metadata.inspector, status: functional}
+  tagging: {title: "Smart Tagging", primary_route: tagging, status: functional}
+  doctor: {title: "Library Doctor", primary_route: library_doctor, status: functional}
+  diagnostics: {title: "Diagnostico", primary_route: diagnostics, status: functional}
+  assistant: {title: "Michi AI", primary_route: assistant, status: functional}
+  disc_lab: {title: "Disc Lab", primary_route: disc_lab, status: experimental}
+  settings: {title: "Ajustes", primary_route: settings, status: functional}
+  playback: {title: "Reproduccion", primary_route: playback, status: functional}
+  nowplaying: {title: "Now Playing", primary_route: nowplaying, status: functional}
+
+dimensions:
+  - qml_compile
+  - qml_instance
+  - productive_context
+  - service_wiring
+  - primary_interaction
+  - secondary_interactions
+  - state_model
+  - error_model
+  - job_integration
+  - cancellation
+  - confirmation
+  - capability
+  - navigation
+  - accessibility
+  - vertical_workflow
+  - negative_paths
+  - runtime_cleanup
+  - widget_independence
