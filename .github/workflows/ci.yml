@@ -2,9 +2,9 @@ name: CI
 
 "on":
   push:
-    branches: [main, qml-ultra-functional-migration-x10-v6]
+    branches: [main, qml-total-functional-convergence-x10-v7]
   pull_request:
-    branches: [main, qml-ultra-functional-migration-x10-v6]
+    branches: [main, qml-total-functional-convergence-x10-v7]
   workflow_dispatch:
 
 jobs:
@@ -13,25 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+        with: {python-version: "3.11"}
       - run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
           pip install pytest-timeout build wheel
       - run: python -m compileall -q -x '.venv/|\.tmpl\.' .
       - run: ruff check . --output-format concise
-      - run: python scripts/qml_placeholder_audit_v17.py
-      - run: python scripts/qml_fake_bridge_audit_v17.py
-      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v17.py
-      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v17.py
-      - run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v17.xml
-      - run: python scripts/qml_evidence_v17_collect.py --junit artifacts/qml-v17.xml --expected-sha $(git rev-parse HEAD)
-      - run: python scripts/qml_productive_gate_v17.py
+      - run: python scripts/qml_placeholder_audit_v18.py
+      - run: python scripts/qml_fake_bridge_audit_v18.py
+      - run: python scripts/qml_widget_dependency_audit_v18.py
+      - run: python scripts/qml_vertical_function_audit_v18.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_compile_all_v18.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 120 python scripts/qml_productive_runtime_v18.py
+      - run: QT_QPA_PLATFORM=offscreen timeout 300 python -m pytest tests/qml -q --timeout=300 -m "not isolation" --junitxml=artifacts/qml-v18.xml
+      - run: python scripts/qml_evidence_v18_collect.py --junit artifacts/qml-v18.xml --expected-sha $(git rev-parse HEAD)
+      - run: python scripts/qml_productive_gate_v18.py
       - uses: actions/upload-artifact@v4
-        with:
-          name: qml-evidence-v17
-          path: artifacts/
+        with: {name: qml-evidence-v18, path: artifacts/}
 
   package-main:
     runs-on: ubuntu-latest
@@ -39,14 +38,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+        with: {python-version: "3.11"}
       - run: pip install build wheel && python -m build --wheel
       - run: python -c "
 import zipfile, sys
 with zipfile.ZipFile('dist/michi_music_player-*.whl') as z:
     names = [n for n in z.namelist() if not n.endswith('/')]
-forbidden = [n for n in names if any(p in n for p in ['ui/window.py', 'legacy_widgets', 'ui/controllers'])]
+forbidden = [n for n in names if any(p in n for p in ['ui/', 'legacy_widgets/'])]
 if forbidden:
     print('FAIL: main wheel contains legacy:', forbidden)
     sys.exit(1)
