@@ -7,15 +7,15 @@ Safe to run in QT_QPA_PLATFORM=offscreen.
 from __future__ import annotations
 
 import os
+import time as _time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
-from PySide6.QtTest import QTest
 
 from core.application_bootstrap import ApplicationBootstrap
 
@@ -39,6 +39,20 @@ def find_qml_items(root: QQuickItem, object_name: str) -> list[QQuickItem]:
     return results
 
 
+def wait_for_condition(condition_fn: Callable[[], bool], timeout_ms: int = 1000) -> bool:
+    from PySide6.QtTest import QTest
+    deadline = _time.monotonic() + timeout_ms / 1000.0
+    while _time.monotonic() < deadline:
+        if condition_fn():
+            return True
+        QTest.qWait(10)
+    return False
+
+
+def wait_for_property(item: QQuickItem, property_name: str, expected_value: Any, timeout_ms: int = 1000) -> bool:
+    return wait_for_condition(lambda: item.property(property_name) == expected_value, timeout_ms)
+
+
 def qml_item_type_names(item: QQuickItem, depth: int = 0) -> list[str]:
     lines: list[str] = []
     indent = "  " * depth
@@ -50,18 +64,21 @@ def qml_item_type_names(item: QQuickItem, depth: int = 0) -> list[str]:
 
 def qtest_click_item(item: QQuickItem, window: QQuickWindow | None = None,
                      button: Qt.MouseButton = Qt.LeftButton) -> None:
+    from PySide6.QtTest import QTest
     center = item.mapToScene(item.width / 2, item.height / 2)
     QTest.mouseClick(window or item, button, Qt.NoModifier, center)
     QTest.qWait(50)
 
 
 def qtest_key_click(item: QQuickItem, key: Qt.Key) -> None:
+    from PySide6.QtTest import QTest
     item.forceActiveFocus()
     QTest.keyClick(item, key)
     QTest.qWait(50)
 
 
 def qtest_type_text(item: QQuickItem, text: str) -> None:
+    from PySide6.QtTest import QTest
     item.forceActiveFocus()
     QTest.keyClicks(item, text)
     QTest.qWait(50)
@@ -130,8 +147,6 @@ def engine(bootstrap):
 def root_window(engine) -> QQuickWindow:
     root = engine.rootObjects()[0]
     assert isinstance(root, QQuickWindow), f"Root object is {type(root)}, expected QQuickWindow"
-    if "offscreen" not in _QT_QPA_ORIGINAL:
-        root.show()
     return root
 
 

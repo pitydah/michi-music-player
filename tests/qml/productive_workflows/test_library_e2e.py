@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 
 
@@ -101,10 +99,12 @@ class TestLibraryE2E:
         assert isinstance(play_result, dict)
 
     def test_qtest_navigate_search_keyboard(self, nav, library_bridge, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
         from .conftest import find_qml_item
         nav.navigate("library")
         assert nav.currentRoute == "library"
-        initial_state = library_bridge.state if hasattr(library_bridge, 'state') else ""
+        library_bridge.clearSearch()
         search_field = find_qml_item(root_window, "libraryNavigationBar")
         assert search_field is not None, "libraryNavigationBar not found"
         search_field.forceActiveFocus()

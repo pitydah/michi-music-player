@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 pytestmark = [
     pytest.mark.qml_module("mix"),
@@ -84,6 +82,8 @@ class TestMixAiSettingsE2E:
         )
 
     def test_qtest_navigate_settings(self, nav, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
         from .conftest import find_qml_item
         nav.navigate("settings")
         assert nav.currentRoute == "settings"
@@ -92,3 +92,4 @@ class TestMixAiSettingsE2E:
         header.forceActiveFocus()
         QTest.keyClick(header, Qt.Key_Down)
         QTest.qWait(50)
+        assert nav.currentRoute == "settings"

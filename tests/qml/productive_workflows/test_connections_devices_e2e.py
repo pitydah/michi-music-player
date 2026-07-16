@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 pytestmark = [
     pytest.mark.qml_module("connections"),
@@ -62,6 +60,8 @@ class TestConnectionsDevicesE2E:
         )
 
     def test_qtest_navigate_connections(self, nav, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
         from .conftest import find_qml_item
         nav.navigate("connections")
         assert nav.currentRoute == "connections"
@@ -70,3 +70,4 @@ class TestConnectionsDevicesE2E:
         page.forceActiveFocus()
         QTest.keyClick(page, Qt.Key_Down)
         QTest.qWait(50)
+        assert nav.currentRoute == "connections"

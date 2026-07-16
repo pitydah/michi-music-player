@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 
 pytestmark = [
     pytest.mark.qml_module("playback"),
@@ -86,13 +84,35 @@ class TestPlaybackQueueE2E:
         playback_bridge.seek(10)
         playback_bridge.setVolume(50)
 
+    def test_qtest_enqueue_and_play(self, nav, playback_bridge, root_window):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        result = playback_bridge.enqueueSong("1")
+        assert result.get("ok") is not False
+        result2 = playback_bridge.playQueueItem(0)
+        assert isinstance(result2, dict)
+
+    def test_qtest_volume_change(self, nav, playback_bridge, root_window):
+        from PySide6.QtTest import QTest
+        from .conftest import find_qml_item
+        nav.navigate("playback")
+        assert nav.currentRoute == "playback"
+        volume = find_qml_item(root_window, "nowPlayingVolume")
+        if volume is not None:
+            playback_bridge.setVolume(75)
+            QTest.qWait(50)
+
     def test_qtest_navigate_playback(self, nav, playback_bridge, root_window):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
         from .conftest import find_qml_item
         nav.navigate("playback")
         assert nav.currentRoute == "playback"
         now_playing = find_qml_item(root_window, "nowPlayingControls")
         assert now_playing is not None, "nowPlayingControls not found"
-        initial = playback_bridge.togglePlay() if hasattr(playback_bridge, 'togglePlay') else {}
+        result_before = playback_bridge.togglePlay()
         now_playing.forceActiveFocus()
         QTest.keyClick(now_playing, Qt.Key_Space)
         QTest.qWait(50)
+        result_after = playback_bridge.togglePlay()
+        assert result_before != result_after, "togglePlay should change state after Space key"
