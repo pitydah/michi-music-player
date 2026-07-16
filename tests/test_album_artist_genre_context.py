@@ -54,7 +54,7 @@ class TestAlbumControllerContext:
         ctx_svc = MagicMock()
         win = _make_win(ctx_svc)
 
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         ctrl = AlbumController(win)
         ctrl.show_album_detail_from_cover_item(DummyCoverItem())
 
@@ -77,7 +77,7 @@ class TestArtistControllerContext:
         win = _make_win(ctx_svc)
         win._artists_stack = MagicMock()
 
-        from ui.controllers.artist_controller import ArtistController
+        from legacy_widgets.ui.controllers.legacy_controllers.artist_controller import ArtistController
         ctrl = ArtistController(win)
         ctrl._ctx.artist_repo.get_group = MagicMock(return_value=DummyArtistGroup())
         ctrl._ctx.artist_detail = MagicMock()
@@ -102,7 +102,7 @@ class TestGenreControllerContext:
         win = _make_win(ctx_svc)
         win._genres_stack = MagicMock()
 
-        from ui.controllers.genre_controller import GenreController
+        from legacy_widgets.ui.controllers.legacy_controllers.genre_controller import GenreController
         ctrl = GenreController(win)
         ctrl._ctx.genre_repo.get_group = MagicMock(return_value=DummyGenre())
         ctrl._detail = MagicMock()

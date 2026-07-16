@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.navigation_controller import (
+from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import (
     NavigationController, NavigationHistory, resolve_section_config,
     SECTION_CONFIG, NAV_ROUTES, INITIAL_ROUTE,
     resolve_sidebar_active_key,

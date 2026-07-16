@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.smart_mix_controller import SmartMixController
+from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
 
 
 @pytest.fixture

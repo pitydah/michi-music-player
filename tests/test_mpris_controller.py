@@ -1,5 +1,5 @@
 """Tests for MPRISController."""
-from ui.controllers.mpris_controller import MPRISController
+from legacy_widgets.ui.controllers.legacy_controllers.mpris_controller import MPRISController
 
 
 class TestMPRISController:

@@ -1,5 +1,5 @@
 """Tests for PlaylistController."""
-from ui.controllers.playlist_controller import PlaylistController
+from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
 
 
 class TestPlaylistController:

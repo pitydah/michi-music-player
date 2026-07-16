@@ -1,8 +1,8 @@
 """Tests for MetadataResolver — local scoring, merging, and lookups."""
 import pytest
 
-from ui.audio_lab.models import DiscMetadata, TrackMetadata
-from ui.audio_lab.services.metadata_resolver import MetadataResolver
+from legacy_widgets.ui.audio_lab.models import DiscMetadata, TrackMetadata
+from legacy_widgets.ui.audio_lab.services.metadata_resolver import MetadataResolver
 
 
 class TestMetadataResolver:

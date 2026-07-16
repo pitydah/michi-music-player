@@ -38,7 +38,7 @@ def _make_track(filepath="/music/s.flac", title="Test", artist="A",
 
 class TestAlbumControllerActions:
     def test_play_album_llama_reproduccion(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -47,14 +47,14 @@ class TestAlbumControllerActions:
             assert mock_play.called
 
     def test_play_album_empty(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         ctrl.play_album([])
         w._ctx.toast.show.assert_called()
 
     def test_queue_album_encola(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -62,14 +62,14 @@ class TestAlbumControllerActions:
         assert w._playback.enqueue.called
 
     def test_queue_album_empty(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         ctrl.queue_album([])
         w._ctx.toast.show.assert_called()
 
     def test_create_playlist_from_tracks(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -79,7 +79,7 @@ class TestAlbumControllerActions:
             w._db.create_playlist.assert_called_with("My Playlist")
 
     def test_edit_album_metadata_delega(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -87,14 +87,14 @@ class TestAlbumControllerActions:
         w._metadata_editor.load_files.assert_called_once()
 
     def test_edit_album_metadata_empty(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         ctrl.edit_album_metadata([])
         w._ctx.toast.show.assert_called()
 
     def test_search_or_change_cover_sin_archivo(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -105,7 +105,7 @@ class TestAlbumControllerActions:
             w._ctx.toast.show.assert_called()
 
     def test_analyze_album_quality(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -114,7 +114,7 @@ class TestAlbumControllerActions:
         w._workers.run_task.assert_called_once()
 
     def test_send_album_to_server_sin_config(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -122,7 +122,7 @@ class TestAlbumControllerActions:
         w._ctx.toast.show.assert_called()
 
     def test_review_album_duplicates_no_dup(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -130,7 +130,7 @@ class TestAlbumControllerActions:
         w._ctx.toast.show.assert_called()
 
     def test_review_album_duplicates_empty(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         ctrl.review_album_duplicates([])
@@ -138,7 +138,7 @@ class TestAlbumControllerActions:
             "No hay canciones para revisar duplicados", "error")
 
     def test_review_album_duplicates_uses_repo(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         tracks = [_make_track()]
@@ -147,7 +147,7 @@ class TestAlbumControllerActions:
             assert mock_info.called or w._ctx.toast.show.called
 
     def test_open_album_folder(self, tmp_path):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         audio_file = tmp_path / "s.flac"

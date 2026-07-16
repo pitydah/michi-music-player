@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from ui.assistant.context_suggestion_bar import ContextSuggestionBar
+from legacy_widgets.ui.assistant.context_suggestion_bar import ContextSuggestionBar
 
 
 def test_context_suggestion_bar_creation(qtbot):

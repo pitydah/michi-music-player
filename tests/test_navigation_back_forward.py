@@ -9,7 +9,7 @@ class TestNavigationBackForward:
 
     def test_shortcut_controller_has_alt_left_right(self):
         """Alt+Left and Alt+Right should be registered in ShortcutController."""
-        from ui.controllers.shortcut_controller import ShortcutController
+        from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import ShortcutController
         import inspect
         src = inspect.getsource(ShortcutController.setup)
         assert "Alt+Left" in src

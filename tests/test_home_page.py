@@ -11,7 +11,7 @@ from core.home.home_status import (
     LibraryHomeStatus,
     PlaybackHomeStatus,
 )
-from ui.hubs.home_page import HomePage
+from legacy_widgets.ui.hubs.home_page import HomePage
 
 
 @pytest.fixture

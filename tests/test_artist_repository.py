@@ -1,7 +1,7 @@
 """Tests for ArtistRepository — artist groups state and lookups."""
 import os
 from unittest.mock import MagicMock
-from ui.controllers.artist_repository import ArtistRepository
+from legacy_widgets.ui.controllers.legacy_controllers.artist_repository import ArtistRepository
 
 
 def make_mock_item(filepath, title="Song", artist="Artist", album="Album", **kwargs):

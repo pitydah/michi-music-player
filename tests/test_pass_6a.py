@@ -111,7 +111,7 @@ class TestFavoritesIdentity:
 
     def test_resolve_track_ids_by_filepath(self):
         from ui.window import MainWindow
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         from library.media_item import MediaItem
 
         mw = MainWindow.__new__(MainWindow)
@@ -131,7 +131,7 @@ class TestFavoritesIdentity:
 
     def test_resolve_track_ids_by_id(self):
         from ui.window import MainWindow
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         from library.media_item import MediaItem
 
         mw = MainWindow.__new__(MainWindow)

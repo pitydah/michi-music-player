@@ -11,7 +11,7 @@ import pytest
 from pytestqt.qt_compat import qt_api
 
 from library.folder_models import FolderHealth
-from ui.folder_browser import FolderBrowserWidget
+from legacy_widgets.ui.folder_browser import FolderBrowserWidget
 
 
 @pytest.fixture

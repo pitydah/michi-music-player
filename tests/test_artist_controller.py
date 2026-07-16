@@ -1,5 +1,5 @@
 """Tests for ArtistController."""
-from ui.controllers.artist_controller import ArtistController
+from legacy_widgets.ui.controllers.legacy_controllers.artist_controller import ArtistController
 
 
 class TestArtistController:

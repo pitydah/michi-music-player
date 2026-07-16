@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.home_audio_handlers import HomeAudioHandlers
+from legacy_widgets.ui.controllers.legacy_controllers.home_audio_handlers import HomeAudioHandlers
 
 
 @pytest.fixture

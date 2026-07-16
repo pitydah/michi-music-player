@@ -4,7 +4,7 @@ import tempfile
 
 import pytest
 
-from ui.audio_lab.services.tag_writer import TagWriter
+from legacy_widgets.ui.audio_lab.services.tag_writer import TagWriter
 
 
 def _make_flac(path: str):

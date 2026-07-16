@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.smart_mix_preview import SmartMixPreview, MixPreview, _get_fav_filepaths, _get_recent_filepaths
+from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_preview import SmartMixPreview, MixPreview, _get_fav_filepaths, _get_recent_filepaths
 
 
 @pytest.fixture

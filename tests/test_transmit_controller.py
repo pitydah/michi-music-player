@@ -1,5 +1,5 @@
 """Tests for TransmitController."""
-from ui.controllers.transmit_controller import TransmitController
+from legacy_widgets.ui.controllers.legacy_controllers.transmit_controller import TransmitController
 
 
 class TestTransmitController:

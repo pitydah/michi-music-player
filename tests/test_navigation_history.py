@@ -141,27 +141,27 @@ class TestNavigationShortcuts:
 
     def test_alt_left_in_source(self):
         import inspect
-        from ui.controllers.shortcut_controller import ShortcutController
+        from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import ShortcutController
         source = inspect.getsource(ShortcutController.setup)
         assert "Alt+Left" in source
         assert "navigate_back" in source
 
     def test_alt_right_in_source(self):
         import inspect
-        from ui.controllers.shortcut_controller import ShortcutController
+        from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import ShortcutController
         source = inspect.getsource(ShortcutController.setup)
         assert "Alt+Right" in source
         assert "navigate_forward" in source
 
     def test_guard_for_missing_nav_ctrl(self):
         import inspect
-        from ui.controllers.shortcut_controller import ShortcutController
+        from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import ShortcutController
         source = inspect.getsource(ShortcutController.setup)
         assert "nav_ctrl" in source or "_nav_ctrl" in source
 
     def test_focus_guard(self):
         import inspect
-        from ui.controllers.shortcut_controller import ShortcutController
+        from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import ShortcutController
         source = inspect.getsource(ShortcutController.setup)
         assert "_focus_is_editable" in source
 

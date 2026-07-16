@@ -30,7 +30,7 @@ class TestDuplicatesLibraryScope:
         return w
 
     def test_two_copies_detected(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = self._make_win()
         # Library has two copies of Same Album by Same Artist
         w._all_items = [
@@ -46,7 +46,7 @@ class TestDuplicatesLibraryScope:
             assert mock_info.called or w._ctx.toast.show.called
 
     def test_single_copy_no_duplicates(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = self._make_win()
         w._all_items = [
             _make(album="Unique", artist="X", filepath="/u/1.flac"),
@@ -57,7 +57,7 @@ class TestDuplicatesLibraryScope:
         w._ctx.toast.show.assert_called()
 
     def test_same_title_different_artist_no_dup(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = self._make_win()
         w._all_items = [
             _make(album="Title", artist="A"),
@@ -69,7 +69,7 @@ class TestDuplicatesLibraryScope:
         w._ctx.toast.show.assert_called()
 
     def test_no_crash_empty_library(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = self._make_win()
         w._all_items = []
         ctrl = AlbumController(w)

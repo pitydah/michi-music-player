@@ -77,7 +77,7 @@ def _make_window_with_repo(groups_dict=None):
 class TestDetailIdentityResolution:
 
     def test_detail_uses_album_group_first(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         tracks = [_make_track(), _make_track()]
         group = _fake_group(tracks=tracks)
         cover_item = _fake_cover_item(album_group=group, tracks=tracks)
@@ -89,7 +89,7 @@ class TestDetailIdentityResolution:
         assert not ctrl._toast.called
 
     def test_detail_uses_album_key_from_album_data_repo(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         tracks = [_make_track(), _make_track()]
         group = _fake_group(title="RepoAlbum", album_key="k1", tracks=tracks)
         cover_item = _fake_cover_item(
@@ -104,7 +104,7 @@ class TestDetailIdentityResolution:
         assert not ctrl._toast.called
 
     def test_detail_uses_tracks_from_data(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         tracks = [_make_track(), _make_track()]
         cover_item = _fake_cover_item(
             album_key="orphan", title="Orphan",
@@ -118,7 +118,7 @@ class TestDetailIdentityResolution:
         assert not ctrl._toast.called
 
     def test_detail_fallback_exact_match(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         item1 = _make_track(album="Exact Album", artist="Artist X", filepath="/a/1.flac")
         item2 = _make_track(album="Exact Album", artist="Artist X", filepath="/a/2.flac")
         cover_item = _fake_cover_item(
@@ -135,7 +135,7 @@ class TestDetailIdentityResolution:
         assert not ctrl._toast.called
 
     def test_detail_fallback_single_partial_match(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         item = _make_track(album="Great Album (Deluxe)", artist="Artist", filepath="/d/1.flac")
         cover_item = _fake_cover_item(
             album_key="", title="Album", subtitle="Artist",
@@ -151,7 +151,7 @@ class TestDetailIdentityResolution:
         assert not ctrl._toast.called
 
     def test_detail_fallback_multiple_partial_matches_returns_without_opening(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         items = [
             _make_track(album="Great Album (Remaster)", artist="A", filepath="/r/1.flac"),
             _make_track(album="Great Album (Deluxe)", artist="B", filepath="/d/1.flac"),
@@ -171,7 +171,7 @@ class TestDetailIdentityResolution:
         w._album_detail_view.set_album.assert_not_called()
 
     def test_detail_does_not_open_remaster_when_ambiguous(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         items = [
             _make_track(album="Great Album (Remaster)", artist="Artist", filepath="/r/1.flac"),
             _make_track(album="Great Album (Deluxe)", artist="Artist", filepath="/d/1.flac"),

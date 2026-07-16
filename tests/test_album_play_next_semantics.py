@@ -44,7 +44,7 @@ class TestEnqueueNext:
 
 class TestPlayNextAlbum:
     def test_play_next_inserts_when_queue_exists(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         w._playback.get_queue.return_value = ["/existing/s.flac"]
         w._playback.enqueue_next = MagicMock()
@@ -54,7 +54,7 @@ class TestPlayNextAlbum:
         w._playback.enqueue_next.assert_called_once()
 
     def test_play_next_fallback_empty_queue(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         w._playback.get_queue.return_value = []
         ctrl = AlbumController(w)
@@ -63,7 +63,7 @@ class TestPlayNextAlbum:
         w._playback.enqueue.assert_called_once()
 
     def test_play_next_empty_tracks(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
         w = _MockWin()
         ctrl = AlbumController(w)
         ctrl.play_next_album([])

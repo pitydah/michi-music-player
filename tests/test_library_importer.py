@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ui.audio_lab.services.library_importer import (
+from legacy_widgets.ui.audio_lab.services.library_importer import (
     LibraryImporter,
     sanitize_filename,
 )

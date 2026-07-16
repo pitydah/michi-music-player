@@ -17,7 +17,7 @@ def _make_tracks(n=2):
 class TestMicroServerCancelRollback:
 
     def test_cancel_after_session_calls_rollback(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
 
         w = MagicMock()
         w._workers = MagicMock()
@@ -52,7 +52,7 @@ class TestMicroServerCancelRollback:
         svc_mock.rollback.assert_called_once_with("sid-123")
 
     def test_cancel_without_session_does_not_call_rollback(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
 
         w = MagicMock()
         w._workers = MagicMock()
@@ -87,7 +87,7 @@ class TestMicroServerCancelRollback:
         svc_mock.rollback.assert_not_called()
 
     def test_cancel_rollback_exception_is_suppressed(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
 
         w = MagicMock()
         w._workers = MagicMock()
@@ -122,7 +122,7 @@ class TestMicroServerCancelRollback:
         svc_mock.rollback.assert_called_once_with("sid-err")
 
     def test_confirm_starts_worker_and_does_not_rollback(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
 
         w = MagicMock()
         w._workers = MagicMock()
@@ -161,7 +161,7 @@ class TestMicroServerCancelRollback:
         assert ctrl._active_album_import_worker is not None
 
     def test_create_session_failure_shows_error(self):
-        from ui.controllers.album_controller import AlbumController
+        from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
 
         w = MagicMock()
         w._workers = MagicMock()

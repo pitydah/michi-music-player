@@ -1,8 +1,8 @@
 """Tests for icon registry and loader."""
 import os
 from pathlib import Path
-from ui.icon_registry import ICON_REGISTRY, is_valid_ui_icon
-from ui.icon_loader import icon_path, validate_icon_key, app_icon
+from legacy_widgets.ui_archive.icon_registry import ICON_REGISTRY, is_valid_ui_icon
+from legacy_widgets.ui_archive.icon_loader import icon_path, validate_icon_key, app_icon
 
 HERE = Path(__file__).parent.parent
 

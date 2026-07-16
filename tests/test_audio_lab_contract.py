@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import os
 
-from ui.controllers.navigation_controller import (
+from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import (
     NAV_ROUTES, SECTION_CONFIG, resolve_sidebar_active_key,
 )
-import ui.window
 
 
 class TestAudioLabContract:
@@ -32,17 +31,17 @@ class TestAudioLabContract:
                 assert p.fmt == "wav", "Only WAV should be available"
 
     def test_no_orphan_routes(self):
-        from ui.controllers.navigation_controller import NAV_ROUTES
-        import ui.window
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
+        from legacy_widgets.ui.old_window.window import MainWindow
 
         missing = []
         for key, method_name in NAV_ROUTES.items():
-            if not hasattr(ui.window.MainWindow, method_name):
+            if not hasattr(MainWindow, method_name):
                 missing.append(f"{key} → {method_name}")
         assert not missing, f"Orphan routes: {'; '.join(missing)}"
 
     def test_all_audio_lab_routes_grouped_under_sidebar(self):
-        from ui.controllers.navigation_controller import (
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import (
             NAV_ROUTES, resolve_sidebar_active_key,
         )
         for key in NAV_ROUTES:

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.audio_lab.services.artwork_resolver import ArtworkResolver
+from legacy_widgets.ui.audio_lab.services.artwork_resolver import ArtworkResolver
 
 
 def _create_fake_jpeg(path: str, w: int = 500, h: int = 500):

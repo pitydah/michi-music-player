@@ -1,5 +1,5 @@
 """Tests for ShortcutController."""
-from ui.controllers.shortcut_controller import ShortcutController
+from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import ShortcutController
 
 
 class TestShortcutController:

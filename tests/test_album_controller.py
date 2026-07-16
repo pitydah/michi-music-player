@@ -1,5 +1,5 @@
 """Tests for AlbumController."""
-from ui.controllers.album_controller import AlbumController
+from legacy_widgets.ui.controllers.legacy_controllers.album_controller import AlbumController
 
 
 class TestAlbumController:

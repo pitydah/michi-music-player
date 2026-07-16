@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.sidebar_menu_controller import SidebarMenuController
+from legacy_widgets.ui.controllers.legacy_controllers.sidebar_menu_controller import SidebarMenuController
 
 
 @pytest.fixture

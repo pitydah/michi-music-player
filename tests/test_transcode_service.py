@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.services.transcode_service import TranscodeService
+from legacy_widgets.ui_archive.services.transcode_service import TranscodeService
 
 
 @pytest.fixture

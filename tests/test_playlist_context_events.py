@@ -40,7 +40,7 @@ class TestPlaylistContextEvents:
         win._ctx.rebuild_sidebar = MagicMock()
         win._context_svc = ctx
 
-        from ui.controllers.playlist_controller import PlaylistController
+        from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
         ctrl = PlaylistController(win)
 
         def fake_create(name):
@@ -69,7 +69,7 @@ class TestPlaylistContextEvents:
         win._toast = MagicMock()
         win._ctx.rebuild_sidebar = MagicMock()
 
-        from ui.controllers.playlist_controller import PlaylistController
+        from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
         ctrl = PlaylistController(win)
 
         ctrl._context = lambda: ctx

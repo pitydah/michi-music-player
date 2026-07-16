@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from ui.controllers.folder_controller import FolderController
+from legacy_widgets.ui.controllers.legacy_controllers.folder_controller import FolderController
 
 
 class TestFolderController:

@@ -1,5 +1,5 @@
 """Tests for ExpandedController."""
-from ui.controllers.expanded_controller import ExpandedController
+from legacy_widgets.ui.controllers.legacy_controllers.expanded_controller import ExpandedController
 
 
 class TestExpandedController:

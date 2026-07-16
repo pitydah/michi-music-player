@@ -49,7 +49,7 @@ class TestSmartMixContext:
         original = sm.get_daily_mix
         sm.get_daily_mix = lambda: [str_path]
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         try:
             ctrl = SmartMixController(win)
             ctrl.show_smart_mix("mix_daily")
@@ -75,7 +75,7 @@ class TestSmartMixContext:
         original = sm.get_daily_mix
         sm.get_daily_mix = lambda: [str_path]
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         try:
             ctrl = SmartMixController(win)
             ctrl.show_smart_mix("mix_daily")
@@ -99,7 +99,7 @@ class TestSmartMixContext:
         original = sm.get_daily_mix
         sm.get_daily_mix = lambda: [str_path]
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         try:
             ctrl = SmartMixController(win)
             ctrl.show_smart_mix("mix_daily")
@@ -115,7 +115,7 @@ class TestSmartMixContext:
         win._db.get_favorites.return_value = [fp]
         win._items_index[fp] = DummyItem()
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         ctrl = SmartMixController(win)
         ctrl.show_favs("favs")
 
@@ -131,7 +131,7 @@ class TestSmartMixContext:
         win._db.get_favorites.return_value = [fp]
         win._items_index[fp] = DummyItem()
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         ctrl = SmartMixController(win)
         ctrl.show_favs("favs")
         win._playback_ctrl.attach_track_table.assert_called_once()
@@ -145,7 +145,7 @@ class TestSmartMixContext:
         win._db.get_play_history.return_value = [{"track_id": fp}]
         win._items_index[fp] = DummyItem()
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         ctrl = SmartMixController(win)
         ctrl.show_recent("recent")
 
@@ -161,7 +161,7 @@ class TestSmartMixContext:
         win._db.get_play_history.return_value = [{"track_id": fp}]
         win._items_index[fp] = DummyItem()
 
-        from ui.controllers.smart_mix_controller import SmartMixController
+        from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         ctrl = SmartMixController(win)
         ctrl.show_recent("recent")
         win._playback_ctrl.attach_track_table.assert_called_once()

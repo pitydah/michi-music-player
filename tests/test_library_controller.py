@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.library_controller import LibraryController
+from legacy_widgets.ui.controllers.legacy_controllers.library_controller import LibraryController
 
 
 @pytest.fixture

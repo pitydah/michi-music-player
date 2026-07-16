@@ -30,7 +30,7 @@ class TestNavigationRoutesValid:
     }
 
     def test_home_emits_valid_routes(self, qtbot):
-        from ui.hubs.home_page import HomePage
+        from legacy_widgets.ui.hubs.home_page import HomePage
 
         page = HomePage()
         qtbot.addWidget(page)
@@ -50,7 +50,7 @@ class TestNavigationRoutesValid:
 
 class TestSafeModeCompatibility:
     def test_safe_mode_badge_text(self, qtbot):
-        from ui.hubs.home_page import HomePage
+        from legacy_widgets.ui.hubs.home_page import HomePage
 
         page = HomePage()
         qtbot.addWidget(page)
@@ -67,7 +67,7 @@ class TestSafeModeCompatibility:
 
 class TestPartialFailure:
     def test_home_page_handles_no_db(self, qtbot):
-        from ui.hubs.home_page import HomePage
+        from legacy_widgets.ui.hubs.home_page import HomePage
 
         page = HomePage()
         qtbot.addWidget(page)

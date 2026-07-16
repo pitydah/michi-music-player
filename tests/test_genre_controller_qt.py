@@ -48,7 +48,7 @@ def genre_group():
 class TestGenreControllerQt:
     @pytest.fixture
     def ctrl(self, mock_window):
-        from ui.controllers.genre_controller import GenreController
+        from legacy_widgets.ui.controllers.legacy_controllers.genre_controller import GenreController
         return GenreController(mock_window)
 
     def test_instantiation(self, ctrl):

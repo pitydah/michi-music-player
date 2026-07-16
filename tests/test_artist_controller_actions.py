@@ -1,6 +1,6 @@
 """Tests for ArtistController actions like mix, analysis, micro server."""
 from unittest.mock import MagicMock
-from ui.controllers.artist_controller import ArtistController
+from legacy_widgets.ui.controllers.legacy_controllers.artist_controller import ArtistController
 from library.library_db import MediaItem
 
 

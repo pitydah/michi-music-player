@@ -1,5 +1,5 @@
 """Tests for ArtistRepository insight methods."""
-from ui.controllers.artist_repository import ArtistRepository
+from legacy_widgets.ui.controllers.legacy_controllers.artist_repository import ArtistRepository
 from library.library_db import MediaItem
 
 

@@ -19,7 +19,7 @@ class TestPlaylistContextEvents:
         ctx = MagicMock()
         ctx.context_svc = ctx_svc
 
-        from ui.controllers.playlist_controller import PlaylistController
+        from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
         ctrl = PlaylistController(window=MagicMock(_ctx=ctx))
 
         ctrl._record_playlist_created(1, "Test Playlist", 10)
@@ -44,7 +44,7 @@ class TestPlaylistContextEvents:
         ctx.db = db
         ctx.context_svc = ctx_svc
 
-        from ui.controllers.playlist_controller import PlaylistController
+        from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
         ctrl = PlaylistController(window=MagicMock(_ctx=ctx), services=svc)
 
         ctrl.hub_playlist_play(1)
@@ -62,14 +62,14 @@ class TestPlaylistContextEvents:
         ctx.context_svc = ctx_svc
         ctx.playback = MagicMock()
 
-        from ui.controllers.playlist_controller import PlaylistController
+        from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
         ctrl = PlaylistController(window=MagicMock(_ctx=ctx))
 
         ctrl.hub_playlist_queue(1)
         ctx_svc.record_playlist_queued.assert_called_once()
 
     def test_add_files_to_playlist_pure_logic(self, tmp_path):
-        from ui.controllers.playlist_controller import PlaylistController
+        from legacy_widgets.ui.controllers.legacy_controllers.playlist_controller import PlaylistController
         db = MagicMock()
         existing = tmp_path / "exists.flac"
         existing.write_text("")

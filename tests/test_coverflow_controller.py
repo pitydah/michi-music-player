@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ui.controllers.coverflow_controller import _album_key, CoverFlowController
+from legacy_widgets.ui.controllers.legacy_controllers.coverflow_controller import _album_key, CoverFlowController
 
 
 def _make_item(title="Album", subtitle="Artist · 2024 · 12 ♪", tracks_len=3):
