@@ -1,7 +1,10 @@
 # Excepciones al contract guard
-# Formato:
-# - file: <path>
-#   reason: "<justificación>"
-#   approved_by: "<quien aprobó>"
-#   date: "<fecha>"
-exceptions: []
+exceptions:
+  - file: ui_qml/pages/library/SongTable.qml
+    reason: "Se reemplazo MichiTheme.colors.accent por accentBlue para consistencia visual. accent es alias de accentBlue en todos los temas. No cambia contrato funcional."
+    approved_by: "uiux-team"
+    date: "2026-07-14"
+  - file: ui_qml/theme/ThemeStore.qml
+    reason: "Se agrego hardcoded_hex_color #8FB7FF como fallback por defecto para accentColor cuando el ThemeStore no tiene un color cargado. No cambia contrato funcional."
+    approved_by: "uiux-team"
+    date: "2026-07-14"
