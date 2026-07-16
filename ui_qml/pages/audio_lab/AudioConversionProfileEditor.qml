@@ -94,7 +94,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-            id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
@@ -161,7 +160,6 @@ Item {
                         Text { text: "Formato:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
-                            id: editFormatCombo
                             model: root._formatOptions
                             textRole: "label"
                             width: parent.width - 100

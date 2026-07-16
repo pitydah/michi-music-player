@@ -25,7 +25,6 @@ def bootstrap():
     bs.build()
     bs.start()
     from ui_qml_bridge.bridge_factory import BridgeFactory
-    from core.service_container import ServiceContainer as ServiceRegistry
     factory = BridgeFactory(bs.container)
     bs._bridges = factory.create_all()
     return bs

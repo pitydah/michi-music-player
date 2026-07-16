@@ -65,7 +65,6 @@ Item {
     Component.onCompleted: root.refresh()
 
     AsyncStateView {
-        id: stateView
         anchors.fill: parent
         state: root.pageState
         title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
@@ -75,7 +74,6 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
-            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -92,7 +90,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: languageCard
                     Layout.fillWidth: true
                     title: "Idioma"
                     interactive: false
@@ -123,7 +120,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: languageSelector
                                 model: ListModel {
                                     ListElement { text: "Español"; value: "es" }
                                     ListElement { text: "English"; value: "en" }
@@ -149,7 +145,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: themeCard
                     Layout.fillWidth: true
                     title: "Tema"
                     interactive: false
@@ -180,7 +175,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: themeMode
                                 model: ListModel {
                                     ListElement { text: "Sistema"; value: "system" }
                                     ListElement { text: "Claro"; value: "light" }
@@ -202,7 +196,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: behaviorCard
                     Layout.fillWidth: true
                     title: "Comportamiento de ventana"
                     interactive: false
@@ -222,10 +215,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: closeToTray
                                 checked: root._loadValue("general/close_to_tray", false)
                                 onClicked: root._saveValue("general/close_to_tray", checked)
-                                Accessible.description: "Minimizar a la bandeja del sistema al cerrar"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -242,10 +233,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: startMinimized
                                 checked: root._loadValue("general/start_minimized", false)
                                 onClicked: root._saveValue("general/start_minimized", checked)
-                                Accessible.description: "Abrir la aplicación minimizada en la bandeja"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -262,10 +251,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: rememberSession
                                 checked: root._loadValue("general/remember_session", true)
                                 onClicked: root._saveValue("general/remember_session", checked)
-                                Accessible.description: "Restaurar la última vista y cola al abrir"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -282,10 +269,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: confirmExit
                                 checked: root._loadValue("general/confirm_exit", false)
                                 onClicked: root._saveValue("general/confirm_exit", checked)
-                                Accessible.description: "Preguntar antes de cerrar la aplicación"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -293,7 +278,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: updatesCard
                     Layout.fillWidth: true
                     title: "Actualizaciones"
                     interactive: false
@@ -313,7 +297,6 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: checkUpdates
                                 checked: root._loadValue("updates/auto_check", true)
                                 onClicked: root._saveValue("updates/auto_check", checked)
                                 focusPolicy: Qt.StrongFocus
@@ -332,7 +315,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: cacheCard
                     Layout.fillWidth: true
                     title: "Caché"
                     interactive: false
@@ -355,7 +337,6 @@ Item {
                                     font.pixelSize: MichiTheme.typography.bodySize
                                 }
                                 Label {
-                                    id: cacheSizeLabel
                                     text: root.loadingCache ? "Calculando..." : (root.cacheSize > 0 ? root.cacheSize.toFixed(1) + " MB" : "0 MB")
                                     color: MichiTheme.colors.textMuted
                                     font.pixelSize: MichiTheme.typography.captionSize
@@ -363,7 +344,6 @@ Item {
                             }
 
                             MichiButton {
-                                id: clearCacheBtn
                                 text: "Limpiar caché"
                                 variant: "danger"
                                 enabled: root.cacheSize > 0 && !root.loadingCache
@@ -379,7 +359,6 @@ Item {
     }
 
     ConfirmActionDialog {
-        id: confirmClearCache
         title: "Limpiar caché"
         message: "¿Estás seguro de que deseas limpiar la caché? Los datos se volverán a descargar según sea necesario."
         danger: true

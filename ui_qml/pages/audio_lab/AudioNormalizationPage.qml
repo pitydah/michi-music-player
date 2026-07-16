@@ -55,7 +55,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-            id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 

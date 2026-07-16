@@ -47,17 +47,14 @@ Item {
         }
 
         Column {
-            id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
             Row {
-                id: headerRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
 
                 Text {
-                    id: titleText
                     text: "Editor de metadatos"
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
@@ -68,7 +65,6 @@ Item {
                 Item { width: 1; height: 1; Layout.fillWidth: true }
 
                 StatusBadge {
-                    id: stateBadge
                     text: pageState === "LOADING" ? "Cargando..." :
                           pageState === "APPLYING" ? "Aplicando cambios..." :
                           pageState === "ERROR" ? "Error" :
@@ -81,13 +77,10 @@ Item {
             }
 
             Row {
-                id: modeRow
                 spacing: MichiTheme.spacing.sm
                 MichiButton {
-                    id: singleModeBtn
                     text: "Edición individual"
                     variant: root._mode === "single" ? "primary" : "ghost"
-                    Accessible.description: "Editar metadatos de una sola canción"
                     onClicked: {
                         root._mode = "single"
                         if (root.sel && root.sel.hasSelection && root.sel.selectedFilepath) {
@@ -97,10 +90,8 @@ Item {
                     }
                 }
                 MichiButton {
-                    id: batchModeBtn
                     text: "Edición por lotes"
                     variant: root._mode === "batch" ? "primary" : "ghost"
-                    Accessible.description: "Editar metadatos de múltiples canciones"
                     onClicked: { root._mode = "batch" }
                 }
             }
@@ -116,7 +107,6 @@ Item {
             }
 
             Text {
-                id: errorText
                 text: root.mb && root.mb.errorMessage ? "Error: " + root.mb.errorMessage : ""
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
@@ -126,7 +116,6 @@ Item {
     }
 
     Component {
-        id: singleEditorComp
         MetadataSingleEditor {
             width: parent.width
             mb: root.mb
@@ -135,7 +124,6 @@ Item {
     }
 
     Component {
-        id: batchEditorComp
         MetadataBatchEditor {
             width: parent.width
             mb: root.mb

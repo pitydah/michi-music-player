@@ -74,7 +74,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-            id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
@@ -92,14 +91,12 @@ Item {
             SectionHeader { text: "Archivo A"; width: parent.width; objectName: "fileAHeader"; Accessible.name: "Archivo A" }
 
             AudioInputSelection {
-                id: inputSelectionA
                 onFilesSelected: { root._fileA = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
             SectionHeader { text: "Archivo B"; width: parent.width; objectName: "fileBHeader"; Accessible.name: "Archivo B" }
 
             AudioInputSelection {
-                id: inputSelectionB
                 onFilesSelected: { root._fileB = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 

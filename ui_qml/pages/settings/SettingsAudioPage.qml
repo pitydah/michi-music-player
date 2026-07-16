@@ -53,7 +53,6 @@ Item {
     Component.onCompleted: root.refresh()
 
     AsyncStateView {
-        id: stateView
         anchors.fill: parent
         state: root.pageState
         title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
@@ -63,7 +62,6 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
-            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -78,7 +76,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: deviceCard
                     Layout.fillWidth: true
                     title: "Dispositivo de salida"
                     interactive: false
@@ -109,7 +106,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: outputDevice
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Auto"]
                                 currentIndex: {
                                     var dev = root._loadValue("audio/output_device_id", "auto")
@@ -125,7 +121,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: qualityCard
                     Layout.fillWidth: true
                     title: "Calidad de audio"
                     interactive: false
@@ -156,7 +151,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: sampleRate
                                 model: ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"]
                                 currentIndex: {
                                     var sr = String(root._loadValue("audio/sample_rate", 0))
@@ -192,7 +186,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: bitDepth
                                 model: ["Auto", "16", "24", "32"]
                                 currentIndex: {
                                     var bd = String(root._loadValue("audio/bit_depth", "auto"))
@@ -227,7 +220,6 @@ Item {
                             }
 
                             MichiSlider {
-                                id: bufferSlider
                                 implicitWidth: 200
                                 from: 50
                                 to: 1000
@@ -264,7 +256,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: resampleQuality
                                 model: ListModel {
                                     ListElement { text: "Baja"; value: "low" }
                                     ListElement { text: "Media"; value: "medium" }
@@ -287,7 +278,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: normalizationCard
                     Layout.fillWidth: true
                     title: "Normalización"
                     interactive: false
@@ -307,10 +297,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: volumeNormalization
                                 checked: root._loadValue("audio/replaygain_enabled", false)
                                 onClicked: root._saveValue("audio/replaygain_enabled", checked)
-                                Accessible.description: "Aplicar normalización de volumen basada en ReplayGain"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -318,7 +306,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: expertCard
                     Layout.fillWidth: true
                     title: "Opciones avanzadas"
                     interactive: false
@@ -338,13 +325,11 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: expertModeToggle
                                 checked: root.expertMode
                                 onClicked: {
                                     root.expertMode = checked
                                     root._saveValue("audio/expert_mode", checked)
                                 }
-                                Accessible.description: "Mostrar opciones avanzadas de configuración de audio"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -377,7 +362,6 @@ Item {
                                     Layout.fillWidth: true
                                 }
                                 Switch {
-                                    id: allowResample
                                     checked: root._loadValue("audio/allow_resample", true)
                                     onClicked: root._saveValue("audio/allow_resample", checked)
                                     focusPolicy: Qt.StrongFocus
@@ -396,10 +380,8 @@ Item {
                                     Layout.fillWidth: true
                                 }
                                 Switch {
-                                    id: allowFallback
                                     checked: root._loadValue("audio/allow_fallback", true)
                                     onClicked: root._saveValue("audio/allow_fallback", checked)
-                                    Accessible.description: "Degradar perfil si falla la configuración actual"
                                     focusPolicy: Qt.StrongFocus
                                 }
                             }
@@ -408,7 +390,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: diagnosticsCard
                     Layout.fillWidth: true
                     title: "Diagnóstico"
                     interactive: false
@@ -419,7 +400,6 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         MichiButton {
-                            id: runDiagnosticsBtn
                             text: "Ejecutar diagnóstico de audio"
                             variant: "primary"
                             Layout.fillWidth: true

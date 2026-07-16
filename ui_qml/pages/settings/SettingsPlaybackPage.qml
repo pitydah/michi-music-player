@@ -45,7 +45,6 @@ Item {
     Component.onCompleted: root.refresh()
 
     AsyncStateView {
-        id: stateView
         anchors.fill: parent
         state: root.pageState
         title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
@@ -55,7 +54,6 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
-            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -72,7 +70,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: outputCard
                     Layout.fillWidth: true
                     title: "Salida de audio"
                     interactive: false
@@ -103,7 +100,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: outputDevice
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Predeterminado"]
                                 currentIndex: {
                                     var dev = root._loadValue("audio/output_device_id", "auto")
@@ -139,7 +135,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: audioProfile
                                 model: ["standard", "hifi_pcm", "bitperfect_pcm", "dsd_to_pcm", "pure_audio", "studio_monitor"]
                                 currentIndex: {
                                     var p = root._loadValue("audio/profile", "standard")
@@ -155,7 +150,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: volumeCard
                     Layout.fillWidth: true
                     title: "Volumen"
                     interactive: false
@@ -185,7 +179,6 @@ Item {
                             }
 
                             MichiSlider {
-                                id: defaultVolumeSlider
                                 implicitWidth: 200
                                 from: 0
                                 to: 100
@@ -211,10 +204,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: rememberVolume
                                 checked: root._loadValue("playback/remember_volume", true)
                                 onClicked: root._saveValue("playback/remember_volume", checked)
-                                Accessible.description: "Restaurar el último volumen usado"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -222,7 +213,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: transitionsCard
                     Layout.fillWidth: true
                     title: "Transiciones"
                     interactive: false
@@ -242,10 +232,8 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: gaplessPlayback
                                 checked: root._loadValue("playback/gapless", true)
                                 onClicked: root._saveValue("playback/gapless", checked)
-                                Accessible.description: "Eliminar el silencio entre canciones"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -272,7 +260,6 @@ Item {
                             }
 
                             MichiSlider {
-                                id: crossfadeSlider
                                 implicitWidth: 200
                                 from: 0
                                 to: 10
@@ -282,14 +269,12 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("playback/crossfade", value)
                                 }
-                                Accessible.description: "Duración del fundido entre canciones"
                             }
                         }
                     }
                 }
 
                 GlassCard {
-                    id: replaygainCard
                     Layout.fillWidth: true
                     title: "ReplayGain"
                     interactive: false
@@ -320,7 +305,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: replaygainMode
                                 model: ListModel {
                                     ListElement { text: "Desactivado"; value: "off" }
                                     ListElement { text: "Pista (Track)"; value: "track" }
@@ -343,7 +327,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: bufferCard
                     Layout.fillWidth: true
                     title: "Buffer"
                     interactive: false
@@ -373,7 +356,6 @@ Item {
                             }
 
                             MichiSlider {
-                                id: bufferSizeSlider
                                 implicitWidth: 200
                                 from: 50
                                 to: 1000
@@ -383,7 +365,6 @@ Item {
                                 onPressedChanged: {
                                     if (!pressed) root._saveValue("audio/buffer_ms", value)
                                 }
-                                Accessible.description: "Tamaño del buffer de audio en milisegundos"
                             }
                         }
                     }

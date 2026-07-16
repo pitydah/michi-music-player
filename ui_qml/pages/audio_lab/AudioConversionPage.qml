@@ -64,7 +64,6 @@ Item {
     property var _collisionOptions: ["overwrite", "rename", "skip"]
 
     Timer {
-        id: progressTimer
         interval: 500
         running: root._state === root.stateConverting
         repeat: true
@@ -156,7 +155,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-            id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
@@ -172,14 +170,12 @@ Item {
             }
 
             AudioInputSelection {
-                id: inputSelection
             }
 
             SectionHeader { text: "Formato destino"; width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }
 
             ComboBox {
                 focusPolicy: Qt.StrongFocus
-                id: formatCombo
                 width: parent.width
                 model: root._formatOptions
                 textRole: "label"
@@ -214,7 +210,6 @@ Item {
                         Text { text: "Bitrate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
-                            id: bitrateCombo
                             model: root._bitrateOptions
                             width: parent.width - 80
                             activeFocusOnTab: true
@@ -238,7 +233,6 @@ Item {
                         Text { text: "Sample rate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
-                            id: sampleRateCombo
                             model: root._sampleRateOptions
                             width: parent.width - 100
                             activeFocusOnTab: true
@@ -252,7 +246,6 @@ Item {
                         Text { text: "Bit depth:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
-                            id: bitDepthCombo
                             model: root._bitDepthOptions
                             width: parent.width - 100
                             activeFocusOnTab: true
@@ -266,7 +259,6 @@ Item {
                         Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
-                            id: channelsCombo
                             model: root._channelsOptions
                             width: parent.width - 100
                             activeFocusOnTab: true
@@ -286,7 +278,6 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
-                            id: keepMetadataCb
                             checked: root._keepMetadata
                             text: "Conservar metadatos"
                             activeFocusOnTab: true
@@ -298,7 +289,6 @@ Item {
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
-                            id: keepArtworkCb
                             checked: root._keepArtwork
                             text: "Conservar carátula"
                             activeFocusOnTab: true
@@ -321,7 +311,6 @@ Item {
                         Text { text: "Carpeta:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
                             focusPolicy: Qt.StrongFocus
-                            id: outputDirField
                             width: parent.width - 160
                             text: root._outputDir
                             placeholderText: "Seleccionar carpeta de salida"
@@ -347,7 +336,6 @@ Item {
                         Text { text: "Naming:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
                             focusPolicy: Qt.StrongFocus
-                            id: namingField
                             width: parent.width - 80
                             text: root._namingTemplate
                             font.pixelSize: MichiTheme.typography.bodySize
@@ -362,7 +350,6 @@ Item {
                         Text { text: "Colisiones:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
-                            id: collisionCombo
                             model: root._collisionOptions
                             width: parent.width - 100
                             activeFocusOnTab: true

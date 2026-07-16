@@ -30,7 +30,6 @@ Item {
     }
 
     CapabilityGuard {
-        id: alabGuard
         anchors.fill: parent
         capabilityName: "audio_lab"
 
@@ -43,7 +42,6 @@ Item {
         activeFocusOnTab: true
 
         Column {
-            id: column
             width: parent.width
             spacing: MichiTheme.spacing.lg
 
@@ -69,7 +67,6 @@ Item {
             SectionHeader { text: "Herramientas"; width: parent.width; objectName: "toolsHeader"; Accessible.name: "Herramientas" }
 
             StatusBadge {
-                id: statusBadge
                 text: root._state === root.stateLoading ? "Cargando..." : root._state === root.stateReady ? "Disponible" : "No disponible"
                 kind: root._state === root.stateReady ? "success" : root._state === root.stateLoading ? "info" : "error"
             }

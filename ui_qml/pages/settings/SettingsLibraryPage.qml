@@ -80,7 +80,6 @@ Item {
     Component.onCompleted: root.refresh()
 
     AsyncStateView {
-        id: stateView
         anchors.fill: parent
         state: root.pageState
         title: root.pageState === AsyncStateView.ERROR ? "Error" : ""
@@ -90,7 +89,6 @@ Item {
         onRetryRequested: { root.pageState = AsyncStateView.READY; root.refresh() }
 
         readyContent: ScrollView {
-            id: scrollView
             anchors.fill: parent
             clip: true
 
@@ -105,7 +103,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: foldersCard
                     Layout.fillWidth: true
                     title: "Carpetas de música"
                     interactive: false
@@ -117,7 +114,6 @@ Item {
 
                         ListView {
                             focusPolicy: Qt.StrongFocus
-                            id: foldersList
                             Layout.fillWidth: true
                             Layout.preferredHeight: Math.min(contentHeight, 300)
                             model: root.musicFolders
@@ -166,7 +162,6 @@ Item {
                         }
 
                         MichiButton {
-                            id: addFolderBtn
                             text: "Añadir carpeta de música"
                             variant: "primary"
                             Layout.fillWidth: true
@@ -176,7 +171,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: scanningCard
                     Layout.fillWidth: true
                     title: "Escaneo"
                     interactive: false
@@ -196,7 +190,6 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: watchChanges
                                 checked: root._loadValue("library/watch_changes", true)
                                 onClicked: root._saveValue("library/watch_changes", checked)
                                 focusPolicy: Qt.StrongFocus
@@ -215,7 +208,6 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: autoScan
                                 checked: root._loadValue("library/auto_scan", true)
                                 onClicked: root._saveValue("library/auto_scan", checked)
                                 focusPolicy: Qt.StrongFocus
@@ -245,7 +237,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: indexerMode
                                 model: ListModel {
                                     ListElement { text: "Rápido"; value: "quick" }
                                     ListElement { text: "Completo"; value: "full" }
@@ -266,7 +257,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: coversCard
                     Layout.fillWidth: true
                     title: "Carátulas"
                     interactive: false
@@ -297,7 +287,6 @@ Item {
 
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
-                                id: coverArtMode
                                 model: ListModel {
                                     ListElement { text: "Incrustada"; value: "embedded" }
                                     ListElement { text: "Archivo externo"; value: "external" }
@@ -319,7 +308,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: enrichmentCard
                     Layout.fillWidth: true
                     title: "Enriquecimiento de metadatos"
                     interactive: false
@@ -339,7 +327,6 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Switch {
-                                id: metadataEnrichment
                                 checked: root._loadValue("artist_enrichment/enabled", false)
                                 onClicked: root._saveValue("artist_enrichment/enabled", checked)
                                 Accessible.description: "Obtener metadatos de MusicBrainz y otras fuentes"
@@ -350,7 +337,6 @@ Item {
                 }
 
                 GlassCard {
-                    id: maintenanceCard
                     Layout.fillWidth: true
                     title: "Mantenimiento"
                     interactive: false
@@ -374,7 +360,6 @@ Item {
                             variant: "danger"
                             Layout.fillWidth: true
                             onClicked: confirmRescan.open()
-                            Accessible.description: "Elimina la base de datos y reescanea desde cero"
                         }
                     }
                 }
@@ -385,7 +370,6 @@ Item {
     }
 
     FolderDialog {
-        id: folderDialog
         title: "Seleccionar carpeta de música"
         onAccepted: {
             var folderPath = folder.toString().replace("file://", "")
@@ -394,7 +378,6 @@ Item {
     }
 
     ConfirmActionDialog {
-        id: confirmRescan
         title: "Limpiar y reescanear biblioteca"
         message: "¿Estás seguro? Esta acción eliminará la base de datos actual y reescaneará todas las carpetas desde cero. Esta operación no puede deshacerse."
         danger: true
