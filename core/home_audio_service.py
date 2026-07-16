@@ -9,8 +9,10 @@ logger = logging.getLogger("michi.home_audio")
 
 class HomeAudioService:
     def __init__(self, snapcast_group_manager=None, snapcast_discovery=None,
-                 snapserver_manager=None, ha_client=None, local_media_server=None):
+                 snapserver_manager=None, ha_client=None, local_media_server=None,
+                 event_bus=None):
         self._group_mgr = snapcast_group_manager
+        self._event_bus = event_bus
         self._discovery = snapcast_discovery
         self._snapserver = snapserver_manager
         self._ha_client = ha_client
@@ -80,6 +82,12 @@ class HomeAudioService:
             except Exception as e:
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    def start(self):
+        pass
+
+    def cancel(self):
+        pass
 
     def health(self) -> dict:
         return {

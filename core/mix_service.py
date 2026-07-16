@@ -9,8 +9,9 @@ logger = logging.getLogger("michi.mix_service")
 
 class MixService:
     def __init__(self, db=None, recommendation_service=None, smart_mix_service=None,
-                 library_query_service=None, playlist_service=None):
+                 library_query_service=None, playlist_service=None, event_bus=None):
         self._db = db
+        self._event_bus = event_bus
         self._recommendation = recommendation_service
         self._smart_mix = smart_mix_service
         self._library_query = library_query_service

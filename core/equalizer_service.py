@@ -84,6 +84,9 @@ class EqualizerService:
             with contextlib.suppress(Exception):
                 self._player.set_eq_bypass(True)
 
+    def start(self):
+        pass
+
     def health(self) -> dict:
         return {"available": self.available, "enabled": self._enabled, "presets": len(self._presets)}
 

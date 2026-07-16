@@ -7,9 +7,10 @@ logger = logging.getLogger("core.radio.radio_service")
 
 
 class RadioService:
-    def __init__(self, radio_manager=None, db=None):
+    def __init__(self, radio_manager=None, db=None, event_bus=None):
         self._radio_manager = radio_manager
         self._db = db
+        self._event_bus = event_bus
         self._buffer_ms = 2000
         self._timeout_s = 10
         self._reconnect_policy = "automatic"

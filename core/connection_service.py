@@ -9,11 +9,12 @@ logger = logging.getLogger("michi.connection_service")
 
 class ConnectionService:
     def __init__(self, connection_manager=None, discovery_manager=None,
-                 credentials_store=None, michi_link_client=None):
+                 credentials_store=None, michi_link_client=None, event_bus=None):
         self._conn_mgr = connection_manager
         self._disc_mgr = discovery_manager
         self._creds = credentials_store
         self._michi_link = michi_link_client
+        self._event_bus = event_bus
 
     @property
     def available(self) -> bool:
@@ -28,6 +29,7 @@ class ConnectionService:
         return []
 
     def connect(self, server_id: str, credentials: dict | None = None) -> dict:
+        self._publish("connection.changed", server_id=server_id, state="connecting")
         if self._conn_mgr:
             try:
                 result = self._conn_mgr.connect(server_id, credentials or {})
@@ -62,6 +64,19 @@ class ConnectionService:
             except Exception as e:
                 return {"error": str(e)}
         return {"error": "SERVICE_UNAVAILABLE"}
+
+    def start(self):
+        pass
+
+    def cancel(self):
+        pass
+
+    def _publish(self, event: str, **data):
+        if self._event_bus:
+            try:
+                self._event_bus.publish(event, **data)
+            except Exception:
+                pass
 
     def health(self) -> dict:
         return {

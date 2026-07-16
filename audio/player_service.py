@@ -28,9 +28,10 @@ class PlayerService(QObject):
     finished = Signal()
     backend_changed = Signal(str, str)
 
-    def __init__(self, engine=None, parent=None):
+    def __init__(self, engine=None, event_bus=None, parent=None):
         super().__init__(parent)
         self._engine = engine
+        self._event_bus = event_bus
         self._retry_url = None
         self._retry_title = ""
         self._retry_artist = ""
@@ -165,6 +166,13 @@ class PlayerService(QObject):
             return self._mpd_service.get_status()
         return {"installed": False, "running": False}
 
+    def _publish(self, event: str, **data):
+        if self._event_bus:
+            try:
+                self._event_bus.publish(event, **data)
+            except Exception:
+                pass
+
     def play(self, filepath, title="", artist="", album=""):
         self._retry_url = None
         self._current_title = title or ""
@@ -173,19 +181,24 @@ class PlayerService(QObject):
         self._hybrid.play(filepath)
         if title:
             self.track_changed.emit(title, artist)
+        self._publish("playback.changed", state="playing", title=title)
 
     def pause(self):
         self._hybrid.pause()
+        self._publish("playback.changed", state="paused")
 
     def resume(self):
         self._hybrid.resume()
+        self._publish("playback.changed", state="playing")
 
     def play_or_resume(self):
         snap = self._hybrid.get_snapshot()
         if snap.state == "paused":
             self._hybrid.resume()
+            self._publish("playback.changed", state="playing")
         elif snap.state == "stopped" and snap.current_path:
             self._hybrid.play(snap.current_path)
+            self._publish("playback.changed", state="playing")
         else:
             self._hybrid.toggle()
 
@@ -194,6 +207,7 @@ class PlayerService(QObject):
 
     def stop(self):
         self._hybrid.stop()
+        self._publish("playback.changed", state="stopped")
 
     def seek(self, seconds):
         self._hybrid.seek(seconds)

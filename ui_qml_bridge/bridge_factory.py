@@ -653,6 +653,7 @@ class BridgeFactory(QObject):
                 "theme": "create_theme_bridge",
                 "accessibility": "create_accessibility_bridge",
                 "capability": "create_capability_bridge",
+                "notification": "create_notification_bridge",
                 "app_state": "create_app_state_bridge",
             }[name]
             getattr(self, method_name)()

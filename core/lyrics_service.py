@@ -52,6 +52,12 @@ class LyricsService:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    def cancel(self):
+        self._cancelled = True
+
+    def start(self):
+        self._cancelled = False
+
     def health(self) -> dict:
         return {"available": self.available, "cache_size": len(self._cache)}
 

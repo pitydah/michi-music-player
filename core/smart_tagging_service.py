@@ -42,6 +42,9 @@ class SmartTaggingService:
     def cancel(self):
         self._cancelled = True
 
+    def start(self):
+        self._cancelled = False
+
     def health(self) -> dict:
         return {"available": self.available}
 

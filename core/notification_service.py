@@ -51,12 +51,13 @@ class Notification:
 
 
 class NotificationService:
-    def __init__(self):
+    def __init__(self, event_bus=None):
         self._lock = threading.Lock()
         self._notifications: dict[str, Notification] = {}
         self._listeners: list[Callable] = []
         self._max_size = 200
         self._persistent_ids: set[str] = set()
+        self._event_bus = event_bus
 
     def notify(self, notification: Notification) -> Notification:
         with self._lock:
@@ -131,6 +132,14 @@ class NotificationService:
                 listener(notification)
             except Exception:
                 continue
+        if self._event_bus:
+            try:
+                self._event_bus.publish("notification.created",
+                                        notification_id=notification.id,
+                                        type=notification.type.value,
+                                        title=notification.title)
+            except Exception:
+                pass
 
     def retry(self, notification_id: str) -> dict:
         notif = self._notifications.get(notification_id)

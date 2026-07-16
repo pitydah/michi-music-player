@@ -51,6 +51,9 @@ class OutputProfileService:
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
+    def start(self):
+        pass
+
     def health(self) -> dict:
         return {"available": True}
 

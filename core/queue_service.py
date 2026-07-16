@@ -26,8 +26,9 @@ def _queue_state_path():
 
 
 class QueueService:
-    def __init__(self, player_service=None):
+    def __init__(self, player_service=None, event_bus=None):
         self._player = player_service
+        self._event_bus = event_bus
         self._items: list[dict] = []
         self._undo_stack: list[dict] = []
         self._can_undo = False
@@ -195,10 +196,18 @@ class QueueService:
         self._undo_stack.append(list(self._items))
         self._can_undo = True
 
+    def _publish(self, event: str, **data):
+        if self._event_bus:
+            try:
+                self._event_bus.publish(event, **data)
+            except Exception:
+                pass
+
     def _sync(self):
         if self._player and hasattr(self._player, 'set_queue'):
             with contextlib.suppress(Exception):
                 self._player.set_queue(self._items)
+        self._publish("queue.changed", count=len(self._items))
 
     # ── Persistence ──
 
