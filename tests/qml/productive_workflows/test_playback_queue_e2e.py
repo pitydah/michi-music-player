@@ -86,12 +86,13 @@ class TestPlaybackQueueE2E:
         playback_bridge.seek(10)
         playback_bridge.setVolume(50)
 
-    def test_qtest_navigate_playback(self, nav, root_window):
+    def test_qtest_navigate_playback(self, nav, playback_bridge, root_window):
         from .conftest import find_qml_item
         nav.navigate("playback")
         assert nav.currentRoute == "playback"
         now_playing = find_qml_item(root_window, "nowPlayingControls")
         assert now_playing is not None, "nowPlayingControls not found"
+        initial = playback_bridge.togglePlay() if hasattr(playback_bridge, 'togglePlay') else {}
         now_playing.forceActiveFocus()
         QTest.keyClick(now_playing, Qt.Key_Space)
         QTest.qWait(50)

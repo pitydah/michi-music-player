@@ -43,7 +43,9 @@ class ActionRegistryBinder(QObject):
     def _handler(self, bridge_method):
         def _call():
             try:
-                return bridge_method() if callable(bridge_method) else {"ok": True}
+                if not callable(bridge_method):
+                    return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+                return bridge_method()
             except Exception as e:
                 return {"ok": False, "error": str(e)}
         return _call
@@ -53,24 +55,39 @@ class ActionRegistryBinder(QObject):
         if not nav or not hasattr(nav, 'navigate'):
             return
         routes = {
+            "navigate_home": "home",
+            "navigate_library": "library",
+            "navigate_playlists": "playlists",
+            "navigate_radio": "radio",
+            "navigate_lyrics": "lyrics",
+            "navigate_settings": "settings",
+            "navigate_eq": "equalizer",
+            "navigate_library_sources": "library.sources",
+            "navigate_jobs": "jobs",
+            "navigate_queue": "queue",
+            "navigate_history": "history",
+            "navigate_home_audio": "home_audio",
+            "navigate_diagnostics": "diagnostics",
+            "navigate_library_doctor": "library_doctor",
+            "navigate_mix": "mix",
             "nav.home": "home",
             "nav.library": "library",
             "nav.playlists": "playlists",
             "nav.radio": "radio",
-            "nav.nowplaying": "lyrics",
             "nav.settings": "settings",
-            "nav.equalizer": "eq",
+            "nav.equalizer": "equalizer",
             "nav.audio_lab": "audio_lab",
-            "nav.devices": "devices",
+            "nav.devices": "devices.list",
             "nav.connections": "connections",
             "nav.home_audio": "home_audio",
             "nav.jobs": "jobs",
             "nav.queue": "queue",
             "nav.history": "history",
-            "nav.library_sources": "library_sources",
+            "nav.library_sources": "library.sources",
             "nav.diagnostics": "diagnostics",
             "nav.library_doctor": "library_doctor",
             "nav.mix": "mix",
+            "nav.nowplaying": "playback",
         }
         for action_id, route in routes.items():
             action = self._registry.get(action_id)
@@ -95,7 +112,7 @@ class ActionRegistryBinder(QObject):
             action = self._registry.get(action_id)
             if action and hasattr(pb, method):
                 fn = getattr(pb, method)
-                action.handler = lambda f=fn: f() if callable(f) else {"ok": True}
+                action.handler = lambda f=fn: f() if callable(f) else {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def _bind_library(self):
         lib = self._library()
@@ -109,7 +126,7 @@ class ActionRegistryBinder(QObject):
             action = self._registry.get(action_id)
             if action and hasattr(lib, method):
                 fn = getattr(lib, method)
-                action.handler = lambda f=fn: f() if callable(f) else {"ok": True}
+                action.handler = lambda f=fn: f() if callable(f) else {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
     def _bind_playlist(self):
         pl = self._playlists()

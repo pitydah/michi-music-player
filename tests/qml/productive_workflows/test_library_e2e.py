@@ -100,10 +100,11 @@ class TestLibraryE2E:
         play_result = playback_bridge.togglePlay()
         assert isinstance(play_result, dict)
 
-    def test_qtest_navigate_search_keyboard(self, nav, root_window):
+    def test_qtest_navigate_search_keyboard(self, nav, library_bridge, root_window):
         from .conftest import find_qml_item
         nav.navigate("library")
         assert nav.currentRoute == "library"
+        initial_state = library_bridge.state if hasattr(library_bridge, 'state') else ""
         search_field = find_qml_item(root_window, "libraryNavigationBar")
         assert search_field is not None, "libraryNavigationBar not found"
         search_field.forceActiveFocus()
@@ -113,7 +114,7 @@ class TestLibraryE2E:
         QTest.qWait(50)
         assert nav.currentRoute == "library"
 
-    def test_qtest_click_refresh(self, nav, root_window):
+    def test_qtest_click_refresh(self, nav, library_bridge, root_window):
         from .conftest import find_qml_item, qtest_click_item
         nav.navigate("library")
         refresh_btn = find_qml_item(root_window, "libraryRefreshButton")

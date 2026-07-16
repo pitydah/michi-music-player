@@ -69,8 +69,10 @@ class LibrarySourcesBridge(QObject):
     def cancelSourceScan(self, path: str):
         if not self._jb:
             return {"ok": False, "error": "NO_JOB_SERVICE"}
-        if hasattr(self._jb, 'cancelJob'):
-            self._jb.cancelJob(0)
+        if hasattr(self._jb, 'cancelJob') and hasattr(self._jb, 'jobs'):
+            for j in self._jb.jobs:
+                if j.get("type") == "library_scan" and (not path or j.get("path") == path):
+                    self._jb.cancelJob(j["job_id"])
         self._status = "idle"
         self.dataChanged.emit()
         return {"ok": True}

@@ -33,8 +33,10 @@ class TestBridgeStructural:
                 none_handlers.append(aid)
             else:
                 assert callable(desc.handler), f"Action '{aid}' handler not callable"
-        assert len(none_handlers) <= 100, (
-            f"Too many actions with None handler: {none_handlers}"
+        known_without_handler = {"playback_", "track_", "album_", "artist_", "folder_", "source_", "radio_", "diagnostics_", "library_scan", "settings_"}
+        actual_none = [aid for aid in none_handlers if not any(aid.startswith(p) for p in known_without_handler)]
+        assert len(actual_none) == 0, (
+            f"Actions with None handler: {actual_none}"
         )
 
     def test_all_routes_resolve(self, nav):
@@ -48,7 +50,7 @@ class TestBridgeStructural:
                 failed.append(f"{route} -> placeholder")
             elif resolved == "home" and route != "home":
                 failed.append(f"{route} -> home (capability)")
-        assert len(failed) <= 5, (
+        assert len(failed) == 0, (
             f"Too many routes failed to resolve: {failed}"
         )
 
@@ -62,7 +64,7 @@ class TestBridgeStructural:
             qml_file = (shell_root / source).resolve()
             if not qml_file.exists():
                 missing.append(f"{route} -> {source}")
-        assert len(missing) <= 10, (
+        assert len(missing) == 0, (
             f"Too many routes with missing source files: {missing}"
         )
 

@@ -153,9 +153,7 @@ class OutputProfilesBridge(QObject):
         try:
             result = self._player.duplicate_profile(profile_id)
             self.refresh()
-            if isinstance(result, dict) and result.get("ok"):
-                return result
-            if isinstance(result, dict) and result.get("ok"):
+            if isinstance(result, dict):
                 return result
             return {"ok": False, "error": "DUPLICATE_FAILED"}
         except Exception as e:
@@ -166,11 +164,11 @@ class OutputProfilesBridge(QObject):
         if not self._player or not hasattr(self._player, 'delete_profile'):
             return {"ok": False, "error": "UNSUPPORTED"}
         try:
-            self._player.delete_profile(profile_id)
+            result = self._player.delete_profile(profile_id)
             if self._active_id == profile_id:
                 self._active_id = "standard"
             self.refresh()
-            return {"ok": True}
+            return result if isinstance(result, dict) else {"ok": bool(result)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -179,9 +177,9 @@ class OutputProfilesBridge(QObject):
         if not self._player or not hasattr(self._player, 'create_profile'):
             return {"ok": False, "error": "UNSUPPORTED"}
         try:
-            self._player.create_profile(data)
+            result = self._player.create_profile(data)
             self.refresh()
-            return {"ok": True}
+            return result if isinstance(result, dict) else {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -190,9 +188,9 @@ class OutputProfilesBridge(QObject):
         if not self._player or not hasattr(self._player, 'update_profile'):
             return {"ok": False, "error": "UNSUPPORTED"}
         try:
-            self._player.update_profile(data)
+            result = self._player.update_profile(data)
             self.refresh()
-            return {"ok": True}
+            return result if isinstance(result, dict) else {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -201,10 +199,10 @@ class OutputProfilesBridge(QObject):
         if not self._player or not hasattr(self._player, 'rollback_profile'):
             return {"ok": False, "error": "UNSUPPORTED"}
         try:
-            self._player.rollback_profile()
+            result = self._player.rollback_profile()
             self.refresh()
             self._applied_state = "idle"
             self.appliedStateChanged.emit(self._applied_state)
-            return {"ok": True}
+            return result if isinstance(result, dict) else {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
