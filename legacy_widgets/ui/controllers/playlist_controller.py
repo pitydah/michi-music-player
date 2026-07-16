@@ -1,6 +1,6 @@
-"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente.
 
-"""Playlist controller — Hub actions, import/export, smart playlists."""
+Playlist controller — Hub actions, import/export, smart playlists."""
 import os
 
 from PySide6.QtWidgets import QFileDialog, QInputDialog

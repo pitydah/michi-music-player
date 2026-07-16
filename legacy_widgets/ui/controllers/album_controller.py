@@ -1,8 +1,8 @@
+"""LEGACY — reemplazado por ui_qml_bridge correspondiente.
+
+Album controller — advanced actions on albums: play, queue, metadata, covers, quality, server."""
+
 from __future__ import annotations
-
-"""LEGACY — reemplazado por ui_qml_bridge correspondiente."""
-
-"""Album controller — advanced actions on albums: play, queue, metadata, covers, quality, server."""
 
 import logging
 import os
