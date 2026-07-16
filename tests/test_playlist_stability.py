@@ -7,7 +7,7 @@ _app = QApplication.instance() or QApplication(sys.argv)
 
 
 def test_rebuild_does_not_duplicate_widgets():
-    from ui.playlist_hub import PlaylistHubWidget
+    from legacy_widgets.ui.playlist_hub import PlaylistHubWidget
     hub = PlaylistHubWidget()
     pls = [{"id": 1, "name": "Test", "tracks": [], "cover_path": "", "cover_type": "mosaic"}]
 
@@ -24,7 +24,7 @@ def test_rebuild_does_not_duplicate_widgets():
 
 
 def test_rebuild_cache_skips_unchanged():
-    from ui.playlist_hub import PlaylistHubWidget
+    from legacy_widgets.ui.playlist_hub import PlaylistHubWidget
     hub = PlaylistHubWidget()
     pls = [{"id": 1, "name": "Test", "tracks": [], "cover_path": "", "cover_type": "mosaic"}]
 
@@ -60,7 +60,7 @@ def test_file_safety_no_remove_on_library():
 
 def test_playlist_hub_clear_layout_recursive():
     """Verify _clear_layout properly cleans nested layouts."""
-    from ui.playlist_hub import PlaylistHubWidget
+    from legacy_widgets.ui.playlist_hub import PlaylistHubWidget
     from PySide6.QtWidgets import QVBoxLayout, QFrame
     hub = PlaylistHubWidget()
 
@@ -79,7 +79,7 @@ def test_remove_custom_cover_path_safety():
     """Verify remove_custom_cover only deletes inside COVER_DIR."""
     import os
     import tempfile
-    from ui.services.playlist_cover_service import remove_custom_cover
+    from legacy_widgets.ui_archive.services.playlist_cover_service import remove_custom_cover
 
     # Create a temp file OUTSIDE COVER_DIR
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
@@ -141,7 +141,7 @@ def test_remove_missing_keeps_files():
 
 def test_hub_no_duplicate_cards():
     """set_playlists called 10 times with same data must not duplicate widgets."""
-    from ui.playlist_hub import PlaylistHubWidget
+    from legacy_widgets.ui.playlist_hub import PlaylistHubWidget
     from PySide6.QtWidgets import QWidget
     hub = PlaylistHubWidget()
     pls = [{"id": 1, "name": "Test", "tracks": [], "cover_path": "", "cover_type": "mosaic"}]
@@ -154,7 +154,7 @@ def test_hub_no_duplicate_cards():
 
 def test_hub_data_change_cleanup():
     """Changing playlist data must clean up old widgets."""
-    from ui.playlist_hub import PlaylistHubWidget
+    from legacy_widgets.ui.playlist_hub import PlaylistHubWidget
     from PySide6.QtWidgets import QWidget
     hub = PlaylistHubWidget()
     hub.set_playlists([{"id": 1, "name": "A", "tracks": [], "cover_path": "", "cover_type": "mosaic"}])
@@ -166,7 +166,7 @@ def test_hub_data_change_cleanup():
 
 def test_detail_no_duplicate():
     """set_playlist called multiple times must not duplicate table/banner/buttons."""
-    from ui.playlist_detail_view import PlaylistDetailView
+    from legacy_widgets.ui.playlist_detail_view import PlaylistDetailView
     from PySide6.QtWidgets import QWidget
     parent = QWidget()
     detail = PlaylistDetailView(parent)
@@ -179,7 +179,7 @@ def test_detail_no_duplicate():
 
 def test_detail_track_change():
     """Changing tracks must update table rows correctly."""
-    from ui.playlist_detail_view import PlaylistDetailView
+    from legacy_widgets.ui.playlist_detail_view import PlaylistDetailView
     from PySide6.QtWidgets import QWidget
     from library.media_item import MediaItem
     parent = QWidget()

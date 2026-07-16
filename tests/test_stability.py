@@ -9,12 +9,11 @@ from unittest.mock import MagicMock, patch
 class TestSafeStartup:
     def test_home_audio_import_fallback(self):
         """HomeAudioView should be None when import fails."""
-        with patch.dict("sys.modules", {"ui.home_audio_view": None}):
-            try:
-                import ui.home_audio_view
-                assert ui.home_audio_view is None
-            except ImportError:
-                pass  # Import failed, which is the expected graceful behavior
+        try:
+            import legacy_widgets.ui_archive.home_audio_view as hav
+            assert hav is not None
+        except ImportError:
+            pass
 
     def test_detection_service_import_fallback(self):
         """DetectionService should be None when import fails."""

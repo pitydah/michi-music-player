@@ -107,7 +107,7 @@ class TestGenreHubPageQt:
 class TestGenreCardQt:
     @pytest.fixture
     def card(self, qtbot):
-        from ui.genres.genre_card import GenreCard
+        from legacy_widgets.ui.genres.genre_card import GenreCard
         c = GenreCard(_genre_data())
         qtbot.addWidget(c)
         return c
@@ -116,7 +116,7 @@ class TestGenreCardQt:
         assert card is not None
 
     def test_with_warning(self, qtbot):
-        from ui.genres.genre_card import GenreCard
+        from legacy_widgets.ui.genres.genre_card import GenreCard
         c = GenreCard(_genre_data(health="warning", missing_metadata_count=5))
         qtbot.addWidget(c)
         assert c is not None
@@ -172,7 +172,7 @@ class TestGenreDetailPageQt:
 class TestGenreCleanupPageQt:
     @pytest.fixture
     def page(self, qtbot):
-        from ui.genres.genre_cleanup_page import GenreCleanupPage
+        from legacy_widgets.ui.genres.genre_cleanup_page import GenreCleanupPage
         p = GenreCleanupPage()
         p.show()
         qtbot.addWidget(p)
@@ -285,7 +285,7 @@ class TestGenreStatsPanelQt:
 class TestGenreActionsPanelQt:
     @pytest.fixture
     def panel(self, qtbot):
-        from ui.genres.genre_actions_panel import GenreActionsPanel
+        from legacy_widgets.ui.genres.genre_actions_panel import GenreActionsPanel
         p = GenreActionsPanel(genre_key="Rock")
         qtbot.addWidget(p)
         return p
@@ -294,7 +294,7 @@ class TestGenreActionsPanelQt:
         assert panel is not None
 
     def test_set_genre_key(self, qtbot):
-        from ui.genres.genre_actions_panel import GenreActionsPanel
+        from legacy_widgets.ui.genres.genre_actions_panel import GenreActionsPanel
         p = GenreActionsPanel()
         qtbot.addWidget(p)
         p.set_genre_key("Jazz")

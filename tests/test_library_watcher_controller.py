@@ -35,7 +35,7 @@ class FakeToast:
 
 
 def test_on_files_added():
-    from ui.controllers.library_watcher_controller import LibraryWatcherController
+    from legacy_widgets.ui.controllers.legacy_controllers.library_watcher_controller import LibraryWatcherController
     db = FakeDB()
     fa = FakeFileActions()
     lc = FakeLibraryController()
@@ -50,7 +50,7 @@ def test_on_files_added():
 
 
 def test_on_files_added_empty():
-    from ui.controllers.library_watcher_controller import LibraryWatcherController
+    from legacy_widgets.ui.controllers.legacy_controllers.library_watcher_controller import LibraryWatcherController
     db = FakeDB()
     fa = FakeFileActions()
     lc = FakeLibraryController()
@@ -63,7 +63,7 @@ def test_on_files_added_empty():
 
 
 def test_on_files_removed():
-    from ui.controllers.library_watcher_controller import LibraryWatcherController
+    from legacy_widgets.ui.controllers.legacy_controllers.library_watcher_controller import LibraryWatcherController
     db = FakeDB()
     fa = FakeFileActions()
     lc = FakeLibraryController()
@@ -76,7 +76,7 @@ def test_on_files_removed():
 
 
 def test_on_files_removed_empty():
-    from ui.controllers.library_watcher_controller import LibraryWatcherController
+    from legacy_widgets.ui.controllers.legacy_controllers.library_watcher_controller import LibraryWatcherController
     db = FakeDB()
     fa = FakeFileActions()
     lc = FakeLibraryController()
@@ -89,7 +89,7 @@ def test_on_files_removed_empty():
 
 
 def test_on_files_modified():
-    from ui.controllers.library_watcher_controller import LibraryWatcherController
+    from legacy_widgets.ui.controllers.legacy_controllers.library_watcher_controller import LibraryWatcherController
     db = FakeDB()
     fa = FakeFileActions()
     lc = FakeLibraryController()
@@ -102,7 +102,7 @@ def test_on_files_modified():
 
 
 def test_on_files_modified_empty():
-    from ui.controllers.library_watcher_controller import LibraryWatcherController
+    from legacy_widgets.ui.controllers.legacy_controllers.library_watcher_controller import LibraryWatcherController
     db = FakeDB()
     fa = FakeFileActions()
     lc = FakeLibraryController()

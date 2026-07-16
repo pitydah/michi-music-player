@@ -16,7 +16,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.audio_output_controller import AudioOutputController
+    from legacy_widgets.ui.controllers.legacy_controllers.audio_output_controller import AudioOutputController
     return AudioOutputController(win)
 
 
@@ -57,7 +57,7 @@ class TestAudioOutputController:
             actions.mapToGlobal.assert_called_once()
 
     def test_list_devices_returns_empty_on_exception(self):
-        from ui.controllers.audio_output_controller import AudioOutputController
+        from legacy_widgets.ui.controllers.legacy_controllers.audio_output_controller import AudioOutputController
         original_import = builtins.__import__
         def fake_import(name, *args, **kwargs):
             if name == "gi":

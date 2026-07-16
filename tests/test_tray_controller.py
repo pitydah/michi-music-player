@@ -17,7 +17,7 @@ def mock_qapp():
 class TestTrayController:
     @pytest.fixture
     def ctrl(self):
-        from ui.controllers.tray_controller import TrayController
+        from legacy_widgets.ui.controllers.legacy_controllers.tray_controller import TrayController
         window = MagicMock()
         window._ctx = MagicMock()
         window._ctx.playback = MagicMock()

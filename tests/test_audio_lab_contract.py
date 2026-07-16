@@ -12,11 +12,11 @@ from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller impo
 class TestAudioLabContract:
 
     def test_hub_has_exactly_five_main_sections(self):
-        from ui.audio_lab.audio_lab_page import _SECTIONS
+        from legacy_widgets.ui.audio_lab.audio_lab_page import _SECTIONS
         assert len(_SECTIONS) == 5
 
     def test_no_section_marked_disponible_if_incomplete(self):
-        from ui.audio_lab.audio_lab_page import _SECTIONS
+        from legacy_widgets.ui.audio_lab.audio_lab_page import _SECTIONS
         for sec in _SECTIONS:
             if sec["key"] in ("audio_lab_output", "audio_lab_diagnostics",
                               "audio_lab_intelligence"):
@@ -25,7 +25,7 @@ class TestAudioLabContract:
                 ), f"{sec['key']} should not be marked disponible"
 
     def test_michi_disc_lab_only_wav_available(self):
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
         for p in RIP_PROFILES:
             if p.available:
                 assert p.fmt == "wav", "Only WAV should be available"
@@ -64,7 +64,7 @@ class TestAudioLabContract:
                     )
 
     def test_rip_profiles_have_format(self):
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
         for p in RIP_PROFILES:
             assert p.fmt, f"Profile {p.name} has no format"
 
@@ -83,7 +83,7 @@ class TestAudioLabContract:
         assert resolve_sidebar_active_key("michi_disc_lab") == "audio_lab"
 
     def test_no_audio_lab_subpages_in_sidebar(self):
-        from ui.sidebar_controller import SidebarController
+        from legacy_widgets.ui.sidebar_controller import SidebarController
         import inspect
 
         src = inspect.getsource(SidebarController.rebuild)
@@ -121,7 +121,7 @@ class TestAudioLabContract:
         )
 
     def test_all_sections_have_valid_status(self):
-        from ui.audio_lab.audio_lab_page import _SECTIONS
+        from legacy_widgets.ui.audio_lab.audio_lab_page import _SECTIONS
         valid = {"disponible", "experimental", "proximamente", "no_disponible"}
         for sec in _SECTIONS:
             assert sec["status"] in valid, (
@@ -129,7 +129,7 @@ class TestAudioLabContract:
             )
 
     def test_all_sections_have_nonempty_nav(self):
-        from ui.audio_lab.audio_lab_page import _SECTIONS
+        from legacy_widgets.ui.audio_lab.audio_lab_page import _SECTIONS
         for sec in _SECTIONS:
             assert sec.get("nav"), f"{sec['key']} has empty nav"
 

@@ -46,6 +46,7 @@ Item {
         SectionHeader { text: "Canciones en " + root.genre; width: parent.width }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true
             model: root.lib ? root.lib.trackModel : []
             clip: true; boundsBehavior: Flickable.StopAtBounds

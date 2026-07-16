@@ -40,6 +40,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(150, (root.ps ? root.ps.history.length : 0) * 24 + 10)
             model: root.ps ? root.ps.history.slice(0, 20) : []

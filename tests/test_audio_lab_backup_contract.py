@@ -6,8 +6,7 @@ import os
 class TestBackupContract:
 
     def test_backup_routes_have_handlers(self):
-        from ui.controllers.navigation_controller import NAV_ROUTES
-        import ui.window
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
         backup_keys = [k for k in NAV_ROUTES if k in (
             "michi_disc_lab", "audio_lab_vinyl_lab",
             "audio_lab_conversion", "audio_lab_organize",

@@ -100,6 +100,7 @@ Item {
             SectionHeader { text: "Álbumes"; width: parent.width }
 
             ListView {
+                focusPolicy: Qt.StrongFocus
                 width: parent.width
                 height: Math.min(300, (root.lib && root.lib.albumModel ? root.lib.albumModel.count : 0) * 56)
                 clip: true; boundsBehavior: Flickable.StopAtBounds
@@ -134,6 +135,7 @@ Item {
             SectionHeader { text: "Canciones"; width: parent.width }
 
             ListView {
+                focusPolicy: Qt.StrongFocus
                 width: parent.width
                 height: Math.min(400, (root.lib && root.lib.trackModel ? root.lib.trackModel.count : 0) * 36)
                 clip: true; boundsBehavior: Flickable.StopAtBounds

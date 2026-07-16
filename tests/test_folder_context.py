@@ -10,7 +10,7 @@ class TestFolderContextEvents:
         win = MagicMock()
         win._context_svc = ctx_svc
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         MainWindow._on_folder_selected(win, ["/music/a.flac", "/music/b.flac"])
         ctx_svc.update_selection.assert_called_once()
         kwargs = ctx_svc.update_selection.call_args[1]
@@ -21,7 +21,7 @@ class TestFolderContextEvents:
         win = MagicMock()
         win._context_svc = ctx_svc
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         MainWindow._on_folder_selected(win, ["/music/a.flac"])
         ctx_svc.record_folder_selected.assert_called_once()
 
@@ -30,7 +30,7 @@ class TestFolderContextEvents:
         win = MagicMock()
         win._context_svc = ctx_svc
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         MainWindow._on_folder_queued(win, ["/music/a.flac"])
         ctx_svc.record_folder_queued.assert_called_once()
 
@@ -39,7 +39,7 @@ class TestFolderContextEvents:
         win = MagicMock()
         win._context_svc = ctx_svc
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         MainWindow._on_folder_scan_requested(win, "/home/user/Music")
         ctx_svc.record_folder_scanned.assert_called_once()
 
@@ -48,6 +48,6 @@ class TestFolderContextEvents:
         win = MagicMock()
         win._context_svc = ctx_svc
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         MainWindow._on_folder_scan_requested(win, "/home/user/Music/Rock")
         ctx_svc.record_folder_scanned.assert_called_once()

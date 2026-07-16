@@ -6,7 +6,7 @@ from metadata.album_summary import AlbumSummary
 class TestAlbumDetailDialog:
     def test_creates_with_minimal_summary(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         summary = AlbumSummary(album_key="k", title="Album", artist="Artist")
@@ -17,7 +17,7 @@ class TestAlbumDetailDialog:
 
     def test_shows_metadata(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         summary = AlbumSummary(
@@ -28,7 +28,7 @@ class TestAlbumDetailDialog:
 
     def test_shows_description(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         summary = AlbumSummary(
@@ -39,7 +39,7 @@ class TestAlbumDetailDialog:
 
     def test_shows_track_list(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         tracks = [
@@ -54,7 +54,7 @@ class TestAlbumDetailDialog:
 
     def test_shows_no_description_section_if_empty(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         summary = AlbumSummary(album_key="k", title="Album", artist="A", description="")
@@ -63,7 +63,7 @@ class TestAlbumDetailDialog:
 
     def test_shows_links_section_with_external_ids(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         summary = AlbumSummary(
@@ -74,7 +74,7 @@ class TestAlbumDetailDialog:
 
     def test_close_button_accepts(self, qtbot):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         parent = QWidget()
         qtbot.addWidget(parent)
         summary = AlbumSummary(album_key="k", title="Album", artist="A")
@@ -84,7 +84,7 @@ class TestAlbumDetailDialog:
 
     def test_handles_cover_path(self, qtbot, tmp_path):
         from PySide6.QtWidgets import QWidget
-        from ui.album_detail_dialog import AlbumDetailDialog
+        from legacy_widgets.ui.album_detail_dialog import AlbumDetailDialog
         from PySide6.QtGui import QPixmap
         cover = tmp_path / "cover.jpg"
         pix = QPixmap(100, 100)

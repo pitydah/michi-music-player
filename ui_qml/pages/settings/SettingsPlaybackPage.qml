@@ -107,6 +107,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: outputDevice
                                 objectName: "settings.playback.outputDevice"
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Predeterminado"]
@@ -145,6 +146,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: audioProfile
                                 objectName: "settings.playback.audioProfile"
                                 model: ["standard", "hifi_pcm", "bitperfect_pcm", "dsd_to_pcm", "pure_audio", "studio_monitor"]
@@ -336,6 +338,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: replaygainMode
                                 objectName: "settings.playback.replaygainMode"
                                 model: ListModel {

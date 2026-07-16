@@ -18,8 +18,7 @@ class TestIdentifierContract:
         assert not violations, f"Discogs references found: {violations}"
 
     def test_identifier_routes_have_handlers(self):
-        from ui.controllers.navigation_controller import NAV_ROUTES
-        import ui.window
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
         identifier_keys = [k for k in NAV_ROUTES
                            if k.startswith("audio_lab_musicbrainz")
                            or k.startswith("audio_lab_artwork")

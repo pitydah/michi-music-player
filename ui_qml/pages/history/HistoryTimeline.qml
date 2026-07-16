@@ -20,6 +20,7 @@ Item {
     signal addToQueueRequested(int trackId)
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         id: timelineView
         anchors.fill: parent
         clip: true

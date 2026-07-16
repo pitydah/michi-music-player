@@ -121,6 +121,7 @@ Item {
                         spacing: MichiTheme.spacing.md
 
                         ListView {
+                            focusPolicy: Qt.StrongFocus
                             id: foldersList
                             Layout.fillWidth: true
                             Layout.preferredHeight: Math.min(contentHeight, 300)
@@ -261,6 +262,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: indexerMode
                                 objectName: "settings.library.indexerMode"
                                 model: ListModel {
@@ -315,6 +317,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: coverArtMode
                                 objectName: "settings.library.coverArtMode"
                                 model: ListModel {

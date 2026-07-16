@@ -156,7 +156,7 @@ class TestSettingsNegative:
             assert confirm_dialog is not None
 
 
-class TestSettingsAudioNullBridge:
+class TestSettingsAudioNoBridge:
     def test_no_bridge_shows_error(self, engine):
         comp = _load_page(engine, "SettingsAudioPage.qml")
         assert comp.isReady()
@@ -167,7 +167,7 @@ class TestSettingsAudioNullBridge:
             obj.deleteLater()
 
 
-class TestSettingsAboutNullBridge:
+class TestSettingsAboutNoBridge:
     def test_no_bridge_no_crash(self, engine):
         comp = _load_page(engine, "SettingsAboutPage.qml")
         assert comp.isReady()

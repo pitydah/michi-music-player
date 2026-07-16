@@ -39,14 +39,17 @@ Item {
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
                     Text { text: "Campo:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                     TextField { id: searchField; width: parent.width - 70; placeholderText: "artist, title, album..." }
+                        focusPolicy: Qt.StrongFocus
                 }
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
                     Text { text: "Buscar:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                     TextField { id: searchText; width: parent.width - 70; placeholderText: "Valor a buscar..." }
+                        focusPolicy: Qt.StrongFocus
                 }
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
                     Text { text: "Reemplazar:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                     TextField { id: replaceText; width: parent.width - 70; placeholderText: "Valor nuevo..." }
+                        focusPolicy: Qt.StrongFocus
                 }
                 MichiButton {
                     text: "Ejecutar búsqueda y reemplazo"
@@ -68,6 +71,7 @@ Item {
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
                     Text { text: "Inicio:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                     SpinBox { id: numberingStart; from: 1; to: 999; value: 1 }
+                        focusPolicy: Qt.StrongFocus
                     MichiButton { text: "Numerar pistas"; variant: "secondary"; onClicked: {
                         if (root.mb) root.mb.batchSetField(root.selectedFiles, "track_number", String(numberingStart.value))
                     } }
@@ -76,6 +80,7 @@ Item {
                 Row { spacing: MichiTheme.spacing.sm; width: parent.width
                     Text { text: "Disco inicio:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                     SpinBox { id: discStart; from: 1; to: 99; value: 1 }
+                        focusPolicy: Qt.StrongFocus
                     MichiButton { text: "Numerar discos"; variant: "secondary"; onClicked: {
                         if (root.mb) root.mb.batchSetField(root.selectedFiles, "disc_number", String(discStart.value))
                     } }

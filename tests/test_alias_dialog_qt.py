@@ -30,20 +30,20 @@ def lookup(key):
 class TestAliasResolutionDialogQt:
 
     def test_instantiation(self, qtbot):
-        from ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
+        from legacy_widgets.ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
         candidates = [("the_beatles", "beatles", 1.0)]
         dialog = AliasResolutionDialog("The Beatles", candidates, lookup, None)
         qtbot.addWidget(dialog)
         assert dialog.windowTitle() == "Resolver alias: The Beatles"
 
     def test_no_candidates_shows_message(self, qtbot):
-        from ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
+        from legacy_widgets.ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
         dialog = AliasResolutionDialog("Unknown", [], lookup, None)
         qtbot.addWidget(dialog)
         assert dialog.selected_key() is None
 
     def test_skip_returns_none(self, qtbot):
-        from ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
+        from legacy_widgets.ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
         candidates = [("the_beatles", "beatles", 1.0)]
         dialog = AliasResolutionDialog("The Beatles", candidates, lookup, None)
         qtbot.addWidget(dialog)
@@ -52,7 +52,7 @@ class TestAliasResolutionDialogQt:
         assert dialog.result() == QDialog.Rejected
 
     def test_accept_returns_selected_key(self, qtbot):
-        from ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
+        from legacy_widgets.ui.dialogs.alias_resolution_dialog import AliasResolutionDialog
         candidates = [("the_beatles", "beatles", 1.0)]
         dialog = AliasResolutionDialog("The Beatles", candidates, lookup, None)
         qtbot.addWidget(dialog)

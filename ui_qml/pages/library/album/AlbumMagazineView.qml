@@ -15,6 +15,7 @@ Item {
     signal albumClicked(string albumKey, string title, string artist, int year)
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         id: listView
         anchors.fill: parent
         model: root.albumModel

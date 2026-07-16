@@ -69,6 +69,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             id: trackList
             width: parent.width
             height: parent.height - 30

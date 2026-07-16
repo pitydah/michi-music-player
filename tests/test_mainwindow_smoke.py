@@ -11,7 +11,7 @@ class TestMainWindowSmoke:
         monkeypatch.setenv("MICHI_TEST_CACHE_DIR", str(tmp_path / "cache"))
         monkeypatch.setenv("MICHI_TEST_CONFIG_DIR", str(tmp_path / "config"))
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         w = MainWindow()
         try:
             assert w.windowTitle(), "Window title should be set"

@@ -107,6 +107,7 @@ Item {
                 }
 
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: logicCombo; width: 120
                     objectName: "logicCombo"
                     Accessible.name: "Lógica entre reglas"
@@ -139,6 +140,7 @@ Item {
             }
 
             ListView {
+                focusPolicy: Qt.StrongFocus
                 id: rulesList
                 width: parent.width; height: Math.min(root._rules.length * 72, 360)
                 model: root._rules; clip: true; spacing: MichiTheme.spacing.sm
@@ -172,6 +174,7 @@ Item {
                         Column { spacing: MichiTheme.spacing.xs; width: parent.width - 60
                             Row { spacing: MichiTheme.spacing.sm
                                 ComboBox {
+                                    focusPolicy: Qt.StrongFocus
                                     width: 130
                                     model: ["genre", "artist", "album", "decade", "year", "folder", "quality", "playcount", "rating", "added"]
                                     currentIndex: {
@@ -184,6 +187,7 @@ Item {
                                 }
 
                                 ComboBox {
+                                    focusPolicy: Qt.StrongFocus
                                     width: 100
                                     model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                                     currentIndex: {
@@ -196,6 +200,7 @@ Item {
                                 }
 
                                 TextField {
+                                    focusPolicy: Qt.StrongFocus
                                     width: 120; text: modelData.value || ""
                                     placeholderText: "Valor"
                                     onTextChanged: modelData.value = text

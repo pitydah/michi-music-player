@@ -89,7 +89,7 @@ class TestPremiumEndToEnd:
         assert len(cands) >= 1
 
     def test_detail_show_no_crash(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         tracks = [_make_item()]

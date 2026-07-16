@@ -47,6 +47,7 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: nameInput; width: parent.width; text: root.playlistName
                 placeholderText: "Nombre de la smart playlist"
             }
@@ -82,6 +83,7 @@ Dialog {
                 delegate: Row {
                     spacing: MichiTheme.spacing.sm; width: parent.width
                     ComboBox {
+                        focusPolicy: Qt.StrongFocus
                         id: fieldCombo; width: 100
                         model: ["genre", "artist", "album", "year", "rating", "playcount", "lastplayed"]
                         currentIndex: {
@@ -91,6 +93,7 @@ Dialog {
                         onCurrentTextChanged: root.rules[index].field = currentText
                     }
                     ComboBox {
+                        focusPolicy: Qt.StrongFocus
                         id: opCombo; width: 80
                         model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                         currentIndex: {
@@ -100,6 +103,7 @@ Dialog {
                         onCurrentTextChanged: root.rules[index].operator = currentText
                     }
                     TextField {
+                        focusPolicy: Qt.StrongFocus
                         width: 80; text: modelData.value || ""
                         placeholderText: "Valor"
                         onTextChanged: root.rules[index].value = text
@@ -121,6 +125,7 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize; visible: root.limitCount > 0
             }
             SpinBox {
+                focusPolicy: Qt.StrongFocus
                 id: limitSpin; from: 0; to: 1000; value: root.limitCount
                 visible: root.limitCount > 0
                 onValueChanged: root.limitCount = value
@@ -131,6 +136,7 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             ComboBox {
+                focusPolicy: Qt.StrongFocus
                 id: orderCombo; width: parent.width
                 model: ["", "title", "artist", "album", "year", "playcount", "rating", "random", "lastplayed", "added"]
                 currentIndex: {

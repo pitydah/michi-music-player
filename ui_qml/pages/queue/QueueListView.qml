@@ -16,6 +16,7 @@ Item {
     property var notif: null
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         id: queueList
         anchors.fill: parent
         model: root.qb ? root.qb.queueModel : null

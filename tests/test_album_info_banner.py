@@ -7,13 +7,13 @@ from metadata.album_summary import AlbumSummary
 
 class TestAlbumInfoBanner:
     def test_creates_with_default_state(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         assert banner.minimumHeight() == 213
 
     def test_set_album_summary_shows_info(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         summary = AlbumSummary(
@@ -23,14 +23,14 @@ class TestAlbumInfoBanner:
         assert "Dark Side" in banner._title_lbl.text()
 
     def test_set_album_summary_none_clears(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.set_album_summary(None)
         assert "Sin álbum" in banner._title_lbl.text()
 
     def test_set_track_list_shows_tracks(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         tracks = []
@@ -43,7 +43,7 @@ class TestAlbumInfoBanner:
         assert len(banner._track_rows) == 4
 
     def test_set_track_list_more_than_six_shows_remaining(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.show()
@@ -57,13 +57,13 @@ class TestAlbumInfoBanner:
         assert banner._more_lbl.isVisible()
 
     def test_set_track_list_empty_shows_fallback(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.set_track_list([])
 
     def test_show_source_badge(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.show()
@@ -74,7 +74,7 @@ class TestAlbumInfoBanner:
         assert banner._source_badge.isVisible()
 
     def test_hide_source_badge_for_local(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         summary = AlbumSummary(
@@ -84,7 +84,7 @@ class TestAlbumInfoBanner:
         assert not banner._source_badge.isVisible()
 
     def test_show_genre_badge(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.show()
@@ -95,7 +95,7 @@ class TestAlbumInfoBanner:
         assert banner._genre_badge.isVisible()
 
     def test_signal_play_requested(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         results = []
@@ -107,7 +107,7 @@ class TestAlbumInfoBanner:
         assert len(results) > 0
 
     def test_signal_queue_requested(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         results = []
@@ -119,7 +119,7 @@ class TestAlbumInfoBanner:
         assert len(results) > 0
 
     def test_signal_details_requested(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         results = []
@@ -131,7 +131,7 @@ class TestAlbumInfoBanner:
         assert len(results) > 0
 
     def test_clear_resets_all(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         summary = AlbumSummary(album_key="k", title="Title", artist="Artist")
@@ -140,27 +140,27 @@ class TestAlbumInfoBanner:
         assert "Sin álbum" in banner._title_lbl.text()
 
     def test_set_loading_state(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.set_loading_state("loading")
         assert "Cargando" in banner._title_lbl.text()
 
     def test_compact_mode(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.set_compact_mode(True)
         assert banner._compact is True
 
     def test_fmt_dur(self):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         assert AlbumInfoBanner._fmt_dur(0) == ""
         assert AlbumInfoBanner._fmt_dur(60) == "1:00"
         assert AlbumInfoBanner._fmt_dur(3661) == "1:01:01"
 
     def test_set_cover_pixmap(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         from PySide6.QtGui import QPixmap
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
@@ -170,14 +170,14 @@ class TestAlbumInfoBanner:
         assert banner._cover_lbl.pixmap() is not None
 
     def test_set_cover_pixmap_null_ignored(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         from PySide6.QtGui import QPixmap
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         banner.set_cover_pixmap(QPixmap())
 
     def test_track_row_has_number_and_name(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         banner = AlbumInfoBanner()
         qtbot.addWidget(banner)
         tracks = []
@@ -191,7 +191,7 @@ class TestAlbumInfoBanner:
         assert len(banner._track_rows) == 3
 
     def test_track_row_click_emits_filepath(self, qtbot):
-        from ui.album_info_banner import AlbumInfoBanner
+        from legacy_widgets.ui_archive.album_info_banner import AlbumInfoBanner
         from PySide6.QtCore import QEvent, QPointF, Qt
         from PySide6.QtGui import QMouseEvent
         banner = AlbumInfoBanner()

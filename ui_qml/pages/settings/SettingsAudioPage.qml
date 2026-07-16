@@ -113,6 +113,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: outputDevice
                                 objectName: "settings.audio.outputDevice"
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Auto"]
@@ -162,6 +163,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: sampleRate
                                 objectName: "settings.audio.sampleRate"
                                 model: ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"]
@@ -200,6 +202,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: bitDepth
                                 objectName: "settings.audio.bitDepth"
                                 model: ["Auto", "16", "24", "32"]
@@ -275,6 +278,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: resampleQuality
                                 objectName: "settings.audio.resampleQuality"
                                 model: ListModel {

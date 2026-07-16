@@ -17,7 +17,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.cast_controller import CastController
+    from legacy_widgets.ui.controllers.legacy_controllers.cast_controller import CastController
     return CastController(win)
 
 

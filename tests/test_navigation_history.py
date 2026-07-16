@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 class TestNavigationHistory:
 
     def test_push_and_back(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("home")
         h.push("library")
@@ -25,7 +25,7 @@ class TestNavigationHistory:
         assert entry[0] == "home"
 
     def test_forward_restores(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("home")
         h.push("library")
@@ -40,20 +40,20 @@ class TestNavigationHistory:
         assert entry[0] == "albums"
 
     def test_no_forward_at_tip(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("home")
         h.push("albums")
         assert h.forward() is None
 
     def test_no_back_at_start(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("home")
         assert h.back() is None
 
     def test_force_push_creates_entry(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("albums")
         h.push("albums", force=True)
@@ -61,7 +61,7 @@ class TestNavigationHistory:
         assert h._history[1][0] == "albums"
 
     def test_tab_sequence(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("library")
         h.push("albums")
@@ -76,7 +76,7 @@ class TestNavigationHistory:
         assert h.forward()[0] == "genres"
 
     def test_detail_route_back_forward(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("albums")
         h.push("album:k1", force=True)
@@ -87,7 +87,7 @@ class TestNavigationHistory:
         assert entry[0] == "album:k1"
 
     def test_artist_detail_route_back_forward(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("artists")
         h.push("artist:k1", force=True)
@@ -97,7 +97,7 @@ class TestNavigationHistory:
         assert entry[0] == "artist:k1"
 
     def test_genre_detail_route_back_forward(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("genres")
         h.push("genre:k1", force=True)
@@ -107,7 +107,7 @@ class TestNavigationHistory:
         assert entry[0] == "genre:k1"
 
     def test_restoring_flag(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         assert h.is_restoring is False
         h._restoring = True
@@ -121,15 +121,15 @@ class TestNavigationHistory:
 class TestResolveSidebarKey:
 
     def test_album_detail_maps_to_library_hub(self):
-        from ui.controllers.navigation_controller import resolve_sidebar_active_key
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import resolve_sidebar_active_key
         assert resolve_sidebar_active_key("album:k1") == "library_hub"
 
     def test_artist_detail_maps_to_library_hub(self):
-        from ui.controllers.navigation_controller import resolve_sidebar_active_key
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import resolve_sidebar_active_key
         assert resolve_sidebar_active_key("artist:k1") == "library_hub"
 
     def test_genre_detail_maps_to_library_hub(self):
-        from ui.controllers.navigation_controller import resolve_sidebar_active_key
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import resolve_sidebar_active_key
         assert resolve_sidebar_active_key("genre:k1") == "library_hub"
 
 
@@ -166,7 +166,7 @@ class TestNavigationShortcuts:
         assert "_focus_is_editable" in source
 
     def test_alt_left_not_in_editable(self):
-        from ui.controllers.shortcut_controller import _focus_is_editable
+        from legacy_widgets.ui.controllers.legacy_controllers.shortcut_controller import _focus_is_editable
         assert _focus_is_editable.__doc__ is not None
         assert "editable" in _focus_is_editable.__doc__.lower()
 
@@ -178,7 +178,7 @@ class TestNavigationShortcuts:
 class TestDispatchDynamicRoutes:
 
     def test_dispatch_calls_show_album_detail_route(self):
-        from ui.controllers.navigation_controller import NavigationController, NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationController, NavigationHistory
         w = MagicMock()
         w._search_text = ""
         w._current_route_key = "albums"
@@ -209,7 +209,7 @@ class TestDispatchDynamicRoutes:
         w._show_album_detail_route.assert_called_once_with("k1")
 
     def test_dispatch_calls_show_artist_detail_route(self):
-        from ui.controllers.navigation_controller import NavigationController, NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationController, NavigationHistory
         w = MagicMock()
         w._search_text = ""
         w._current_route_key = "artists"
@@ -239,7 +239,7 @@ class TestDispatchDynamicRoutes:
         w._show_artist_detail_route.assert_called_once_with("k1")
 
     def test_dispatch_calls_show_genre_detail_route(self):
-        from ui.controllers.navigation_controller import NavigationController, NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationController, NavigationHistory
         w = MagicMock()
         w._search_text = ""
         w._current_route_key = "genres"
@@ -277,12 +277,12 @@ class TestNoCentralBackButtons:
 
     def test_album_detail_has_no_back_button(self):
         import inspect
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         source = inspect.getsource(AlbumDetailView.__init__)
         assert "_back_btn" not in source
         assert "Volver" not in source and "Atrás" not in source
 
     def test_expanded_view_back_is_not_history(self):
-        from ui.expanded_view import ExpandedNowPlaying
+        from legacy_widgets.ui_archive.expanded_view import ExpandedNowPlaying
         assert not hasattr(ExpandedNowPlaying, 'navigate_back')
         assert not hasattr(ExpandedNowPlaying, 'history_back')

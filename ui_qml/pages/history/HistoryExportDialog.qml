@@ -68,6 +68,7 @@ Dialog {
                 anchors.verticalCenter: parent.verticalCenter
             }
             ComboBox {
+                focusPolicy: Qt.StrongFocus
                 id: formatCombo
                 model: ["json", "csv"]
                 currentIndex: root._exportFormat === "csv" ? 1 : 0
@@ -93,6 +94,7 @@ Dialog {
             visible: !root._exporting
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80
                 placeholderText: "Selecciona ruta de destino..."

@@ -32,6 +32,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             id: sourceList
             Layout.fillWidth: true
             Layout.fillHeight: true

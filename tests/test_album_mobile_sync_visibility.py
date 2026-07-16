@@ -4,7 +4,7 @@ from __future__ import annotations
 
 class TestMobileSyncDisabled:
     def test_mobile_button_disabled_by_default(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         view.set_album(title="Test", artist="Artist", tracks=[])
@@ -16,7 +16,7 @@ class TestMobileSyncDisabled:
             assert "Michi Sync Suite" in btn.toolTip()
 
     def test_mobile_button_enabled(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         row = view._action_row

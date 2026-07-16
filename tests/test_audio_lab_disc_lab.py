@@ -3,7 +3,7 @@
 
 
 def test_disc_lab_page_renders(qtbot):
-    from ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
+    from legacy_widgets.ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
     page = MichiDiscLabPage()
     qtbot.addWidget(page)
     page.show()
@@ -11,7 +11,7 @@ def test_disc_lab_page_renders(qtbot):
 
 
 def test_disc_lab_detects_tools(qtbot):
-    from ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
+    from legacy_widgets.ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
     page = MichiDiscLabPage()
     qtbot.addWidget(page)
     page._update_diagnostics()
@@ -20,7 +20,7 @@ def test_disc_lab_detects_tools(qtbot):
 
 
 def test_disc_lab_no_drive_no_crash(qtbot):
-    from ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
+    from legacy_widgets.ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
     page = MichiDiscLabPage()
     qtbot.addWidget(page)
     page._on_import_disc()

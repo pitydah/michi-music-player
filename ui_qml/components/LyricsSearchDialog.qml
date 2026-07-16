@@ -22,6 +22,7 @@ Dialog {
         width: parent.width
 
         TextField {
+            focusPolicy: Qt.StrongFocus
             id: queryField
             width: parent.width
             placeholderText: "Artista — Canción"

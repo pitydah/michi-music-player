@@ -13,10 +13,11 @@ from PySide6.QtCore import QObject
 REPO = Path(__file__).resolve().parent.parent.parent.parent
 QML_DIR = REPO / "ui_qml"
 
+from PySide6.QtCore import QObject
+
 from tests.qml.runtime.qml_test_harness import (  # noqa: E402
     QmlTestHarness,
     FakePlayerService,
-    NullBridge,
 )
 
 
@@ -34,13 +35,13 @@ def harness():
 def real_harness(harness):
     harness.setup_db()
     fake_player = FakePlayerService()
-    harness.register_bridge("playbackBridge", NullBridge(parent=harness.engine.rootContext()))
-    harness.register_bridge("nowplayingBridge", NullBridge(parent=harness.engine.rootContext()))
-    harness.register_bridge("libraryBridge", NullBridge(parent=harness.engine.rootContext()))
-    harness.register_bridge("navigationBridge", NullBridge(parent=harness.engine.rootContext()))
-    harness.register_bridge("themeBridge", NullBridge(parent=harness.engine.rootContext()))
-    harness.register_bridge("appBridge", NullBridge(parent=harness.engine.rootContext()))
-    harness.register_bridge("coverBridge", NullBridge(parent=harness.engine.rootContext()))
+    harness.register_bridge("playbackBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("nowplayingBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("libraryBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("navigationBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("themeBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("appBridge", QObject(parent=harness.engine.rootContext()))
+    harness.register_bridge("coverBridge", QObject(parent=harness.engine.rootContext()))
     return harness, fake_player
 
 
@@ -91,14 +92,14 @@ def test_db_has_multiple_albums(harness):
 
 
 def test_register_bridge(harness):
-    bridge = NullBridge()
+    bridge = QObject()
     harness.register_bridge("testBridge", bridge)
     assert "testBridge" in harness._bridges
 
 
 def test_register_multiple_bridges(harness):
     for name in ["bridgeA", "bridgeB", "bridgeC"]:
-        harness.register_bridge(name, NullBridge())
+        harness.register_bridge(name, QObject())
     assert len(harness._bridges) == 3
 
 

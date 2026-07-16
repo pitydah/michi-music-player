@@ -31,6 +31,7 @@ Item {
     Accessible.name: "Resultados del Mix"
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         id: trackList
         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl
         clip: true; spacing: 2

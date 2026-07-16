@@ -23,7 +23,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.server_browser_controller import ServerBrowserController
+    from legacy_widgets.ui.controllers.legacy_controllers.server_browser_controller import ServerBrowserController
     return ServerBrowserController(win)
 
 

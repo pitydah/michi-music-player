@@ -62,7 +62,7 @@ class TestResolveSectionConfig:
         placeholders = [
             "library", "albums", "artists", "playlists", "folders", "radio"
         ]
-        from ui.controllers.navigation_controller import _SEARCH_PLACEHOLDERS
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import _SEARCH_PLACEHOLDERS
         for section in placeholders:
             assert section in _SEARCH_PLACEHOLDERS, f"Missing search placeholder for {section}"
 

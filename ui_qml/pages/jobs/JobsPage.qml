@@ -30,6 +30,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             id: jobList; Layout.fillWidth: true; Layout.fillHeight: true
             model: root.jobListModel ? root.jobListModel : (root.bridge ? root.bridge.jobs : [])
             clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds

@@ -184,6 +184,7 @@ Item {
             SectionHeader { text: "Formato destino"; width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }
 
             ComboBox {
+                focusPolicy: Qt.StrongFocus
                 id: formatCombo
                 width: parent.width
                 model: root._formatOptions
@@ -223,6 +224,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Bitrate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: bitrateCombo
                             model: root._bitrateOptions
                             width: parent.width - 80
@@ -250,6 +252,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Sample rate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: sampleRateCombo
                             model: root._sampleRateOptions
                             width: parent.width - 100
@@ -265,6 +268,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Bit depth:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: bitDepthCombo
                             model: root._bitDepthOptions
                             width: parent.width - 100
@@ -280,6 +284,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: channelsCombo
                             model: root._channelsOptions
                             width: parent.width - 100
@@ -342,6 +347,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Carpeta:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
+                            focusPolicy: Qt.StrongFocus
                             id: outputDirField
                             width: parent.width - 160
                             text: root._outputDir
@@ -371,6 +377,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Naming:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 80 }
                         TextField {
+                            focusPolicy: Qt.StrongFocus
                             id: namingField
                             width: parent.width - 80
                             text: root._namingTemplate
@@ -387,6 +394,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Colisiones:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: collisionCombo
                             model: root._collisionOptions
                             width: parent.width - 100

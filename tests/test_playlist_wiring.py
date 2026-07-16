@@ -81,7 +81,7 @@ class TestSidebar:
         mock_sidebar = MagicMock()
         mock_sidebar.item_clicked = MagicMock()
 
-        from ui.sidebar_controller import SidebarController
+        from legacy_widgets.ui.sidebar_controller import SidebarController
         ctrl = SidebarController(mock_sidebar, mock_db)
         ctrl.rebuild([])
 
@@ -94,7 +94,7 @@ class TestPlaylistDetail:
     def test_track_activated_signal_exists(self):
         """Verify track_activated Signal is declared on PlaylistDetailView."""
         from PySide6.QtCore import Signal
-        from ui.playlist_detail_view import PlaylistDetailView
+        from legacy_widgets.ui.playlist_detail_view import PlaylistDetailView
         assert hasattr(PlaylistDetailView, 'track_activated')
         assert isinstance(PlaylistDetailView.track_activated, Signal)
 

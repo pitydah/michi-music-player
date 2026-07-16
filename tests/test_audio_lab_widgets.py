@@ -16,7 +16,7 @@ def _pix():
 
 @patch("ui.audio_lab.audio_lab_page.get_pixmap")
 def test_hub_renders_five_cards(mock_pixmap, qtbot):
-    from ui.audio_lab.audio_lab_page import AudioLabPage
+    from legacy_widgets.ui.audio_lab.audio_lab_page import AudioLabPage
 
     mock_pixmap.return_value = _pix()
     page = AudioLabPage()
@@ -30,7 +30,7 @@ def test_hub_renders_five_cards(mock_pixmap, qtbot):
 
 @patch("ui.audio_lab.audio_lab_page.get_pixmap")
 def test_hub_set_status(mock_pixmap, qtbot):
-    from ui.audio_lab.audio_lab_page import AudioLabPage
+    from legacy_widgets.ui.audio_lab.audio_lab_page import AudioLabPage
 
     mock_pixmap.return_value = _pix()
     page = AudioLabPage()

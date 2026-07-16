@@ -160,6 +160,7 @@ Rectangle {
 
     Component { id: textCtl
         TextField {
+            focusPolicy: Qt.StrongFocus
             text: root.originalValue !== null ? String(root.originalValue) : ""
             placeholderText: root.entry.placeholder || ""
             onTextEdited: root.scheduleSave(text)
@@ -170,6 +171,7 @@ Rectangle {
 
     Component { id: intCtl
         SpinBox {
+            focusPolicy: Qt.StrongFocus
             value: root.originalValue !== null ? parseInt(root.originalValue) || 0 : 0
             from: root.entry.min_value !== null ? root.entry.min_value : 0
             to: root.entry.max_value !== null ? root.entry.max_value : 999999
@@ -200,6 +202,7 @@ Rectangle {
 
     Component { id: selectCtl
         ComboBox {
+            focusPolicy: Qt.StrongFocus
             model: root.entry.options || []
             textRole: "label"
             valueRole: "value"
@@ -241,6 +244,7 @@ Rectangle {
                 Accessible.name: root.entry ? root.entry.label : ""
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: sliderEditor
                 implicitWidth: 64
                 text: slider.value.toFixed(root.entry.type === "range" ? 2 : 0)
@@ -273,6 +277,7 @@ Rectangle {
     Component { id: fileCtl
         RowLayout { spacing: MichiTheme.spacing.xs
             TextField {
+                focusPolicy: Qt.StrongFocus
                 text: root.originalValue || ""
                 readOnly: true
                 Layout.fillWidth: true
@@ -292,6 +297,7 @@ Rectangle {
     Component { id: dirCtl
         RowLayout { spacing: MichiTheme.spacing.xs
             TextField {
+                focusPolicy: Qt.StrongFocus
                 text: root.originalValue || ""
                 readOnly: true
                 Layout.fillWidth: true
@@ -310,6 +316,7 @@ Rectangle {
 
     Component { id: secretCtl
         TextField {
+            focusPolicy: Qt.StrongFocus
             text: root.originalValue || ""
             placeholderText: root.entry.placeholder || "Contraseña"
             echoMode: revealButton.checked ? TextInput.Normal : TextInput.Password
@@ -351,6 +358,7 @@ Rectangle {
                 border.width: 1; border.color: MichiTheme.colors.borderCard
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 text: root.originalValue || "#8FB7FF"
                 Layout.fillWidth: true
                 font.pixelSize: MichiTheme.typography.captionSize
@@ -364,6 +372,7 @@ Rectangle {
             spacing: MichiTheme.spacing.xs
             Layout.fillWidth: true
             TextField {
+                focusPolicy: Qt.StrongFocus
                 text: root.originalValue ? String(root.originalValue) : ""
                 readOnly: true
                 Layout.fillWidth: true

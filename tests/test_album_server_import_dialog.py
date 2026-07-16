@@ -4,7 +4,7 @@ from __future__ import annotations
 
 class TestAlbumServerImportDialog:
     def test_dialog_creates(self, qtbot):
-        from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
+        from legacy_widgets.ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
         parent = QWidget()
         qtbot.addWidget(parent)
@@ -13,7 +13,7 @@ class TestAlbumServerImportDialog:
         assert dlg.was_confirmed() is False
 
     def test_dialog_confirm(self, qtbot):
-        from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
+        from legacy_widgets.ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
         parent = QWidget()
         qtbot.addWidget(parent)
@@ -22,7 +22,7 @@ class TestAlbumServerImportDialog:
         assert dlg.was_confirmed() is True
 
     def test_dialog_progress(self, qtbot):
-        from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
+        from legacy_widgets.ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
         parent = QWidget()
         qtbot.addWidget(parent)
@@ -32,7 +32,7 @@ class TestAlbumServerImportDialog:
         assert dlg._progress.maximum() == 10
 
     def test_show_report_success(self, qtbot):
-        from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
+        from legacy_widgets.ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
         from unittest.mock import patch
         parent = QWidget()
@@ -42,7 +42,7 @@ class TestAlbumServerImportDialog:
             mock_info.assert_called_once()
 
     def test_show_report_error(self, qtbot):
-        from ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
+        from legacy_widgets.ui.dialogs.album_server_import_dialog import AlbumServerImportDialog
         from PySide6.QtWidgets import QWidget
         from unittest.mock import patch
         parent = QWidget()

@@ -98,7 +98,7 @@ class TestLinuxFilesystem:
 class TestLinuxMediaKeys:
     def test_mpris_import(self):
         try:
-            from ui.mpris_controller import MprisController
+            from legacy_widgets.ui.controllers.legacy_controllers.mpris_controller import MprisController
             assert MprisController is not None
         except ImportError:
             from ui_qml_bridge.desktop_bridge import DesktopBridge

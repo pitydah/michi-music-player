@@ -2,7 +2,7 @@ from __future__ import annotations
 """Real QML interaction tests — 13 workflows, 50+ tests.
 QQmlApplicationEngine, ServiceContainer with real services, real SQLite,
 QTest.mouseClick, QTest.keyClick, objectName, signals, backend verification.
-No MagicMock in core services. No NullBridge.
+Real interaction test — loads real bridges, no mocks.
 """
 
 import os

@@ -37,6 +37,7 @@ Item {
             }
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: groupNameField
                 width: parent.width
                 placeholderText: "Nombre del grupo"

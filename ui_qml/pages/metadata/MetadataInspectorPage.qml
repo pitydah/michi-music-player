@@ -178,14 +178,17 @@ Item {
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Título:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editTitle; text: root._editTitle; width: parent.width - 70; onTextChanged: root._editTitle = text }
+                            focusPolicy: Qt.StrongFocus
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Artista:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editArtist; text: root._editArtist; width: parent.width - 70; onTextChanged: root._editArtist = text }
+                            focusPolicy: Qt.StrongFocus
                     }
                     Row { spacing: MichiTheme.spacing.sm; width: parent.width
                         Text { text: "Álbum:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 60 }
                         TextField { id: editAlbum; text: root._editAlbum; width: parent.width - 70; onTextChanged: root._editAlbum = text }
+                            focusPolicy: Qt.StrongFocus
                     }
 
                     Row { spacing: MichiTheme.spacing.sm

@@ -58,6 +58,7 @@ Dialog {
             visible: !root._exporting
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80
                 placeholderText: "Destino del archivo .m3u"

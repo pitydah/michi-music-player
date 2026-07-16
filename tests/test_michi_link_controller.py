@@ -15,7 +15,7 @@ class TestMichiLinkController:
         win._toast_svc = MagicMock()
         win._rebuild_sidebar = MagicMock()
 
-        from ui.controllers.michi_link_controller import MichiLinkController
+        from legacy_widgets.ui.controllers.legacy_controllers.michi_link_controller import MichiLinkController
         ctrl = MichiLinkController(win)
 
         # First call will fail because SyncManager needs QObject parent
@@ -25,7 +25,7 @@ class TestMichiLinkController:
 
     def test_get_connection_state_returns_dict(self):
         win = MagicMock()
-        from ui.controllers.michi_link_controller import MichiLinkController
+        from legacy_widgets.ui.controllers.legacy_controllers.michi_link_controller import MichiLinkController
         ctrl = MichiLinkController(win)
 
         state = ctrl.get_connection_state()
@@ -34,7 +34,7 @@ class TestMichiLinkController:
 
     def test_initial_connection_state_false(self):
         win = MagicMock()
-        from ui.controllers.michi_link_controller import MichiLinkController
+        from legacy_widgets.ui.controllers.legacy_controllers.michi_link_controller import MichiLinkController
         ctrl = MichiLinkController(win)
 
         state = ctrl.get_connection_state()

@@ -119,6 +119,7 @@ Item {
             SectionHeader { text: "Canciones"; width: parent.width }
 
             ListView {
+                focusPolicy: Qt.StrongFocus
                 id: tracksList
                 width: parent.width
                 height: Math.min(600, (root.lib && root.lib.trackModel ? root.lib.trackModel.count : 0) * 36)

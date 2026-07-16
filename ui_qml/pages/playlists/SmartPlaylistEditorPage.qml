@@ -136,6 +136,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: nameInput
                 width: parent.width * 0.5
                 text: root.playlistName
@@ -209,6 +210,7 @@ Item {
                             Item { Layout.fillWidth: true }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: groupOpCombo
                                 model: ["and", "or"]
                                 currentIndex: modelData.operator === "or" ? 1 : 0
@@ -238,6 +240,7 @@ Item {
                                 spacing: MichiTheme.spacing.sm
 
                                 ComboBox {
+                                    focusPolicy: Qt.StrongFocus
                                     id: fieldCombo
                                     model: ["genre", "artist", "album", "title", "year", "rating", "playcount", "lastplayed", "added"]
                                     currentIndex: Math.max(0, fieldCombo.find(modelData.field))
@@ -251,6 +254,7 @@ Item {
                                     }
                                 }
                                 ComboBox {
+                                    focusPolicy: Qt.StrongFocus
                                     id: opCombo
                                     model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                                     currentIndex: Math.max(0, opCombo.find(modelData.operator))
@@ -264,6 +268,7 @@ Item {
                                     }
                                 }
                                 TextField {
+                                    focusPolicy: Qt.StrongFocus
                                     Layout.fillWidth: true
                                     text: modelData.value || ""
                                     placeholderText: "Valor"
@@ -326,6 +331,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 SpinBox {
+                    focusPolicy: Qt.StrongFocus
                     id: limitSpin
                     from: 0
                     to: 1000
@@ -350,6 +356,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: orderCombo
                     model: ["", "title", "artist", "album", "year", "playcount", "rating", "random", "lastplayed", "added"]
                     Layout.preferredWidth: 130

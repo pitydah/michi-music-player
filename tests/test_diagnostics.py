@@ -96,17 +96,17 @@ class TestDiagnosticsService:
 class TestDiagnosticsNav:
 
     def test_diagnostics_route_in_nav_routes(self):
-        from ui.controllers.navigation_controller import NAV_ROUTES
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
         assert "audio_lab_diagnostics" in NAV_ROUTES
 
     def test_diagnostics_section_config(self):
-        from ui.controllers.navigation_controller import SECTION_CONFIG
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import SECTION_CONFIG
         assert "audio_lab_diagnostics" in SECTION_CONFIG
         cfg = SECTION_CONFIG["audio_lab_diagnostics"]
         assert "title" in cfg and "subtitle" in cfg and "icon" in cfg
 
     def test_diagnostics_sidebar_key(self):
-        from ui.controllers.navigation_controller import resolve_sidebar_active_key
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import resolve_sidebar_active_key
         assert resolve_sidebar_active_key("audio_lab_diagnostics") == "audio_lab"
 
 

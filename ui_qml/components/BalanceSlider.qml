@@ -38,6 +38,7 @@ Item {
         }
 
         Slider {
+            focusPolicy: Qt.StrongFocus
             id: balanceSlider
             Layout.fillWidth: true
             from: -1.0

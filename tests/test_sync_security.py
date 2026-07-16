@@ -52,7 +52,7 @@ class TestLocalAccountManager:
 
 class TestDeviceRegistryToken:
     def test_uses_secure_compare(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
         reg = DeviceRegistry(path)
         reg.register("d1", "Device")
@@ -62,7 +62,7 @@ class TestDeviceRegistryToken:
         assert not reg.validate_token("d1", "secure_tokn")
 
     def test_register_and_set_token(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
         reg = DeviceRegistry(path)
 
@@ -76,7 +76,7 @@ class TestDeviceRegistryToken:
         assert dev.revoked_at == ""
 
     def test_validate_token(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
         reg = DeviceRegistry(path)
 
@@ -88,7 +88,7 @@ class TestDeviceRegistryToken:
         assert not reg.validate_token("unknown", "my_token")
 
     def test_token_hashed_not_stored_plain(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
         reg = DeviceRegistry(path)
 
@@ -101,7 +101,7 @@ class TestDeviceRegistryToken:
         assert dev.token_hash == expected
 
     def test_revoke_device(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
         reg = DeviceRegistry(path)
 
@@ -113,7 +113,7 @@ class TestDeviceRegistryToken:
         assert not reg.validate_token("d1", "token")
 
     def test_revoked_has_no_permission(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
         reg = DeviceRegistry(path)
 
@@ -125,7 +125,7 @@ class TestDeviceRegistryToken:
         assert not reg.has_permission("d1", "sync.read_manifest")
 
     def test_persist_across_reload(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         path = str(tmp_path / "devices.json")
 
         reg1 = DeviceRegistry(path)
@@ -141,7 +141,7 @@ class TestSyncServerSecurity:
     def test_register_legacy_blocked_when_account_exists(self):
         from sync.sync_server import SyncServer
         from sync.local_account import LocalAccountManager
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         import tempfile
 
         db = MagicMock()
@@ -166,7 +166,7 @@ class TestSyncServerSecurity:
 
     def test_pair_confirm_registers_device(self):
         from sync.sync_server import SyncServer
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         from sync.local_account import LocalAccountManager
         import tempfile
 
@@ -200,7 +200,7 @@ class TestSyncServerSecurity:
 
     def test_pair_records_metadata(self, tmp_path):
         """When pairing, the device should be registered with metadata."""
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         reg = DeviceRegistry(str(tmp_path / "devices.json"))
 
         # Simulate what pair/confirm does: register with metadata then set token
@@ -221,7 +221,7 @@ class TestSyncServerSecurity:
         assert dev.trusted is True
 
     def test_revoked_gets_403(self, tmp_path):
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         reg = DeviceRegistry(str(tmp_path / "devices.json"))
         reg.register("d1", "Device")
         reg.set_token("d1", "tok")
@@ -258,7 +258,7 @@ class TestSyncServerSecurity:
 
     def test_token_works_without_in_memory_sessions(self):
         """Token survives server restart because validation uses DeviceRegistry."""
-        from ui.services.device_registry import DeviceRegistry
+        from legacy_widgets.ui_archive.services.device_registry import DeviceRegistry
         import tempfile
 
         with tempfile.TemporaryDirectory() as td:

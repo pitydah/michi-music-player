@@ -17,6 +17,7 @@ Item {
     signal folderSelected(string path)
 
     TreeView {
+        focusPolicy: Qt.StrongFocus
         id: treeView
         anchors.fill: parent
         model: root.folderModel

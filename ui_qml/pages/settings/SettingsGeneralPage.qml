@@ -127,6 +127,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: languageSelector
                                 objectName: "settings.general.language"
                                 model: ListModel {
@@ -186,6 +187,7 @@ Item {
                             }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: themeMode
                                 objectName: "settings.general.themeMode"
                                 model: ListModel {

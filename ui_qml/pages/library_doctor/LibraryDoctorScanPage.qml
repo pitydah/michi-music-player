@@ -55,6 +55,7 @@ Item {
                     spacing: MichiTheme.spacing.sm; visible: root.doc && root.doc.status === "done"
                     Text { text: "Filtrar:"; color: MichiTheme.colors.textSecondary; anchors.verticalCenter: parent.verticalCenter }
                     TextField { id: filterField; width: 200; placeholderText: "Tipo de issue..." }
+                        focusPolicy: Qt.StrongFocus
                 }
             }
         }

@@ -60,6 +60,7 @@ Item {
             }
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: artistField
                 width: 140
                 placeholderText: "Artista"
@@ -70,6 +71,7 @@ Item {
             }
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: albumField
                 width: 140
                 placeholderText: "Álbum"
@@ -80,6 +82,7 @@ Item {
             }
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: deviceField
                 width: 120
                 placeholderText: "Dispositivo"
@@ -121,6 +124,7 @@ Item {
                 visible: root.dateRangeEnabled
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: fromDateField
                 width: 140
                 placeholderText: "YYYY-MM-DD"
@@ -142,6 +146,7 @@ Item {
                 visible: root.dateRangeEnabled
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: toDateField
                 width: 140
                 placeholderText: "YYYY-MM-DD"

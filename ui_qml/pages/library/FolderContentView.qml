@@ -41,6 +41,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true
             model: root._tracks
             clip: true

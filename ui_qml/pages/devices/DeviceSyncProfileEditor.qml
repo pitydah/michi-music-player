@@ -52,6 +52,7 @@ Item {
             }
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: profileNameField
                 width: parent.width
                 placeholderText: "Nombre del perfil"
@@ -63,6 +64,7 @@ Item {
 
             Text { text: "Política de transcodificación"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
             ComboBox {
+                focusPolicy: Qt.StrongFocus
                 id: transcodeCombo
                 width: parent.width
                 model: ["never", "always", "unsupported_only"]
@@ -74,6 +76,7 @@ Item {
 
             Text { text: "Política de colisión"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
             ComboBox {
+                focusPolicy: Qt.StrongFocus
                 id: collisionCombo
                 width: parent.width
                 model: ["skip", "overwrite", "rename", "ask"]
@@ -84,6 +87,7 @@ Item {
             }
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: musicDirField
                 width: parent.width
                 placeholderText: "Directorio de música"

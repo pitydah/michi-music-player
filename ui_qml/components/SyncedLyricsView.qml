@@ -31,6 +31,7 @@ Item {
     clip: true
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         id: listView
         anchors.fill: parent
         model: root.lyricsBridge ? root.lyricsBridge.syncedLyrics : []

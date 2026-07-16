@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 class TestSongsMicroServerImport:
 
     def test_send_no_server_shows_toast(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.micro_server = None
         ctrl = SongsController(svc)
@@ -15,7 +15,7 @@ class TestSongsMicroServerImport:
         svc.toast.show.assert_called()
 
     def test_send_no_files_shows_toast(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.micro_server = MagicMock()
         ctrl = SongsController(svc)
@@ -23,7 +23,7 @@ class TestSongsMicroServerImport:
         svc.toast.show.assert_called()
 
     def test_send_session_failure_shows_toast(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.micro_server = MagicMock()
         svc.toast = MagicMock()
@@ -41,7 +41,7 @@ class TestSongsMicroServerImport:
         svc.toast.show.assert_called()
 
     def test_cancel_after_session_calls_rollback(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.micro_server = MagicMock()
         svc.toast = MagicMock()
@@ -70,7 +70,7 @@ class TestSongsMicroServerImport:
         mock_import_svc.rollback.assert_called_once_with("sid-1")
 
     def test_confirm_starts_worker(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.micro_server = MagicMock()
         svc.toast = MagicMock()

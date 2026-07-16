@@ -59,6 +59,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "pairingDialogNameLabel" }
                 TextField {
+                    focusPolicy: Qt.StrongFocus
                     id: pairingNameField
                     width: 200
                     placeholderText: root.detectedDeviceName || "Nombre del dispositivo"

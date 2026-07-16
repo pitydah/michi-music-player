@@ -19,45 +19,6 @@ from PySide6.QtTest import QTest
 from PySide6.QtCore import Qt
 
 
-class NullBridge(QObject):
-    dataChanged = Signal()
-
-    def __getattr__(self, name):
-        if name.startswith("_"):
-            raise AttributeError(name)
-        return None
-
-    @staticmethod
-    def refresh():
-        return "ok"
-
-    @staticmethod
-    def count():
-        return 0
-
-    @staticmethod
-    def shutdown(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def save_state():
-        return {"ok": True}
-
-    @staticmethod
-    def stop(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def cancel_all(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def clear_history(*args, **kwargs):
-        pass
-
-    @staticmethod
-    def close(*args, **kwargs):
-        pass
 
 
 def _make_dummy_flac(path: Path) -> str:
@@ -268,23 +229,14 @@ class QmlTestHarness:
         self._bridges[name] = bridge
 
     def _register_null_bridges(self, ctx: QQmlContext):
-        all_names = [
+        required = [
             "appBridge", "navigationBridge", "themeBridge", "libraryBridge",
-            "playbackBridge", "nowplayingBridge", "mixBridge", "metadataBridge",
-            "michiAiBridge", "devicesBridge", "radioBridge", "connectionsBridge",
-            "homeAudioBridge", "audioLabBridge", "settingsBridge", "playlistsBridge",
-            "queueBridge", "historyBridge", "notificationBridge", "lyricsBridge",
-            "appStateBridge", "diagnosticsBridge", "coverProviderBridge", "jobBridge",
-            "desktopBridge", "pageStateStore", "capabilityBridge", "outputProfilesBridge",
-            "smartTaggingBridge", "libraryDoctorBridge", "discLabBridge",
-            "selectionContextBridge", "globalSearchBridge", "routeRegistryBridge",
-            "actionRegistry", "commandPaletteBridge", "eqBridge", "accessibilityBridge",
-            "runtimeQualityBridge", "physicalAudioBridge", "homeBridge",
-            "librarySourcesBridge", "coverBridge",
+            "playbackBridge", "nowplayingBridge", "settingsBridge",
+            "actionRegistry",
         ]
-        for name in all_names:
-            if name not in self._bridges:
-                ctx.setContextProperty(name, NullBridge(parent=ctx))
+        missing = [n for n in required if n not in self._bridges]
+        if missing:
+            raise RuntimeError(f"QmlTestHarness: missing REQUIRED bridges: {missing}")
 
     def load_qml(self, qml_path: str | Path | None = None) -> QObject:
         path = qml_path or self._qml_path

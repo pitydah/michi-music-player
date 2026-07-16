@@ -40,6 +40,7 @@ Item {
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                 Text { text: "Campo"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: fieldCombo; width: parent.width
                     model: ["genre", "artist", "album", "decade", "year", "folder", "quality", "playcount", "rating", "added"]
                     currentIndex: fieldCombo.find(root._ruleField) >= 0 ? fieldCombo.find(root._ruleField) : 0
@@ -49,6 +50,7 @@ Item {
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.45
                 Text { text: "Valor"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 TextField {
+                    focusPolicy: Qt.StrongFocus
                     width: parent.width; text: root._ruleValue
                     placeholderText: "Valor (ej: Rock, 80s, 5)"
                     onTextChanged: root._ruleValue = text
@@ -61,6 +63,7 @@ Item {
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.30
                 Text { text: "Operador"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     width: parent.width
                     model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                     currentIndex: 0
@@ -70,10 +73,12 @@ Item {
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.30
                 Text { text: "Target canciones"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 SpinBox { id: countSpin; from: 5; to: 200; value: root._targetCount; onValueChanged: root._targetCount = value }
+                    focusPolicy: Qt.StrongFocus
             }
             Column { spacing: MichiTheme.spacing.sm; width: parent.width * 0.30
                 Text { text: "Máx por artista"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
                 SpinBox { id: artistSpin; from: 1; to: 50; value: root._artistLimit; onValueChanged: root._artistLimit = value }
+                    focusPolicy: Qt.StrongFocus
             }
         }
 
@@ -85,6 +90,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 width: 120; text: root._seed; placeholderText: "seed"
                 onTextChanged: root._seed = text
             }

@@ -20,8 +20,10 @@ class TestAudioNegative:
     def app(self):
         return QCoreApplication.instance() or QCoreApplication()
 
-    def test_null_bridge_does_not_crash(self):
-        assert None is None
+    def test_analysis_no_service(self):
+        bridge = AudioLabBridge()
+        result = bridge.previewAnalysis("/nonexistent.flac")
+        assert result.get("ok") is False
 
     def test_analysis_no_service(self):
         bridge = AudioLabBridge()

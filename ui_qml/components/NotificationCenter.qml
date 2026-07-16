@@ -95,6 +95,7 @@ Rectangle {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             id: notificationList
             width: parent.width
             height: parent.height - 48 - 1

@@ -57,7 +57,7 @@ class _FakeServices:
 class TestSongsController:
 
     def _ctrl(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         return SongsController(_FakeServices())
 
     def test_load_populates_items(self):
@@ -106,7 +106,7 @@ class TestSongsController:
 
     def test_edit_metadata_callback(self):
         cb = MagicMock()
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         ctrl = SongsController(_FakeServices(), open_metadata_for_files=cb)
         ctrl.load()
         ctrl.edit_metadata(ctrl._all_items[:1])
@@ -114,7 +114,7 @@ class TestSongsController:
 
     def test_locate_file_callback(self):
         cb = MagicMock()
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         ctrl = SongsController(_FakeServices(), locate_file=cb)
         ctrl.load()
         ctrl.locate_file(ctrl._all_items[0])
@@ -122,7 +122,7 @@ class TestSongsController:
 
     def test_add_to_playlist_callback(self):
         cb = MagicMock()
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         ctrl = SongsController(_FakeServices(), add_to_playlist_cb=cb)
         ctrl.load()
         ctrl.add_to_playlist(ctrl._all_items[:1])

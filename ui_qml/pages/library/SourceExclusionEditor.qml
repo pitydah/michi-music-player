@@ -33,6 +33,7 @@ Dialog {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true
             model: root._exclusions
             clip: true; spacing: 2
@@ -59,6 +60,7 @@ Dialog {
 
         RowLayout { spacing: MichiTheme.spacing.sm
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: patternField
                 Layout.fillWidth: true
                 placeholderText: "*.tmp, *.log, node_modules/..."

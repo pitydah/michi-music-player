@@ -7,26 +7,26 @@ from unittest.mock import MagicMock
 class TestSongsControllerSignals:
 
     def test_controller_has_data_changed_signal(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         ctrl = SongsController(svc)
         assert hasattr(ctrl, 'data_changed')
 
     def test_controller_has_favorite_changed_signal(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         ctrl = SongsController(svc)
         assert hasattr(ctrl, 'favorite_changed')
 
     def test_controller_has_import_signals(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         ctrl = SongsController(svc)
         assert hasattr(ctrl, 'import_started')
         assert hasattr(ctrl, 'import_finished')
 
     def test_data_changed_emits_on_load(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         ctrl = SongsController(svc)
@@ -40,7 +40,7 @@ class TestSongsControllerSignals:
         assert len(received) == 1
 
     def test_data_changed_emits_on_apply_filter(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         from library.songs_view_state import SongsFilterState
         svc = MagicMock()
         svc.db = MagicMock()
@@ -56,7 +56,7 @@ class TestSongsControllerSignals:
         assert len(received) >= 1
 
     def test_favorite_changed_emits_on_toggle(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         svc.db.toggle_favorite.return_value = True

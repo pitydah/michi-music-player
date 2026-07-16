@@ -36,38 +36,36 @@ class TestAudioLabNavigation:
         )
 
     def test_nav_routes_contain_all_subpages(self):
-        from ui.controllers.navigation_controller import NAV_ROUTES
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
         for key in _ALL_SUBPAGES:
             assert key in NAV_ROUTES
 
     def test_section_config_contains_all_subpages(self):
-        from ui.controllers.navigation_controller import SECTION_CONFIG
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import SECTION_CONFIG
         for key in _ALL_SUBPAGES:
             assert key in SECTION_CONFIG
 
     def test_resolve_sidebar_active_key(self):
-        from ui.controllers.navigation_controller import resolve_sidebar_active_key
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import resolve_sidebar_active_key
         for key in _ALL_SUBPAGES:
             assert resolve_sidebar_active_key(key) == "audio_lab"
 
     def test_hub_route_controller_has_all_show_methods(self):
-        from ui.controllers.hub_route_controller import HubRouteController
+        from legacy_widgets.ui.controllers.legacy_controllers.hub_route_controller import HubRouteController
         for method in _ALL_HANDLER_METHODS:
             assert hasattr(HubRouteController, method)
 
     def test_window_has_all_handler_methods(self):
-        import ui.window
         for method in _ALL_WINDOW_METHODS:
             assert hasattr(ui.window.MainWindow, method)
 
     def test_no_orphan_routes_in_nav_routes(self):
-        from ui.controllers.navigation_controller import NAV_ROUTES
-        import ui.window
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NAV_ROUTES
         for _key, method_name in NAV_ROUTES.items():
             assert hasattr(ui.window.MainWindow, method_name)
 
     def test_audio_lab_controller_has_all_methods(self):
-        from ui.controllers.audio_lab_controller import AudioLabController
+        from legacy_widgets.ui.controllers.legacy_controllers.audio_lab_controller import AudioLabController
         for method in _AUDIO_LAB_CTRL_METHODS:
             assert hasattr(AudioLabController, method)
 
@@ -75,7 +73,7 @@ class TestAudioLabNavigation:
         """Verify show_diagnostics() calls self._lazy() with correct key.
         Mocks _lazy to avoid widget instantiation."""
         import types
-        from ui.controllers.audio_lab_controller import AudioLabController
+        from legacy_widgets.ui.controllers.legacy_controllers.audio_lab_controller import AudioLabController
 
         lazy_calls = []
 
@@ -102,7 +100,7 @@ class TestAudioLabNavigation:
     def test_hub_route_delegates_to_audio_lab_controller(self):
         """Verify HubRouteController.show_audio_lab_diagnostics delegates."""
         import types
-        from ui.controllers.hub_route_controller import HubRouteController
+        from legacy_widgets.ui.controllers.legacy_controllers.hub_route_controller import HubRouteController
 
         diag_called = []
         win = types.SimpleNamespace(

@@ -187,6 +187,7 @@ Item {
             }
 
             ListView {
+                focusPolicy: Qt.StrongFocus
                 id: listView
                 width: parent.width
                 height: parent.height - searchField.height - MichiTheme.spacing.lg - sectionBar.height - MichiTheme.spacing.sm

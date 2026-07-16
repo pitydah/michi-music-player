@@ -232,6 +232,7 @@ Item {
                             }
 
                             TextField {
+                                focusPolicy: Qt.StrongFocus
                                 id: manualIpField
                                 width: parent.width
                                 placeholderText: "192.168.1.100"
@@ -254,6 +255,7 @@ Item {
                             }
 
                             TextField {
+                                focusPolicy: Qt.StrongFocus
                                 id: manualPortField
                                 width: parent.width
                                 placeholderText: "53318"
@@ -277,6 +279,7 @@ Item {
                             }
 
                             TextField {
+                                focusPolicy: Qt.StrongFocus
                                 id: manualAuthField
                                 width: parent.width
                                 placeholderText: "Opcional"

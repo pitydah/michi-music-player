@@ -229,6 +229,7 @@ Item {
                         height: Math.min(200, (root.ps ? root.ps.queue.length : 0) * 28 + 10)
 
                         ListView {
+                            focusPolicy: Qt.StrongFocus
                             id: queueView
                             anchors.fill: parent
                             model: root.ps ? root.ps.queue : []
@@ -276,6 +277,7 @@ Item {
                         visible: root.ps && root.ps.history && root.ps.history.length > 0
 
                         ListView {
+                            focusPolicy: Qt.StrongFocus
                             anchors.fill: parent
                             model: root.ps ? root.ps.history.slice(0, 10) : []
                             clip: true

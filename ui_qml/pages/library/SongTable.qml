@@ -64,6 +64,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             id: listView
             width: parent.width
             height: parent.height - 28 - (root.trackModel && root.trackModel.hasMore ? 28 : 0) - (root.bridge && root.bridge.hasMoreSongs && !root.trackModel ? 28 : 0)

@@ -49,6 +49,7 @@ Item {
         }
 
         TextField {
+            focusPolicy: Qt.StrongFocus
             id: field
             Layout.fillWidth: true
             Layout.fillHeight: true

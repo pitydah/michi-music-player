@@ -227,8 +227,8 @@ class TestCoverFlowPublicAPI:
 
     def test_album_sort_filter_refreshes_active_tab(self, qapp):
         """Verify sort/filter handlers refresh the active tab for all views."""
-        from ui.builder.album_sort_menu import AlbumSortMenu
-        from ui.window import MainWindow
+        from legacy_widgets.ui.builder.album_sort_menu import AlbumSortMenu
+        from legacy_widgets.ui.old_window.window import MainWindow
         w = MainWindow.__new__(MainWindow)
         w._album_sort_key = "title"
         w._album_filter_mode = "all"

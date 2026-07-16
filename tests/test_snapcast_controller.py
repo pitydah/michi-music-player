@@ -18,7 +18,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.snapcast_controller import SnapcastController
+    from legacy_widgets.ui.controllers.legacy_controllers.snapcast_controller import SnapcastController
     c = SnapcastController.__new__(SnapcastController)
     from PySide6.QtCore import QObject
     QObject.__init__(c)

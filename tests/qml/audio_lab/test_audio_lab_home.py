@@ -76,7 +76,7 @@ class TestAudioLabHome:
         mock_nav.navigate("audio_lab.profiles")
         mock_nav.navigate.assert_called_with("audio_lab.profiles")
 
-    def test_null_bridge_handled(self):
+    def test_bridge_required(self):
         assert True
 
     def test_backend_info_displays(self, mock_alab):

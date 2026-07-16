@@ -65,6 +65,7 @@ Item {
         width: 300
 
         TextField {
+            focusPolicy: Qt.StrongFocus
             id: playlistName
             width: parent.width
             placeholderText: "Nombre de la playlist"

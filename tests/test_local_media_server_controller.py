@@ -14,7 +14,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.local_media_server_controller import (
+    from legacy_widgets.ui.controllers.legacy_controllers.local_media_server_controller import (
         LocalMediaServerController,
     )
     c = LocalMediaServerController.__new__(LocalMediaServerController)

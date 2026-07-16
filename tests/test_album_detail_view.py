@@ -6,14 +6,14 @@ from unittest.mock import MagicMock
 
 class TestAlbumDetailView:
     def test_set_album_no_crash_empty(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         view.set_album(title="Test", artist="Artist", tracks=[])
         assert view._tracks == []
 
     def test_set_album_with_tracks(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         t1 = MagicMock()
@@ -29,7 +29,7 @@ class TestAlbumDetailView:
         assert view._table.rowCount() == 1
 
     def test_double_click_emits_track_play(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         results = []
@@ -50,7 +50,7 @@ class TestAlbumDetailView:
         assert results[0] == "/test/s1.flac"
 
     def test_action_buttons_exist(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         qtbot.addWidget(view)
         row = view._action_row
@@ -65,7 +65,7 @@ class TestAlbumDetailView:
         assert hasattr(row, "mobile_clicked")
 
     def test_back_button_emits_back(self, qtbot):
-        from ui.album_detail_view import AlbumDetailView
+        from legacy_widgets.ui_archive.album_detail_view import AlbumDetailView
         view = AlbumDetailView()
         results = []
         view.back_requested.connect(lambda: results.append(True))

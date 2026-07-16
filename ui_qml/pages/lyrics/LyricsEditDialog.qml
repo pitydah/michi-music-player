@@ -33,10 +33,12 @@ Dialog {
         }
 
         ScrollView {
+            focusPolicy: Qt.StrongFocus
             width: parent.width
             height: parent.height - 100
 
             TextArea {
+                focusPolicy: Qt.StrongFocus
                 id: editor
                 width: parent.width
                 text: root.lyricsBridge ? root.lyricsBridge.lyrics : ""

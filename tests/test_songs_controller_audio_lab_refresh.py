@@ -18,14 +18,14 @@ def _make_item(id: int, fp: str):
 class TestSongsControllerAudioLabRefresh:
 
     def test_refresh_audio_lab_badges_existe(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         songs = SongsController(svc)
         assert hasattr(songs, 'refresh_audio_lab_badges')
 
     def test_refresh_llama_invalidate_cache_for_paths(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         songs = SongsController(svc)
@@ -37,7 +37,7 @@ class TestSongsControllerAudioLabRefresh:
             mock_inv.assert_called_once_with(["/p1.flac"])
 
     def test_refresh_llama_compute_batch(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         songs = SongsController(svc)
@@ -46,14 +46,14 @@ class TestSongsControllerAudioLabRefresh:
             mock_batch.assert_called_once()
 
     def test_refresh_no_crash_empty_list(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         songs = SongsController(svc)
         songs.refresh_audio_lab_badges([])
 
     def test_refresh_no_crash_none(self):
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         svc = MagicMock()
         svc.db = MagicMock()
         songs = SongsController(svc)

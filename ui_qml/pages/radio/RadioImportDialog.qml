@@ -147,6 +147,7 @@ Dialog {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             width: parent.width
             height: parent.height - 180
             clip: true

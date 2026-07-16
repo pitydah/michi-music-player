@@ -39,9 +39,33 @@ def main():
     for audit in ["qml_widget_dependency_audit_v19.py", "qml_placeholder_audit_v19.py",
                   "qml_fake_bridge_audit_v19.py", "qml_action_handler_audit_v19.py",
                   "qml_real_engine_workflow_audit_v19.py", "qml_legacy_business_logic_audit_v19.py",
-                  "qml_vertical_function_audit_v19.py"]:
+                  "qml_vertical_function_audit_v19.py",
+                  "qml_null_bridge_audit.py", "qml_real_test_integrity_audit.py"]:
         if not (repo / "scripts" / audit).exists():
             failures.append(f"Missing audit: {audit}")
+    # NullBridge check
+    null_count = 0
+    for f in (repo / "tests").rglob("*.py"):
+        if "__pycache__" in str(f):
+            continue
+        if "NullBridge" in f.read_text():
+            null_count += 1
+    if null_count > 0:
+        failures.append(f"NullBridge found in {null_count} test files")
+    # Real test integrity
+    bad_real = []
+    for pattern in ("*real*.py", "*interactive*.py"):
+        for f in (repo / "tests").rglob(pattern):
+            if "__pycache__" in str(f):
+                continue
+            if "MagicMock" in f.read_text():
+                bad_real.append(f.name)
+    if bad_real:
+        failures.append(f"Tests named 'real' use MagicMock: {bad_real}")
+    # Shim count
+    shim_count = sum(1 for _ in (repo / "ui").rglob("*.py") if _.name != "__init__.py")
+    if shim_count > 3:
+        failures.append(f"Too many shims in ui/ ({shim_count})")
     wf = repo / "tests" / "qml" / "productive_workflows_v19"
     if not wf.exists():
         failures.append("productive_workflows_v19/ missing")

@@ -1258,19 +1258,19 @@ class TestFullE2EFlow:
 
 class TestControllerStubs:
     def test_michi_server_controller_imports(self):
-        from ui.controllers.michi.server_controller import MichiServerController
+        from legacy_widgets.ui.controllers.michi.server_controller import MichiServerController
         ctrl = MichiServerController()
         assert ctrl is not None
         assert hasattr(ctrl, "is_active")
         assert hasattr(ctrl, "toggle_server")
 
     def test_michi_import_controller_imports(self):
-        from ui.controllers.michi.import_controller import MichiImportController
+        from legacy_widgets.ui.controllers.michi.import_controller import MichiImportController
         ctrl = MichiImportController()
         assert ctrl is not None
 
     def test_michi_continue_controller_imports(self):
-        from ui.controllers.michi.continue_controller import MichiContinueController
+        from legacy_widgets.ui.controllers.michi.continue_controller import MichiContinueController
         ctrl = MichiContinueController()
         assert ctrl is not None
 

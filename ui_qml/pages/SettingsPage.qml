@@ -179,6 +179,7 @@ Item {
                 }
 
                 ListView {
+                    focusPolicy: Qt.StrongFocus
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
                     model: root.shownCategories
                     delegate: Rectangle {
@@ -312,6 +313,7 @@ Item {
                 }
 
                 ScrollView {
+                    focusPolicy: Qt.StrongFocus
                     Layout.fillWidth: true; Layout.fillHeight: true
                     clip: true
                     Accessible.role: Accessible.ScrollArea
@@ -351,6 +353,7 @@ Item {
                 }
 
                 ListView {
+                    focusPolicy: Qt.StrongFocus
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 2
                     model: root.shownCategories
                     delegate: Rectangle {
@@ -407,6 +410,7 @@ Item {
                 }
 
                 ScrollView {
+                    focusPolicy: Qt.StrongFocus
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                     Loader {
                         sourceComponent: {
@@ -454,6 +458,7 @@ Item {
         }
 
         ScrollView {
+            focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true
             Loader {
                 sourceComponent: {
@@ -493,6 +498,7 @@ Item {
         }
 
         ScrollView {
+            focusPolicy: Qt.StrongFocus
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true
             Loader {
                 sourceComponent: {
@@ -507,6 +513,7 @@ Item {
 
     Component { id: desktopCategoryList
         ListView {
+            focusPolicy: Qt.StrongFocus
             clip: true; spacing: 2
             model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
             delegate: GlassCard {
@@ -520,6 +527,7 @@ Item {
 
     Component { id: tabletCategoryList
         ListView {
+            focusPolicy: Qt.StrongFocus
             clip: true; spacing: 2
             model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
             delegate: GlassCard {
@@ -574,6 +582,7 @@ Item {
 
     Component { id: compactList
         ListView {
+            focusPolicy: Qt.StrongFocus
             clip: true; spacing: 2
             model: root.shownCategories.length > 0 ? root.shownCategories : (root.bridge ? root.bridge.categories : [])
             delegate: GlassCard {
@@ -586,6 +595,7 @@ Item {
 
     Component { id: compactCategoryDetail
         ListView {
+            focusPolicy: Qt.StrongFocus
             clip: true; spacing: 2
             model: root.selectedCategory ? root.selectedCategory.sections : []
             delegate: GlassCard {

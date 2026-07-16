@@ -177,6 +177,7 @@ Item {
                         Text { text: "Tipo de Mix"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: mixTypeCombo; width: parent.width
                             objectName: "mixTypeCombo"
                             Accessible.name: "Tipo de Mix"
@@ -210,6 +211,7 @@ Item {
                         Text { text: "Seed (opcional)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
                         TextField {
+                            focusPolicy: Qt.StrongFocus
                             id: seedField; width: parent.width
                             objectName: "seedField"
                             Accessible.name: "Seed opcional para el mix"
@@ -227,6 +229,7 @@ Item {
                         Text { text: "Artista semilla"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
                         TextField {
+                            focusPolicy: Qt.StrongFocus
                             id: seedArtistField; width: parent.width
                             objectName: "seedArtistField"
                             Accessible.name: "Artista semilla para el mix"
@@ -244,6 +247,7 @@ Item {
                         Text { text: "Exclusiones (separadas por coma)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium }
 
                         TextField {
+                            focusPolicy: Qt.StrongFocus
                             id: exclusionsField; width: parent.width
                             objectName: "exclusionsField"
                             Accessible.name: "Exclusiones separadas por coma"
@@ -267,6 +271,7 @@ Item {
                             Text { text: "Duración (min)"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             SpinBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: durationSpin; width: parent.width; from: 5; to: 480; stepSize: 5; value: root._durationMinutes
                                 objectName: "durationSpin"
                                 Accessible.name: "Duración del mix en minutos"
@@ -282,6 +287,7 @@ Item {
                             Text { text: "Límite pistas"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             SpinBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: trackLimitSpin; width: parent.width; from: 5; to: 200; value: root._trackLimit
                                 objectName: "trackLimitSpin"
                                 Accessible.name: "Límite máximo de pistas"
@@ -300,6 +306,7 @@ Item {
 
                             Row { spacing: MichiTheme.spacing.sm
                                 Slider {
+                                    focusPolicy: Qt.StrongFocus
                                     id: varietySlider; width: 120; from: 0; to: 100; value: root._variety
                                     objectName: "varietySlider"
                                     Accessible.name: "Variedad del mix"
@@ -318,6 +325,7 @@ Item {
 
                             Row { spacing: MichiTheme.spacing.sm
                                 Slider {
+                                    focusPolicy: Qt.StrongFocus
                                     id: familiaritySlider; width: 120; from: 0; to: 100; value: root._familiarity
                                     objectName: "familiaritySlider"
                                     Accessible.name: "Familiaridad del mix"
@@ -337,6 +345,7 @@ Item {
                             Text { text: "Calidad mínima"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: qualityCombo; width: parent.width
                                 objectName: "qualityCombo"
                                 Accessible.name: "Filtro de calidad mínima"
@@ -360,6 +369,7 @@ Item {
                             Text { text: "Género"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             ComboBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: genreCombo; width: parent.width
                                 objectName: "genreCombo"
                                 Accessible.name: "Filtro de género"
@@ -395,6 +405,7 @@ Item {
                             Text { text: "Año desde"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             SpinBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: yearFromSpin; width: parent.width; from: 1900; to: 2030; value: root._yearFrom
                                 objectName: "yearFromSpin"
                                 Accessible.name: "Año inicial del filtro"
@@ -410,6 +421,7 @@ Item {
                             Text { text: "Año hasta"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
 
                             SpinBox {
+                                focusPolicy: Qt.StrongFocus
                                 id: yearToSpin; width: parent.width; from: 1900; to: 2030; value: root._yearTo
                                 objectName: "yearToSpin"
                                 Accessible.name: "Año final del filtro"
@@ -574,6 +586,7 @@ Item {
                 }
 
                 ListView {
+                    focusPolicy: Qt.StrongFocus
                     id: resultList
                     width: parent.width; height: Math.min(360, root._resultSongs.length * 48)
                     model: root._resultSongs; clip: true; spacing: 2

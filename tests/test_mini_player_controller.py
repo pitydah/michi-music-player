@@ -16,7 +16,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.mini_player_controller import MiniPlayerController
+    from legacy_widgets.ui.controllers.legacy_controllers.mini_player_controller import MiniPlayerController
     c = MiniPlayerController.__new__(MiniPlayerController)
     from PySide6.QtCore import QObject
     QObject.__init__(c)

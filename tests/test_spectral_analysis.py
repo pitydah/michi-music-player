@@ -89,13 +89,13 @@ class TestCanAnalyseFunction:
 
 class TestDiagnosticsServiceIntegration:
     def test_analyse_spectral_wav_path(self):
-        from ui.audio_lab.diagnostics_service import analyse_spectral
+        from legacy_widgets.ui.audio_lab.diagnostics_service import analyse_spectral
 
         result = analyse_spectral("/nonexistent/test.wav")
         assert result.get("verdict") == "ANALYSIS_ERROR"
 
     def test_analyse_spectral_flac_path(self):
-        from ui.audio_lab.diagnostics_service import analyse_spectral
+        from legacy_widgets.ui.audio_lab.diagnostics_service import analyse_spectral
 
         result = analyse_spectral("/nonexistent/test.flac")
         assert result.get("verdict") == "ANALYSIS_ERROR"

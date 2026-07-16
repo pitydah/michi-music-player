@@ -62,6 +62,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Backend:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: backendCombo
                     model: ["auto", "gstreamer", "mpd"]
                     currentIndex: root._isNew ? 0 : Math.max(0, find(root.profileData.backend || root.profileData.preferred_backend || "auto"))
@@ -72,6 +73,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Frecuencia:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: sampleRateCombo
                     model: ["Automático", "44100", "48000", "96000", "192000"]
                     currentIndex: 0
@@ -82,6 +84,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Bits:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: bitDepthCombo
                     model: ["Automático", "16", "24", "32"]
                     currentIndex: 0
@@ -92,6 +95,7 @@ Item {
                 spacing: MichiTheme.spacing.sm
                 Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter }
                 ComboBox {
+                    focusPolicy: Qt.StrongFocus
                     id: channelsCombo
                     model: ["Automático", "2", "6", "8"]
                     currentIndex: 0

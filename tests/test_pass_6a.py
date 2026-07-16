@@ -38,7 +38,7 @@ class TestSafeMode:
         fm = FeatureManager()
         fm.register("test_feature", enabled=False)
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         mw = MainWindow.__new__(MainWindow)
         mw._features = fm
         result = mw._safe_init("test_feature", lambda: "should_not_run")
@@ -49,7 +49,7 @@ class TestSafeMode:
         from core.feature_manager import FeatureManager
         fm = FeatureManager()
 
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         mw = MainWindow.__new__(MainWindow)
         mw._features = fm
         fm.register("test_feature", enabled=True)
@@ -62,7 +62,7 @@ class TestPlaylistImport:
 
     def test_parse_playlist_entries_mixed(self):
         """Rich parser preserves missing and remote entries."""
-        from ui.playlist_io import parse_playlist_entries, PlaylistEntry
+        from legacy_widgets.ui_archive.playlist_io import parse_playlist_entries, PlaylistEntry
         with tempfile.NamedTemporaryFile(mode="w", suffix=".m3u", delete=False) as f:
             f.write("#EXTM3U\n")
             f.write("/exists/song1.mp3\n")
@@ -90,7 +90,7 @@ class TestPlaylistImport:
 
     def test_m3u_utf8_export_atomic(self):
         """M3U export must use UTF-8 and atomic write."""
-        from ui.playlist_io import export_m3u
+        from legacy_widgets.ui_archive.playlist_io import export_m3u
         with tempfile.NamedTemporaryFile(suffix=".m3u", delete=False) as f:
             tmp = f.name
 
@@ -110,7 +110,7 @@ class TestFavoritesIdentity:
     """Favorites must resolve by id, filepath, and track_uid."""
 
     def test_resolve_track_ids_by_filepath(self):
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         from library.media_item import MediaItem
 
@@ -130,7 +130,7 @@ class TestFavoritesIdentity:
         assert result[0].title == "Test Song"
 
     def test_resolve_track_ids_by_id(self):
-        from ui.window import MainWindow
+        from legacy_widgets.ui.old_window.window import MainWindow
         from legacy_widgets.ui.controllers.legacy_controllers.smart_mix_controller import SmartMixController
         from library.media_item import MediaItem
 

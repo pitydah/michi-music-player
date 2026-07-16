@@ -80,7 +80,7 @@ class TestErrorState:
         assert bridge.errorCode == "DB_ERROR"
 
 
-class TestNullBridge:
+class TestMissingBridge:
     def test_no_search_service(self, mock_qe):
         bridge = GlobalSearchBridge(search_service=None, query_executor=mock_qe)
         bridge.search("test")

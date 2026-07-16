@@ -22,7 +22,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.home_audio_controller import HomeAudioController
+    from legacy_widgets.ui.controllers.legacy_controllers.home_audio_controller import HomeAudioController
     c = HomeAudioController.__new__(HomeAudioController)
     from PySide6.QtCore import QObject
     QObject.__init__(c)

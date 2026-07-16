@@ -18,6 +18,7 @@ Item {
     signal artistClicked(string name)
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
         model: root.artistModel

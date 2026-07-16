@@ -62,6 +62,7 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             ComboBox {
+                focusPolicy: Qt.StrongFocus
                 id: daysCombo
                 Layout.preferredWidth: 140
                 model: [
@@ -96,6 +97,7 @@ Dialog {
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             SpinBox {
+                focusPolicy: Qt.StrongFocus
                 id: maxSpin
                 from: 0
                 to: 100000

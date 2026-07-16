@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 
 def test_vinyl_page_renders(qtbot):
-    from ui.audio_lab.vinyl_lab_page import VinylLabPage
+    from legacy_widgets.ui.audio_lab.vinyl_lab_page import VinylLabPage
     page = VinylLabPage()
     qtbot.addWidget(page)
     page.show()
@@ -13,7 +13,7 @@ def test_vinyl_page_renders(qtbot):
 
 
 def test_vinyl_export_no_recording_no_crash(qtbot):
-    from ui.audio_lab.vinyl_lab_page import VinylLabPage
+    from legacy_widgets.ui.audio_lab.vinyl_lab_page import VinylLabPage
     page = VinylLabPage()
     qtbot.addWidget(page)
     with patch("ui.audio_lab.vinyl_lab_page.QMessageBox.information"):
@@ -21,7 +21,7 @@ def test_vinyl_export_no_recording_no_crash(qtbot):
 
 
 def test_vinyl_export_no_split_points_no_crash(qtbot):
-    from ui.audio_lab.vinyl_lab_page import VinylLabPage
+    from legacy_widgets.ui.audio_lab.vinyl_lab_page import VinylLabPage
     import tempfile
     import os
     page = VinylLabPage()

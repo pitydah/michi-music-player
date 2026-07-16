@@ -40,7 +40,7 @@ def win():
 
 @pytest.fixture
 def ctrl(win):
-    from ui.controllers.home_controller import HomeController
+    from legacy_widgets.ui.controllers.legacy_controllers.home_controller import HomeController
 
     c = HomeController.__new__(HomeController)
     from PySide6.QtCore import QObject

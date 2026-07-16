@@ -1,8 +1,8 @@
 """Negative tests for capability system: null bridge, unknown capability."""
 
 
-def test_capability_guard_null_bridge():
-    """CapabilityGuard should handle null bridge gracefully."""
+def test_capability_guard_handles_missing():
+    """CapabilityGuard should handle missing bridge gracefully."""
     filepath = "ui_qml/components/CapabilityGuard.qml"
     with open(filepath) as f:
         content = f.read()
@@ -18,8 +18,8 @@ def test_capability_guard_unknown_capability():
     assert "capabilityName" in content
 
 
-def test_capability_aware_page_null_bridge():
-    """CapabilityAwarePage should handle null bridge gracefully."""
+def test_capability_aware_page_handles_missing():
+    """CapabilityAwarePage should handle missing bridge gracefully."""
     filepath = "ui_qml/components/CapabilityAwarePage.qml"
     with open(filepath) as f:
         content = f.read()

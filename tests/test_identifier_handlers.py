@@ -22,7 +22,7 @@ def win():
 
 @pytest.fixture
 def handlers(win):
-    from ui.controllers.identifier_handlers import IdentifierHandlers
+    from legacy_widgets.ui.controllers.legacy_controllers.identifier_handlers import IdentifierHandlers
     return IdentifierHandlers(win)
 
 

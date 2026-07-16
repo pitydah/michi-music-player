@@ -16,18 +16,18 @@ class TestNavigationBackForward:
         assert "Alt+Right" in src
 
     def test_nav_ctrl_has_back_and_forward_methods(self):
-        from ui.controllers.navigation_controller import NavigationController
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationController
         assert hasattr(NavigationController, 'navigate_back')
         assert hasattr(NavigationController, 'navigate_forward')
 
     def test_nav_back_btn_disables_when_no_history(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         assert h.can_go_back is False
         assert h.can_go_forward is False
 
     def test_nav_history_push_and_back(self):
-        from ui.controllers.navigation_controller import NavigationHistory
+        from legacy_widgets.ui.controllers.legacy_controllers.navigation_controller import NavigationHistory
         h = NavigationHistory()
         h.push("home")
         h.push("library")
@@ -59,7 +59,7 @@ class TestNavigationBackForward:
 
     def test_hub_route_michi_disc_lab_no_library_hub(self):
         """show_michi_disc_lab should not build library_hub."""
-        from ui.controllers.hub_route_controller import HubRouteController
+        from legacy_widgets.ui.controllers.legacy_controllers.hub_route_controller import HubRouteController
         import inspect
         src = inspect.getsource(HubRouteController.show_michi_disc_lab)
         assert "LibraryHubPage" not in src

@@ -6,7 +6,7 @@ import pytest
 
 @pytest.fixture
 def ctrl():
-    from ui.controllers.metadata_review_controller import (
+    from legacy_widgets.ui.controllers.legacy_controllers.metadata_review_controller import (
         MetadataReviewController,
     )
     c = MetadataReviewController.__new__(MetadataReviewController)

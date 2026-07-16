@@ -28,6 +28,7 @@ Item {
     }
 
     ListView {
+        focusPolicy: Qt.StrongFocus
         id: tableView
         anchors.fill: parent
         clip: true

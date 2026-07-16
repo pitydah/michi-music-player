@@ -3,6 +3,7 @@ import QtQuick.Controls
 import "../../theme"
 
 TextField {
+    focusPolicy: Qt.StrongFocus
     id: root
 
     property var bridge: null

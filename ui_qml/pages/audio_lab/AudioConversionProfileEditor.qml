@@ -155,6 +155,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Nombre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         TextField {
+                            focusPolicy: Qt.StrongFocus
                             width: parent.width - 100; text: root._profileName
                             placeholderText: "Nombre del perfil"
                             objectName: "profileNameField"
@@ -170,6 +171,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Formato:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             id: editFormatCombo
                             model: root._formatOptions
                             textRole: "label"
@@ -188,6 +190,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Bitrate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             model: root._bitrateOptions
                             width: parent.width - 100
                             objectName: "editBitrateCombo"
@@ -201,6 +204,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Sample rate:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             model: root._sampleRateOptions
                             width: parent.width - 100
                             objectName: "editSampleRateCombo"
@@ -214,6 +218,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Bit depth:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             model: root._bitDepthOptions
                             width: parent.width - 100
                             objectName: "editBitDepthCombo"
@@ -227,6 +232,7 @@ Item {
                         spacing: MichiTheme.spacing.md; width: parent.width
                         Text { text: "Canales:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter; width: 100 }
                         ComboBox {
+                            focusPolicy: Qt.StrongFocus
                             model: root._channelsOptions
                             width: parent.width - 100
                             objectName: "editChannelsCombo"

@@ -73,6 +73,7 @@ Dialog {
             visible: !root._importing
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: pathInput
                 width: parent.width - 80
                 placeholderText: "Ruta del archivo (.m3u, .pls, .xspf)"

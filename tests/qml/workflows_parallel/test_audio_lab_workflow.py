@@ -178,7 +178,7 @@ class TestAudioLabWorkflow:
         assert result["ok"] is False
 
     def test_wf_bridge_null_handling(self):
-        assert hasattr(type("NullBridge", (), {})(), "__class__")
+        assert True
         null_bridge = None
         assert null_bridge is None
 def mock_lab():

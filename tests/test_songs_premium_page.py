@@ -44,7 +44,7 @@ class TestSongsPremiumPage:
 
     def test_add_to_playlist_uses_callback(self):
         from unittest.mock import MagicMock
-        from ui.controllers.songs_controller import SongsController
+        from legacy_widgets.ui.controllers.legacy_controllers.songs_controller import SongsController
         cb = MagicMock()
         svc = MagicMock()
         ctrl = SongsController(svc, add_to_playlist_cb=cb)

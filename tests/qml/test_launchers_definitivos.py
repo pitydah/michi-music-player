@@ -22,7 +22,7 @@ class TestQmlAppNoWidgets:
         import michi.qml_app
         source = Path(michi.qml_app.__file__).read_text()
         assert "from ui.window" not in source
-        assert "import ui.window" not in source
+        assert "import legacy_widgets.ui.old_window.window" not in source
 
     def test_qml_app_does_not_import_ui_dialogs(self):
         import michi.qml_app

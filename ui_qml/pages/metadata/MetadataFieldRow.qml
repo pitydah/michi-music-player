@@ -54,6 +54,7 @@ Item {
     Component {
         id: editComponent
         TextField {
+            focusPolicy: Qt.StrongFocus
             width: parent.width
             text: root.fieldValue
             color: MichiTheme.colors.textPrimary

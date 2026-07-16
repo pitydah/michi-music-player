@@ -16,7 +16,7 @@ def _pix():
 class TestDiscLabProfileCombo:
 
     def test_rip_profiles_have_available_flag(self):
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
         assert len(RIP_PROFILES) > 0
         has_available = any(p.available for p in RIP_PROFILES)
         has_unavailable = any(not p.available for p in RIP_PROFILES)
@@ -24,12 +24,12 @@ class TestDiscLabProfileCombo:
         assert has_unavailable
 
     def test_rip_profiles_have_format(self):
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
         for p in RIP_PROFILES:
             assert p.fmt, f"Profile {p.name} has no format"
 
     def test_first_available_is_wav(self):
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
         available = [p for p in RIP_PROFILES if p.available]
         assert len(available) > 0
         assert available[0].fmt == "wav", (
@@ -37,7 +37,7 @@ class TestDiscLabProfileCombo:
         )
 
     def test_unavailable_profiles_have_no_usable_fmt_as_currentData(self):
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
         for p in RIP_PROFILES:
             if not p.available:
                 assert p.fmt  # fmt is informational, not executable
@@ -50,8 +50,8 @@ class TestDiscLabProfileCombo:
     def test_unavailable_profiles_are_disabled_in_combo(
         self, mock_enc, mock_rip, mock_det, mock_tools, mock_shadow, qtbot
     ):
-        from ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
-        from ui.audio_lab.models import RIP_PROFILES
+        from legacy_widgets.ui.audio_lab.michi_disc_lab_page import MichiDiscLabPage
+        from legacy_widgets.ui_archive.audio_lab.models import RIP_PROFILES
 
         mock_tools.return_value = {}
         mock_det.return_value = MagicMock()
@@ -86,7 +86,7 @@ class TestEncoderServiceErrors:
 
     @pytest.fixture
     def encoder(self):
-        from ui.audio_lab.services.encoder_service import EncoderService
+        from legacy_widgets.ui.audio_lab.services.encoder_service import EncoderService
         return EncoderService()
 
     def test_failed_to_start_cleans_up_process(self, encoder):

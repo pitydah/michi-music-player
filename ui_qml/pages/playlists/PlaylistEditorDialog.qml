@@ -49,6 +49,7 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         TextField {
+            focusPolicy: Qt.StrongFocus
             id: nameInput
             width: parent.width
             text: root.playlistName
@@ -66,6 +67,7 @@ Dialog {
             font.pixelSize: MichiTheme.typography.bodySize
         }
         TextArea {
+            focusPolicy: Qt.StrongFocus
             id: descInput
             width: parent.width
             height: 80
@@ -87,6 +89,7 @@ Dialog {
             width: parent.width
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: coverInput
                 width: parent.width - 80
                 placeholderText: "Ruta de imagen o álbum"

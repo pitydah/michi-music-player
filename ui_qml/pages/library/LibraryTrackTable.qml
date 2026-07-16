@@ -54,6 +54,7 @@ Item {
         }
 
         ListView {
+            focusPolicy: Qt.StrongFocus
             id: listView
             width: parent.width
             height: parent.height - header.height - loadMoreBar.height

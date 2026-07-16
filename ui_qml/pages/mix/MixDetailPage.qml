@@ -230,6 +230,7 @@ Item {
             }
 
             ListView {
+                focusPolicy: Qt.StrongFocus
                 id: trackListView
                 width: parent.width; height: root._songs.length > 0
                     ? Math.min(root._songs.length * 44, flick.height - 220)
@@ -344,6 +345,7 @@ Item {
             spacing: MichiTheme.spacing.md
             Text { text: "Nombre de la playlist:"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: saveName; width: 280; text: root._mixTitle
                 placeholderText: "Nombre de la playlist"
             }

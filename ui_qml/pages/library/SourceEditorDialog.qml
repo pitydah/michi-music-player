@@ -28,6 +28,7 @@ Dialog {
         }
 
         TextField {
+            focusPolicy: Qt.StrongFocus
             id: nameField
             Layout.fillWidth: true
             placeholderText: "Nombre de la fuente"
@@ -46,6 +47,7 @@ Dialog {
             spacing: MichiTheme.spacing.sm
 
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: pathField
                 Layout.fillWidth: true
                 placeholderText: "/ruta/a/música"
@@ -68,6 +70,7 @@ Dialog {
         RowLayout { spacing: MichiTheme.spacing.sm
             Text { text: "Prioridad"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
             SpinBox { id: prioritySpin; from: 0; to: 100; value: 50 }
+                focusPolicy: Qt.StrongFocus
         }
     }
 

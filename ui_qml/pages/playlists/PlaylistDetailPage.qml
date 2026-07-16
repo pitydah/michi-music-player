@@ -481,6 +481,7 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
             }
             TextField {
+                focusPolicy: Qt.StrongFocus
                 id: renameInput
                 text: root.playlistTitle
                 width: parent.width
