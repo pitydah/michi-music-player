@@ -1,4 +1,4 @@
-"""E2E workflow: Playlists + History — bridge interactions."""
+"""E2E workflow: Playlists + History — all bridge interactions."""
 from __future__ import annotations
 
 import pytest
@@ -21,7 +21,7 @@ class TestPlaylistsHistoryE2E:
         result = pl.listPlaylists()
         assert isinstance(result, dict)
 
-    def test_playlists_get(self, all_bridges):
+    def test_playlists_get_by_id(self, all_bridges):
         pl = all_bridges.get("playlists")
         assert pl is not None
         result = pl.getPlaylist(1)
@@ -32,6 +32,12 @@ class TestPlaylistsHistoryE2E:
         assert pl is not None
         result = pl.getPlaylistDetail(1)
         assert isinstance(result, dict)
+
+    def test_playlists_navigation(self, nav):
+        nav.navigate("playlists")
+        assert nav.currentRoute == "playlists", (
+            f"Expected 'playlists', got '{nav.currentRoute}'"
+        )
 
     def test_history_bridge_exists(self, all_bridges):
         hb = all_bridges.get("history")
@@ -49,8 +55,14 @@ class TestPlaylistsHistoryE2E:
         result = hb.clearHistory()
         assert isinstance(result, dict)
 
-    def test_playlists_navigation(self, nav):
-        nav.navigate("playlists")
-        assert nav.currentRoute == "playlists", (
-            f"Expected 'playlists', got '{nav.currentRoute}'"
-        )
+    def test_playlists_bridge_methods_return_dicts(self, all_bridges):
+        pl = all_bridges.get("playlists")
+        assert pl is not None
+        for method_name in ("listPlaylists", "getPlaylist", "getPlaylistDetail"):
+            method = getattr(pl, method_name, None)
+            if method:
+                arg = 1 if method_name != "listPlaylists" else None
+                result = method(arg) if arg is not None else method()
+                assert isinstance(result, dict), (
+                    f"{method_name} should return dict, got {type(result).__name__}"
+                )

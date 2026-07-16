@@ -1,4 +1,4 @@
-"""E2E workflow: Playback + Queue controls — full Main.qml interaction."""
+"""E2E workflow: Playback + Queue — all controls, ok=True verification."""
 from __future__ import annotations
 
 import pytest
@@ -10,10 +10,15 @@ pytestmark = [
 ]
 
 
+def _ok(result: dict) -> bool:
+    return result.get("ok") is True
+
+
 class TestPlaybackQueueE2E:
     def test_playback_toggle_play(self, playback_bridge):
         result = playback_bridge.togglePlay()
-        assert isinstance(result, dict)
+        assert isinstance(result, dict), "togglePlay should return dict"
+        assert "ok" in result
 
     def test_playback_next(self, playback_bridge):
         result = playback_bridge.next()
@@ -25,7 +30,7 @@ class TestPlaybackQueueE2E:
 
     def test_playback_set_volume(self, playback_bridge):
         result = playback_bridge.setVolume(50)
-        assert isinstance(result, dict)
+        assert _ok(result), f"setVolume failed: {result}"
 
     def test_playback_toggle_mute(self, playback_bridge):
         result = playback_bridge.toggleMute()
@@ -35,23 +40,25 @@ class TestPlaybackQueueE2E:
         result = playback_bridge.seek(30)
         assert isinstance(result, dict)
 
-    def test_playback_shuffle(self, playback_bridge):
+    def test_playback_toggle_shuffle(self, playback_bridge):
         result = playback_bridge.toggleShuffle()
-        assert isinstance(result, dict)
+        assert _ok(result), f"toggleShuffle failed: {result}"
 
-    def test_playback_repeat(self, playback_bridge):
+    def test_playback_toggle_repeat(self, playback_bridge):
         result = playback_bridge.toggleRepeat()
         assert isinstance(result, dict)
 
     def test_queue_enqueue(self, playback_bridge):
         result = playback_bridge.enqueueSong("1")
-        assert isinstance(result, dict)
+        assert _ok(result), f"enqueueSong failed: {result}"
 
     def test_queue_play_item(self, playback_bridge):
+        playback_bridge.enqueueSong("1")
         result = playback_bridge.playQueueItem(0)
         assert isinstance(result, dict)
 
     def test_queue_remove_item(self, playback_bridge):
+        playback_bridge.enqueueSong("1")
         result = playback_bridge.removeFromQueue(0)
         assert isinstance(result, dict)
 
@@ -63,6 +70,7 @@ class TestPlaybackQueueE2E:
         assert isinstance(result, dict)
 
     def test_queue_clear(self, playback_bridge):
+        playback_bridge.enqueueSong("1")
         result = playback_bridge.clearQueue()
         assert isinstance(result, dict)
 
@@ -75,4 +83,3 @@ class TestPlaybackQueueE2E:
         playback_bridge.toggleRepeat()
         playback_bridge.seek(10)
         playback_bridge.setVolume(50)
-        playback_bridge.togglePlay()

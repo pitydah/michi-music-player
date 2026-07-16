@@ -1,4 +1,4 @@
-"""E2E workflow: Connections + Home Audio + Devices — bridge interactions."""
+"""E2E workflow: Connections + Home Audio + Devices — all bridge interactions."""
 from __future__ import annotations
 
 import pytest

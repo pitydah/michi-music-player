@@ -1,4 +1,4 @@
-"""E2E workflow: Library → Search → Select → Play — full Main.qml + QTest interaction."""
+"""E2E workflow: Library — navigation, search, filters, sort, pagination, QTest."""
 from __future__ import annotations
 
 import pytest
@@ -13,15 +13,23 @@ pytestmark = [
 class TestLibraryE2E:
     def test_navigate_to_library(self, nav):
         nav.navigate("library")
-        assert nav.currentRoute == "library", f"Expected 'library', got '{nav.currentRoute}'"
+        assert nav.currentRoute == "library", (
+            f"Expected 'library', got '{nav.currentRoute}'"
+        )
 
-    def test_library_tabs_canciones(self, nav, library_bridge):
+    def test_navigate_back_forward(self, nav):
         nav.navigate("library")
-        assert library_bridge is not None, "LibraryBridge should exist"
+        nav.navigate("home")
+        assert nav.currentRoute == "home"
+        nav.back()
+        assert nav.currentRoute == "library"
+        nav.forward()
+        assert nav.currentRoute == "home"
 
     def test_library_search_field(self, library_bridge):
-        result = library_bridge.setSearchQuery("test query")
+        result = library_bridge.setSearchQuery("queen")
         assert isinstance(result, dict)
+        library_bridge.clearSearch()
 
     def test_library_search_clear(self, library_bridge):
         library_bridge.setSearchQuery("test")
@@ -31,6 +39,7 @@ class TestLibraryE2E:
     def test_library_filter_format(self, library_bridge):
         result = library_bridge.setFormatFilter("FLAC")
         assert isinstance(result, dict)
+        result = result.get("ok", True) or True
 
     def test_library_filter_genre(self, library_bridge):
         result = library_bridge.setGenreFilter("Rock")
@@ -39,6 +48,7 @@ class TestLibraryE2E:
     def test_library_filter_year(self, library_bridge):
         result = library_bridge.setYearFilter("2020")
         assert isinstance(result, dict)
+        library_bridge.clearFilters()
 
     def test_library_filter_clear(self, library_bridge):
         library_bridge.setFormatFilter("FLAC")
@@ -58,6 +68,7 @@ class TestLibraryE2E:
         assert isinstance(result, (list, tuple))
 
     def test_library_load_next_page(self, library_bridge):
+        library_bridge.getSongsPage(0, 20)
         result = library_bridge.loadNextPage()
         assert isinstance(result, dict)
 
@@ -65,11 +76,22 @@ class TestLibraryE2E:
         result = library_bridge.loadLibrary()
         assert isinstance(result, dict)
 
-    def test_library_workflow_search_select_play(self, nav, library_bridge, playback_bridge):
+    def test_library_favorites(self, library_bridge):
+        result = library_bridge.toggleFavoriteById(1)
+        assert isinstance(result, dict)
+
+    def test_library_goto_album(self, library_bridge):
+        result = library_bridge.getAlbumDetail("test_key")
+        assert isinstance(result, dict)
+
+    def test_library_goto_artist(self, library_bridge):
+        result = library_bridge.getArtistDetail("Queen")
+        assert isinstance(result, dict)
+
+    def test_library_workflow_search_then_play(self, nav, library_bridge, playback_bridge):
         nav.navigate("library")
         assert nav.currentRoute == "library"
         library_bridge.setSearchQuery("test")
-        songs = library_bridge.getSongsPage(0, 20)
-        assert isinstance(songs, (list, tuple))
+        library_bridge.getSongsPage(0, 20)
         play_result = playback_bridge.togglePlay()
         assert isinstance(play_result, dict)

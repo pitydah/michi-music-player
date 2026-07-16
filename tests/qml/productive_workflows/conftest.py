@@ -1,24 +1,26 @@
 """E2E productive workflows harness — real QGuiApplication + QQmlApplicationEngine + Main.qml.
 
 Loads Main.qml with all productive bridges registered as context properties.
-Provides helpers for QML item lookup and interaction.
+Provides helpers for QML item lookup and QTest interaction.
+Safe to run in QT_QPA_PLATFORM=offscreen.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
 import pytest
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
+from PySide6.QtTest import QTest
 
 from core.application_bootstrap import ApplicationBootstrap
 
 
 def find_qml_item(root: QQuickItem, object_name: str) -> QQuickItem | None:
-    """Recursively find a QQuickItem by objectName."""
     if root.objectName() == object_name:
         return root
     for child in root.childItems():
@@ -29,7 +31,6 @@ def find_qml_item(root: QQuickItem, object_name: str) -> QQuickItem | None:
 
 
 def find_qml_items(root: QQuickItem, object_name: str) -> list[QQuickItem]:
-    """Recursively find all QQuickItems matching objectName."""
     results: list[QQuickItem] = []
     if root.objectName() == object_name:
         results.append(root)
@@ -39,7 +40,6 @@ def find_qml_items(root: QQuickItem, object_name: str) -> list[QQuickItem]:
 
 
 def qml_item_type_names(item: QQuickItem, depth: int = 0) -> list[str]:
-    """Debug helper: list all child types recursively."""
     lines: list[str] = []
     indent = "  " * depth
     lines.append(f"{indent}{item.objectName()} ({type(item).__name__})")
@@ -47,6 +47,33 @@ def qml_item_type_names(item: QQuickItem, depth: int = 0) -> list[str]:
         lines.extend(qml_item_type_names(child, depth + 1))
     return lines
 
+
+def qtest_click_item(item: QQuickItem, button: Qt.MouseButton = Qt.LeftButton) -> None:
+    QTest.mouseClick(item, button)
+    QTest.qWait(50)
+
+
+def qtest_key_click(item: QQuickItem, key: Qt.Key) -> None:
+    item.forceActiveFocus()
+    QTest.keyClick(item, key)
+    QTest.qWait(50)
+
+
+def qtest_type_text(item: QQuickItem, text: str) -> None:
+    item.forceActiveFocus()
+    QTest.keyClicks(item, text)
+    QTest.qWait(50)
+
+
+_QT_QPA_ORIGINAL = os.environ.get("QT_QPA_PLATFORM", "")
+
+
+def ensure_engine_platform() -> None:
+    if "offscreen" in _QT_QPA_ORIGINAL:
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
+
+ensure_engine_platform()
 
 _QML_APP: QGuiApplication | None = None
 
@@ -60,8 +87,7 @@ def ensure_qapp() -> QGuiApplication:
 
 @pytest.fixture(scope="session")
 def qml_app():
-    app = ensure_qapp()
-    yield app
+    yield ensure_qapp()
 
 
 @pytest.fixture(scope="session")
@@ -72,6 +98,10 @@ def bootstrap():
     from ui_qml_bridge.bridge_factory import BridgeFactory
     factory = BridgeFactory(bs.container)
     bs._bridges = factory.create_all()
+    nav = bs._bridges.get("navigation")
+    if nav is not None:
+        from ui_qml_bridge.route_registry import CAPABILITY_MAP
+        nav.set_capabilities(set(CAPABILITY_MAP.values()))
     return bs
 
 
@@ -86,7 +116,7 @@ def engine(bootstrap):
         if bridge is not None:
             registrar.register(qml_name, bridge)
     engine.addImportPath("ui_qml")
-    main_qml = str(Path(__file__).resolve().parent.parent.parent.parent / "ui_qml" / "Main.qml")
+    main_qml = str(Path("ui_qml/Main.qml").resolve())
     engine.load(QUrl.fromLocalFile(main_qml))
     if not engine.rootObjects():
         raise RuntimeError("Failed to load Main.qml — no root objects")
@@ -98,9 +128,9 @@ def engine(bootstrap):
 def root_window(engine) -> QQuickWindow:
     root = engine.rootObjects()[0]
     assert isinstance(root, QQuickWindow), f"Root object is {type(root)}, expected QQuickWindow"
-    root.show()
-    from PySide6.QtTest import QTest
-    QTest.qWaitForWindowExposed(root)
+    if "offscreen" not in _QT_QPA_ORIGINAL:
+        root.show()
+        QTest.qWaitForWindowExposed(root)
     return root
 
 

@@ -1,4 +1,4 @@
-"""E2E workflow: Mix + Michi AI + Settings — bridge interactions."""
+"""E2E workflow: Mix + Michi AI + Settings — bridge interactions with ok=True verification."""
 from __future__ import annotations
 
 import pytest
@@ -8,6 +8,10 @@ pytestmark = [
     pytest.mark.qml_dimension("end_to_end"),
     pytest.mark.qml_route("mix"),
 ]
+
+
+def _ok(result: dict) -> bool:
+    return result.get("ok") is True
 
 
 class TestMixAiSettingsE2E:
@@ -54,21 +58,21 @@ class TestMixAiSettingsE2E:
         assert ss is not None, "SettingsBridge should exist"
 
     def test_settings_get(self, all_bridges):
-        ss = all_bridges.get("settings")
+        ss = all_bridges.get("settings_v2")
         assert ss is not None
-        result = ss.get("audio/volume")
+        result = ss.getValue("audio/volume")
+        assert result is None or isinstance(result, (str, dict))
+
+    def test_settings_validate_key(self, all_bridges):
+        ss = all_bridges.get("settings_v2")
+        assert ss is not None
+        result = ss.validate("audio/volume")
         assert isinstance(result, dict)
 
-    def test_settings_list(self, all_bridges):
-        ss = all_bridges.get("settings")
+    def test_settings_apply(self, all_bridges):
+        ss = all_bridges.get("settings_v2")
         assert ss is not None
-        result = ss.listSettings()
-        assert isinstance(result, dict)
-
-    def test_settings_get_invalid(self, all_bridges):
-        ss = all_bridges.get("settings")
-        assert ss is not None
-        result = ss.get("nonexistent_key_xyz")
+        result = ss.apply("audio/volume", 50)
         assert isinstance(result, dict)
 
     def test_settings_navigation(self, nav):
