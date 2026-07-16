@@ -99,7 +99,7 @@ class TestReleaseGate:
 class TestScoreConstraints:
     def test_score_not_gt_100(self):
         content = CI_FILE.read_text()
-        assert "score" not in content.lower() or True  # no direct score in CI
+        assert "score" not in content.lower()  # no direct score in CI
 
     def test_score_not_lt_0(self):
         pass  # handled by evidence/manifest scripts

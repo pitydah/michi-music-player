@@ -98,43 +98,43 @@ class TestSettingsAccessibilityPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "monoMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "monoMode") is not None
 
     def test_balance_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "balanceSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "balanceSlider") is not None
 
     def test_font_scale_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "fontScaleSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "fontScaleSlider") is not None
 
     def test_high_contrast_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "highContrast") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "highContrast") is not None
 
     def test_screen_reader_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "screenReader") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "screenReader") is not None
 
     def test_notification_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "notificationAnnouncements") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "notificationAnnouncements") is not None
 
     def test_error_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None
 
     def test_toggle_reduce_motion_updates_bridge(self, engine):
         comp = _load_page(engine, "SettingsAccessibilityPage.qml")
@@ -182,55 +182,55 @@ class TestSettingsAccessibilityPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "monoMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "monoMode") is not None
 
     def test_balance_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "balanceSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "balanceSlider") is not None
 
     def test_font_scale_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "fontScaleSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "fontScaleSlider") is not None
 
     def test_high_contrast_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "highContrast") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "highContrast") is not None
 
     def test_screen_reader_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "screenReader") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "screenReader") is not None
 
     def test_notification_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "notificationAnnouncements") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "notificationAnnouncements") is not None
 
     def test_error_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "errorAnnouncements") is not None
 
     def test_playback_announcements(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "playbackAnnouncements") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "playbackAnnouncements") is not None
 
     def test_show_shortcuts(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "showShortcuts") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "showShortcuts") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)

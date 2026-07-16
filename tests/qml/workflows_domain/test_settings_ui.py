@@ -53,11 +53,11 @@ class TestSettingsGeneralPage:
 
     def test_close_requested_signal(self, qml_harness):
         page = qml_harness.load_component(self.PAGE_QML, {})
-        assert page.property("closeRequested") is not None or True
+        assert page.property("closeRequested") is not None
 
     def test_keyboard_escape(self, qml_harness):
         page = qml_harness.load_component(self.PAGE_QML, {})
-        assert page.property("focus") is True or True
+        assert page.property("focus") is True
 
 
 class TestSettingsAudioPage:
@@ -77,7 +77,7 @@ class TestSettingsAudioPage:
 
     def test_open_diagnostics_signal(self, qml_harness):
         page = qml_harness.load_component(self.PAGE_QML, {})
-        assert hasattr(page, "openDiagnostics") or True
+        assert hasattr(page, "openDiagnostics")
 
 
 class TestSettingsPlaybackPage:
@@ -161,4 +161,4 @@ class TestSettingsAboutPage:
 
     def test_check_updates_signal(self, qml_harness):
         page = qml_harness.load_component(self.PAGE_QML, {})
-        assert hasattr(page, "checkUpdates") or True
+        assert hasattr(page, "checkUpdates")

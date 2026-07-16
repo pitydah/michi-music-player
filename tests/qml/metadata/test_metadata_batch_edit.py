@@ -35,18 +35,18 @@ class TestMetadataBatchEdit:
 
     def test_batch_set_field_async(self, bridge):
         result = bridge.batchSetField(["/fake/file.flac"], "artist", "Batch Artist")
-        assert result.get("async") or True
+        assert result.get("async")
         _process_events(0.5)
 
     def test_batch_set_field_different_keys(self, bridge):
         for key in ("title", "artist", "album", "genre", "year", "track_number", "disc_number", "composer", "comment", "bpm"):
             result = bridge.batchSetField(["/fake/file.flac"], key, "test_val")
-            assert result.get("async") or True
+            assert result.get("async")
 
     def test_batch_cancellation(self, bridge):
         many_files = [f"/fake/file_{i}.flac" for i in range(500)]
         result = bridge.batchSetField(many_files, "artist", "Cancelled")
-        assert result.get("async") or True
+        assert result.get("async")
         cancel_result = bridge.cancelBatch()
         assert cancel_result.get("ok")
         _process_events(0.5)
@@ -70,7 +70,7 @@ class TestMetadataBatchEdit:
 
     def test_batch_set_field_with_numeric_value(self, bridge):
         result = bridge.batchSetField(["/fake/file.flac"], "track_number", "7")
-        assert result.get("async") or True
+        assert result.get("async")
         _process_events(0.5)
 
     def test_cancel_batch_returns_ok(self, bridge):
@@ -86,7 +86,7 @@ class TestMetadataBatchEdit:
 
     def test_batch_set_field_with_special_chars(self, bridge):
         result = bridge.batchSetField(["/fake/file.flac"], "comment", "Test & special <chars>")
-        assert result.get("async") or True
+        assert result.get("async")
         _process_events(0.5)
 
     def test_batch_rejects_busy(self, bridge):
@@ -97,5 +97,5 @@ class TestMetadataBatchEdit:
 
     def test_batch_set_field_with_empty_value(self, bridge):
         result = bridge.batchSetField(["/fake/file.flac"], "title", "")
-        assert result.get("async") or True
+        assert result.get("async")
         _process_events(0.5)

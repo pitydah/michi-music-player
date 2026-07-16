@@ -71,12 +71,12 @@ class TestHomeKeyboard:
     def test_enter_on_continue_card(self):
         card = MagicMock()
         card.Keys.onReturnPressed = lambda: None
-        assert callable(card.Keys.onReturnPressed) or True
+        assert callable(card.Keys.onReturnPressed)
 
     def test_space_on_continue_card(self):
         card = MagicMock()
         card.Keys.onSpacePressed = lambda: None
-        assert callable(card.Keys.onSpacePressed) or True
+        assert callable(card.Keys.onSpacePressed)
 
     def test_escape_on_search_clears(self):
         navBar = MagicMock()
@@ -91,7 +91,7 @@ class TestHomeKeyboard:
         try:
             banner = obj.findChild(object, "home.jobBanner")
             if banner:
-                assert banner.property("KeyNavigation") is not None or True
+                assert banner.property("KeyNavigation") is not None
         finally:
             obj.deleteLater()
 
@@ -120,12 +120,12 @@ class TestHomeKeyboard:
     def test_enter_on_continue_card(self):
         card = MagicMock()
         card.Keys.onReturnPressed = lambda: None
-        assert callable(card.Keys.onReturnPressed) or True
+        assert callable(card.Keys.onReturnPressed)
 
     def test_space_on_continue_card(self):
         card = MagicMock()
         card.Keys.onSpacePressed = lambda: None
-        assert callable(card.Keys.onSpacePressed) or True
+        assert callable(card.Keys.onSpacePressed)
 
     def test_escape_on_search_clears(self):
         navBar = MagicMock()

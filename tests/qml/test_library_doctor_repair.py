@@ -206,7 +206,7 @@ class TestLibraryDoctorRepair:
         assert any(i["type"] == "orphan_playlist_item" for i in br._issues)
         br.selectAll()
         repair_result = br.repairSelected()
-        assert repair_result.get("ok") or True
+        assert repair_result.get("ok")
         remaining = db.execute("SELECT COUNT(*) FROM playlist_items").fetchone()
         assert remaining[0] == 0
 

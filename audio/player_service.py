@@ -198,6 +198,15 @@ class PlayerService(QObject):
     def seek(self, seconds):
         self._hybrid.seek(seconds)
 
+    def mute(self, muted: bool = True):
+        if self._engine:
+            try:
+                self._engine.set_volume(0.0 if muted else 1.0)
+                return {"ok": True}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "NO_ENGINE"}
+
     def set_volume(self, vol):
         try:
             self._hybrid.set_volume(vol)

@@ -107,13 +107,13 @@ class TestSettingsAppearancePage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "reducedMotion") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "reducedMotion") is not None
 
     def test_compact_mode_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "compactMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "compactMode") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -209,13 +209,13 @@ class TestSettingsAppearancePage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "reducedMotion") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "reducedMotion") is not None
 
     def test_compact_mode_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "compactMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "compactMode") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -232,4 +232,4 @@ class TestSettingsAppearancePage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "coverAsBackdrop") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "coverAsBackdrop") is not None

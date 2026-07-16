@@ -61,4 +61,4 @@ class TestNowPlayingPage:
         page = qml_harness.load_component(self.PAGE_QML, {})
         page.setProperty("_showError", True)
         page.event("keyPress", {"key": 16777216})
-        assert page.property("_showError") is False or True
+        assert page.property("_showError") is False

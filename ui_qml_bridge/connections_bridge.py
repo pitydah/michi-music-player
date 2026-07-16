@@ -132,33 +132,11 @@ class ConnectionsBridge(QObject):
     def discover(self):
         svc = self._connection_service
         if svc is None:
-            if self._ctrl is None:
-                return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
-            return self._do_discover_legacy()
+            return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         try:
             result = svc.discover()
             self._reflect_from_service()
             return result
-        except Exception as e:
-            self._set_state("error", str(e))
-            return {"ok": False, "error": str(e)}
-
-    def _do_discover_legacy(self) -> dict:
-        if not hasattr(self._ctrl, 'discover_servers'):
-            return _method_unavailable("discover_servers")
-        try:
-            servers = self._ctrl.discover_servers()
-            self._discovered = []
-            for s in (servers or []):
-                self._discovered.append({
-                    "name": getattr(s, 'name', '') or str(s),
-                    "host": getattr(s, 'host', '') or '',
-                    "type": "Michi Micro Server",
-                    "status": "detected",
-                })
-            self._set_state("scanning" if self._discovered else "not_configured")
-            self.stateChanged.emit()
-            return {"ok": True, "count": len(self._discovered)}
         except Exception as e:
             self._set_state("error", str(e))
             return {"ok": False, "error": str(e)}
@@ -408,22 +386,4 @@ class ConnectionsBridge(QObject):
         return {"ok": False, "error": _SERVICE_UNAVAILABLE}
 
     def _update_state_legacy(self):
-        if not self._ctrl:
-            self._state = _SERVICE_UNAVAILABLE
-            return
-        try:
-            caps = self._ctrl.get_capabilities()
-            self._capabilities = caps
-            state_val = caps.get("micro_server_state", "not_configured")
-            if state_val == "not_configured" and caps.get("micro_server_host"):
-                state_val = "detected"
-            self._state = state_val
-            self._alias = caps.get("micro_server_name", "")
-            self._contract = "contract_ok" if caps.get("contract_ok", False) else (
-                "contract_partial" if self._state == "connected" else "")
-            if self._state == "connected":
-                self._last_contact = __import__('time').time()
-        except Exception as e:
-            logger.debug("MichiLink state check failed", exc_info=True)
-            self._state = "error"
-            self._last_error = str(e)
+        self._state = _SERVICE_UNAVAILABLE

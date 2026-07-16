@@ -513,6 +513,32 @@ class MetadataBridge(QObject):
         self._set_status("CANCELLED")
         return {"ok": False, "error": "METHOD_UNAVAILABLE"}
 
+    @Slot(result=dict)
+    def preview(self):
+        if not self._current_filepath:
+            return {"ok": False, "error": "NO_FILE"}
+        return self._ms.read(self._current_filepath)
+
+    @Slot(result=dict)
+    def diff(self):
+        if not self._fields:
+            return {"ok": True, "diff": []}
+        return {"ok": True, "diff": [f for f in self._fields if f.get("modified", False)]}
+
+    @Slot(result=dict)
+    def conflicts(self):
+        return {"ok": True, "conflicts": []}
+
+    @Slot(result=dict)
+    def tagging_candidates(self):
+        if not self._current_filepath:
+            return {"ok": False, "error": "NO_FILE"}
+        return {"ok": True, "candidates": []}
+
+    @Slot(result=dict)
+    def confidence(self):
+        return {"ok": True, "confidence": 0.0}
+
     @Slot(str, result=str)
     def fileName(self, path: str) -> str:
         if not path:

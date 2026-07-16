@@ -58,7 +58,7 @@ class TestWindowsPaths:
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
     def test_short_path_support(self):
         path = r"C:\PROGRA~1"
-        assert os.path.exists(path) or True  # may vary per system
+        assert os.path.exists(path)  # may vary per system
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
     def test_long_path_enabled(self):
@@ -164,12 +164,12 @@ class TestWindowsShortcuts:
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
     def test_start_menu_accessible(self):
         start_menu = os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu")
-        assert os.path.isdir(start_menu) or True
+        assert os.path.isdir(start_menu)
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
     def test_desktop_folder_accessible(self):
         desktop = os.path.join(os.environ.get("USERPROFILE", ""), "Desktop")
-        assert os.path.isdir(desktop) or True
+        assert os.path.isdir(desktop)
 
 
 class TestWindowsPackaging:
@@ -178,7 +178,7 @@ class TestWindowsPackaging:
         spec = REPO / "michi.spec"
         if spec.exists():
             content = spec.read_text()
-            assert "pyinstaller" in content.lower() or True
+            assert "pyinstaller" in content.lower()
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-only test")
     def test_nsis_installer(self):

@@ -40,7 +40,11 @@ def main():
 
     for audit in ["qml_widget_dependency_audit_v18.py",
                   "qml_placeholder_audit_v18.py",
-                  "qml_fake_bridge_audit_v18.py"]:
+                  "qml_fake_bridge_audit_v18.py",
+                  "qml_action_handler_audit_v18.py",
+                  "qml_real_engine_workflow_audit_v18.py",
+                  "qml_legacy_business_logic_audit_v18.py",
+                  "qml_vertical_function_audit_v18.py"]:
         audit_path = repo / "scripts" / audit
         if not audit_path.exists():
             failures.append(f"Missing audit: {audit}")

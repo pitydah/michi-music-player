@@ -647,7 +647,7 @@ class TestWF8MetadataWriteUndo:
         conn.execute("UPDATE media_items SET title='Track 1' WHERE filepath=?", (fp,))
         conn.commit()
         row2 = conn.execute("SELECT title FROM media_items WHERE filepath=?", (fp,)).fetchone()
-        assert row2[0] == "Track 1" or True
+        assert row2[0] == "Track 1"
 
 
 # ── WF9: Doctor repair ──

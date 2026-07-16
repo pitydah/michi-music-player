@@ -50,7 +50,7 @@ class TestCommandPaletteKeyboard:
         bridge.searchCommands("ab")
         results_abc = bridge.searchCommands("abc")
         assert results_abc is not None
-        assert len(results_abc) <= len(results_a) or True  # narrowing search
+        assert len(results_abc) <= len(results_a)  # narrowing search
 
     def test_search_preserves_ordering(self, bridge):
         results = bridge.searchCommands("")

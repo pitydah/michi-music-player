@@ -103,31 +103,31 @@ class TestSettingsLibraryPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "watchChanges") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "watchChanges") is not None
 
     def test_auto_scan_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "autoScan") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "autoScan") is not None
 
     def test_indexer_mode_combo(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "indexerMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "indexerMode") is not None
 
     def test_cover_art_mode_combo(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "coverArtMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "coverArtMode") is not None
 
     def test_metadata_enrichment_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "metadataEnrichment") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "metadataEnrichment") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -260,31 +260,31 @@ class TestSettingsLibraryPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "watchChanges") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "watchChanges") is not None
 
     def test_auto_scan_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "autoScan") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "autoScan") is not None
 
     def test_indexer_mode_combo(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "indexerMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "indexerMode") is not None
 
     def test_cover_art_mode_combo(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "coverArtMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "coverArtMode") is not None
 
     def test_metadata_enrichment_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "metadataEnrichment") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "metadataEnrichment") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)

@@ -201,4 +201,4 @@ class TestSettingsAboutPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "updatesCard") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "updatesCard") is not None

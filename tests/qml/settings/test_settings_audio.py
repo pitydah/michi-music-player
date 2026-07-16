@@ -110,43 +110,43 @@ class TestSettingsAudioPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None
 
     def test_sample_rate_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "sampleRate") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "sampleRate") is not None
 
     def test_bit_depth_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "bitDepth") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "bitDepth") is not None
 
     def test_buffer_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSlider") is not None
 
     def test_resample_quality_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "resampleQuality") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "resampleQuality") is not None
 
     def test_volume_normalization_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "volumeNormalization") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "volumeNormalization") is not None
 
     def test_expert_mode_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "expertModeToggle") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "expertModeToggle") is not None
 
 class TestSettingsAudioDiagnosticsSignal:
     def test_open_diagnostics_signal(self, engine):
@@ -207,43 +207,43 @@ class TestSettingsAudioPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None
 
     def test_sample_rate_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "sampleRate") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "sampleRate") is not None
 
     def test_bit_depth_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "bitDepth") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "bitDepth") is not None
 
     def test_buffer_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSlider") is not None
 
     def test_resample_quality_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "resampleQuality") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "resampleQuality") is not None
 
     def test_volume_normalization_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "volumeNormalization") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "volumeNormalization") is not None
 
     def test_expert_mode_toggle(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "expertModeToggle") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "expertModeToggle") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -260,4 +260,4 @@ class TestSettingsAudioPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "runDiagnosticsBtn") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "runDiagnosticsBtn") is not None

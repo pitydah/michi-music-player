@@ -103,25 +103,25 @@ class TestSettingsPlaybackPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "gaplessPlayback") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "gaplessPlayback") is not None
 
     def test_crossfade_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "crossfadeSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "crossfadeSlider") is not None
 
     def test_replaygain_combo(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "replaygainMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "replaygainMode") is not None
 
     def test_buffer_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSizeSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSizeSlider") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -138,7 +138,7 @@ class TestSettingsPlaybackPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None
 
 class TestSettingsPlaybackAccessible:
     def test_accessible_gapless(self, engine):
@@ -192,25 +192,25 @@ class TestSettingsPlaybackPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "gaplessPlayback") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "gaplessPlayback") is not None
 
     def test_crossfade_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "crossfadeSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "crossfadeSlider") is not None
 
     def test_replaygain_combo(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "replaygainMode") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "replaygainMode") is not None
 
     def test_buffer_slider(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSizeSlider") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "bufferSizeSlider") is not None
 
     def test_null_bridge(self, engine, bridge):
         comp = QQmlComponent(engine)
@@ -227,10 +227,10 @@ class TestSettingsPlaybackPage:
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "outputDevice") is not None
 
     def test_audio_profile_selector(self, engine, bridge):
         comp = self._load_page(engine, bridge)
         if comp.isReady():
             obj = comp.create()
-            assert obj.findChild(type(obj).metaObject().superClass(), "audioProfile") is not None or True
+            assert obj.findChild(type(obj).metaObject().superClass(), "audioProfile") is not None

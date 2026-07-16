@@ -237,6 +237,24 @@ class DiscLabBridge(QObject):
         return {"ok": True}
 
     @Slot(result=dict)
+    def cover(self):
+        if not self._tracks:
+            return {"ok": False, "error": "NO_DISC"}
+        return {"ok": True, "message": "Cover search requires MusicBrainz provider (DEFERRED_PHYSICAL)"}
+
+    @Slot(result=dict)
+    def rip_plan(self):
+        if not self._tracks:
+            return {"ok": False, "error": "NO_DISC"}
+        plan = {
+            "tracks": len(self._tracks),
+            "format": self._extraction_format,
+            "destination": self._destination,
+            "estimated_size_mb": len(self._tracks) * 50,
+        }
+        return {"ok": True, "plan": plan}
+
+    @Slot(result=dict)
     def eject(self):
         self._status = "no_disc"
         self._tracks = []

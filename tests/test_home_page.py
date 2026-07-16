@@ -160,7 +160,7 @@ class TestHomePageReady:
 
     def test_badges_rendered(self, home_page, ready_snapshot):
         home_page.render_snapshot(ready_snapshot)
-        assert "Biblioteca OK" in home_page._card_status.findChildren(type(home_page._card_status)) or True
+        assert "Biblioteca OK" in home_page._card_status.findChildren(type(home_page._card_status))
 
 
 class TestHomePageNeedsAttention:

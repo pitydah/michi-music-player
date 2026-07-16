@@ -36,6 +36,28 @@ class SettingsBridgeV2(QObject):
     def resetAll(self):
         return self._svc.reset_all()
 
+    @Slot(str, result=dict)
+    def validate(self, key: str):
+        return {"ok": True, "valid": True}
+
+    @Slot(result=dict)
+    def pending(self):
+        return {"ok": True, "pending": []}
+
+    @Slot(str, "QVariant", result=dict)
+    def apply(self, key: str, value):
+        result = self._svc.set_(key, value)
+        self.dataChanged.emit()
+        return result
+
+    @Slot(str, result=dict)
+    def reject(self, key: str):
+        return {"ok": True, "rejected": key}
+
+    @Slot(str, result=dict)
+    def rollback(self, key: str):
+        return self._svc.reset(key)
+
     @Slot()
     def refresh(self):
         self.dataChanged.emit()

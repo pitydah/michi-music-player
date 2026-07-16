@@ -36,7 +36,7 @@ class TestSmartTaggingWorkflow:
 
     def test_scan_returns_queued_no_service(self, bridge):
         result = bridge.scanTrackById(1)
-        assert result.get("queued") or True
+        assert result.get("queued")
 
     def test_set_suggestion_selected(self, bridge):
         bridge._suggestions = [{"id": 0, "field": "artist", "selected": False}]
