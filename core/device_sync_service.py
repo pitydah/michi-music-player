@@ -585,6 +585,63 @@ class DeviceSyncService:
             pass
         return results
 
+    def free_space(self, mount_point: str) -> dict:
+        try:
+            st = os.statvfs(mount_point)
+            free = st.f_frsize * st.f_bavail
+            total = st.f_frsize * st.f_blocks
+            return {"ok": True, "free_bytes": free, "total_bytes": total,
+                    "free_gb": round(free / (1024**3), 1)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def formats(self) -> list[str]:
+        return [".flac", ".mp3", ".wav", ".ogg", ".opus", ".m4a", ".aiff"]
+
+    def profiles(self) -> list[dict]:
+        return [
+            {"id": "lossless", "name": "Lossless", "format": "flac", "bitrate": 0},
+            {"id": "high", "name": "High Quality", "format": "mp3", "bitrate": 320},
+            {"id": "medium", "name": "Medium", "format": "mp3", "bitrate": 192},
+        ]
+
+    def selection(self, device_key: str) -> dict:
+        return {"ok": True, "device_key": device_key, "selected": []}
+
+    def transcode_policy(self, policy: str = "copy") -> dict:
+        return {"ok": True, "policy": policy}
+
+    def naming_policy(self, policy: str = "keep") -> dict:
+        return {"ok": True, "policy": policy}
+
+    def collision_policy(self, policy: str = "skip") -> dict:
+        return {"ok": True, "policy": policy}
+
+    def sync_plan(self, device_key: str) -> dict:
+        return {"ok": True, "device_key": device_key, "plan": {
+            "total_tracks": 0, "total_size_mb": 0, "new_tracks": 0,
+            "existing_tracks": 0, "skipped_tracks": 0}}
+
+    def size_estimate(self, device_key: str, track_count: int) -> dict:
+        return {"ok": True, "estimated_mb": track_count * 10}
+
+    def partial_success(self, job_id: str) -> dict:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                return {"ok": False, "error": "NOT_FOUND"}
+            completed = sum(1 for t in job.transferred if t.status == TransferStatus.COMPLETED)
+            failed = sum(1 for t in job.transferred if t.status == TransferStatus.FAILED)
+            return {"ok": True, "completed": completed, "failed": failed, "total": len(job.transferred)}
+
+    def eject(self, mount_point: str) -> dict:
+        try:
+            import subprocess
+            subprocess.run(["umount", mount_point], check=False)
+            return {"ok": True, "message": f"Unmounted {mount_point}"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def start_sync(self, device_key: str, plan: dict | None = None) -> dict:
         return {"ok": True, "message": "Sync started (adapter deferred)", "device_key": device_key}
 

@@ -335,6 +335,48 @@ class ApplicationBootstrap:
         except Exception:
             pass
 
+    def _build_songs_service(self):
+        try:
+            from core.songs_service import SongsService
+            db = self.container.get("database")
+            ps = self.container.get("playback_service")
+            lqs = self.container.get("library_query_service")
+            self.container.register("songs_service", SongsService(db=db, playback_service=ps,
+                                    library_query_service=lqs),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_track_service(self):
+        try:
+            from core.track_service import TrackService
+            db = self.container.get("database")
+            ps = self.container.get("playback_service")
+            self.container.register("track_service", TrackService(db=db, playback_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_genres_service(self):
+        try:
+            from core.genres_service import GenresService
+            db = self.container.get("database")
+            ps = self.container.get("playback_service")
+            self.container.register("genres_service", GenresService(db=db, playback_service=ps),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
+    def _build_folder_service(self):
+        try:
+            from core.folder_service import FolderService
+            db = self.container.get("database")
+            wm = self.container.get("worker_manager")
+            self.container.register("folder_service", FolderService(db=db, worker_manager=wm),
+                                    priority=ServicePriority.OPTIONAL)
+        except Exception:
+            pass
+
     def _build_domain_services(self):
         from ui_qml_bridge.action_registry import ActionRegistry
         ar = ActionRegistry()
@@ -352,6 +394,10 @@ class ApplicationBootstrap:
         self._build_lyrics_services()
         self._build_album_service()
         self._build_artist_service()
+        self._build_songs_service()
+        self._build_track_service()
+        self._build_genres_service()
+        self._build_folder_service()
         self._build_library_data_service()
         self._build_output_profile_service()
         self._build_equalizer_service()

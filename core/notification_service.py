@@ -131,3 +131,38 @@ class NotificationService:
                 listener(notification)
             except Exception:
                 continue
+
+    def retry(self, notification_id: str) -> dict:
+        notif = self._notifications.get(notification_id)
+        if not notif:
+            return {"ok": False, "error": "NOT_FOUND"}
+        new = Notification(
+            type=notif.type, title=notif.title, message=notif.message,
+            source=notif.source, entity=notif.entity, job_id=notif.job_id)
+        self._notifications[new.id] = new
+        self._emit(new)
+        return {"ok": True, "notification_id": new.id}
+
+    def undo(self, notification_id: str) -> dict:
+        notif = self._notifications.pop(notification_id, None)
+        if not notif:
+            return {"ok": False, "error": "NOT_FOUND"}
+        return {"ok": True, "undone": notification_id}
+
+    def open_job(self, notification_id: str) -> dict:
+        notif = self._notifications.get(notification_id)
+        if notif and notif.job_id:
+            return {"ok": True, "job_id": notif.job_id}
+        return {"ok": False, "error": "NO_JOB"}
+
+    def open_track(self, notification_id: str) -> dict:
+        notif = self._notifications.get(notification_id)
+        if notif and notif.entity:
+            return {"ok": True, "entity": notif.entity}
+        return {"ok": False, "error": "NO_ENTITY"}
+
+    def open_settings(self, notification_id: str) -> dict:
+        return {"ok": True, "route": "settings"}
+
+    def open_diagnostics(self, notification_id: str) -> dict:
+        return {"ok": True, "route": "diagnostics"}
