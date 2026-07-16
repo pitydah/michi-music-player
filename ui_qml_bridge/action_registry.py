@@ -134,6 +134,9 @@ class ActionRegistry(QObject):
         self._actions[action.id] = action
         self.registryChanged.emit()
 
+    def find(self, action_id: str) -> ActionDescriptor | None:
+        return self.get(action_id)
+
     def get(self, action_id: str) -> ActionDescriptor | None:
         return self._actions.get(action_id)
 
