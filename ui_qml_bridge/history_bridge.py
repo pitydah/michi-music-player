@@ -165,7 +165,7 @@ class HistoryBridge(QObject):
             import contextlib
             with contextlib.suppress(Exception):
                 os.remove(filepath)
-        return {"ok": False, "error": "METHOD_UNAVAILABLE", "cancelled": True}
+        return {"ok": True, "cancelled": True}
 
     @Slot(str, result=dict)
     def playEntry(self, track_id: str):

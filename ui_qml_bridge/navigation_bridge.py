@@ -235,7 +235,7 @@ class NavigationBridge(QObject):
                 self.routeParamsChanged.emit()
                 self.backStackChanged.emit()
                 self.forwardStackChanged.emit()
-                return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+                return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "INVALID_STATE"}

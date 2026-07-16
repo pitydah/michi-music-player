@@ -309,7 +309,7 @@ class HomeAudioBridge(QObject):
         self._devices = []
         self._last_contact = 0.0
         self.stateChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def reconnectHa(self):
@@ -330,7 +330,7 @@ class HomeAudioBridge(QObject):
     def recoverFromOffline(self):
         self._offline = False
         self.refresh()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def getLatencyReport(self):

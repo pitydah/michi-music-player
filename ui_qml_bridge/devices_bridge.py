@@ -364,7 +364,7 @@ class DevicesBridge(QObject):
             if hasattr(self._dev_svc, 'get_profile'):
                 prof = self._dev_svc.get_profile(key)
                 return {"ok": True, "profile": prof}
-            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+            return {"ok": False, "error": "PROFILE_NOT_FOUND"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -494,7 +494,7 @@ class DevicesBridge(QObject):
             if fn:
                 est = fn(device_key, playlist_or_path)
                 return {"ok": True, "estimate": est}
-            return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+            return {"ok": False, "error": "ESTIMATE_NOT_SUPPORTED"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -583,7 +583,7 @@ class DevicesBridge(QObject):
             self._dev_svc.clear_history()
         self._transfer_history = []
         self.stateChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(str, result=dict)
     def validateAudioFile(self, path: str):

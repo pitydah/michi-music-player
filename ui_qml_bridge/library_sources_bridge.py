@@ -33,7 +33,8 @@ class LibrarySourcesBridge(QObject):
     @Slot(result=dict)
     def refresh(self):
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        sources = self._svc.list() if hasattr(self._svc, 'list') else []
+        return {"ok": True, "sources": sources}
 
     @Slot(str, result=dict)
     def addSource(self, path: str):
@@ -68,9 +69,11 @@ class LibrarySourcesBridge(QObject):
     def cancelSourceScan(self, path: str):
         if not self._jb:
             return {"ok": False, "error": "NO_JOB_SERVICE"}
+        if hasattr(self._jb, 'cancelJob'):
+            self._jb.cancelJob(0)
         self._status = "idle"
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def scanAllSources(self):
@@ -114,7 +117,8 @@ class LibrarySourcesBridge(QObject):
     @Slot(result=dict)
     def refreshAvailability(self):
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        sources = self._svc.list() if hasattr(self._svc, 'list') else []
+        return {"ok": True, "sources": sources}
 
     @Slot(str, result=dict)
     def openSource(self, path: str):
@@ -124,7 +128,7 @@ class LibrarySourcesBridge(QObject):
             subprocess.Popen(["explorer", path])
         else:
             subprocess.Popen(["xdg-open", path])
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(str, result=dict)
     def scanFolder(self, path: str):

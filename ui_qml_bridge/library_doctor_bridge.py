@@ -227,7 +227,7 @@ class LibraryDoctorBridge(QObject):
                 iss["selected"] = selected
                 break
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def selectAll(self):
@@ -235,7 +235,7 @@ class LibraryDoctorBridge(QObject):
         for iss in self._issues:
             iss["selected"] = True
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "count": len(self._selected_ids)}
 
     @Slot(result=dict)
     def selectNone(self):
@@ -243,7 +243,7 @@ class LibraryDoctorBridge(QObject):
         for iss in self._issues:
             iss["selected"] = False
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def repairSelected(self):
@@ -261,7 +261,7 @@ class LibraryDoctorBridge(QObject):
 
         if not self._wm:
             self._repair_sync(selected)
-            return {"ok": False, "error": "METHOD_UNAVAILABLE", "sync": True}
+            return {"ok": True, "sync": True}
 
         def _task(ctx):
             ctx.token.raise_if_cancelled()
@@ -363,7 +363,7 @@ class LibraryDoctorBridge(QObject):
             self._wm.cancel_task("library_doctor_repair")
         self._status = "idle"
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "cancelled": True}
 
     @Slot()
     def refresh(self):

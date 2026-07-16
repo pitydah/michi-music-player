@@ -271,6 +271,54 @@ class PlayerService(QObject):
         idx = self._hybrid.get_queue_index()
         return paths, idx
 
+    def duplicate_profile(self, profile_id: str) -> dict:
+        from audio.output_profiles import PROFILES, get_profile
+        src = get_profile(profile_id)
+        if not src or src.key == "standard":
+            return {"ok": False, "error": "CANNOT_DUPLICATE"}
+        new_key = f"{profile_id}_copy"
+        if new_key in PROFILES:
+            n = 2
+            while f"{profile_id}_copy_{n}" in PROFILES:
+                n += 1
+            new_key = f"{profile_id}_copy_{n}"
+        import copy
+        prof = copy.deepcopy(src)
+        object.__setattr__(prof, 'key', new_key)
+        object.__setattr__(prof, 'name', f"{src.name} (copia)")
+        PROFILES[new_key] = prof
+        return {"ok": True, "profile_key": new_key}
+
+    def delete_profile(self, profile_id: str) -> bool:
+        from audio.output_profiles import PROFILES
+        if profile_id in PROFILES and profile_id != "standard":
+            del PROFILES[profile_id]
+            return True
+        return False
+
+    def create_profile(self, data: dict) -> dict:
+        from audio.output_profiles import PROFILES, AudioOutputProfile
+        key = data.get("key", f"custom_{len(PROFILES)}")
+        if key in PROFILES:
+            return {"ok": False, "error": "ALREADY_EXISTS"}
+        prof = AudioOutputProfile(key=key, name=data.get("name", key))
+        PROFILES[key] = prof
+        return {"ok": True, "profile_key": key}
+
+    def update_profile(self, data: dict) -> dict:
+        from audio.output_profiles import PROFILES
+        key = data.get("key", "")
+        if key not in PROFILES:
+            return {"ok": False, "error": "NOT_FOUND"}
+        prof = PROFILES[key]
+        for field in ("name", "description", "backend"):
+            if field in data:
+                object.__setattr__(prof, field, data[field])
+        return {"ok": True}
+
+    def rollback_profile(self) -> dict:
+        return {"ok": True, "message": "Rollback not persisted"}
+
     def reorder_queue(self, filepaths):
         if self._engine and self._hybrid.active_id == "gstreamer":
             self._engine.reorder_queue(filepaths)

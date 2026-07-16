@@ -228,7 +228,7 @@ class SmartTaggingBridge(QObject):
                 s["selected"] = selected
                 break
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def selectAll(self):
@@ -236,7 +236,7 @@ class SmartTaggingBridge(QObject):
         for s in self._suggestions:
             s["selected"] = True
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def selectHighConfidence(self, min_confidence: float = 0.8):
@@ -247,7 +247,7 @@ class SmartTaggingBridge(QObject):
         for s in self._suggestions:
             s["selected"] = s.get("id") in self._selected_ids
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def selectNone(self):
@@ -255,7 +255,7 @@ class SmartTaggingBridge(QObject):
         for s in self._suggestions:
             s["selected"] = False
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(result=dict)
     def applySelected(self):
@@ -411,7 +411,7 @@ class SmartTaggingBridge(QObject):
             self._wm.cancel_task("st_" + str(self._scan_counter))
         self.dataChanged.emit()
         self.progressChanged.emit(0.0)
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(str, result=str)
     def detectFormat(self, filepath: str) -> str:

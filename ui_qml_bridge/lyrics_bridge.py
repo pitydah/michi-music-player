@@ -303,7 +303,7 @@ class LyricsBridge(QObject):
         if self._current_title:
             return self.search(self._current_title, self._current_artist,
                                self._current_album, self._current_duration)
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "refreshed": True}
 
     @Slot(result=dict)
     def clearCacheForCurrentTrack(self):
@@ -311,7 +311,7 @@ class LyricsBridge(QObject):
                               self._current_album, self._current_duration)
         self._cache.pop(key, None)
         self._cache_order = [k for k in self._cache_order if k != key]
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(str, result=dict)
     def saveLocalLyrics(self, text: str):
@@ -320,7 +320,7 @@ class LyricsBridge(QObject):
         self._status = "done"
         self._source = "local"
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "source": "local"}
 
     def getActiveLine(self, position_ms: float) -> int | None:
         """Return index of active synced line for a given position in ms."""

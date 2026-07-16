@@ -197,7 +197,7 @@ class RadioBridge(QObject):
     def clearHistory(self):
         self._history = []
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     #  Search
 
@@ -389,14 +389,14 @@ class RadioBridge(QObject):
     @Slot(int, result=dict)
     def setTimeoutMs(self, ms: int):
         self._buffer_timeout_ms = max(1000, min(120000, ms))
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "timeout_ms": self._buffer_timeout_ms}
 
     @Slot(result=dict)
     def cancel(self):
         self._cancel_connect_timeout()
         self._is_buffering = False
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True}
 
     @Slot(str, result="QVariantList")
     def parsePlaylistFile(self, content: str) -> list:
