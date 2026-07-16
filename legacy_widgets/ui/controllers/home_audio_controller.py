@@ -1,6 +1,6 @@
-"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente.
 
-"""HomeAudioController — Home Assistant device management and casting."""
+HomeAudioController — Home Assistant device management and casting."""
 import logging
 
 from PySide6.QtCore import QObject, Signal
