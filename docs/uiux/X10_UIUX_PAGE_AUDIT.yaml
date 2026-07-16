@@ -1,0 +1,3599 @@
+pages:
+  - route: "assistant/AssistantActionPreview"
+    page: "ui_qml/pages/assistant/AssistantActionPreview.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantConfirmationDialog"
+    page: "ui_qml/pages/assistant/AssistantConfirmationDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantConversation"
+    page: "ui_qml/pages/assistant/AssistantConversation.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantExecutionResult"
+    page: "ui_qml/pages/assistant/AssistantExecutionResult.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantPage"
+    page: "ui_qml/pages/assistant/AssistantPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/AudioLabPage"
+    page: "ui_qml/pages/assistant/AudioLabPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/ChatBubble"
+    page: "ui_qml/pages/assistant/ChatBubble.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "assistant/SuggestionCard"
+    page: "ui_qml/pages/assistant/SuggestionCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioAnalysisPage"
+    page: "ui_qml/pages/audio_lab/AudioAnalysisPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioBatchJobsPage"
+    page: "ui_qml/pages/audio_lab/AudioBatchJobsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioComparisonPage"
+    page: "ui_qml/pages/audio_lab/AudioComparisonPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioConversionPage"
+    page: "ui_qml/pages/audio_lab/AudioConversionPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioConversionProfileEditor"
+    page: "ui_qml/pages/audio_lab/AudioConversionProfileEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioInputSelection"
+    page: "ui_qml/pages/audio_lab/AudioInputSelection.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioIntegrityPage"
+    page: "ui_qml/pages/audio_lab/AudioIntegrityPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioJobDetail"
+    page: "ui_qml/pages/audio_lab/AudioJobDetail.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioLabOverviewPage"
+    page: "ui_qml/pages/audio_lab/AudioLabOverviewPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioLabResultsPage"
+    page: "ui_qml/pages/audio_lab/AudioLabResultsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioNormalizationPage"
+    page: "ui_qml/pages/audio_lab/AudioNormalizationPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioSelectionSummary"
+    page: "ui_qml/pages/audio_lab/AudioSelectionSummary.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioTechnicalReport"
+    page: "ui_qml/pages/audio_lab/AudioTechnicalReport.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioWaveformSummary"
+    page: "ui_qml/pages/audio_lab/AudioWaveformSummary.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/ComparisonPanel"
+    page: "ui_qml/pages/audio_lab/ComparisonPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "audio_lab/ReplayGainPage"
+    page: "ui_qml/pages/audio_lab/ReplayGainPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConfiguredServerCard"
+    page: "ui_qml/pages/connections/ConfiguredServerCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionCapabilities"
+    page: "ui_qml/pages/connections/ConnectionCapabilities.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionCard"
+    page: "ui_qml/pages/connections/ConnectionCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionDetailPage"
+    page: "ui_qml/pages/connections/ConnectionDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionDiscoveryPage"
+    page: "ui_qml/pages/connections/ConnectionDiscoveryPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionErrorPanel"
+    page: "ui_qml/pages/connections/ConnectionErrorPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionSetupWizard"
+    page: "ui_qml/pages/connections/ConnectionSetupWizard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionsPage"
+    page: "ui_qml/pages/connections/ConnectionsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/DiscoveredServerCard"
+    page: "ui_qml/pages/connections/DiscoveredServerCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ExternalServerCard"
+    page: "ui_qml/pages/connections/ExternalServerCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/HomeAudioAccess"
+    page: "ui_qml/pages/connections/HomeAudioAccess.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ManualConnectionDialog"
+    page: "ui_qml/pages/connections/ManualConnectionDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/MicroServerHero"
+    page: "ui_qml/pages/connections/MicroServerHero.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/NetworkDiscoveryPanel"
+    page: "ui_qml/pages/connections/NetworkDiscoveryPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/PairingDialog"
+    page: "ui_qml/pages/connections/PairingDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "connections/ServerDiscoveryView"
+    page: "ui_qml/pages/connections/ServerDiscoveryView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceCard"
+    page: "ui_qml/pages/devices/DeviceCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceCompatibilityView"
+    page: "ui_qml/pages/devices/DeviceCompatibilityView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceDetailPage"
+    page: "ui_qml/pages/devices/DeviceDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DevicePairingDialog"
+    page: "ui_qml/pages/devices/DevicePairingDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DevicePairingPage"
+    page: "ui_qml/pages/devices/DevicePairingPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DevicesPage"
+    page: "ui_qml/pages/devices/DevicesPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceStoragePanel"
+    page: "ui_qml/pages/devices/DeviceStoragePanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceStorageView"
+    page: "ui_qml/pages/devices/DeviceStorageView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceSyncHistory"
+    page: "ui_qml/pages/devices/DeviceSyncHistory.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceSyncProfileEditor"
+    page: "ui_qml/pages/devices/DeviceSyncProfileEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceTransferJob"
+    page: "ui_qml/pages/devices/DeviceTransferJob.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceTransferPanel"
+    page: "ui_qml/pages/devices/DeviceTransferPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/DeviceTransferQueue"
+    page: "ui_qml/pages/devices/DeviceTransferQueue.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "devices/SyncStatusPanel"
+    page: "ui_qml/pages/devices/SyncStatusPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "DiagnosticsPage"
+    page: "ui_qml/pages/DiagnosticsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "disc_lab/DiscLabPage"
+    page: "ui_qml/pages/disc_lab/DiscLabPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "EqPage"
+    page: "ui_qml/pages/EqPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/DSPChainPage"
+    page: "ui_qml/pages/equalizer/DSPChainPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/DSPConflictWarning"
+    page: "ui_qml/pages/equalizer/DSPConflictWarning.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/DSPModuleCard"
+    page: "ui_qml/pages/equalizer/DSPModuleCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerBandControl"
+    page: "ui_qml/pages/equalizer/EqualizerBandControl.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerGraph"
+    page: "ui_qml/pages/equalizer/EqualizerGraph.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerPage"
+    page: "ui_qml/pages/equalizer/EqualizerPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerPresetBrowser"
+    page: "ui_qml/pages/equalizer/EqualizerPresetBrowser.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryExportDialog"
+    page: "ui_qml/pages/history/HistoryExportDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryFilterBar"
+    page: "ui_qml/pages/history/HistoryFilterBar.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryPage"
+    page: "ui_qml/pages/history/HistoryPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryRetentionDialog"
+    page: "ui_qml/pages/history/HistoryRetentionDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryStatisticsPage"
+    page: "ui_qml/pages/history/HistoryStatisticsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryStats"
+    page: "ui_qml/pages/history/HistoryStats.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryTable"
+    page: "ui_qml/pages/history/HistoryTable.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "history/HistoryTimeline"
+    page: "ui_qml/pages/history/HistoryTimeline.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home/AssistantCard"
+    page: "ui_qml/pages/home/AssistantCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/AudioZoneCard"
+    page: "ui_qml/pages/home_audio/AudioZoneCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/GroupEditorPage"
+    page: "ui_qml/pages/home_audio/GroupEditorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/GroupEditor"
+    page: "ui_qml/pages/home_audio/GroupEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/HomeAssistantPanel"
+    page: "ui_qml/pages/home_audio/HomeAssistantPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/HomeAudioModeSelector"
+    page: "ui_qml/pages/home_audio/HomeAudioModeSelector.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/HomeAudioPage"
+    page: "ui_qml/pages/home_audio/HomeAudioPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/LatencyControl"
+    page: "ui_qml/pages/home_audio/LatencyControl.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/LatencyPage"
+    page: "ui_qml/pages/home_audio/LatencyPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/MichiMusicStreamPanel"
+    page: "ui_qml/pages/home_audio/MichiMusicStreamPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/MultiroomStatus"
+    page: "ui_qml/pages/home_audio/MultiroomStatus.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/PlaybackTransferDialog"
+    page: "ui_qml/pages/home_audio/PlaybackTransferDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/ReceiverCard"
+    page: "ui_qml/pages/home_audio/ReceiverCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/StreamRoutingPage"
+    page: "ui_qml/pages/home_audio/StreamRoutingPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/ZoneCard"
+    page: "ui_qml/pages/home_audio/ZoneCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home_audio/ZoneDetailPage"
+    page: "ui_qml/pages/home_audio/ZoneDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home/ContinueCard"
+    page: "ui_qml/pages/home/ContinueCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home/EcosystemCard"
+    page: "ui_qml/pages/home/EcosystemCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home/HomeHero"
+    page: "ui_qml/pages/home/HomeHero.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home/HomePage"
+    page: "ui_qml/pages/home/HomePage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "home/LibraryStatusCard"
+    page: "ui_qml/pages/home/LibraryStatusCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "jobs/JobsPage"
+    page: "ui_qml/pages/jobs/JobsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumCoverFlowView"
+    page: "ui_qml/pages/library/album/AlbumCoverFlowView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumGridView"
+    page: "ui_qml/pages/library/album/AlbumGridView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumMagazineView"
+    page: "ui_qml/pages/library/album/AlbumMagazineView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumTimelineView"
+    page: "ui_qml/pages/library/album/AlbumTimelineView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumViewHost"
+    page: "ui_qml/pages/library/album/AlbumViewHost.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumViewSelector"
+    page: "ui_qml/pages/library/album/AlbumViewSelector.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumVinylWallView"
+    page: "ui_qml/pages/library/album/AlbumVinylWallView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/AlbumCard"
+    page: "ui_qml/pages/library/AlbumCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/AlbumDetailPage"
+    page: "ui_qml/pages/library/AlbumDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/AlbumGridPage"
+    page: "ui_qml/pages/library/AlbumGridPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/AlbumGrid"
+    page: "ui_qml/pages/library/AlbumGrid.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/AlbumGridView"
+    page: "ui_qml/pages/library/AlbumGridView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/AlbumListView"
+    page: "ui_qml/pages/library/AlbumListView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ArtistCard"
+    page: "ui_qml/pages/library/ArtistCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ArtistDetailPage"
+    page: "ui_qml/pages/library/ArtistDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ArtistGridPage"
+    page: "ui_qml/pages/library/ArtistGridPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ArtistList"
+    page: "ui_qml/pages/library/ArtistList.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ArtistListView"
+    page: "ui_qml/pages/library/ArtistListView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ComposerDetailPage"
+    page: "ui_qml/pages/library/ComposerDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/ComposersPage"
+    page: "ui_qml/pages/library/ComposersPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorDryRunPage"
+    page: "ui_qml/pages/library_doctor/DoctorDryRunPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorIssueDetail"
+    page: "ui_qml/pages/library_doctor/DoctorIssueDetail.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorIssueList"
+    page: "ui_qml/pages/library_doctor/DoctorIssueList.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorRepairProgress"
+    page: "ui_qml/pages/library_doctor/DoctorRepairProgress.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorReportPage"
+    page: "ui_qml/pages/library_doctor/DoctorReportPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorFixPreview"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorFixPreview.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorIssueDetail"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorIssueDetail.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorIssueList"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorIssueList.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorOverview"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorOverview.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorPage"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorProgress"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorProgress.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorReport"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorReport.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorScanPage"
+    page: "ui_qml/pages/library_doctor/LibraryDoctorScanPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FavoritesPage"
+    page: "ui_qml/pages/library/FavoritesPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderBreadcrumb"
+    page: "ui_qml/pages/library/FolderBreadcrumb.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderBrowserPage"
+    page: "ui_qml/pages/library/FolderBrowserPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderBrowser"
+    page: "ui_qml/pages/library/FolderBrowser.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderContentView"
+    page: "ui_qml/pages/library/FolderContentView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderContextMenu"
+    page: "ui_qml/pages/library/FolderContextMenu.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderSourceBadge"
+    page: "ui_qml/pages/library/FolderSourceBadge.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/FolderTreeView"
+    page: "ui_qml/pages/library/FolderTreeView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/GenreDetailPage"
+    page: "ui_qml/pages/library/GenreDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/GenresPage"
+    page: "ui_qml/pages/library/GenresPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryColumnSelector"
+    page: "ui_qml/pages/library/LibraryColumnSelector.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryContextMenu"
+    page: "ui_qml/pages/library/LibraryContextMenu.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryEmptyState"
+    page: "ui_qml/pages/library/LibraryEmptyState.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryErrorState"
+    page: "ui_qml/pages/library/LibraryErrorState.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryFilterBar"
+    page: "ui_qml/pages/library/LibraryFilterBar.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryNavigationBar"
+    page: "ui_qml/pages/library/LibraryNavigationBar.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryPage"
+    page: "ui_qml/pages/library/LibraryPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibrarySearchField"
+    page: "ui_qml/pages/library/LibrarySearchField.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibrarySelectionBar"
+    page: "ui_qml/pages/library/LibrarySelectionBar.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibrarySortMenu"
+    page: "ui_qml/pages/library/LibrarySortMenu.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryStatusHeader"
+    page: "ui_qml/pages/library/LibraryStatusHeader.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackContextMenu"
+    page: "ui_qml/pages/library/LibraryTrackContextMenu.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackHeader"
+    page: "ui_qml/pages/library/LibraryTrackHeader.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackRow"
+    page: "ui_qml/pages/library/LibraryTrackRow.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackTable"
+    page: "ui_qml/pages/library/LibraryTrackTable.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/LibraryViewSelector"
+    page: "ui_qml/pages/library/LibraryViewSelector.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/MissingPage"
+    page: "ui_qml/pages/library/MissingPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/MostPlayedPage"
+    page: "ui_qml/pages/library/MostPlayedPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/RecentPage"
+    page: "ui_qml/pages/library/RecentPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SongRow"
+    page: "ui_qml/pages/library/SongRow.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SongTable"
+    page: "ui_qml/pages/library/SongTable.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SourceCard"
+    page: "ui_qml/pages/library/SourceCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SourceDetailPage"
+    page: "ui_qml/pages/library/SourceDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SourceEditorDialog"
+    page: "ui_qml/pages/library/SourceEditorDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SourceExclusionEditor"
+    page: "ui_qml/pages/library/SourceExclusionEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SourceScanProgress"
+    page: "ui_qml/pages/library/SourceScanProgress.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/SourcesPage"
+    page: "ui_qml/pages/library/SourcesPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/TrackQualityBadge"
+    page: "ui_qml/pages/library/TrackQualityBadge.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/TrackStatusIndicators"
+    page: "ui_qml/pages/library/TrackStatusIndicators.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/tracks/TracksPage"
+    page: "ui_qml/pages/library/tracks/TracksPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/UnplayedPage"
+    page: "ui_qml/pages/library/UnplayedPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "library/YearsPage"
+    page: "ui_qml/pages/library/YearsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "lyrics/LyricsEditDialog"
+    page: "ui_qml/pages/lyrics/LyricsEditDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "lyrics/LyricsPage"
+    page: "ui_qml/pages/lyrics/LyricsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataArtworkEditor"
+    page: "ui_qml/pages/metadata/MetadataArtworkEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataArtworkPreview"
+    page: "ui_qml/pages/metadata/MetadataArtworkPreview.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataBatchEditor"
+    page: "ui_qml/pages/metadata/MetadataBatchEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataConflictView"
+    page: "ui_qml/pages/metadata/MetadataConflictView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataDiffView"
+    page: "ui_qml/pages/metadata/MetadataDiffView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataEditorPage"
+    page: "ui_qml/pages/metadata/MetadataEditorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataFieldGrid"
+    page: "ui_qml/pages/metadata/MetadataFieldGrid.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataFieldRow"
+    page: "ui_qml/pages/metadata/MetadataFieldRow.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataInspectorPage"
+    page: "ui_qml/pages/metadata/MetadataInspectorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataPage"
+    page: "ui_qml/pages/metadata/MetadataPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataPreview"
+    page: "ui_qml/pages/metadata/MetadataPreview.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataSingleEditor"
+    page: "ui_qml/pages/metadata/MetadataSingleEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataWriteProgress"
+    page: "ui_qml/pages/metadata/MetadataWriteProgress.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "metadata/SmartTaggingWorkflowPage"
+    page: "ui_qml/pages/metadata/SmartTaggingWorkflowPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixDetailPage"
+    page: "ui_qml/pages/mix/MixDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixExplanationDrawer"
+    page: "ui_qml/pages/mix/MixExplanationDrawer.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixExplanationPanel"
+    page: "ui_qml/pages/mix/MixExplanationPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixFeedbackControls"
+    page: "ui_qml/pages/mix/MixFeedbackControls.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixGenerationProgress"
+    page: "ui_qml/pages/mix/MixGenerationProgress.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixGeneratorPage"
+    page: "ui_qml/pages/mix/MixGeneratorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixHubPage"
+    page: "ui_qml/pages/mix/MixHubPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixResultPage"
+    page: "ui_qml/pages/mix/MixResultPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixRuleEditorPage"
+    page: "ui_qml/pages/mix/MixRuleEditorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "mix/MixRuleEditor"
+    page: "ui_qml/pages/mix/MixRuleEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingArtwork"
+    page: "ui_qml/pages/nowplaying/NowPlayingArtwork.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingControls"
+    page: "ui_qml/pages/nowplaying/NowPlayingControls.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingHeader"
+    page: "ui_qml/pages/nowplaying/NowPlayingHeader.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingLyricsPane"
+    page: "ui_qml/pages/nowplaying/NowPlayingLyricsPane.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingMetadata"
+    page: "ui_qml/pages/nowplaying/NowPlayingMetadata.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingOutputSelector"
+    page: "ui_qml/pages/nowplaying/NowPlayingOutputSelector.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingPage"
+    page: "ui_qml/pages/nowplaying/NowPlayingPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingProgress"
+    page: "ui_qml/pages/nowplaying/NowPlayingProgress.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingQueuePreview"
+    page: "ui_qml/pages/nowplaying/NowPlayingQueuePreview.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingTechnicalInfo"
+    page: "ui_qml/pages/nowplaying/NowPlayingTechnicalInfo.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "outputs/OutputCapabilityView"
+    page: "ui_qml/pages/outputs/OutputCapabilityView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfileCard"
+    page: "ui_qml/pages/outputs/OutputProfileCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfileDetail"
+    page: "ui_qml/pages/outputs/OutputProfileDetail.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfileEditor"
+    page: "ui_qml/pages/outputs/OutputProfileEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfilesPage"
+    page: "ui_qml/pages/outputs/OutputProfilesPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "outputs/OutputTestResult"
+    page: "ui_qml/pages/outputs/OutputTestResult.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "PlaceholderPage"
+    page: "ui_qml/pages/PlaceholderPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "PlaybackPage"
+    page: "ui_qml/pages/PlaybackPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistCard"
+    page: "ui_qml/pages/playlists/PlaylistCard.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistDetailPage"
+    page: "ui_qml/pages/playlists/PlaylistDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistEditorDialog"
+    page: "ui_qml/pages/playlists/PlaylistEditorDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistExportDialog"
+    page: "ui_qml/pages/playlists/PlaylistExportDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistImportDialog"
+    page: "ui_qml/pages/playlists/PlaylistImportDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistsPage"
+    page: "ui_qml/pages/playlists/PlaylistsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistTrackList"
+    page: "ui_qml/pages/playlists/PlaylistTrackList.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/SmartPlaylistEditorPage"
+    page: "ui_qml/pages/playlists/SmartPlaylistEditorPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "playlists/SmartPlaylistEditor"
+    page: "ui_qml/pages/playlists/SmartPlaylistEditor.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueueActions"
+    page: "ui_qml/pages/queue/QueueActions.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueueEmptyState"
+    page: "ui_qml/pages/queue/QueueEmptyState.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueueHeader"
+    page: "ui_qml/pages/queue/QueueHeader.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueueHistorySection"
+    page: "ui_qml/pages/queue/QueueHistorySection.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueueItem"
+    page: "ui_qml/pages/queue/QueueItem.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueueListView"
+    page: "ui_qml/pages/queue/QueueListView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "queue/QueuePage"
+    page: "ui_qml/pages/queue/QueuePage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioEditDialog"
+    page: "ui_qml/pages/radio/RadioEditDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioEditorDialog"
+    page: "ui_qml/pages/radio/RadioEditorDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioImportDialog"
+    page: "ui_qml/pages/radio/RadioImportDialog.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioImportExportPanel"
+    page: "ui_qml/pages/radio/RadioImportExportPanel.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioPage"
+    page: "ui_qml/pages/radio/RadioPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioSearchView"
+    page: "ui_qml/pages/radio/RadioSearchView.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioStationDetailPage"
+    page: "ui_qml/pages/radio/RadioStationDetailPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "radio/RadioStationDetail"
+    page: "ui_qml/pages/radio/RadioStationDetail.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/GlobalSearchOverlay"
+    page: "ui_qml/pages/search/GlobalSearchOverlay.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/GlobalSearchPage"
+    page: "ui_qml/pages/search/GlobalSearchPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchFiltersDrawer"
+    page: "ui_qml/pages/search/SearchFiltersDrawer.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchRecentQueries"
+    page: "ui_qml/pages/search/SearchRecentQueries.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchResultDelegate"
+    page: "ui_qml/pages/search/SearchResultDelegate.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchResultGroup"
+    page: "ui_qml/pages/search/SearchResultGroup.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchResultItem"
+    page: "ui_qml/pages/search/SearchResultItem.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchResultRow"
+    page: "ui_qml/pages/search/SearchResultRow.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchResultSection"
+    page: "ui_qml/pages/search/SearchResultSection.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "search/SearchSuggestions"
+    page: "ui_qml/pages/search/SearchSuggestions.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/LibrarySourcesPage"
+    page: "ui_qml/pages/settings/LibrarySourcesPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "SettingsPage"
+    page: "ui_qml/pages/SettingsPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAboutPage"
+    page: "ui_qml/pages/settings/SettingsAboutPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAccessibilityPage"
+    page: "ui_qml/pages/settings/SettingsAccessibilityPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAppearancePage"
+    page: "ui_qml/pages/settings/SettingsAppearancePage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAudioPage"
+    page: "ui_qml/pages/settings/SettingsAudioPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsGeneralPage"
+    page: "ui_qml/pages/settings/SettingsGeneralPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsLibraryPage"
+    page: "ui_qml/pages/settings/SettingsLibraryPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "settings/SettingsPlaybackPage"
+    page: "ui_qml/pages/settings/SettingsPlaybackPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+
+  - route: "SmartTaggingPage"
+    page: "ui_qml/pages/SmartTaggingPage.qml"
+    header: false
+    primary_action: false
+    secondary_actions: false
+    empty_state: false
+    loading_state: false
+    error_state: false
+    responsive_layout: false
+    keyboard_navigation: false
+    focus_order: true
+    visual_consistency: UNREVIEWED
+    status: UNREVIEWED
+

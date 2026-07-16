@@ -1,0 +1,7 @@
+# Excepciones al contract guard
+# Formato:
+# - file: <path>
+#   reason: "<justificación>"
+#   approved_by: "<quien aprobó>"
+#   date: "<fecha>"
+exceptions: []

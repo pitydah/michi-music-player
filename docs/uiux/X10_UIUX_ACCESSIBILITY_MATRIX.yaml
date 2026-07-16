@@ -1,0 +1,3085 @@
+pages:
+  - route: "DiagnosticsPage"
+    file: "ui_qml/pages/DiagnosticsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "EqPage"
+    file: "ui_qml/pages/EqPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "PlaceholderPage"
+    file: "ui_qml/pages/PlaceholderPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "PlaybackPage"
+    file: "ui_qml/pages/PlaybackPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "SettingsPage"
+    file: "ui_qml/pages/SettingsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "SmartTaggingPage"
+    file: "ui_qml/pages/SmartTaggingPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantActionPreview"
+    file: "ui_qml/pages/assistant/AssistantActionPreview.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantConfirmationDialog"
+    file: "ui_qml/pages/assistant/AssistantConfirmationDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantConversation"
+    file: "ui_qml/pages/assistant/AssistantConversation.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantExecutionResult"
+    file: "ui_qml/pages/assistant/AssistantExecutionResult.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/AssistantPage"
+    file: "ui_qml/pages/assistant/AssistantPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/AudioLabPage"
+    file: "ui_qml/pages/assistant/AudioLabPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/ChatBubble"
+    file: "ui_qml/pages/assistant/ChatBubble.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "assistant/SuggestionCard"
+    file: "ui_qml/pages/assistant/SuggestionCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioAnalysisPage"
+    file: "ui_qml/pages/audio_lab/AudioAnalysisPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioBatchJobsPage"
+    file: "ui_qml/pages/audio_lab/AudioBatchJobsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioComparisonPage"
+    file: "ui_qml/pages/audio_lab/AudioComparisonPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioConversionPage"
+    file: "ui_qml/pages/audio_lab/AudioConversionPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioConversionProfileEditor"
+    file: "ui_qml/pages/audio_lab/AudioConversionProfileEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioInputSelection"
+    file: "ui_qml/pages/audio_lab/AudioInputSelection.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioIntegrityPage"
+    file: "ui_qml/pages/audio_lab/AudioIntegrityPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioJobDetail"
+    file: "ui_qml/pages/audio_lab/AudioJobDetail.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioLabOverviewPage"
+    file: "ui_qml/pages/audio_lab/AudioLabOverviewPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioLabResultsPage"
+    file: "ui_qml/pages/audio_lab/AudioLabResultsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioNormalizationPage"
+    file: "ui_qml/pages/audio_lab/AudioNormalizationPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioSelectionSummary"
+    file: "ui_qml/pages/audio_lab/AudioSelectionSummary.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioTechnicalReport"
+    file: "ui_qml/pages/audio_lab/AudioTechnicalReport.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/AudioWaveformSummary"
+    file: "ui_qml/pages/audio_lab/AudioWaveformSummary.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/ComparisonPanel"
+    file: "ui_qml/pages/audio_lab/ComparisonPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "audio_lab/ReplayGainPage"
+    file: "ui_qml/pages/audio_lab/ReplayGainPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConfiguredServerCard"
+    file: "ui_qml/pages/connections/ConfiguredServerCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionCapabilities"
+    file: "ui_qml/pages/connections/ConnectionCapabilities.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionCard"
+    file: "ui_qml/pages/connections/ConnectionCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionDetailPage"
+    file: "ui_qml/pages/connections/ConnectionDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionDiscoveryPage"
+    file: "ui_qml/pages/connections/ConnectionDiscoveryPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionErrorPanel"
+    file: "ui_qml/pages/connections/ConnectionErrorPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionSetupWizard"
+    file: "ui_qml/pages/connections/ConnectionSetupWizard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ConnectionsPage"
+    file: "ui_qml/pages/connections/ConnectionsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/DiscoveredServerCard"
+    file: "ui_qml/pages/connections/DiscoveredServerCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ExternalServerCard"
+    file: "ui_qml/pages/connections/ExternalServerCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/HomeAudioAccess"
+    file: "ui_qml/pages/connections/HomeAudioAccess.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ManualConnectionDialog"
+    file: "ui_qml/pages/connections/ManualConnectionDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/MicroServerHero"
+    file: "ui_qml/pages/connections/MicroServerHero.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/NetworkDiscoveryPanel"
+    file: "ui_qml/pages/connections/NetworkDiscoveryPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/PairingDialog"
+    file: "ui_qml/pages/connections/PairingDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "connections/ServerDiscoveryView"
+    file: "ui_qml/pages/connections/ServerDiscoveryView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceCard"
+    file: "ui_qml/pages/devices/DeviceCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceCompatibilityView"
+    file: "ui_qml/pages/devices/DeviceCompatibilityView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceDetailPage"
+    file: "ui_qml/pages/devices/DeviceDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DevicePairingDialog"
+    file: "ui_qml/pages/devices/DevicePairingDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DevicePairingPage"
+    file: "ui_qml/pages/devices/DevicePairingPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceStoragePanel"
+    file: "ui_qml/pages/devices/DeviceStoragePanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceStorageView"
+    file: "ui_qml/pages/devices/DeviceStorageView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceSyncHistory"
+    file: "ui_qml/pages/devices/DeviceSyncHistory.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceSyncProfileEditor"
+    file: "ui_qml/pages/devices/DeviceSyncProfileEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceTransferJob"
+    file: "ui_qml/pages/devices/DeviceTransferJob.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceTransferPanel"
+    file: "ui_qml/pages/devices/DeviceTransferPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DeviceTransferQueue"
+    file: "ui_qml/pages/devices/DeviceTransferQueue.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/DevicesPage"
+    file: "ui_qml/pages/devices/DevicesPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "devices/SyncStatusPanel"
+    file: "ui_qml/pages/devices/SyncStatusPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "disc_lab/DiscLabPage"
+    file: "ui_qml/pages/disc_lab/DiscLabPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/DSPChainPage"
+    file: "ui_qml/pages/equalizer/DSPChainPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/DSPConflictWarning"
+    file: "ui_qml/pages/equalizer/DSPConflictWarning.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/DSPModuleCard"
+    file: "ui_qml/pages/equalizer/DSPModuleCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerBandControl"
+    file: "ui_qml/pages/equalizer/EqualizerBandControl.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerGraph"
+    file: "ui_qml/pages/equalizer/EqualizerGraph.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerPage"
+    file: "ui_qml/pages/equalizer/EqualizerPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "equalizer/EqualizerPresetBrowser"
+    file: "ui_qml/pages/equalizer/EqualizerPresetBrowser.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryExportDialog"
+    file: "ui_qml/pages/history/HistoryExportDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryFilterBar"
+    file: "ui_qml/pages/history/HistoryFilterBar.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryPage"
+    file: "ui_qml/pages/history/HistoryPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryRetentionDialog"
+    file: "ui_qml/pages/history/HistoryRetentionDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryStatisticsPage"
+    file: "ui_qml/pages/history/HistoryStatisticsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryStats"
+    file: "ui_qml/pages/history/HistoryStats.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryTable"
+    file: "ui_qml/pages/history/HistoryTable.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "history/HistoryTimeline"
+    file: "ui_qml/pages/history/HistoryTimeline.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home/AssistantCard"
+    file: "ui_qml/pages/home/AssistantCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home/ContinueCard"
+    file: "ui_qml/pages/home/ContinueCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home/EcosystemCard"
+    file: "ui_qml/pages/home/EcosystemCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home/HomeHero"
+    file: "ui_qml/pages/home/HomeHero.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home/HomePage"
+    file: "ui_qml/pages/home/HomePage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home/LibraryStatusCard"
+    file: "ui_qml/pages/home/LibraryStatusCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/AudioZoneCard"
+    file: "ui_qml/pages/home_audio/AudioZoneCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/GroupEditor"
+    file: "ui_qml/pages/home_audio/GroupEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/GroupEditorPage"
+    file: "ui_qml/pages/home_audio/GroupEditorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/HomeAssistantPanel"
+    file: "ui_qml/pages/home_audio/HomeAssistantPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/HomeAudioModeSelector"
+    file: "ui_qml/pages/home_audio/HomeAudioModeSelector.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/HomeAudioPage"
+    file: "ui_qml/pages/home_audio/HomeAudioPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/LatencyControl"
+    file: "ui_qml/pages/home_audio/LatencyControl.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/LatencyPage"
+    file: "ui_qml/pages/home_audio/LatencyPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/MichiMusicStreamPanel"
+    file: "ui_qml/pages/home_audio/MichiMusicStreamPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/MultiroomStatus"
+    file: "ui_qml/pages/home_audio/MultiroomStatus.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/PlaybackTransferDialog"
+    file: "ui_qml/pages/home_audio/PlaybackTransferDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/ReceiverCard"
+    file: "ui_qml/pages/home_audio/ReceiverCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/StreamRoutingPage"
+    file: "ui_qml/pages/home_audio/StreamRoutingPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/ZoneCard"
+    file: "ui_qml/pages/home_audio/ZoneCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "home_audio/ZoneDetailPage"
+    file: "ui_qml/pages/home_audio/ZoneDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "jobs/JobsPage"
+    file: "ui_qml/pages/jobs/JobsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/AlbumCard"
+    file: "ui_qml/pages/library/AlbumCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/AlbumDetailPage"
+    file: "ui_qml/pages/library/AlbumDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/AlbumGrid"
+    file: "ui_qml/pages/library/AlbumGrid.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/AlbumGridPage"
+    file: "ui_qml/pages/library/AlbumGridPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/AlbumGridView"
+    file: "ui_qml/pages/library/AlbumGridView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/AlbumListView"
+    file: "ui_qml/pages/library/AlbumListView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ArtistCard"
+    file: "ui_qml/pages/library/ArtistCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ArtistDetailPage"
+    file: "ui_qml/pages/library/ArtistDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ArtistGridPage"
+    file: "ui_qml/pages/library/ArtistGridPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ArtistList"
+    file: "ui_qml/pages/library/ArtistList.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ArtistListView"
+    file: "ui_qml/pages/library/ArtistListView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ComposerDetailPage"
+    file: "ui_qml/pages/library/ComposerDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/ComposersPage"
+    file: "ui_qml/pages/library/ComposersPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FavoritesPage"
+    file: "ui_qml/pages/library/FavoritesPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderBreadcrumb"
+    file: "ui_qml/pages/library/FolderBreadcrumb.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderBrowser"
+    file: "ui_qml/pages/library/FolderBrowser.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderBrowserPage"
+    file: "ui_qml/pages/library/FolderBrowserPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderContentView"
+    file: "ui_qml/pages/library/FolderContentView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderContextMenu"
+    file: "ui_qml/pages/library/FolderContextMenu.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderSourceBadge"
+    file: "ui_qml/pages/library/FolderSourceBadge.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/FolderTreeView"
+    file: "ui_qml/pages/library/FolderTreeView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/GenreDetailPage"
+    file: "ui_qml/pages/library/GenreDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/GenresPage"
+    file: "ui_qml/pages/library/GenresPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryColumnSelector"
+    file: "ui_qml/pages/library/LibraryColumnSelector.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryContextMenu"
+    file: "ui_qml/pages/library/LibraryContextMenu.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryEmptyState"
+    file: "ui_qml/pages/library/LibraryEmptyState.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryErrorState"
+    file: "ui_qml/pages/library/LibraryErrorState.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryFilterBar"
+    file: "ui_qml/pages/library/LibraryFilterBar.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryNavigationBar"
+    file: "ui_qml/pages/library/LibraryNavigationBar.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryPage"
+    file: "ui_qml/pages/library/LibraryPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibrarySearchField"
+    file: "ui_qml/pages/library/LibrarySearchField.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibrarySelectionBar"
+    file: "ui_qml/pages/library/LibrarySelectionBar.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibrarySortMenu"
+    file: "ui_qml/pages/library/LibrarySortMenu.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryStatusHeader"
+    file: "ui_qml/pages/library/LibraryStatusHeader.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackContextMenu"
+    file: "ui_qml/pages/library/LibraryTrackContextMenu.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackHeader"
+    file: "ui_qml/pages/library/LibraryTrackHeader.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackRow"
+    file: "ui_qml/pages/library/LibraryTrackRow.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryTrackTable"
+    file: "ui_qml/pages/library/LibraryTrackTable.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/LibraryViewSelector"
+    file: "ui_qml/pages/library/LibraryViewSelector.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/MissingPage"
+    file: "ui_qml/pages/library/MissingPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/MostPlayedPage"
+    file: "ui_qml/pages/library/MostPlayedPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/RecentPage"
+    file: "ui_qml/pages/library/RecentPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SongRow"
+    file: "ui_qml/pages/library/SongRow.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SongTable"
+    file: "ui_qml/pages/library/SongTable.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SourceCard"
+    file: "ui_qml/pages/library/SourceCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SourceDetailPage"
+    file: "ui_qml/pages/library/SourceDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SourceEditorDialog"
+    file: "ui_qml/pages/library/SourceEditorDialog.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SourceExclusionEditor"
+    file: "ui_qml/pages/library/SourceExclusionEditor.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SourceScanProgress"
+    file: "ui_qml/pages/library/SourceScanProgress.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/SourcesPage"
+    file: "ui_qml/pages/library/SourcesPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/TrackQualityBadge"
+    file: "ui_qml/pages/library/TrackQualityBadge.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/TrackStatusIndicators"
+    file: "ui_qml/pages/library/TrackStatusIndicators.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/UnplayedPage"
+    file: "ui_qml/pages/library/UnplayedPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/YearsPage"
+    file: "ui_qml/pages/library/YearsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumCoverFlowView"
+    file: "ui_qml/pages/library/album/AlbumCoverFlowView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumGridView"
+    file: "ui_qml/pages/library/album/AlbumGridView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumMagazineView"
+    file: "ui_qml/pages/library/album/AlbumMagazineView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumTimelineView"
+    file: "ui_qml/pages/library/album/AlbumTimelineView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumViewHost"
+    file: "ui_qml/pages/library/album/AlbumViewHost.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumViewSelector"
+    file: "ui_qml/pages/library/album/AlbumViewSelector.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/album/AlbumVinylWallView"
+    file: "ui_qml/pages/library/album/AlbumVinylWallView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library/tracks/TracksPage"
+    file: "ui_qml/pages/library/tracks/TracksPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorDryRunPage"
+    file: "ui_qml/pages/library_doctor/DoctorDryRunPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorIssueDetail"
+    file: "ui_qml/pages/library_doctor/DoctorIssueDetail.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorIssueList"
+    file: "ui_qml/pages/library_doctor/DoctorIssueList.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorRepairProgress"
+    file: "ui_qml/pages/library_doctor/DoctorRepairProgress.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/DoctorReportPage"
+    file: "ui_qml/pages/library_doctor/DoctorReportPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorFixPreview"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorFixPreview.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorIssueDetail"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorIssueDetail.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorIssueList"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorIssueList.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorOverview"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorOverview.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorPage"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorProgress"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorProgress.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorReport"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorReport.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "library_doctor/LibraryDoctorScanPage"
+    file: "ui_qml/pages/library_doctor/LibraryDoctorScanPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "lyrics/LyricsEditDialog"
+    file: "ui_qml/pages/lyrics/LyricsEditDialog.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "lyrics/LyricsPage"
+    file: "ui_qml/pages/lyrics/LyricsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataArtworkEditor"
+    file: "ui_qml/pages/metadata/MetadataArtworkEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataArtworkPreview"
+    file: "ui_qml/pages/metadata/MetadataArtworkPreview.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataBatchEditor"
+    file: "ui_qml/pages/metadata/MetadataBatchEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataConflictView"
+    file: "ui_qml/pages/metadata/MetadataConflictView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataDiffView"
+    file: "ui_qml/pages/metadata/MetadataDiffView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataEditorPage"
+    file: "ui_qml/pages/metadata/MetadataEditorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataFieldGrid"
+    file: "ui_qml/pages/metadata/MetadataFieldGrid.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataFieldRow"
+    file: "ui_qml/pages/metadata/MetadataFieldRow.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataInspectorPage"
+    file: "ui_qml/pages/metadata/MetadataInspectorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataPage"
+    file: "ui_qml/pages/metadata/MetadataPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataPreview"
+    file: "ui_qml/pages/metadata/MetadataPreview.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataSingleEditor"
+    file: "ui_qml/pages/metadata/MetadataSingleEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/MetadataWriteProgress"
+    file: "ui_qml/pages/metadata/MetadataWriteProgress.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "metadata/SmartTaggingWorkflowPage"
+    file: "ui_qml/pages/metadata/SmartTaggingWorkflowPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixDetailPage"
+    file: "ui_qml/pages/mix/MixDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixExplanationDrawer"
+    file: "ui_qml/pages/mix/MixExplanationDrawer.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixExplanationPanel"
+    file: "ui_qml/pages/mix/MixExplanationPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixFeedbackControls"
+    file: "ui_qml/pages/mix/MixFeedbackControls.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixGenerationProgress"
+    file: "ui_qml/pages/mix/MixGenerationProgress.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixGeneratorPage"
+    file: "ui_qml/pages/mix/MixGeneratorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixHubPage"
+    file: "ui_qml/pages/mix/MixHubPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixResultPage"
+    file: "ui_qml/pages/mix/MixResultPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixRuleEditor"
+    file: "ui_qml/pages/mix/MixRuleEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "mix/MixRuleEditorPage"
+    file: "ui_qml/pages/mix/MixRuleEditorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingArtwork"
+    file: "ui_qml/pages/nowplaying/NowPlayingArtwork.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingControls"
+    file: "ui_qml/pages/nowplaying/NowPlayingControls.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingHeader"
+    file: "ui_qml/pages/nowplaying/NowPlayingHeader.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingLyricsPane"
+    file: "ui_qml/pages/nowplaying/NowPlayingLyricsPane.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingMetadata"
+    file: "ui_qml/pages/nowplaying/NowPlayingMetadata.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingOutputSelector"
+    file: "ui_qml/pages/nowplaying/NowPlayingOutputSelector.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingPage"
+    file: "ui_qml/pages/nowplaying/NowPlayingPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingProgress"
+    file: "ui_qml/pages/nowplaying/NowPlayingProgress.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingQueuePreview"
+    file: "ui_qml/pages/nowplaying/NowPlayingQueuePreview.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "nowplaying/NowPlayingTechnicalInfo"
+    file: "ui_qml/pages/nowplaying/NowPlayingTechnicalInfo.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "outputs/OutputCapabilityView"
+    file: "ui_qml/pages/outputs/OutputCapabilityView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfileCard"
+    file: "ui_qml/pages/outputs/OutputProfileCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfileDetail"
+    file: "ui_qml/pages/outputs/OutputProfileDetail.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfileEditor"
+    file: "ui_qml/pages/outputs/OutputProfileEditor.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "outputs/OutputProfilesPage"
+    file: "ui_qml/pages/outputs/OutputProfilesPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "outputs/OutputTestResult"
+    file: "ui_qml/pages/outputs/OutputTestResult.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistCard"
+    file: "ui_qml/pages/playlists/PlaylistCard.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistDetailPage"
+    file: "ui_qml/pages/playlists/PlaylistDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistEditorDialog"
+    file: "ui_qml/pages/playlists/PlaylistEditorDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistExportDialog"
+    file: "ui_qml/pages/playlists/PlaylistExportDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistImportDialog"
+    file: "ui_qml/pages/playlists/PlaylistImportDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistTrackList"
+    file: "ui_qml/pages/playlists/PlaylistTrackList.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/PlaylistsPage"
+    file: "ui_qml/pages/playlists/PlaylistsPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/SmartPlaylistEditor"
+    file: "ui_qml/pages/playlists/SmartPlaylistEditor.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "playlists/SmartPlaylistEditorPage"
+    file: "ui_qml/pages/playlists/SmartPlaylistEditorPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueueActions"
+    file: "ui_qml/pages/queue/QueueActions.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueueEmptyState"
+    file: "ui_qml/pages/queue/QueueEmptyState.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueueHeader"
+    file: "ui_qml/pages/queue/QueueHeader.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueueHistorySection"
+    file: "ui_qml/pages/queue/QueueHistorySection.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueueItem"
+    file: "ui_qml/pages/queue/QueueItem.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueueListView"
+    file: "ui_qml/pages/queue/QueueListView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "queue/QueuePage"
+    file: "ui_qml/pages/queue/QueuePage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioEditDialog"
+    file: "ui_qml/pages/radio/RadioEditDialog.qml"
+    objectName: false
+    Accessible_role: false
+    Accessible_name: false
+    keyboard_nav: false
+    focus_visible: false
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioEditorDialog"
+    file: "ui_qml/pages/radio/RadioEditorDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioImportDialog"
+    file: "ui_qml/pages/radio/RadioImportDialog.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioImportExportPanel"
+    file: "ui_qml/pages/radio/RadioImportExportPanel.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioPage"
+    file: "ui_qml/pages/radio/RadioPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioSearchView"
+    file: "ui_qml/pages/radio/RadioSearchView.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioStationDetail"
+    file: "ui_qml/pages/radio/RadioStationDetail.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "radio/RadioStationDetailPage"
+    file: "ui_qml/pages/radio/RadioStationDetailPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/GlobalSearchOverlay"
+    file: "ui_qml/pages/search/GlobalSearchOverlay.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/GlobalSearchPage"
+    file: "ui_qml/pages/search/GlobalSearchPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchFiltersDrawer"
+    file: "ui_qml/pages/search/SearchFiltersDrawer.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchRecentQueries"
+    file: "ui_qml/pages/search/SearchRecentQueries.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchResultDelegate"
+    file: "ui_qml/pages/search/SearchResultDelegate.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchResultGroup"
+    file: "ui_qml/pages/search/SearchResultGroup.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchResultItem"
+    file: "ui_qml/pages/search/SearchResultItem.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchResultRow"
+    file: "ui_qml/pages/search/SearchResultRow.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchResultSection"
+    file: "ui_qml/pages/search/SearchResultSection.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "search/SearchSuggestions"
+    file: "ui_qml/pages/search/SearchSuggestions.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "settings/LibrarySourcesPage"
+    file: "ui_qml/pages/settings/LibrarySourcesPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: false
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAboutPage"
+    file: "ui_qml/pages/settings/SettingsAboutPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAccessibilityPage"
+    file: "ui_qml/pages/settings/SettingsAccessibilityPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: true
+    font_scaling: true
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAppearancePage"
+    file: "ui_qml/pages/settings/SettingsAppearancePage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: true
+    font_scaling: true
+    status: UNREVIEWED
+
+  - route: "settings/SettingsAudioPage"
+    file: "ui_qml/pages/settings/SettingsAudioPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "settings/SettingsGeneralPage"
+    file: "ui_qml/pages/settings/SettingsGeneralPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "settings/SettingsLibraryPage"
+    file: "ui_qml/pages/settings/SettingsLibraryPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: true
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+
+  - route: "settings/SettingsPlaybackPage"
+    file: "ui_qml/pages/settings/SettingsPlaybackPage.qml"
+    objectName: true
+    Accessible_role: true
+    Accessible_name: true
+    keyboard_nav: true
+    focus_visible: true
+    dialog_focus_trap: false
+    reduced_motion: false
+    font_scaling: false
+    status: UNREVIEWED
+

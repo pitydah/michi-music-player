@@ -26,12 +26,15 @@ QtObject {
     readonly property color skeletonBase: surfaceCard
     readonly property color skeletonHighlight: surfaceCardHover
     readonly property color surfaceToolbar: Qt.rgba(0.027, 0.039, 0.063, 0.92)
+    readonly property color surfaceElevated: "#11131C"
     readonly property color surfaceOverlay: Qt.rgba(0.02, 0.03, 0.05, 0.85)
     readonly property color borderSubtle: Qt.rgba(1.0, 1.0, 1.0, 0.05)
     readonly property color borderCard: Qt.rgba(1.0, 1.0, 1.0, 0.07)
     readonly property color borderInner: Qt.rgba(1.0, 1.0, 1.0, 0.03)
     readonly property color borderActive: "#8FB7FF"
+    readonly property color borderHover: Qt.rgba(1.0, 1.0, 1.0, 0.15)
     readonly property color borderFocus: "#8FB7FF"
+    readonly property color borderError: "#F87171"
     readonly property color textPrimary: "#F0F2F8"
     readonly property color textNormal: "#D0D4E0"
     readonly property color textSecondary: "#9098A8"
@@ -39,10 +42,12 @@ QtObject {
     readonly property color textMeta: "#485068"
     readonly property color textOnAccent: "#070A10"
     readonly property color textOnError: "#070A10"
+    readonly property color textOnSuccess: "#070A10"
     readonly property color success: "#4ADE80"
     readonly property color warning: "#FBBF24"
     readonly property color error: "#F87171"
     readonly property color experimental: "#A78BFA"
+    readonly property color accentSecondary: "#A78BFA"
     readonly property color disconnected: "#6B7280"
     readonly property color badgeInfoBg: Qt.rgba(0.561, 0.718, 1.0, 0.12)
     readonly property color badgeInfoText: "#8FB7FF"
