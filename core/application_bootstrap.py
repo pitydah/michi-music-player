@@ -168,9 +168,14 @@ class ApplicationBootstrap:
         from core.library.library_query_service import LibraryQueryService
         from core.library_sources_service import LibrarySourcesService
         from core.library_mutation_service import LibraryMutationService
-        self.container.register("library_query_service", LibraryQueryService(cf))
+        from core.library_service import LibraryService
+        db = self.container.get("database")
+        wm = self.container.get("worker_manager")
+        lqs = LibraryQueryService(cf)
+        self.container.register("library_query_service", lqs)
         self.container.register("library_sources_service", LibrarySourcesService(cf))
         self.container.register("library_mutation_service", LibraryMutationService(cf))
+        self.container.register("library_service", LibraryService(db=db, worker_manager=wm, library_query_service=lqs))
 
     def _build_playback_services(self):
         from audio.player_service import PlayerService

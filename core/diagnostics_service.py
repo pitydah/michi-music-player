@@ -35,7 +35,7 @@ class DiagnosticsService:
         if not self._db:
             return {"status": "unavailable", "error": "NO_DB"}
         try:
-            cursor = self._db.conn.execute("SELECT COUNT(*) FROM tracks")
+            cursor = self._db.conn.execute("SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL")
             track_count = cursor.fetchone()[0]
             return {"status": "ok", "track_count": track_count}
         except Exception as e:

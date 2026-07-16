@@ -98,7 +98,7 @@ class GlobalSearchService:
     def search_async(self, query: str, owner: str = "global_search",
                      timeout_ms: int = _DEFAULT_TIMEOUT_MS,
                      on_result=None, on_error=None):
-        import threading as _t
+        from PySide6.QtCore import QTimer
         def _run():
             try:
                 result = self.search(query, owner=owner, timeout_ms=timeout_ms)
@@ -111,7 +111,7 @@ class GlobalSearchService:
             except Exception as e:
                 if on_error:
                     on_error(str(e))
-        _t.Thread(target=_run, daemon=True).start()
+        QTimer.singleShot(0, _run)
 
     def cancel(self, owner: str = "global_search"):
         with self._active_lock:

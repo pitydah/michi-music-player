@@ -1,12 +1,15 @@
 """LibraryBridge — connects QML Library page to QueryService with pagination, filters, sort."""
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 from pathlib import Path
 from enum import Enum
 
 from PySide6.QtCore import QObject, Signal, Property, Slot
+
+logger = logging.getLogger("michi.library_bridge")
 
 
 class LibraryState(Enum):
@@ -122,7 +125,13 @@ class LibraryBridge(QObject):
 
     @Property("QVariantList", notify=dataChanged)
     def songs(self):
-        return []
+        model = self._track_model
+        if model is None:
+            return []
+        try:
+            return [model.get(i) for i in range(min(model.count, 100))]
+        except Exception:
+            return []
 
     @Property("QVariantList", notify=dataChanged)
     def albums(self):
@@ -197,27 +206,28 @@ class LibraryBridge(QObject):
                 sort=self._sort_key, asc=self._sort_asc,
             )
             return [self._dict_to_qml(t) for t in items]
-        except Exception:
+        except Exception as e:
+            logger.debug("getSongsPage failed: %s", e)
             return []
 
     @Slot(result=dict)
     def loadNextPage(self):
         self._loaded_count = min(self._loaded_count + self._page_size, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE", "loaded": self._loaded_count, "visible": self.visibleCount, "has_more": self.hasMoreSongs}
+        return {"ok": True, "loaded": self._loaded_count, "visible": self.visibleCount, "has_more": self.hasMoreSongs}
 
     @Slot(int, result=dict)
     def setPageSize(self, size: int):
         self._page_size = max(20, min(500, int(size)))
         self._loaded_count = min(self._loaded_count, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "page_size": self._page_size}
 
     @Slot(result=dict)
     def resetPaging(self):
         self._loaded_count = min(self._page_size, self.visibleCount)
         self.dataChanged.emit()
-        return {"ok": False, "error": "METHOD_UNAVAILABLE"}
+        return {"ok": True, "loaded": self._loaded_count}
 
     def _refresh_track_query(self):
         if self._refresh_coordinator:
@@ -241,9 +251,9 @@ class LibraryBridge(QObject):
         self.dataChanged.emit()
         return {"ok": True}
 
-    @Slot(str)
+    @Slot(str, result=dict)
     def search(self, query: str):
-        self.setSearchQuery(query)
+        return self.setSearchQuery(query)
 
     @Slot(str, result=dict)
     def setFormatFilter(self, fmt: str):
@@ -467,9 +477,13 @@ class LibraryBridge(QObject):
             track = self._query_svc.fetch_track_internal(track_id)
             if not track or not track.get("filepath"):
                 return {"ok": False, "error": "NOT_FOUND"}
-            from ui_qml_bridge.playlists_bridge import PlaylistsBridge
-            pb = PlaylistsBridge(db=self._db)
-            return pb.addTrackToPlaylist(playlist_id, filepath=track["filepath"])
+            pb = getattr(self, '_playlists_bridge', None)
+            if pb is None and self._container:
+                from ui_qml_bridge.playlists_bridge import PlaylistsBridge
+                pb = PlaylistsBridge(db=self._db, container=self._container)
+            if pb:
+                return pb.addTrackToPlaylist(playlist_id, filepath=track["filepath"])
+            return {"ok": False, "error": "NO_PLAYLISTS_BRIDGE"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -723,9 +737,9 @@ class LibraryBridge(QObject):
             return {"ok": False, "error": "NO_JOB_SERVICE"}
         result = jb.runJob("library_scan", folder_path)
         if result.get("ok") and self._db:
-            from core.library_sources_service import LibrarySourcesService
-            src_svc = LibrarySourcesService(db=self._db)
-            src_svc.add(folder_path)
+            ssvc = getattr(self, '_sources_svc', None)
+            if ssvc:
+                ssvc.add(folder_path)
         return {"ok": True, "path": folder_path, "job": True}
 
     @Slot(result=str)
@@ -854,7 +868,21 @@ class LibraryBridge(QObject):
     def editTrackMetadata(self, filepath: str):
         svc = getattr(self, '_track_svc', None)
         if svc and hasattr(svc, 'edit_metadata'):
-            return {"ok": True, "message": "Metadata edit via TrackService"}
+            return {"ok": True, "message": "Metadata editor available"}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(str, str, result=dict)
+    def saveTrackMetadata(self, filepath: str, metadata_json: str):
+        svc = getattr(self, '_track_svc', None)
+        if svc and hasattr(svc, 'edit_metadata'):
+            try:
+                import json
+                metadata = json.loads(metadata_json)
+                return svc.edit_metadata(filepath, metadata)
+            except json.JSONDecodeError as e:
+                return {"ok": False, "error": f"INVALID_JSON: {e}"}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
     @Slot(str, result=dict)
@@ -885,4 +913,140 @@ class LibraryBridge(QObject):
         svc = getattr(self, '_genres_svc', None)
         if svc and hasattr(svc, 'normalize_genre'):
             return svc.normalize_genre(old_name, new_name)
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    # ── Slots called from sub-pages (discovery) ──
+
+    @Slot(result="QVariantList")
+    def getGenres(self):
+        return self.listGenres()
+
+    @Slot(result="QVariantList")
+    def getComposers(self):
+        svc = getattr(self, '_query_svc', None)
+        if svc is None:
+            return []
+        try:
+            conn = svc._get_conn() if hasattr(svc, '_get_conn') else None
+            if conn is None:
+                return []
+            rows = conn.execute(
+                "SELECT DISTINCT composer FROM media_items "
+                "WHERE deleted_at IS NULL AND composer IS NOT NULL AND composer != '' "
+                "ORDER BY composer"
+            ).fetchall()
+            return [r[0] for r in rows]
+        except Exception:
+            return []
+
+    @Slot(result="QVariantList")
+    def getYears(self):
+        svc = getattr(self, '_query_svc', None)
+        if svc is None:
+            return []
+        try:
+            conn = svc._get_conn() if hasattr(svc, '_get_conn') else None
+            if conn is None:
+                return []
+            rows = conn.execute(
+                "SELECT DISTINCT year FROM media_items "
+                "WHERE deleted_at IS NULL AND year IS NOT NULL AND year > 0 "
+                "ORDER BY year"
+            ).fetchall()
+            return [r[0] for r in rows]
+        except Exception:
+            return []
+
+    @Slot(result=dict)
+    def getSourcesList(self):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'get_sources'):
+            try:
+                sources = ssvc.get_sources()
+                return {"ok": True, "sources": sources} if isinstance(sources, list) else {"ok": True, "sources": []}
+            except Exception as e:
+                return {"ok": False, "error": str(e), "sources": []}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE", "sources": []}
+
+    @Slot(int, result=dict)
+    def disableSource(self, source_id: int):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'disable_source'):
+            try:
+                return ssvc.disable_source(source_id)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(int, result=dict)
+    def enableSource(self, source_id: int):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'enable_source'):
+            try:
+                return ssvc.enable_source(source_id)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(int, result=dict)
+    def scanSource(self, source_id: int):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'scan_source'):
+            try:
+                return ssvc.scan_source(source_id)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(int, result=dict)
+    def removeSource(self, source_id: int):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'remove_source'):
+            try:
+                return ssvc.remove_source(source_id)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(int, result=dict)
+    def getSourceDetail(self, source_id: int):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'get_source_detail'):
+            try:
+                return ssvc.get_source_detail(source_id)
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(result=dict)
+    def playAllFiltered(self):
+        svc = getattr(self, '_playback_ctrl', None)
+        if svc and hasattr(svc, 'play'):
+            try:
+                conn = self._query_svc._get_conn() if hasattr(self._query_svc, '_get_conn') else None
+                if conn:
+                    rows = conn.execute(
+                        "SELECT filepath FROM media_items WHERE deleted_at IS NULL "
+                        "ORDER BY title LIMIT 500"
+                    ).fetchall()
+                    if rows:
+                        svc.play(rows[0][0])
+                        return {"ok": True, "count": len(rows)}
+                return {"ok": False, "error": "NO_TRACKS"}
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
+        return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
+
+    @Slot(result=dict)
+    def rescanSource(self):
+        return self.scanMusicFolder()
+
+    @Slot(result=dict)
+    def cancelScan(self):
+        ssvc = getattr(self, '_sources_svc', None)
+        if ssvc and hasattr(ssvc, 'cancel_scan'):
+            try:
+                return ssvc.cancel_scan()
+            except Exception as e:
+                return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}

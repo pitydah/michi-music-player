@@ -15,12 +15,17 @@ class LibraryDataService:
         if not self._db:
             return {"ok": False, "error": "NO_DB", "track_count": 0}
         try:
-            cursor = self._db.conn.execute("SELECT COUNT(*) FROM tracks")
-            track_count = cursor.fetchone()[0]
-            cursor = self._db.conn.execute("SELECT COUNT(*) FROM albums")
-            album_count = cursor.fetchone()[0]
-            cursor = self._db.conn.execute("SELECT COUNT(*) FROM artists")
-            artist_count = cursor.fetchone()[0]
+            track_count = self._db.conn.execute(
+                "SELECT COUNT(*) FROM media_items WHERE deleted_at IS NULL"
+            ).fetchone()[0]
+            album_count = self._db.conn.execute(
+                "SELECT COUNT(DISTINCT album) FROM media_items "
+                "WHERE deleted_at IS NULL AND album IS NOT NULL AND album != ''"
+            ).fetchone()[0]
+            artist_count = self._db.conn.execute(
+                "SELECT COUNT(DISTINCT artist) FROM media_items "
+                "WHERE deleted_at IS NULL AND artist IS NOT NULL AND artist != ''"
+            ).fetchone()[0]
             return {
                 "ok": True,
                 "track_count": track_count,

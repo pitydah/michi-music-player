@@ -16,25 +16,26 @@ class SongsService:
         if not self._db:
             return {"ok": False, "error": "NO_DB", "items": []}
         try:
-            sql = "SELECT filepath, title, artist, album, duration, year, genre FROM tracks"
+            sql = """SELECT filepath, title, artist, album, duration, year, genre
+                     FROM media_items WHERE deleted_at IS NULL"""
             params = []
-            where_clauses = []
             if filters:
+                clauses = []
                 if filters.get("artist"):
-                    where_clauses.append("artist=?")
+                    clauses.append("artist=?")
                     params.append(filters["artist"])
                 if filters.get("album"):
-                    where_clauses.append("album=?")
+                    clauses.append("album=?")
                     params.append(filters["album"])
                 if filters.get("genre"):
-                    where_clauses.append("genre=?")
+                    clauses.append("genre=?")
                     params.append(filters["genre"])
                 if filters.get("search"):
-                    where_clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ?)")
+                    clauses.append("(title LIKE ? OR artist LIKE ? OR album LIKE ?)")
                     s = f"%{filters['search']}%"
                     params.extend([s, s, s])
-            if where_clauses:
-                sql += " WHERE " + " AND ".join(where_clauses)
+                if clauses:
+                    sql += " AND " + " AND ".join(clauses)
             sql += " ORDER BY title LIMIT 1000"
             rows = self._db.conn.execute(sql, params).fetchall()
             items = [{"filepath": r[0], "title": r[1], "artist": r[2],
@@ -42,6 +43,7 @@ class SongsService:
                      for r in rows]
             return {"ok": True, "count": len(items), "items": items}
         except Exception as e:
+            logger.debug("SongsService.load failed: %s", e)
             return {"ok": False, "error": str(e), "items": []}
 
     def play_items(self, items: list[dict]) -> dict:
@@ -70,14 +72,18 @@ class SongsService:
         if not self._db:
             return {"ok": False, "error": "NO_DB"}
         try:
-            cur = self._db.conn.execute("SELECT favorite FROM tracks WHERE filepath=?", (filepath,))
-            row = cur.fetchone()
-            if row is None:
-                return {"ok": False, "error": "TRACK_NOT_FOUND"}
-            new_val = 0 if row[0] else 1
-            self._db.conn.execute("UPDATE tracks SET favorite=? WHERE filepath=?", (new_val, filepath))
-            return {"ok": True, "favorite": bool(new_val)}
+            cur = self._db.conn.execute(
+                "SELECT 1 FROM favorites WHERE track_id=?", (filepath,))
+            is_fav = cur.fetchone() is not None
+            if is_fav:
+                self._db.conn.execute(
+                    "DELETE FROM favorites WHERE track_id=?", (filepath,))
+            else:
+                self._db.conn.execute(
+                    "INSERT OR IGNORE INTO favorites (track_id) VALUES (?)", (filepath,))
+            return {"ok": True, "favorite": not is_fav}
         except Exception as e:
+            logger.debug("SongsService.toggle_favorite failed: %s", e)
             return {"ok": False, "error": str(e)}
 
     def health(self) -> dict:

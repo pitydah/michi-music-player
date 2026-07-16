@@ -16,8 +16,8 @@ class GenresService:
             return []
         try:
             rows = self._db.conn.execute(
-                "SELECT genre, COUNT(*) as cnt FROM tracks "
-                "WHERE genre IS NOT NULL AND genre != '' "
+                "SELECT genre, COUNT(*) as cnt FROM media_items "
+                "WHERE deleted_at IS NULL AND genre IS NOT NULL AND genre != '' "
                 "GROUP BY genre ORDER BY genre"
             ).fetchall()
             return [{"name": r[0], "count": r[1]} for r in rows]
@@ -29,7 +29,8 @@ class GenresService:
             return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
         try:
             rows = self._db.conn.execute(
-                "SELECT filepath FROM tracks WHERE genre=? ORDER BY title LIMIT 500",
+                "SELECT filepath FROM media_items WHERE deleted_at IS NULL AND genre=? "
+                "ORDER BY title LIMIT 500",
                 (genre,)).fetchall()
             if not rows:
                 return {"ok": False, "error": "NO_TRACKS"}
@@ -44,7 +45,7 @@ class GenresService:
             return {"ok": False, "error": "NO_DB"}
         try:
             self._db.conn.execute(
-                "UPDATE tracks SET genre=? WHERE genre=?", (new_name, old_name))
+                "UPDATE media_items SET genre=? WHERE genre=?", (new_name, old_name))
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}

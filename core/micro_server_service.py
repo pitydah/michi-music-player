@@ -13,22 +13,28 @@ class MicroServerService:
     def import_tracks(self, filepaths: list[str], server_url: str = "") -> dict:
         return {"ok": True, "imported": len(filepaths), "server": server_url or "default"}
 
-    def import_album(self, album_key: str, server_url: str = "") -> dict:
+    def _tracks_for_album_key(self, album_key: str) -> list[str]:
         if not self._db:
-            return {"ok": False, "error": "NO_DB"}
+            return []
         try:
             rows = self._db.conn.execute(
-                "SELECT filepath FROM tracks WHERE album_key=?", (album_key,)).fetchall()
-            return self.import_tracks([r[0] for r in rows], server_url)
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
+                "SELECT filepath FROM media_items WHERE deleted_at IS NULL "
+                "AND (album || '/' || artist)=?",
+                (album_key,)).fetchall()
+            return [r[0] for r in rows]
+        except Exception:
+            return []
+
+    def import_album(self, album_key: str, server_url: str = "") -> dict:
+        return self.import_tracks(self._tracks_for_album_key(album_key), server_url)
 
     def import_artist(self, artist: str, server_url: str = "") -> dict:
         if not self._db:
             return {"ok": False, "error": "NO_DB"}
         try:
             rows = self._db.conn.execute(
-                "SELECT filepath FROM tracks WHERE artist=?", (artist,)).fetchall()
+                "SELECT filepath FROM media_items WHERE deleted_at IS NULL AND artist=?",
+                (artist,)).fetchall()
             return self.import_tracks([r[0] for r in rows], server_url)
         except Exception as e:
             return {"ok": False, "error": str(e)}
