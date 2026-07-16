@@ -126,10 +126,13 @@ class BridgeFactory(QObject):
                 worker_manager=self._get("worker_manager"),
                 job_bridge=self._bridges.get("job_bridge"),
                 track_action_service=self._get("track_action_service"),
+                library_sources_service=self._get("library_sources_service"),
                 library_service=self._get("library_service") or self._get("library_data_service"),
                 songs_service=self._get("songs_service"),
                 track_service=self._get("track_service"),
                 genres_service=self._get("genres_service"),
+                playlists_bridge=self._bridges.get("playlists"),
+                container=self._container,
             )
 
     def create_library_sources_bridge(self):
@@ -584,6 +587,11 @@ class BridgeFactory(QObject):
             capability.refresh()
 
         self.bind_action_handlers()
+
+        lib = self._bridges.get("library")
+        pl = self._bridges.get("playlists")
+        if lib is not None and pl is not None:
+            lib._playlists_bridge = pl
 
         self._validate_bridge_identities()
         self._assert_wiring()

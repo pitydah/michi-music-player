@@ -5,7 +5,7 @@ Rectangle {
     Accessible.role: Accessible.Pane
     Accessible.name: "Folder Source Badge"
     objectName: "folderSourceBadge"
-    focus: true
+    focus: false
     id: root
 
     property string sourceName: ""

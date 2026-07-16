@@ -39,6 +39,7 @@ class LibraryBridge(QObject):
                  job_bridge=None, track_action_service=None,
                  library_sources_service=None, library_service=None,
                  songs_service=None, track_service=None, genres_service=None,
+                 playlists_bridge=None, container=None,
                  parent=None):
         assert query_service is not None, "LibraryBridge: query_service is REQUIRED"
         assert track_action_service is not None, "LibraryBridge: track_action_service is REQUIRED"
@@ -50,7 +51,9 @@ class LibraryBridge(QObject):
         self._qe = query_executor
         self._job_bridge = job_bridge
         self._tas = track_action_service
-        self._lss = library_sources_service
+        self._sources_svc = library_sources_service
+        self._playlists_bridge = playlists_bridge
+        self._container = container
         self._library_svc = library_service
         self._songs_svc = songs_service
         self._track_svc = track_service
@@ -1025,9 +1028,26 @@ class LibraryBridge(QObject):
             try:
                 conn = self._query_svc._get_conn() if hasattr(self._query_svc, '_get_conn') else None
                 if conn:
+                    clauses = ["deleted_at IS NULL"]
+                    params = []
+                    for field, val in [("artist", self._filter_artist),
+                                       ("album", self._filter_album),
+                                       ("genre", self._filter_genre),
+                                       ("composer", self._filter_composer),
+                                       ("format", self._filter_format),
+                                       ("folder", self._filter_folder),
+                                       ("year", str(self._filter_year) if self._filter_year else "")]:
+                        if val:
+                            clauses.append(f"{field}=?")
+                            params.append(val)
+                    if self._filter_favorites:
+                        clauses.append("filepath IN (SELECT track_id FROM favorites)")
+                    if self._filter_unplayed:
+                        clauses.append("(filepath NOT IN (SELECT track_id FROM favorites) OR 1=1)")
+                    where = " AND ".join(clauses) if clauses else "1=1"
                     rows = conn.execute(
-                        "SELECT filepath FROM media_items WHERE deleted_at IS NULL "
-                        "ORDER BY title LIMIT 500"
+                        f"SELECT filepath FROM media_items WHERE {where} ORDER BY title LIMIT 500",
+                        params
                     ).fetchall()
                     if rows:
                         svc.play(rows[0][0])
@@ -1037,12 +1057,16 @@ class LibraryBridge(QObject):
                 return {"ok": False, "error": str(e)}
         return {"ok": False, "error": "SERVICE_UNAVAILABLE"}
 
-    @Slot(result=dict)
-    def rescanSource(self):
+    @Slot(int, result=dict)
+    def rescanSource(self, source_id: int = 0):
+        if source_id > 0:
+            ssvc = getattr(self, '_sources_svc', None)
+            if ssvc and hasattr(ssvc, 'scan_source'):
+                return ssvc.scan_source(source_id)
         return self.scanMusicFolder()
 
-    @Slot(result=dict)
-    def cancelScan(self):
+    @Slot(int, result=dict)
+    def cancelScan(self, source_id: int = 0):
         ssvc = getattr(self, '_sources_svc', None)
         if ssvc and hasattr(ssvc, 'cancel_scan'):
             try:

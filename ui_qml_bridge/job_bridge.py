@@ -153,8 +153,10 @@ class JobBridge(QObject):
 
     def _scan_all_sources(self):
         try:
-            from core.library_sources_service import LibrarySourcesService
-            svc = LibrarySourcesService(db=self._db)
+            svc = getattr(self, '_sources_svc', None)
+            if svc is None:
+                from core.library_sources_service import LibrarySourcesService
+                svc = LibrarySourcesService(db=self._db)
             for source in svc.list():
                 if source.get("enabled") and source.get("available"):
                     self._scan_library(source["path"])

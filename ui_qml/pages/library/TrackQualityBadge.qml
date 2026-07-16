@@ -5,7 +5,7 @@ Rectangle {
     Accessible.role: Accessible.Pane
     Accessible.name: "Track Quality Badge"
     objectName: "trackQualityBadge"
-    focus: true
+    focus: false
     id: root
 
     property string format: ""

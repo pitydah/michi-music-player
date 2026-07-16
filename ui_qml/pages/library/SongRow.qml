@@ -7,7 +7,7 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Song Row"
     objectName: "songRow"
-    focus: true
+    focus: false
     id: root
 
     property string trackTitle: ""

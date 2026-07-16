@@ -6,7 +6,7 @@ Item {
     Accessible.role: Accessible.Pane
     Accessible.name: "Track Status Indicators"
     objectName: "trackStatusIndicators"
-    focus: true
+    focus: false
     id: root
     width: 20; height: 20
 
