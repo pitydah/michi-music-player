@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """TransmitController — network transmit device management (HTTP/Snapcast)."""
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,

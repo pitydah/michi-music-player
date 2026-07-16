@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Smart mix controller — Daily, Unplayed, Popular, Favorites recent."""
 import os
 

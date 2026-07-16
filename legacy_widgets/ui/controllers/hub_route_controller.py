@@ -1,10 +1,12 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """HubRouteController — lazy-init + fade for hub/detail pages.
 
 Extracted from MainWindow to reduce window.py size.
 Each hub page is created once on first navigation, then cached.
 """
 
-from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Callable

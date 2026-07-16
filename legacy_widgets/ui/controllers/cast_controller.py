@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """CastController — unified cast menu combining Snapcast + Home Assistant."""
 import logging
 

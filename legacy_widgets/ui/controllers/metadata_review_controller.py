@@ -1,6 +1,8 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """Metadata review controller — bridges UI panel with MetadataReviewService."""
 
-from __future__ import annotations
 
 import logging
 from typing import Any

@@ -1,10 +1,12 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """SongsController — coordinates the premium songs view.
 
 Uses AppServices for DB, playback, workers, context, and toast.
 Callbacks for metadata editing and file location (UI operations).
 """
 
-from __future__ import annotations
 
 import logging
 import contextlib

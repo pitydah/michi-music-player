@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Genre Repository — holds genre groups state and provides lookup methods."""
 from metadata.genre_grouping import GenreGroup, build_genre_groups
 

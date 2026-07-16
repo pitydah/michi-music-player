@@ -1,6 +1,8 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """NavigationController — route dispatch, header config, breadcrumbs, nav history."""
 
-from __future__ import annotations
 
 import os
 from typing import TYPE_CHECKING, Callable

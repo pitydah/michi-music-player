@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """LocalMediaServerController — lifecycle management for local HTTP file server."""
 import logging
 

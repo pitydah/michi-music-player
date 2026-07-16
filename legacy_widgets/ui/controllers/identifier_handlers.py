@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Identifier handlers — music recognition toggle, track detection, and signal wiring."""
 import os
 

@@ -1,3 +1,6 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """SmartMixPreview — lightweight preview/count layer for smart mixes.
 
 Returns counts and descriptions WITHOUT mutating the UI (no model populate,
@@ -5,7 +8,6 @@ no fade_content, no playback). Used by MixHubPage for its dynamic cards.
 SQL queries delegated to core/library/mix_preview_service.py.
 """
 
-from __future__ import annotations
 
 import logging
 import os

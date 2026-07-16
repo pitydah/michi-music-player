@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """CoverFlow controller — 3D album browser actions: play, queue, snap, enrich, banner."""
 import hashlib
 import logging

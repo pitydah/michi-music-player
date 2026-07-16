@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """MPRIS controller — manages D-Bus MPRIS integration with graceful fallback."""
 import contextlib
 import logging

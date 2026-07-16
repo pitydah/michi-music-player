@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Server browser controller — add/open/remove Subsonic servers, radio playback."""
 from PySide6.QtWidgets import QMessageBox
 

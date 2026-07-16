@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """MiniPlayerController — mini player window lifecycle and signal wiring."""
 import os
 import logging

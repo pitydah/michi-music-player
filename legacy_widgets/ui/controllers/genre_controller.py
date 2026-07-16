@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """GenreController — genre navigation, actions, and integration with new services."""
 import os
 import logging

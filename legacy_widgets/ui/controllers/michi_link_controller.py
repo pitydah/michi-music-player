@@ -3,8 +3,8 @@
 MichiLinkController — Michi Micro Server, sync, diagnostics, and HTTP API coordination.
 Centralizes services from integrations/michi_link/services/ and
 the HTTP API bridge, keeping window.py free of Michi Link logic."""
-
 from __future__ import annotations
+
 
 import logging
 from typing import TYPE_CHECKING

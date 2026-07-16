@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """AudioOutputController — local audio output device selection.
 
 Routes to the correct backend depending on which engine is active.

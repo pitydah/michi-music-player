@@ -1,9 +1,11 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """ActionController — menus, shortcuts, and app-level actions.
 
 Extracted from MainWindow._setup_actions() to reduce window.py size.
 """
 
-from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING

@@ -1,9 +1,11 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """EcosystemController — orchestrate EcosystemPage with MichiEcosystemDoctor.
 
 Diagnostics run in a worker thread to avoid blocking the UI.
 """
 
-from __future__ import annotations
 
 import contextlib
 import logging

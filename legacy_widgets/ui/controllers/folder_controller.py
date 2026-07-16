@@ -1,10 +1,12 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """FolderController — orchestrate folder browsing, health, integrity, and maintenance.
 
 Receives signals from FolderBrowserWidget and delegates to services.
 Does NOT contain business logic — only coordination.
 """
 
-from __future__ import annotations
 
 import os
 import logging

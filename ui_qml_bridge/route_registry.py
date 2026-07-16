@@ -75,6 +75,11 @@ ROUTES: dict[str, dict] = {
     "library": {"title": "Biblioteca", "source": "../pages/library/LibraryPage.qml", "category": "core", "status": "functional"},
     "settings": {"title": "Ajustes", "source": "../pages/SettingsPage.qml", "category": "settings", "status": "functional"},
     "placeholder": {"title": "Seccin en migracin", "source": "../pages/PlaceholderPage.qml", "category": "system", "status": "placeholder"},
+    "album_detail": {"title": "\u00c1lbum", "source": "../pages/library/AlbumDetailPage.qml", "category": "detail", "status": "functional", "params": {"album_key": {"required": True, "type": "string"}}},
+    "artist_detail": {"title": "Artista", "source": "../pages/library/ArtistDetailPage.qml", "category": "detail", "status": "functional", "params": {"artist": {"required": True, "type": "string"}}},
+    "track_detail": {"title": "Canci\u00f3n", "source": "../pages/library/tracks/TracksPage.qml", "category": "detail", "status": "functional", "params": {"track_id": {"required": True, "type": "int"}}},
+    "device_detail": {"title": "Dispositivo", "source": "../pages/devices/DeviceDetailPage.qml", "category": "detail", "status": "functional", "params": {"device_id": {"required": True, "type": "string"}}},
+    "zone_detail": {"title": "Zona", "source": "../pages/home_audio/ZoneDetailPage.qml", "category": "detail", "status": "functional", "params": {"zone_id": {"required": True, "type": "string"}}},
 }
 
 CAPABILITY_MAP: dict[str, str] = {

@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """GenreCleanupController — orchestrates cleanup operations between UI and services."""
 import logging
 

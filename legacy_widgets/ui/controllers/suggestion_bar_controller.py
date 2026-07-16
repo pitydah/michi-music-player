@@ -1,10 +1,12 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """SuggestionBarController — connects ContextSuggestionBar to ContextService.
 
 This controller creates and manages the suggestion bar, connects it to the
 context system for automatic section-based suggestions.
 """
 
-from __future__ import annotations
 
 from typing import Any
 

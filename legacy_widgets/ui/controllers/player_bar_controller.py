@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Player bar controller — wraps NowPlayingBar interactions for external controllers."""
 import os
 

@@ -1,6 +1,8 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """SidebarMenuController — contextual sidebar menu and playlist CRUD dialogs."""
 
-from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING

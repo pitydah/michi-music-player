@@ -1,5 +1,7 @@
-"""LibraryWatcherController — handles FileWatcher signals (add, remove, modify)."""
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
 from __future__ import annotations
+
+"""LibraryWatcherController — handles FileWatcher signals (add, remove, modify)."""
 
 import logging
 

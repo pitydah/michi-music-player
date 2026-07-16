@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Tray controller — manages system tray icon and notifications."""
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu
 

@@ -1,6 +1,8 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+from __future__ import annotations
+
 """AI Assistant controller — bridges UI panel with AIAssistantService (Fase 5, stabilized)."""
 
-from __future__ import annotations
 
 import logging
 import os

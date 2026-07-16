@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Artist repository — holds artist groups state and provides lookup methods."""
 from library.artist_grouping import ArtistGroup, build_artist_groups
 from library.artist_insights import (

@@ -1,3 +1,5 @@
+"""LEGACY - reemplazado por ui_qml_bridge correspondiente."""
+
 """Shortcut controller — manages global keyboard shortcuts."""
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import QLineEdit, QTextEdit, QTableView, QAbstractItemView
