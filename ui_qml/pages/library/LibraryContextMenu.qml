@@ -70,9 +70,6 @@ Popup {
             ]
 
             Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Library Context Menu"
-    objectName: "libraryContextMenu"
     focus: true
                 width: parent.width
                 height: 32
@@ -100,8 +97,6 @@ Popup {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
 
-                    Accessible.role: Accessible.MenuItem
-                    Accessible.name: modelData.label
                     Accessible.onPressAction: {
                         if (root.actionRegistry)
                             root.actionRegistry.execute("track_" + modelData.action, [root.trackId])

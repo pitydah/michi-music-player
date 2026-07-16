@@ -20,8 +20,6 @@ Item {
     signal secondaryActionRequested()
 
     implicitHeight: MichiTheme.rowHeightCompact
-    Accessible.role: Accessible.StaticText
-    Accessible.name: label
     Accessible.description: value + (details !== "" ? ". " + details : "")
 
     Text { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; width: parent.width * 0.34; text: root.label; color: MichiTheme.colors.textSecondary; elide: Text.ElideRight }

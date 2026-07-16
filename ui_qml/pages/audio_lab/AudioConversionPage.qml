@@ -38,11 +38,8 @@ Item {
     property var _previewResult: null
     property string _errorMessage: ""
 
-    objectName: "AudioConversionPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Conversión de audio"
 
     readonly property int stateInputReady: 0
     readonly property int statePreviewing: 1
@@ -167,18 +164,15 @@ Item {
                 text: "Conversión de audio"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "conversionPageTitle"
             }
 
             Text {
                 text: "Formatos: FLAC, MP3, AAC, Opus, Ogg Vorbis, WAV. Solo audio, sin video."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "conversionPageSubtitle"
             }
 
             AudioInputSelection {
                 id: inputSelection
-                objectName: "conversionInputSelection"
             }
 
             SectionHeader { text: "Formato destino"; width: parent.width; objectName: "formatHeader"; Accessible.name: "Formato destino" }
@@ -189,8 +183,6 @@ Item {
                 width: parent.width
                 model: root._formatOptions
                 textRole: "label"
-                objectName: "formatCombo"
-                Accessible.name: "Formato destino"
                 focusPolicy: Qt.StrongFocus
                 activeFocusOnTab: true
                 onCurrentIndexChanged: {
@@ -204,8 +196,6 @@ Item {
                 delegate: ItemDelegate {
                     width: parent.width
                     text: label
-                    objectName: "formatOption_" + index
-                    Accessible.name: label
                     highlighted: formatCombo.highlightedIndex === index
                 }
             }
@@ -214,7 +204,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "codecOptionsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -228,8 +217,6 @@ Item {
                             id: bitrateCombo
                             model: root._bitrateOptions
                             width: parent.width - 80
-                            objectName: "bitrateCombo"
-                            Accessible.name: "Bitrate"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._selectedBitrate = root._bitrateOptions[currentIndex]
                             Component.onCompleted: currentIndex = 2
@@ -241,8 +228,6 @@ Item {
                         MichiSlider {
                             width: parent.width
                             from: 0; to: 10; value: root._selectedQuality; stepSize: 0.5
-                            objectName: "qualitySlider"
-                            Accessible.name: "Calidad VBR"
                             activeFocusOnTab: true
                             onMoved: root._selectedQuality = value
                         }
@@ -256,8 +241,6 @@ Item {
                             id: sampleRateCombo
                             model: root._sampleRateOptions
                             width: parent.width - 100
-                            objectName: "sampleRateCombo"
-                            Accessible.name: "Sample rate"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._selectedSampleRate = root._sampleRateOptions[currentIndex]
                             Component.onCompleted: currentIndex = 4
@@ -272,8 +255,6 @@ Item {
                             id: bitDepthCombo
                             model: root._bitDepthOptions
                             width: parent.width - 100
-                            objectName: "bitDepthCombo"
-                            Accessible.name: "Bit depth"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._selectedBitDepth = root._bitDepthOptions[currentIndex]
                             Component.onCompleted: currentIndex = 1
@@ -288,8 +269,6 @@ Item {
                             id: channelsCombo
                             model: root._channelsOptions
                             width: parent.width - 100
-                            objectName: "channelsCombo"
-                            Accessible.name: "Canales"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._selectedChannels = root._channelsOptions[currentIndex]
                             Component.onCompleted: currentIndex = 1
@@ -302,7 +281,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "metadataOptionsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Row {
@@ -311,8 +289,6 @@ Item {
                             id: keepMetadataCb
                             checked: root._keepMetadata
                             text: "Conservar metadatos"
-                            objectName: "keepMetadataCb"
-                            Accessible.name: "Conservar metadatos"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -325,8 +301,6 @@ Item {
                             id: keepArtworkCb
                             checked: root._keepArtwork
                             text: "Conservar carátula"
-                            objectName: "keepArtworkCb"
-                            Accessible.name: "Conservar carátula"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -340,7 +314,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "outputOptionsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
                     Row {
@@ -352,8 +325,6 @@ Item {
                             width: parent.width - 160
                             text: root._outputDir
                             placeholderText: "Seleccionar carpeta de salida"
-                            objectName: "outputDirField"
-                            Accessible.name: "Carpeta de salida"
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
                             background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radiusSm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
@@ -361,8 +332,6 @@ Item {
                         }
                         MichiButton {
                             text: "..."; variant: "ghost"; implicitWidth: 36
-                            objectName: "browseOutputDirBtn"
-                            Accessible.name: "Examinar carpeta de salida"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -381,8 +350,6 @@ Item {
                             id: namingField
                             width: parent.width - 80
                             text: root._namingTemplate
-                            objectName: "namingField"
-                            Accessible.name: "Plantilla de nombre"
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
                             background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radiusSm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
@@ -398,8 +365,6 @@ Item {
                             id: collisionCombo
                             model: root._collisionOptions
                             width: parent.width - 100
-                            objectName: "collisionCombo"
-                            Accessible.name: "Política de colisiones"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._collisionPolicy = root._collisionOptions[currentIndex]
                             Component.onCompleted: currentIndex = 1
@@ -412,7 +377,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: root._previewResult ? "accent" : "status"
-                objectName: "previewPanel"
                 height: root._previewResult ? 100 : 60
                 Text {
                     anchors.centerIn: parent
@@ -431,8 +395,6 @@ Item {
                     text: "Previsualizar"
                     variant: "secondary"
                     enabled: root._canConvert()
-                    objectName: "previewBtn"
-                    Accessible.name: "Previsualizar conversión"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -442,8 +404,6 @@ Item {
                     text: root._state === root.stateConverting ? "Cancelar" : "Convertir"
                     variant: root._state === root.stateConverting ? "danger" : "primary"
                     enabled: root._state === root.stateConverting || (root._state !== root.stateCancelling && root._state !== root.stateCompleted && root._canConvert())
-                    objectName: "convertBtn"
-                    Accessible.name: text
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -458,8 +418,6 @@ Item {
                     text: "Reintentar"
                     variant: "secondary"
                     visible: root._state === root.stateFailed
-                    objectName: "retryBtn"
-                    Accessible.name: "Reintentar conversión"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -468,8 +426,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "conversionBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -480,7 +436,6 @@ Item {
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "accent"
                 visible: root._state === root.stateConverting || root._state === root.stateCancelling || root._state === root.stateCompleted || root._state === root.stateFailed
-                objectName: "conversionProgressPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
 
@@ -497,8 +452,6 @@ Item {
                     MichiProgressBar {
                         width: parent.width; value: root._progress * 100; from: 0; to: 100
                         indeterminate: root._state === root.stateCancelling
-                        objectName: "conversionProgressBar"
-                        Accessible.name: "Progreso de conversión"
                     }
 
                     Text {
@@ -515,7 +468,6 @@ Item {
                         text: root._state === root.stateCompleted ? "Completado" : root._state === root.stateFailed ? "Fallido" : root._state === root.stateCancelling ? "Cancelando" : ""
                         kind: root._state === root.stateCompleted ? "success" : root._state === root.stateFailed ? "error" : "warning"
                         visible: text !== ""
-                        objectName: "conversionStatusBadge"
                     }
                 }
             }
@@ -524,8 +476,6 @@ Item {
                 visible: root.convBridge === null
                 text: "Bridge de conversión no disponible"
                 kind: "disconnected"
-                objectName: "convBridgeStatus"
-                Accessible.name: "Bridge de conversión no disponible"
             }
         }
     }

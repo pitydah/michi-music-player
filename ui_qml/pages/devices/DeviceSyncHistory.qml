@@ -18,9 +18,6 @@ Item {
 
     implicitHeight: childrenRect.height
 
-    objectName: "DeviceSyncHistory"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Historial de sincronización"
 
     GlassMaterial {
         width: parent.width
@@ -44,16 +41,12 @@ Item {
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     width: parent.width - 100
-                    objectName: "syncHistoryTitle"
-                    Accessible.name: "Historial de sincronización"
                 }
 
                 MichiButton {
                     text: "Limpiar"
                     variant: "ghost"
                     onClicked: root.clearHistoryClicked()
-                    objectName: "clearHistoryButton"
-                    Accessible.name: "Limpiar historial de sincronización"
                 }
             }
 
@@ -65,8 +58,6 @@ Item {
                     height: 56
                     color: index % 2 === 0 ? MichiTheme.colors.surface : "transparent"
                     radius: MichiTheme.radiusSm
-                    objectName: "syncHistoryRow_" + index
-                    Accessible.name: modelData.job_id || "Entrada de historial"
 
                     Row {
                         anchors.fill: parent
@@ -84,7 +75,6 @@ Item {
                                 font.weight: MichiTheme.typography.weightMedium
                                 elide: Text.ElideRight
                                 width: parent.width
-                                objectName: "syncHistoryJobId_" + index
                             }
 
                             Text {
@@ -115,8 +105,6 @@ Item {
                                         default: return "info"
                                     }
                                 }
-                                objectName: "syncHistoryStatus_" + index
-                                Accessible.name: text
                             }
 
                             Text {
@@ -134,8 +122,6 @@ Item {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.historyEntries.length === 0
-                objectName: "syncHistoryEmptyMessage"
-                Accessible.name: "No hay actividad de sincronización"
             }
         }
     }

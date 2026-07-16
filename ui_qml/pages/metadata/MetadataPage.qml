@@ -19,11 +19,8 @@ Item {
     property var _selectedFiles: []
     property string pageState: "LOADING"
 
-    objectName: "metadata.page"
     focus: true
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Editor de metadatos"
     Accessible.description: "Gestiona los metadatos de tus archivos de audio"
 
     Component.onCompleted: {
@@ -43,7 +40,6 @@ Item {
         contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        objectName: "metadata.flickable"
 
         Keys.onEscapePressed: {
             root._selectedFile = ""
@@ -59,7 +55,6 @@ Item {
                 id: headerRow
                 width: parent.width
                 spacing: MichiTheme.spacing.sm
-                objectName: "metadata.headerRow"
 
                 Text {
                     id: titleText
@@ -68,9 +63,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
-                    objectName: "metadata.title"
-                    Accessible.role: Accessible.Heading
-                    Accessible.name: "Editor de metadatos"
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
@@ -85,20 +77,16 @@ Item {
                           pageState === "APPLYING" ? "warning" :
                           pageState === "EDITING" ? "info" : "success"
                     visible: pageState !== "READY" || root._selectedFile !== ""
-                    objectName: "metadata.stateBadge"
                 }
             }
 
             Row {
                 id: modeRow
                 spacing: MichiTheme.spacing.sm
-                objectName: "metadata.modeRow"
                 MichiButton {
                     id: singleModeBtn
                     text: "Edición individual"
                     variant: root._mode === "single" ? "primary" : "ghost"
-                    objectName: "metadata.mode.single"
-                    Accessible.name: "Modo edición individual"
                     Accessible.description: "Editar metadatos de una sola canción"
                     onClicked: {
                         root._mode = "single"
@@ -112,8 +100,6 @@ Item {
                     id: batchModeBtn
                     text: "Edición por lotes"
                     variant: root._mode === "batch" ? "primary" : "ghost"
-                    objectName: "metadata.mode.batch"
-                    Accessible.name: "Modo edición por lotes"
                     Accessible.description: "Editar metadatos de múltiples canciones"
                     onClicked: { root._mode = "batch" }
                 }
@@ -135,8 +121,6 @@ Item {
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
-                objectName: "metadata.errorText"
-                Accessible.name: text
             }
         }
     }

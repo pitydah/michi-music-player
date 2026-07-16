@@ -20,10 +20,7 @@ Item {
 
     signal cancelRequested()
 
-    objectName: "ProgressState"
 
-    Accessible.role: Accessible.ProgressBar
-    Accessible.name: title || "Progreso"
     Accessible.description: statusText + " " + Math.round((root.progress - root.from) / Math.max(1, root.to - root.from) * 100) + "%"
 
     implicitWidth: childrenColumn.implicitWidth

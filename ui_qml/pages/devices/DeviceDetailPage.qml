@@ -39,9 +39,6 @@ Item {
     signal startTransferClicked()
     signal cancelTransferClicked()
 
-    objectName: "DeviceDetailPage"
-    Accessible.role: Accessible.Pane
-    Accessible.name: deviceLabel || "Detalle de dispositivo"
 
     onDeviceKeyChanged: {
         if (deviceKey) {
@@ -87,8 +84,6 @@ Item {
                 text: "< Volver"
                 variant: "ghost"
                 onClicked: root.backClicked()
-                objectName: "deviceDetailBackButton"
-                Accessible.name: "Volver a lista de dispositivos"
                 activeFocusOnTab: true
                 KeyNavigation.tab: deviceInfoCard
                 KeyNavigation.backtab: flickable
@@ -102,8 +97,6 @@ Item {
                 height: deviceInfoColumn.height + MichiTheme.spacing.xl * 2
                 radius: MichiTheme.radiusMd
                 variant: "elevated"
-                objectName: "deviceInfoCard"
-                Accessible.name: "Información del dispositivo"
 
                 Column {
                     id: deviceInfoColumn
@@ -116,7 +109,6 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.pageTitleSize
                         font.weight: MichiTheme.typography.weightBold
-                        Accessible.name: "Nombre del dispositivo: " + root.deviceLabel
                     }
 
                     Text {
@@ -152,14 +144,10 @@ Item {
                         StatusBadge {
                             text: root.deviceAuthorized ? "Autorizado" : "No autorizado"
                             kind: root.deviceAuthorized ? "success" : "disconnected"
-                            objectName: "authorizedBadge"
-                            Accessible.name: text
                         }
                         StatusBadge {
                             text: root.deviceTrusted ? "Confiado" : "No confiado"
                             kind: root.deviceTrusted ? "success" : "disconnected"
-                            objectName: "trustedBadge"
-                            Accessible.name: text
                         }
                     }
                 }
@@ -170,8 +158,6 @@ Item {
                 width: parent.width
                 mountPoint: root.deviceMountPoint
                 storageInfo: root.deviceStorage
-                objectName: "deviceStoragePanel"
-                Accessible.name: "Panel de almacenamiento"
                 activeFocusOnTab: true
                 KeyNavigation.tab: compatView
                 KeyNavigation.backtab: deviceInfoCard
@@ -181,8 +167,6 @@ Item {
                 id: compatView
                 width: parent.width
                 protocol: root.deviceProtocol
-                objectName: "deviceCompatibilityView"
-                Accessible.name: "Compatibilidad de formatos"
                 activeFocusOnTab: true
                 KeyNavigation.tab: profileEditor
                 KeyNavigation.backtab: storagePanel
@@ -192,8 +176,6 @@ Item {
                 id: profileEditor
                 width: parent.width
                 deviceKey: root.deviceKey
-                objectName: "deviceSyncProfileEditor"
-                Accessible.name: "Editor de perfil de sincronización"
                 activeFocusOnTab: true
                 KeyNavigation.tab: actionRow
                 KeyNavigation.backtab: compatView
@@ -202,16 +184,12 @@ Item {
             Row {
                 id: actionRow
                 spacing: MichiTheme.spacing.sm
-                objectName: "deviceActionRow"
-                Accessible.name: "Acciones del dispositivo"
 
                 MichiButton {
                     id: syncButton
                     text: "Sincronizar"
                     variant: "primary"
                     onClicked: root.syncClicked()
-                    objectName: "syncButton"
-                    Accessible.name: "Iniciar sincronización"
                     activeFocusOnTab: true
                     KeyNavigation.tab: authButton
                     KeyNavigation.backtab: profileEditor
@@ -224,8 +202,6 @@ Item {
                     text: root.deviceAuthorized ? "Desautorizar" : "Autorizar"
                     variant: "secondary"
                     onClicked: root.deviceAuthorized ? root.unauthorizeClicked() : root.authorizeClicked()
-                    objectName: "authorizeButton"
-                    Accessible.name: root.deviceAuthorized ? "Desautorizar dispositivo" : "Autorizar dispositivo"
                     activeFocusOnTab: true
                     KeyNavigation.tab: trustButton
                     KeyNavigation.backtab: syncButton
@@ -238,8 +214,6 @@ Item {
                     text: root.deviceTrusted ? "No confiar" : "Confiar"
                     variant: "ghost"
                     onClicked: root.deviceTrusted ? root.untrustClicked() : root.trustClicked()
-                    objectName: "trustButton"
-                    Accessible.name: root.deviceTrusted ? "Revocar confianza" : "Confiar en dispositivo"
                     activeFocusOnTab: true
                     KeyNavigation.tab: profileEditButton
                     KeyNavigation.backtab: authButton
@@ -252,8 +226,6 @@ Item {
                     text: "Editar perfil"
                     variant: "ghost"
                     onClicked: root.editProfileClicked()
-                    objectName: "editProfileButton"
-                    Accessible.name: "Editar perfil de sincronización"
                     activeFocusOnTab: true
                     KeyNavigation.tab: unpairButton
                     KeyNavigation.backtab: trustButton
@@ -266,8 +238,6 @@ Item {
                     text: "Desvincular"
                     variant: "danger"
                     onClicked: root.unpairClicked()
-                    objectName: "unpairButton"
-                    Accessible.name: "Desvincular dispositivo"
                     activeFocusOnTab: true
                     KeyNavigation.tab: transferPanel
                     KeyNavigation.backtab: profileEditButton
@@ -280,8 +250,6 @@ Item {
                 id: transferPanel
                 width: parent.width
                 deviceKey: root.deviceKey
-                objectName: "deviceTransferPanel"
-                Accessible.name: "Panel de transferencia"
                 activeFocusOnTab: true
                 KeyNavigation.tab: syncHistory
                 KeyNavigation.backtab: actionRow
@@ -293,8 +261,6 @@ Item {
                 id: syncHistory
                 width: parent.width
                 deviceKey: root.deviceKey
-                objectName: "deviceSyncHistory"
-                Accessible.name: "Historial de sincronización"
                 activeFocusOnTab: true
                 KeyNavigation.tab: flickable
                 KeyNavigation.backtab: transferPanel
@@ -309,8 +275,6 @@ Item {
         message: "Obteniendo información del dispositivo…"
         busy: true
         visible: root.state === "LOADING" || root.state === "INITIALIZING"
-        objectName: "deviceDetailLoadingState"
-        Accessible.name: "Cargando información del dispositivo"
     }
 
     UnavailableState {
@@ -322,8 +286,6 @@ Item {
         primaryActionText: "Reintentar"
         secondaryActionText: "Volver"
         visible: root.state === "UNAVAILABLE"
-        objectName: "deviceDetailUnavailableState"
-        Accessible.name: "Servicio de dispositivos no disponible"
         onPrimaryActionRequested: {
             if (root.dv && typeof root.dv.refresh === "function") {
                 root.dv.refresh()
@@ -343,9 +305,6 @@ Item {
         id: errorState
         anchors.centerIn: parent
         visible: root.state === "ERROR"
-        objectName: "deviceDetailErrorState"
-        Accessible.role: Accessible.AlertMessage
-        Accessible.name: "Error al cargar dispositivo"
 
         Column {
             anchors.centerIn: parent
@@ -379,8 +338,6 @@ Item {
                         state = r && r.ok ? "READY" : "ERROR"
                     }
                 }
-                objectName: "deviceDetailRetryButton"
-                Accessible.name: "Reintentar cargar dispositivo"
             }
 
             MichiButton {
@@ -388,8 +345,6 @@ Item {
                 text: "Volver"
                 variant: "ghost"
                 onClicked: root.backClicked()
-                objectName: "deviceDetailErrorBackButton"
-                Accessible.name: "Volver a lista de dispositivos"
             }
         }
     }
@@ -399,7 +354,5 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         visible: root.state === "CANCELLING"
-        objectName: "deviceDetailCancellationBanner"
-        Accessible.name: "Cancelando transferencia"
     }
 }

@@ -15,10 +15,7 @@ Item {
 
     signal announcementFinished()
 
-    objectName: "errorAnnouncement"
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.errorTitle
     Accessible.description: root.errorDetail
 
     visible: false

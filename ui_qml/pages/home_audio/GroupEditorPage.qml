@@ -22,10 +22,7 @@ Item {
     signal groupUpdated(string name, var zoneIds)
     signal groupCancelled()
 
-    objectName: "groupEditorPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Editor de grupos"
 
     AsyncStateView {
         id: asyncView
@@ -42,7 +39,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
-            objectName: "groupEditorFlickable"
 
             Column {
                 id: column
@@ -54,8 +50,6 @@ Item {
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.groupCancelled()
-                    objectName: "groupEditorBackButton"
-                    Accessible.name: "Volver"
                     Keys.onReturnPressed: root.groupCancelled()
                     Keys.onSpacePressed: root.groupCancelled()
                 }
@@ -65,8 +59,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: root.editMode ? "Editar grupo" : "Crear grupo"
-                    objectName: "groupEditorTitle"
                 }
 
                 QQC2.TextField {
@@ -78,8 +70,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.groupName
                     onTextChanged: root.groupName = text
-                    objectName: "groupEditorNameField"
-                    Accessible.name: "Nombre del grupo"
                     Accessible.description: "Nombre para identificar el grupo de zonas"
 
                     background: Rectangle {
@@ -113,8 +103,6 @@ Item {
                             ? MichiTheme.colors.accentBlue
                             : "transparent"
                         border.width: 1
-                        objectName: "groupEditorZoneItem_" + index
-                        Accessible.name: modelData.name || "Zona"
                         Accessible.description: root.selectedZoneIds.indexOf(modelData.id) >= 0
                             ? "Seleccionada" : "No seleccionada"
 
@@ -193,7 +181,6 @@ Item {
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                    objectName: "groupEditorActions"
 
                     MichiButton {
                         id: createBtn
@@ -207,8 +194,6 @@ Item {
                                 root.groupCreated(root.groupName, root.selectedZoneIds)
                             }
                         }
-                        objectName: "groupEditorCreateButton"
-                        Accessible.name: root.editMode ? "Guardar cambios del grupo" : "Crear grupo con zonas seleccionadas"
                         Accessible.description: root.groupName.trim() === "" ? "Escribe un nombre para el grupo" : ""
                         KeyNavigation.tab: cancelBtn
                         KeyNavigation.backtab: zoneList
@@ -221,8 +206,6 @@ Item {
                         text: "Cancelar"
                         variant: "ghost"
                         onClicked: root.groupCancelled()
-                        objectName: "groupEditorCancelButton"
-                        Accessible.name: "Cancelar edición de grupo"
                         KeyNavigation.backtab: createBtn
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()

@@ -18,10 +18,7 @@ Item {
     signal primaryActionRequested()
     signal secondaryActionRequested()
 
-    objectName: "UnavailableState"
 
-    Accessible.role: Accessible.AlertMessage
-    Accessible.name: title
     Accessible.description: message + (details ? ". " + details : "")
 
     implicitWidth: childrenColumn.implicitWidth

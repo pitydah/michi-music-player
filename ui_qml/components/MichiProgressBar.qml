@@ -20,8 +20,6 @@ Rectangle {
     radius: MichiTheme.radiusPill
     color: MichiTheme.colors.controlTrack
 
-    Accessible.role: Accessible.ProgressBar
-    Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
     Rectangle {

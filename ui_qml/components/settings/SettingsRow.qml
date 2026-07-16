@@ -30,9 +30,7 @@ Rectangle {
     implicitHeight: 56
     color: root.dirty ? Qt.rgba(0.561, 0.718, 1.0, 0.04) : "transparent"
     radius: MichiTheme.radius.sm
-    Accessible.name: entry ? entry.label || "" : ""
     Accessible.description: entry ? entry.hint || "" : ""
-    Accessible.role: Accessible.Button
     Accessible.onPressAction: root.doSave(root.editedValue !== null ? root.editedValue : root.originalValue)
 
     function load() {
@@ -164,8 +162,6 @@ Rectangle {
             text: root.originalValue !== null ? String(root.originalValue) : ""
             placeholderText: root.entry.placeholder || ""
             onTextEdited: root.scheduleSave(text)
-            Accessible.role: Accessible.EditableText
-            Accessible.name: root.entry ? root.entry.label + " campo de texto" : ""
         }
     }
 
@@ -177,8 +173,6 @@ Rectangle {
             to: root.entry.max_value !== null ? root.entry.max_value : 999999
             editable: true
             onValueModified: root.doSave(value)
-            Accessible.role: Accessible.SpinBox
-            Accessible.name: root.entry ? root.entry.label + " número" : ""
         }
     }
 
@@ -195,8 +189,6 @@ Rectangle {
         Switch {
             checked: root.originalValue === true || root.originalValue === "true"
             onClicked: root.doSave(checked)
-            Accessible.role: Accessible.CheckBox
-            Accessible.name: root.entry ? root.entry.label : ""
         }
     }
 
@@ -217,8 +209,6 @@ Rectangle {
             onActivated: function(idx) {
                 root.doSave(root.entry.options[idx].value)
             }
-            Accessible.role: Accessible.ComboBox
-            Accessible.name: root.entry ? root.entry.label : ""
         }
     }
 
@@ -240,8 +230,6 @@ Rectangle {
                 onMoved: {
                     root.sliderPreviewUpdate(value)
                 }
-                Accessible.role: Accessible.Slider
-                Accessible.name: root.entry ? root.entry.label : ""
             }
             TextField {
                 focusPolicy: Qt.StrongFocus
@@ -321,15 +309,12 @@ Rectangle {
             placeholderText: root.entry.placeholder || "Contraseña"
             echoMode: revealButton.checked ? TextInput.Normal : TextInput.Password
             onTextEdited: root.scheduleSave(text)
-            Accessible.role: Accessible.EditableText
-            Accessible.name: root.entry ? root.entry.label + " contraseña" : ""
             RowLayout {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 anchors.rightMargin: 4
                 CheckBox {
                     id: revealButton
                     text: ""
-                    Accessible.name: "Mostrar contraseña"
                 }
             }
         }
@@ -345,8 +330,6 @@ Rectangle {
                     root.bridge.setValue(root.entry.key, false)
                 }
             }
-            Accessible.role: Accessible.Button
-            Accessible.name: root.entry ? root.entry.label : ""
         }
     }
 

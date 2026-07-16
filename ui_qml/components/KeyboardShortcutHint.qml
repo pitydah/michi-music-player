@@ -15,10 +15,7 @@ Rectangle {
     property string variant: "info"
     property int shortcutSize: MichiTheme.typography.badgeSize
 
-    objectName: "KeyboardShortcutHint"
 
-    Accessible.role: Accessible.StaticText
-    Accessible.name: label + (shortcut ? " " + shortcut : "")
     Accessible.description: description || label + " atajo de teclado " + shortcut
 
     implicitHeight: row.implicitHeight + MichiTheme.spacing.xs * 2

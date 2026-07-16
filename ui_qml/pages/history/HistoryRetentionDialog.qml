@@ -80,8 +80,6 @@ Dialog {
                     var idx = vals.indexOf(root._retentionDays)
                     return idx >= 0 ? idx : 4
                 }
-                objectName: "retentionDaysCombo"
-                Accessible.name: "Días de retención"
                 onCurrentValueChanged: {
                     if (currentValue > 0) root._retentionDays = currentValue
                     else root._retentionDays = -1
@@ -103,8 +101,6 @@ Dialog {
                 to: 100000
                 stepSize: 1000
                 value: root._maxEntries > 0 ? root._maxEntries : 0
-                objectName: "retentionMaxSpin"
-                Accessible.name: "Máximo de entradas"
                 onValueChanged: root._maxEntries = value
             }
             Text {
@@ -121,16 +117,11 @@ Dialog {
                 id: autoCleanCheck
                 checked: root._autoClean
                 text: "Limpiar automáticamente"
-                objectName: "autoCleanCheck"
-                Accessible.name: "Limpiar automáticamente"
                 onCheckedChanged: root._autoClean = checked
             }
         }
 
         Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "History Retention"
-    objectName: "historyRetentionDialog"
     focus: true
             Layout.fillWidth: true
             height: 1
@@ -174,8 +165,6 @@ Dialog {
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-                objectName: "retentionCancelButton"
-                Accessible.name: "Cancelar"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -186,8 +175,6 @@ Dialog {
                 text: "Guardar"
                 variant: "primary"
                 enabled: !root._applying
-                objectName: "retentionSaveButton"
-                Accessible.name: "Guardar configuración de retención"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()

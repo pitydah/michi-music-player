@@ -31,10 +31,7 @@ Item {
     signal editClicked()
     signal retryClicked()
 
-    objectName: "connectionDetailPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Detalle de conexión"
 
     AsyncStateView {
         id: asyncView
@@ -56,7 +53,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
-            objectName: "connectionDetailFlickable"
 
             Column {
                 id: column
@@ -67,8 +63,6 @@ Item {
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
-                    objectName: "detailBackButton"
-                    Accessible.name: "Volver a conexiones"
                     KeyNavigation.tab: serverNameText
                     Keys.onReturnPressed: root.backClicked()
                     Keys.onSpacePressed: root.backClicked()
@@ -80,8 +74,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Servidor: " + root.serverName
-                    objectName: "detailServerName"
                     KeyNavigation.tab: statusCard
                     KeyNavigation.backtab: backButton
                 }
@@ -91,8 +83,6 @@ Item {
                     width: parent.width
                     title: "Estado de conexión"
                     variant: "base"
-                    objectName: "detailStatusCard"
-                    Accessible.name: "Estado de conexión"
 
                     Column {
                         anchors.fill: parent
@@ -146,8 +136,6 @@ Item {
                     id: capsView
                     width: parent.width
                     capabilities: root.caps
-                    objectName: "detailCapabilities"
-                    Accessible.name: "Capacidades del servidor"
                 }
 
                 ConnectionErrorPanel {
@@ -155,23 +143,18 @@ Item {
                     width: parent.width
                     errorText: root.lastError
                     visible: root.lastError !== ""
-                    objectName: "detailErrorPanel"
                     onRetryClicked: root.retryClicked()
                     onDismissClicked: errorPanel.visible = false
                 }
 
                 Row {
                     spacing: MichiTheme.spacing.sm
-                    objectName: "detailActions"
-                    Accessible.name: "Acciones de conexión"
 
                     MichiButton {
                         id: reconnectBtn
                         text: "Reconectar"
                         variant: "primary"
                         onClicked: root.reconnectClicked()
-                        objectName: "detailReconnectButton"
-                        Accessible.name: "Reconectar servidor"
                         KeyNavigation.tab: disconnectBtn
                         KeyNavigation.backtab: errorPanel
                     }
@@ -181,8 +164,6 @@ Item {
                         text: "Desconectar"
                         variant: "secondary"
                         onClicked: root.disconnectClicked()
-                        objectName: "detailDisconnectButton"
-                        Accessible.name: "Desconectar servidor"
                         KeyNavigation.tab: editBtn
                         KeyNavigation.backtab: reconnectBtn
                     }
@@ -192,8 +173,6 @@ Item {
                         text: "Editar"
                         variant: "ghost"
                         onClicked: root.editClicked()
-                        objectName: "detailEditButton"
-                        Accessible.name: "Editar configuración del servidor"
                         KeyNavigation.tab: forgetBtn
                         KeyNavigation.backtab: disconnectBtn
                     }
@@ -203,8 +182,6 @@ Item {
                         text: "Olvidar servidor"
                         variant: "danger"
                         onClicked: root.forgetServerClicked()
-                        objectName: "detailForgetButton"
-                        Accessible.name: "Olvidar servidor. Esta acción no se puede deshacer."
                         Accessible.description: "Elimina la configuración del servidor"
                         KeyNavigation.backtab: editBtn
                     }

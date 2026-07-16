@@ -20,11 +20,8 @@ Item {
     property string _errorMessage: ""
     property bool _compareMode: false
 
-    objectName: "AudioAnalysisPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Análisis técnico"
 
     readonly property int stateIdle: 0
     readonly property int stateAnalyzing: 1
@@ -89,13 +86,11 @@ Item {
                 text: "Análisis técnico"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "analysisPageTitle"
             }
             Text {
                 text: "Formato, codec, bitrate, sample rate, bit depth, canales, encoder, tags, loudness, peak"
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "analysisPageSubtitle"
             }
 
             AudioInputSelection { id: inputSelection }
@@ -110,8 +105,6 @@ Item {
                     text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar selección"
                     variant: "primary"
                     enabled: root._state !== root.stateAnalyzing && root._state !== root.stateCancelling && root.labService !== null && inputSelection.selectedFiles.length > 0
-                    objectName: "analyzeBtn"
-                    Accessible.name: "Analizar selección"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -121,8 +114,6 @@ Item {
                     text: "Cancelar"
                     variant: "danger"
                     visible: root._state === root.stateAnalyzing
-                    objectName: "cancelAnalysisBtn"
-                    Accessible.name: "Cancelar análisis"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -131,8 +122,6 @@ Item {
                 MichiButton {
                     text: root._compareMode ? "Salir de comparación" : "Comparar con otro archivo"
                     variant: "secondary"
-                    objectName: "compareToggleBtn"
-                    Accessible.name: text
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -141,8 +130,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "analysisBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -154,7 +141,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: root._state === root.stateCompleted ? "accent" : root._state === root.stateFailed ? "danger" : "base"
-                objectName: "analysisResultPanel"
                 visible: root._state === root.stateCompleted || root._state === root.stateFailed
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
@@ -178,7 +164,6 @@ Item {
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
                 visible: root._state === root.stateIdle || root._state === root.stateAnalyzing
-                objectName: "analysisPlaceholder"
                 height: 80
                 Text {
                     anchors.centerIn: parent
@@ -200,15 +185,12 @@ Item {
             ComparisonPanel {
                 width: parent.width
                 visible: root._compareMode
-                objectName: "analysisComparisonPanel"
             }
 
             StatusBadge {
                 visible: root.labService === null
                 text: "Bridge no disponible"
                 kind: "disconnected"
-                objectName: "analysisBridgeStatus"
-                Accessible.name: "Bridge de análisis no disponible"
             }
         }
     }

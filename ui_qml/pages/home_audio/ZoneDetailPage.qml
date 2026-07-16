@@ -33,10 +33,7 @@ Item {
     signal renameRequested(string zoneId, string newName)
     signal deleteRequested(string zoneId)
 
-    objectName: "zoneDetailPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Detalle de zona: " + root.zoneName
 
     AsyncStateView {
         id: asyncView
@@ -58,7 +55,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
-            objectName: "zoneDetailFlickable"
 
             Column {
                 id: column
@@ -70,8 +66,6 @@ Item {
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
-                    objectName: "zoneDetailBackButton"
-                    Accessible.name: "Volver a Home Audio"
                     KeyNavigation.tab: zoneNameText
                     Keys.onReturnPressed: root.backClicked()
                     Keys.onSpacePressed: root.backClicked()
@@ -83,8 +77,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Zona: " + root.zoneName
-                    objectName: "zoneDetailName"
                     KeyNavigation.tab: statusBar
                     KeyNavigation.backtab: backBtn
                 }
@@ -92,12 +84,10 @@ Item {
                 Row {
                     id: statusBar
                     spacing: MichiTheme.spacing.sm
-                    objectName: "zoneDetailStatusBar"
 
                     StatusBadge {
                         text: root.zoneOnline ? "En línea" : "Desconectado"
                         kind: root.zoneOnline ? "success" : "error"
-                        Accessible.name: "Estado de conexión: " + text
                     }
 
                     StatusBadge {
@@ -109,13 +99,11 @@ Item {
                             }
                         }
                         kind: root.zoneStatus === "playing" ? "active" : "disconnected"
-                        Accessible.name: "Estado de reproducción: " + text
                     }
 
                     StatusBadge {
                         text: root.zoneMuted ? "Silenciado" : "Activo"
                         kind: root.zoneMuted ? "warning" : "success"
-                        Accessible.name: root.zoneMuted ? "Zona silenciada" : "Zona activa"
                     }
                 }
 
@@ -125,8 +113,6 @@ Item {
                     height: 80
                     radius: MichiTheme.radiusMd
                     variant: "base"
-                    objectName: "zoneDetailVolumeCard"
-                    Accessible.name: "Control de volumen"
 
                     Row {
                         anchors.fill: parent
@@ -157,7 +143,6 @@ Item {
                                 root.zoneDetailVolumeChanged(root.zoneId, value / 100.0)
                             }
                             enabled: !root.zoneMuted
-                            objectName: "zoneDetailVolumeSlider"
                         }
 
                         Text {
@@ -178,8 +163,6 @@ Item {
                                 root.zoneMuted = !root.zoneMuted
                                 root.muteToggled(root.zoneId, root.zoneMuted)
                             }
-                            objectName: "zoneDetailMuteButton"
-                            Accessible.name: root.zoneMuted ? "Activar sonido de " + root.zoneName : "Silenciar " + root.zoneName
                         }
                     }
                 }
@@ -190,8 +173,6 @@ Item {
                     height: infoColumn.height + MichiTheme.spacing.xl * 2
                     radius: MichiTheme.radiusMd
                     variant: "base"
-                    objectName: "zoneDetailInfoCard"
-                    Accessible.name: "Información de la zona"
 
                     Column {
                         id: infoColumn
@@ -235,15 +216,12 @@ Item {
                 Row {
                     id: actionRow
                     spacing: MichiTheme.spacing.sm
-                    objectName: "zoneDetailActions"
 
                     MichiButton {
                         id: reconnBtn
                         text: "Reconectar"
                         variant: "primary"
                         onClicked: root.reconnectClicked(root.zoneId)
-                        objectName: "zoneDetailReconnectButton"
-                        Accessible.name: "Reconectar zona " + root.zoneName
                         KeyNavigation.tab: groupBtn
                         KeyNavigation.backtab: muteBtn
                     }
@@ -253,8 +231,6 @@ Item {
                         text: "Agrupar"
                         variant: "secondary"
                         onClicked: root.groupClicked(root.zoneId)
-                        objectName: "zoneDetailGroupButton"
-                        Accessible.name: "Agrupar zona " + root.zoneName + " con otras zonas"
                         KeyNavigation.tab: ungroupBtn
                         KeyNavigation.backtab: reconnBtn
                     }
@@ -264,8 +240,6 @@ Item {
                         text: "Desagrupar"
                         variant: "ghost"
                         onClicked: root.ungroupClicked(root.zoneId)
-                        objectName: "zoneDetailUngroupButton"
-                        Accessible.name: "Desagrupar zona " + root.zoneName
                         KeyNavigation.tab: renameBtn
                         KeyNavigation.backtab: groupBtn
                     }
@@ -275,8 +249,6 @@ Item {
                         text: "Renombrar"
                         variant: "ghost"
                         onClicked: root.renameRequested(root.zoneId, "")
-                        objectName: "zoneDetailRenameButton"
-                        Accessible.name: "Renombrar zona " + root.zoneName
                         KeyNavigation.tab: deleteBtn
                         KeyNavigation.backtab: ungroupBtn
                     }
@@ -286,8 +258,6 @@ Item {
                         text: "Eliminar zona"
                         variant: "danger"
                         onClicked: root.deleteRequested(root.zoneId)
-                        objectName: "zoneDetailDeleteButton"
-                        Accessible.name: "Eliminar zona " + root.zoneName + ". Esta acción no se puede deshacer."
                         Accessible.description: "Elimina permanentemente la zona"
                         KeyNavigation.backtab: renameBtn
                     }

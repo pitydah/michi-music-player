@@ -29,8 +29,6 @@ Rectangle {
     focus: root.enabled
     activeFocusOnTab: root.enabled
 
-    Accessible.role: Accessible.Slider
-    Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
     function _range() {

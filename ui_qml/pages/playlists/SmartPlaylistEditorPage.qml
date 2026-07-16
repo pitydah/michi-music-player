@@ -26,8 +26,6 @@ Item {
     signal cancelled()
     signal backRequested()
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Editor de smart playlist"
 
     function addRuleGroup() {
         var groups = root.ruleGroups.slice()
@@ -106,8 +104,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "smartPlaylistBackButton"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -119,7 +115,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Smart playlist"
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -141,8 +136,6 @@ Item {
                 width: parent.width * 0.5
                 text: root.playlistName
                 placeholderText: "Nombre de la smart playlist"
-                objectName: "smartPlaylistNameInput"
-                Accessible.name: "Nombre de la smart playlist"
                 activeFocusOnTab: true
             }
 
@@ -156,8 +149,6 @@ Item {
                 MichiButton {
                     text: "Todas las condiciones"
                     variant: root.matchMode === "all" ? "primary" : "secondary"
-                    objectName: "matchAllButton"
-                    Accessible.name: "Coincidir todas las condiciones"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -166,8 +157,6 @@ Item {
                 MichiButton {
                     text: "Cualquier condición"
                     variant: root.matchMode === "any" ? "primary" : "secondary"
-                    objectName: "matchAnyButton"
-                    Accessible.name: "Coincidir cualquier condición"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -178,8 +167,6 @@ Item {
             SectionHeader {
                 text: "Grupos de reglas"
                 width: parent.width
-                objectName: "ruleGroupsHeader"
-                Accessible.name: "Grupos de reglas"
             }
 
             Repeater {
@@ -215,8 +202,6 @@ Item {
                                 model: ["and", "or"]
                                 currentIndex: modelData.operator === "or" ? 1 : 0
                                 Layout.preferredWidth: 80
-                                objectName: "groupOperatorCombo_" + index
-                                Accessible.name: "Operador del grupo"
                                 onCurrentTextChanged: {
                                     var groups = root.ruleGroups.slice()
                                     groups[index].operator = currentText
@@ -226,8 +211,6 @@ Item {
                             MichiButton {
                                 text: "X"
                                 variant: "ghost"
-                                objectName: "removeGroupButton_" + index
-                                Accessible.name: "Eliminar grupo"
                                 onClicked: root.removeRuleGroup(index)
                             }
                         }
@@ -245,8 +228,6 @@ Item {
                                     model: ["genre", "artist", "album", "title", "year", "rating", "playcount", "lastplayed", "added"]
                                     currentIndex: Math.max(0, fieldCombo.find(modelData.field))
                                     Layout.preferredWidth: 100
-                                    objectName: "ruleFieldCombo_" + index + "_" + modelIndex
-                                    Accessible.name: "Campo de la regla"
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].field = currentText
@@ -259,8 +240,6 @@ Item {
                                     model: ["is", "is_not", "contains", "gt", "lt", "gte", "lte"]
                                     currentIndex: Math.max(0, opCombo.find(modelData.operator))
                                     Layout.preferredWidth: 80
-                                    objectName: "ruleOpCombo_" + index + "_" + modelIndex
-                                    Accessible.name: "Operador de la regla"
                                     onCurrentTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].operator = currentText
@@ -272,8 +251,6 @@ Item {
                                     Layout.fillWidth: true
                                     text: modelData.value || ""
                                     placeholderText: "Valor"
-                                    objectName: "ruleValueInput_" + index + "_" + modelIndex
-                                    Accessible.name: "Valor de la regla"
                                     onTextChanged: {
                                         var groups = root.ruleGroups.slice()
                                         groups[model.index].rules[modelIndex].value = text
@@ -283,8 +260,6 @@ Item {
                                 MichiButton {
                                     text: "X"
                                     variant: "ghost"
-                                    objectName: "removeRuleButton_" + index + "_" + modelIndex
-                                    Accessible.name: "Eliminar regla"
                                     onClicked: root.removeRule(model.index, modelIndex)
                                 }
                             }
@@ -293,8 +268,6 @@ Item {
                         MichiButton {
                             text: "+ Añadir regla"
                             variant: "ghost"
-                            objectName: "addRuleButton_" + index
-                            Accessible.name: "Añadir regla al grupo"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -307,8 +280,6 @@ Item {
             MichiButton {
                 text: "+ Añadir grupo de reglas"
                 variant: "ghost"
-                objectName: "addRuleGroupButton"
-                Accessible.name: "Añadir grupo de reglas"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -336,8 +307,6 @@ Item {
                     from: 0
                     to: 1000
                     value: root.limitCount
-                    objectName: "limitSpinBox"
-                    Accessible.name: "Límite de canciones"
                     onValueChanged: root.limitCount = value
                 }
                 Text {
@@ -364,8 +333,6 @@ Item {
                         var idx = orderCombo.find(root.orderBy)
                         return idx >= 0 ? idx : 0
                     }
-                    objectName: "orderByCombo"
-                    Accessible.name: "Ordenar por"
                     onCurrentTextChanged: root.orderBy = currentText
                 }
             }
@@ -375,8 +342,6 @@ Item {
                 MichiButton {
                     text: "Previsualizar (" + root._previewCount + " resultados)"
                     variant: "secondary"
-                    objectName: "previewButton"
-                    Accessible.name: "Previsualizar resultados"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -387,8 +352,6 @@ Item {
                     text: root._saving ? "Guardando..." : "Guardar smart playlist"
                     variant: "primary"
                     enabled: !root._saving && nameInput.text.trim() !== ""
-                    objectName: "saveSmartPlaylistButton"
-                    Accessible.name: "Guardar smart playlist"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -401,7 +364,6 @@ Item {
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: text !== ""
-                Accessible.name: root._errorMsg
             }
 
             Item { width: 1; height: MichiTheme.spacing.lg }

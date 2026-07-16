@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import contextlib
 
 logger = logging.getLogger("michi.audio.gstreamer")
 
@@ -79,10 +80,8 @@ class GStreamerAudioBackend:
     def set_volume(self, volume: float):
         self._volume = max(0.0, min(1.0, volume))
         if self._pipeline:
-            try:
+            with contextlib.suppress(Exception):
                 self._pipeline.set_property("volume", self._volume)
-            except Exception:
-                pass
 
     def get_position(self) -> float:
         if self._pipeline:

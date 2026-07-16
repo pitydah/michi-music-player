@@ -34,9 +34,6 @@ Item {
         clip: true
         spacing: 1
         model: root.model
-        objectName: "historyTableList"
-        Accessible.role: Accessible.Table
-        Accessible.name: "Tabla del historial"
         keyNavigationWraps: true
 
         delegate: Rectangle {
@@ -166,43 +163,31 @@ Item {
 
             Menu {
                 id: contextMenu
-                objectName: "historyTableContextMenu"
-                Accessible.name: "Menú contextual"
 
                 MenuItem {
                     text: "Reproducir"
-                    objectName: "tablePlayMenuItem"
-                    Accessible.name: "Reproducir"
                     onTriggered: root.playRequested(
                         model.trackId || modelData.track_id || model.track_id || 0,
                         model.title || modelData.title || "")
                 }
                 MenuItem {
                     text: "Añadir a la cola"
-                    objectName: "tableAddQueueMenuItem"
-                    Accessible.name: "Añadir a la cola"
                     onTriggered: root.addToQueueRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
                     text: "Abrir pista"
-                    objectName: "tableOpenTrackMenuItem"
-                    Accessible.name: "Abrir pista"
                     onTriggered: root.openTrackRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
                     text: "Abrir álbum"
-                    objectName: "tableOpenAlbumMenuItem"
-                    Accessible.name: "Abrir álbum"
                     onTriggered: root.openAlbumRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuSeparator {}
                 MenuItem {
                     text: "Eliminar"
-                    objectName: "tableRemoveMenuItem"
-                    Accessible.name: "Eliminar"
                     onTriggered: root.removeRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }

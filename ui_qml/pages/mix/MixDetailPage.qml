@@ -21,10 +21,7 @@ Item {
 
     signal backRequested()
 
-    objectName: "MixDetailPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: _mixTitle || "Mix"
 
     function refresh() {
         if (root.mx) {
@@ -93,8 +90,6 @@ Item {
 
                 MichiButton {
                     text: "Volver"; variant: "ghost"
-                    objectName: "detailBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     KeyNavigation.tab: detailPlayBtn
                     Keys.onReturnPressed: onClicked()
@@ -123,8 +118,6 @@ Item {
                 MichiButton {
                     id: detailPlayBtn
                     text: "Reproducir"; variant: "primary"
-                    objectName: "detailPlayBtn"
-                    Accessible.name: "Reproducir mix"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailEnqueueBtn
@@ -140,8 +133,6 @@ Item {
                 MichiButton {
                     id: detailEnqueueBtn
                     text: "Agregar a cola"; variant: "secondary"
-                    objectName: "detailEnqueueBtn"
-                    Accessible.name: "Agregar mix a la cola"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailRegenerateBtn
@@ -162,8 +153,6 @@ Item {
                         return "Regenerar"
                     }
                     variant: "ghost"
-                    objectName: "detailRegenerateBtn"
-                    Accessible.name: "Regenerar mix"
                     activeFocusOnTab: true
                     enabled: !root._generating && !root._cancelling
                     KeyNavigation.tab: detailSaveBtn
@@ -176,8 +165,6 @@ Item {
                 MichiButton {
                     id: detailSaveBtn
                     text: "Guardar como playlist"; variant: "ghost"
-                    objectName: "detailSaveBtn"
-                    Accessible.name: "Guardar mix como playlist"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailExplainBtn
@@ -190,8 +177,6 @@ Item {
                 MichiButton {
                     id: detailExplainBtn
                     text: "Explicar mix"; variant: "ghost"
-                    objectName: "detailExplainBtn"
-                    Accessible.name: "Explicar mix"
                     activeFocusOnTab: true
                     enabled: root._songs.length > 0
                     KeyNavigation.tab: detailCancelBtn
@@ -204,8 +189,6 @@ Item {
                 MichiButton {
                     id: detailCancelBtn
                     text: "Cancelar generación"; variant: "danger"
-                    objectName: "detailCancelBtn"
-                    Accessible.name: "Cancelar generación"
                     activeFocusOnTab: true
                     visible: root._generating
                     KeyNavigation.tab: trackListView
@@ -237,16 +220,12 @@ Item {
                     : 60
                 model: root._songs; clip: true; spacing: 2
                 activeFocusOnTab: true
-                objectName: "mixTrackListView"
-                Accessible.name: "Canciones del mix"
 
                 delegate: Rectangle {
                     width: parent.width; height: 44
                     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                     radius: MichiTheme.radiusSm
                     activeFocusOnTab: true
-                    objectName: "mixTrackItem_" + index
-                    Accessible.name: modelData.title + " - " + modelData.artist + (modelData.album ? " - " + modelData.album : "")
                     KeyNavigation.tab: index < root._songs.length - 1
                         ? trackListView.itemAtIndex(index + 1)
                         : detailExplainBtn

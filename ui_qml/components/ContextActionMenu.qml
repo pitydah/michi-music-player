@@ -45,9 +45,6 @@ QQC2.Popup {
                     : actionRow.implicitHeight + MichiTheme.spacing.sm * 2
 
             Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Context Action Menu"
-    objectName: "contextActionMenu"
     focus: true
                 id: separatorItem
                 width: parent.width
@@ -128,8 +125,6 @@ QQC2.Popup {
                 cursorShape: Qt.PointingHandCursor
                 enabled: modelData.enabled !== false && modelData.separator !== true && modelData.divider !== true
 
-                Accessible.role: Accessible.MenuItem
-                Accessible.name: modelData.label || modelData.text || ""
                 Accessible.description: modelData.description || "Acción del menú contextual"
 
                 onClicked: {

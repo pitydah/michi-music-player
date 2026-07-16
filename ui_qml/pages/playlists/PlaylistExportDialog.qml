@@ -64,14 +64,10 @@ Dialog {
                 placeholderText: "Destino del archivo .m3u"
                 text: root._exportPath
                 readOnly: true
-                objectName: "exportPathInput"
-                Accessible.name: "Ruta de destino"
             }
             MichiButton {
                 text: "Examinar"
                 variant: "secondary"
-                objectName: "exportBrowseButton"
-                Accessible.name: "Examinar destino"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -80,9 +76,6 @@ Dialog {
         }
 
         Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Playlist Export"
-    objectName: "playlistExportDialog"
     focus: true
             width: parent.width
             height: 4
@@ -122,8 +115,6 @@ Dialog {
                 text: root._exporting ? "Exportando..." : "Exportar"
                 variant: "primary"
                 enabled: !root._exporting && root._exportPath !== ""
-                objectName: "exportActionButton"
-                Accessible.name: "Exportar playlist"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -155,8 +146,6 @@ Dialog {
             MichiButton {
                 text: root._exporting ? "Cancelar" : "Cerrar"
                 variant: "ghost"
-                objectName: "exportCancelButton"
-                Accessible.name: root._exporting ? "Cancelar exportación" : "Cerrar"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -180,8 +169,6 @@ Dialog {
         fileMode: FileDialog.SaveFile
         nameFilters: ["M3U playlist (*.m3u)", "All files (*)"]
         defaultSuffix: ".m3u"
-        objectName: "exportSaveDialog"
-        Accessible.name: "Guardar archivo M3U"
         onAccepted: {
             root._exportPath = selectedFile.toString().replace("file://", "")
             pathInput.text = root._exportPath

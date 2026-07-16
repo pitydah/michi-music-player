@@ -183,7 +183,6 @@ Item {
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 color: MichiTheme.colors.textPrimary
                 font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Historial"
             }
             Item { Layout.fillWidth: true }
             Label {
@@ -191,14 +190,11 @@ Item {
                 text: root.bridge ? root._totalCount + " registros" : ""
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
-                Accessible.name: root.bridge ? root._totalCount + " registros" : ""
             }
             MichiButton {
                 id: statsBtn
                 text: "Estadísticas"
                 variant: "ghost"
-                objectName: "statisticsButton"
-                Accessible.name: "Estadísticas"
                 activeFocusOnTab: true
                 KeyNavigation.tab: viewToggleBtn
                 KeyNavigation.backtab: countLabel
@@ -210,8 +206,6 @@ Item {
                 id: viewToggleBtn
                 text: root._viewMode === "timeline" ? "Vista tabla" : "Vista línea"
                 variant: "ghost"
-                objectName: "viewToggleButton"
-                Accessible.name: "Cambiar vista"
                 activeFocusOnTab: true
                 KeyNavigation.tab: retentionBtn
                 KeyNavigation.backtab: statsBtn
@@ -223,8 +217,6 @@ Item {
                 id: retentionBtn
                 text: "Retención"
                 variant: "ghost"
-                objectName: "retentionButton"
-                Accessible.name: "Retención"
                 activeFocusOnTab: true
                 KeyNavigation.tab: clearFilteredBtn
                 KeyNavigation.backtab: viewToggleBtn
@@ -237,8 +229,6 @@ Item {
                 text: "Limpiar filtrados"
                 variant: "danger"
                 visible: root._filtered
-                objectName: "clearFilteredButton"
-                Accessible.name: "Limpiar registros filtrados"
                 activeFocusOnTab: true
                 KeyNavigation.tab: clearAllBtn
                 KeyNavigation.backtab: retentionBtn
@@ -250,8 +240,6 @@ Item {
                 id: clearAllBtn
                 text: "Limpiar todo"
                 variant: "danger"
-                objectName: "clearHistoryButton"
-                Accessible.name: "Limpiar todo el historial"
                 activeFocusOnTab: true
                 KeyNavigation.tab: exportBtn
                 KeyNavigation.backtab: clearFilteredBtn
@@ -263,8 +251,6 @@ Item {
                 id: exportBtn
                 text: "Exportar"
                 variant: "ghost"
-                objectName: "exportHistoryButton"
-                Accessible.name: "Exportar historial"
                 activeFocusOnTab: true
                 KeyNavigation.backtab: clearAllBtn
                 Keys.onReturnPressed: onClicked()
@@ -276,8 +262,6 @@ Item {
         HistoryFilterBar {
             id: filterBar
             Layout.fillWidth: true
-            objectName: "historyFilterBar"
-            Accessible.name: "Filtros de historial"
             onFiltersChanged: {
                 root._artistFilter = filterBar.artistFilter
                 root._albumFilter = filterBar.albumFilter
@@ -309,8 +293,6 @@ Item {
                 visible: root._state === "LOADING"
                 title: "Cargando historial"
                 message: "Obteniendo registros de reproducción..."
-                objectName: "historyLoadingState"
-                Accessible.name: "Cargando historial"
             }
 
             EmptyState {
@@ -322,8 +304,6 @@ Item {
                                           : "Aún no hay registros de reproducción. Reproduce música para empezar."
                 actionText: root._filtered ? "Limpiar filtros" : ""
                 showAction: root._filtered
-                objectName: "historyEmptyState"
-                Accessible.name: "Sin historial"
                 onActionClicked: filterBar.reset()
             }
 
@@ -334,8 +314,6 @@ Item {
                 message: !root.bridge ? "El servicio de historial no está disponible."
                                       : "No se pudieron cargar los registros. Verifica la conexión e intenta de nuevo."
                 showRetry: true
-                objectName: "historyErrorState"
-                Accessible.name: "Error al cargar historial"
                 onRetryRequested: root.refresh()
             }
 
@@ -345,8 +323,6 @@ Item {
                 model: root._events
                 bridge: root.bridge
                 visible: root._state === "READY" && root._viewMode === "timeline"
-                objectName: "historyTimeline"
-                Accessible.name: "Línea de tiempo del historial"
                 activeFocusOnTab: true
                 onPlayRequested: function(trackId, title) { root.playEvent(trackId) }
                 onRemoveRequested: function(eventId, trackId) {
@@ -364,8 +340,6 @@ Item {
                 model: root._events
                 bridge: root.bridge
                 visible: root._state === "READY" && root._viewMode === "table"
-                objectName: "historyTable"
-                Accessible.name: "Tabla del historial"
                 activeFocusOnTab: true
                 onPlayRequested: function(trackId, title) { root.playEvent(trackId) }
                 onRemoveRequested: function(trackId) { root.removeItem(trackId) }
@@ -384,8 +358,6 @@ Item {
                 text: "Anterior"
                 variant: "ghost"
                 enabled: root._currentPage > 0
-                objectName: "prevPageButton"
-                Accessible.name: "Página anterior"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -408,8 +380,6 @@ Item {
                 text: "Siguiente"
                 variant: "ghost"
                 enabled: (root._currentPage + 1) * root._pageSize < root._totalCount
-                objectName: "nextPageButton"
-                Accessible.name: "Página siguiente"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -424,15 +394,12 @@ Item {
             font.pixelSize: MichiTheme.typography.metaSize
             Layout.fillWidth: true
             visible: text !== ""
-            Accessible.name: root._statusMsg
         }
     }
 
     HistoryRetentionDialog {
         id: retentionDialog
         bridge: root.bridge
-        objectName: "historyRetentionDialog"
-        Accessible.name: "Retención de historial"
         onRetentionApplied: function(count) {
             root._statusMsg = "Retención aplicada: " + count + " registros eliminados"
             root.refresh()
@@ -442,8 +409,6 @@ Item {
     HistoryExportDialog {
         id: exportDialog
         bridge: root.bridge
-        objectName: "historyExportDialog"
-        Accessible.name: "Exportar historial"
         onExportCompleted: function(path, count) {
             root._statusMsg = "Exportadas " + count + " entradas a " + path
         }
@@ -455,8 +420,6 @@ Item {
     HistoryStatisticsPage {
         id: statisticsDrawer
         bridge: root.bridge
-        objectName: "historyStatisticsDrawer"
-        Accessible.name: "Estadísticas del historial"
     }
 
     Dialog {
@@ -466,8 +429,6 @@ Item {
         modal: true
         x: (parent.width - width) / 2
         y: (parent.height - height) / 3
-        objectName: "confirmClearHistoryDialog"
-        Accessible.name: "Confirmar limpiar historial"
         closePolicy: Popup.CloseOnEscape
         Text {
             text: "¿Eliminar todo el historial de reproducción? Esta acción no se puede deshacer."

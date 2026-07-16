@@ -26,7 +26,6 @@ Item {
     signal latencyApplied(string zoneId, int latencyMs)
     signal resetRequested(string zoneId)
 
-    objectName: "LatencyPage"
     Accessible.description: "Ajusta la latencia de sincronización para la zona"
 
     AsyncStateView {
@@ -48,7 +47,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
-            objectName: "latencyFlickable"
 
             Column {
                 id: column
@@ -62,8 +60,6 @@ Item {
                     MichiButton {
                         text: "Volver"
                         variant: "ghost"
-                        objectName: "latencyBackButton"
-                        Accessible.name: "Volver a detalle de zona"
                         activeFocusOnTab: true
                         KeyNavigation.tab: latencyHeader
                         onClicked: root.backClicked()
@@ -78,7 +74,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.pageTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
                         anchors.verticalCenter: parent.verticalCenter
-                        Accessible.name: "Latencia para " + root.zoneName
                     }
                 }
 
@@ -95,8 +90,6 @@ Item {
                     width: parent.width
                     title: "Control de latencia"
                     variant: "base"
-                    objectName: "latencyControlCard"
-                    Accessible.name: "Control de latencia"
 
                     Column {
                         anchors.fill: parent
@@ -133,7 +126,6 @@ Item {
                             accessibleName: "Latencia en milisegundos"
                             accessibleDescription: root.currentLatencyMs + " ms"
                             onMoved: root.currentLatencyMs = value
-                            objectName: "latencySlider"
                             activeFocusOnTab: true
                         }
 
@@ -162,8 +154,6 @@ Item {
                         id: applyBtn
                         text: "Aplicar"
                         variant: "primary"
-                        objectName: "latencyApplyButton"
-                        Accessible.name: "Aplicar latencia de " + root.currentLatencyMs + " ms"
                         activeFocusOnTab: true
                         KeyNavigation.tab: resetBtn
                         KeyNavigation.backtab: latencySlider
@@ -186,8 +176,6 @@ Item {
                         id: resetBtn
                         text: "Restablecer"
                         variant: "ghost"
-                        objectName: "latencyResetButton"
-                        Accessible.name: "Restablecer latencia a 0 ms"
                         activeFocusOnTab: true
                         KeyNavigation.backtab: applyBtn
                         onClicked: {
@@ -203,8 +191,6 @@ Item {
                     visible: root.ha === null
                     text: "Bridge no disponible"
                     kind: "disconnected"
-                    objectName: "latencyBridgeStatus"
-                    Accessible.name: "Bridge de Home Audio no disponible"
                 }
             }
         }

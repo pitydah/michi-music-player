@@ -14,10 +14,7 @@ Item {
     property bool busy: true
     property bool reducedMotion: false
 
-    objectName: "LoadingState"
 
-    Accessible.role: Accessible.Indicator
-    Accessible.name: title
     Accessible.description: message || "Cargando contenido"
 
     implicitWidth: childrenColumn.implicitWidth
@@ -34,8 +31,6 @@ Item {
             width: 32
             height: 32
             running: root.busy
-            Accessible.role: Accessible.Indicator
-            Accessible.name: root.title
 
             contentItem: Item {
                 Rectangle {

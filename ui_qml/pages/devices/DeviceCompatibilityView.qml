@@ -17,9 +17,6 @@ Item {
 
     implicitHeight: childrenRect.height
 
-    objectName: "DeviceCompatibilityView"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Compatibilidad de formatos"
 
     GlassMaterial {
         width: parent.width
@@ -38,16 +35,12 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "compatibilityTitle"
-                Accessible.name: "Compatibilidad de formatos"
             }
 
             Text {
                 text: "Protocolo: " + (root.protocol || "Desconocido")
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
-                objectName: "compatibilityProtocol"
-                Accessible.name: text
             }
 
             Text {
@@ -55,8 +48,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightMedium
-                objectName: "supportedFormatsTitle"
-                Accessible.name: "Formatos soportados"
             }
 
             Flow {
@@ -67,8 +58,6 @@ Item {
                     model: root.supportedFormats
                     StatusBadge {
                         text: modelData; kind: "success"
-                        objectName: "supportedFormat_" + index
-                        Accessible.name: modelData
                     }
                 }
             }
@@ -78,8 +67,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.cardTitleSize
                 font.weight: MichiTheme.typography.weightMedium
-                objectName: "unsupportedFormatsTitle"
-                Accessible.name: "Formatos no soportados — solo audio"
             }
 
             Flow {
@@ -90,8 +77,6 @@ Item {
                     model: root.unsupportedFormats
                     StatusBadge {
                         text: modelData; kind: "disconnected"
-                        objectName: "unsupportedFormat_" + index
-                        Accessible.name: modelData + " no soportado"
                     }
                 }
             }

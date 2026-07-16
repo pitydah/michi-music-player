@@ -18,10 +18,7 @@ Rectangle {
     signal dismissed()
     signal actionTriggered()
 
-    objectName: "InlineError"
 
-    Accessible.role: Accessible.AlertMessage
-    Accessible.name: "Error"
     Accessible.description: message
 
     implicitHeight: visible ? row.implicitHeight + MichiTheme.spacing.sm * 2 : 0
@@ -83,8 +80,6 @@ Rectangle {
             visible: root.actionText !== ""
             focusPolicy: Qt.StrongFocus
 
-            Accessible.role: Accessible.Button
-            Accessible.name: root.actionText
 
             contentItem: Text {
                 text: root.actionText
@@ -103,8 +98,6 @@ Rectangle {
             visible: root.showDismiss
             focusPolicy: Qt.StrongFocus
 
-            Accessible.role: Accessible.Button
-            Accessible.name: "Descartar error"
 
             contentItem: Text {
                 text: "\u00D7"

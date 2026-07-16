@@ -23,9 +23,6 @@ Item {
     signal pairRequested(string name, string type)
     signal cancelRequested()
 
-    objectName: "DevicePairingPage"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Vincular dispositivo"
 
     Keys.onEscapePressed: root.backClicked()
 
@@ -49,8 +46,6 @@ Item {
                 text: "< Volver"
                 variant: "ghost"
                 onClicked: root.backClicked()
-                objectName: "pairingBackButton"
-                Accessible.name: "Volver a dispositivos"
                 activeFocusOnTab: true
                 KeyNavigation.tab: sectionTitle
                 KeyNavigation.backtab: flickable
@@ -64,7 +59,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: text
             }
 
             GlassMaterial {
@@ -73,8 +67,6 @@ Item {
                 height: discoveryColumn.height + MichiTheme.spacing.xl * 2
                 radius: MichiTheme.radiusMd
                 variant: "elevated"
-                objectName: "pairingDiscoveryCard"
-                Accessible.name: "Descubrimiento de dispositivos"
 
                 Column {
                     id: discoveryColumn
@@ -114,8 +106,6 @@ Item {
                                 }
                             }
                         }
-                        objectName: "scanNetworkButton"
-                        Accessible.name: "Escanear red en busca de dispositivos"
                         activeFocusOnTab: true
                         KeyNavigation.tab: manualConnectionSection
                         KeyNavigation.backtab: backButton
@@ -131,8 +121,6 @@ Item {
                             height: 56
                             radius: MichiTheme.radiusSm
                             variant: "base"
-                            objectName: "discoveredDeviceCard_" + index
-                            Accessible.name: modelData.alias || modelData.name || "Dispositivo detectado"
 
                             Row {
                                 anchors.fill: parent
@@ -168,8 +156,6 @@ Item {
                                         modelData.alias || modelData.name || "",
                                         modelData.device || modelData.type || ""
                                     )
-                                    objectName: "pairDiscoveredButton_" + index
-                                    Accessible.name: "Vincular " + (modelData.alias || "dispositivo")
                                 }
                             }
 
@@ -201,8 +187,6 @@ Item {
                 height: manualColumn.height + MichiTheme.spacing.xl * 2
                 radius: MichiTheme.radiusMd
                 variant: "base"
-                objectName: "pairingManualConnection"
-                Accessible.name: "Conexión manual"
 
                 Column {
                     id: manualColumn
@@ -236,8 +220,6 @@ Item {
                                 id: manualIpField
                                 width: parent.width
                                 placeholderText: "192.168.1.100"
-                                objectName: "manualIpField"
-                                Accessible.name: "Dirección IP del dispositivo"
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: manualPortField
                                 KeyNavigation.backtab: scanNetworkButton
@@ -260,8 +242,6 @@ Item {
                                 width: parent.width
                                 placeholderText: "53318"
                                 text: "53318"
-                                objectName: "manualPortField"
-                                Accessible.name: "Puerto del dispositivo"
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: manualAuthField
                                 KeyNavigation.backtab: manualIpField
@@ -283,8 +263,6 @@ Item {
                                 id: manualAuthField
                                 width: parent.width
                                 placeholderText: "Opcional"
-                                objectName: "manualAuthField"
-                                Accessible.name: "Código de autorización"
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: connectManualButton
                                 KeyNavigation.backtab: manualPortField
@@ -308,8 +286,6 @@ Item {
                                 }
                             }
                         }
-                        objectName: "connectManualButton"
-                        Accessible.name: "Conectar a dispositivo manualmente"
                         activeFocusOnTab: true
                         KeyNavigation.tab: cancelButton
                         KeyNavigation.backtab: manualAuthField
@@ -326,8 +302,6 @@ Item {
                 radius: MichiTheme.radiusMd
                 variant: root.pairingState === "paired" ? "accent" : "base"
                 visible: root.pairingState !== "idle"
-                objectName: "pairingStatusCard"
-                Accessible.name: "Estado de vinculación"
 
                 Column {
                     id: statusColumn
@@ -358,8 +332,6 @@ Item {
                                 default: return "active"
                             }
                         }
-                        objectName: "pairingStatusBadge"
-                        Accessible.name: text
                     }
 
                     Text {
@@ -379,8 +351,6 @@ Item {
                     text: "Cancelar"
                     variant: "ghost"
                     onClicked: root.cancelRequested()
-                    objectName: "pairingCancelButton"
-                    Accessible.name: "Cancelar vinculación"
                     activeFocusOnTab: true
                     KeyNavigation.tab: backButton
                     KeyNavigation.backtab: connectManualButton
@@ -393,8 +363,6 @@ Item {
                     variant: "primary"
                     visible: root.pairingState === "paired"
                     onClicked: root.backClicked()
-                    objectName: "pairingFinishButton"
-                    Accessible.name: "Finalizar vinculación"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
@@ -410,8 +378,6 @@ Item {
         message: "Escaneando la red local…"
         busy: true
         visible: root.pairingState === "loading"
-        objectName: "pairingLoadingState"
-        Accessible.name: "Buscando dispositivos en la red"
     }
 
     UnavailableState {
@@ -422,8 +388,6 @@ Item {
         primaryActionText: "Reintentar"
         secondaryActionText: "Volver"
         visible: !root.dv
-        objectName: "pairingUnavailableState"
-        Accessible.name: "Servicio de vinculación no disponible"
         onPrimaryActionRequested: {
             if (root.dv && typeof root.dv.refresh === "function")
                 root.dv.refresh()

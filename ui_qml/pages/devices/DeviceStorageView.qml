@@ -16,9 +16,6 @@ Item {
 
     implicitHeight: childrenRect.height
 
-    objectName: "DeviceStorageView"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Almacenamiento"
 
     GlassMaterial {
         width: parent.width
@@ -37,14 +34,12 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Almacenamiento"
             }
 
             Text {
                 text: root.mountPoint ? "Punto de montaje: " + root.mountPoint : "Sin dispositivo montado"
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: text
             }
 
             Grid {
@@ -57,21 +52,18 @@ Item {
                 Text {
                     text: root.storageInfo.totalBytes ? formatBytes(root.storageInfo.totalBytes) : "-"
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
-                    objectName: "storageTotalValue"
                 }
 
                 Text { text: "Libre:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "storageFreeLabel" }
                 Text {
                     text: root.storageInfo.freeBytes ? formatBytes(root.storageInfo.freeBytes) : "-"
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
-                    objectName: "storageFreeValue"
                 }
 
                 Text { text: "Usado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "storageUsedLabel" }
                 Text {
                     text: root.storageInfo.usedBytes ? formatBytes(root.storageInfo.usedBytes) : "-"
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
-                    objectName: "storageUsedValue"
                 }
             }
         }

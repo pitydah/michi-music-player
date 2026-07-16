@@ -23,10 +23,7 @@ Item {
 
     implicitHeight: sectionColumn.height
 
-    objectName: "searchResultSection_" + sectionType
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: sectionTitle + " - " + (resultCount > 0 ? resultCount + " resultados" : "sin resultados")
 
     function getTypeIcon() {
         switch (root.sectionType) {
@@ -53,9 +50,6 @@ Item {
         Item {
             width: parent.width
             height: 28
-            objectName: root.objectName + "_header"
-            Accessible.role: Accessible.Heading
-            Accessible.name: root.sectionTitle
 
             Row {
                 anchors.left: parent.left
@@ -102,8 +96,6 @@ Item {
                 title: "Buscando..."
                 message: ""
                 width: parent.width
-                objectName: root.objectName + "_loading"
-                Accessible.name: "Cargando resultados para " + root.sectionTitle
             }
         }
 
@@ -113,8 +105,6 @@ Item {
                 title: ""
                 subtitle: "Sin resultados"
                 width: parent.width
-                objectName: root.objectName + "_empty"
-                Accessible.name: "Sin resultados para " + root.sectionTitle
             }
         }
 
@@ -123,7 +113,6 @@ Item {
             Column {
                 width: parent.width
                 spacing: MichiTheme.spacing.xs
-                objectName: root.objectName + "_list"
 
                 Repeater {
                     model: root.sectionItems
@@ -135,8 +124,6 @@ Item {
                         rowTitle: modelData.title || ""
                         rowSubtitle: modelData.subtitle || ""
                         bridge: root.bridge
-                        objectName: root.objectName + "_row_" + index
-                        Accessible.name: (modelData.title || "Resultado") + " - " + (root.sectionTitle || "")
                         onClicked: root.itemClicked(modelData.type || root.sectionType, modelData.id || "", modelData.title || "", modelData.subtitle || "")
                         Keys.onReturnPressed: root.itemClicked(modelData.type || root.sectionType, modelData.id || "", modelData.title || "", modelData.subtitle || "")
                         Keys.onSpacePressed: root.itemClicked(modelData.type || root.sectionType, modelData.id || "", modelData.title || "", modelData.subtitle || "")

@@ -50,7 +50,6 @@ Item {
                     btnSize: 28
                     enabled: root.canGoBack
                     onClicked: root.backClicked()
-                    Accessible.name: "Navegar atrás"
                 }
 
                 MichiIconButton {
@@ -59,7 +58,6 @@ Item {
                     btnSize: 28
                     enabled: root.canGoForward
                     onClicked: root.forwardClicked()
-                    Accessible.name: "Navegar adelante"
                 }
 
                 Text {

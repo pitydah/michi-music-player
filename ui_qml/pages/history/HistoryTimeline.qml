@@ -26,9 +26,6 @@ Item {
         clip: true
         spacing: 1
         model: root.model
-        objectName: "historyTimelineList"
-        Accessible.role: Accessible.List
-        Accessible.name: "Línea de tiempo del historial"
         keyNavigationWraps: true
 
         delegate: Rectangle {
@@ -123,43 +120,31 @@ Item {
 
             Menu {
                 id: contextMenu
-                objectName: "historyContextMenu"
-                Accessible.name: "Menú contextual"
 
                 MenuItem {
                     text: "Reproducir"
-                    objectName: "playEventMenuItem"
-                    Accessible.name: "Reproducir"
                     onTriggered: root.playRequested(
                         model.trackId || modelData.track_id || model.track_id || 0,
                         model.title || modelData.title || "")
                 }
                 MenuItem {
                     text: "Añadir a la cola"
-                    objectName: "addToQueueMenuItem"
-                    Accessible.name: "Añadir a la cola"
                     onTriggered: root.addToQueueRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
                     text: "Abrir pista"
-                    objectName: "openTrackMenuItem"
-                    Accessible.name: "Abrir pista"
                     onTriggered: root.openTrackRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuItem {
                     text: "Abrir álbum"
-                    objectName: "openAlbumMenuItem"
-                    Accessible.name: "Abrir álbum"
                     onTriggered: root.openAlbumRequested(
                         model.trackId || modelData.track_id || model.track_id || 0)
                 }
                 MenuSeparator {}
                 MenuItem {
                     text: "Eliminar evento"
-                    objectName: "removeEventMenuItem"
-                    Accessible.name: "Eliminar evento"
                     onTriggered: root.removeRequested(
                         model.id || modelData.id || model.eventId || modelData.event_id || 0,
                         model.trackId || modelData.track_id || model.track_id || 0)

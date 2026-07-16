@@ -20,10 +20,7 @@ Rectangle {
     property string reconnectingLabel: "Reconectando\u2026"
     property string serviceName: ""
 
-    objectName: "ConnectionStatusBadge"
 
-    Accessible.role: Accessible.StatusBar
-    Accessible.name: {
         switch (root.status) {
             case ConnectionStatusBadge.CONNECTED: return connectedLabel
             case ConnectionStatusBadge.DISCONNECTED: return disconnectedLabel

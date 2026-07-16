@@ -23,8 +23,6 @@ Rectangle {
     radius: MichiTheme.radiusSm
     color: mouseArea.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
 
-    Accessible.role: Accessible.Button
-    Accessible.name: albumTitle + " - " + albumArtist
     Accessible.onPressAction: root.clicked()
 
     Column {

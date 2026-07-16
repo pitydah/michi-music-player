@@ -14,8 +14,6 @@ Rectangle {
 
     objectName: "SelectionActionBar"
 
-    Accessible.role: Accessible.ToolBar
-    Accessible.name: count > 0 ? count + " elementos seleccionados" : "Barra de selección"
     Accessible.description: "Acciones disponibles para elementos seleccionados"
 
     height: root.visible_b ? 56 : 0

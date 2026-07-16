@@ -54,8 +54,6 @@ Dialog {
             width: parent.width
             text: root.playlistName
             placeholderText: "Nombre de la playlist"
-            objectName: "editorNameInput"
-            Accessible.name: "Nombre de la playlist"
             activeFocusOnTab: true
             onTextChanged: { root._hasChanges = true; root._validationError = "" }
             Keys.onReturnPressed: root.accept()
@@ -73,8 +71,6 @@ Dialog {
             height: 80
             text: root.playlistDescription
             placeholderText: "Descripción de la playlist"
-            objectName: "editorDescriptionInput"
-            Accessible.name: "Descripción de la playlist"
             activeFocusOnTab: true
             onTextChanged: root._hasChanges = true
         }
@@ -95,14 +91,10 @@ Dialog {
                 placeholderText: "Ruta de imagen o álbum"
                 text: root._coverPath
                 readOnly: true
-                objectName: "editorCoverInput"
-                Accessible.name: "Ruta de carátula"
             }
             MichiButton {
                 text: "Examinar"
                 variant: "secondary"
-                objectName: "editorCoverBrowseButton"
-                Accessible.name: "Examinar carátula"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -126,8 +118,6 @@ Dialog {
                 text: root._saving ? "Guardando..." : "Guardar"
                 variant: "primary"
                 enabled: !root._saving
-                objectName: "editorSaveButton"
-                Accessible.name: "Guardar playlist"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -158,8 +148,6 @@ Dialog {
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-                objectName: "editorCancelButton"
-                Accessible.name: "Cancelar"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -172,8 +160,6 @@ Dialog {
         id: coverDialog
         title: "Seleccionar carátula"
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp)", "All files (*)"]
-        objectName: "editorCoverFileDialog"
-        Accessible.name: "Seleccionar carátula"
         onAccepted: {
             root._coverPath = selectedFile.toString().replace("file://", "")
             coverInput.text = root._coverPath
@@ -195,9 +181,6 @@ Dialog {
     }
 
     Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Playlist Editor"
-    objectName: "playlistEditorDialog"
         focus: root.opened
     }
 

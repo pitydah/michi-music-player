@@ -94,8 +94,6 @@ Dialog {
                 id: nameField
                 width: parent.width
                 placeholderText: "Ej: Jazz FM"
-                objectName: "editorNameField"
-                Accessible.name: "Nombre de la emisora"
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
             }
@@ -116,8 +114,6 @@ Dialog {
                 id: urlField
                 width: parent.width
                 placeholderText: "https://stream.example.com/radio"
-                objectName: "editorUrlField"
-                Accessible.name: "URL del stream"
                 Accessible.description: "Debe ser una URL válida comenzando con http:// o https://"
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
@@ -153,8 +149,6 @@ Dialog {
                     id: codecField
                     width: parent.width
                     placeholderText: "MP3, AAC, OGG..."
-                    objectName: "editorCodecField"
-                    Accessible.name: "Códec de la emisora"
                     activeFocusOnTab: true
                     Keys.onEscapePressed: root.close()
                 }
@@ -175,8 +169,6 @@ Dialog {
                     id: countryField
                     width: parent.width
                     placeholderText: "Ej: US, UK, DE..."
-                    objectName: "editorCountryField"
-                    Accessible.name: "País de la emisora"
                     activeFocusOnTab: true
                     Keys.onEscapePressed: root.close()
                 }
@@ -198,9 +190,6 @@ Dialog {
         }
 
         Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Radio Editor"
-    objectName: "radioEditorDialog"
     focus: true
             width: parent.width
             height: 1
@@ -214,8 +203,6 @@ Dialog {
             MichiButton {
                 text: "Probar conexión"
                 variant: "ghost"
-                objectName: "testConnectionBtn"
-                Accessible.name: "Probar conexión"
                 enabled: urlField.text.trim().match(/^https?:\/\//) !== null && !root._testingConnection
                 activeFocusOnTab: true
                 onClicked: {
@@ -233,8 +220,6 @@ Dialog {
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-                objectName: "editorCancelBtn"
-                Accessible.name: "Cancelar"
                 activeFocusOnTab: true
                 Keys.onEscapePressed: root.close()
                 onClicked: {
@@ -246,8 +231,6 @@ Dialog {
             MichiButton {
                 text: "Guardar"
                 variant: "primary"
-                objectName: "editorSaveBtn"
-                Accessible.name: "Guardar emisora"
                 enabled: nameField.text.trim() !== "" && urlField.text.trim() !== ""
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()

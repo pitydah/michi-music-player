@@ -23,10 +23,7 @@ Item {
     signal primaryActionRequested()
     signal secondaryActionRequested()
 
-    objectName: "ErrorState"
 
-    Accessible.role: Accessible.AlertMessage
-    Accessible.name: title
     Accessible.description: message + (details ? ". " + details : "") + (errorCode ? ". Código: " + errorCode : "")
 
     implicitWidth: childrenColumn.implicitWidth
@@ -80,8 +77,6 @@ Item {
                   ? (detailsText.visible ? "Ocultar detalles" : "Ver detalles") : ""
             visible: text !== ""
             focusPolicy: Qt.StrongFocus
-            Accessible.role: Accessible.Button
-            Accessible.name: text
 
             contentItem: Text {
                 text: parent.text

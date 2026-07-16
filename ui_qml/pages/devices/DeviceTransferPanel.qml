@@ -21,9 +21,6 @@ Item {
 
     implicitHeight: childrenRect.height
 
-    objectName: "DeviceTransferPanel"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Panel de transferencia"
 
     GlassMaterial {
         width: parent.width
@@ -42,7 +39,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Transferencias"
             }
 
             Text {
@@ -59,8 +55,6 @@ Item {
                     id: jobItem
                     width: parent.width
                     implicitHeight: 80
-                    objectName: "transferJob_" + index
-                    Accessible.name: "Transferencia: " + (modelData.file_name || modelData.name || "Archivo")
 
                     Rectangle {
                         anchors.fill: parent
@@ -139,8 +133,6 @@ Item {
                                             default: return "active"
                                         }
                                     }
-                                    objectName: "transferJobStatus_" + index
-                                    Accessible.name: text
                                 }
 
                                 MichiButton {
@@ -156,8 +148,6 @@ Item {
                                         }
                                         root.cancelTransferClicked()
                                     }
-                                    objectName: "cancelTransferButton_" + index
-                                    Accessible.name: "Cancelar transferencia"
                                 }
 
                                 MichiButton {
@@ -170,8 +160,6 @@ Item {
                                     onClicked: {
                                         root.retryTransferClicked(modelData.job_id || "")
                                     }
-                                    objectName: "retryTransferButton_" + index
-                                    Accessible.name: "Reintentar transferencia"
                                 }
                             }
                         }
@@ -184,7 +172,6 @@ Item {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.transferJobs.length === 0
-                Accessible.name: "No hay transferencias activas"
             }
 
             Row {
@@ -195,8 +182,6 @@ Item {
                     text: "Iniciar transferencia"
                     variant: "primary"
                     onClicked: root.startTransferClicked()
-                    objectName: "startTransferButton"
-                    Accessible.name: "Iniciar nueva transferencia"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()
@@ -207,8 +192,6 @@ Item {
                     variant: "ghost"
                     visible: root.transferJobs.length > 0
                     onClicked: root.cancelTransferClicked()
-                    objectName: "cancelAllTransfersButton"
-                    Accessible.name: "Cancelar todas las transferencias"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: clicked()
                     Keys.onSpacePressed: clicked()

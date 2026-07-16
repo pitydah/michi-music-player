@@ -16,10 +16,7 @@ Rectangle {
     signal dismissed()
     signal actionTriggered(string actionId)
 
-    objectName: "NotificationItem"
 
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.notification ? (root.notification.title || root.notification.text || "") : ""
     Accessible.description: {
         if (!root.notification) return ""
         const parts = []
@@ -122,8 +119,6 @@ Rectangle {
                 implicitHeight: 24
                 focusPolicy: Qt.StrongFocus
 
-                Accessible.role: Accessible.Button
-                Accessible.name: "Descartar notificación"
                 Accessible.description: "Eliminar esta notificación de la lista"
 
                 contentItem: Text {
@@ -171,8 +166,6 @@ Rectangle {
                     root.actionTriggered(root.notification ? root.notification.action : "")
                 }
 
-                Accessible.role: Accessible.Button
-                Accessible.name: text
             }
 
             MichiButton {
@@ -187,8 +180,6 @@ Rectangle {
                     root.actionTriggered("cancelJob")
                 }
 
-                Accessible.role: Accessible.Button
-                Accessible.name: "Cancelar trabajo"
             }
         }
     }

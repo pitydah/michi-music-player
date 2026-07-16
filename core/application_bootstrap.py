@@ -827,14 +827,26 @@ class ApplicationBootstrap:
 
     def _build_michi_ai(self):
         try:
-            from core.michi_ai_service import MichiAIServiceV2
-            michi = MichiAIServiceV2()
-            self.container.register("michi_ai_service", michi,
+            from core.assistant_initializer import create_assistant_composition
+            comp = create_assistant_composition(
+                metadata_service=self.container.get("metadata_service"),
+                queue_service=self.container.get("queue_service"),
+                playlist_service=self.container.get("playlist_service"),
+                confirmation_service=self.container.get("confirmation_service"),
+                job_service=self.container.get("job_service"),
+                settings_service=self.container.get("settings_service"),
+                player_service=self.container.get("playback_service"),
+                library_db=self.container.get("database"),
+                audio_lab_service=self.container.get("audio_lab_service"),
+                sync_manager=self.container.get("device_sync_service"),
+                diagnostics_service=self.container.get("diagnostics_service"),
+                mix_service=self.container.get("mix_service"),
+                navigation_bridge=None,
+            )
+            self.container.register("michi_ai_service", comp.core_service,
                                     priority=ServicePriority.CAPABILITY_GATED)
         except Exception as e:
-            logger.warning("MichiAIServiceV2 not available: %s", e)
-            self.container.register("michi_ai_service", None,
-                                    priority=ServicePriority.CAPABILITY_GATED)
+            logger.error("Michi AI composition failed: %s", e, exc_info=True)
 
     def _build_theme_and_accessibility(self):
         try:

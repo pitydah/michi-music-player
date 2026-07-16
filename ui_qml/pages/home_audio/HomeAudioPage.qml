@@ -46,14 +46,11 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Home Audio"
                 }
 
                 HomeAudioModeSelector {
                     id: modeSelector
                     width: parent.width
-                    objectName: "homeAudioModeSelector"
-                    Accessible.name: "Selector de modo Home Audio"
                     activeFocusOnTab: true
                     KeyNavigation.tab: haPanel
                     KeyNavigation.backtab: flickable
@@ -68,8 +65,6 @@ Item {
                     HomeAssistantPanel {
                         id: haPanel
                         width: parent.width
-                        objectName: "homeAssistantPanel"
-                        Accessible.name: "Panel de Home Assistant"
                         state: root.ha ? root.ha.homeAssistantState : "not_configured"
                         onConfigureClicked: {
                             if (root.ha) root.ha.configureHomeAssistant()
@@ -87,8 +82,6 @@ Item {
                     MichiMusicStreamPanel {
                         id: streamPanel
                         width: parent.width
-                        objectName: "michiMusicStreamPanel"
-                        Accessible.name: "Panel de streaming Michi Music"
                         streamState: root.ha ? root.ha.streamState : "concept"
                         activeFocusOnTab: true
                         KeyNavigation.backtab: haPanel
@@ -100,15 +93,11 @@ Item {
                 Row {
                     width: parent.width
                     spacing: MichiTheme.spacing.sm
-                    objectName: "zoneHeaderRow"
-                    Accessible.name: "Sección de zonas"
 
                     SectionHeader {
                         id: zonesHeader
                         text: "Zonas"
                         width: parent.width - 160
-                        objectName: "zonesHeader"
-                        Accessible.name: "Zonas"
                         KeyNavigation.tab: zoneRepeater
                         KeyNavigation.backtab: streamPanel
                     }
@@ -122,8 +111,6 @@ Item {
                             if (typeof navigationBridge !== "undefined" && navigationBridge)
                                 navigationBridge.navigate("group_editor")
                         }
-                        objectName: "createGroupButton"
-                        Accessible.name: "Crear grupo de zonas"
                         anchors.verticalCenter: zonesHeader.verticalCenter
                     }
                 }
@@ -135,7 +122,6 @@ Item {
                     Item {
                         width: parent.width
                         height: zoneCard.height
-                        objectName: "zoneCardItem_" + index
 
                         ZoneCard {
                             id: zoneCard
@@ -146,8 +132,6 @@ Item {
                             isMuted: modelData.muted || false
                             volume: modelData.volume || 0
                             hasLatency: (modelData.latency_ms || 0) > 0
-                            objectName: "zoneCard_" + index
-                            Accessible.name: modelData.name || "Zona"
 
                             onZoneCardClicked: {
                                 if (typeof navigationBridge !== "undefined" && navigationBridge)
@@ -171,8 +155,6 @@ Item {
                     id: devicesHeader
                     text: "Dispositivos"
                     width: parent.width
-                    objectName: "devicesHeader"
-                    Accessible.name: "Dispositivos"
                 }
 
                 Repeater {
@@ -184,8 +166,6 @@ Item {
                         receiverRoom: modelData.room || ""
                         receiverState: modelData.state || "disconnected"
                         receiverType: modelData.type || "Michi Stream"
-                        objectName: "receiverCard_" + index
-                        Accessible.name: modelData.name || "Receptor"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -197,7 +177,6 @@ Item {
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     visible: root.ha && root.ha.devices.length === 0
-                    Accessible.name: "No hay dispositivos Home Audio configurados"
                 }
 
                 GlassCard {
@@ -206,8 +185,6 @@ Item {
                     title: "Diagnóstico de red"
                     subtitle: "Mide latencia y calidad de conexión entre dispositivos."
                     variant: "base"
-                    objectName: "networkDiagnosticsCard"
-                    Accessible.name: "Diagnóstico de red"
                     activeFocusOnTab: true
                     KeyNavigation.tab: statusBadge
                     KeyNavigation.backtab: devicesHeader
@@ -219,8 +196,6 @@ Item {
                     id: statusBadge
                     text: "Experimental"
                     kind: "experimental"
-                    objectName: "experimentalBadge"
-                    Accessible.name: "Experimental"
                     KeyNavigation.backtab: diagCard
                 }
             }

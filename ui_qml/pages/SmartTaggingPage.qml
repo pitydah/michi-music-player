@@ -36,8 +36,6 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
-        objectName: "smartTaggingFlickable"
-        Accessible.name: "Contenido de etiquetado inteligente"
 
         Column {
             id: column
@@ -49,14 +47,10 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "smartTaggingTitle"
-                Accessible.name: "Smart Tagging"
             }
 
             HeroMaterial {
                 width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
-                objectName: "smartTaggingHero"
-                Accessible.name: "Hero de etiquetado inteligente"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
@@ -78,20 +72,14 @@ Item {
                 subtitle: root.selectedFile ? root.selectedFile.split("/").pop() : (root.sel && root.sel.hasSelection && root.sel.selectedTitle ? root.sel.selectedTitle : "Selecciona un archivo de audio")
                 variant: root.selectedFile || (root.sel && root.sel.hasSelection) ? "accent" : "base"
                 onClicked: fileDialog.open()
-                objectName: "smartTaggingFileCard"
-                Accessible.name: "Archivo seleccionado: " + (root.selectedFile || "ninguno")
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                objectName: "smartTaggingActionRow"
-                Accessible.name: "Acciones de etiquetado"
 
                 MichiButton {
                     text: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada" : "Seleccionar archivo"
                     variant: "primary"
-                    objectName: "smartTaggingSelectButton"
-                    Accessible.name: root.sel && root.sel.hasSelection && root.sel.selectedSource === "track_id" ? "Usar canción seleccionada de biblioteca" : "Seleccionar archivo de audio"
                     activeFocusOnTab: true
                     KeyNavigation.tab: scanBtn
                     Keys.onReturnPressed: onClicked()
@@ -110,8 +98,6 @@ Item {
                     text: root.stb && root.stb.status === "scanning" ? "Escaneando..." : "Escanear"
                     variant: "secondary"
                     enabled: root.selectedFile !== "" && (root.stb ? root.stb.status !== "scanning" : true)
-                    objectName: "smartTaggingScanButton"
-                    Accessible.name: root.selectedFile ? "Escanear archivo seleccionado" : "Selecciona un archivo primero"
                     Accessible.description: root.selectedFile ? "" : "Debes seleccionar un archivo de audio antes de escanear"
                     activeFocusOnTab: true
                     KeyNavigation.tab: clearBtn
@@ -134,8 +120,6 @@ Item {
                     text: "Limpiar"
                     variant: "ghost"
                     visible: root.selectedFile !== ""
-                    objectName: "smartTaggingClearButton"
-                    Accessible.name: "Limpiar selección"
                     activeFocusOnTab: true
                     KeyNavigation.tab: root._errorMsg !== "" ? errorMsg : (root.stb && root.stb.status !== "idle" ? statusBadge : suggestionSection)
                     KeyNavigation.backtab: scanBtn
@@ -150,9 +134,6 @@ Item {
                 text: root._errorMsg
                 color: MichiTheme.colors.error; font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
-                objectName: "smartTaggingError"
-                Accessible.name: "Error: " + root._errorMsg
-                Accessible.role: Accessible.Alert
             }
 
             StatusBadge {
@@ -164,15 +145,11 @@ Item {
                 kind: root.stb && root.stb.status === "done" ? "success" :
                       root.stb && (root.stb.status === "error" || root.stb.status === "unavailable") ? "error" : "info"
                 visible: root.stb && root.stb.status !== "idle"
-                objectName: "smartTaggingStatusBadge"
-                Accessible.name: "Estado: " + text
             }
 
             SectionHeader {
                 id: suggestionSection
                 text: "Sugerencias"; width: parent.width
-                objectName: "smartTaggingSuggestionsHeader"
-                Accessible.name: "Sugerencias de etiquetado"
             }
 
             Repeater {
@@ -180,8 +157,6 @@ Item {
 
                 GlassMaterial {
                     width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: "base"
-                    objectName: "smartTaggingSuggestion_" + index
-                    Accessible.name: modelData.field + ": " + (modelData.current || "vacío") + " → " + (modelData.suggested || "—")
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text {
@@ -207,21 +182,15 @@ Item {
                 text: "No hay sugerencias. Escanea un archivo para comenzar."
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.stb && root.stb.suggestions.length === 0
-                objectName: "smartTaggingEmptyState"
-                Accessible.name: "No hay sugerencias"
             }
 
             Row {
                 spacing: MichiTheme.spacing.sm
-                objectName: "smartTaggingApplyRow"
-                Accessible.name: "Confirmación de aplicación"
 
                 MichiButton {
                     text: root._confirmApply ? "Confirmar aplicar sugerencias" : "Aplicar sugerencias"
                     variant: root._confirmApply ? "danger" : "primary"
                     visible: root.stb && root.stb.suggestions.length > 0
-                    objectName: "smartTaggingApplyButton"
-                    Accessible.name: root._confirmApply ? "Confirmar aplicar todas las sugerencias" : "Aplicar sugerencias"
                     Accessible.description: root._confirmApply ? "Esta acción modificará los metadatos del archivo" : ""
                     activeFocusOnTab: true
                     KeyNavigation.tab: cancelApplyBtn
@@ -244,8 +213,6 @@ Item {
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root._confirmApply
-                    objectName: "smartTaggingCancelApplyButton"
-                    Accessible.name: "Cancelar aplicación de sugerencias"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: smartTaggingApplyButton
                     Keys.onReturnPressed: onClicked()
@@ -256,8 +223,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
-                objectName: "smartTaggingInfoPanel"
-                Accessible.name: "Información de interfaz"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Interfaz clásica disponible"; kind: "info" }

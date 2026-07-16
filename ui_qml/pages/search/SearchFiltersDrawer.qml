@@ -64,15 +64,12 @@ Drawer {
             }
 
             Item { width: parent.width - 120; height: 1 }
-    Accessible.role: Accessible.Pane
     focus: true
 
             MichiButton {
                 text: "Cerrar"
                 variant: "ghost"
                 anchors.verticalCenter: parent.verticalCenter
-                objectName: "searchFiltersClose"
-                Accessible.name: "Cerrar filtros"
                 onClicked: root.close()
                 Keys.onEscapePressed: root.close()
             }
@@ -94,9 +91,6 @@ Drawer {
         Column {
             width: parent.width
             spacing: MichiTheme.spacing.xs
-            objectName: "filterTypeSection"
-            Accessible.role: Accessible.Grouping
-            Accessible.name: "Filtrar por tipo"
 
             Repeater {
                 model: [
@@ -120,9 +114,6 @@ Drawer {
                     CheckBox {
                         id: typeCheck
                         checked: root._typeFilters[modelData.key] !== false
-                        objectName: "filterCheck_" + modelData.key
-                        Accessible.name: "Filtrar por " + modelData.label
-                        Accessible.role: Accessible.CheckBox
 
                         onCheckedChanged: root._typeFilters[modelData.key] = checked
 
@@ -178,8 +169,6 @@ Drawer {
                 id: yearFromField
                 width: parent.width * 0.45
                 placeholderText: "Desde"
-                objectName: "filterYearFrom"
-                Accessible.name: "Año desde"
                 text: root._yearFrom > 0 ? String(root._yearFrom) : ""
                 onTextChangedByUser: root._yearFrom = parseInt(text) || 0
             }
@@ -195,8 +184,6 @@ Drawer {
                 id: yearToField
                 width: parent.width * 0.45
                 placeholderText: "Hasta"
-                objectName: "filterYearTo"
-                Accessible.name: "Año hasta"
                 text: root._yearTo > 0 ? String(root._yearTo) : ""
                 onTextChangedByUser: root._yearTo = parseInt(text) || 0
             }
@@ -232,8 +219,6 @@ Drawer {
                     text: modelData.label
                     variant: root._qualityFilter === modelData.key ? "primary" : "ghost"
                     implicitHeight: 28
-                    objectName: "filterQuality_" + modelData.key
-                    Accessible.name: "Calidad " + modelData.label + (root._qualityFilter === modelData.key ? " (activo)" : "")
                     onClicked: root._qualityFilter = modelData.key
                 }
             }
@@ -248,8 +233,6 @@ Drawer {
             MichiButton {
                 text: "Aplicar filtros"
                 variant: "primary"
-                objectName: "applyFiltersBtn"
-                Accessible.name: "Aplicar filtros"
                 onClicked: {
                     root.filtersApplied(root._typeFilters, root._yearFrom, root._yearTo, root._qualityFilter)
                     root.close()
@@ -259,8 +242,6 @@ Drawer {
             MichiButton {
                 text: "Restablecer"
                 variant: "ghost"
-                objectName: "resetFiltersBtn"
-                Accessible.name: "Restablecer filtros"
                 onClicked: {
                     root._typeFilters = {
                         "track": true, "album": true, "artist": true,

@@ -21,10 +21,7 @@ Rectangle {
     property string unavailableLabel: "No disponible"
     property bool showPulse: false
 
-    objectName: "ServiceHealthBadge"
 
-    Accessible.role: Accessible.StatusBar
-    Accessible.name: {
         var healthText = ""
         switch (root.health) {
             case ServiceHealthBadge.HEALTHY: healthText = healthyLabel; break

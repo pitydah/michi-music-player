@@ -105,8 +105,6 @@ Item {
                     MichiButton {
                         text: "Exportar reporte"
                         variant: "primary"
-                        objectName: "libraryDoctor.exportReportButton"
-                        Accessible.name: "Exportar reporte de reparación"
                         onClicked: root.exportReport()
                     }
 
@@ -114,8 +112,6 @@ Item {
                         text: "Deshacer todo"
                         variant: "danger"
                         enabled: root.fixedCount > 0
-                        objectName: "libraryDoctor.undoAllButton"
-                        Accessible.name: "Deshacer todas las reparaciones"
                         onClicked: root.undoAll()
                     }
                 }

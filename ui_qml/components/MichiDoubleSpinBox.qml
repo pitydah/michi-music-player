@@ -22,8 +22,6 @@ Item {
     implicitWidth: 160
     implicitHeight: MichiTheme.minimumInteractiveSize
 
-    Accessible.role: Accessible.SpinBox
-    Accessible.name: "Valor decimal"
 
     function _formatValue(v) {
         return Number(v).toFixed(root.decimals)

@@ -52,9 +52,6 @@ FocusScope {
             }
 
             Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Responsive Toolbar"
-    objectName: "responsiveToolbar"
     focus: true
                 id: searchHost
                 Layout.fillWidth: true

@@ -33,10 +33,7 @@ Item {
 
     implicitHeight: detailColumn.height + MichiTheme.spacing.xl * 2
 
-    objectName: "radioStationDetailPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Detalle de emisora: " + (stationData ? stationData.name || "" : "")
     Accessible.description: "Estado: " + root._state
 
     function play() {
@@ -91,8 +88,6 @@ Item {
                         font.pixelSize: 28
                     }
 
-                    Accessible.role: Accessible.Graphic
-                    Accessible.name: "Icono de emisora de radio"
                 }
 
                 Column {
@@ -273,8 +268,6 @@ Item {
                 MichiButton {
                     text: root._isPlaying ? "\u25A0 Detener" : "\u25B6 Reproducir"
                     variant: root._isPlaying ? "ghost" : "primary"
-                    objectName: "playStopBtn"
-                    Accessible.name: root._isPlaying ? "Detener emisora" : "Reproducir emisora"
                     activeFocusOnTab: true
                     onClicked: root._isPlaying ? root.stop() : root.play()
                     Keys.onReturnPressed: onClicked()
@@ -284,8 +277,6 @@ Item {
                 MichiButton {
                     text: root._isFav ? "\u2605" : "\u2606"
                     variant: "ghost"
-                    objectName: "toggleFavBtn"
-                    Accessible.name: root._isFav ? "Quitar de favoritos" : "Añadir a favoritos"
                     activeFocusOnTab: true
                     onClicked: {
                         if (root.stationData) {
@@ -299,8 +290,6 @@ Item {
                 MichiButton {
                     text: "\u270E Editar"
                     variant: "ghost"
-                    objectName: "editStationBtn"
-                    Accessible.name: "Editar emisora"
                     activeFocusOnTab: true
                     visible: true
                     onClicked: root.editRequested(root.stationData)
@@ -310,8 +299,6 @@ Item {
                 MichiButton {
                     text: "\u2716"
                     variant: "danger"
-                    objectName: "deleteStationBtn"
-                    Accessible.name: "Eliminar emisora"
                     activeFocusOnTab: true
                     onClicked: {
                         if (root.stationData) root.deleteRequested(root.stationData.url)
@@ -322,8 +309,6 @@ Item {
                 MichiButton {
                     text: "Reintentar"
                     variant: "ghost"
-                    objectName: "retryStationBtn"
-                    Accessible.name: "Reintentar conexión"
                     visible: root._state === "FAILED"
                     activeFocusOnTab: true
                     onClicked: root.retry()

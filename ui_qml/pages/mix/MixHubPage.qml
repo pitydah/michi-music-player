@@ -40,8 +40,6 @@ Item {
                 HeroMaterial {
                     id: mixHero
                     width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
-                    objectName: "mixHero"
-                    Accessible.name: "Mix"
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                         Text {
@@ -60,8 +58,6 @@ Item {
                     id: yourMixesHeader
                     text: "Tus mixes"
                     width: parent.width
-                    objectName: "yourMixesHeader"
-                    Accessible.name: "Tus mixes"
                 }
 
                 Grid {
@@ -76,8 +72,6 @@ Item {
                             width: (parent.width - MichiTheme.spacing.md) / 2; height: 100
                             title: modelData.title || ""; subtitle: modelData.desc || ""
                             variant: "base"
-                            objectName: "mixCard_" + index
-                            Accessible.name: modelData.title || "Mix"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -95,15 +89,12 @@ Item {
                     id: smartMixesHeader
                     text: "Smart Mixes personalizados"
                     width: parent.width
-                    objectName: "smartMixesHeader"
-                    Accessible.name: "Smart Mixes personalizados"
                 }
 
                 Text {
                     text: "Crea mixes basados en reglas: artista, género, década, año, carpeta, calidad."
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width * 0.7; wrapMode: Text.WordWrap
-                    Accessible.name: "Crea mixes basados en reglas"
                 }
 
                 Row {
@@ -112,8 +103,6 @@ Item {
                     MichiButton {
                         id: mixArtistBtn
                         text: "+ Mix por artista"; variant: "secondary"
-                        objectName: "mixByArtistButton"
-                        Accessible.name: "Mix por artista"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixGenreBtn
                         KeyNavigation.backtab: smartMixesHeader
@@ -129,8 +118,6 @@ Item {
                     MichiButton {
                         id: mixGenreBtn
                         text: "+ Mix por género"; variant: "secondary"
-                        objectName: "mixByGenreButton"
-                        Accessible.name: "Mix por género"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixDecadeBtn
                         KeyNavigation.backtab: mixArtistBtn
@@ -146,8 +133,6 @@ Item {
                     MichiButton {
                         id: mixDecadeBtn
                         text: "+ Mix por década"; variant: "secondary"
-                        objectName: "mixByDecadeButton"
-                        Accessible.name: "Mix por década"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixAdvancedBtn
                         KeyNavigation.backtab: mixGenreBtn
@@ -163,8 +148,6 @@ Item {
                     MichiButton {
                         id: mixAdvancedBtn
                         text: "Reglas avanzadas"; variant: "ghost"
-                        objectName: "mixAdvancedRulesButton"
-                        Accessible.name: "Reglas avanzadas"
                         activeFocusOnTab: true
                         KeyNavigation.backtab: mixDecadeBtn
                         Keys.onReturnPressed: onClicked()
@@ -180,8 +163,6 @@ Item {
                     visible: root.mx === null
                     text: "Bridge no disponible"
                     kind: "disconnected"
-                    objectName: "mixBridgeStatus"
-                    Accessible.name: "Bridge de mix no disponible"
                 }
             }
         }

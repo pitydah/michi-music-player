@@ -20,8 +20,6 @@ Item {
     property string errorDetails: ""
     property var musicFolders: []
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes de biblioteca"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -95,9 +93,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.library.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes de biblioteca"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -129,9 +124,6 @@ Item {
                             clip: true
                             spacing: MichiTheme.spacing.sm
                             interactive: true
-                            objectName: "settings.library.foldersList"
-                            Accessible.role: Accessible.List
-                            Accessible.name: "Carpetas de música"
 
                             delegate: Rectangle {
                                 width: foldersList.width
@@ -157,12 +149,9 @@ Item {
                                         variant: "danger"
                                         implicitWidth: 80
                                         onClicked: root._removeFolder(modelData)
-                                        Accessible.name: "Eliminar carpeta " + modelData
                                     }
                                 }
 
-                                Accessible.role: Accessible.ListItem
-                                Accessible.name: modelData
                             }
 
                             Item {
@@ -182,7 +171,6 @@ Item {
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: folderDialog.open()
-                            Accessible.name: "Añadir carpeta de música"
                         }
                     }
                 }
@@ -209,11 +197,8 @@ Item {
                             }
                             Switch {
                                 id: watchChanges
-                                objectName: "settings.library.watchChanges"
                                 checked: root._loadValue("library/watch_changes", true)
                                 onClicked: root._saveValue("library/watch_changes", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Vigilar cambios en carpetas"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -231,11 +216,8 @@ Item {
                             }
                             Switch {
                                 id: autoScan
-                                objectName: "settings.library.autoScan"
                                 checked: root._loadValue("library/auto_scan", true)
                                 onClicked: root._saveValue("library/auto_scan", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Escanear al iniciar"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -264,7 +246,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: indexerMode
-                                objectName: "settings.library.indexerMode"
                                 model: ListModel {
                                     ListElement { text: "Rápido"; value: "quick" }
                                     ListElement { text: "Completo"; value: "full" }
@@ -278,8 +259,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("library/indexer_mode", currentValue)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Modo de indexación"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -319,7 +298,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: coverArtMode
-                                objectName: "settings.library.coverArtMode"
                                 model: ListModel {
                                     ListElement { text: "Incrustada"; value: "embedded" }
                                     ListElement { text: "Archivo externo"; value: "external" }
@@ -334,8 +312,6 @@ Item {
                                     return 2
                                 }
                                 onActivated: root._saveValue("library/cover_art_mode", currentValue)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Extracción de carátulas"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -364,11 +340,8 @@ Item {
                             }
                             Switch {
                                 id: metadataEnrichment
-                                objectName: "settings.library.metadataEnrichment"
                                 checked: root._loadValue("artist_enrichment/enabled", false)
                                 onClicked: root._saveValue("artist_enrichment/enabled", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Enriquecimiento automático"
                                 Accessible.description: "Obtener metadatos de MusicBrainz y otras fuentes"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -392,7 +365,6 @@ Item {
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: root._rescanLibrary()
-                            Accessible.name: "Reescanear biblioteca"
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -402,7 +374,6 @@ Item {
                             variant: "danger"
                             Layout.fillWidth: true
                             onClicked: confirmRescan.open()
-                            Accessible.name: "Limpiar y reescanear biblioteca"
                             Accessible.description: "Elimina la base de datos y reescanea desde cero"
                         }
                     }

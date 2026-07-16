@@ -24,8 +24,6 @@ Item {
     implicitWidth: 200
     implicitHeight: 240
 
-    Accessible.role: Accessible.Button
-    Accessible.name: playlistTitle + (trackCount > 0 ? ", " + trackCount + " canciones" : "")
 
     GlassMaterial {
         anchors.fill: parent
@@ -89,25 +87,17 @@ Item {
 
     Menu {
         id: contextMenu
-        objectName: "playlistCardContextMenu"
-        Accessible.name: "Menú contextual"
         MenuItem {
             text: "Reproducir"
-            objectName: "playPlaylistMenuItem"
-            Accessible.name: "Reproducir"
             onTriggered: root.contextMenuRequested("shuffle")
         }
         MenuItem {
             text: "Duplicar"
-            objectName: "duplicatePlaylistMenuItem"
-            Accessible.name: "Duplicar"
             onTriggered: root.contextMenuRequested("duplicate")
         }
         MenuSeparator {}
         MenuItem {
             text: "Eliminar"
-            objectName: "deletePlaylistMenuItem"
-            Accessible.name: "Eliminar"
             onTriggered: root.contextMenuRequested("delete")
         }
     }

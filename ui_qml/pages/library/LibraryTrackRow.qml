@@ -34,8 +34,6 @@ Item {
     signal selectionToggled(int id, bool ctrl, bool shift)
 
     height: 36
-    Accessible.role: Accessible.ListItem
-    Accessible.name: trackTitle + " - " + trackArtist
     Accessible.onPressAction: root.playClicked()
 
     Rectangle {

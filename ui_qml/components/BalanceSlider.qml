@@ -16,10 +16,7 @@ Item {
 
     signal balanceSliderChanged(real value)
 
-    objectName: "balanceSlider"
 
-    Accessible.role: Accessible.Slider
-    Accessible.name: "Balance"
     Accessible.description: "Ajusta el balance entre canal izquierdo y derecho"
 
     implicitWidth: 200
@@ -34,7 +31,6 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium
-            Accessible.name: "Canal izquierdo"
         }
 
         Slider {
@@ -45,8 +41,6 @@ Item {
             to: 1.0
             value: root.balance
             stepSize: 0.05
-            objectName: "balanceSliderValue"
-            Accessible.name: "Balance"
             Accessible.description: "Valor: " + value.toFixed(2)
 
             onMoved: {
@@ -62,7 +56,6 @@ Item {
             color: MichiTheme.colors.textMuted
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium
-            Accessible.name: "Canal derecho"
         }
     }
 }

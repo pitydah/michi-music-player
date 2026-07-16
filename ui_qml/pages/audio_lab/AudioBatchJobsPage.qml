@@ -15,8 +15,6 @@ Item {
     objectName: "AudioBatchJobsPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Trabajos de Audio Lab"
 
     function _cancelJob(jobId) {
         if (root.jobBr && root.jobBr.cancelJob)
@@ -50,18 +48,15 @@ Item {
                 text: "Trabajos de Audio Lab"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "jobsPageTitle"
             }
 
             Text {
                 text: "Cola, activos, historial, progreso por archivo, velocidad, ETA, reintentos, cancelación"
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "jobsPageSubtitle"
             }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "accent"
-                objectName: "jobsSummary"
                 Row {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.xl
                     Column { spacing: MichiTheme.spacing.xs
@@ -82,8 +77,6 @@ Item {
 
                 GlassMaterial {
                     width: parent.width; height: 48; radius: MichiTheme.radiusSm; variant: modelData.state === "failed" ? "danger" : modelData.state === "completed" ? "success" : "base"
-                    objectName: "activeJobItem_" + index
-                    Accessible.name: modelData.title || "Trabajo activo"
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
@@ -102,7 +95,6 @@ Item {
 
                 GlassMaterial {
                     width: parent.width; height: 40; radius: MichiTheme.radiusSm; variant: modelData.state === "completed_with_errors" ? "warning" : "base"
-                    objectName: "completedJobItem_" + index
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
@@ -119,7 +111,6 @@ Item {
 
                 GlassMaterial {
                     width: parent.width; height: 40; radius: MichiTheme.radiusSm; variant: "danger"
-                    objectName: "failedJobItem_" + index
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.30; text: modelData.title || ""; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
@@ -136,7 +127,6 @@ Item {
 
                 GlassMaterial {
                     width: parent.width; height: 36; radius: MichiTheme.radiusSm; variant: "base"
-                    objectName: "cancelledJobItem_" + index
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.50; text: modelData.title || ""; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
@@ -150,8 +140,6 @@ Item {
                 MichiButton {
                     text: "Limpiar completados"
                     variant: "secondary"
-                    objectName: "clearCompletedBtn"
-                    Accessible.name: "Limpiar trabajos completados"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -160,8 +148,6 @@ Item {
                 MichiButton {
                     text: "Limpiar fallidos"
                     variant: "danger"
-                    objectName: "clearFailedBtn"
-                    Accessible.name: "Limpiar trabajos fallidos"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -170,8 +156,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "jobsBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -183,8 +167,6 @@ Item {
                 visible: root.jobBr === null
                 text: "Bridge de trabajos no disponible"
                 kind: "disconnected"
-                objectName: "jobsBridgeStatus"
-                Accessible.name: "Bridge de trabajos no disponible"
             }
         }
     }

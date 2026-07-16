@@ -97,8 +97,6 @@ Dialog {
             MichiButton {
                 text: "Seleccionar archivo"
                 variant: "primary"
-                objectName: "selectFileBtn"
-                Accessible.name: "Seleccionar archivo para importar"
                 activeFocusOnTab: true
                 onClicked: filePickerDialog.open()
             }
@@ -129,9 +127,6 @@ Dialog {
         }
 
         Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Radio Import"
-    objectName: "radioImportDialog"
     focus: true
             width: parent.width
             height: 1
@@ -153,9 +148,6 @@ Dialog {
             clip: true
             model: root._importedStations
             visible: root._importedStations.length > 0
-            objectName: "importPreviewList"
-            Accessible.role: Accessible.List
-            Accessible.name: "Lista de emisoras para importar"
 
             delegate: Item {
                 width: parent.width
@@ -169,9 +161,6 @@ Dialog {
                         id: stationCheck
                         checked: true
                         anchors.verticalCenter: parent.verticalCenter
-                        objectName: "importCheck_" + index
-                        Accessible.name: "Seleccionar " + (modelData.name || "Emisora") + " para importar"
-                        Accessible.role: Accessible.CheckBox
 
                         onCheckedChanged: {
                             if (checked && root._selectedStations.indexOf(modelData) < 0) {
@@ -271,8 +260,6 @@ Dialog {
             MichiButton {
                 text: "Seleccionar todo"
                 variant: "ghost"
-                objectName: "selectAllBtn"
-                Accessible.name: "Seleccionar todas las emisoras"
                 visible: root._importedStations.length > 0 && !root._importing
                 activeFocusOnTab: true
                 onClicked: {
@@ -288,8 +275,6 @@ Dialog {
             MichiButton {
                 text: "Cancelar"
                 variant: "ghost"
-                objectName: "importCancelBtn"
-                Accessible.name: "Cancelar importación"
                 activeFocusOnTab: true
                 enabled: !root._importing
                 Keys.onEscapePressed: root.close()
@@ -302,8 +287,6 @@ Dialog {
             MichiButton {
                 text: "Importar"
                 variant: "primary"
-                objectName: "importConfirmBtn"
-                Accessible.name: "Confirmar importación de " + root._selectedStations.length + " emisoras"
                 enabled: root._selectedStations.length > 0 && !root._importing
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
@@ -323,8 +306,6 @@ Dialog {
             "XSPF (*.xspf)",
             "Todos (*)"
         ]
-        objectName: "filePickerDialog"
-        Accessible.name: "Seleccionar archivo de emisoras"
 
         onAccepted: {
             var path = selectedFile.toString().replace("file://", "")

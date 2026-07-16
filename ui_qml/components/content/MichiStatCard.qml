@@ -27,8 +27,6 @@ FocusScope {
     Keys.onSpacePressed: root.clicked()
 
     Rectangle { anchors.fill: parent; radius: MichiTheme.radiusMd; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard; border.color: MichiTheme.colors.borderCard; border.width: MichiTheme.borderWidth }
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Stat Card"
     objectName: "michiStatCard"
     focus: true
     Column {

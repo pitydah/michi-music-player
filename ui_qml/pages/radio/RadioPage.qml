@@ -96,8 +96,6 @@ Item {
                 HeroMaterial {
                     id: radioHero
                     width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
-                    objectName: "radioHero"
-                    Accessible.name: "Radio"
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                         Text {
@@ -120,8 +118,6 @@ Item {
                     id: radioSearch
                     width: parent.width
                     placeholderText: "Buscar emisoras..."
-                    objectName: "radioSearchField"
-                    Accessible.name: "Buscar emisoras"
                     onSearchTextChanged: root.doSearch(text)
                     activeFocusOnTab: true
                     KeyNavigation.tab: favoritesSection
@@ -132,8 +128,6 @@ Item {
                     id: favoritesSection
                     text: "Favoritas"
                     width: parent.width
-                    objectName: "favoritesSection"
-                    Accessible.name: "Favoritas"
                 }
 
                 Repeater {
@@ -142,8 +136,6 @@ Item {
                     RadioStationDetail {
                         width: parent.width
                         stationData: modelData
-                        objectName: "favoriteStation_" + index
-                        Accessible.name: modelData.name || "Emisora favorita"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onPlayRequested()
                         Keys.onSpacePressed: onPlayRequested()
@@ -164,15 +156,12 @@ Item {
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width; wrapMode: Text.WordWrap
                     visible: root.rd && root.rd.favorites.length === 0
-                    Accessible.name: "No hay emisoras favoritas"
                 }
 
                 SectionHeader {
                     id: allStationsHeader
                     text: "Todas las emisoras"
                     width: parent.width
-                    objectName: "allStationsHeader"
-                    Accessible.name: "Todas las emisoras"
                 }
 
                 Repeater {
@@ -181,8 +170,6 @@ Item {
                     RadioStationDetail {
                         width: parent.width
                         stationData: modelData
-                        objectName: "allStation_" + index
-                        Accessible.name: modelData.name || "Emisora"
                         activeFocusOnTab: true
                         visible: {
                             if (root._filterText === "") return true
@@ -212,7 +199,6 @@ Item {
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width; wrapMode: Text.WordWrap
                     visible: root.rd && root.rd.stations.length === 0
-                    Accessible.name: "No hay emisoras configuradas"
                 }
 
                 MichiButton {
@@ -220,8 +206,6 @@ Item {
                     text: _showAddStation ? "Cancelar" : "Añadir emisora"
                     variant: "ghost"
                     anchors.horizontalCenter: parent.horizontalCenter
-                    objectName: "addStationButton"
-                    Accessible.name: _showAddStation ? "Cancelar" : "Añadir emisora"
                     activeFocusOnTab: true
                     KeyNavigation.tab: addStationForm
                     KeyNavigation.backtab: allStationsHeader
@@ -239,29 +223,23 @@ Item {
 
                     SearchField {
                         placeholderText: "Nombre"; width: parent.width; onTextChangedByUser: _newName = text
-                        objectName: "newStationName"; Accessible.name: "Nombre de la emisora"
                         activeFocusOnTab: true
                     }
                     SearchField {
                         placeholderText: "URL del stream"; width: parent.width; onTextChangedByUser: _newUrl = text
-                        objectName: "newStationUrl"; Accessible.name: "URL del stream"
                         activeFocusOnTab: true
                     }
                     SearchField {
                         placeholderText: "Codec (MP3, AAC, ...)"; width: parent.width; onTextChangedByUser: _newCodec = text
-                        objectName: "newStationCodec"; Accessible.name: "Codec"
                         activeFocusOnTab: true
                     }
                     SearchField {
                         placeholderText: "País"; width: parent.width; onTextChangedByUser: _newCountry = text
-                        objectName: "newStationCountry"; Accessible.name: "País"
                         activeFocusOnTab: true
                     }
                     MichiButton {
                         text: "Añadir"; variant: "primary"
                         anchors.horizontalCenter: parent.horizontalCenter
-                        objectName: "confirmAddStation"
-                        Accessible.name: "Añadir emisora"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -273,8 +251,6 @@ Item {
                     id: historySection
                     text: "Historial reciente"
                     width: parent.width
-                    objectName: "historySection"
-                    Accessible.name: "Historial reciente"
                 }
                 Repeater {
                     model: root.rd && typeof root.rd.history !== "undefined" ? root.rd.history : []
@@ -291,8 +267,6 @@ Item {
                     id: radioStatusBadge
                     text: "Radio QML — " + (root.rd && root.rd.stations ? root.rd.stations.length + " emisoras" : "0 emisoras")
                     kind: "info"
-                    objectName: "radioStatusBadge"
-                    Accessible.name: "Estado de Radio"
                 }
             }
         }

@@ -31,8 +31,6 @@ FocusScope {
     Keys.onSpacePressed: root.clicked()
 
     Rectangle { anchors.fill: parent; radius: MichiTheme.radiusMd; color: root.selected ? MichiTheme.colors.accentSelection : hover.hovered ? MichiTheme.colors.surfaceHover : MichiTheme.colors.surfaceCard }
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Artist Tile"
     objectName: "michiArtistTile"
     focus: true
     Image { id: portrait; anchors.horizontalCenter: parent.horizontalCenter; y: MichiTheme.spacing.md; width: parent.width - MichiTheme.spacing.xl; height: width; source: root.coverSource; fillMode: Image.PreserveAspectCrop; visible: source.toString() !== "" }

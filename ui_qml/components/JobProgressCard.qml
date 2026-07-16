@@ -25,10 +25,7 @@ Rectangle {
     signal cancelRequested()
     signal cardClicked()
 
-    objectName: "JobProgressCard"
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: jobTitle || "Trabajo en progreso"
     Accessible.description: statusText + (indeterminate ? "" : " " + Math.round((progress - from) / Math.max(1, to - from) * 100) + "%")
 
     implicitHeight: column.implicitHeight + MichiTheme.spacing.lg * 2
@@ -81,8 +78,6 @@ Rectangle {
                 visible: root.showCancel
                 focusPolicy: Qt.StrongFocus
 
-                Accessible.role: Accessible.Button
-                Accessible.name: root.cancelText || "Cancelar"
 
                 contentItem: Text {
                     text: root.cancelText || "\u00D7"

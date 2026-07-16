@@ -38,7 +38,6 @@ Item {
             delegate: Rectangle {
                 width: jobList.width; height: 56
                 color: MichiTheme.colors.surfaceCard; radius: MichiTheme.radius.sm
-                Accessible.name: model.title || ""; Accessible.description: "Trabajo " + (model.state || "")
 
                 RowLayout {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm

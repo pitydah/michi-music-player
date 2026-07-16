@@ -72,8 +72,6 @@ Dialog {
                 id: formatCombo
                 model: ["json", "csv"]
                 currentIndex: root._exportFormat === "csv" ? 1 : 0
-                objectName: "exportFormatCombo"
-                Accessible.name: "Formato de exportación"
                 onCurrentTextChanged: {
                     root._exportFormat = currentText
                     root._estimateSize()
@@ -100,14 +98,10 @@ Dialog {
                 placeholderText: "Selecciona ruta de destino..."
                 readOnly: true
                 text: root._exportPath
-                objectName: "exportPathInput"
-                Accessible.name: "Ruta de destino"
             }
             MichiButton {
                 text: "Examinar"
                 variant: "secondary"
-                objectName: "exportBrowseButton"
-                Accessible.name: "Examinar"
                 onClicked: saveDialog.open()
             }
         }
@@ -120,9 +114,6 @@ Dialog {
         }
 
         Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "History Export"
-    objectName: "historyExportDialog"
     focus: true
             width: parent.width
             height: 4
@@ -166,8 +157,6 @@ Dialog {
                 text: root._exporting ? "Exportando..." : root._exportPath ? "Exportar" : "Seleccionar destino"
                 variant: "primary"
                 enabled: !root._exporting && (root._exportPath !== "" || !root._exportPath)
-                objectName: "exportActionButton"
-                Accessible.name: text
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -203,8 +192,6 @@ Dialog {
             MichiButton {
                 text: root._exporting ? "Cancelar" : "Cerrar"
                 variant: "ghost"
-                objectName: "exportCancelButton"
-                Accessible.name: root._exporting ? "Cancelar exportación" : "Cerrar"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -231,8 +218,6 @@ Dialog {
         nameFilters: root._exportFormat === "json" ? ["JSON files (*.json)", "All files (*)"]
                                                     : ["CSV files (*.csv)", "All files (*)"]
         defaultSuffix: root._exportFormat === "json" ? ".json" : ".csv"
-        objectName: "exportFileDialog"
-        Accessible.name: "Guardar archivo de exportación"
         onAccepted: {
             root._exportPath = selectedFile.toString().replace("file://", "")
             pathInput.text = root._exportPath

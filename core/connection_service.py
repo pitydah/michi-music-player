@@ -3,6 +3,7 @@ Wraps integrations/connections/ and integrations/michi_link/."""
 from __future__ import annotations
 
 import logging
+import contextlib
 
 logger = logging.getLogger("michi.connection_service")
 
@@ -73,10 +74,8 @@ class ConnectionService:
 
     def _publish(self, event: str, **data):
         if self._event_bus:
-            try:
+            with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
-            except Exception:
-                pass
 
     def health(self) -> dict:
         return {

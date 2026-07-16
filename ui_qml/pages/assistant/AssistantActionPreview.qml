@@ -23,8 +23,6 @@ Item {
     implicitHeight: previewVisible ? contentColumn.height + MichiTheme.spacing.xl * 2 : 0
     width: parent ? parent.width : 400
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Vista previa de acción" + (destructive ? " - Acción destructiva" : "")
     Accessible.description: actionDescription
 
     visible: root.previewVisible
@@ -108,8 +106,6 @@ Item {
                     id: confirmBtn
                     text: root.destructive ? "Sí, continuar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
-                    objectName: "actionPreviewConfirm"
-                    Accessible.name: root.destructive ? "Sí, continuar" : "Confirmar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirm()
@@ -118,8 +114,6 @@ Item {
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
-                    objectName: "actionPreviewReject"
-                    Accessible.name: "Cancelar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.reject()

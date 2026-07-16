@@ -62,13 +62,10 @@ BaseDialog {
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium
             visible: root.affectedCount > 0
-            Accessible.name: text
         }
 
         Rectangle {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Destructive"
-    objectName: "destructiveDialog"
     focus: true
             Layout.fillWidth: true
             height: 36
@@ -96,7 +93,6 @@ BaseDialog {
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: MichiTheme.typography.weightMedium
                     wrapMode: Text.WordWrap
-                    Accessible.name: "Esta acción no se puede deshacer"
                 }
             }
         }
@@ -108,7 +104,6 @@ BaseDialog {
             font.pixelSize: MichiTheme.typography.captionSize
             wrapMode: Text.WordWrap
             visible: root.backupSuggestion !== ""
-            Accessible.name: root.backupSuggestion
         }
 
         Text {
@@ -116,7 +111,6 @@ BaseDialog {
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.captionSize
             font.weight: MichiTheme.typography.weightMedium
-            Accessible.name: text
         }
 
         QQC2.TextField {
@@ -129,8 +123,6 @@ BaseDialog {
             focus: true
             selectByMouse: true
 
-            Accessible.role: Accessible.EditableText
-            Accessible.name: "Campo de confirmación"
             Accessible.description: "Escribe " + root.keyword + " para habilitar la confirmación"
 
             background: Rectangle {
@@ -167,8 +159,6 @@ BaseDialog {
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
-            objectName: "destructiveDialogCancelButton"
-            Accessible.name: root.cancelText
             Accessible.description: "Cancelar acción destructiva"
             onClicked: {
                 root.open = false
@@ -183,8 +173,6 @@ BaseDialog {
             enabled: root._keywordMatched
             focus: false
             Layout.minimumWidth: 80
-            objectName: "destructiveDialogConfirmButton"
-            Accessible.name: root.confirmText
             Accessible.description: root._keywordMatched
                 ? "Confirmar acción destructiva" : "Escribe " + root.keyword + " para habilitar"
             onClicked: {

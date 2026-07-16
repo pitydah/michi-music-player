@@ -24,10 +24,7 @@ Item {
 
     implicitHeight: Math.max(44, rowItem.implicitHeight)
 
-    objectName: "searchResultDelegate_" + delegateType + "_" + (delegateId ? delegateId : "unknown")
 
-    Accessible.role: Accessible.ListItem
-    Accessible.name: delegateTitle + " - " + delegateSubtitle
     Accessible.description: "Tipo: " + delegateType + ". Presiona Enter para abrir"
 
     SearchResultRow {
@@ -38,8 +35,6 @@ Item {
         rowTitle: root.delegateTitle
         rowSubtitle: root.delegateSubtitle
         bridge: root.bridge
-        objectName: root.objectName + "_row"
-        Accessible.name: root.Accessible.name
 
         onClicked: root.clicked()
         onPlayRequested: root.playRequested()

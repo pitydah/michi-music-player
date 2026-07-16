@@ -29,10 +29,7 @@ Item {
     signal connectRequested(string host, int port, string alias, string user, string password)
     signal cancelRequested()
 
-    objectName: "connectionSetupWizard"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Asistente de configuración de servidor"
 
     implicitHeight: 480
 
@@ -51,8 +48,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Configurar servidor"
-                objectName: "wizardTitle"
             }
 
             StackLayout {
@@ -63,8 +58,6 @@ Item {
                 Column {
                     id: step0
                     spacing: MichiTheme.spacing.md
-                    objectName: "wizardStep0"
-                    Accessible.name: "Paso 1: Elegir método de conexión"
 
                     Text { text: "Elige cómo conectar:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
@@ -75,8 +68,6 @@ Item {
                             root.step = 1
                             root.scanRequested()
                         }
-                        objectName: "wizardScanButton"
-                        Accessible.name: "Buscar servidores en la red local"
                         focus: true
                         KeyNavigation.tab: manualBtn
                         Keys.onReturnPressed: onClicked()
@@ -88,8 +79,6 @@ Item {
                         text: "Configurar manualmente"
                         variant: "ghost"
                         onClicked: root.step = 2
-                        objectName: "wizardManualButton"
-                        Accessible.name: "Configurar conexión manualmente"
                         KeyNavigation.tab: cancelBtn0
                         KeyNavigation.backtab: scanBtn
                         Keys.onReturnPressed: onClicked()
@@ -101,8 +90,6 @@ Item {
                         text: "Cancelar"
                         variant: "ghost"
                         onClicked: root.cancelRequested()
-                        objectName: "wizardCancel0"
-                        Accessible.name: "Cancelar configuración"
                         KeyNavigation.backtab: manualBtn
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -112,8 +99,6 @@ Item {
                 Column {
                     id: step1
                     spacing: MichiTheme.spacing.md
-                    objectName: "wizardStep1"
-                    Accessible.name: "Paso 2: Servidor detectado"
 
                     Text { text: "Servidor detectado:"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
                     Text { text: root.discoveredHost + ":" + root.discoveredPort; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "wizardDiscoveredHost" }
@@ -126,8 +111,6 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
-                        objectName: "wizardAliasField1"
-                        Accessible.name: "Alias del servidor"
                         Accessible.description: "Nombre opcional para identificar el servidor"
 
                         background: Rectangle {
@@ -148,8 +131,6 @@ Item {
                             text: "Conectar"
                             variant: "primary"
                             onClicked: root.connectRequested(root.discoveredHost, root.discoveredPort, root.serverAlias, "", "")
-                            objectName: "wizardConnect1"
-                            Accessible.name: "Conectar al servidor detectado"
                             KeyNavigation.tab: manualBtn1
                             KeyNavigation.backtab: aliasField1
                             Keys.onReturnPressed: onClicked()
@@ -161,8 +142,6 @@ Item {
                             text: "Configurar manualmente"
                             variant: "ghost"
                             onClicked: root.step = 2
-                            objectName: "wizardToManual"
-                            Accessible.name: "Cambiar a configuración manual"
                             KeyNavigation.tab: backToStep0
                             KeyNavigation.backtab: connectBtn1
                             Keys.onReturnPressed: onClicked()
@@ -174,8 +153,6 @@ Item {
                             text: "Atrás"
                             variant: "ghost"
                             onClicked: root.step = 0
-                            objectName: "wizardBack1"
-                            Accessible.name: "Volver al paso anterior"
                             KeyNavigation.tab: cancelBtn1
                             KeyNavigation.backtab: manualBtn1
                             Keys.onReturnPressed: onClicked()
@@ -187,8 +164,6 @@ Item {
                             text: "Cancelar"
                             variant: "ghost"
                             onClicked: root.cancelRequested()
-                            objectName: "wizardCancel1"
-                            Accessible.name: "Cancelar configuración"
                             KeyNavigation.backtab: backToStep0
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -199,8 +174,6 @@ Item {
                 Column {
                     id: step2
                     spacing: MichiTheme.spacing.md
-                    objectName: "wizardStep2"
-                    Accessible.name: "Paso 3: Conexión manual"
 
                     Text { text: "Conexión manual"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize }
 
@@ -215,8 +188,6 @@ Item {
                             root.manualHost = text
                             root.validationError = ""
                         }
-                        objectName: "wizardHostField"
-                        Accessible.name: "Host del servidor"
                         Accessible.description: "Dirección IP o nombre de host"
 
                         background: Rectangle {
@@ -242,8 +213,6 @@ Item {
                             root.manualPort = parseInt(text) || 53318
                             root.validationError = ""
                         }
-                        objectName: "wizardPortField"
-                        Accessible.name: "Puerto del servidor"
                         Accessible.description: "Número de puerto para la conexión"
 
                         background: Rectangle {
@@ -264,8 +233,6 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.serverAlias = text
-                        objectName: "wizardAliasField2"
-                        Accessible.name: "Alias del servidor"
                         Accessible.description: "Nombre opcional para identificar el servidor"
 
                         background: Rectangle {
@@ -293,8 +260,6 @@ Item {
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
                         onTextChanged: root.authUser = text
-                        objectName: "wizardUserField"
-                        Accessible.name: "Nombre de usuario"
                         Accessible.description: "Nombre de usuario para autenticación"
 
                         background: Rectangle {
@@ -316,8 +281,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.bodySize
                         echoMode: TextInput.Password
                         onTextChanged: root.authPassword = text
-                        objectName: "wizardPasswordField"
-                        Accessible.name: "Contraseña"
                         Accessible.description: "Contraseña para autenticación"
 
                         background: Rectangle {
@@ -359,8 +322,6 @@ Item {
                                 root.testResult = root.manualPort === 53318 ? "Conexión exitosa" : "Error: Puerto rechazado"
                                 root.testing = false
                             }
-                            objectName: "wizardTestButton"
-                            Accessible.name: "Probar conexión con la configuración actual"
                             KeyNavigation.tab: connectBtn2
                             KeyNavigation.backtab: passwordField
                             Keys.onReturnPressed: onClicked()
@@ -379,8 +340,6 @@ Item {
                                 }
                                 root.connectRequested(root.manualHost, root.manualPort, root.serverAlias, root.authUser, root.authPassword)
                             }
-                            objectName: "wizardConnect2"
-                            Accessible.name: "Conectar con la configuración manual"
                             KeyNavigation.tab: backToStep1
                             KeyNavigation.backtab: testBtn
                             Keys.onReturnPressed: onClicked()
@@ -392,8 +351,6 @@ Item {
                             text: "Atrás"
                             variant: "ghost"
                             onClicked: root.step = 1
-                            objectName: "wizardBack2"
-                            Accessible.name: "Volver al paso anterior"
                             KeyNavigation.tab: cancelBtn2
                             KeyNavigation.backtab: connectBtn2
                             Keys.onReturnPressed: onClicked()
@@ -405,8 +362,6 @@ Item {
                             text: "Cancelar"
                             variant: "ghost"
                             onClicked: root.cancelRequested()
-                            objectName: "wizardCancel2"
-                            Accessible.name: "Cancelar configuración"
                             KeyNavigation.backtab: backToStep1
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()

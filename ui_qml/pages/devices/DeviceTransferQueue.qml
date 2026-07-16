@@ -15,8 +15,6 @@ Item {
     implicitHeight: childrenRect.height
 
     objectName: "DeviceTransferQueue"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Cola de transferencia"
 
     GlassMaterial {
         width: parent.width
@@ -35,8 +33,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "transferQueueTitle"
-                Accessible.name: "Cola de transferencia"
             }
 
             Repeater {
@@ -58,8 +54,6 @@ Item {
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.transferJobs.length === 0
-                objectName: "transferQueueEmptyMessage"
-                Accessible.name: "No hay transferencias activas"
             }
         }
     }

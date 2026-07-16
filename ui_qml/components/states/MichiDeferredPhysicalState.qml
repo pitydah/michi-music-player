@@ -13,10 +13,7 @@ Item {
     property string details: ""
     property string iconText: "\u2699"
 
-    objectName: "DeferredPhysicalState"
 
-    Accessible.role: Accessible.AlertMessage
-    Accessible.name: title
     Accessible.description: message + (details ? ". " + details : "")
 
     implicitWidth: childrenColumn.implicitWidth

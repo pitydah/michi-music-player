@@ -17,10 +17,7 @@ Item {
 
     signal goBack()
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: sectionTitle
 
-    objectName: "placeholderPage_" + routeName
 
     Column {
         anchors.centerIn: parent
@@ -76,8 +73,6 @@ Item {
             MichiButton {
                 text: "Volver"
                 variant: "ghost"
-                objectName: "placeholderGoBack_" + root.routeName
-                Accessible.name: "Volver"
                 KeyNavigation.tab: openClassicBtn
                 onClicked: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)
@@ -91,8 +86,6 @@ Item {
                 id: openClassicBtn
                 text: "Abrir en ventana clásica"
                 variant: "secondary"
-                objectName: "placeholderOpenClassic_" + root.routeName
-                Accessible.name: "Abrir en ventana clásica"
                 KeyNavigation.backtab: parent.children[0]
                 onClicked: {
                     if (typeof navigationBridge !== "undefined" && navigationBridge)

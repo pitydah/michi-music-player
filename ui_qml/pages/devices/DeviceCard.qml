@@ -21,9 +21,6 @@ Item {
 
     implicitHeight: 80
 
-    objectName: "DeviceCard"
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.deviceAlias || (root.paired ? "Dispositivo vinculado" : "Dispositivo detectado")
 
     GlassMaterial {
         anchors.fill: parent
@@ -62,8 +59,6 @@ Item {
                     text: root.deviceAlias || "Dispositivo"
                     color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium; elide: Text.ElideRight; width: parent.width
-                    objectName: "deviceCardName"
-                    Accessible.name: text
                 }
                 Text {
                     text: root.deviceIp ? root.deviceIp + ":" + root.devicePort : root.deviceType
@@ -75,8 +70,6 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.paired ? "Vinculado" : "Detectado"
                 kind: root.paired ? "success" : "info"
-                objectName: "deviceCardBadge"
-                Accessible.name: text
             }
         }
     }

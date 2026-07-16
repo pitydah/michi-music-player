@@ -20,11 +20,8 @@ Item {
     property var _comparisonResult: null
     property string _errorMessage: ""
 
-    objectName: "AudioComparisonPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Comparación de audio"
 
     readonly property int stateIdle: 0
     readonly property int stateComparing: 1
@@ -85,20 +82,17 @@ Item {
                 text: "Comparación de audio"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "comparisonPageTitle"
             }
 
             Text {
                 text: "Compara variantes por formato, codec, bitrate, sample rate, bit depth, canales, tamaño, loudness, pico"
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "comparisonPageSubtitle"
             }
 
             SectionHeader { text: "Archivo A"; width: parent.width; objectName: "fileAHeader"; Accessible.name: "Archivo A" }
 
             AudioInputSelection {
                 id: inputSelectionA
-                objectName: "comparisonInputA"
                 onFilesSelected: { root._fileA = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
@@ -106,7 +100,6 @@ Item {
 
             AudioInputSelection {
                 id: inputSelectionB
-                objectName: "comparisonInputB"
                 onFilesSelected: { root._fileB = filepaths && filepaths.length > 0 ? filepaths[0] : null; root._comparisonResult = null; root._state = root.stateIdle }
             }
 
@@ -114,7 +107,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: root._comparisonResult ? "accent" : "base"
-                objectName: "comparisonDimsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Repeater {
@@ -146,8 +138,6 @@ Item {
                     text: "Comparar"
                     variant: "primary"
                     enabled: root._fileA !== null && root._fileB !== null && root._state !== root.stateComparing
-                    objectName: "compareBtn"
-                    Accessible.name: "Comparar archivos"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -157,8 +147,6 @@ Item {
                     text: "Intercambiar A/B"
                     variant: "secondary"
                     enabled: root._fileA !== null && root._fileB !== null
-                    objectName: "swapABBtn"
-                    Accessible.name: "Intercambiar archivos A y B"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -167,8 +155,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "comparisonBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -180,8 +166,6 @@ Item {
                 visible: root.labService === null
                 text: "Bridge no disponible"
                 kind: "disconnected"
-                objectName: "comparisonBridgeStatus"
-                Accessible.name: "Bridge no disponible"
             }
         }
     }

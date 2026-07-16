@@ -198,10 +198,8 @@ class QueueService:
 
     def _publish(self, event: str, **data):
         if self._event_bus:
-            try:
+            with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
-            except Exception:
-                pass
 
     def _sync(self):
         if self._player and hasattr(self._player, 'set_queue'):

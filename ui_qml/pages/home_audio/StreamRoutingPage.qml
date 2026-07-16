@@ -20,10 +20,7 @@ Item {
     signal streamAssigned(string zoneId, string streamId)
     signal backClicked()
 
-    objectName: "streamRoutingPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Enrutamiento de stream"
 
     AsyncStateView {
         id: asyncView
@@ -39,7 +36,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
-            objectName: "streamRoutingFlickable"
 
             Column {
                 id: column
@@ -50,8 +46,6 @@ Item {
                     text: "< Volver"
                     variant: "ghost"
                     onClicked: root.backClicked()
-                    objectName: "streamRoutingBackButton"
-                    Accessible.name: "Volver"
                     Keys.onReturnPressed: root.backClicked()
                     Keys.onSpacePressed: root.backClicked()
                 }
@@ -61,8 +55,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Enrutamiento de stream"
-                    objectName: "streamRoutingTitle"
                 }
 
                 Text {
@@ -86,8 +78,6 @@ Item {
                         height: 80
                         radius: MichiTheme.radiusMd
                         variant: "base"
-                        objectName: "streamRoutingZoneCard_" + index
-                        Accessible.name: "Zona: " + (modelData.name || "")
 
                         Row {
                             anchors.fill: parent
@@ -126,8 +116,6 @@ Item {
                                 text: "Cambiar stream"
                                 variant: "ghost"
                                 onClicked: root.streamAssigned(modelData.id || "", root.activeStreamId)
-                                objectName: "streamRoutingChangeButton_" + index
-                                Accessible.name: "Cambiar stream para " + (modelData.name || "zona")
                             }
                         }
                     }

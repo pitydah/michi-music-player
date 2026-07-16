@@ -71,8 +71,6 @@ Item {
                         text: root._cancelling ? "Cancelando..." : "Cancelar"
                         variant: "ghost"
                         enabled: !root._cancelling
-                        objectName: "libraryDoctor.cancelRepairProgressButton"
-                        Accessible.name: "Cancelar reparación en curso"
                         onClicked: {
                             root._cancelling = true
                             root.cancelRequested()
@@ -83,8 +81,6 @@ Item {
                         text: "Reintentar fallidos"
                         variant: "primary"
                         enabled: false
-                        objectName: "libraryDoctor.retryFailedButton"
-                        Accessible.name: "Reintentar reparaciones fallidas"
                         visible: false
                         onClicked: root.retryFailed()
                     }

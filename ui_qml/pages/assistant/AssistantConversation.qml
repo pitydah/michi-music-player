@@ -18,8 +18,6 @@ Item {
     implicitHeight: 300
     width: parent ? parent.width : 400
 
-    Accessible.role: Accessible.List
-    Accessible.name: "Historial de conversación"
 
     Flickable {
         id: flickable
@@ -28,8 +26,6 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
-        objectName: "conversationFlickable"
-        Accessible.name: "Historial de mensajes"
 
         Column {
             id: column
@@ -47,9 +43,6 @@ Item {
                     color: model.role === "user" ? MichiTheme.colors.accentSelection : MichiTheme.colors.surfaceCard
                     border.color: model.role === "user" ? MichiTheme.colors.borderActive : MichiTheme.colors.borderSubtle
                     border.width: MichiTheme.borderWidth
-                    objectName: "message_" + index
-                    Accessible.name: (model.role === "user" ? "Tú" : "Michi AI") + ": " + (model.text || "")
-                    Accessible.role: Accessible.ListItem
 
                     anchors.left: model.role === "user" ? undefined : parent.left
                     anchors.right: model.role === "user" ? parent.right : undefined

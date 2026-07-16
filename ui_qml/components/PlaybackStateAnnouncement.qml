@@ -15,10 +15,7 @@ Item {
 
     signal announcementFinished()
 
-    objectName: "playbackStateAnnouncement"
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: {
         if (root.playbackState === "playing") return "Reproduciendo: " + root.trackTitle + " - " + root.trackArtist
         if (root.playbackState === "paused") return "Pausado: " + root.trackTitle
         if (root.playbackState === "stopped") return "Reproducción detenida"

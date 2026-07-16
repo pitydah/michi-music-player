@@ -18,8 +18,6 @@ Item {
     property string errorMessage: ""
     property string errorDetails: ""
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes de accesibilidad"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -52,9 +50,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.accessibility.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes de accesibilidad"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -90,11 +85,8 @@ Item {
                             }
                             Switch {
                                 id: monoMode
-                                objectName: "settings.accessibility.mono"
                                 checked: root._loadValue("accessibility/mono", false)
                                 onClicked: root._saveValue("accessibility/mono", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Mono"
                                 Accessible.description: "Mezclar canales estéreo a mono"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -123,7 +115,6 @@ Item {
 
                             MichiSlider {
                                 id: balanceSlider
-                                objectName: "settings.accessibility.balance"
                                 implicitWidth: 200
                                 from: -1.0
                                 to: 1.0
@@ -171,7 +162,6 @@ Item {
 
                             MichiSlider {
                                 id: fontScaleSlider
-                                objectName: "settings.accessibility.fontScale"
                                 implicitWidth: 200
                                 from: 75
                                 to: 150
@@ -198,11 +188,8 @@ Item {
                             }
                             Switch {
                                 id: highContrast
-                                objectName: "settings.accessibility.highContrast"
                                 checked: root._loadValue("accessibility/high_contrast", false)
                                 onClicked: root._saveValue("accessibility/high_contrast", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Alto contraste"
                                 Accessible.description: "Aumentar el contraste visual de la interfaz"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -221,11 +208,8 @@ Item {
                             }
                             Switch {
                                 id: reducedMotion
-                                objectName: "settings.accessibility.reducedMotion"
                                 checked: root._loadValue("accessibility/reduced_motion", false)
                                 onClicked: root._saveValue("accessibility/reduced_motion", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Movimiento reducido"
                                 Accessible.description: "Minimizar animaciones y movimientos"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -255,11 +239,8 @@ Item {
                             }
                             Switch {
                                 id: screenReader
-                                objectName: "settings.accessibility.screenReader"
                                 checked: root._loadValue("accessibility/screen_reader", false)
                                 onClicked: root._saveValue("accessibility/screen_reader", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Soporte para lectores de pantalla"
                                 Accessible.description: "Optimizar la interfaz para software de lectura de pantalla"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -289,11 +270,8 @@ Item {
                             }
                             Switch {
                                 id: notificationAnnouncements
-                                objectName: "settings.accessibility.notificationAnnouncements"
                                 checked: root._loadValue("accessibility/announce_notifications", true)
                                 onClicked: root._saveValue("accessibility/announce_notifications", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Anuncios de notificaciones"
                                 Accessible.description: "Anunciar notificaciones mediante el lector de pantalla"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -312,11 +290,8 @@ Item {
                             }
                             Switch {
                                 id: errorAnnouncements
-                                objectName: "settings.accessibility.errorAnnouncements"
                                 checked: root._loadValue("accessibility/announce_errors", true)
                                 onClicked: root._saveValue("accessibility/announce_errors", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Anuncios de errores"
                                 Accessible.description: "Anunciar mensajes de error"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -335,11 +310,8 @@ Item {
                             }
                             Switch {
                                 id: playbackAnnouncements
-                                objectName: "settings.accessibility.playbackAnnouncements"
                                 checked: root._loadValue("accessibility/announce_playback", true)
                                 onClicked: root._saveValue("accessibility/announce_playback", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Anuncios de estado de reproducción"
                                 Accessible.description: "Anunciar cambios de canción y estado"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -369,11 +341,8 @@ Item {
                             }
                             Switch {
                                 id: showShortcuts
-                                objectName: "settings.accessibility.showShortcuts"
                                 checked: root._loadValue("accessibility/show_shortcuts", true)
                                 onClicked: root._saveValue("accessibility/show_shortcuts", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Mostrar indicadores de atajos de teclado"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }

@@ -27,8 +27,6 @@ Rectangle {
     radius: MichiTheme.radiusSm
     visible: message !== ""
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.message
 
     color: {
         switch (root.variant) {
@@ -97,8 +95,6 @@ Rectangle {
                     root.dismissed()
                 }
             }
-            Accessible.role: Accessible.Button
-            Accessible.name: "Descartar"
         }
     }
 }

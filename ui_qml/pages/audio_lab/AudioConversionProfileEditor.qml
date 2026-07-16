@@ -25,11 +25,8 @@ Item {
     property int _profileChannels: 2
     property string _validationError: ""
 
-    objectName: "AudioConversionProfileEditor"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Editor de perfiles de conversión"
 
     property var _formatOptions: [
         { label: "FLAC", codec: "flac", lossless: true },
@@ -105,13 +102,11 @@ Item {
                 text: root._editing ? "Editar perfil: " + root._profileName : "Perfiles de conversión"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "profileEditorTitle"
             }
 
             Text {
                 text: "Portable MP3, Portable AAC, Efficient Opus, Lossless FLAC, Archival FLAC, PCM WAV"
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "profileEditorSubtitle"
             }
 
             SectionHeader { text: "Perfiles predefinidos"; width: parent.width; objectName: "presetsHeader"; Accessible.name: "Perfiles predefinidos" }
@@ -121,8 +116,6 @@ Item {
 
                 GlassMaterial {
                     width: parent.width; height: 56; radius: MichiTheme.radiusSm; variant: "base"
-                    objectName: "presetProfile_" + index
-                    Accessible.name: modelData.name
                     Row {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
                         Text { width: parent.width * 0.20; text: modelData.name; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.bodySize; font.weight: MichiTheme.typography.weightMedium; anchors.verticalCenter: parent.verticalCenter; elide: Text.ElideRight }
@@ -142,12 +135,10 @@ Item {
                 width: parent.width
                 showDismiss: true
                 onDismissed: root._validationError = ""
-                objectName: "profileValidationError"
             }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "profileEditorPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -158,8 +149,6 @@ Item {
                             focusPolicy: Qt.StrongFocus
                             width: parent.width - 100; text: root._profileName
                             placeholderText: "Nombre del perfil"
-                            objectName: "profileNameField"
-                            Accessible.name: "Nombre del perfil"
                             font.pixelSize: MichiTheme.typography.bodySize
                             color: MichiTheme.colors.textPrimary
                             background: Rectangle { color: MichiTheme.colors.surfaceInput; radius: MichiTheme.radiusSm; border.width: parent.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth; border.color: parent.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard }
@@ -176,8 +165,6 @@ Item {
                             model: root._formatOptions
                             textRole: "label"
                             width: parent.width - 100
-                            objectName: "editFormatCombo"
-                            Accessible.name: "Formato"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: {
                                 var item = root._formatOptions[currentIndex]
@@ -193,8 +180,6 @@ Item {
                             focusPolicy: Qt.StrongFocus
                             model: root._bitrateOptions
                             width: parent.width - 100
-                            objectName: "editBitrateCombo"
-                            Accessible.name: "Bitrate"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._profileBitrate = root._bitrateOptions[currentIndex]
                         }
@@ -207,8 +192,6 @@ Item {
                             focusPolicy: Qt.StrongFocus
                             model: root._sampleRateOptions
                             width: parent.width - 100
-                            objectName: "editSampleRateCombo"
-                            Accessible.name: "Sample rate"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._profileSampleRate = root._sampleRateOptions[currentIndex]
                         }
@@ -221,8 +204,6 @@ Item {
                             focusPolicy: Qt.StrongFocus
                             model: root._bitDepthOptions
                             width: parent.width - 100
-                            objectName: "editBitDepthCombo"
-                            Accessible.name: "Bit depth"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._profileBitDepth = root._bitDepthOptions[currentIndex]
                         }
@@ -235,8 +216,6 @@ Item {
                             focusPolicy: Qt.StrongFocus
                             model: root._channelsOptions
                             width: parent.width - 100
-                            objectName: "editChannelsCombo"
-                            Accessible.name: "Canales"
                             activeFocusOnTab: true
                             onCurrentIndexChanged: root._profileChannels = root._channelsOptions[currentIndex]
                         }
@@ -250,8 +229,6 @@ Item {
                     text: "Guardar perfil"
                     variant: "primary"
                     enabled: root._profileName.trim() !== ""
-                    objectName: "saveProfileBtn"
-                    Accessible.name: "Guardar perfil"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -261,8 +238,6 @@ Item {
                     text: "Eliminar perfil"
                     variant: "danger"
                     enabled: root._editing
-                    objectName: "deleteProfileBtn"
-                    Accessible.name: "Eliminar perfil"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -271,8 +246,6 @@ Item {
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
-                    objectName: "cancelProfileBtn"
-                    Accessible.name: "Cancelar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()

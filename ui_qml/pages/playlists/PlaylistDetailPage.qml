@@ -181,8 +181,6 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         activeFocusOnTab: true
-        objectName: "playlistDetailFlickable"
-        Accessible.name: "Detalle de playlist"
 
         Column {
             id: column
@@ -196,8 +194,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "playlistDetailBackButton"
-                    Accessible.name: "Volver a playlists"
                     activeFocusOnTab: true
                     KeyNavigation.tab: playAllBtn
                     KeyNavigation.backtab: flickable
@@ -214,7 +210,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
                     anchors.verticalCenter: parent.verticalCenter
-                    Accessible.name: root.playlistTitle
                 }
 
                 Item { Layout.fillWidth: true; height: 1; width: 1 }
@@ -236,7 +231,6 @@ Item {
                         text: root.trackCount + " canciones"
                         color: MichiTheme.colors.textSecondary
                         font.pixelSize: MichiTheme.typography.bodySize
-                        Accessible.name: root.trackCount + " canciones"
                     }
                     Text {
                         text: root._duration.length > 0 ? "Duración: " + root._duration : ""
@@ -260,8 +254,6 @@ Item {
                 visible: root._state === "LOADING"
                 title: "Cargando playlist"
                 message: "Obteniendo canciones..."
-                objectName: "playlistDetailLoadingState"
-                Accessible.name: "Cargando playlist"
             }
 
             EmptyState {
@@ -272,8 +264,6 @@ Item {
                 subtitle: "Agrega canciones desde la biblioteca usando el botón 'Agregar canciones'."
                 actionText: "Agregar canciones"
                 showAction: true
-                objectName: "playlistDetailEmptyState"
-                Accessible.name: "Playlist vacía"
                 onActionClicked: root.addTracks()
             }
 
@@ -283,8 +273,6 @@ Item {
                 title: "Error al cargar"
                 message: root._errorMsg || "No se pudo cargar la playlist."
                 showRetry: true
-                objectName: "playlistDetailErrorState"
-                Accessible.name: "Error al cargar playlist"
                 onRetryRequested: root.refresh()
             }
 
@@ -295,8 +283,6 @@ Item {
                     id: playAllBtn
                     text: "Reproducir todo"
                     variant: "primary"
-                    objectName: "playAllButton"
-                    Accessible.name: "Reproducir todo"
                     activeFocusOnTab: true
                     KeyNavigation.tab: shuffleBtn
                     Keys.onReturnPressed: onClicked()
@@ -307,8 +293,6 @@ Item {
                     id: shuffleBtn
                     text: "Aleatorio"
                     variant: "secondary"
-                    objectName: "shuffleButton"
-                    Accessible.name: "Reproducir aleatorio"
                     activeFocusOnTab: true
                     KeyNavigation.tab: addTracksBtn
                     KeyNavigation.backtab: playAllBtn
@@ -320,8 +304,6 @@ Item {
                     id: addTracksBtn
                     text: "+ Agregar canciones"
                     variant: "secondary"
-                    objectName: "addTracksButton"
-                    Accessible.name: "Agregar canciones"
                     activeFocusOnTab: true
                     KeyNavigation.tab: renameBtn
                     KeyNavigation.backtab: shuffleBtn
@@ -333,8 +315,6 @@ Item {
                     id: renameBtn
                     text: "Renombrar"
                     variant: "ghost"
-                    objectName: "renamePlaylistButton"
-                    Accessible.name: "Renombrar playlist"
                     activeFocusOnTab: true
                     KeyNavigation.tab: duplicateBtn
                     KeyNavigation.backtab: addTracksBtn
@@ -346,8 +326,6 @@ Item {
                     id: duplicateBtn
                     text: "Duplicar"
                     variant: "ghost"
-                    objectName: "duplicatePlaylistButton"
-                    Accessible.name: "Duplicar playlist"
                     activeFocusOnTab: true
                     KeyNavigation.tab: exportBtn
                     KeyNavigation.backtab: renameBtn
@@ -359,8 +337,6 @@ Item {
                     id: exportBtn
                     text: "Exportar M3U"
                     variant: "ghost"
-                    objectName: "exportM3UButton"
-                    Accessible.name: "Exportar playlist como M3U"
                     activeFocusOnTab: true
                     KeyNavigation.tab: selectToggleBtn
                     KeyNavigation.backtab: duplicateBtn
@@ -373,8 +349,6 @@ Item {
                     text: root._selectionMode ? "Cancelar selección" : "Seleccionar"
                     variant: "ghost"
                     highlighted: root._selectionMode
-                    objectName: "selectToggleButton"
-                    Accessible.name: root._selectionMode ? "Cancelar selección" : "Seleccionar canciones"
                     activeFocusOnTab: true
                     KeyNavigation.tab: batchRemoveBtn
                     KeyNavigation.backtab: exportBtn
@@ -387,8 +361,6 @@ Item {
                     text: "Quitar seleccionadas (" + root._selectedTracks.length + ")"
                     variant: "danger"
                     visible: root._selectionMode && root._selectedTracks.length > 0
-                    objectName: "batchRemoveButton"
-                    Accessible.name: "Quitar canciones seleccionadas"
                     activeFocusOnTab: true
                     KeyNavigation.tab: deleteBtn
                     KeyNavigation.backtab: selectToggleBtn
@@ -400,8 +372,6 @@ Item {
                     id: deleteBtn
                     text: root._confirmDelete ? "Confirmar eliminar" : "Eliminar playlist"
                     variant: root._confirmDelete ? "danger" : "ghost"
-                    objectName: "deletePlaylistButton"
-                    Accessible.name: root._confirmDelete ? "Confirmar eliminar playlist" : "Eliminar playlist"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: batchRemoveBtn
                     Keys.onReturnPressed: onClicked()
@@ -415,8 +385,6 @@ Item {
                     text: "Cancelar"
                     variant: "ghost"
                     visible: root._confirmDelete
-                    objectName: "cancelDeleteButton"
-                    Accessible.name: "Cancelar eliminación"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -434,8 +402,6 @@ Item {
                 selectionMode: root._selectionMode
                 selectedTracks: root._selectedTracks
                 visible: root._state === "READY"
-                objectName: "playlistTrackList"
-                Accessible.name: "Lista de canciones"
                 onPlayRequested: function(index) { root.playTrack(index) }
                 onRemoveRequested: function(trackId, index) { root.removeTrack(trackId, index) }
                 onMoveUpRequested: function(index) { root.moveTrack(index, index - 1) }
@@ -452,7 +418,6 @@ Item {
                 visible: text !== ""
                 wrapMode: Text.WordWrap
                 width: parent.width
-                Accessible.name: root._errorMsg
             }
 
             Item { width: 1; height: MichiTheme.spacing.lg }
@@ -466,9 +431,6 @@ Item {
         modal: true
         x: (parent.width - width) / 2
         y: (parent.height - height) / 3
-        objectName: "renamePlaylistDialog"
-        Accessible.role: Accessible.Dialog
-        Accessible.name: "Renombrar playlist"
         closePolicy: Popup.CloseOnEscape
 
         Column {
@@ -485,8 +447,6 @@ Item {
                 id: renameInput
                 text: root.playlistTitle
                 width: parent.width
-                objectName: "renamePlaylistInput"
-                Accessible.name: "Nuevo nombre"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: renameDialog.accept()
                 Keys.onEscapePressed: renameDialog.reject()
@@ -508,8 +468,6 @@ Item {
         bridge: root.bridge
         playlistId: root.playlistId
         playlistName: root.playlistTitle
-        objectName: "playlistExportDialog"
-        Accessible.name: "Exportar playlist"
     }
 
     Keys.onEscapePressed: {

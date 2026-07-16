@@ -20,9 +20,6 @@ Item {
 
     implicitHeight: dialogVisible ? 280 : 0
 
-    objectName: "DevicePairingDialog"
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Vincular dispositivo"
 
     GlassMaterial {
         width: parent.width
@@ -42,8 +39,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "pairingDialogTitle"
-                Accessible.name: "Vincular dispositivo"
             }
 
             Text {
@@ -52,7 +47,6 @@ Item {
                 font.pixelSize: MichiTheme.typography.bodySize
                 wrapMode: Text.WordWrap
                 width: parent.width
-                objectName: "pairingDialogDescription"
             }
 
             Row {
@@ -63,8 +57,6 @@ Item {
                     id: pairingNameField
                     width: 200
                     placeholderText: root.detectedDeviceName || "Nombre del dispositivo"
-                    objectName: "pairingDialogNameField"
-                    Accessible.name: "Nombre del dispositivo"
                 }
             }
 
@@ -81,16 +73,12 @@ Item {
                     text: "Vincular"
                     variant: "primary"
                     onClicked: root.pairRequested(root.detectedDeviceName, root.detectedDeviceType)
-                    objectName: "pairingDialogPairButton"
-                    Accessible.name: "Vincular dispositivo"
                 }
 
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
                     onClicked: root.cancelRequested()
-                    objectName: "pairingDialogCancelButton"
-                    Accessible.name: "Cancelar vinculación"
                 }
             }
         }

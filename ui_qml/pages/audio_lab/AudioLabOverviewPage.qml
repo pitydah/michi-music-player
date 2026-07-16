@@ -16,11 +16,8 @@ Item {
 
     property int _state: root.alab && root.alab.backendInfo && root.alab.backendInfo.available ? 1 : 0
 
-    objectName: "AudioLabOverviewPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Audio Lab"
 
     readonly property int stateLoading: 0
     readonly property int stateReady: 1
@@ -52,8 +49,6 @@ Item {
 
             HeroMaterial {
                 width: parent.width; height: 150; radius: MichiTheme.radiusLg; showGlow: true
-                objectName: "audioLabHero"
-                Accessible.name: "Audio Lab"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {
@@ -77,8 +72,6 @@ Item {
                 id: statusBadge
                 text: root._state === root.stateLoading ? "Cargando..." : root._state === root.stateReady ? "Disponible" : "No disponible"
                 kind: root._state === root.stateReady ? "success" : root._state === root.stateLoading ? "info" : "error"
-                objectName: "alabStatusBadge"
-                Accessible.name: text
             }
 
             Grid {
@@ -89,8 +82,6 @@ Item {
                     title: "Análisis técnico"
                     subtitle: "Formato, codec, bitrate, calidad"
                     variant: root._state === root.stateReady ? "accent" : "base"
-                    objectName: "alabCardAnalysis"
-                    Accessible.name: "Análisis técnico"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -101,8 +92,6 @@ Item {
                     title: "Conversión"
                     subtitle: "FLAC, MP3, AAC, Opus, WAV"
                     variant: root._state === root.stateReady ? "accent" : "base"
-                    objectName: "alabCardConversion"
-                    Accessible.name: "Conversión"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -113,8 +102,6 @@ Item {
                     title: "Normalización"
                     subtitle: "Loudness, pico, ganancia"
                     variant: root._state === root.stateReady ? "base" : "base"
-                    objectName: "alabCardNormalization"
-                    Accessible.name: "Normalización"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -125,8 +112,6 @@ Item {
                     title: "ReplayGain"
                     subtitle: "Etiquetas de ganancia"
                     variant: root._state === root.stateReady ? "base" : "base"
-                    objectName: "alabCardReplayGain"
-                    Accessible.name: "ReplayGain"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -137,8 +122,6 @@ Item {
                     title: "Integridad"
                     subtitle: "Cabeceras, corrupción, checksum"
                     variant: root._state === root.stateReady ? "status" : "base"
-                    objectName: "alabCardIntegrity"
-                    Accessible.name: "Integridad"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -149,8 +132,6 @@ Item {
                     title: "Comparación"
                     subtitle: "Diferencias entre variantes"
                     variant: root._state === root.stateReady ? "status" : "base"
-                    objectName: "alabCardComparison"
-                    Accessible.name: "Comparación"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -161,8 +142,6 @@ Item {
                     title: "Trabajos"
                     subtitle: "Cola y estado de procesos"
                     variant: root._state === root.stateReady ? "base" : "base"
-                    objectName: "alabCardJobs"
-                    Accessible.name: "Trabajos"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -173,8 +152,6 @@ Item {
                     title: "Perfiles"
                     subtitle: "Presets de conversión"
                     variant: "base"
-                    objectName: "alabCardProfiles"
-                    Accessible.name: "Perfiles"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -186,7 +163,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "backendInfoPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text { text: "Backend: " + (root.alab ? (root.alab.backendInfo ? root.alab.backendInfo.backend : "no disponible") : "no disponible"); color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.metaSize }
@@ -196,7 +172,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "status"
-                objectName: "alabStatusInfo"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     StatusBadge { text: "Experimental"; kind: "experimental"; objectName: "experimentalBadge" }
@@ -208,8 +183,6 @@ Item {
                 visible: root.alab === null
                 text: "Bridge no disponible"
                 kind: "disconnected"
-                objectName: "alabBridgeStatus"
-                Accessible.name: "Bridge de Audio Lab no disponible"
             }
         }
     }

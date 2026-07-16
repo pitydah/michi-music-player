@@ -68,7 +68,13 @@ def _make_handler(gateway: Any | None, method_name: str, error_message: str = ""
         result = method(**kwargs)
         if result is None:
             return {"ok": False, "error": f"Gateway method '{method_name}' returned None", "code": "TOOL_FAILED"}
-        return result
+        if isinstance(result, dict) and result.get("ok") is not True:
+            return result
+        if result is True:
+            return {"ok": True, "code": "SUCCESS"}
+        if isinstance(result, dict):
+            return result
+        return {"ok": False, "error": f"Gateway method '{method_name}' returned unexpected type {type(result).__name__}", "code": "TOOL_FAILED"}
     handler.__name__ = f"handler_{method_name}"
     return handler
 

@@ -9,7 +9,6 @@ from pathlib import Path
 def add_accessibility(filepath: Path) -> bool:
     content = filepath.read_text()
     lines = content.split("\n")
-    modified = False
     # Find root Item/Page/Pane line
     root_pattern = re.compile(r"^(Item|Page|Pane|Rectangle)\s*\{")
     accessible_role = '    Accessible.role: Accessible.Pane'

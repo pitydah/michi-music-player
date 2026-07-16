@@ -76,9 +76,6 @@ Item {
             model: root.tracks
             clip: true
             spacing: 1
-            objectName: "playlistTrackListView"
-            Accessible.role: Accessible.List
-            Accessible.name: "Lista de canciones"
             keyNavigationWraps: true
 
             delegate: Rectangle {
@@ -99,8 +96,6 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: root.selectionMode
                         checked: root.selectedTracks.indexOf(modelData.track_id || 0) >= 0
-                        objectName: "trackCheckbox_" + index
-                        Accessible.name: "Seleccionar " + (modelData.title || "")
                         onCheckedChanged: root.toggleSelection(modelData.track_id || 0)
                     }
 
@@ -204,48 +199,34 @@ Item {
 
                 Menu {
                     id: contextMenu
-                    objectName: "trackContextMenu_" + index
-                    Accessible.name: "Menú contextual"
 
                     MenuItem {
                         text: "Reproducir"
-                        objectName: "trackPlayMenuItem_" + index
-                        Accessible.name: "Reproducir"
                         enabled: !modelData.missing
                         onTriggered: root.playRequested(index)
                     }
                     MenuItem {
                         text: "Ir al álbum"
-                        objectName: "trackOpenAlbumMenuItem_" + index
-                        Accessible.name: "Ir al álbum"
                         onTriggered: root.openAlbumRequested(modelData)
                     }
                     MenuItem {
                         text: "Ir al artista"
-                        objectName: "trackOpenArtistMenuItem_" + index
-                        Accessible.name: "Ir al artista"
                         onTriggered: root.openArtistRequested(modelData)
                     }
                     MenuSeparator {}
                     MenuItem {
                         text: "Subir"
-                        objectName: "trackMoveUpMenuItem_" + index
-                        Accessible.name: "Subir"
                         enabled: index > 0
                         onTriggered: root.moveUpRequested(index)
                     }
                     MenuItem {
                         text: "Bajar"
-                        objectName: "trackMoveDownMenuItem_" + index
-                        Accessible.name: "Bajar"
                         enabled: index < root.tracks.length - 1
                         onTriggered: root.moveDownRequested(index)
                     }
                     MenuSeparator {}
                     MenuItem {
                         text: "Quitar de playlist"
-                        objectName: "trackRemoveMenuItem_" + index
-                        Accessible.name: "Quitar de playlist"
                         onTriggered: {
                             var tid = modelData.track_id || 0
                             if (tid) root.removeRequested(tid, index)

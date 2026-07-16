@@ -91,8 +91,6 @@ Item {
                 height: 140
                 radius: MichiTheme.radiusLg
                 showGlow: root.ai !== null
-                objectName: "aiHero"
-                Accessible.name: "Michi AI"
 
                 Column {
                     anchors.fill: parent
@@ -147,8 +145,6 @@ Item {
                 id: suggestionsHeader
                 text: "Sugerencias"
                 width: parent.width
-                objectName: "suggestionsHeader"
-                Accessible.name: "Sugerencias"
             }
 
             Repeater {
@@ -160,8 +156,6 @@ Item {
                     suggestionTitle: model.title || ""
                     suggestionDescription: model.description || ""
                     actionRoute: model.route || ""
-                    objectName: "suggestionCard_" + index
-                    Accessible.name: model.title || "Sugerencia"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onActionTriggered()
                     Keys.onSpacePressed: onActionTriggered()
@@ -180,16 +174,12 @@ Item {
                 width: parent.width
                 chatHistory: root._chatHistory
                 aiThinking: root._aiStatus === "understanding" || root._aiStatus === "planning"
-                objectName: "assistantConversation"
-                Accessible.name: "Conversación"
             }
 
             AssistantActionPreview {
                 id: actionPreview
                 width: parent.width
                 visible: false
-                objectName: "assistantActionPreview"
-                Accessible.name: "Vista previa de acción"
 
                 onConfirm: {
                     if (root.ai && typeof root.ai.sendMessage !== "undefined") {
@@ -210,8 +200,6 @@ Item {
                 id: executionResult
                 width: parent.width
                 visible: false
-                objectName: "assistantExecutionResult"
-                Accessible.name: "Resultado de ejecución"
 
                 onRetry: {
                     executionResult.visible = false
@@ -223,8 +211,6 @@ Item {
 
             AssistantConfirmationDialog {
                 id: confirmationDialog
-                objectName: "assistantConfirmationDialog"
-                Accessible.name: "Diálogo de confirmación"
                 visible: false
 
                 onConfirmed: {
@@ -256,8 +242,6 @@ Item {
                     color: MichiTheme.colors.surfaceInput
                     border.color: chatInput.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderSubtle
                     border.width: chatInput.activeFocus ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth
-                    objectName: "chatInputBackground"
-                    Accessible.name: "Entrada de chat"
 
                     TextInput {
                         id: chatInput
@@ -268,8 +252,6 @@ Item {
                         anchors.bottomMargin: MichiTheme.spacing.xs
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.bodySize
-                        objectName: "chatInput"
-                        Accessible.name: "Pregunta a Michi AI"
                         activeFocusOnTab: true
                         enabled: root._aiStatus !== "executing" && root._aiStatus !== "understanding" && root._aiStatus !== "planning"
 
@@ -303,8 +285,6 @@ Item {
                     iconText: root._executing ? "■" : ">"
                     tooltipText: root._executing ? "Cancelar" : "Enviar"
                     btnSize: MichiTheme.minimumInteractiveSize
-                    objectName: "sendMessageButton"
-                    Accessible.name: root._executing ? "Cancelar" : "Enviar mensaje"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: chatInput
                     Keys.onReturnPressed: onClicked()
@@ -331,8 +311,6 @@ Item {
                             ? "Acción cancelada"
                             : "Interfaz clásica disponible"
                 kind: root.ai === null ? "disconnected" : root._executing ? "active" : "info"
-                objectName: "aiStatusBadge"
-                Accessible.name: "Estado de Michi AI"
             }
         }
     }

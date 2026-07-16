@@ -16,10 +16,7 @@ Item {
 
     signal announcementFinished()
 
-    objectName: "notificationAnnouncement"
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.message
     Accessible.description: "Notificación: " + root.message
 
     visible: false

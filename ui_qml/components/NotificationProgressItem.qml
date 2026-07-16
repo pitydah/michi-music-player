@@ -17,10 +17,7 @@ Rectangle {
     signal canceled()
     signal actionTriggered(string actionId)
 
-    objectName: "NotificationProgressItem"
 
-    Accessible.role: Accessible.ListItem
-    Accessible.name: root.notification ? (root.notification.title || root.notification.text || "Progreso") : "Progreso"
     Accessible.description: {
         if (!root.notification) return ""
         const pct = root.notification.progress !== undefined && root.notification.progress >= 0 ? Math.round(root.notification.progress) + "%" : "indeterminado"
@@ -120,8 +117,6 @@ Rectangle {
                 implicitHeight: 24
                 focusPolicy: Qt.StrongFocus
 
-                Accessible.role: Accessible.Button
-                Accessible.name: "Descartar"
                 Accessible.description: "Eliminar este elemento de progreso"
 
                 contentItem: Text {
@@ -182,8 +177,6 @@ Rectangle {
                     root.actionTriggered("cancelJob")
                 }
 
-                Accessible.role: Accessible.Button
-                Accessible.name: "Cancelar trabajo"
                 Accessible.description: "Detener este proceso"
             }
         }

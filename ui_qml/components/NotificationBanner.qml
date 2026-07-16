@@ -21,10 +21,7 @@ Rectangle {
     signal dismissed()
     signal actionTriggered()
 
-    objectName: "NotificationBanner"
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.title || root.message || ""
     Accessible.description: root.message !== root.title ? root.message : ""
 
     implicitHeight: contentRow.implicitHeight + MichiTheme.spacing.md * 2
@@ -111,8 +108,6 @@ Rectangle {
                 root.actionTriggered()
             }
 
-            Accessible.role: Accessible.Button
-            Accessible.name: root.actionText
         }
 
         QQC2.AbstractButton {
@@ -123,8 +118,6 @@ Rectangle {
             visible: root.showDismiss
             focusPolicy: Qt.StrongFocus
 
-            Accessible.role: Accessible.Button
-            Accessible.name: "Descartar"
             Accessible.description: "Cerrar este banner"
 
             contentItem: Text {

@@ -19,7 +19,7 @@ class FolderService:
             return {"ok": False, "error": "NO_DB"}
         try:
             added = 0
-            for root, dirs, files in os.walk(path):
+            for root, _dirs, files in os.walk(path):
                 if any(d.startswith(".") for d in root.split(os.sep)):
                     continue
                 for f in files:
@@ -38,7 +38,7 @@ class FolderService:
         if not path or not os.path.isdir(path):
             return {"ok": False, "error": "INVALID_PATH"}
         try:
-            for root, dirs, files in os.walk(path):
+            for root, _dirs, files in os.walk(path):
                 for f in files:
                     fp = os.path.join(root, f)
                     if not os.access(fp, os.R_OK):

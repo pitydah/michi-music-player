@@ -20,8 +20,6 @@ Item {
     property bool expertMode: false
     property var audioDevices: []
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes de audio avanzados"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -68,9 +66,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.audio.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes de audio"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -115,7 +110,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: outputDevice
-                                objectName: "settings.audio.outputDevice"
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Auto"]
                                 currentIndex: {
                                     var dev = root._loadValue("audio/output_device_id", "auto")
@@ -124,8 +118,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/output_device_id", currentText)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Dispositivo de salida de audio"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -165,7 +157,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: sampleRate
-                                objectName: "settings.audio.sampleRate"
                                 model: ["0 (auto)", "44100", "48000", "88200", "96000", "176400", "192000"]
                                 currentIndex: {
                                     var sr = String(root._loadValue("audio/sample_rate", 0))
@@ -174,8 +165,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/sample_rate", parseInt(currentText))
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Frecuencia de muestreo"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -204,7 +193,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: bitDepth
-                                objectName: "settings.audio.bitDepth"
                                 model: ["Auto", "16", "24", "32"]
                                 currentIndex: {
                                     var bd = String(root._loadValue("audio/bit_depth", "auto"))
@@ -213,8 +201,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/bit_depth", currentText.toLowerCase())
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Profundidad de bits"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -242,7 +228,6 @@ Item {
 
                             MichiSlider {
                                 id: bufferSlider
-                                objectName: "settings.audio.buffer"
                                 implicitWidth: 200
                                 from: 50
                                 to: 1000
@@ -280,7 +265,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: resampleQuality
-                                objectName: "settings.audio.resampleQuality"
                                 model: ListModel {
                                     ListElement { text: "Baja"; value: "low" }
                                     ListElement { text: "Media"; value: "medium" }
@@ -296,8 +280,6 @@ Item {
                                     return 1
                                 }
                                 onActivated: root._saveValue("audio/resample_quality", currentValue)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Calidad de resample"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -326,11 +308,8 @@ Item {
                             }
                             Switch {
                                 id: volumeNormalization
-                                objectName: "settings.audio.volumeNormalization"
                                 checked: root._loadValue("audio/replaygain_enabled", false)
                                 onClicked: root._saveValue("audio/replaygain_enabled", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Normalización de volumen"
                                 Accessible.description: "Aplicar normalización de volumen basada en ReplayGain"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -360,14 +339,11 @@ Item {
                             }
                             Switch {
                                 id: expertModeToggle
-                                objectName: "settings.audio.expertMode"
                                 checked: root.expertMode
                                 onClicked: {
                                     root.expertMode = checked
                                     root._saveValue("audio/expert_mode", checked)
                                 }
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Modo experto"
                                 Accessible.description: "Mostrar opciones avanzadas de configuración de audio"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -402,11 +378,8 @@ Item {
                                 }
                                 Switch {
                                     id: allowResample
-                                    objectName: "settings.audio.allowResample"
                                     checked: root._loadValue("audio/allow_resample", true)
                                     onClicked: root._saveValue("audio/allow_resample", checked)
-                                    Accessible.role: Accessible.CheckBox
-                                    Accessible.name: "Permitir resample"
                                     focusPolicy: Qt.StrongFocus
                                 }
                             }
@@ -424,11 +397,8 @@ Item {
                                 }
                                 Switch {
                                     id: allowFallback
-                                    objectName: "settings.audio.allowFallback"
                                     checked: root._loadValue("audio/allow_fallback", true)
                                     onClicked: root._saveValue("audio/allow_fallback", checked)
-                                    Accessible.role: Accessible.CheckBox
-                                    Accessible.name: "Fallback automático"
                                     Accessible.description: "Degradar perfil si falla la configuración actual"
                                     focusPolicy: Qt.StrongFocus
                                 }
@@ -454,7 +424,6 @@ Item {
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: root._runDiagnostics()
-                            Accessible.name: "Ejecutar diagnóstico de audio"
                         }
                     }
                 }

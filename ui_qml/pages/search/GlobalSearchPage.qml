@@ -29,7 +29,6 @@ Item {
     property int _yearTo: 0
     property string _qualityFilter: "any"
 
-    objectName: "globalSearchPage"
 
     PageStateManager {
         id: pageState
@@ -176,8 +175,6 @@ Item {
                 height: 180
                 radius: MichiTheme.radiusLg
                 showGlow: true
-                objectName: "searchHero"
-                Accessible.name: "Búsqueda global"
 
                 Column {
                     anchors.fill: parent
@@ -203,8 +200,6 @@ Item {
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             iconText: "\u2630"
-                            objectName: "openFiltersBtn"
-                            Accessible.name: "Abrir filtros de búsqueda"
                             onClicked: filterDrawer.open()
                         }
 
@@ -213,8 +208,6 @@ Item {
                             variant: "ghost"
                             anchors.verticalCenter: parent.verticalCenter
                             visible: root._query !== ""
-                            objectName: "clearSearchBtn"
-                            Accessible.name: "Limpiar búsqueda"
                             onClicked: {
                                 globalSearchInput.text = ""
                                 root.clearQuery()
@@ -226,8 +219,6 @@ Item {
                         id: globalSearchInput
                         width: parent.width * 0.7
                         placeholderText: "Canciones, álbumes, artistas, playlists..."
-                        objectName: "globalSearchInput"
-                        Accessible.name: "Buscar canciones, álbumes, artistas, playlists"
                         Accessible.description: "Escribe para buscar en toda la biblioteca"
                         onSearchTextChanged: root.search(text)
                         activeFocusOnTab: true
@@ -274,8 +265,6 @@ Item {
                 text: "Buscando..."
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Buscando"
-                Accessible.role: Accessible.Indicator
             }
 
             ErrorState {
@@ -295,7 +284,6 @@ Item {
                 text: "Sin resultados para \"" + root._query + "\""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Sin resultados para " + root._query
             }
 
             Flickable {
@@ -327,8 +315,6 @@ Item {
                             isLoading: false
                             sectionEmpty: !modelData.items || modelData.items.length === 0
                             bridge: root.bridge
-                            objectName: "searchResultSection_" + index
-                            Accessible.name: (modelData.section || "Resultados") + " - " + (modelData.items ? modelData.items.length : 0) + " elementos"
                             activeFocusOnTab: true
                             onItemClicked: function(type, id, title, subtitle) {
                                 if (root.notif && typeof root.notif.showMessage === "function") {

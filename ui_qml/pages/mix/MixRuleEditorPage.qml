@@ -22,10 +22,7 @@ Item {
     signal applyRules(var rules, bool logicAnd)
     signal previewRequested(var rules, bool logicAnd)
 
-    objectName: "MixRuleEditorPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Editor de reglas Mix"
 
     function addRule() {
         var newRules = root._rules.slice()
@@ -69,8 +66,6 @@ Item {
 
                 MichiButton {
                     text: "Volver"; variant: "ghost"
-                    objectName: "ruleEditorBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     KeyNavigation.tab: logicCombo
                     onClicked: root.backRequested()
@@ -109,8 +104,6 @@ Item {
                 ComboBox {
                     focusPolicy: Qt.StrongFocus
                     id: logicCombo; width: 120
-                    objectName: "logicCombo"
-                    Accessible.name: "Lógica entre reglas"
                     model: [
                         { text: "AND (todas)", value: true },
                         { text: "OR (cualquiera)", value: false }
@@ -130,8 +123,6 @@ Item {
                 MichiButton {
                     id: addRuleBtn
                     text: "+ Agregar regla"; variant: "secondary"
-                    objectName: "addRuleBtn"
-                    Accessible.name: "Agregar regla"
                     activeFocusOnTab: true
                     KeyNavigation.tab: rulesList
                     KeyNavigation.backtab: logicCombo
@@ -146,8 +137,6 @@ Item {
                 model: root._rules; clip: true; spacing: MichiTheme.spacing.sm
                 interactive: root._rules.length > 3
                 activeFocusOnTab: true
-                objectName: "rulesList"
-                Accessible.name: "Lista de reglas"
 
                 delegate: Rectangle {
                     width: rulesList.width; height: 64
@@ -156,8 +145,6 @@ Item {
                     border.width: MichiTheme.borderWidth
                     border.color: MichiTheme.colors.borderCard
                     activeFocusOnTab: true
-                    objectName: "ruleItem_" + index
-                    Accessible.name: "Regla " + (index + 1) + ": " + (modelData.field || "") + " " + (modelData.operator || "") + " " + (modelData.value || "")
                     KeyNavigation.tab: index < root._rules.length - 1
                         ? rulesList.itemAtIndex(index + 1)
                         : previewBtn
@@ -183,7 +170,6 @@ Item {
                                     }
                                     onCurrentTextChanged: modelData.field = currentText
                                     activeFocusOnTab: true
-                                    Accessible.name: "Campo de la regla"
                                 }
 
                                 ComboBox {
@@ -196,7 +182,6 @@ Item {
                                     }
                                     onCurrentTextChanged: modelData.operator = currentText
                                     activeFocusOnTab: true
-                                    Accessible.name: "Operador de la regla"
                                 }
 
                                 TextField {
@@ -205,7 +190,6 @@ Item {
                                     placeholderText: "Valor"
                                     onTextChanged: modelData.value = text
                                     activeFocusOnTab: true
-                                    Accessible.name: "Valor de la regla"
                                 }
                             }
                         }
@@ -215,8 +199,6 @@ Item {
                             text: "X"; variant: "ghost"
                             width: 36; height: 36
                             anchors.verticalCenter: parent.verticalCenter
-                            objectName: "removeRuleBtn_" + index
-                            Accessible.name: "Eliminar regla"
                             activeFocusOnTab: true
                             onClicked: root.removeRule(index)
                         }
@@ -233,8 +215,6 @@ Item {
                     MichiButton {
                         id: previewBtn
                         text: "Vista previa"; variant: "secondary"
-                        objectName: "previewBtn"
-                        Accessible.name: "Vista previa del mix"
                         activeFocusOnTab: true
                         KeyNavigation.tab: applyBtn
                         KeyNavigation.backtab: rulesList
@@ -245,8 +225,6 @@ Item {
                     MichiButton {
                         id: applyBtn
                         text: "Aplicar y generar mix"; variant: "primary"
-                        objectName: "applyBtn"
-                        Accessible.name: "Aplicar reglas y generar mix"
                         activeFocusOnTab: true
                         KeyNavigation.tab: previewBtn
                         KeyNavigation.backtab: previewBtn

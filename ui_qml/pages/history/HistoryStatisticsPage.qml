@@ -90,19 +90,15 @@ Drawer {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Estadísticas del historial"
                 }
 
                 Item { width: 1; height: 1; Layout.fillWidth: true }
-    Accessible.role: Accessible.Pane
     focus: true
 
                 MichiButton {
                     id: exportStatsBtn
                     text: "Exportar"
                     variant: "ghost"
-                    objectName: "statisticsExportButton"
-                    Accessible.name: "Exportar estadísticas"
                     activeFocusOnTab: true
                     KeyNavigation.tab: closeStatsBtn
                     KeyNavigation.backtab: listeningTimeTodayCard
@@ -115,8 +111,6 @@ Drawer {
                     id: closeStatsBtn
                     text: "Cerrar"
                     variant: "ghost"
-                    objectName: "statisticsCloseButton"
-                    Accessible.name: "Cerrar estadísticas"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: exportStatsBtn
                     Keys.onReturnPressed: onClicked()
@@ -131,8 +125,6 @@ Drawer {
                 visible: root._state === "LOADING"
                 title: "Cargando estadísticas"
                 message: "Obteniendo datos del historial..."
-                objectName: "statisticsLoadingState"
-                Accessible.name: "Cargando estadísticas"
             }
 
             ErrorState {
@@ -143,8 +135,6 @@ Drawer {
                 message: !root.bridge ? "El servicio de estadísticas no está disponible."
                                       : "No se pudieron cargar los datos."
                 showRetry: true
-                objectName: "statisticsErrorState"
-                Accessible.name: "Error al cargar estadísticas"
                 onRetryRequested: root.refresh()
             }
 
@@ -157,8 +147,6 @@ Drawer {
             SectionHeader {
                 text: "Tiempo de escucha"
                 width: parent.width
-                objectName: "listeningTimeHeader"
-                Accessible.name: "Tiempo de escucha"
                 visible: root._state === "READY"
             }
 
@@ -172,8 +160,6 @@ Drawer {
                     height: 80
                     title: root._listeningTimeToday
                     subtitle: "Hoy"
-                    objectName: "listeningTimeTodayCard"
-                    Accessible.name: "Tiempo de escucha hoy: " + root._listeningTimeToday
                     KeyNavigation.tab: listeningTimeWeekCard
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -184,8 +170,6 @@ Drawer {
                     height: 80
                     title: root._listeningTimeWeek
                     subtitle: "Esta semana"
-                    objectName: "listeningTimeWeekCard"
-                    Accessible.name: "Tiempo de escucha esta semana: " + root._listeningTimeWeek
                     KeyNavigation.tab: listeningTimeMonthCard
                     KeyNavigation.backtab: listeningTimeTodayCard
                     Keys.onReturnPressed: onClicked()
@@ -197,8 +181,6 @@ Drawer {
                     height: 80
                     title: root._listeningTimeMonth
                     subtitle: "Este mes"
-                    objectName: "listeningTimeMonthCard"
-                    Accessible.name: "Tiempo de escucha este mes: " + root._listeningTimeMonth
                     KeyNavigation.tab: listeningTimeAllCard
                     KeyNavigation.backtab: listeningTimeWeekCard
                     Keys.onReturnPressed: onClicked()
@@ -210,8 +192,6 @@ Drawer {
                     height: 80
                     title: root._listeningTimeAll
                     subtitle: "Total"
-                    objectName: "listeningTimeAllCard"
-                    Accessible.name: "Tiempo de escucha total: " + root._listeningTimeAll
                     KeyNavigation.backtab: listeningTimeMonthCard
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -221,8 +201,6 @@ Drawer {
             SectionHeader {
                 text: "Más reproducidas"
                 width: parent.width
-                objectName: "topTracksHeader"
-                Accessible.name: "Canciones más reproducidas"
                 showChevron: true
                 visible: root._state === "READY"
 
@@ -288,8 +266,6 @@ Drawer {
                             height: MichiTheme.minimumInteractiveSize
                             text: "▶"
                             variant: "ghost"
-                            objectName: "playTopTrackBtn_" + index
-                            Accessible.name: "Reproducir " + (modelData.title || "")
                             anchors.verticalCenter: parent.verticalCenter
                             visible: mouseArea.containsMouse
                             onClicked: {
@@ -325,8 +301,6 @@ Drawer {
             SectionHeader {
                 text: "Álbumes más reproducidos"
                 width: parent.width
-                objectName: "topAlbumsHeader"
-                Accessible.name: "Álbumes más reproducidos"
                 showChevron: true
                 visible: root._state === "READY"
 
@@ -399,8 +373,6 @@ Drawer {
             SectionHeader {
                 text: "Artistas más reproducidos"
                 width: parent.width
-                objectName: "topArtistsHeader"
-                Accessible.name: "Artistas más reproducidos"
                 showChevron: true
                 visible: root._state === "READY"
 
@@ -465,8 +437,6 @@ Drawer {
             SectionHeader {
                 text: "Distribución por género"
                 width: parent.width
-                objectName: "genreBreakdownHeader"
-                Accessible.name: "Distribución por género"
                 showChevron: true
                 visible: root._state === "READY"
 

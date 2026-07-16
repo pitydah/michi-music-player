@@ -23,8 +23,6 @@ Item {
     implicitHeight: resultVisible ? contentColumn.height + MichiTheme.spacing.xl * 2 : 0
     width: parent ? parent.width : 400
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Resultado de ejecución" + (status === "success" ? " - Éxito" : status === "failure" ? " - Error" : " - Parcial")
 
     visible: root.resultVisible
     opacity: root.resultVisible ? 1.0 : 0.0
@@ -112,8 +110,6 @@ Item {
                     text: status === "failure" ? "Reintentar" : "Deshacer"
                     variant: status === "failure" ? "primary" : "ghost"
                     visible: (status === "failure" || status === "partial")
-                    objectName: "executionResultRetry"
-                    Accessible.name: text
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: {
@@ -125,8 +121,6 @@ Item {
                 MichiButton {
                     text: "Cerrar"
                     variant: "ghost"
-                    objectName: "executionResultClose"
-                    Accessible.name: "Cerrar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.visible = false

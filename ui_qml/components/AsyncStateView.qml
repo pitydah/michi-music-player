@@ -38,10 +38,7 @@ Item {
     signal secondaryActionRequested()
     signal retryRequested()
 
-    objectName: "AsyncStateView"
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: {
         if (state === AsyncStateView.LOADING) return "Cargando"
         if (state === AsyncStateView.ERROR) return "Error" + (title ? ": " + title : "")
         if (state === AsyncStateView.EMPTY) return "Sin contenido" + (title ? ": " + title : "")

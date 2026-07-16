@@ -38,10 +38,7 @@ Item {
     readonly property bool standard: mode === ResponsivePageLayout.STANDARD
     readonly property bool wide: mode === ResponsivePageLayout.WIDE
 
-    objectName: "ResponsivePageLayout"
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: "Página"
 
     MichiResponsive { id: responsive; availableWidth: root.availableWidth }
 

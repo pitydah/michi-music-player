@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from PySide6.QtCore import QObject, Signal, Slot, QCoreApplication
+import contextlib
 QQmlApplicationEngine = MagicMock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
@@ -247,10 +248,8 @@ class TestPermissionDenied:
     def test_doctor_scan_permission_error(self):
         ldb = MagicMock()
         ldb.scan.side_effect = PermissionError("Permission denied")
-        try:
+        with contextlib.suppress(PermissionError, Exception):
             ldb.scan()
-        except (PermissionError, Exception):
-            pass
         assert True
 
 
@@ -260,19 +259,15 @@ class TestDatabaseLocked:
     def test_operation_with_simulated_locked_db(self):
         qs = MagicMock()
         qs.count_tracks.side_effect = Exception("database is locked")
-        try:
+        with contextlib.suppress(Exception):
             qs.count_tracks()
-        except Exception:
-            pass
         assert True
 
     def test_locked_db_does_not_crash_bridge(self):
         pb = MagicMock()
         pb.refresh.side_effect = Exception("database is locked")
-        try:
+        with contextlib.suppress(Exception):
             pb.refresh()
-        except Exception:
-            pass
         assert True
 
 
@@ -282,19 +277,15 @@ class TestDatabaseCorrupt:
     def test_corrupt_db_returns_error(self):
         qs = MagicMock()
         qs.count_tracks.side_effect = Exception("database disk image is malformed")
-        try:
+        with contextlib.suppress(Exception):
             qs.count_tracks()
-        except Exception:
-            pass
         assert True
 
     def test_history_with_corrupt_db(self):
         hb = MagicMock()
         hb.refresh.side_effect = Exception("database disk image is malformed")
-        try:
+        with contextlib.suppress(Exception):
             hb.refresh()
-        except Exception:
-            pass
         assert True
 
 
@@ -314,10 +305,8 @@ class TestSourceOffline:
     def test_offline_source_does_not_block_home(self):
         hb = MagicMock()
         hb.refresh.side_effect = ConnectionError("offline")
-        try:
+        with contextlib.suppress(ConnectionError):
             hb.refresh()
-        except ConnectionError:
-            pass
         assert True
 
 
@@ -327,28 +316,22 @@ class TestNetworkDown:
     def test_radio_network_error(self):
         rb = MagicMock()
         rb.play.side_effect = ConnectionError("Network is unreachable")
-        try:
+        with contextlib.suppress(ConnectionError):
             rb.play("http://stream.example.com")
-        except ConnectionError:
-            pass
         assert True
 
     def test_device_discovery_network_error(self):
         db = MagicMock()
         db.refresh.side_effect = ConnectionError("Network is unreachable")
-        try:
+        with contextlib.suppress(ConnectionError):
             db.refresh()
-        except ConnectionError:
-            pass
         assert True
 
     def test_connection_discovery_network_error(self):
         cb = MagicMock()
         cb.refresh.side_effect = ConnectionError("Network is unreachable")
-        try:
+        with contextlib.suppress(ConnectionError):
             cb.refresh()
-        except ConnectionError:
-            pass
         assert True
 
 
@@ -602,10 +585,8 @@ class TestNoFalseSuccess:
     def test_playback_without_player_does_not_crash(self):
         pb = MagicMock()
         pb.play.side_effect = TypeError("player_service is REQUIRED")
-        try:
+        with contextlib.suppress(TypeError):
             pb.play("file:///test.flac")
-        except TypeError:
-            pass
         assert True
 
     def test_offline_source_returns_empty_not_error(self):

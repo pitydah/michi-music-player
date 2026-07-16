@@ -111,8 +111,6 @@ Item {
                 height: MichiTheme.typography.heroTitleSize * 5
                 radius: MichiTheme.radiusLg
                 showGlow: true
-                objectName: "playlistHero"
-                Accessible.name: "Playlists"
                 Column {
                     anchors.fill: parent
                     anchors.margins: MichiTheme.spacing.xl
@@ -137,8 +135,6 @@ Item {
                 id: playlistSearch
                 width: parent.width * 0.5
                 placeholderText: "Buscar playlists..."
-                objectName: "playlistSearchField"
-                Accessible.name: "Buscar playlists"
                 onSearchTextChanged: root._searchText = text
                 activeFocusOnTab: true
                 KeyNavigation.tab: createPlaylistBtn
@@ -153,8 +149,6 @@ Item {
                     id: createPlaylistBtn
                     text: "+ Nueva playlist"
                     variant: "primary"
-                    objectName: "createPlaylistButton"
-                    Accessible.name: "Nueva playlist"
                     activeFocusOnTab: true
                     KeyNavigation.tab: smartPlaylistBtn
                     KeyNavigation.backtab: playlistSearch
@@ -166,8 +160,6 @@ Item {
                     id: smartPlaylistBtn
                     text: "Smart playlist"
                     variant: "secondary"
-                    objectName: "smartPlaylistButton"
-                    Accessible.name: "Smart playlist"
                     activeFocusOnTab: true
                     KeyNavigation.tab: importPlaylistBtn
                     KeyNavigation.backtab: createPlaylistBtn
@@ -179,8 +171,6 @@ Item {
                     id: importPlaylistBtn
                     text: "Importar"
                     variant: "secondary"
-                    objectName: "importPlaylistButton"
-                    Accessible.name: "Importar playlist"
                     activeFocusOnTab: true
                     KeyNavigation.tab: selectPlaylistBtn
                     KeyNavigation.backtab: smartPlaylistBtn
@@ -192,8 +182,6 @@ Item {
                     id: selectPlaylistBtn
                     text: "Seleccionar"
                     variant: "ghost"
-                    objectName: "selectPlaylistButton"
-                    Accessible.name: "Seleccionar playlists"
                     activeFocusOnTab: true
                     KeyNavigation.tab: deletePlaylistBtn
                     KeyNavigation.backtab: importPlaylistBtn
@@ -206,8 +194,6 @@ Item {
                     id: deletePlaylistBtn
                     text: "Eliminar seleccionadas"
                     variant: "danger"
-                    objectName: "deletePlaylistButton"
-                    Accessible.name: "Eliminar seleccionadas"
                     visible: root._selectionMode && root._selectedPlaylists.length > 0
                     activeFocusOnTab: true
                     KeyNavigation.tab: refreshBtn
@@ -220,8 +206,6 @@ Item {
                     id: refreshBtn
                     text: "Refrescar"
                     variant: "ghost"
-                    objectName: "refreshPlaylistsButton"
-                    Accessible.name: "Refrescar playlists"
                     visible: root._state !== "LOADING"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: deletePlaylistBtn
@@ -236,8 +220,6 @@ Item {
                 visible: root._state === "LOADING"
                 title: "Cargando playlists"
                 message: "Obteniendo listas de reproducción..."
-                objectName: "playlistsLoadingState"
-                Accessible.name: "Cargando playlists"
             }
 
             EmptyState {
@@ -248,8 +230,6 @@ Item {
                 subtitle: "Crea tu primera lista de reproducción para empezar a organizar tu música."
                 actionText: "Crear playlist"
                 showAction: true
-                objectName: "playlistsEmptyState"
-                Accessible.name: "Sin playlists"
                 onActionClicked: root.openEditor()
             }
 
@@ -260,8 +240,6 @@ Item {
                 message: !root.pl ? "El servicio de playlists no está disponible."
                                  : "No se pudieron cargar las playlists. Verifica la conexión."
                 showRetry: true
-                objectName: "playlistsErrorState"
-                Accessible.name: "Error al cargar playlists"
                 onRetryRequested: root.refresh()
             }
 
@@ -270,8 +248,6 @@ Item {
                 text: "Tus playlists"
                 width: parent.width
                 visible: root._state === "READY"
-                objectName: "yourPlaylistsHeader"
-                Accessible.name: "Tus playlists"
             }
 
             Flow {
@@ -300,8 +276,6 @@ Item {
                         coverKey: modelData.cover_key || ""
                         selected: root._selectedPlaylists.indexOf(modelData.id) >= 0
                         showSelection: root._selectionMode
-                        objectName: "playlistCard_" + (modelData.id || index)
-                        Accessible.name: modelData.title || "Playlist"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -341,15 +315,12 @@ Item {
                 color: root._addResult.indexOf("Error") >= 0 ? MichiTheme.colors.error : MichiTheme.colors.success
                 font.pixelSize: MichiTheme.typography.metaSize
                 visible: text !== ""
-                Accessible.name: root._addResult
             }
 
             StatusBadge {
                 id: playlistStatusBadge
                 text: "Playlists completas — transacciones, importación, exportación"
                 kind: "info"
-                objectName: "playlistStatusBadge"
-                Accessible.name: "Estado de playlists"
             }
         }
     }
@@ -357,8 +328,6 @@ Item {
     PlaylistEditorDialog {
         id: editorDialog
         bridge: root.pl
-        objectName: "createPlaylistDialog"
-        Accessible.name: "Nueva playlist"
         onSaved: function(id, name) {
             if (id < 0 && root.pl && typeof root.pl.createPlaylist !== "undefined")
                 root.pl.createPlaylist(name)
@@ -372,8 +341,6 @@ Item {
     PlaylistImportDialog {
         id: importDialog
         bridge: root.pl
-        objectName: "importPlaylistDialog"
-        Accessible.name: "Importar playlist"
         onImportCompleted: function(name, count) {
             root.refresh()
             root._addResult = "Importada \"" + name + "\" (" + count + " canciones)"
@@ -385,8 +352,6 @@ Item {
     SmartPlaylistEditorPage {
         id: smartPlaylistDialog
         bridge: root.pl
-        objectName: "smartPlaylistEditorDialog"
-        Accessible.name: "Smart playlist"
         visible: false
         anchors.fill: parent
         onSaved: function(name, rules) {
@@ -409,8 +374,6 @@ Item {
         visible: root._confirmBatchDelete
         x: (parent.width - width) / 2
         y: (parent.height - height) / 3
-        objectName: "confirmBatchDeleteDialog"
-        Accessible.name: "Eliminar playlists"
         closePolicy: Popup.CloseOnEscape
 
         Column {

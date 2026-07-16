@@ -23,8 +23,6 @@ Item {
     property string qtVersion: "Desconocido"
     property string gstreamerVersion: "Desconocido"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Acerca de Michi Music Player"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -67,9 +65,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.about.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Acerca de"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -153,7 +148,6 @@ Item {
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://michi-music-player.org")
-                            Accessible.name: "Página principal de Michi"
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -163,7 +157,6 @@ Item {
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player")
-                            Accessible.name: "Repositorio de GitHub"
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -173,7 +166,6 @@ Item {
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/issues")
-                            Accessible.name: "Reportar un problema en GitHub"
                         }
 
                         Rectangle { Layout.fillWidth: true; height: 1; color: MichiTheme.colors.borderSubtle }
@@ -183,7 +175,6 @@ Item {
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._openUrl("https://github.com/pitydah/michi-music-player/blob/main/NOTICE")
-                            Accessible.name: "Ver archivo NOTICE con créditos"
                         }
                     }
                 }
@@ -204,7 +195,6 @@ Item {
                             variant: "primary"
                             Layout.fillWidth: true
                             onClicked: root._checkForUpdates()
-                            Accessible.name: "Buscar actualizaciones"
                         }
                     }
                 }

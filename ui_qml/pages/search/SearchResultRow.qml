@@ -21,10 +21,7 @@ Item {
 
     implicitHeight: 44
 
-    objectName: "searchResultRow_" + rowType + "_" + (rowId ? rowId : "unknown")
 
-    Accessible.role: Accessible.ListItem
-    Accessible.name: rowTitle + " - " + rowSubtitle
     Accessible.description: "Tipo: " + rowType + ". Presiona Enter para abrir"
 
     function getThumbnailText() {
@@ -88,8 +85,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                 }
 
-                Accessible.role: Accessible.Graphic
-                Accessible.name: root.getTypeLabel()
             }
 
             Column {
@@ -122,8 +117,6 @@ Item {
                 kind: "info"
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.getTypeLabel() !== ""
-                Accessible.role: Accessible.StaticText
-                Accessible.name: "Tipo: " + root.getTypeLabel()
             }
 
             Text {
@@ -138,8 +131,6 @@ Item {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.playRequested()
-                    Accessible.role: Accessible.Button
-                    Accessible.name: "Reproducir " + root.rowTitle
                 }
             }
         }

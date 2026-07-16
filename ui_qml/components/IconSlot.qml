@@ -39,8 +39,6 @@ Rectangle {
     height: root.iconSize + 16
     radius: root.rounded ? width / 2 : MichiTheme.radiusSm
     color: MichiTheme.colors.surfaceSubtle
-    Accessible.role: Accessible.Graphic
-    Accessible.name: root.accessibleName
 
     Image {
         anchors.centerIn: parent

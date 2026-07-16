@@ -35,9 +35,6 @@ QQC2.Popup {
         spacing: MichiTheme.spacing.xs
 
         Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Sort Menu"
-    objectName: "sortMenu"
     focus: true
             width: parent.width
             height: MichiTheme.rowHeightComfortable
@@ -58,8 +55,6 @@ QQC2.Popup {
                 anchors.rightMargin: MichiTheme.spacing.sm
                 focusPolicy: Qt.StrongFocus
 
-                Accessible.role: Accessible.Button
-                Accessible.name: "Alternar orden " + (root.ascending ? "ascendente" : "descendente")
 
                 contentItem: Text {
                     text: root.ascending ? "\u25B2 Asc" : "\u25BC Desc"
@@ -87,8 +82,6 @@ QQC2.Popup {
                 height: MichiTheme.rowHeightComfortable
                 focusPolicy: Qt.StrongFocus
 
-                Accessible.role: Accessible.MenuItem
-                Accessible.name: modelData
                 Accessible.description: (modelData === root.currentOption ? "Seleccionado" : "") + " " + (root.ascending ? "ascendente" : "descendente")
 
                 background: Rectangle {

@@ -54,12 +54,9 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             HomeHero {
-                objectName: "homeHero"
-                Accessible.name: "Hero de inicio"
             }
 
             StatusBadge {
-                objectName: "homeStatusBadge"
                 text: {
                     if (root.homeState === HomePage.LOADING) return "Cargando..."
                     if (root.homeState === HomePage.ERROR) return "Error"
@@ -71,15 +68,12 @@ Item {
                     if (root.homeState === HomePage.LOADING) return "info"
                     return "success"
                 }
-                Accessible.name: "Estado: " + text
                 visible: root.homeState !== HomePage.READY || !root.hb
             }
 
             ContinueCard {
                 id: continueCard
                 width: parent.width
-                objectName: "continueCard"
-                Accessible.name: "Continuar reproducción"
                 trackTitle: root.hb ? root.hb.currentTrackTitle : "—"
                 trackArtist: root.hb ? root.hb.currentArtist : "—"
                 hasPlayback: root.hb ? root.hb.hasPlayback : false
@@ -104,13 +98,11 @@ Item {
 
                 LibraryStatusCard {
                     id: libraryCard
-                    objectName: "libraryCard"
                     width: parent.width * 0.48
                     albums: root.hb ? root.hb.libraryAlbums : 0
                     artists: root.hb ? root.hb.libraryArtists : 0
                     tracks: root.hb ? root.hb.libraryTracks : 0
                     hasData: root.hb ? root.hb.libraryAlbums > 0 || root.hb.libraryTracks > 0 : false
-                    Accessible.name: "Estado de la biblioteca"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onOpenLibrary()
                     Keys.onSpacePressed: onOpenLibrary()
@@ -122,10 +114,8 @@ Item {
 
                 EcosystemCard {
                     id: ecosystemCard
-                    objectName: "ecosystemCard"
                     width: parent.width * 0.48
                     microServerState: root.cb ? root.cb.microServerState : "not_configured"
-                    Accessible.name: "Ecosistema"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onOpenConnections()
                     Keys.onSpacePressed: onOpenConnections()
@@ -149,10 +139,8 @@ Item {
 
                 GlassCard {
                     id: microCard
-                    objectName: "microServerCard"
                     width: parent.width * 0.48
                     implicitHeight: 80
-                    Accessible.name: "Servidor Micro"
                     activeFocusOnTab: true
 
                     RowLayout {
@@ -176,10 +164,8 @@ Item {
 
                 GlassCard {
                     id: jobsCard
-                    objectName: "jobsCard"
                     width: parent.width * 0.48
                     implicitHeight: 80
-                    Accessible.name: "Trabajos activos"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: {
                         if (typeof navigationBridge !== "undefined")
@@ -221,11 +207,9 @@ Item {
 
             GlassCard {
                 id: playbackCard
-                objectName: "playbackInfoCard"
                 width: parent.width
                 implicitHeight: 60
                 visible: root.hb && root.hb.hasPlayback
-                Accessible.name: "Información de reproducción"
 
                 RowLayout {
                     anchors.fill: parent
@@ -288,9 +272,7 @@ Item {
 
             AssistantCard {
                 id: assistantCard
-                objectName: "assistantCard"
                 width: parent.width
-                Accessible.name: "Asistente Michi"
                 activeFocusOnTab: true
                 KeyNavigation.backtab: playbackCard
                 Keys.onReturnPressed: onOpenAssistant()
@@ -302,41 +284,33 @@ Item {
             }
 
             Text {
-                objectName: "homeErrorMessage"
                 text: root.statusMessage
                 color: MichiTheme.colors.error
                 font.pixelSize: MichiTheme.typography.bodySize
                 visible: root.statusMessage !== ""
-                Accessible.name: "Error: " + root.statusMessage
             }
         }
     }
 
     LoadingState {
-        objectName: "homeLoadingState"
         anchors.centerIn: parent
         visible: root.homeState === HomePage.LOADING
         title: "Cargando inicio"
-        Accessible.name: "Cargando panel de inicio"
     }
 
     EmptyState {
-        objectName: "homeEmptyState"
         anchors.centerIn: parent
         visible: root.homeState === HomePage.EMPTY
         title: "No hay datos disponibles"
         subtitle: "Conecta una fuente de música o revisa la configuración."
         iconText: ""
-        Accessible.name: "Panel de inicio vacío"
     }
 
     ErrorState {
-        objectName: "homeErrorState"
         anchors.centerIn: parent
         visible: root.homeState === HomePage.ERROR
         title: "Error al cargar inicio"
         message: root.statusMessage
-        Accessible.name: "Error en panel de inicio"
         showRetry: true
         onRetryRequested: root.refresh()
     }

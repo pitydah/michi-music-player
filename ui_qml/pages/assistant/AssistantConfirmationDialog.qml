@@ -23,8 +23,6 @@ Item {
     visible: root.dialogVisible
     z: 10000
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Confirmar acción" + (destructive ? " - Acción destructiva" : "")
     Accessible.description: actionDescription
 
     Keys.onEscapePressed: root.cancelled()
@@ -114,8 +112,6 @@ Item {
                 MichiButton {
                     text: root.destructive ? "Eliminar" : "Confirmar"
                     variant: root.destructive ? "danger" : "primary"
-                    objectName: "confirmationDialogConfirm"
-                    Accessible.name: text
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.confirmed()
@@ -124,8 +120,6 @@ Item {
                 MichiButton {
                     text: "Cancelar"
                     variant: "ghost"
-                    objectName: "confirmationDialogCancel"
-                    Accessible.name: "Cancelar"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     onClicked: root.cancelled()

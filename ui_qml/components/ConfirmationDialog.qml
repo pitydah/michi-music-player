@@ -20,10 +20,7 @@ Item {
     signal confirmed()
     signal cancelled()
 
-    objectName: "ConfirmationDialog"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: title
     Accessible.description: message
 
     visible: open

@@ -22,10 +22,7 @@ Item {
     signal connectRequested(string host, int port, string alias, string user, string password)
     signal cancelRequested()
 
-    objectName: "manualConnectionDialog"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Conexión manual"
     Accessible.description: "Configurar conexión manual a un servidor"
 
     visible: open
@@ -73,8 +70,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Conexión manual"
-                    objectName: "manualDialogTitle"
                 }
 
                 QQC2.TextField {
@@ -90,8 +85,6 @@ Item {
                         root.dialogHost = text
                         root.validationError = ""
                     }
-                    objectName: "manualDialogHostField"
-                    Accessible.name: "Host"
                     Accessible.description: "Dirección IP o nombre de host del servidor"
 
                     background: Rectangle {
@@ -114,8 +107,6 @@ Item {
                     inputMethodHints: Qt.ImhDigitsOnly
                     text: String(root.dialogPort)
                     onTextChanged: root.dialogPort = parseInt(text) || 53318
-                    objectName: "manualDialogPortField"
-                    Accessible.name: "Puerto"
                     Accessible.description: "Número de puerto"
 
                     background: Rectangle {
@@ -137,8 +128,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogAlias
                     onTextChanged: root.dialogAlias = text
-                    objectName: "manualDialogAliasField"
-                    Accessible.name: "Alias"
                     Accessible.description: "Nombre opcional para el servidor"
 
                     background: Rectangle {
@@ -160,8 +149,6 @@ Item {
                     font.pixelSize: MichiTheme.typography.bodySize
                     text: root.dialogUser
                     onTextChanged: root.dialogUser = text
-                    objectName: "manualDialogUserField"
-                    Accessible.name: "Usuario"
                     Accessible.description: "Nombre de usuario para autenticación"
 
                     background: Rectangle {
@@ -184,8 +171,6 @@ Item {
                     echoMode: TextInput.Password
                     text: root.dialogPassword
                     onTextChanged: root.dialogPassword = text
-                    objectName: "manualDialogPasswordField"
-                    Accessible.name: "Contraseña"
                     Accessible.description: "Contraseña para autenticación"
 
                     background: Rectangle {
@@ -221,8 +206,6 @@ Item {
                             root.open = false
                             root.connectRequested(root.dialogHost, root.dialogPort, root.dialogAlias, root.dialogUser, root.dialogPassword)
                         }
-                        objectName: "manualDialogConnectButton"
-                        Accessible.name: "Conectar al servidor"
                         KeyNavigation.tab: cancelBtn
                         KeyNavigation.backtab: passwordField
                         Keys.onReturnPressed: onClicked()
@@ -237,8 +220,6 @@ Item {
                             root.open = false
                             root.cancelRequested()
                         }
-                        objectName: "manualDialogCancelButton"
-                        Accessible.name: "Cancelar conexión manual"
                         KeyNavigation.backtab: connectBtn
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()

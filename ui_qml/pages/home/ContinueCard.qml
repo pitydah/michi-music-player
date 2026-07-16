@@ -19,8 +19,6 @@ Item {
 
     implicitHeight: 100
 
-    Accessible.role: Accessible.Button
-    Accessible.name: hasPlayback ? "Continuar " + trackTitle + " - " + trackArtist : "Sin reproducción activa"
     Accessible.onPressAction: root.activate()
 
     GlassMaterial {

@@ -25,8 +25,6 @@ Rectangle {
     radius: MichiTheme.radiusSm
     color: MichiTheme.colors.skeletonBase
 
-    Accessible.role: Accessible.Indicator
-    Accessible.name: title
     Accessible.description: message
 
     SequentialAnimation on opacity {

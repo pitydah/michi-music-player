@@ -3,8 +3,6 @@ import QtQuick.Controls as QQC2
 import "../theme"
 
 Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Notification Center"
     objectName: "notificationCenter"
     focus: true
     id: root
@@ -17,8 +15,6 @@ Rectangle {
 
     signal dismissAllRequested()
     signal notificationActivated(string notificationId)
-
-    objectName: "NotificationCenter"
 
     Accessible.role: Accessible.Panel
     Accessible.name: "Centro de notificaciones"
@@ -66,8 +62,6 @@ Rectangle {
                         root.dismissAllRequested()
                     }
 
-                    Accessible.role: Accessible.Button
-                    Accessible.name: "Descartar todas las notificaciones"
                     Accessible.description: "Eliminar todas las notificaciones activas"
                 }
             }
@@ -116,8 +110,6 @@ Rectangle {
             keyNavigationEnabled: true
             highlightMoveDuration: root.reducedMotion ? 1 : MichiTheme.motion.fast
 
-            Accessible.role: Accessible.List
-            Accessible.name: "Lista de notificaciones"
 
             delegate: Item {
                 id: delegateRoot

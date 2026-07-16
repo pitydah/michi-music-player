@@ -34,7 +34,6 @@ Item {
                     color: index < root.routeHistory.length - 1 ? root.textColor : root.activeColor
                     font.pixelSize: MichiTheme.typography.captionSize
                     font.weight: index < root.routeHistory.length - 1 ? Font.Normal : Font.Medium
-                    Accessible.name: "Breadcrumb: " + modelData
                 }
 
                 MouseArea {

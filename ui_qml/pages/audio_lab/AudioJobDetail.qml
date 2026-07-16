@@ -17,8 +17,6 @@ Item {
     objectName: "AudioJobDetail"
     focus: true
 
-    Accessible.role: Accessible.Panel
-    Accessible.name: "Detalle de trabajo"
 
     visible: root.jobData !== null
 
@@ -49,12 +47,10 @@ Item {
                 text: "Detalle del trabajo"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "jobDetailTitle"
             }
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: root.jobData && root.jobData.state === "failed" ? "danger" : root.jobData && root.jobData.state === "completed" ? "success" : "base"
-                objectName: "jobDetailPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -62,7 +58,6 @@ Item {
                         text: root.jobData ? root.jobData.title : ""
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.sectionTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                        objectName: "jobDetailTitleText"
                     }
 
                     Row {
@@ -85,8 +80,6 @@ Item {
                         width: parent.width
                         value: root.jobData && root.jobData.progress ? root.jobData.progress * 100 : 0
                         from: 0; to: 100
-                        objectName: "jobDetailProgressBar"
-                        Accessible.name: "Progreso del trabajo"
                     }
 
                     Text {
@@ -94,7 +87,6 @@ Item {
                         color: MichiTheme.colors.error
                         font.pixelSize: MichiTheme.typography.metaSize
                         visible: root.jobData && root.jobData.state === "failed"
-                        objectName: "jobDetailError"
                     }
 
                     Text {
@@ -104,7 +96,6 @@ Item {
                         wrapMode: Text.WordWrap
                         width: parent.width
                         visible: text !== ""
-                        objectName: "jobDetailMessage"
                     }
 
                     SectionHeader { text: "Archivos"; width: parent.width; objectName: "jobFilesHeader"; Accessible.name: "Archivos" }
@@ -136,8 +127,6 @@ Item {
                             text: "Cancelar"
                             variant: "danger"
                             enabled: root.jobData && (root.jobData.state === "running" || root.jobData.state === "queued")
-                            objectName: "jobDetailCancelBtn"
-                            Accessible.name: "Cancelar trabajo"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -147,8 +136,6 @@ Item {
                             text: "Reintentar"
                             variant: "secondary"
                             enabled: root.jobData && (root.jobData.state === "failed" || root.jobData.state === "cancelled")
-                            objectName: "jobDetailRetryBtn"
-                            Accessible.name: "Reintentar trabajo"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -157,8 +144,6 @@ Item {
                         MichiButton {
                             text: "Volver"
                             variant: "ghost"
-                            objectName: "jobDetailBackBtn"
-                            Accessible.name: "Volver"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()

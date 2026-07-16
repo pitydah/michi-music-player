@@ -53,14 +53,11 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Dispositivos y sincronización"
                 }
 
                 SyncStatusPanel {
                     id: syncStatus
                     width: parent.width
-                    objectName: "syncStatusPanel"
-                    Accessible.name: "Estado de sincronización"
                     serverActive: root.devicesBridge ? root.devicesBridge.serverActive : false
                     serverPort: root.devicesBridge ? root.devicesBridge.serverPort : 53318
                     peerCount: root.devicesBridge ? root.devicesBridge.peers.length : 0
@@ -83,8 +80,6 @@ Item {
                     id: pairedHeader
                     text: "Dispositivos emparejados"
                     width: parent.width
-                    objectName: "pairedDevicesHeader"
-                    Accessible.name: "Dispositivos emparejados"
                 }
 
                 Repeater {
@@ -95,8 +90,6 @@ Item {
                         deviceAlias: modelData.alias || ""
                         deviceType: modelData.device || "desktop"
                         paired: true
-                        objectName: "pairedDeviceCard_" + index
-                        Accessible.name: modelData.alias || "Dispositivo emparejado"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -108,15 +101,12 @@ Item {
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     visible: root.devicesBridge && root.devicesBridge.pairedDevices.length === 0
-                    Accessible.name: "No hay dispositivos emparejados"
                 }
 
                 SectionHeader {
                     id: networkHeader
                     text: "Pares detectados en red"
                     width: parent.width
-                    objectName: "networkPeersHeader"
-                    Accessible.name: "Pares detectados en red"
                 }
 
                 Repeater {
@@ -129,8 +119,6 @@ Item {
                         devicePort: modelData.port || 0
                         deviceType: modelData.device || "desktop"
                         paired: false
-                        objectName: "networkPeerCard_" + index
-                        Accessible.name: modelData.alias || "Par de red"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -142,30 +130,23 @@ Item {
                     color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
                     width: parent.width
                     visible: root.devicesBridge && root.devicesBridge.peers.length === 0
-                    Accessible.name: "No se detectaron pares en la red"
                 }
 
                 DevicePairingDialog {
                     id: pairingDialog
                     width: parent.width
                     dialogVisible: false
-                    objectName: "devicePairingDialog"
-                    Accessible.name: "Diálogo de emparejamiento"
                 }
 
                 DeviceStorageView {
                     id: storageView
                     width: parent.width
-                    objectName: "deviceStorageView"
-                    Accessible.name: "Vista de almacenamiento"
                     activeFocusOnTab: true
                 }
 
                 DeviceTransferQueue {
                     id: transferQueue
                     width: parent.width
-                    objectName: "deviceTransferQueue"
-                    Accessible.name: "Cola de transferencia"
                     activeFocusOnTab: true
                 }
             }

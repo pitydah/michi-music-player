@@ -6,7 +6,6 @@ import "../materials"
 
 Item {
     Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Volume"
     objectName: "nowPlayingVolume"
     focus: true
     id: root
@@ -32,7 +31,6 @@ Item {
         Item {
             Layout.preferredWidth: 22
             Layout.preferredHeight: 22
-            Accessible.name: "Silenciar"
             Accessible.description: "Activar o desactivar el silencio"
             GlassMaterial {
                 anchors.fill: parent; radius: 11

@@ -6,6 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable
+import contextlib
 
 
 class NotificationType(Enum):
@@ -133,13 +134,11 @@ class NotificationService:
             except Exception:
                 continue
         if self._event_bus:
-            try:
+            with contextlib.suppress(Exception):
                 self._event_bus.publish("notification.created",
                                         notification_id=notification.id,
                                         type=notification.type.value,
                                         title=notification.title)
-            except Exception:
-                pass
 
     def retry(self, notification_id: str) -> dict:
         notif = self._notifications.get(notification_id)

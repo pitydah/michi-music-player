@@ -22,7 +22,6 @@ Item {
     signal serverSelected(string host, int port, string alias)
     signal pairRequested(int index)
 
-    objectName: "ConnectionDiscoveryPage"
     Accessible.description: "Descubre servidores Michi en tu red local"
 
     AsyncStateView {
@@ -44,7 +43,6 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             activeFocusOnTab: true
-            objectName: "discoveryFlickable"
 
             Column {
                 id: column
@@ -58,8 +56,6 @@ Item {
                     MichiButton {
                         text: "Volver"
                         variant: "ghost"
-                        objectName: "discoveryBackButton"
-                        Accessible.name: "Volver a conexiones"
                         activeFocusOnTab: true
                         KeyNavigation.tab: scanBtn
                         onClicked: root.backRequested()
@@ -85,8 +81,6 @@ Item {
                         text: root._scanning ? "Escaneando..." : "Escanear red"
                         variant: "primary"
                         enabled: !root._scanning
-                        objectName: "startScanButton"
-                        Accessible.name: "Escanear red en busca de servidores"
                         activeFocusOnTab: true
                         KeyNavigation.tab: discoveredList
                         KeyNavigation.backtab: discoveryBackButton
@@ -114,8 +108,6 @@ Item {
                         title: modelData.name || "Servidor detectado"
                         subtitle: modelData.host || ""
                         variant: "base"
-                        objectName: "discoveredServerCard_" + index
-                        Accessible.name: modelData.name || "Servidor detectado"
                         activeFocusOnTab: true
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
@@ -130,8 +122,6 @@ Item {
                                 text: "Vincular"
                                 variant: "primary"
                                 implicitHeight: 28
-                                objectName: "pairServerBtn_" + index
-                                Accessible.name: "Vincular " + (modelData.name || "servidor")
                                 onClicked: root.pairRequested(index)
                             }
                         }
@@ -147,15 +137,12 @@ Item {
                     width: parent.width
                     wrapMode: Text.WordWrap
                     visible: !root.conn || !root.conn.discoveredServers || root.conn.discoveredServers.length === 0
-                    Accessible.name: "No se encontraron servidores"
                 }
 
                 StatusBadge {
                     visible: root.conn === null
                     text: "Bridge no disponible"
                     kind: "disconnected"
-                    objectName: "discoveryBridgeStatus"
-                    Accessible.name: "Bridge de conexiones no disponible"
                 }
             }
         }

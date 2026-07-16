@@ -19,8 +19,6 @@ Item {
     property string errorMessage: ""
     property string errorDetails: ""
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes de apariencia"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -55,9 +53,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.appearance.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes de apariencia"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -122,8 +117,6 @@ Item {
                                         border.width: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? 3 : 1
                                         border.color: root._loadValue("appearance/accent_color", "#8FB7FF") === modelData.color ? MichiTheme.colors.textPrimary : MichiTheme.colors.borderCard
 
-                                        Accessible.role: Accessible.Button
-                                        Accessible.name: "Color de acento " + modelData.name
 
                                         MouseArea {
                                             anchors.fill: parent
@@ -169,7 +162,6 @@ Item {
 
                             MichiSlider {
                                 id: fontScaleSlider
-                                objectName: "settings.appearance.fontScale"
                                 implicitWidth: 200
                                 from: 75
                                 to: 150
@@ -208,11 +200,8 @@ Item {
                             }
                             Switch {
                                 id: reducedMotion
-                                objectName: "settings.appearance.reducedMotion"
                                 checked: root._loadValue("appearance/reduced_motion", false)
                                 onClicked: root._saveValue("appearance/reduced_motion", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Movimiento reducido"
                                 Accessible.description: "Reducir animaciones y transiciones"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -231,11 +220,8 @@ Item {
                             }
                             Switch {
                                 id: reducedTransparency
-                                objectName: "settings.appearance.reducedTransparency"
                                 checked: root._loadValue("appearance/reduced_transparency", false)
                                 onClicked: root._saveValue("appearance/reduced_transparency", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Transparencia reducida"
                                 Accessible.description: "Reducir efectos de transparencia y desenfoque"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -254,11 +240,8 @@ Item {
                             }
                             Switch {
                                 id: compactMode
-                                objectName: "settings.appearance.compactMode"
                                 checked: root._loadValue("interface/compact_mode", false)
                                 onClicked: root._saveValue("interface/compact_mode", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Modo compacto"
                                 Accessible.description: "Reducir espacios y márgenes"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -277,11 +260,8 @@ Item {
                             }
                             Switch {
                                 id: coverAsBackdrop
-                                objectName: "settings.appearance.coverAsBackdrop"
                                 checked: root._loadValue("appearance/cover_as_backdrop", false)
                                 onClicked: root._saveValue("appearance/cover_as_backdrop", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Carátula como fondo"
                                 Accessible.description: "Usar la carátula del álbum actual como fondo"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -311,11 +291,8 @@ Item {
                             }
                             Switch {
                                 id: showMenubar
-                                objectName: "settings.appearance.showMenubar"
                                 checked: root._loadValue("interface/show_menubar", true)
                                 onClicked: root._saveValue("interface/show_menubar", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Mostrar barra de menú"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }

@@ -3,8 +3,6 @@ import QtQuick.Controls
 import "../theme"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Command Palette"
     objectName: "commandPalette"
     focus: true
     id: root
@@ -154,8 +152,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.bodySize
                     verticalAlignment: TextInput.AlignVCenter
-                    objectName: "commandPaletteSearchField"
-                    Accessible.name: "Buscar comando"
                     activeFocusOnTab: true
 
                     Text {
@@ -194,8 +190,6 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 activeFocusOnTab: true
-                objectName: "commandPaletteList"
-                Accessible.name: "Lista de comandos"
 
                 model: root._results
                 currentIndex: root._selectedIndex
@@ -205,9 +199,6 @@ Item {
                     height: 36
                     color: index === listView.currentIndex ? MichiTheme.colors.accentSelection : "transparent"
                     radius: MichiTheme.radiusXs
-                    objectName: "commandPaletteItem_" + index
-                    Accessible.name: (modelData._unavailable ? "(No disponible) " : "") + (modelData.title || "") + (modelData.shortcut ? " " + modelData.shortcut : "")
-                    Accessible.role: Accessible.ListItem
                     Accessible.description: modelData._unavailable ? "Acción no disponible en el estado actual" : ""
 
                     Rectangle {

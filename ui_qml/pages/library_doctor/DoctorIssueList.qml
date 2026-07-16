@@ -33,8 +33,6 @@ Item {
             MichiButton {
                 text: "Seleccionar todos"
                 variant: "ghost"
-                objectName: "libraryDoctor.selectAllButton"
-                Accessible.name: "Seleccionar todos los problemas"
                 onClicked: {
                     if (root.doc && typeof root.doc.selectAll !== "undefined")
                         root.doc.selectAll()
@@ -44,8 +42,6 @@ Item {
             MichiButton {
                 text: "Deseleccionar todos"
                 variant: "ghost"
-                objectName: "libraryDoctor.selectNoneButton"
-                Accessible.name: "Deseleccionar todos los problemas"
                 onClicked: {
                     if (root.doc && typeof root.doc.selectNone !== "undefined")
                         root.doc.selectNone()

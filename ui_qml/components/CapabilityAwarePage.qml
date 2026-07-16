@@ -21,10 +21,7 @@ Item {
     signal primaryActionRequested()
     signal retryRequested()
 
-    objectName: "CapabilityAwarePage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Página con control de capacidades"
     Accessible.description: root.checkingCapabilities
         ? "Verificando capacidades requeridas"
         : root.allCapabilitiesAvailable

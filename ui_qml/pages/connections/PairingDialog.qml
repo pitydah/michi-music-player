@@ -20,10 +20,7 @@ Item {
     signal pairRejected()
     signal retryRequested()
 
-    objectName: "pairingDialog"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Vinculación de servidor"
     Accessible.description: "Código de vinculación para conectar el servidor"
 
     visible: open
@@ -72,8 +69,6 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.sectionTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Vincular servidor"
-                    objectName: "pairingTitle"
                 }
 
                 StatusBadge {
@@ -84,8 +79,6 @@ Item {
                     kind: root.pairingStatus === "paired" ? "success"
                         : root.pairingStatus === "failed" ? "error"
                         : "warning"
-                    objectName: "pairingStatusBadge"
-                    Accessible.name: "Estado: " + text
                 }
 
                 Rectangle {
@@ -104,8 +97,6 @@ Item {
                         font.pixelSize: 36
                         font.weight: MichiTheme.typography.weightBold
                         font.letterSpacing: 8
-                        objectName: "pairingCodeText"
-                        Accessible.name: "Código de vinculación: " + root.pairingCode
                     }
                 }
 
@@ -143,8 +134,6 @@ Item {
                                 root.pairingStatus = "paired"
                             }
                         }
-                        objectName: "pairingConfirmButton"
-                        Accessible.name: "Confirmar vinculación"
                         focus: true
                         KeyNavigation.tab: rejectBtn
                         Keys.onReturnPressed: onClicked()
@@ -159,8 +148,6 @@ Item {
                             root.open = false
                             root.pairRejected()
                         }
-                        objectName: "pairingRejectButton"
-                        Accessible.name: "Rechazar vinculación"
                         KeyNavigation.tab: retryBtn
                         KeyNavigation.backtab: confirmBtn
                         Keys.onReturnPressed: onClicked()
@@ -181,8 +168,6 @@ Item {
                             root.errorMessage = ""
                             root.retryRequested()
                         }
-                        objectName: "pairingRetryButton"
-                        Accessible.name: "Reintentar vinculación"
                         KeyNavigation.backtab: rejectBtn
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()

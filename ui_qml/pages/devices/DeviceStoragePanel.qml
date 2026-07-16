@@ -19,9 +19,6 @@ Item {
 
     implicitHeight: childrenRect.height
 
-    objectName: "DeviceStoragePanel"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Almacenamiento del dispositivo"
 
     GlassMaterial {
         width: parent.width
@@ -40,14 +37,12 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                Accessible.name: "Almacenamiento"
             }
 
             Text {
                 text: root.mountPoint ? "Punto de montaje: " + root.mountPoint : "Sin dispositivo montado"
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: text
             }
 
             Grid {
@@ -114,8 +109,6 @@ Item {
                     StatusBadge {
                         text: modelData
                         kind: "success"
-                        objectName: "supportedFormatBadge_" + index
-                        Accessible.name: "Formato soportado: " + modelData
                     }
                 }
             }
@@ -126,7 +119,6 @@ Item {
                 font.pixelSize: MichiTheme.typography.captionSize
                 visible: true
 
-                Accessible.name: "Solo se admiten formatos de audio"
             }
 
             MichiButton {
@@ -138,8 +130,6 @@ Item {
                         root.dv.ejectDevice(root.mountPoint)
                     root.ejectClicked()
                 }
-                objectName: "ejectDeviceButton"
-                Accessible.name: "Expulsar dispositivo de forma segura"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: clicked()
                 Keys.onSpacePressed: clicked()

@@ -23,10 +23,7 @@ Item {
     signal primaryActionRequested()
     signal secondaryActionRequested()
 
-    objectName: "CapabilityGuard_" + (capabilityName || "unknown")
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: capabilityName || "Guardia de capacidad"
     Accessible.description: {
         if (root.checking) return "Verificando disponibilidad de " + capabilityName
         if (root.available) return capabilityName + " disponible"

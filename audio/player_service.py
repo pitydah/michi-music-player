@@ -13,6 +13,7 @@ from audio.mpd.mpd_config_builder import build_mpd_config
 from audio.mpd.mpd_errors import MpdConnectionError
 from core.settings_manager import get
 import logging
+import contextlib
 
 logger = logging.getLogger("michi.service")
 
@@ -168,10 +169,8 @@ class PlayerService(QObject):
 
     def _publish(self, event: str, **data):
         if self._event_bus:
-            try:
+            with contextlib.suppress(Exception):
                 self._event_bus.publish(event, **data)
-            except Exception:
-                pass
 
     def play(self, filepath, title="", artist="", album=""):
         self._retry_url = None

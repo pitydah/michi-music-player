@@ -17,10 +17,7 @@ Item {
     signal dismissed()
     signal actionTriggered()
 
-    objectName: "NotificationToast"
 
-    Accessible.role: Accessible.Notification
-    Accessible.name: notification ? (notification.title || notification.text || "") : ""
     Accessible.description: notification ? (notification.message || "") : ""
 
     width: parent ? parent.width : 0
@@ -159,8 +156,6 @@ Item {
                     root.actionTriggered()
                 }
 
-                Accessible.role: Accessible.Button
-                Accessible.name: text
             }
 
             QQC2.AbstractButton {
@@ -170,8 +165,6 @@ Item {
                 implicitHeight: 28
                 focusPolicy: Qt.StrongFocus
 
-                Accessible.role: Accessible.Button
-                Accessible.name: "Descartar notificación"
                 Accessible.description: "Cerrar esta notificación"
 
                 contentItem: Text {

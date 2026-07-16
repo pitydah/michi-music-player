@@ -45,14 +45,11 @@ Item {
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.pageTitleSize
                     font.weight: MichiTheme.typography.weightSemiBold
-                    Accessible.name: "Servidores y conexiones"
                 }
 
                 MicroServerHero {
                     id: microHero
                     width: parent.width
-                    objectName: "microServerHero"
-                    Accessible.name: "Micro servidor"
                     state: root.conn ? root.conn.microServerState : "not_configured"
                     onScanClicked: {
                         if (root.conn) root.conn.scanForServers()
@@ -71,8 +68,6 @@ Item {
                     id: externalHeader
                     text: "Servidores externos"
                     width: parent.width
-                    objectName: "externalServersHeader"
-                    Accessible.name: "Servidores externos"
                 }
 
                 Grid {
@@ -90,8 +85,6 @@ Item {
                             height: 80
                             serverName: modelData.name || "Servidor externo"
                             serverType: modelData.serverType || modelData.apiType || "API"
-                            objectName: "externalServerCard_" + index
-                            Accessible.name: modelData.name || "Servidor externo"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
@@ -103,15 +96,12 @@ Item {
                         color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize
                         width: parent.width; wrapMode: Text.WordWrap
                         visible: parent.children.length === 0
-                        Accessible.name: "No hay servidores externos configurados"
                     }
                 }
 
                 NetworkDiscoveryPanel {
                     id: discoveryPanel
                     width: parent.width
-                    objectName: "networkDiscoveryPanel"
-                    Accessible.name: "Descubrimiento de red"
                     discoveredServers: root.conn ? root.conn.discoveredServers : []
                     onServerSelected: function(index) {
                         if (root.conn && typeof root.conn.requestPair !== "undefined")
@@ -127,8 +117,6 @@ Item {
                 HomeAudioAccess {
                     id: homeAudioAccess
                     width: parent.width
-                    objectName: "homeAudioAccess"
-                    Accessible.name: "Acceso a Home Audio"
                     activeFocusOnTab: true
                     KeyNavigation.backtab: discoveryPanel
                     Keys.onReturnPressed: onOpenHomeAudio()

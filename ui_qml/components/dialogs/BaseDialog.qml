@@ -21,10 +21,7 @@ Item {
     signal accepted()
     signal rejected()
 
-    objectName: "BaseDialog"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: titleText
     Accessible.description: "Diálogo"
 
     readonly property int closeOnEscape: 1
@@ -162,7 +159,6 @@ Item {
                         font.pixelSize: MichiTheme.typography.cardTitleSize
                         font.weight: MichiTheme.typography.weightSemiBold
                         wrapMode: Text.WordWrap
-                        Accessible.name: root.titleText
                     }
                 }
 

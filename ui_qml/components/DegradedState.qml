@@ -16,8 +16,6 @@ Item {
 
     signal dismissed()
 
-    Accessible.role: Accessible.Alert
-    Accessible.name: root.title
     Accessible.description: root.message
 
     Keys.onEscapePressed: {

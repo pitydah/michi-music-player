@@ -79,14 +79,10 @@ Dialog {
                 placeholderText: "Ruta del archivo (.m3u, .pls, .xspf)"
                 readOnly: true
                 text: root._importPath
-                objectName: "importPathInput"
-                Accessible.name: "Ruta del archivo"
             }
             MichiButton {
                 text: "Examinar"
                 variant: "secondary"
-                objectName: "importBrowseButton"
-                Accessible.name: "Examinar archivo"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -95,9 +91,6 @@ Dialog {
         }
 
         Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Playlist Import"
-    objectName: "playlistImportDialog"
     focus: true
             width: parent.width
             height: 4
@@ -143,19 +136,16 @@ Dialog {
                 text: "Total entradas: " + root._totalEntries
                 color: MichiTheme.colors.textSecondary
                 font.pixelSize: MichiTheme.typography.metaSize
-                Accessible.name: "Total entradas: " + root._totalEntries
             }
             Text {
                 text: "Válidas: " + root._validEntries
                 color: MichiTheme.colors.success
                 font.pixelSize: MichiTheme.typography.metaSize
-                Accessible.name: "Entradas válidas: " + root._validEntries
             }
             Text {
                 text: "Faltantes: " + root._missingEntries
                 color: root._missingEntries > 0 ? MichiTheme.colors.warning : MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.metaSize
-                Accessible.name: "Entradas faltantes: " + root._missingEntries
             }
 
             Repeater {
@@ -196,8 +186,6 @@ Dialog {
                 text: root._importing ? "Importando..." : "Importar"
                 variant: "primary"
                 enabled: !root._importing && root._importPath !== "" && root._validEntries > 0
-                objectName: "importConfirmButton"
-                Accessible.name: "Confirmar importación"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -230,8 +218,6 @@ Dialog {
             MichiButton {
                 text: root._importing ? "Cancelar" : "Cerrar"
                 variant: "ghost"
-                objectName: "importCancelButton"
-                Accessible.name: root._importing ? "Cancelar importación" : "Cerrar"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -261,8 +247,6 @@ Dialog {
             "XSPF files (*.xspf)",
             "All files (*)"
         ]
-        objectName: "importFileDialog"
-        Accessible.name: "Seleccionar archivo de playlist"
         onAccepted: {
             root._importPath = selectedFile.toString().replace("file://", "")
             pathInput.text = root._importPath

@@ -26,9 +26,6 @@ Item {
 
     implicitHeight: childrenRect.height
 
-    objectName: "DeviceSyncProfileEditor"
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Perfil de sincronización"
 
     GlassMaterial {
         width: parent.width
@@ -47,8 +44,6 @@ Item {
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.sectionTitleSize
                 font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "syncProfileTitle"
-                Accessible.name: "Perfil de sincronización"
             }
 
             TextField {
@@ -58,8 +53,6 @@ Item {
                 placeholderText: "Nombre del perfil"
                 text: root.profileName
                 onTextChanged: root.profileName = text
-                objectName: "profileNameField"
-                Accessible.name: "Nombre del perfil"
             }
 
             Text { text: "Política de transcodificación"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "transcodePolicyLabel" }
@@ -70,8 +63,6 @@ Item {
                 model: ["never", "always", "unsupported_only"]
                 currentIndex: model.indexOf(root.transcodePolicy)
                 onCurrentTextChanged: root.transcodePolicy = currentText
-                objectName: "transcodePolicyCombo"
-                Accessible.name: "Política de transcodificación"
             }
 
             Text { text: "Política de colisión"; color: MichiTheme.colors.textSecondary; font.pixelSize: MichiTheme.typography.bodySize; objectName: "collisionPolicyLabel" }
@@ -82,8 +73,6 @@ Item {
                 model: ["skip", "overwrite", "rename", "ask"]
                 currentIndex: model.indexOf(root.collisionPolicy)
                 onCurrentTextChanged: root.collisionPolicy = currentText
-                objectName: "collisionPolicyCombo"
-                Accessible.name: "Política de colisión"
             }
 
             TextField {
@@ -93,8 +82,6 @@ Item {
                 placeholderText: "Directorio de música"
                 text: root.musicDirectory
                 onTextChanged: root.musicDirectory = text
-                objectName: "musicDirectoryField"
-                Accessible.name: "Directorio de música en el dispositivo"
             }
 
             Row {
@@ -139,16 +126,12 @@ Item {
                             music_directory: root.musicDirectory,
                         })
                     }
-                    objectName: "saveProfileButton"
-                    Accessible.name: "Guardar perfil de sincronización"
                 }
 
                 MichiButton {
                     text: "Restablecer"
                     variant: "ghost"
                     onClicked: root.profileReset(root.deviceKey)
-                    objectName: "resetProfileButton"
-                    Accessible.name: "Restablecer perfil a valores predeterminados"
                 }
             }
         }

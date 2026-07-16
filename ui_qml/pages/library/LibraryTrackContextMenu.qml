@@ -50,7 +50,6 @@ Menu {
             if (ids.length > 0 && root.bridge && root.bridge.playTrackById)
                 root.bridge.playTrackById(ids[0])
         }
-        Accessible.name: "Reproducir"
     }
 
     MenuItem {
@@ -60,7 +59,6 @@ Menu {
             if (ids.length > 0 && root.bridge && root.bridge.playNextTrackById)
                 root.bridge.playNextTrackById(ids[0])
         }
-        Accessible.name: "Reproducir siguiente"
     }
 
     MenuItem {
@@ -72,7 +70,6 @@ Menu {
                     root.bridge.enqueueTrackById(ids[i])
             }
         }
-        Accessible.name: "Añadir a la cola"
     }
 
     MenuItem {
@@ -86,7 +83,6 @@ Menu {
                     root.bridge.enqueueTrackById(ids[i])
             }
         }
-        Accessible.name: "Reemplazar cola"
     }
 
     MenuSeparator {}
@@ -100,7 +96,6 @@ Menu {
                     root.bridge.toggleFavoriteById(ids[i])
             }
         }
-        Accessible.name: "Marcar como favorito"
     }
 
     MenuItem {
@@ -109,7 +104,6 @@ Menu {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("playlists")
         }
-        Accessible.name: "Añadir a playlist"
     }
 
     MenuSeparator {}
@@ -124,7 +118,6 @@ Menu {
                     navigationBridge.navigateWithParams("library.album_detail", {album_key: ak})
             }
         }
-        Accessible.name: "Ir al álbum"
     }
 
     MenuItem {
@@ -137,7 +130,6 @@ Menu {
                     navigationBridge.navigateWithParams("library.artist_detail", {artist: artist})
             }
         }
-        Accessible.name: "Ir al artista"
     }
 
     MenuSeparator {}
@@ -149,7 +141,6 @@ Menu {
             if (ids.length > 0 && root.bridge && root.bridge.revealTrackById)
                 root.bridge.revealTrackById(ids[0])
         }
-        Accessible.name: "Mostrar en carpeta"
     }
 
     MenuItem {
@@ -162,7 +153,6 @@ Menu {
                 navigationBridge.navigate("metadata_inspector")
             }
         }
-        Accessible.name: "Editar metadatos"
     }
 
     MenuItem {
@@ -171,7 +161,6 @@ Menu {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("audio_lab")
         }
-        Accessible.name: "Abrir Audio Lab"
     }
 
     MenuItem {
@@ -180,7 +169,6 @@ Menu {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("library_doctor")
         }
-        Accessible.name: "Verificar integridad"
     }
 
     MenuItem {
@@ -189,7 +177,6 @@ Menu {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("devices")
         }
-        Accessible.name: "Enviar a dispositivo"
     }
 
     MenuSeparator {}
@@ -200,7 +187,6 @@ Menu {
             if (typeof navigationBridge !== "undefined")
                 navigationBridge.navigate("metadata_inspector")
         }
-        Accessible.name: "Ver propiedades"
     }
 
     MenuItem {
@@ -212,7 +198,6 @@ Menu {
                     root.bridge.toggleFavoriteById(ids[i])
             }
         }
-        Accessible.name: "Eliminar de biblioteca"
         Accessible.description: "Elimina las canciones seleccionadas de la biblioteca"
     }
 }

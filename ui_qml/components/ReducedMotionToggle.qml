@@ -16,10 +16,7 @@ Item {
 
     signal reduceMotionToggled(bool enabled)
 
-    objectName: "reducedMotionToggle"
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: "Reducir movimiento"
 
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
@@ -32,14 +29,11 @@ Item {
             text: "Reducir movimiento"
             color: MichiTheme.colors.textNormal
             font.pixelSize: MichiTheme.typography.bodySize
-            Accessible.name: "Alternar reducción de movimiento"
         }
 
         Switch {
             id: motionSwitch
             checked: root.reduceMotion
-            objectName: "reducedMotionSwitch"
-            Accessible.name: "Reducir movimiento"
             Accessible.onPressAction: toggle()
 
             onToggled: {

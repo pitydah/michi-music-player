@@ -56,7 +56,6 @@ BaseDialog {
             maximumLength: root.maxLength > 0 ? root.maxLength : 32767
 
             Accessible.role: Accessible.EditableText
-            Accessible.name: root.label || "Campo de texto"
             Accessible.description: validationError || ""
 
             background: Rectangle {
@@ -94,8 +93,6 @@ BaseDialog {
             font.pixelSize: MichiTheme.typography.captionSize
             wrapMode: Text.WordWrap
             visible: root.validationError !== ""
-            Accessible.role: Accessible.AlertMessage
-            Accessible.name: "Error de validación"
             Accessible.description: root.validationError
         }
     }
@@ -110,8 +107,6 @@ BaseDialog {
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
-            objectName: "inputDialogCancelButton"
-            Accessible.name: root.cancelText
             onClicked: {
                 root.open = false
                 root.cancelled()
@@ -125,8 +120,6 @@ BaseDialog {
             focus: true
             enabled: !root.validationError
             Layout.minimumWidth: 80
-            objectName: "inputDialogConfirmButton"
-            Accessible.name: root.confirmText
             Accessible.description: root.validationError || ""
             onClicked: {
                 if (root.validate()) {

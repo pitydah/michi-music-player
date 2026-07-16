@@ -23,9 +23,6 @@ Item {
 
     implicitHeight: 70
 
-    objectName: "DeviceTransferJob"
-    Accessible.role: Accessible.ListItem
-    Accessible.name: fileName
 
     Rectangle {
         anchors.fill: parent
@@ -51,8 +48,6 @@ Item {
                     font.weight: MichiTheme.typography.weightMedium
                     elide: Text.ElideRight
                     width: parent.width
-                    objectName: "transferJobFileName_" + root.jobId
-                    Accessible.name: root.fileName
                 }
 
                 Text {
@@ -65,7 +60,6 @@ Item {
                     width: parent.width
                     height: 4
                     value: root.totalBytes > 0 ? root.transferredBytes / root.totalBytes : 0
-                    objectName: "transferJobProgress_" + root.jobId
                     accessibleName: "Progreso de " + root.fileName
                 }
             }
@@ -93,8 +87,6 @@ Item {
                             default: return "active"
                         }
                     }
-                    objectName: "transferJobStatus_" + root.jobId
-                    Accessible.name: text
                 }
 
                 MichiButton {
@@ -102,8 +94,6 @@ Item {
                     variant: "ghost"
                     visible: root.status === "queued" || root.status === "transferring"
                     onClicked: root.cancelClicked(root.jobId)
-                    objectName: "cancelTransferJob_" + root.jobId
-                    Accessible.name: "Cancelar transferencia"
                 }
 
                 MichiButton {
@@ -111,8 +101,6 @@ Item {
                     variant: "ghost"
                     visible: root.status === "failed" || root.status === "cancelled"
                     onClicked: root.retryClicked(root.jobId)
-                    objectName: "retryTransferJob_" + root.jobId
-                    Accessible.name: "Reintentar transferencia"
                 }
             }
         }

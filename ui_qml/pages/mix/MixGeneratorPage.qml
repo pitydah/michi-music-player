@@ -37,10 +37,7 @@ Item {
     signal backRequested()
     signal showResults(var songs, string mixType)
 
-    objectName: "MixGeneratorPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Generador de Mix"
 
     function reset() {
         root._state = "IDLE"
@@ -144,8 +141,6 @@ Item {
 
                 MichiButton {
                     text: "Volver"; variant: "ghost"
-                    objectName: "generatorBackButton"
-                    Accessible.name: "Volver a Mix"
                     activeFocusOnTab: true
                     onClicked: root.backRequested()
                     KeyNavigation.tab: mixTypeCombo
@@ -179,8 +174,6 @@ Item {
                         ComboBox {
                             focusPolicy: Qt.StrongFocus
                             id: mixTypeCombo; width: parent.width
-                            objectName: "mixTypeCombo"
-                            Accessible.name: "Tipo de Mix"
                             model: [
                                 { text: "Mix diario", value: "daily_mix" },
                                 { text: "Favoritos", value: "favorites" },
@@ -213,8 +206,6 @@ Item {
                         TextField {
                             focusPolicy: Qt.StrongFocus
                             id: seedField; width: parent.width
-                            objectName: "seedField"
-                            Accessible.name: "Seed opcional para el mix"
                             placeholderText: "Parámetros en JSON (ej: {\"artist\":\"Genesis\"})"
                             text: root._seedValue
                             onTextChanged: root._seedValue = text
@@ -231,8 +222,6 @@ Item {
                         TextField {
                             focusPolicy: Qt.StrongFocus
                             id: seedArtistField; width: parent.width
-                            objectName: "seedArtistField"
-                            Accessible.name: "Artista semilla para el mix"
                             placeholderText: "Nombre del artista"
                             text: root._seedArtist
                             onTextChanged: root._seedArtist = text
@@ -249,8 +238,6 @@ Item {
                         TextField {
                             focusPolicy: Qt.StrongFocus
                             id: exclusionsField; width: parent.width
-                            objectName: "exclusionsField"
-                            Accessible.name: "Exclusiones separadas por coma"
                             placeholderText: "artista1, artista2, género1"
                             onTextChanged: {
                                 root._exclusions = text.split(",").map(function(x) { return x.trim() }).filter(function(x) { return x !== "" })
@@ -273,8 +260,6 @@ Item {
                             SpinBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: durationSpin; width: parent.width; from: 5; to: 480; stepSize: 5; value: root._durationMinutes
-                                objectName: "durationSpin"
-                                Accessible.name: "Duración del mix en minutos"
                                 onValueChanged: root._durationMinutes = value
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: trackLimitSpin
@@ -289,8 +274,6 @@ Item {
                             SpinBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: trackLimitSpin; width: parent.width; from: 5; to: 200; value: root._trackLimit
-                                objectName: "trackLimitSpin"
-                                Accessible.name: "Límite máximo de pistas"
                                 onValueChanged: root._trackLimit = value
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: qualityCombo
@@ -308,8 +291,6 @@ Item {
                                 Slider {
                                     focusPolicy: Qt.StrongFocus
                                     id: varietySlider; width: 120; from: 0; to: 100; value: root._variety
-                                    objectName: "varietySlider"
-                                    Accessible.name: "Variedad del mix"
                                     onValueChanged: root._variety = value
                                     activeFocusOnTab: true
                                     KeyNavigation.tab: familiaritySlider
@@ -327,8 +308,6 @@ Item {
                                 Slider {
                                     focusPolicy: Qt.StrongFocus
                                     id: familiaritySlider; width: 120; from: 0; to: 100; value: root._familiarity
-                                    objectName: "familiaritySlider"
-                                    Accessible.name: "Familiaridad del mix"
                                     onValueChanged: root._familiarity = value
                                     activeFocusOnTab: true
                                     KeyNavigation.tab: avoidRecentCheck
@@ -347,8 +326,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: qualityCombo; width: parent.width
-                                objectName: "qualityCombo"
-                                Accessible.name: "Filtro de calidad mínima"
                                 model: [
                                     { text: "Cualquiera", value: "" },
                                     { text: ">= 192 kbps", value: "192" },
@@ -371,8 +348,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: genreCombo; width: parent.width
-                                objectName: "genreCombo"
-                                Accessible.name: "Filtro de género"
                                 model: [
                                     { text: "Cualquiera", value: "" },
                                     { text: "Rock", value: "rock" },
@@ -407,8 +382,6 @@ Item {
                             SpinBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: yearFromSpin; width: parent.width; from: 1900; to: 2030; value: root._yearFrom
-                                objectName: "yearFromSpin"
-                                Accessible.name: "Año inicial del filtro"
                                 onValueChanged: root._yearFrom = value
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: yearToSpin
@@ -423,8 +396,6 @@ Item {
                             SpinBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: yearToSpin; width: parent.width; from: 1900; to: 2030; value: root._yearTo
-                                objectName: "yearToSpin"
-                                Accessible.name: "Año final del filtro"
                                 onValueChanged: root._yearTo = value
                                 activeFocusOnTab: true
                                 KeyNavigation.tab: avoidRecentCheck
@@ -438,8 +409,6 @@ Item {
                         id: avoidRecentCheck
                         text: "Evitar escuchadas recientemente"
                         checked: root._avoidRecent
-                        objectName: "avoidRecentCheck"
-                        Accessible.name: "Evitar canciones escuchadas recientemente"
                         onCheckedChanged: root._avoidRecent = checked
                         activeFocusOnTab: true
                         KeyNavigation.tab: generateBtn
@@ -464,8 +433,6 @@ Item {
                         return "Generar Mix"
                     }
                     variant: root._state === "FAILED" ? "danger" : "primary"
-                    objectName: "generateBtn"
-                    Accessible.name: text
                     activeFocusOnTab: true
                     enabled: root._state !== "VALIDATING" && root._state !== "GENERATING" && root._state !== "CANCELLING"
                     KeyNavigation.tab: cancelBtn
@@ -484,8 +451,6 @@ Item {
                     id: cancelBtn
                     text: "Cancelar"
                     variant: "danger"
-                    objectName: "cancelBtn"
-                    Accessible.name: "Cancelar generación"
                     activeFocusOnTab: true
                     visible: root._state === "GENERATING"
                     KeyNavigation.tab: resultList
@@ -591,16 +556,12 @@ Item {
                     width: parent.width; height: Math.min(360, root._resultSongs.length * 48)
                     model: root._resultSongs; clip: true; spacing: 2
                     activeFocusOnTab: true
-                    objectName: "generatedSongsList"
-                    Accessible.name: "Canciones generadas"
 
                     delegate: Rectangle {
                         width: parent.width; height: 44
                         color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
                         radius: MichiTheme.radiusSm
                         activeFocusOnTab: true
-                        objectName: "generatedSongItem_" + index
-                        Accessible.name: modelData.title + " - " + modelData.artist
                         KeyNavigation.tab: index < root._resultSongs.length - 1
                             ? resultList.itemAtIndex(index + 1)
                             : showResultsBtn
@@ -682,8 +643,6 @@ Item {
                     MichiButton {
                         id: showResultsBtn
                         text: "Ver resultados completos"; variant: "primary"
-                        objectName: "showResultsBtn"
-                        Accessible.name: "Ver resultados completos del mix"
                         activeFocusOnTab: true
                         KeyNavigation.tab: regenerateFromResultBtn
                         KeyNavigation.backtab: resultList
@@ -693,8 +652,6 @@ Item {
                     MichiButton {
                         id: regenerateFromResultBtn
                         text: "Regenerar"; variant: "ghost"
-                        objectName: "regenerateFromResultBtn"
-                        Accessible.name: "Regenerar mix"
                         activeFocusOnTab: true
                         KeyNavigation.tab: showResultsBtn
                         KeyNavigation.backtab: showResultsBtn

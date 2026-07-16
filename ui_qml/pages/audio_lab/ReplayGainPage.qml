@@ -21,11 +21,8 @@ Item {
     property var _results: null
     property string _errorMessage: ""
 
-    objectName: "ReplayGainPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "ReplayGain"
 
     readonly property int stateIdle: 0
     readonly property int stateAnalyzing: 1
@@ -86,13 +83,11 @@ Item {
                 text: "ReplayGain"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "replaygainPageTitle"
             }
 
             Text {
                 text: "Análisis de loudness, pico, ganancia track/album, escritura de etiquetas"
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "replaygainPageSubtitle"
             }
 
             AudioInputSelection { id: inputSelection }
@@ -107,8 +102,6 @@ Item {
                     title: "Track"
                     subtitle: "Ganancia por pista"
                     variant: root._mode === "track" ? "accent" : "base"
-                    objectName: "rgModeTrack"
-                    Accessible.name: "Modo Track"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -119,8 +112,6 @@ Item {
                     title: "Album"
                     subtitle: "Ganancia uniforme por álbum"
                     variant: root._mode === "album" ? "accent" : "base"
-                    objectName: "rgModeAlbum"
-                    Accessible.name: "Modo Album"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -132,7 +123,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "rgSettingsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.md
 
@@ -141,8 +131,6 @@ Item {
                         MichiSlider {
                             width: parent.width
                             from: -12; to: 12; value: root._preamp; stepSize: 0.5
-                            objectName: "rgPreampSlider"
-                            Accessible.name: "Preamp"
                             activeFocusOnTab: true
                             onMoved: root._preamp = value
                         }
@@ -153,8 +141,6 @@ Item {
                         MichiSlider {
                             width: parent.width
                             from: 0; to: 6; value: root._headroom; stepSize: 0.5
-                            objectName: "rgHeadroomSlider"
-                            Accessible.name: "Headroom"
                             activeFocusOnTab: true
                             onMoved: root._headroom = value
                         }
@@ -170,8 +156,6 @@ Item {
                     text: root._state === root.stateAnalyzing ? "Analizando..." : "Analizar"
                     variant: "primary"
                     enabled: root._state !== root.stateAnalyzing && root._state !== root.stateApplying && inputSelection.selectedFiles.length > 0
-                    objectName: "rgAnalyzeBtn"
-                    Accessible.name: "Analizar ReplayGain"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -181,8 +165,6 @@ Item {
                     text: "Escribir etiquetas"
                     variant: "secondary"
                     enabled: root._results !== null && root._state === root.stateCompleted
-                    objectName: "rgApplyBtn"
-                    Accessible.name: "Escribir etiquetas ReplayGain"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -192,8 +174,6 @@ Item {
                     text: "Eliminar etiquetas"
                     variant: "danger"
                     enabled: inputSelection.selectedFiles.length > 0
-                    objectName: "rgClearBtn"
-                    Accessible.name: "Eliminar etiquetas ReplayGain"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -205,7 +185,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: root._results ? "accent" : root._state === root.stateFailed ? "danger" : "status"
-                objectName: "rgResultsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
@@ -231,15 +210,11 @@ Item {
                 visible: root.labService === null
                 text: "Bridge no disponible"
                 kind: "disconnected"
-                objectName: "rgBridgeStatus"
-                Accessible.name: "Bridge no disponible"
             }
 
             MichiButton {
                 text: "Volver"
                 variant: "ghost"
-                objectName: "rgBackBtn"
-                Accessible.name: "Volver"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()

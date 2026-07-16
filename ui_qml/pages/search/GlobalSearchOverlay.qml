@@ -22,10 +22,7 @@ Item {
     signal closeRequested()
     signal openFullSearch()
 
-    objectName: "globalSearchOverlay"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Búsqueda rápida"
     Accessible.description: "Presiona Escape para cerrar"
 
     function search(text) {
@@ -108,9 +105,6 @@ Item {
         border.color: MichiTheme.colors.borderCard
         border.width: 1
 
-        objectName: "searchOverlayPanel"
-        Accessible.role: Accessible.Grouping
-        Accessible.name: "Panel de búsqueda rápida"
 
         Column {
             anchors.fill: parent
@@ -125,8 +119,6 @@ Item {
                     id: searchField
                     width: parent.width - 80
                     placeholderText: "Búsqueda rápida (Ctrl+F)..."
-                    objectName: "quickSearchInput"
-                    Accessible.name: "Búsqueda rápida"
                     Accessible.description: "Escribe para buscar, muestra máximo 3 resultados por sección"
                     onSearchTextChanged: root.search(text)
                     activeFocusOnTab: true
@@ -159,7 +151,6 @@ Item {
                 text: "Buscando..."
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Buscando"
             }
 
             Text {
@@ -167,7 +158,6 @@ Item {
                 text: "Sin resultados para \"" + root._query + "\""
                 color: MichiTheme.colors.textMuted
                 font.pixelSize: MichiTheme.typography.bodySize
-                Accessible.name: "Sin resultados"
             }
 
             Flickable {
@@ -193,8 +183,6 @@ Item {
                             rowTitle: modelData.title || ""
                             rowSubtitle: modelData.subtitle || ""
                             bridge: root.bridge
-                            objectName: "quickSearchResult_" + index
-                            Accessible.name: (modelData.title || "Resultado") + " - " + (modelData.subtitle || "")
                             activeFocusOnTab: true
                             onClicked: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
                             Keys.onReturnPressed: root.navigateTo(modelData.type || "", modelData.id || "", modelData.title || "")
@@ -214,8 +202,6 @@ Item {
                 text: "Abrir búsqueda completa \u2192"
                 variant: "ghost"
                 anchors.horizontalCenter: parent.horizontalCenter
-                objectName: "openFullSearchBtn"
-                Accessible.name: "Abrir búsqueda completa"
                 visible: root._results.length > 0
                 activeFocusOnTab: true
                 onClicked: root.openFullSearchFromOverlay()

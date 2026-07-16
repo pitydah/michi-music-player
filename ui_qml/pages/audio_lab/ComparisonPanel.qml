@@ -22,22 +22,18 @@ Item {
 
         AudioInputSelection {
             id: refInput
-            objectName: "comparisonRefInput"
         }
 
         SectionHeader { text: "Archivo a comparar"; width: parent.width; objectName: "compareTargetHeader"; Accessible.name: "Archivo a comparar" }
 
         AudioInputSelection {
             id: targetInput
-            objectName: "comparisonTargetInput"
         }
 
         MichiButton {
             text: "Iniciar comparación"
             variant: "primary"
             enabled: refInput.selectedFiles.length > 0 && targetInput.selectedFiles.length > 0
-            objectName: "startComparisonBtn"
-            Accessible.name: "Iniciar comparación"
             activeFocusOnTab: true
             Keys.onReturnPressed: onClicked()
             Keys.onSpacePressed: onClicked()

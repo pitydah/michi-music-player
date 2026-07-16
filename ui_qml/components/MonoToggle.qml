@@ -16,10 +16,7 @@ Item {
 
     signal monoToggled(bool enabled)
 
-    objectName: "monoToggle"
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: "Control de mono"
 
     implicitWidth: row.implicitWidth
     implicitHeight: row.implicitHeight
@@ -32,14 +29,11 @@ Item {
             text: "Mono"
             color: MichiTheme.colors.textNormal
             font.pixelSize: MichiTheme.typography.bodySize
-            Accessible.name: "Alternar mono"
         }
 
         Switch {
             id: monoSwitch
             checked: root.monoEnabled
-            objectName: "monoSwitch"
-            Accessible.name: "Alternar mono"
             Accessible.onPressAction: toggle()
 
             onToggled: {

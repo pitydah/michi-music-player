@@ -17,10 +17,7 @@ Item {
     property real balance: 0.0
     property bool reduceMotion: false
 
-    objectName: "audioAccessibilityPanel"
 
-    Accessible.role: Accessible.Grouping
-    Accessible.name: "Panel de accesibilidad de audio"
 
     implicitWidth: column.implicitWidth
     implicitHeight: column.implicitHeight
@@ -34,7 +31,6 @@ Item {
             color: MichiTheme.colors.textPrimary
             font.pixelSize: MichiTheme.typography.sectionTitleSize
             font.weight: MichiTheme.typography.weightSemiBold
-            Accessible.name: "Accesibilidad de audio"
         }
 
         MonoToggle {
@@ -66,17 +62,14 @@ Item {
 
         NotificationAnnouncement {
             id: announcement
-            objectName: "accessibilityAnnouncement"
         }
 
         ErrorAnnouncement {
             id: errorAnnouncement
-            objectName: "accessibilityErrorAnnouncement"
         }
 
         PlaybackStateAnnouncement {
             id: playbackAnnouncement
-            objectName: "accessibilityPlaybackAnnouncement"
         }
     }
 }

@@ -50,7 +50,6 @@ BaseDialog {
             checked: root.dontAskAgain
             font.pixelSize: MichiTheme.typography.captionSize
             Accessible.role: Accessible.CheckBox
-            Accessible.name: "No volver a preguntar"
 
             onCheckedChanged: root.dontAskAgain = checked
 
@@ -63,9 +62,6 @@ BaseDialog {
                 border.color: dontAskCheck.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
 
                 Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Confirm"
-    objectName: "confirmDialog"
     focus: true
                     anchors.centerIn: parent
                     width: 10; height: 10
@@ -95,8 +91,6 @@ BaseDialog {
             text: root.cancelText
             variant: "ghost"
             Layout.minimumWidth: 80
-            objectName: "confirmDialogCancelButton"
-            Accessible.name: root.cancelText
             Accessible.description: "Cancelar acción"
             onClicked: {
                 root.open = false
@@ -110,8 +104,6 @@ BaseDialog {
             variant: root.iconType === "error" ? "danger" : "primary"
             focus: true
             Layout.minimumWidth: 80
-            objectName: "confirmDialogConfirmButton"
-            Accessible.name: root.confirmText
             Accessible.description: root.confirmText
             onClicked: {
                 root.open = false

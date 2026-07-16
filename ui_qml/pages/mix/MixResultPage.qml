@@ -25,10 +25,7 @@ Item {
     signal regenerateRequested()
     signal playTrackAtIndex(int index)
 
-    objectName: "MixResultPage"
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Resultados del Mix"
 
     ListView {
         focusPolicy: Qt.StrongFocus
@@ -37,8 +34,6 @@ Item {
         clip: true; spacing: 2
         model: root._songs
         activeFocusOnTab: true
-        objectName: "mixResultTrackList"
-        Accessible.name: "Lista de canciones del mix"
         headerPositioning: ListView.OverlayHeader
         focus: true
 
@@ -56,8 +51,6 @@ Item {
 
                 MichiButton {
                     text: "Volver"; variant: "ghost"
-                    objectName: "resultBackBtn"
-                    Accessible.name: "Volver al generador"
                     activeFocusOnTab: true
                     KeyNavigation.tab: playAllBtn
                     onClicked: root.backRequested()
@@ -76,8 +69,6 @@ Item {
                 MichiButton {
                     id: playAllBtn
                     text: "Reproducir todo"; variant: "primary"
-                    objectName: "playAllBtn"
-                    Accessible.name: "Reproducir todas las canciones del mix"
                     activeFocusOnTab: true
                     KeyNavigation.tab: enqueueAllBtn
                     KeyNavigation.backtab: resultBackBtn
@@ -88,8 +79,6 @@ Item {
                 MichiButton {
                     id: enqueueAllBtn
                     text: "Agregar a cola"; variant: "secondary"
-                    objectName: "enqueueAllBtn"
-                    Accessible.name: "Agregar todas las canciones a la cola"
                     activeFocusOnTab: true
                     KeyNavigation.tab: saveAsPlaylistBtn
                     KeyNavigation.backtab: playAllBtn
@@ -100,8 +89,6 @@ Item {
                 MichiButton {
                     id: saveAsPlaylistBtn
                     text: "Guardar como playlist"; variant: "ghost"
-                    objectName: "saveAsPlaylistBtn"
-                    Accessible.name: "Guardar mix como playlist"
                     activeFocusOnTab: true
                     KeyNavigation.tab: regenerateBtn
                     KeyNavigation.backtab: enqueueAllBtn
@@ -112,8 +99,6 @@ Item {
                 MichiButton {
                     id: regenerateBtn
                     text: "Regenerar"; variant: "ghost"
-                    objectName: "regenerateBtn"
-                    Accessible.name: "Regenerar mix"
                     activeFocusOnTab: true
                     KeyNavigation.tab: trackList
                     KeyNavigation.backtab: saveAsPlaylistBtn
@@ -133,8 +118,6 @@ Item {
             color: modelData._hovered ? MichiTheme.colors.surfaceHover : "transparent"
             radius: MichiTheme.radiusSm
             activeFocusOnTab: true
-            objectName: "mixTrackItem_" + index
-            Accessible.name: modelData.title + " - " + modelData.artist + (modelData.album ? " - " + modelData.album : "")
             KeyNavigation.tab: index < root._songs.length - 1
                 ? trackList.itemAtIndex(index + 1)
                 : null

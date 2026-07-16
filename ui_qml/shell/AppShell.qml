@@ -146,7 +146,6 @@ Item {
             BusyIndicator {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 40; height: 40
-                Accessible.name: "Cargando"
             }
 
             Text {

@@ -174,7 +174,6 @@ Item {
                     id: searchFieldDesktop
                     Layout.fillWidth: true
                     placeholderText: "Buscar ajustes..."
-                    Accessible.name: "Buscar ajustes"
                     onSearchTextChanged: root.searchCategories(text)
                 }
 
@@ -185,8 +184,6 @@ Item {
                     delegate: Rectangle {
                         width: parent.width; height: 44; radius: MichiTheme.radius.sm
                         color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                        Accessible.name: modelData.title || ""
-                        Accessible.role: Accessible.ListItem
 
                         RowLayout {
                             anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
@@ -214,8 +211,6 @@ Item {
                         focus: true
                         activeFocusOnTab: true
                     }
-                    Accessible.role: Accessible.List
-                    Accessible.name: "Categorías de ajustes"
                     keyNavigationEnabled: true
                 }
 
@@ -229,7 +224,6 @@ Item {
                     variant: "danger"
                     visible: root.bridge !== null
                     onClicked: confirmResetDialog.open()
-                    Accessible.name: "Restaurar todos los ajustes"
                 }
             }
         }
@@ -308,7 +302,6 @@ Item {
                         variant: "ghost"
                         visible: root.selectedCategory !== null && root.selectedSection === null && root.selectedEntry === null
                         onClicked: root.resetCategory(root.selectedCategoryId)
-                        Accessible.name: "Restaurar categoría"
                     }
                 }
 
@@ -316,7 +309,6 @@ Item {
                     focusPolicy: Qt.StrongFocus
                     Layout.fillWidth: true; Layout.fillHeight: true
                     clip: true
-                    Accessible.role: Accessible.ScrollArea
 
                     Loader {
                         sourceComponent: {
@@ -348,7 +340,6 @@ Item {
                 SearchField {
                     Layout.fillWidth: true
                     placeholderText: "Buscar..."
-                    Accessible.name: "Buscar ajustes"
                     onSearchTextChanged: root.searchCategories(text)
                 }
 
@@ -359,8 +350,6 @@ Item {
                     delegate: Rectangle {
                         width: parent.width; height: 44; radius: MichiTheme.radius.sm
                         color: mouse.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
-                        Accessible.name: modelData.title || ""
-                        Accessible.role: Accessible.ListItem
 
                         RowLayout {
                             anchors.fill: parent; anchors.margins: MichiTheme.spacing.sm; spacing: MichiTheme.spacing.sm
@@ -384,8 +373,6 @@ Item {
                         Keys.onReturnPressed: root.openCategory(modelData.id)
                         focus: true; activeFocusOnTab: true
                     }
-                    Accessible.role: Accessible.List
-                    Accessible.name: "Categorías"
                 }
             }
         }
@@ -437,7 +424,6 @@ Item {
                 variant: "ghost"
                 visible: root.selectedCategory !== null
                 onClicked: root.back()
-                Accessible.name: "Volver"
             }
             Label {
                 text: root.selectedEntry ? root.selectedEntry.label :
@@ -453,7 +439,6 @@ Item {
             Layout.fillWidth: true; Layout.margins: MichiTheme.spacing.sm
             placeholderText: "Buscar..."
             visible: root.selectedCategory === null
-            Accessible.name: "Buscar ajustes"
             onSearchTextChanged: root.searchCategories(text)
         }
 
@@ -484,7 +469,6 @@ Item {
                 implicitWidth: 36
                 visible: root.selectedCategory !== null
                 onClicked: root.back()
-                Accessible.name: "Volver"
             }
             Label {
                 text: root.selectedEntry ? root.selectedEntry.label :

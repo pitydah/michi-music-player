@@ -14,10 +14,7 @@ Rectangle {
     property bool active: false
     property bool reducedMotion: false
 
-    objectName: "CancellationBanner"
 
-    Accessible.role: Accessible.AlertMessage
-    Accessible.name: title
     Accessible.description: message || "Una operación está siendo cancelada"
 
     height: active ? 40 : 0
@@ -42,7 +39,6 @@ Rectangle {
             width: 16
             height: 16
             running: root.active
-            Accessible.name: root.title
         }
 
         Text {

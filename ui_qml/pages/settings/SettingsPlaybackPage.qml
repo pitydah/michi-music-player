@@ -19,8 +19,6 @@ Item {
     property string errorDetails: ""
     property var audioDevices: []
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes de reproducción"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -60,9 +58,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.playback.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes de reproducción"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -109,7 +104,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: outputDevice
-                                objectName: "settings.playback.outputDevice"
                                 model: root.audioDevices.length > 0 ? root.audioDevices : ["Predeterminado"]
                                 currentIndex: {
                                     var dev = root._loadValue("audio/output_device_id", "auto")
@@ -118,8 +112,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/output_device_id", currentText)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Dispositivo de salida"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -148,7 +140,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: audioProfile
-                                objectName: "settings.playback.audioProfile"
                                 model: ["standard", "hifi_pcm", "bitperfect_pcm", "dsd_to_pcm", "pure_audio", "studio_monitor"]
                                 currentIndex: {
                                     var p = root._loadValue("audio/profile", "standard")
@@ -157,8 +148,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("audio/profile", currentText)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Perfil de audio"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -197,7 +186,6 @@ Item {
 
                             MichiSlider {
                                 id: defaultVolumeSlider
-                                objectName: "settings.playback.defaultVolume"
                                 implicitWidth: 200
                                 from: 0
                                 to: 100
@@ -224,11 +212,8 @@ Item {
                             }
                             Switch {
                                 id: rememberVolume
-                                objectName: "settings.playback.rememberVolume"
                                 checked: root._loadValue("playback/remember_volume", true)
                                 onClicked: root._saveValue("playback/remember_volume", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Recordar volumen"
                                 Accessible.description: "Restaurar el último volumen usado"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -258,11 +243,8 @@ Item {
                             }
                             Switch {
                                 id: gaplessPlayback
-                                objectName: "settings.playback.gapless"
                                 checked: root._loadValue("playback/gapless", true)
                                 onClicked: root._saveValue("playback/gapless", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Reproducción sin pausas"
                                 Accessible.description: "Eliminar el silencio entre canciones"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -291,7 +273,6 @@ Item {
 
                             MichiSlider {
                                 id: crossfadeSlider
-                                objectName: "settings.playback.crossfade"
                                 implicitWidth: 200
                                 from: 0
                                 to: 10
@@ -340,7 +321,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: replaygainMode
-                                objectName: "settings.playback.replaygainMode"
                                 model: ListModel {
                                     ListElement { text: "Desactivado"; value: "off" }
                                     ListElement { text: "Pista (Track)"; value: "track" }
@@ -356,8 +336,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("playback/replaygain", currentValue)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Modo ReplayGain"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -396,7 +374,6 @@ Item {
 
                             MichiSlider {
                                 id: bufferSizeSlider
-                                objectName: "settings.playback.bufferSize"
                                 implicitWidth: 200
                                 from: 50
                                 to: 1000

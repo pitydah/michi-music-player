@@ -54,8 +54,6 @@ Item {
                 id: searchField
                 width: 200
                 placeholderText: "Buscar en historial..."
-                objectName: "historySearchField"
-                Accessible.name: "Buscar en historial"
                 onSearchTextChanged: { root.searchText = text; root.filtersChanged() }
             }
 
@@ -64,8 +62,6 @@ Item {
                 id: artistField
                 width: 140
                 placeholderText: "Artista"
-                objectName: "artistFilterField"
-                Accessible.name: "Filtrar por artista"
                 onTextChanged: { root.artistFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.artistFilter = ""; root.filtersChanged() }
             }
@@ -75,8 +71,6 @@ Item {
                 id: albumField
                 width: 140
                 placeholderText: "Álbum"
-                objectName: "albumFilterField"
-                Accessible.name: "Filtrar por álbum"
                 onTextChanged: { root.albumFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.albumFilter = ""; root.filtersChanged() }
             }
@@ -86,8 +80,6 @@ Item {
                 id: deviceField
                 width: 120
                 placeholderText: "Dispositivo"
-                objectName: "deviceFilterField"
-                Accessible.name: "Filtrar por dispositivo"
                 onTextChanged: { root.deviceFilter = text.trim(); root.filtersChanged() }
                 Keys.onEscapePressed: { text = ""; root.deviceFilter = ""; root.filtersChanged() }
             }
@@ -95,8 +87,6 @@ Item {
             MichiButton {
                 text: "Limpiar filtros"
                 variant: "ghost"
-                objectName: "clearFiltersButton"
-                Accessible.name: "Limpiar filtros"
                 activeFocusOnTab: true
                 Keys.onReturnPressed: onClicked()
                 Keys.onSpacePressed: onClicked()
@@ -109,8 +99,6 @@ Item {
             CheckBox {
                 id: dateRangeCheck
                 text: "Rango de fecha"
-                objectName: "dateRangeCheck"
-                Accessible.name: "Activar rango de fecha"
                 onCheckedChanged: {
                     root.dateRangeEnabled = checked
                     root.filtersChanged()
@@ -129,8 +117,6 @@ Item {
                 width: 140
                 placeholderText: "YYYY-MM-DD"
                 visible: root.dateRangeEnabled
-                objectName: "dateFromField"
-                Accessible.name: "Fecha desde"
                 onTextChanged: {
                     var d = Date.fromLocaleString(Qt.locale(), text, "yyyy-MM-dd")
                     root.dateFrom = d || new Date(0)
@@ -151,8 +137,6 @@ Item {
                 width: 140
                 placeholderText: "YYYY-MM-DD"
                 visible: root.dateRangeEnabled
-                objectName: "dateToField"
-                Accessible.name: "Fecha hasta"
                 onTextChanged: {
                     var d = Date.fromLocaleString(Qt.locale(), text, "yyyy-MM-dd")
                     root.dateTo = d || new Date()

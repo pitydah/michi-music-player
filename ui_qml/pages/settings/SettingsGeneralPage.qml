@@ -20,8 +20,6 @@ Item {
     property real cacheSize: 0.0
     property bool loadingCache: false
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Ajustes generales"
 
     function refresh() {
         if (pageState === AsyncStateView.ERROR) return
@@ -80,9 +78,6 @@ Item {
             id: scrollView
             anchors.fill: parent
             clip: true
-            objectName: "settings.general.scrollView"
-            Accessible.role: Accessible.ScrollArea
-            Accessible.name: "Ajustes generales"
 
             ColumnLayout {
                 width: Math.min(scrollView.width - MichiTheme.spacing.xl * 2, 800)
@@ -129,7 +124,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: languageSelector
-                                objectName: "settings.general.language"
                                 model: ListModel {
                                     ListElement { text: "Español"; value: "es" }
                                     ListElement { text: "English"; value: "en" }
@@ -147,8 +141,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("general/language", currentValue)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Idioma de la interfaz"
                                 Accessible.description: "Selecciona el idioma de la interfaz"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -189,7 +181,6 @@ Item {
                             ComboBox {
                                 focusPolicy: Qt.StrongFocus
                                 id: themeMode
-                                objectName: "settings.general.themeMode"
                                 model: ListModel {
                                     ListElement { text: "Sistema"; value: "system" }
                                     ListElement { text: "Claro"; value: "light" }
@@ -204,8 +195,6 @@ Item {
                                     return 0
                                 }
                                 onActivated: root._saveValue("appearance/theme", currentValue)
-                                Accessible.role: Accessible.ComboBox
-                                Accessible.name: "Modo de tema"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -234,11 +223,8 @@ Item {
                             }
                             Switch {
                                 id: closeToTray
-                                objectName: "settings.general.closeToTray"
                                 checked: root._loadValue("general/close_to_tray", false)
                                 onClicked: root._saveValue("general/close_to_tray", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Cerrar a la bandeja"
                                 Accessible.description: "Minimizar a la bandeja del sistema al cerrar"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -257,11 +243,8 @@ Item {
                             }
                             Switch {
                                 id: startMinimized
-                                objectName: "settings.general.startMinimized"
                                 checked: root._loadValue("general/start_minimized", false)
                                 onClicked: root._saveValue("general/start_minimized", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Iniciar minimizado"
                                 Accessible.description: "Abrir la aplicación minimizada en la bandeja"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -280,11 +263,8 @@ Item {
                             }
                             Switch {
                                 id: rememberSession
-                                objectName: "settings.general.rememberSession"
                                 checked: root._loadValue("general/remember_session", true)
                                 onClicked: root._saveValue("general/remember_session", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Recordar sesión"
                                 Accessible.description: "Restaurar la última vista y cola al abrir"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -303,11 +283,8 @@ Item {
                             }
                             Switch {
                                 id: confirmExit
-                                objectName: "settings.general.confirmExit"
                                 checked: root._loadValue("general/confirm_exit", false)
                                 onClicked: root._saveValue("general/confirm_exit", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Confirmar salida"
                                 Accessible.description: "Preguntar antes de cerrar la aplicación"
                                 focusPolicy: Qt.StrongFocus
                             }
@@ -337,11 +314,8 @@ Item {
                             }
                             Switch {
                                 id: checkUpdates
-                                objectName: "settings.general.checkUpdates"
                                 checked: root._loadValue("updates/auto_check", true)
                                 onClicked: root._saveValue("updates/auto_check", checked)
-                                Accessible.role: Accessible.CheckBox
-                                Accessible.name: "Buscar actualizaciones automáticamente"
                                 focusPolicy: Qt.StrongFocus
                             }
                         }
@@ -353,7 +327,6 @@ Item {
                             variant: "ghost"
                             Layout.fillWidth: true
                             onClicked: root._checkForUpdates()
-                            Accessible.name: "Buscar actualizaciones ahora"
                         }
                     }
                 }
@@ -395,7 +368,6 @@ Item {
                                 variant: "danger"
                                 enabled: root.cacheSize > 0 && !root.loadingCache
                                 onClicked: confirmClearCache.open()
-                                Accessible.name: "Limpiar caché"
                             }
                         }
                     }

@@ -1273,7 +1273,7 @@ class TestWF16HomeAudio:
     @pytest.mark.qml_route("home_audio")
     def test_home_audio_set_volume(self):
         ha = FakeHomeAudioBridge()
-        r = ha.group(["dev1"])
+        ha.group(["dev1"])
         r2 = ha.setVolume("group_1", 60)
         assert r2["ok"]
         assert ha._volumes["group_1"] == 60

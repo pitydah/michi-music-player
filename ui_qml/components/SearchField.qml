@@ -53,8 +53,6 @@ Item {
             visible: parent.text === "" && !parent.activeFocus
         }
 
-        Accessible.role: Accessible.EditableText
-        Accessible.name: root.accessibleName
         Accessible.description: root.accessibleDescription
 
         onTextChanged: root.searchTextChanged(text)

@@ -20,10 +20,7 @@ Item {
     signal confirmed()
     signal cancelled()
 
-    objectName: "DestructiveActionDialog"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: title
     Accessible.description: message + ". Escribe " + keyword + " para confirmar."
 
     visible: open

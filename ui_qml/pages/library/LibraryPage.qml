@@ -111,8 +111,6 @@ Item {
 
         LibraryNavigationBar {
             id: navBar; width: parent.width
-            objectName: "libraryNavBar"
-            Accessible.name: "Barra de navegación de biblioteca"
             onSearchTextUpdated: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(text); root._searchActive = text.length > 0; pageState.searchText = text }
             Keys.onReturnPressed: { if (root.lib && typeof root.lib.search !== "undefined") root.lib.search(navBar.searchText) }
             Keys.onEscapePressed: { navBar.clearSearch(); root._searchActive = false; pageState.searchText = "" }
@@ -121,8 +119,6 @@ Item {
 
         LibraryFilterBar {
             id: filterBar; width: parent.width
-            objectName: "libraryFilterBar"
-            Accessible.name: "Filtros de biblioteca"
             activeFocusOnTab: true
             onFormatFilterChanged: function(fmt) { if (root.lib) root.lib.setFormatFilter(fmt) }
             onGenreFilterChanged: function(genre) { if (root.lib) root.lib.setGenreFilter(genre) }
@@ -136,8 +132,6 @@ Item {
             albumCount: root.lib ? root.lib.albumCount : 0
             artistCount: root.lib ? root.lib.artistCount : 0
             state: root.lib ? root.lib.state : "INITIALIZING"
-            objectName: "libraryStatusHeader"
-            Accessible.name: "Estado de la biblioteca"
         }
 
         StackLayout {
@@ -149,8 +143,6 @@ Item {
 
             FocusScope {
                 id: tracksFocusScope
-                objectName: "tracksFocusScope"
-                Accessible.name: "Lista de canciones"
                 focus: navBar.currentTab === 0
 
                 LibraryTrackTable {
@@ -161,8 +153,6 @@ Item {
                     notif: root.notif
                     actionRegistry: root.act
                     selectionController: root.sel
-                    objectName: "libraryTrackTable"
-                    Accessible.name: "Lista de canciones"
                     activeFocusOnTab: true
                     onTrackContextMenuRequested: function(trackId, title, artist, album) {
                         root.onTrackContextMenu(trackId, title, artist, album)
@@ -172,8 +162,6 @@ Item {
 
             FocusScope {
                 id: albumsFocusScope
-                objectName: "albumsFocusScope"
-                Accessible.name: "Cuadrícula de álbumes"
                 focus: navBar.currentTab === 1
 
                 AlbumGridPage {
@@ -181,8 +169,6 @@ Item {
                     anchors.fill: parent
                     albumModel: root.lib ? root.lib.albumModel : null
                     bridge: root.lib
-                    objectName: "albumGridPage"
-                    Accessible.name: "Cuadrícula de álbumes"
                     activeFocusOnTab: true
                     onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
                 }
@@ -190,8 +176,6 @@ Item {
 
             FocusScope {
                 id: artistsFocusScope
-                objectName: "artistsFocusScope"
-                Accessible.name: "Cuadrícula de artistas"
                 focus: navBar.currentTab === 2
 
                 ArtistGridPage {
@@ -199,8 +183,6 @@ Item {
                     anchors.fill: parent
                     artistModel: root.lib ? root.lib.artistModel : null
                     bridge: root.lib
-                    objectName: "artistGridPage"
-                    Accessible.name: "Cuadrícula de artistas"
                     activeFocusOnTab: true
                     onArtistClicked: function(name) { root.showArtistDetail(name) }
                 }
@@ -208,8 +190,6 @@ Item {
 
             FocusScope {
                 id: foldersFocusScope
-                objectName: "foldersFocusScope"
-                Accessible.name: "Explorador de carpetas"
                 focus: navBar.currentTab === 3
 
                 FolderBrowserPage {
@@ -217,8 +197,6 @@ Item {
                     anchors.fill: parent
                     folderModel: root.lib ? root.lib.folderModel : null
                     bridge: root.lib
-                    objectName: "folderBrowserPage"
-                    Accessible.name: "Explorador de carpetas"
                     activeFocusOnTab: true
                 }
             }
@@ -229,8 +207,6 @@ Item {
             width: parent.width
             height: MichiTheme.toolbarHeight
             z: 10
-            objectName: "librarySelectionBar"
-            Accessible.name: "Barra de selección"
             bridge: root.lib
             visible: selectedCount > 0
             onActionRequested: function(actionId, ids) {
@@ -245,8 +221,6 @@ Item {
 
     LibraryContextMenu {
         id: contextMenu
-        objectName: "libraryContextMenu"
-        Accessible.name: "Menú contextual de biblioteca"
         bridge: root.lib
         actionRegistry: root.act
     }
@@ -301,11 +275,9 @@ Item {
         sourceComponent: Item {
             id: loadingContainer
             width: 120; height: 120
-            Accessible.name: "Cargando biblioteca"
             BusyIndicator {
                 anchors.centerIn: parent
                 running: true
-                Accessible.role: Accessible.Indicator
             }
         }
     }

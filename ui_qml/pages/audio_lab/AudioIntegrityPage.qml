@@ -21,11 +21,8 @@ Item {
     property var _results: []
     property string _errorMessage: ""
 
-    objectName: "AudioIntegrityPage"
     focus: true
 
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Integridad de audio"
 
     readonly property int stateIdle: 0
     readonly property int stateChecking: 1
@@ -80,13 +77,11 @@ Item {
                 text: "Integridad de audio"
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.pageTitleSize; font.weight: MichiTheme.typography.weightSemiBold
-                objectName: "integrityPageTitle"
             }
 
             Text {
                 text: "Validación de formato, cabeceras, metadatos, detección de corrupción y duplicados"
                 color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize; wrapMode: Text.WordWrap; width: parent.width
-                objectName: "integrityPageSubtitle"
             }
 
             AudioInputSelection { id: inputSelection }
@@ -96,15 +91,12 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: "base"
-                objectName: "integrityTypesPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Row {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
                             checked: root._checkFormat; text: "Validación de formato"
-                            objectName: "checkFormatCb"
-                            Accessible.name: "Validación de formato"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -115,8 +107,6 @@ Item {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
                             checked: root._checkMetadata; text: "Integridad de metadatos"
-                            objectName: "checkMetadataCb"
-                            Accessible.name: "Integridad de metadatos"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -127,8 +117,6 @@ Item {
                         spacing: MichiTheme.spacing.sm
                         CheckBox {
                             checked: root._checkHeader; text: "Cabeceras y estructura"
-                            objectName: "checkHeaderCb"
-                            Accessible.name: "Cabeceras y estructura"
                             activeFocusOnTab: true
                             Keys.onReturnPressed: toggle()
                             Keys.onSpacePressed: toggle()
@@ -146,8 +134,6 @@ Item {
                     text: "Verificar integridad"
                     variant: "primary"
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.stateChecking
-                    objectName: "integrityFullCheckBtn"
-                    Accessible.name: "Verificar integridad"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -157,8 +143,6 @@ Item {
                     text: "Verificación rápida"
                     variant: "secondary"
                     enabled: inputSelection.selectedFiles.length > 0 && root._state !== root.stateChecking
-                    objectName: "integrityQuickCheckBtn"
-                    Accessible.name: "Verificación rápida"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -167,8 +151,6 @@ Item {
                 MichiButton {
                     text: "Volver"
                     variant: "ghost"
-                    objectName: "integrityBackBtn"
-                    Accessible.name: "Volver"
                     activeFocusOnTab: true
                     Keys.onReturnPressed: onClicked()
                     Keys.onSpacePressed: onClicked()
@@ -180,7 +162,6 @@ Item {
 
             GlassMaterial {
                 width: parent.width; radius: MichiTheme.radiusMd; variant: root._results.length > 0 ? "accent" : root._state === root.stateFailed ? "danger" : "status"
-                objectName: "integrityResultsPanel"
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.lg; spacing: MichiTheme.spacing.sm
                     Text {
@@ -214,8 +195,6 @@ Item {
                                     text: "Reparar"
                                     variant: "ghost"; implicitWidth: 50; implicitHeight: 24
                                     visible: !modelData.valid && modelData.repairable
-                                    objectName: "repairBtn_" + index
-                                    Accessible.name: "Reparar archivo " + index
                                     activeFocusOnTab: true
                                     Keys.onReturnPressed: onClicked()
                                     Keys.onSpacePressed: onClicked()
@@ -232,8 +211,6 @@ Item {
                 visible: root.labService === null
                 text: "Bridge no disponible"
                 kind: "disconnected"
-                objectName: "integrityBridgeStatus"
-                Accessible.name: "Bridge no disponible"
             }
         }
     }

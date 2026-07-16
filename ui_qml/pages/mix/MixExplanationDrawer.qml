@@ -19,10 +19,7 @@ Item {
 
     signal closed()
 
-    objectName: "MixExplanationDrawer"
 
-    Accessible.role: Accessible.Dialog
-    Accessible.name: "Explicación del Mix"
 
     function show(mixParams, trackExplanations) {
         root._mixParams = mixParams || {}
@@ -91,8 +88,6 @@ Item {
                             id: dismissBtn
                             text: "[X] Cerrar"; color: MichiTheme.colors.textMuted
                             font.pixelSize: MichiTheme.typography.bodySize; anchors.verticalCenter: parent.verticalCenter
-                            objectName: "explanationDrawerDismissBtn"
-                            Accessible.name: "Cerrar explicación"
                             activeFocusOnTab: true
 
                             Keys.onReturnPressed: root.dismiss()

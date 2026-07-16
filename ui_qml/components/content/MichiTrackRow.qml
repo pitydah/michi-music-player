@@ -37,8 +37,6 @@ FocusScope {
     Keys.onSpacePressed: root.primaryActionRequested()
 
     Rectangle {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Michi Track Row"
     objectName: "michiTrackRow"
     focus: true
         anchors.fill: parent
