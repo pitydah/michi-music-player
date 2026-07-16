@@ -1,10 +1,11 @@
-"""Playback controller — core track playback, table menus, EQ, state handling."""
+"""Playback controller — core business logic, no QtWidgets dependency."""
+from __future__ import annotations
+
 import contextlib
 import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-
 
 from audio.player import PlaybackState
 from sources.base_source import TrackRef
@@ -17,68 +18,13 @@ class PlaybackController:
         self._win = window
 
     def on_table_menu(self, pos):
-        idx = self._win._ctx.table.indexAt(pos)
-        if not idx.isValid():
-            return
-        fp = self._win._ctx.model.index(idx.row(), TrackRefTableModel.COL_URI)
-        fp = self._win._ctx.model.data(fp, Qt.DisplayRole)
-        if not fp:
-            return
-        is_remote = fp.startswith("http://") or fp.startswith("https://")
-        try:
-            from PySide6.QtWidgets import QMenu, QApplication
-            menu = QMenu(self._win)
-            menu.addAction("Reproducir", lambda: self._win._ctx.play_file(fp))
-            menu.addAction("Añadir a cola",
-                           lambda: self._win._ctx.playback.enqueue([fp], play_now=False))
-
-            pl_menu = menu.addMenu("Añadir a playlist")
-            try:
-                playlists = self._win._ctx.db.get_playlists()
-                for pl in playlists:
-                    name = pl.get("name", "Sin nombre")
-                    pid = pl.get("id", 0)
-                    pl_menu.addAction(name[:40], lambda p=pid, f=fp: (
-                        self._win._ctx.db.add_to_playlist(p, f),
-                        self._win._ctx.rebuild_sidebar()))
-                pl_menu.addSeparator()
-            except Exception:
-                pass
-            pl_menu.addAction("+ Nueva playlist...",
-                              lambda f=fp: self._add_to_new_playlist(f))
-
-            menu.addSeparator()
-            if is_remote:
-                menu.addAction("Copiar URL", lambda: QApplication.clipboard().setText(fp))
-            else:
-                menu.addAction("Editar metadatos...", lambda: self.edit_tags(fp))
-            menu.exec(self._win._ctx.table.viewport().mapToGlobal(pos))
-        except ImportError:
-            pass
+        pass
 
     def _add_to_new_playlist(self, filepath: str):
-        try:
-            from PySide6.QtWidgets import QInputDialog
-            name, ok = QInputDialog.getText(
-                self._win, "Nueva playlist", "Nombre de la playlist:")
-            if not ok or not name.strip():
-                return
-            pid = self._win._ctx.db.create_playlist(name.strip())
-            self._win._ctx.db.add_to_playlist(pid, filepath)
-            self._win._ctx.rebuild_sidebar()
-        except ImportError:
-            pass
+        pass
 
     def edit_tags(self, filepath: str):
-        try:
-            from PySide6.QtWidgets import QDialog
-            from library.tag_editor import TagEditorDialog
-            dlg = TagEditorDialog(filepath, self._win)
-            if dlg.exec() == QDialog.DialogCode.Accepted:
-                self._win._ctx.db.add_file(filepath)
-                self._win._ctx.load_library()
-        except ImportError:
-            pass
+        pass
 
     def on_table_dbl(self, idx):
         if self._win._ctx.current_section_key == "artists":
@@ -143,11 +89,9 @@ class PlaybackController:
             qual, _ = CoverArtService.quality_label(track.uri)
             quality_str = qual
 
-        # Resolve cover + quality and update NowPlayingBar
         self._win._ctx.player_bar.set_track_from_ref(track)
         self._win._ctx.player_bar.set_quality(quality_str)
 
-        # Quality classification (color-coded badge)
         from audio.quality_classifier import classify_audio_quality
         qc = classify_audio_quality(item) if item else {"category": "unknown", "label": quality_str, "tooltip": ""}
         self._win._ctx.player_bar.set_quality_info(
@@ -155,7 +99,6 @@ class PlaybackController:
             qc.get("category", "unknown"),
             qc.get("tooltip", ""))
 
-        # Audio route diagnostics for badge tooltip
         try:
             diag = self._win._ctx.player.get_audio_diagnostics() if hasattr(
                 self._win._ctx.player, 'get_audio_diagnostics') else None
@@ -195,7 +138,6 @@ class PlaybackController:
         self._win._ctx.notify_track(name, artist)
         self._win._ctx.set_window_title(f"Michi Music Player — {name}")
 
-        # Context service
         ctx_svc = getattr(self._win._ctx, "context_svc", None)
         if ctx_svc:
             ctx_svc.update_selection(
@@ -254,74 +196,34 @@ class PlaybackController:
         self._win._ctx.set_window_title("Michi Music Player")
 
     def open_eq(self):
-        from legacy_widgets.ui.eq_panel import EqDialog
-        dlg = EqDialog(self._win)
-        # Load current EQ state from engine
-        engine = self._win._ctx.player
-        if hasattr(engine, '_engine'):
-            eng = engine._engine
-            if hasattr(eng, '_eq'):
-                eq = eng._eq
-                if hasattr(dlg, '_basic'):
-                    dlg._basic._bypass_cb.setChecked(eq.mode == "bypass")
-                    dlg._basic._preamp_slider.setValue(int(eq.preamp_db * 10))
-                    if eq.mode == "graphic" and hasattr(eq, 'bands_31') and eq.bands_31:
-                        for i, v in enumerate(eq.bands_31[:31]):
-                            if hasattr(dlg._basic, '_sliders') and i < len(dlg._basic._sliders):
-                                dlg._basic._sliders[i].setValue(int(v * 10))
-        dlg.eq_bands_graphic_changed.connect(
-            lambda bands: self._win._ctx.player.set_eq_graphic(bands))
-        dlg.eq_bands_parametric_changed.connect(
-            lambda bands: self._win._ctx.player.set_eq_parametric(bands))
-        dlg.preamp_changed.connect(
-            lambda db: self._win._ctx.player.set_eq_preamp(db))
-        dlg.eq_bypass_changed.connect(
-            lambda bypass: self._win._ctx.player.set_eq_bypass(bypass))
-        # Connect spectrum data from engine to spectrum widget
-        if hasattr(dlg, '_spectrum'):
-            engine = self._win._ctx.player
-            if hasattr(engine, 'spectrum_data'):
-                engine.spectrum_data.connect(
-                    lambda fft: dlg._spectrum.push_fft(fft, 44100))
-        dlg.setWindowFlags(dlg.windowFlags() | Qt.WindowStaysOnTopHint)
-        dlg.show()
-        dlg.raise_()
-        dlg.activateWindow()
-        self._win._ctx.eq_dlg = dlg
-
-    # ── Context wireup ═══
+        pass
 
     def connect_context_events(self, playback=None, context_svc=None):
         playback = playback or getattr(self._win, "_playback", None)
         ctx = context_svc or getattr(self._win, "_context_svc", None)
         if not playback or not ctx:
             return
-
         if getattr(self, "_context_events_connected", False):
             return
         self._context_events_connected = True
         self._context_queue_was_active = False
         self._context_svc_for_events = ctx
         self._last_context_track_key = None
-
         playback.track_changed.connect(self._on_track_changed_for_context)
         playback.state_changed.connect(
             lambda state: ctx.record_track_paused()
             if state == "paused" else None
         )
-
         playback.queue_changed.connect(self._on_queue_changed_for_context)
 
     def _on_track_changed_for_context(self, title: str, artist: str):
         ctx = getattr(self, "_context_svc_for_events", None)
         if not ctx:
             return
-
         key = ((title or "").strip(), (artist or "").strip())
         if key == getattr(self, "_last_context_track_key", None):
             ctx.record_now_playing_updated(title=title, artist=artist)
             return
-
         self._last_context_track_key = key
         ctx.record_now_playing_updated(title=title, artist=artist)
         ctx.record_track_played_title_artist(title=title, artist=artist)
@@ -330,20 +232,15 @@ class PlaybackController:
         ctx = getattr(self, "_context_svc_for_events", None)
         if not ctx:
             return
-
         count = len(queue or [])
         was_active = getattr(self, "_context_queue_was_active", False)
-
         if count <= 0:
             if was_active:
                 ctx.record_queue_cleared(reason="queue_empty")
             self._context_queue_was_active = False
             return
-
         self._context_queue_was_active = True
         ctx.record_queue_updated(count=count, source="playback")
-
-    # ── Shuffle / Repeat context ═══
 
     def _context(self):
         return (
@@ -375,24 +272,19 @@ class PlaybackController:
         new_mode = self._win._playback.toggle_repeat()
         ctx = self._context()
         if ctx:
-            ctx.record_playback_mode_changed(
-                repeat=new_mode or self._read_repeat_state())
+            ctx.record_playback_mode_changed(repeat=new_mode or self._read_repeat_state())
 
-    def enqueue_with_context(self, filepaths: list[str], play_now: bool = True,
-                               source: str = "library",
-                               title: str = "", artist: str = ""):
+    def enqueue_with_context(self, filepaths, play_now=True, source="library",
+                             title="", artist=""):
         ctx = self._context()
         if not ctx or not filepaths:
             self._win._playback.enqueue(filepaths, play_now)
             return
-
         if len(filepaths) == 1 and (title or artist):
             ctx.record_track_queued(title=title, artist=artist, source=source)
         else:
             ctx.record_track_queued(source=source)
-
         self._win._playback.enqueue(filepaths, play_now)
-
         final_count = None
         for attr in ("queue", "_queue", "current_queue"):
             q = getattr(self._win._playback, attr, None)
@@ -402,34 +294,19 @@ class PlaybackController:
                     break
                 except TypeError:
                     pass
-
         payload_count = final_count if final_count is not None else len(filepaths)
-        ctx.record_queue_updated(count=payload_count, source=source,
-                                 added_count=len(filepaths))
-
-    # ── Table selection context ═══
+        ctx.record_queue_updated(count=payload_count, source=source, added_count=len(filepaths))
 
     def _resolve_track_model_and_row(self, current):
-        """Return (model, row) for a table selection index.
-
-        Resolution order:
-        1. current.model() if it has get_trackref()
-        2. Proxy model: mapToSource() + sourceModel() with get_trackref()
-        3. Registered table model via _track_table_registry
-        4. Global window model fallback
-        """
         if not current or not current.isValid():
             return None, -1
-
         model = None
         try:
             model = current.model()
         except Exception:
             model = None
-
         if model is not None and hasattr(model, "get_trackref"):
             return model, current.row()
-
         if model is not None:
             try:
                 source_model = model.sourceModel() if hasattr(model, "sourceModel") else None
@@ -446,17 +323,13 @@ class PlaybackController:
                             return source_model, source_idx.row()
             except Exception:
                 pass
-
         table = getattr(self, "_active_context_table", None)
         if table is not None:
             model = self._ensure_table_model_registry().get(id(table))
-
         if model is None or not hasattr(model, "get_trackref"):
             model = getattr(self._win._ctx, "model", None)
-
         if model is not None and hasattr(model, "get_trackref"):
             return model, current.row()
-
         return None, -1
 
     def _ensure_table_model_registry(self):
@@ -465,14 +338,9 @@ class PlaybackController:
         return self._track_table_models
 
     def attach_track_table(self, table=None, model=None):
-        """Attach a track table/model and connect selection context safely.
-
-        Returns the table for chaining.
-        """
         table = table or self._win._ctx.table
         if table is None:
             return None
-
         if model is not None:
             table.setModel(model)
             self._ensure_table_model_registry()[id(table)] = model
@@ -480,12 +348,10 @@ class PlaybackController:
             current_model = table.model() if hasattr(table, "model") else None
             if current_model is not None:
                 self._ensure_table_model_registry()[id(table)] = current_model
-
         self.connect_table_selection(table=table)
         return table
 
     def detach_track_table(self, table=None):
-        """Remove a table from the model registry and clear active table."""
         table = table or getattr(self, "_active_context_table", None)
         if table is None:
             return
@@ -494,11 +360,6 @@ class PlaybackController:
             self._active_context_table = None
 
     def connect_table_selection(self, table=None):
-        """Connect table selection changes to ContextService without playing.
-
-        Only disconnects our slot; never clears unrelated currentChanged listeners.
-        Call after each setModel() to keep signal wiring alive.
-        """
         table = table or self._win._ctx.table
         if not table:
             return
@@ -514,7 +375,6 @@ class PlaybackController:
         model, row = self._resolve_track_model_and_row(current)
         if model is None or row < 0:
             return
-
         try:
             track = model.get_trackref(row)
         except (IndexError, KeyError, TypeError, AttributeError):
