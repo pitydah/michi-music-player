@@ -278,6 +278,7 @@ MEDIA_ITEMS_MIGRATIONS = [
     ("content_hash", "TEXT DEFAULT ''"),
     ("track_uid", "TEXT DEFAULT ''"),
     ("file_hash", "TEXT DEFAULT ''"),
+    ("album_key", "TEXT DEFAULT ''"),
     ("metadata_hash", "TEXT DEFAULT ''"),
     ("created_at", "REAL DEFAULT (strftime('%s','now'))"),
     ("updated_at", "REAL"),
@@ -410,13 +411,23 @@ class Schema:
             """)
         conn.commit()
 
+        # Populate album_key for existing rows
+        with contextlib.suppress(sqlite3.OperationalError):
+            conn.execute("""
+                UPDATE media_items SET album_key = (
+                    COALESCE(NULLIF(albumartist, ''), artist, '')
+                    || ' / ' || COALESCE(album, '')
+                ) WHERE album_key IS NULL OR album_key = ''
+            """)
+        conn.commit()
+
         # Extra indexes for migration-only columns
         for idx in _PLAYLIST_EXTRA_INDEXES:
             with contextlib.suppress(sqlite3.OperationalError):
                 conn.execute(idx)
 
         # Track schema version
-        new_ver = 4  # Bump when adding new migrations
+        new_ver = 5  # Bump when adding new migrations
         old_ver = conn.execute("PRAGMA user_version").fetchone()[0]
         if old_ver < new_ver:
             conn.execute(f"PRAGMA user_version={new_ver}")

@@ -21,7 +21,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: MichiTheme.colors.surface
+        color: MichiTheme.colors.surfaceCard
 
         TabBar {
             id: tabBar

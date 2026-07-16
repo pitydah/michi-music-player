@@ -7,6 +7,7 @@ Item {
     objectName: "coverBridgeProxy"
     focus: true
     id: root
+    property string coverKey: ""
     property bool ready: typeof coverBridge !== "undefined" && coverBridge !== null
 
     function getCoverPath(trackId) {

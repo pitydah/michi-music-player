@@ -61,36 +61,40 @@ Item {
                     placeholderMode: !root._hasTrack
                 }
 
-                ColumnLayout {
+                Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 3
 
-                    Text {
-                        Layout.fillWidth: true
-                        text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
-                        elide: Text.ElideRight
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text: root._hasTrack && root.ps && root.ps.trackArtist
-                              ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
-                              : "Selecciona una canción desde Biblioteca"
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight
-                    }
-                }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 3
 
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: {
-                        if (root._hasTrack && typeof navigationBridge !== "undefined")
-                            navigationBridge.navigate("playback")
+                        Text {
+                            Layout.fillWidth: true
+                            text: root._hasTrack && root.ps ? root.ps.trackTitle : "Sin reproducción"
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.bodySize
+                            font.weight: root._hasTrack ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
+                            elide: Text.ElideRight
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: root._hasTrack && root.ps && root.ps.trackArtist
+                                  ? root.ps.trackArtist + (root.ps.trackAlbum ? " · " + root.ps.trackAlbum : "")
+                                  : "Selecciona una canción desde Biblioteca"
+                            color: MichiTheme.colors.textMuted
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: root._hasTrack ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: {
+                            if (root._hasTrack && typeof navigationBridge !== "undefined")
+                                navigationBridge.navigate("playback")
+                        }
                     }
                 }
             }
