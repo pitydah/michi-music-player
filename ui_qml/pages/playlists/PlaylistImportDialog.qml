@@ -217,8 +217,6 @@ Dialog {
                     } else {
                         root._status = "Error: servicio no disponible"
                     }
-                Accessible.role: Accessible.Button
-
                     root._importing = false
                 }
             }

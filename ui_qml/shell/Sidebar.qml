@@ -69,22 +69,13 @@ Item {
 
             Item { height: MichiTheme.spacing.xl; width: 1 }
 
-            StatusBadge {
-                anchors.left: parent.left
-                anchors.leftMargin: collapsed ? (parent.width - implicitWidth) / 2 : MichiTheme.spacing.lg
-                text: collapsed ? "E" : "Experimental"
-                kind: "experimental"
-                objectName: "statusBadge"
-                Accessible.name: "Estado: Experimental"
-            }
-
             Item { id: collapseItem; width: parent.width; height: 40
                 Rectangle { id: collapseBg; anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
-                    color: collapseBtn.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                    color: collapseBtn.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                     border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                    Text { anchors.centerIn: parent; text: root.collapsed ? ">" : "<"; color: MichiTheme.colors.textMuted; font.pixelSize: 14; font.weight: MichiTheme.typography.weightBold }
+                    Image { anchors.centerIn: parent; source: "qrc:/icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
                     MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
                 }
                 Accessible.role: Accessible.Button

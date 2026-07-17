@@ -10,7 +10,6 @@ Item {
     id: root
 
     property string iconSource: ""
-    property string iconText: ""
     property string label: ""
     property bool active: false
     property bool sidebarHovered: false
@@ -58,27 +57,16 @@ Item {
                 radius: MichiTheme.radius.xs
                 color: root.active ? MichiTheme.colors.accentSurface : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.iconSource !== "" || root.iconText !== ""
+                visible: root.iconSource !== ""
 
                 Image {
                     anchors.centerIn: parent
                     width: 18
                     height: 18
                     source: root.iconSource
-                    visible: root.iconSource !== ""
                     sourceSize.width: 18
                     sourceSize.height: 18
                     fillMode: Image.PreserveAspectFit
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: root.iconText
-                    color: root.active ? MichiTheme.colors.accentBlue : MichiTheme.colors.textMuted
-                    font.pixelSize: 12
-                    font.weight: MichiTheme.typography.weightSemiBold
-                    font.letterSpacing: 1.2
-                    visible: root.iconSource === ""
                 }
             }
 

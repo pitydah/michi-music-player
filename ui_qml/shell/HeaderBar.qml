@@ -48,7 +48,7 @@ Item {
                 spacing: MichiTheme.spacing.xs
 
                 MichiIconButton {
-                    iconText: "<"
+                    iconSource: "qrc:/icons/nav_back.svg"
                     tooltipText: "Atrás"
                     btnSize: responsive.compact ? 24 : 28
                     enabled: root.canGoBack
@@ -58,7 +58,7 @@ Item {
                 }
 
                 MichiIconButton {
-                    iconText: ">"
+                    iconSource: "qrc:/icons/nav_forward.svg"
                     tooltipText: "Adelante"
                     btnSize: responsive.compact ? 24 : 28
                     enabled: root.canGoForward
@@ -125,14 +125,7 @@ Item {
                     maximumLineCount: 1
                 }
 
-                StatusBadge {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "Experimental"
-                    kind: "experimental"
-                    objectName: "experimentalBadge"
-                    Accessible.name: "Experimental"
-                    visible: !responsive.compact
-                }
+
             }
 
             Item { Layout.fillWidth: true; width: 1; height: 1 }

@@ -4,7 +4,7 @@
 
 import QtQuick
 import QtQuick.Controls
-import "../../../../theme"
+import "../../../theme"
 import "../../../../components"
 import "delegates"
 

@@ -30,10 +30,10 @@ Popup {
     padding: MichiTheme.spacing.xs
 
     objectName: "LibraryContextMenu"
-    Accessible.role: Accessible.PopupMenu
-    Accessible.name: "Menú contextual"
 
     background: Rectangle {
+        Accessible.role: Accessible.PopupMenu
+        Accessible.name: "Menú contextual"
         radius: MichiTheme.radius.md
         color: MichiTheme.colors.surfacePopup
         border.width: MichiTheme.borderWidth
