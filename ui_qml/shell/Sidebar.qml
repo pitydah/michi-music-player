@@ -41,35 +41,64 @@ Item {
                 }
             }
 
-            Rectangle { width: collapsed ? parent.width * 0.4 : parent.width - MichiTheme.spacing.xl * 2; height: 1; color: MichiTheme.colors.borderSubtle; anchors.horizontalCenter: parent.horizontalCenter }
-
             Flickable {
-                width: parent.width; height: Math.min(contentHeight, parent.height - 180)
-                contentHeight: navColumn.height + MichiTheme.spacing.lg; clip: true
-                boundsBehavior: Flickable.StopAtBounds; interactive: contentHeight > height
+                id: scrollArea
+                width: parent.width
+                height: Math.min(contentHeight, parent.height - 180)
+                contentHeight: navColumn.height + MichiTheme.spacing.lg
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height
 
                 Column {
                     id: navColumn
                     anchors.left: parent.left; anchors.right: parent.right
-                    topPadding: MichiTheme.spacing.sm; spacing: 2
+                    topPadding: MichiTheme.spacing.sm; spacing: 0
 
                     Repeater {
-                        model: root.deliveryMode ? deliveryModel : fullModel
+                        model: root.deliveryMode ? deliveryModel : groupedModel
 
-                        SidebarItem {
-                            iconSource: Qt.resolvedUrl("../../" + model.iconSource)
-                            label: model.label
-                            active: root.currentRoute === model.route
-                            collapsed: root.collapsed
-                            onClicked: root.routeRequested(model.route)
-                            StatusBadge {
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: model.notificationCount > 0 ? model.notificationCount : ""
-                                kind: "info"
-                                visible: model.notificationCount > 0
-                            }
+                        Loader {
+                            width: parent.width
+                            sourceComponent: model.isSeparator ? separatorComp : itemComp
+                            property var modelData: model
                         }
+                    }
+                }
+            }
+
+            Component {
+                id: separatorComp
+                Column {
+                    width: parent.width
+                    spacing: MichiTheme.spacing.xs
+                    visible: !root.collapsed
+
+                    Text {
+                        anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md
+                        text: modelData.label
+                        color: MichiTheme.colors.textMeta
+                        font.pixelSize: MichiTheme.typography.captionSize
+                        font.weight: MichiTheme.typography.weightMedium
+                        topPadding: MichiTheme.spacing.sm
+                    }
+                }
+            }
+
+            Component {
+                id: itemComp
+                SidebarItem {
+                    iconSource: Qt.resolvedUrl("../../" + modelData.iconSource)
+                    label: modelData.label
+                    active: root.currentRoute === modelData.route
+                    collapsed: root.collapsed
+                    onClicked: root.routeRequested(modelData.route)
+                    StatusBadge {
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.notificationCount > 0 ? modelData.notificationCount : ""
+                        kind: "info"
+                        visible: modelData.notificationCount > 0
                     }
                 }
             }
@@ -82,7 +111,7 @@ Item {
                     border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                    Image { anchors.centerIn: parent; source: "../../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
+                    Image { anchors.centerIn: parent; source: "../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
                     MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
                 }
                 Accessible.role: Accessible.Button
@@ -92,26 +121,33 @@ Item {
         }
     }
 
-    ListModel { id: fullModel
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0 }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0 }
-        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; label: "Mix"; notificationCount: 0 }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0 }
-        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0 }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0 }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0 }
-        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar"; notificationCount: 0 }
-        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA"; notificationCount: 0 }
-        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab"; notificationCount: 0 }
+    ListModel { id: groupedModel
+        ListElement { route: ""; iconSource: ""; label: "NAVEGACION"; notificationCount: 0; isSeparator: true }
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "mix"; iconSource: "icons/sidebar_mix.svg"; label: "Mix"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0; isSeparator: false }
+
+        ListElement { route: ""; iconSource: ""; label: "RED Y DISPOSITIVOS"; notificationCount: 0; isSeparator: true }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar"; notificationCount: 0; isSeparator: false }
+
+        ListElement { route: ""; iconSource: ""; label: "HERRAMIENTAS"; notificationCount: 0; isSeparator: true }
+        ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA"; notificationCount: 0; isSeparator: false }
     }
 
     ListModel { id: deliveryModel
-        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0 }
-        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0 }
-        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0 }
-        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0 }
-        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0 }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_home.svg"; label: "Ajustes"; notificationCount: 0 }
-        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0 }
+        ListElement { route: ""; iconSource: ""; label: "NAVEGACION"; notificationCount: 0; isSeparator: true }
+        ListElement { route: "home"; iconSource: "icons/sidebar_home.svg"; label: "Inicio"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "library"; iconSource: "icons/sidebar_library.svg"; label: "Biblioteca"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
+        ListElement { route: ""; iconSource: ""; label: "SISTEMA"; notificationCount: 0; isSeparator: true }
+        ListElement { route: "settings"; iconSource: "icons/sidebar_home.svg"; label: "Ajustes"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0; isSeparator: false }
     }
 }
