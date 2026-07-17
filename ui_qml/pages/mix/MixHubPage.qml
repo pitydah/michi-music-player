@@ -22,10 +22,23 @@ Item {
     readonly property int stateError: 2
     readonly property int stateEmpty: 3
 
+    signal mixSelected(string mixId)
+
     Component.onCompleted: {
         if (root.mx && typeof root.mx.refresh !== "undefined")
             root.mx.refresh()
         mixGuard.checkCapability(root.mx)
+    }
+
+    function handleMixSelection(mixId) {
+        if (root.mx && typeof root.mx.loadMix !== "undefined") {
+            var result = root.mx.loadMix(mixId)
+            if (result && result.ok) {
+                root.mixSelected.emit(mixId)
+                if (typeof navigationBridge !== "undefined" && navigationBridge)
+                    navigationBridge.navigate("mix_detail", {"mix_id": mixId})
+            }
+        }
     }
 
     Loader {
@@ -37,13 +50,28 @@ Item {
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateError
-        sourceComponent: ErrorState { message: "Mix no disponible" }
+        sourceComponent: ErrorState { 
+            message: "Mix no disponible"
+            onRetryRequested: {
+                if (root.mx && typeof root.mx.refresh !== "undefined")
+                    root.mx.refresh()
+            }
+        }
     }
 
     Loader {
         anchors.centerIn: parent
         active: root.pageState === root.stateEmpty
-        sourceComponent: EmptyState { title: "Sin mixes disponibles" }
+        sourceComponent: MichiBanner { 
+            message: "No hay mixes disponibles — explora tu biblioteca para comenzar"
+            kind: "info"
+            dismissible: false
+            actionText: "Ir a biblioteca"
+            onActionClicked: {
+                if (typeof navigationBridge !== "undefined" && navigationBridge)
+                    navigationBridge.navigate("library")
+            }
+        }
     }
 
     CapabilityGuard {
@@ -100,12 +128,7 @@ Item {
                             activeFocusOnTab: true
                             Keys.onReturnPressed: onClicked()
                             Keys.onSpacePressed: onClicked()
-                            onClicked: {
-                                if (root.mx && typeof root.mx.loadMix !== "undefined")
-                                    root.mx.loadMix(modelData.id || "")
-                                if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                    navigationBridge.navigate("mix_detail")
-                            }
+                            onClicked: root.handleMixSelection(modelData.id || "")
                         }
                     }
                 }
@@ -116,10 +139,12 @@ Item {
                     width: parent.width
                 }
 
-                Text {
-                    text: "Crea mixes basados en reglas: artista, género, década, año, carpeta, calidad."
-                    color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.bodySize
-                    width: parent.width * 0.7; wrapMode: Text.WordWrap
+                MichiBanner {
+                    id: smartMixInfo
+                    width: parent.width
+                    message: "Crea mixes basados en reglas: artista, género, década, año, carpeta, calidad."
+                    kind: "info"
+                    dismissible: true
                 }
 
                 Row {
@@ -132,17 +157,11 @@ Item {
                         text: "+ Mix por artista"; variant: "secondary"
                         activeFocusOnTab: true
                         KeyNavigation.tab: mixGenreBtn
-                        KeyNavigation.backtab: smartMixesHeader
+                        KeyNavigation.backtab: smartMixInfo
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
-                        onClicked: {
-                            if (root.mx && typeof root.mx.loadMix !== "undefined")
-                                root.mx.loadMix("by_artist")
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("mix_detail")
-                        }
+                        onClicked: root.handleMixSelection("by_artist")
                     }
-                        Accessible.role: Accessible.Button
 
                     MichiButton {
                         id: mixGenreBtn
@@ -152,14 +171,7 @@ Item {
                         KeyNavigation.backtab: mixArtistBtn
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
-                        onClicked: {
-                            if (root.mx && typeof root.mx.loadMix !== "undefined")
-                                root.mx.loadMix("by_genre")
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("mix_detail")
-                        }
-                        Accessible.role: Accessible.Button
-
+                        onClicked: root.handleMixSelection("by_genre")
                     }
                     MichiButton {
                         id: mixDecadeBtn
@@ -169,12 +181,7 @@ Item {
                         KeyNavigation.backtab: mixGenreBtn
                         Keys.onReturnPressed: onClicked()
                         Keys.onSpacePressed: onClicked()
-                        onClicked: {
-                            if (root.mx && typeof root.mx.loadMix !== "undefined")
-                                root.mx.loadMix("by_decade")
-                            if (typeof navigationBridge !== "undefined" && navigationBridge)
-                                navigationBridge.navigate("mix_detail")
-                        }
+                        onClicked: root.handleMixSelection("by_decade")
                     }
                     MichiButton {
                         id: mixAdvancedBtn
