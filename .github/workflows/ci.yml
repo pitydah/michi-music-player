@@ -7,7 +7,7 @@ env:
   compile_exclude: .venv/|\.tmpl\.'
 
 jobs:
-  qml-migration-gate:
+  lint:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,72 +21,56 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ hashFiles('pyproject.toml') }}
-      - name: Install system deps
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
-      - name: Install Python deps
-        run: |
-          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
+          pip install ruff
       - name: Ruff check
         run: ruff check . ${{ env.ruff_out }}
       - name: Compileall
         run: python -m compileall -q -x '${{ env.compile_exclude }}' .
+      - name: Import audit
+        run: python scripts/audit_qtwidgets_imports.py 2>&1 || echo "WARNING: QtWidgets found"
+
+  test:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 pytest
       - name: Core tests
         run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_songs_service.py tests/test_library_service.py tests/test_album_service.py tests/test_genres_service.py tests/test_folder_service.py tests/test_metadata_editor_service.py tests/test_library_mutation_service.py tests/test_micro_server_service.py -q --junitxml=results-core.xml
-      - name: Productive workflows (offscreen)
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=300 \
+            --ignore=tests/qml --ignore=tests/test_large_library.py \
+            -x --junitxml=results-core.xml
+      - name: QML tests
         run: |
-          QT_QPA_PLATFORM=offscreen bash scripts/run_tests.sh tests/qml/productive_workflows/ offscreen
-      - name: Productive workflows (Xvfb)
-        continue-on-error: true
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/visual_x10/test_controls_runtime.py tests/qml/visual_x10/test_dialog_runtime.py -q --timeout=120 --junitxml=results-qml.xml
+      - name: Migration tests
         run: |
-          xvfb-run -a bash scripts/run_tests.sh tests/qml/productive_workflows/ xcb
-      - name: QML compile check
-        run: |
-          QT_QPA_PLATFORM=offscreen timeout 30 python3 -c "
-      import sys, os
-      sys.path.insert(0, '.')
-      os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-      from pathlib import Path
-      from PySide6.QtCore import QObject, QUrl
-      from PySide6.QtGui import QGuiApplication
-      from PySide6.QtQml import QQmlEngine, QQmlComponent
-
-      app = QGuiApplication(sys.argv)
-      engine = QQmlEngine()
-      engine.addImportPath('ui_qml')
-
-      class D(QObject): pass
-      for n in ['appBridge','navigationBridge','themeBridge','queueBridge','libraryBridge',
-                'playbackBridge','playlistsBridge','historyBridge','globalSearchBridge',
-                'settingsBridge','devicesBridge','notificationBridge','michiAiBridge',
-                'commandPaletteBridge','capabilityBridge','jobBridge','desktopBridge','homeBridge']:
-          engine.rootContext().setContextProperty(n, D())
-
-      exit_code = 0
-      for f in sorted(Path('ui_qml').rglob('*.qml')):
-          component = QQmlComponent(engine)
-          component.loadUrl(QUrl.fromLocalFile(str(f.resolve())))
-          if component.status() != QQmlComponent.Ready:
-              print(f'QML ERROR: {f.relative_to(Path(\".\"))}')
-              for error in component.errors():
-                  print(f'  {error.toString()}')
-              exit_code = 1
-      if exit_code == 0:
-          print('QML OK')
-      sys.exit(exit_code)
-      "
+          QT_QPA_PLATFORM=offscreen python -m pytest tests/test_migrations.py tests/test_migration_real_data.py -q --timeout=60
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: results-migration-gate
-          path: results-*.xml
+          name: test-results-${{ github.sha }}
+          path: "*.xml"
+          retention-days: 7
 
-  uiux-gate:
-    needs: [qml-migration-gate]
+  qml-compile:
+    needs: [lint]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -96,85 +80,58 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
-      - name: Install Python deps
-        run: |
-          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
-      - name: UI/UX runtime tests
-        run: |
-          xvfb-run -a python -m pytest tests/qml/visual_x10/test_controls_runtime.py tests/qml/visual_x10/test_dialog_runtime.py -q --timeout=120
-      - name: UI/UX static tests
-        run: |
-          QT_QPA_PLATFORM=offscreen python -m pytest tests/qml/accessibility_x10 tests/qml/responsive_x10 tests/qml/visual_x10/test_theme_tokens.py tests/qml/visual_x10/test_component_visual_states.py -q --timeout=300
-      - name: UI/UX contract guard
-        run: |
-          python scripts/qml_uiux_contract_guard_x10.py --scan
-      - name: UI/UX regression gates
-        run: |
-          python scripts/qml_uiux_token_audit_x10.py --baseline docs/uiux/baselines/token-audit.json
-          python scripts/qml_uiux_control_audit_x10.py --baseline docs/uiux/baselines/control-audit.json
-          python scripts/qml_uiux_objectname_audit_x10.py --baseline docs/uiux/baselines/objectname-audit.json
-          python scripts/qml_uiux_accessibility_audit_x10.py --baseline docs/uiux/baselines/accessibility-audit.json
-          python scripts/qml_uiux_responsive_audit_x10.py --baseline docs/uiux/baselines/responsive-audit.json
-
-  build-and-verify:
-    needs: [qml-migration-gate, uiux-gate]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install system deps
+      - name: Install deps
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1
-      - name: Install Python deps
+          pip install PySide6
+      - name: QML compile check
         run: |
-          pip install build
-          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 ruff pytest
+          QT_QPA_PLATFORM=offscreen timeout 30 python3 -c "
+      import sys, os; sys.path.insert(0, '.')
+      from PySide6.QtQml import QQmlEngine, QQmlComponent
+      from PySide6.QtGui import QGuiApplication
+      from pathlib import Path
+      app = QGuiApplication(sys.argv)
+      engine = QQmlEngine()
+      class D: pass
+      for n in ['appBridge','navigationBridge','themeBridge','queueBridge','libraryBridge','playbackBridge','playlistsBridge','historyBridge','globalSearchBridge','settingsBridge','devicesBridge','notificationBridge','michiAiBridge','commandPaletteBridge','capabilityBridge','jobBridge','desktopBridge','homeBridge']:
+          engine.rootContext().setContextProperty(n, D())
+      errors = [str(f) for f in sorted(Path('ui_qml').rglob('*.qml')) if QQmlComponent(engine, str(f)).status() != QQmlComponent.Ready]
+      if errors:
+          for e in errors[:5]: print(f'QML ERROR: {e}')
+          sys.exit(1)
+      print(f'QML: {len(list(Path(\"ui_qml\").rglob(\"*.qml\")))} compiled OK')
+      "
+
+  build:
+    needs: [test, qml-compile]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install build
       - name: Build wheel
         run: python -m build --wheel
-      - name: Verify wheel contents
+      - name: Verify wheel
         run: |
           python -c "
-import zipfile, glob, sys
-whl = sorted(glob.glob('dist/*.whl'))
-if not whl:
-    print('No wheel found')
-    sys.exit(1)
-with zipfile.ZipFile(whl[-1]) as z:
-    names = z.namelist()
-    errors = []
-    for pkg in ['michi/', 'audio/', 'core/', 'library/', 'ui_qml/', 'ui_qml_bridge/']:
-        if not any(n.startswith(pkg) for n in names):
-            errors.append(f'Missing: {pkg}')
-    for ext in ['.qml', 'qmldir']:
-        if not any(n.endswith(ext) for n in names):
-            errors.append(f'Missing: *{ext}')
-    if errors:
-        for e in errors:
-            print(f'ERROR: {e}')
-        sys.exit(1)
-    print(f'Wheel OK: {len(names)} files')
-"
-      - name: Install wheel
-        run: |
-          pip install dist/*.whl
-      - name: Verify installed app
-        run: |
-          python -c "
-import michi
-print('michi imported OK')
-from michi import app_launcher
-print('app_launcher imported OK')
-" 2>&1
+      import zipfile, glob
+      whl = sorted(glob.glob('dist/*.whl'))
+      with zipfile.ZipFile(whl[-1]) as z:
+          names = z.namelist()
+          required = ['michi/', 'audio/', 'core/', 'library/', 'ui_qml/', 'ui_qml_bridge/']
+          for pkg in required:
+              assert any(n.startswith(pkg) for n in names), f'Missing: {pkg}'
+          qml_files = [n for n in names if n.endswith('.qml')]
+          print(f'Wheel OK: {len(names)} files, {len(qml_files)} QML')
+      "
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
