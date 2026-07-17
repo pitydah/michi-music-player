@@ -4,5 +4,5 @@ from ui_qml_bridge.cover_provider_bridge import CoverProviderBridge
 
 class TestCoverProviderBridge:
     def test_create(self):
-        bridge = CoverProviderBridge()
+        bridge = CoverProviderBridge(cover_bridge=MagicMock())
         assert bridge is not None

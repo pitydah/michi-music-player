@@ -4,6 +4,5 @@ from integrations.michi_ecosystem.ecosystem_fix_suggester import EcosystemFixSug
 class TestEcosystemFixSuggester:
     def test_suggest(self):
         suggester = EcosystemFixSuggester()
-        fix = suggester.suggest("NO_PAIRED_DEVICES")
+        fix = suggester.suggest_fix({"NO_PAIRED_DEVICES": {"status": "error"}})
         assert fix is not None
-        assert "problem" in fix

@@ -4,5 +4,5 @@ from ui_qml_bridge.home_bridge import HomeBridge
 
 class TestHomeBridge:
     def test_create(self):
-        bridge = HomeBridge(dashboard_service=MagicMock())
+        bridge = HomeBridge(db=MagicMock())
         assert bridge is not None

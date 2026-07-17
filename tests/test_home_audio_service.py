@@ -8,5 +8,5 @@ class TestHomeAudioService:
         assert svc._host == "localhost"
 
     def test_home_assistant_create(self):
-        svc = HomeAssistantService(url="http://localhost:8123", token="test")
-        assert svc._url == "http://localhost:8123"
+        svc = HomeAssistantService(host="localhost", token="test")
+        assert svc._host == "localhost"

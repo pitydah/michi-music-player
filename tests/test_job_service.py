@@ -1,10 +1,10 @@
 from unittest.mock import MagicMock
-from core.jobs.job_service import JobService, JobState
+from core.jobs.job_service import DurableJobService, JobState
 
 
 class TestJobService:
     def test_create(self):
-        svc = JobService(db=MagicMock())
+        svc = DurableJobService(db_path=":memory:")
         assert svc is not None
 
     def test_state_enum(self):

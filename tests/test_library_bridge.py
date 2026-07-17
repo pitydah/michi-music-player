@@ -4,5 +4,5 @@ from ui_qml_bridge.library_bridge import LibraryBridge
 
 class TestLibraryBridge:
     def test_create(self):
-        bridge = LibraryBridge(query_service=MagicMock())
+        bridge = LibraryBridge(query_service=MagicMock(), track_action_service=MagicMock())
         assert bridge is not None

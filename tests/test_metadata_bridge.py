@@ -4,5 +4,5 @@ from ui_qml_bridge.metadata_bridge import MetadataBridge
 
 class TestMetadataBridge:
     def test_create(self):
-        bridge = MetadataBridge()
+        bridge = MetadataBridge(metadata_service=MagicMock())
         assert bridge is not None

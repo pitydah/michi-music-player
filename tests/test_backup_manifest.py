@@ -1,4 +1,4 @@
-from core.audio_lab.backup_manifest import generate_manifest, manifest_to_csv, manifest_to_json
+from core.audio_lab.backup_manifest import generate_manifest, manifest_to_json
 
 
 class TestBackupManifest:
@@ -7,5 +7,5 @@ class TestBackupManifest:
         assert result == []
 
     def test_format_json_empty(self):
-        result = format_manifest_json([])
+        result = manifest_to_json([])
         assert result is not None

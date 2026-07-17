@@ -4,5 +4,5 @@ from ui_qml_bridge.connections_bridge import ConnectionsBridge
 
 class TestConnectionsBridge:
     def test_create(self):
-        bridge = ConnectionsBridge(connection_manager=MagicMock())
+        bridge = ConnectionsBridge(connection_service=MagicMock())
         assert bridge is not None
