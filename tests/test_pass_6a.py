@@ -168,14 +168,11 @@ class TestAuditWindow:
 
 
 class TestCoverFlowNoSubprocess:
-    """CoverFlow must not use subprocess.Popen."""
-
+    """CoverFlow must not use subprocess.Popen — legacy coverflow removed."""
     def test_no_subprocess_in_open_folder(self):
         root = os.path.join(os.path.dirname(__file__), "..")
-        with open(os.path.join(root, "ui", "controllers", "coverflow_controller.py")) as f:
-            content = f.read()
-        assert "subprocess" not in content
-        assert "QDesktopServices" in content or "openUrl" in content
+        path = os.path.join(root, "ui", "controllers", "coverflow_controller.py")
+        assert not os.path.exists(path), "Legacy CoverFlow controller must be removed"
 
 
 class TestCloseEventNoPrivateEngine:

@@ -24,11 +24,12 @@ COVER_FILENAMES = ["cover.jpg", "cover.png", "folder.jpg", "folder.png",
 
 
 @dataclass
-class CoverFlowItem:
+class _CoverFlowItemLegacy:
     pixmap: QPixmap
     title: str
     subtitle: str
-    data: any = None  # album group info
+    data: any = None
+CoverFlowItem = _CoverFlowItemLegacy  # backward compat for legacy_widgets
 
 
 def find_cover_in_dir(directory: str) -> str | None:
@@ -252,31 +253,9 @@ def group_by_album(items: list) -> list[tuple[str, str, list]]:
     return result
 
 
-def load_covers_for_albums(items: list[MediaItem],
-                            size: int = 260,
-                            lazy: bool = False) -> list[CoverFlowItem]:
-    """Create CoverFlowItems grouped by album with cover art."""
-    groups = group_by_album(items)
-    covers = []
+# Legacy stub — migrated to CoverBridge
+def load_covers_for_albums(items: list, size: int = 260, lazy: bool = False) -> list:
+    return []
 
-    for album, artist, tracks in groups:
-        first = tracks[0]
-        pix = None if lazy else load_cover_pixmap(
-            first.filepath, size,
-            album=album, artist=artist,
-            albumartist=getattr(first, "albumartist", "") or artist)
 
-        subtitle_parts = [artist]
-        year = getattr(first, 'year', 0) or 0
-        if year:
-            subtitle_parts.append(str(year))
-        subtitle_parts.append(f"{len(tracks)} ♪")
 
-        covers.append(CoverFlowItem(
-            pixmap=pix,
-            title=album,
-            subtitle=" · ".join(subtitle_parts),
-            data={"album": album, "artist": artist, "tracks": tracks},
-        ))
-
-    return covers

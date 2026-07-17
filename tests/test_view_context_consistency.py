@@ -1,4 +1,4 @@
-"""Tests: View context consistency — CoverFlow, grid, table selection."""
+"""Tests: View context consistency — album, grid, table selection."""
 
 import os
 from core.context import context_repository as repo
@@ -15,7 +15,7 @@ class TestViewContextConsistency:
         repo.override_db_path(os.path.join(str(tmp_path), "ctx.sqlite"))
         return ContextService()
 
-    def test_coverflow_album_selection_scope(self, tmp_path):
+    def test_album_selection_scope(self, tmp_path):
         svc = self._svc(tmp_path)
         svc.update_selection(scope="album", album="Test Album")
         state = svc.get_selection_state()

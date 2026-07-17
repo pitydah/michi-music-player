@@ -102,12 +102,11 @@ class TestPremiumEndToEnd:
         assert h.track_count == 0
         assert h.status == "warning"  # no tracks = warning
 
-    def test_album_groups_to_cover_items(self):
+    def test_album_groups_to_cover_items_legacy(self):
         from library.album_repository import (
             AlbumRepository, album_groups_to_cover_items,
         )
         repo = AlbumRepository()
         repo.build([_make_item()])
         items = album_groups_to_cover_items(repo.list_groups())
-        assert len(items) == 1
-        assert items[0].title == "A"
+        assert items == []

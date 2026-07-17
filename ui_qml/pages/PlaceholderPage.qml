@@ -85,10 +85,6 @@ Item {
                         root.goBack()
                 }
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
 
             MichiButton {
                 id: openClassicBtn

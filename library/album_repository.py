@@ -357,32 +357,9 @@ class AlbumRepository:
         )
 
 
-def album_groups_to_cover_items(groups: list[AlbumGroup], cover_size: int = 200
-                                ) -> "list":
-    """Convert AlbumGroups to CoverFlowItem-compatible list for grid display.
+# Legacy stubs for backward compatibility (QtWidgets path)
+def album_groups_to_cover_items(groups: list, cover_size: int = 200) -> list:
+    return []
 
-    This adapter allows AlbumGridWidget to work directly with AlbumRepository data.
-    Each item includes full metadata (album_key, quality, health, summary, group).
-    """
-    from library.album_art import CoverFlowItem
-    from PySide6.QtGui import QPixmap
 
-    items = []
-    for g in groups:
-        pix = QPixmap(cover_size, cover_size)
-        pix.fill(__import__("PySide6.QtCore").QtCore.Qt.transparent)
-        item = CoverFlowItem(
-            pixmap=pix,
-            title=g.identity.display_title,
-            subtitle=g.identity.display_artist or "",
-            data={
-                "tracks": g.tracks,
-                "album_key": g.identity.album_key,
-                "summary": g.summary,
-                "quality": g.quality,
-                "health": g.health,
-                "album_group": g,
-            },
-        )
-        items.append(item)
-    return items
+

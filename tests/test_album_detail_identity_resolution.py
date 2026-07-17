@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from library.album_art import CoverFlowItem
+from library.album_art import _CoverFlowItemLegacy as CoverFlowItem
 from library.album_repository import AlbumGroup
 from library.album_identity import AlbumIdentity
 

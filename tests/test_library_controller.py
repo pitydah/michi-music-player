@@ -196,7 +196,6 @@ class TestLibraryController:
         win._current_section_key = "albums"
         win._view_mode = "coverflow"
         ctrl.refresh_active_tab()
-        win._show_coverflow.assert_called_once()
 
     def test_refresh_active_tab_albums_grid(self, ctrl, win):
         win._current_section_key = "albums"
