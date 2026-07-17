@@ -454,3 +454,47 @@ class LibraryQueryService:
                      "album_key": r[6] or "", "track_uid": r[7] or ""} for r in rows]
         except Exception as e:
             raise LibraryQueryError("FTS5_FAILED", "search_fts", str(e)) from e
+
+    # ==================== Métodos para MixService ====================
+
+    def recently_played(self, limit: int = 30) -> list[dict]:
+        """Obtiene canciones reproducidas recientemente."""
+        try:
+            conn = self._get_conn()
+            if not conn:
+                return []
+            cursor = conn.cursor()
+            sql = """
+                SELECT t.id as track_id, t.title, t.artist, t.album, t.duration, t.path,
+                       h.played_at
+                FROM tracks t
+                JOIN playback_history h ON t.id = h.track_id
+                ORDER BY h.played_at DESC
+                LIMIT ?
+            """
+            cursor.execute(sql, [limit])
+            rows = cursor.fetchall()
+            return [self._row_to_track_dict(r) for r in rows]
+        except Exception as e:
+            logger.debug("recently_played failed: %s", e)
+            return []
+
+    def _row_to_track_dict(self, row: tuple) -> dict:
+        """Convierte una fila de SQL a diccionario de track."""
+        result = {
+            "track_id": row[0],
+            "title": row[1] or "",
+            "artist": row[2] or "",
+            "album": row[3] or "",
+        }
+        if len(row) > 4:
+            result["duration"] = row[4] if len(row) > 4 else 0
+        if len(row) > 5:
+            result["path"] = row[5] if len(row) > 5 else ""
+        if len(row) > 6:
+            extra_idx = 6
+            for extra in ["play_count", "year", "bitrate", "played_at", "last_played"]:
+                if extra_idx < len(row):
+                    result[extra] = row[extra_idx]
+                    extra_idx += 1
+        return result

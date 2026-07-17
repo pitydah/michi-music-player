@@ -1,53 +1,57 @@
+```
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+*.class
+*.out
 
-# Bytecode
-# Configuración local
-# Database
-# IDE
-# OS
-build/
-*.db
-*.db-journal
-*.db-wal
-dist/
-dist/\nbuild/\n*.egg-info/\nPKG-INFO
-.DS_Store
-*.egg-info
-*.egg-info/
-.flatpak/
-.idea/
-install.sh
+# Dependencies
+.venv/
+venv/
+.env
+.env.local
+*.env.*
+
+# Logs and temp files
 *.log
-michi-music-player.egg-info/
+*.tmp
+*.swp
+*.swo
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build directories
+build/
+dist/
+target/
+.gradle/
+
+# Python specific
 *.pyc
 __pycache__/
 *.pyo
-*.swo
-*.swp
-Thumbs.db
-*.tmpl.
-.venv/
-.vscode/
-node_modules/
-package-lock.json
-package.json
-.webui_secret_key
-package-lock.json
-package.json
-
-# Generated artifacts — not committed
-artifacts/*.xml
-artifacts/*.json
-artifacts/*.log
-artifacts/*.txt
+*.pyd
+.Python
+*.so
+.Python
+*.egg-info/
+.eggs/
+.mypy_cache/
 .pytest_cache/
 .coverage
+coverage/
 htmlcov/
 
-# Test runtime artifacts
-tests/**/results/*.xml
-
-# SQLite WAL/shm files (runtime)
-*.db-shm
-
-# Mock-generated directories
-MagicMock/
+# System files
+.DS_Store
+Thumbs.db
+```
