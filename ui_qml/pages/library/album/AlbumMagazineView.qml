@@ -1,7 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick
 import QtQuick.Controls
-import "../../../theme"
-import "../../../components"
+import QtQuick.Layouts
+import "../../../../theme"
+import "../../../../components"
+import "delegates"
+import "components"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -14,84 +19,261 @@ Item {
     property var bridge: null
     signal albumClicked(string albumKey, string title, string artist, int year)
 
-    ListView {
-        Accessible.role: Accessible.List
-
-        Accessible.name: "Vista revista de álbumes"
-
-        activeFocusOnTab: true
-
-        focusPolicy: Qt.StrongFocus
-        id: listView
+    Flickable {
         anchors.fill: parent
-        model: root.albumModel
+        contentHeight: column.height + MichiTheme.spacing.xxl
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        delegate: Rectangle {
-            width: listView.width
-            height: 80
-            color: index % 2 === 0 ? MichiTheme.colors.surfaceCard : "transparent"
+        ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-            Row {
-                anchors.fill: parent
-                anchors.margins: MichiTheme.spacing.sm
-                spacing: MichiTheme.spacing.md
+        Column {
+            id: column
+            width: parent.width
+            spacing: MichiTheme.spacing.lg
+            anchors.margins: MichiTheme.spacing.md
 
-                Rectangle {
-                    width: 60; height: 60; radius: 6
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: MichiTheme.colors.borderInner
+            Rectangle {
+                width: parent.width - MichiTheme.spacing.xl
+                height: 220
+                color: MichiTheme.colors.surfaceHero
+                radius: MichiTheme.radiusLg
+                anchors.horizontalCenter: parent.horizontalCenter
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: 18
-                        font.weight: FontWeight.Bold
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: MichiTheme.spacing.lg
+                    spacing: MichiTheme.spacing.xl
+
+                    CoverImage {
+                        width: 160
+                        height: 160
+                        anchors.verticalCenter: parent.verticalCenter
+                        coverRadius: MichiTheme.radiusSm
+                        coverKey: root.albumModel && root.albumModel.count > 0
+                            ? root.albumModel.get(0).albumKey || "" : ""
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: MichiTheme.spacing.sm
+                        width: parent.width - 200
+
+                        Text {
+                            text: "Album destacado"
+                            color: MichiTheme.colors.accentBlue
+                            font.pixelSize: MichiTheme.typography.badgeSize
+                            font.weight: MichiTheme.typography.weightSemiBold
+                        }
+
+                        Text {
+                            text: root.albumModel && root.albumModel.count > 0
+                                ? root.albumModel.get(0).title || "" : ""
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.heroTitleSize
+                            font.weight: MichiTheme.typography.weightBold
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                        }
+
+                        Text {
+                            text: root.albumModel && root.albumModel.count > 0
+                                ? root.albumModel.get(0).artist || "" : ""
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.sectionTitleSize
+                            visible: text !== ""
+                        }
+
+                        Row {
+                            spacing: MichiTheme.spacing.sm
+                            Text {
+                                text: root.albumModel && root.albumModel.count > 0
+                                    ? (root.albumModel.get(0).year || 0) : ""
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                visible: text !== ""
+                            }
+                            Text {
+                                text: root.albumModel && root.albumModel.count > 0
+                                    ? (root.albumModel.get(0).trackCount || 0) + " canciones" : ""
+                                color: MichiTheme.colors.textMuted
+                                font.pixelSize: MichiTheme.typography.bodySize
+                                visible: text !== ""
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: MichiTheme.spacing.sm
+                            MichiButton {
+                                text: "Reproducir"
+                                variant: "primary"
+                                onClicked: {
+                                    if (root.bridge && root.bridge.playAlbum && root.albumModel && root.albumModel.count > 0) {
+                                        root.bridge.playAlbum(root.albumModel.get(0).albumKey || "")
+                                    }
+                                }
+                            }
+                            MichiButton {
+                                text: "Detalles"
+                                variant: "ghost"
+                                onClicked: {
+                                    if (root.albumModel && root.albumModel.count > 0) {
+                                        var item = root.albumModel.get(0)
+                                        root.albumClicked(item.albumKey || "", item.title || "", item.artist || "", item.year || 0)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            SectionHeader {
+                text: "Recientes"
+                width: parent.width
+            }
+
+            ListView {
+                id: recentList
+                width: parent.width
+                height: 200
+                orientation: ListView.Horizontal
+                spacing: MichiTheme.spacing.sm
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                snapMode: ListView.SnapToItem
+                model: root.albumModel
+                delegate: Item {
+                    width: 160
+                    height: 180
+
+                    Column {
+                        anchors.fill: parent
+                        spacing: MichiTheme.spacing.xs
+
+                        CoverImage {
+                            width: 140
+                            height: 140
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            coverRadius: MichiTheme.coverRadius
+                            coverKey: model.albumKey || ""
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: model.title || ""
+                            color: MichiTheme.colors.textPrimary
+                            font.pixelSize: MichiTheme.typography.metaSize
+                            font.weight: MichiTheme.typography.weightMedium
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: model.artist || ""
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.captionSize
+                            elide: Text.ElideRight
+                        }
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.albumClicked(albumKey || "", title || "", artist || "", year || 0)
+                        onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                     }
                 }
+            }
 
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2
+            SectionHeader {
+                text: "Hi-Res"
+                width: parent.width
+            }
 
-                    Text {
-                        text: title || ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.bodySize
-                        font.weight: FontWeight.Medium
-                        elide: Text.ElideRight
-                        width: parent.parent.width - 80
-                    }
+            ListView {
+                width: parent.width
+                height: 200
+                orientation: ListView.Horizontal
+                spacing: MichiTheme.spacing.sm
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                snapMode: ListView.SnapToItem
+                model: root.albumModel
+                delegate: Item {
+                    width: 160
+                    height: 180
 
-                    Text {
-                        text: artist || ""
-                        color: MichiTheme.colors.textSecondary
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight
-                        width: parent.parent.width - 80
-                    }
+                    Column {
+                        anchors.fill: parent
+                        spacing: MichiTheme.spacing.xs
 
-                    Row {
-                        spacing: MichiTheme.spacing.sm
-                        Text {
-                            text: year > 0 ? year : ""
-                            color: MichiTheme.colors.textMuted
-                            font.pixelSize: MichiTheme.typography.metaSize
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 140
+                            height: 140
+                            radius: MichiTheme.coverRadius
+                            color: MichiTheme.colors.borderInner
+
+                            CoverImage {
+                                anchors.fill: parent
+                                coverRadius: MichiTheme.coverRadius
+                                coverKey: model.albumKey || ""
+                            }
+
+                            AlbumQualityBadge {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.topMargin: 4
+                                anchors.rightMargin: 4
+                                qualityKind: "hires"
+                            }
                         }
+
                         Text {
-                            text: trackCount > 0 ? trackCount + " temas" : ""
-                            color: MichiTheme.colors.textMuted
+                            width: parent.width
+                            text: model.title || ""
+                            color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.metaSize
+                            font.weight: MichiTheme.typography.weightMedium
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: model.artist || ""
+                            color: MichiTheme.colors.textSecondary
+                            font.pixelSize: MichiTheme.typography.captionSize
+                            elide: Text.ElideRight
                         }
                     }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+                    }
+                }
+            }
+
+            SectionHeader {
+                text: "Todos los albumes"
+                width: parent.width
+            }
+
+            ListView {
+                width: parent.width
+                height: Math.min(400, root.albumModel ? root.albumModel.count * 48 : 0)
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: root.albumModel
+                delegate: AlbumRowDelegate {
+                    width: parent.width
+                    albumKey: model.albumKey || ""
+                    albumTitle: model.title || ""
+                    albumArtist: model.artist || ""
+                    albumYear: model.year || 0
+                    trackCount: model.trackCount || 0
+                    onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
                 }
             }
         }

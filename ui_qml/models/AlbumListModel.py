@@ -16,6 +16,7 @@ class AlbumListModel(BasePagedListModel):
     TrackCountRole = Qt.UserRole + 5
     DurationRole = Qt.UserRole + 6
     CoverKeyRole = Qt.UserRole + 7
+    DecadeRole = Qt.UserRole + 8
 
     def __init__(self, query_service=None, query_executor=None, parent=None, page_size=100):
         super().__init__(page_size=page_size, query_executor=query_executor, parent=parent)
@@ -28,7 +29,7 @@ class AlbumListModel(BasePagedListModel):
         return {self.AlbumKeyRole: b"albumKey", self.TitleRole: b"title",
                 self.ArtistRole: b"artist", self.YearRole: b"year",
                 self.TrackCountRole: b"trackCount", self.DurationRole: b"duration",
-                self.CoverKeyRole: b"coverKey"}
+                self.CoverKeyRole: b"coverKey", self.DecadeRole: b"decade"}
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or index.row() >= len(self._items):
@@ -37,7 +38,7 @@ class AlbumListModel(BasePagedListModel):
         mapping = {self.AlbumKeyRole: "album_key", self.TitleRole: "title",
                    self.ArtistRole: "artist", self.YearRole: "year",
                    self.TrackCountRole: "track_count", self.DurationRole: "duration",
-                   self.CoverKeyRole: "cover_key"}
+                   self.CoverKeyRole: "cover_key", self.DecadeRole: "decade"}
         key = mapping.get(role, "")
         if key:
             return item.get(key, "")

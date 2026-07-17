@@ -1,8 +1,12 @@
+// SPDX-FileCopyrightText: 2016 Matthieu Gallien <matthieu_gallien@yahoo.fr>
+//   Patrón: Grid delegate con cover + hover indicators (adaptado de KDE Elisa)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick
 import QtQuick.Controls
-import "../../../theme"
-import "../../../components"
-import "../../../components/foundations"
+import "../../../../theme"
+import "../../../../components"
+import "delegates"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -15,73 +19,30 @@ Item {
     property var bridge: null
     signal albumClicked(string albumKey, string title, string artist, int year)
 
-    MichiResponsive { id: responsive; availableWidth: root.width }
-
     GridView {
-        Accessible.role: Accessible.List
-
-        Accessible.name: "Cuadrícula de álbumes"
-
-        activeFocusOnTab: true
-
+        id: gridView
         anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.md
         model: root.albumModel
-        cellWidth: Math.max(140, Math.floor((root.width - MichiTheme.spacing.md * (responsive.columnCount - 1)) / responsive.columnCount))
-        cellHeight: cellWidth + 60
+        cellWidth: 180
+        cellHeight: 240
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        delegate: Item {
-            width: GridView.view.cellWidth
-            height: GridView.view.cellHeight
+        ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-            Column {
-                anchors.centerIn: parent
-                spacing: MichiTheme.spacing.xs
-                width: parent.width - MichiTheme.spacing.md
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: 140; height: 140; radius: 8
-                    color: MichiTheme.colors.borderInner
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: 24
-                        font.weight: FontWeight.Bold
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.albumClicked(albumKey || "", title || "", artist || "", year || 0)
-                    }
-                }
-
-                Text {
-                    width: parent.width
-                    text: title || ""
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight
-                    font.weight: FontWeight.Medium
-                }
-
-                Text {
-                    width: parent.width
-                    text: artist || ""
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight
-                }
-
-                Text {
-                    width: parent.width
-                    text: year > 0 ? year + " · " + (trackCount || 0) + " temas" : (trackCount || 0) + " temas"
-                    color: MichiTheme.colors.textMuted
-                    font.pixelSize: MichiTheme.typography.metaSize
+        delegate: AlbumGridDelegate {
+            width: gridView.cellWidth - MichiTheme.spacing.md
+            height: gridView.cellHeight - MichiTheme.spacing.md
+            albumKey: model.albumKey || ""
+            albumTitle: model.title || ""
+            albumArtist: model.artist || ""
+            albumYear: model.year || 0
+            trackCount: model.trackCount || 0
+            onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
+            onDoubleClicked: {
+                if (root.bridge && root.bridge.playAlbum) {
+                    root.bridge.playAlbum(model.albumKey || "")
                 }
             }
         }

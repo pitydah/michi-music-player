@@ -23,6 +23,7 @@ Item {
     property string _labelArtists: "Artistas"
     property string _labelFolders: "Carpetas"
     property string _labelRefresh: "Refrescar"
+    property string _albumViewMode: "modern"
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -166,13 +167,29 @@ Item {
                 id: albumsFocusScope
                 focus: navBar.currentTab === 1
 
-                AlbumGridPage {
-                    id: albumGrid
+                Loader {
+                    id: albumViewLoader
                     anchors.fill: parent
-                    albumModel: root.lib ? root.lib.albumModel : null
-                    bridge: root.lib
-                    activeFocusOnTab: true
-                    onAlbumClicked: function(key, title, artist, year) { root.showAlbumDetail(key, title, artist, year) }
+                    active: true
+                    source: root._albumViewMode === "modern"
+                        ? "album/AlbumViewHost.qml"
+                        : "AlbumGridPage.qml"
+
+                    onLoaded: {
+                        item.albumModel = root.lib ? root.lib.albumModel : null
+                        item.bridge = root.lib
+                        if (item.hasOwnProperty("albumClicked")) {
+                            item.albumClicked.connect(function(key, title, artist, year) {
+                                root.showAlbumDetail(key, title, artist, year)
+                            })
+                        }
+                    }
+
+                    onStatusChanged: {
+                        if (status === Loader.Error) {
+                            source = "AlbumGridPage.qml"
+                        }
+                    }
                 }
             }
 
