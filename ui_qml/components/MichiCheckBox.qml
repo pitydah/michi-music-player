@@ -72,8 +72,8 @@ Item {
             anchors.centerIn: parent
             text: root.partiallyChecked ? "\u2014" : "\u2713"
             color: root.checked || root.partiallyChecked ? MichiTheme.colors.textOnAccent : "transparent"
-            font.pixelSize: 14
-            font.weight: Font.Bold
+            font.pixelSize: MichiTheme.typography.bodySize
+            font.weight: MichiTheme.typography.weightBold
         }
     }
 

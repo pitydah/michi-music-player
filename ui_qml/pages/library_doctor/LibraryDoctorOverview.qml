@@ -20,7 +20,7 @@ Item {
         SectionHeader { text: "Resumen"; width: parent.width }
 
         HeroMaterial {
-            width: parent.width; height: 100; radius: MichiTheme.radiusLg; showGlow: true
+            width: parent.width; height: 100; radius: MichiTheme.radius.lg; showGlow: true
             Column {
                 anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                 Text { text: "Diagnóstico de biblioteca"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }

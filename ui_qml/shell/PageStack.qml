@@ -63,6 +63,42 @@ Item {
         return sources[route] || "../pages/PlaceholderPage.qml"
     }
 
+    function getRouteTitle(route) {
+        var titles = {
+            "home": "Inicio",
+            "library": "Biblioteca",
+            "mix": "Mix",
+            "playback": "Reproducción",
+            "nowplaying": "Reproduciendo",
+            "queue": "Cola",
+            "playlists": "Playlists",
+            "playlist_detail": "Detalle de lista",
+            "history": "Historial",
+            "radio": "Radio",
+            "connections": "Conexiones",
+            "home_audio": "Audio del Hogar",
+            "devices": "Dispositivos",
+            "settings": "Ajustes",
+            "eq": "Ecualizador",
+            "diagnostics": "Diagnóstico",
+            "assistant": "Michi IA",
+            "audio_lab": "Audio Lab",
+            "library_doctor": "Library Doctor",
+            "disc_lab": "Disc Lab",
+            "output_profiles": "Perfiles de salida",
+            "smart_tagging": "Smart Tagging",
+            "metadata_inspector": "Inspector de metadatos",
+            "group_editor": "Editor de grupos",
+            "mix_detail": "Detalle de Mix",
+            "mix_generator": "Generar Mix",
+            "mix_result": "Resultado Mix",
+            "mix_rule_editor": "Reglas de Mix",
+            "album_detail": "Álbum",
+            "artist_detail": "Artista",
+        }
+        return titles[route] || "Michi Music Player"
+    }
+
     function callOnPage(methodName, arg) {
         if (pageLoader.item && typeof pageLoader.item[methodName] === "function") {
             pageLoader.item[methodName](arg)

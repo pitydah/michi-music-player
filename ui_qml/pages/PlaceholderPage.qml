@@ -10,14 +10,37 @@ Item {
     focus: true
     id: root
 
-    property string sectionTitle: "Sección en migración"
-    property string sectionDescription: "Esta sección aún usa la interfaz clásica de Michi Music Player. La migración a QML está en progreso."
-    property string sectionGlyph: "CL"
     property string routeName: "placeholder"
 
+    property string sectionTitle: {
+        if (routeName === "mix") return "Mix no disponible"
+        if (routeName === "radio") return "Radio no disponible"
+        if (routeName === "playback") return "Reproducción"
+        if (routeName === "eq") return "Ecualizador"
+        if (routeName === "diagnostics") return "Diagnóstico"
+        if (routeName === "history") return "Historial"
+        if (routeName === "queue") return "Cola de reproducción"
+        return "Sección no disponible"
+    }
+
+    property string sectionDescription: {
+        if (routeName === "mix" || routeName === "radio")
+            return "Esta función requiere servicios de backend que no están disponibles actualmente. Asegúrate de que los módulos correspondientes estén instalados y en ejecución."
+        return "Esta sección está siendo implementada. Vuelve más tarde."
+    }
+
+    property string sectionGlyph: {
+        if (routeName === "mix") return "MX"
+        if (routeName === "radio") return "RD"
+        if (routeName === "playback") return "RP"
+        if (routeName === "eq") return "EQ"
+        if (routeName === "diagnostics") return "DG"
+        if (routeName === "history") return "HT"
+        if (routeName === "queue") return "CQ"
+        return "--"
+    }
+
     signal goBack()
-
-
 
     Column {
         anchors.centerIn: parent
@@ -28,7 +51,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: 48
             height: 48
-            radius: 12
+            radius: MichiTheme.radius.lg
             color: MichiTheme.colors.accentSurface
 
             Text {
@@ -62,8 +85,8 @@ Item {
 
         StatusBadge {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Interfaz clásica"
-            kind: "info"
+            text: routeName === "mix" || routeName === "radio" ? "Servicio no disponible" : "En desarrollo"
+            kind: routeName === "mix" || routeName === "radio" ? "warning" : "info"
         }
 
         Row {
@@ -72,9 +95,7 @@ Item {
 
             MichiButton {
                 Accessible.role: Accessible.Button
-
                 activeFocusOnTab: true
-
                 text: "Volver"
                 variant: "ghost"
                 KeyNavigation.tab: openClassicBtn
@@ -88,7 +109,7 @@ Item {
 
             MichiButton {
                 id: openClassicBtn
-                text: "Abrir en ventana clásica"
+                text: "Ir al inicio"
                 variant: "secondary"
                 KeyNavigation.backtab: parent.children[0]
                 onClicked: {

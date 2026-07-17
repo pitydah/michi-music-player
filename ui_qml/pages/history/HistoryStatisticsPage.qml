@@ -486,14 +486,14 @@ Drawer {
                         Rectangle {
                             width: parent.width * 0.30
                             height: 8
-                            radius: MichiTheme.radiusPill
+                            radius: MichiTheme.radius.pill
                             color: MichiTheme.colors.controlTrack
                             anchors.verticalCenter: parent.verticalCenter
 
                             Rectangle {
                                 width: parent.width * Math.min(1, (modelData.percentage || 0) / 100)
                                 height: parent.height
-                                radius: MichiTheme.radiusPill
+                                radius: MichiTheme.radius.pill
                                 color: MichiTheme.colors.accentBlue
                             }
                         }

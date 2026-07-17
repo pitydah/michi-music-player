@@ -89,7 +89,7 @@ Item {
                 id: aiHero
                 width: parent.width
                 height: 140
-                radius: MichiTheme.radiusLg
+                radius: MichiTheme.radius.lg
                 showGlow: root.ai !== null
 
                 Column {

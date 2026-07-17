@@ -72,7 +72,7 @@ Item {
                         text: root.artistName
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.heroTitleSize
-                        font.weight: FontWeight.Bold
+                        font.weight: MichiTheme.typography.weightBold
                         elide: Text.ElideRight; width: parent.width
                     }
                     Text {

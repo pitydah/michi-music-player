@@ -14,7 +14,7 @@ Rectangle {
 
     implicitHeight: 22
     implicitWidth: text !== "" ? txt.implicitWidth + MichiTheme.spacing.md * 2 : 22
-    radius: MichiTheme.radiusPill
+    radius: MichiTheme.radius.pill
 
     color: {
         switch (root.kind) {

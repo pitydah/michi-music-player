@@ -33,7 +33,7 @@ Item {
                     text: index < root.routeHistory.length - 1 ? modelData + " /" : modelData
                     color: index < root.routeHistory.length - 1 ? root.textColor : root.activeColor
                     font.pixelSize: MichiTheme.typography.captionSize
-                    font.weight: index < root.routeHistory.length - 1 ? Font.Normal : Font.Medium
+                    font.weight: index < root.routeHistory.length - 1 ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightMedium
                 }
 
                 MouseArea {

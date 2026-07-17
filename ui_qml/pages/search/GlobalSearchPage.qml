@@ -173,7 +173,7 @@ Item {
                 id: searchHero
                 width: parent.width
                 height: 180
-                radius: MichiTheme.radiusLg
+                radius: MichiTheme.radius.lg
                 showGlow: true
 
                 Column {

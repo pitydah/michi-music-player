@@ -21,7 +21,7 @@ Rectangle {
     Accessible.description: "Lista de notificaciones activas"
 
     color: MichiTheme.colors.surfacePopup
-    radius: MichiTheme.radiusLg
+    radius: MichiTheme.radius.lg
     border.width: MichiTheme.borderWidth
     border.color: MichiTheme.colors.borderCard
 

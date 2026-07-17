@@ -95,7 +95,7 @@ Item {
                 Rectangle {
                     width: 120
                     height: 32
-                    radius: MichiTheme.radiusPill
+                    radius: MichiTheme.radius.pill
                     color: MichiTheme.colors.surfaceCard
                     border.color: MichiTheme.colors.borderSubtle
                     border.width: MichiTheme.borderWidth
@@ -109,7 +109,7 @@ Item {
                             Rectangle {
                                 width: 6
                                 height: 6
-                                radius: 3
+                                radius: MichiTheme.radius.xs
                                 color: MichiTheme.colors.experimental
 
                                 SequentialAnimation on opacity {

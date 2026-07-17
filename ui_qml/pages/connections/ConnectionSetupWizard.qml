@@ -35,7 +35,7 @@ Item {
 
     GlassMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusLg
+        radius: MichiTheme.radius.lg
         variant: "elevated"
 
         Column {

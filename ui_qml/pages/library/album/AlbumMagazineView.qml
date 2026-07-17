@@ -37,7 +37,7 @@ Item {
                 width: parent.width - MichiTheme.spacing.xl
                 height: 220
                 color: MichiTheme.colors.surfaceHero
-                radius: MichiTheme.radiusLg
+                radius: MichiTheme.radius.lg
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 Row {

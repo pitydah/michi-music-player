@@ -49,7 +49,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 8
                 height: 8
-                radius: 4
+                radius: MichiTheme.radius.sm
                 color: MichiTheme.colors.accentBlue
             }
 

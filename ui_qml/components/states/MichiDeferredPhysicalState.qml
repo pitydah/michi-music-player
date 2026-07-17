@@ -29,7 +29,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.iconText || "\u2699"
             color: MichiTheme.colors.textMuted
-            font.pixelSize: 36
+            font.pixelSize: MichiTheme.typography.heroTitleSize
         }
 
         Text {

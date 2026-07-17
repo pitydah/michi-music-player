@@ -63,7 +63,7 @@ BaseDialog {
                 x: dontAskCheck.leftPadding
                 y: dontAskCheck.topPadding + (dontAskCheck.availableHeight - height) / 2
                 width: 18; height: 18
-                radius: 4
+                radius: MichiTheme.radius.sm
                 color: dontAskCheck.checked ? MichiTheme.colors.accentBlue : MichiTheme.colors.surfaceInput
                 border.color: dontAskCheck.activeFocus ? MichiTheme.colors.borderFocus : MichiTheme.colors.borderCard
 

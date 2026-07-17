@@ -18,7 +18,7 @@ Item {
         color: MichiTheme.colors.surfaceInput
         border.color: {
             if (root.focused) return MichiTheme.colors.borderFocus
-            if (root.hoveredInput) return Qt.rgba(1.0, 1.0, 1.0, 0.12)
+            if (root.hoveredInput) return MichiTheme.colors.borderCard
             return MichiTheme.colors.borderSubtle
         }
         border.width: root.focused ? MichiTheme.borderWidthFocus : MichiTheme.borderWidth

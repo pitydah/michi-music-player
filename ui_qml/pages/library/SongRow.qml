@@ -36,7 +36,7 @@ Item {
             spacing: MichiTheme.spacing.sm
 
             Rectangle {
-                width: 24; height: 24; radius: MichiTheme.radiusPill
+                width: 24; height: 24; radius: MichiTheme.radius.pill
                 anchors.verticalCenter: parent.verticalCenter
                 color: root.hovered ? MichiTheme.colors.accentSurface : "transparent"
                 visible: root.hovered

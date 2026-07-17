@@ -27,7 +27,7 @@ Rectangle {
 
     implicitHeight: 22
     implicitWidth: badgeRow.implicitWidth + MichiTheme.spacing.md * 2
-    radius: MichiTheme.radiusPill
+    radius: MichiTheme.radius.pill
     color: {
         switch (root.status) {
             case ConnectionStatusBadge.CONNECTED: return MichiTheme.colors.badgeActiveBg

@@ -27,7 +27,7 @@ Item {
         radius: MichiTheme.radius.sm
         color: {
             if (root.active) return MichiTheme.colors.accentSelection
-            if (root.sidebarHovered) return Qt.rgba(1.0, 1.0, 1.0, 0.04)
+            if (root.sidebarHovered) return MichiTheme.colors.surfaceSubtle
             return "transparent"
         }
 
@@ -41,7 +41,7 @@ Item {
             height: 20
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            radius: 2
+            radius: MichiTheme.radius.xs
             color: MichiTheme.colors.accentBlue
         }
 

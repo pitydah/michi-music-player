@@ -39,7 +39,7 @@ Rectangle {
         spacing: MichiTheme.spacing.md
 
         Rectangle {
-            width: 40; height: 40; radius: 8
+            width: 40; height: 40; radius: MichiTheme.radius.md
             color: root.sourceEnabled ? MichiTheme.colors.accentSurface : MichiTheme.colors.surfaceHover
 
             Text {

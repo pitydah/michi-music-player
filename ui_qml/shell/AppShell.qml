@@ -24,6 +24,8 @@ Item {
     function updateHeaderTitle(route) {
         if (typeof routeRegistryBridge !== "undefined" && routeRegistryBridge) {
             header.pageTitle = routeRegistryBridge.getTitle(route)
+        } else {
+            header.pageTitle = pageStack.getRouteTitle(route)
         }
     }
 
@@ -280,7 +282,7 @@ Item {
             color: MichiTheme.colors.accentSurface
             border.width: 2
             border.color: MichiTheme.colors.accentBlue
-            radius: MichiTheme.radiusLg
+            radius: MichiTheme.radius.lg
             visible: parent.containsDrag
             z: 10000
 

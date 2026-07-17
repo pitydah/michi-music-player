@@ -73,14 +73,14 @@ Item {
             Rectangle {
                 width: parent.width
                 height: 8
-                radius: MichiTheme.radiusPill
+                radius: MichiTheme.radius.pill
                 color: MichiTheme.colors.controlTrack
                 visible: root.storageInfo.totalBytes && root.storageInfo.totalBytes > 0
 
                 Rectangle {
                     width: Math.min(parent.width, (root.storageInfo.usedBytes || 0) / Math.max(1, root.storageInfo.totalBytes || 1) * parent.width)
                     height: parent.height
-                    radius: MichiTheme.radiusPill
+                    radius: MichiTheme.radius.pill
                     color: {
                         var ratio = (root.storageInfo.usedBytes || 0) / Math.max(1, root.storageInfo.totalBytes || 1)
                         if (ratio > 0.9) return MichiTheme.colors.error

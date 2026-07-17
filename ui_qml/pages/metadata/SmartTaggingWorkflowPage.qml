@@ -37,7 +37,7 @@ Item {
             }
 
             HeroMaterial {
-                width: parent.width; height: 100; radius: MichiTheme.radiusLg; showGlow: true
+                width: parent.width; height: 100; radius: MichiTheme.radius.lg; showGlow: true
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text { text: "Etiquetado inteligente"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }

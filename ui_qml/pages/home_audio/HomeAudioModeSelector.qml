@@ -37,7 +37,7 @@ Item {
                     variant: root.selectedMode === index ? "accent" : "base"
                     hovered: mouseArea.containsMouse
                     interactive: true
-                    radius: 14
+                    radius: MichiTheme.radius.lg
 
                     MouseArea {
                         id: mouseArea

@@ -28,19 +28,19 @@ Rectangle {
     radius: MichiTheme.radius.md
     color: {
         switch (root.kind) {
-            case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.10)
-            case "warning": return Qt.rgba(1.0, 0.75, 0.14, 0.10)
-            case "error":   return Qt.rgba(1.0, 0.44, 0.44, 0.10)
-            default:        return Qt.rgba(0.561, 0.718, 1.0, 0.08)
+            case "success": return MichiTheme.colors.badgeActiveBg
+            case "warning": return MichiTheme.colors.badgeWarningBg
+            case "error":   return MichiTheme.colors.badgeDangerBg
+            default:        return MichiTheme.colors.badgeInfoBg
         }
     }
     border.width: MichiTheme.borderWidth
     border.color: {
         switch (root.kind) {
-            case "success": return Qt.rgba(0.29, 0.87, 0.50, 0.25)
-            case "warning": return Qt.rgba(1.0, 0.75, 0.14, 0.25)
-            case "error":   return Qt.rgba(1.0, 0.44, 0.44, 0.25)
-            default:        return Qt.rgba(0.561, 0.718, 1.0, 0.20)
+            case "success": return MichiTheme.colors.success
+            case "warning": return MichiTheme.colors.warning
+            case "error":   return MichiTheme.colors.error
+            default:        return MichiTheme.colors.accentBlue
         }
     }
 
@@ -55,7 +55,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             width: 8
             height: 8
-            radius: 4
+            radius: MichiTheme.radius.sm
             color: {
                 switch (root.kind) {
                     case "success": return MichiTheme.colors.success

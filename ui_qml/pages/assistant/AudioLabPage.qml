@@ -32,7 +32,7 @@ Item {
             spacing: MichiTheme.spacing.lg
 
             HeroMaterial {
-                width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
+                width: parent.width; height: 140; radius: MichiTheme.radius.lg; showGlow: true
                 Column {
                     anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                     Text {

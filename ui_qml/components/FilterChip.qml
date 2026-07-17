@@ -15,7 +15,7 @@ Rectangle {
 
     implicitHeight: 26
     implicitWidth: label.implicitWidth + MichiTheme.spacing.md * 2
-    radius: MichiTheme.radiusPill
+    radius: MichiTheme.radius.pill
     color: root.selected ? MichiTheme.colors.accentSurface : "transparent"
     border.color: root.selected ? MichiTheme.colors.accentBlue : MichiTheme.colors.borderSubtle
     border.width: 1

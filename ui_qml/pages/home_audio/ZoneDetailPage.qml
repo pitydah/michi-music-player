@@ -298,7 +298,7 @@ Item {
         }
 
         degradedOverlay: Rectangle {
-            color: Qt.rgba(1, 0.75, 0.14, 0.05)
+            color: MichiTheme.colors.badgeWarningBg
             radius: MichiTheme.radius.md
             anchors.fill: parent
             visible: true

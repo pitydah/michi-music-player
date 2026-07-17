@@ -70,7 +70,7 @@ Item {
             Item { height: MichiTheme.spacing.xl; width: 1 }
 
             Item { id: collapseItem; width: parent.width; height: 40
-                Rectangle { id: collapseBg; anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radiusPill
+                Rectangle { id: collapseBg; anchors.centerIn: parent; width: 28; height: 28; radius: MichiTheme.radius.pill
                     color: collapseBtn.containsMouse ? MichiTheme.colors.surfaceHover : "transparent"
                     border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus
@@ -93,8 +93,8 @@ Item {
         ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones" }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio" }
         ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists" }
-        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Home Audio" }
-        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi AI" }
+        ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar" }
+        ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA" }
         ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab" }
     }
 
@@ -104,7 +104,7 @@ Item {
         ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción" }
         ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists" }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio" }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_servers.svg"; label: "Ajustes" }
-        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_home_audio.svg"; label: "Diagnóstico" }
+        ListElement { route: "settings"; iconSource: "icons/sidebar_playlists.svg"; label: "Ajustes" }
+        ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico" }
     }
 }

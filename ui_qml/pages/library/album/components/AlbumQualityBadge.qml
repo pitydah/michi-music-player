@@ -31,6 +31,6 @@ Rectangle {
         radius: parent.radius
         color: "transparent"
         border.width: 1
-        border.color: Qt.rgba(parent.color.r, parent.color.g, parent.color.b, 0.3)
+        border.color: MichiTheme.colors.borderInner
     }
 }

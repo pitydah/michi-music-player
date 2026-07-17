@@ -37,7 +37,7 @@ Item {
                     text: "G\u00e9nero: " + root.genre
                     color: MichiTheme.colors.textPrimary
                     font.pixelSize: MichiTheme.typography.heroTitleSize
-                    font.weight: FontWeight.Bold
+                    font.weight: MichiTheme.typography.weightBold
                 }
             }
 

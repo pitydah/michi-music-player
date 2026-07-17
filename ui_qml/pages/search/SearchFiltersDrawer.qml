@@ -134,7 +134,7 @@ Drawer {
                             y: parent.height / 2 - height / 2
                             width: 18
                             height: 18
-                            radius: 3
+                            radius: MichiTheme.radius.xs
                             color: typeCheck.checked ? MichiTheme.colors.accent : "transparent"
                             border.color: typeCheck.checked ? MichiTheme.colors.accent : MichiTheme.colors.borderCard
                             border.width: 1
@@ -143,7 +143,7 @@ Drawer {
                                 anchors.centerIn: parent
                                 text: "\u2713"
                                 color: MichiTheme.colors.textOnAccent
-                                font.pixelSize: 11
+                                font.pixelSize: MichiTheme.typography.metaSize
                                 visible: typeCheck.checked
                             }
                         }

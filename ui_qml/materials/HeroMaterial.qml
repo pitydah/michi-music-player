@@ -8,7 +8,7 @@ Item {
     focus: true
     id: root
 
-    property int radius: MichiTheme.radiusLg
+    property int radius: MichiTheme.radius.lg
     property bool showGlow: false
 
     Rectangle {
@@ -22,7 +22,7 @@ Item {
             gradient: Gradient {
                 GradientStop { position: 0.0; color: MichiTheme.colors.accentSurface }
                 GradientStop { position: 0.5; color: "transparent" }
-                GradientStop { position: 1.0; color: Qt.rgba(0.0, 0.0, 0.0, 0.25) }
+                GradientStop { position: 1.0; color: MichiTheme.colors.shadowSoft }
             }
         }
 

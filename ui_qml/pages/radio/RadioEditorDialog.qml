@@ -56,7 +56,7 @@ Dialog {
         color: MichiTheme.colors.surfacePopup
         border.color: MichiTheme.colors.borderCard
         border.width: 1
-        radius: MichiTheme.radiusLg
+        radius: MichiTheme.radius.lg
     }
 
     header: Rectangle {

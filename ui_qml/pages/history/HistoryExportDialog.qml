@@ -122,14 +122,14 @@ Dialog {
     focus: true
             width: parent.width
             height: 4
-            radius: MichiTheme.radiusPill
+            radius: MichiTheme.radius.pill
             color: MichiTheme.colors.controlTrack
             visible: root._exporting
 
             Rectangle {
                 width: parent.width * root._progress
                 height: parent.height
-                radius: MichiTheme.radiusPill
+                radius: MichiTheme.radius.pill
                 color: MichiTheme.colors.accentBlue
 
                 Behavior on width { NumberAnimation { duration: 200 } }

@@ -82,7 +82,7 @@ Item {
                 }
 
                 HeroMaterial {
-                    width: parent.width; height: 140; radius: MichiTheme.radiusLg; showGlow: true
+                    width: parent.width; height: 140; radius: MichiTheme.radius.lg; showGlow: true
                     Column {
                         anchors.fill: parent; anchors.margins: MichiTheme.spacing.xl; spacing: MichiTheme.spacing.sm
                         Text { text: "Laboratorio de discos"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.heroTitleSize; font.weight: MichiTheme.typography.weightBold }

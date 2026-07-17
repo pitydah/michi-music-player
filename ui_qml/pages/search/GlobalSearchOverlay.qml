@@ -85,7 +85,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.5)
+        color: MichiTheme.colors.overlayDark
 
         MouseArea {
             anchors.fill: parent
@@ -101,7 +101,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         y: MichiTheme.spacing.xl
         color: MichiTheme.colors.surfacePopup
-        radius: MichiTheme.radiusLg
+        radius: MichiTheme.radius.lg
         border.color: MichiTheme.colors.borderCard
         border.width: 1
 

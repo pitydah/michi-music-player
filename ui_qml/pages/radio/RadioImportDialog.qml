@@ -39,7 +39,7 @@ Dialog {
         color: MichiTheme.colors.surfacePopup
         border.color: MichiTheme.colors.borderCard
         border.width: 1
-        radius: MichiTheme.radiusLg
+        radius: MichiTheme.radius.lg
     }
 
     header: Rectangle {
@@ -192,7 +192,7 @@ Dialog {
                             y: parent.height / 2 - height / 2
                             width: 18
                             height: 18
-                            radius: 3
+                            radius: MichiTheme.radius.xs
                             color: stationCheck.checked ? MichiTheme.colors.accent : "transparent"
                             border.color: stationCheck.checked ? MichiTheme.colors.accent : MichiTheme.colors.borderCard
                             border.width: 1
@@ -201,7 +201,7 @@ Dialog {
                                 anchors.centerIn: parent
                                 text: "\u2713"
                                 color: MichiTheme.colors.textOnAccent
-                                font.pixelSize: 11
+                                font.pixelSize: MichiTheme.typography.metaSize
                                 visible: stationCheck.checked
                             }
                         }

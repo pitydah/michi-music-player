@@ -15,7 +15,7 @@ Item {
 
     HeroMaterial {
         anchors.fill: parent
-        radius: MichiTheme.radiusLg
+        radius: MichiTheme.radius.lg
         showGlow: true
 
         Row {

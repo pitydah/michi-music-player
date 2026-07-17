@@ -50,7 +50,7 @@ Item {
                 text: modelData ? modelData.text : ""
                 color: parent.isActive ? MichiTheme.colors.accent : MichiTheme.colors.textSecondary
                 font.pixelSize: parent.isActive ? MichiTheme.typography.bodySize * 1.15 : MichiTheme.typography.bodySize
-                font.weight: parent.isActive ? FontWeight.Medium : FontWeight.Normal
+                font.weight: parent.isActive ? MichiTheme.typography.weightMedium : MichiTheme.typography.weightNormal
                 width: parent.width
                 wrapMode: Text.WordWrap
                 lineHeight: 1.4
@@ -108,12 +108,12 @@ Item {
             Text {
                 text: root.autoScroll ? "\u25C0\u25B6" : "\u25B6\u25C0"
                 color: MichiTheme.colors.textSecondary
-                font.pixelSize: 12
+                font.pixelSize: MichiTheme.typography.captionSize
             }
             Text {
                 text: root.autoScroll ? "Auto" : "Manual"
                 color: MichiTheme.colors.textSecondary
-                font.pixelSize: 12
+                font.pixelSize: MichiTheme.typography.captionSize
             }
             MouseArea {
                 anchors.fill: parent

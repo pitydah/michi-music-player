@@ -39,7 +39,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: "!"
             color: MichiTheme.colors.error
-            font.pixelSize: 40
+            font.pixelSize: MichiTheme.typography.heroTitleSize
             font.weight: MichiTheme.typography.weightBold
             visible: true
         }

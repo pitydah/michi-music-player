@@ -26,15 +26,15 @@ Item {
             anchors.fill: parent
             radius: root.radius
             color: {
-                if (root.pressed && root.interactive) return Qt.rgba(1.0, 1.0, 1.0, 0.03)
+                if (root.pressed && root.interactive) return MichiTheme.colors.surfacePressed
                 switch (root.variant) {
-                    case "compact": return Qt.rgba(0.05, 0.06, 0.09, 0.85)
+                    case "compact": return MichiTheme.colors.surfaceOverlay
                     case "elevated": return MichiTheme.colors.surfaceCardElevated
                     case "accent": return MichiTheme.colors.accentSurface
-                    case "floating": return Qt.rgba(0.05, 0.06, 0.09, 0.92)
-                    case "status": return Qt.rgba(0.05, 0.06, 0.09, 0.75)
+                    case "floating": return MichiTheme.colors.surfaceElevated
+                    case "status": return MichiTheme.colors.surfaceCard
                     case "hero": return MichiTheme.colors.surfaceHero
-                    case "danger": return Qt.rgba(0.95, 0.25, 0.25, 0.08)
+                    case "danger": return MichiTheme.colors.badgeDangerBg
                     default: return MichiTheme.colors.surfaceCard
                 }
             }
@@ -47,7 +47,7 @@ Item {
                 if (root.hovered && root.interactive) return MichiTheme.colors.borderFocus
                 switch (root.variant) {
                     case "accent": return MichiTheme.colors.borderActive
-                    case "danger": return Qt.rgba(0.95, 0.25, 0.25, 0.20)
+                    case "danger": return MichiTheme.colors.borderError
                     case "floating": return MichiTheme.colors.borderCard
                     case "hero": return MichiTheme.colors.borderSubtle
                     default: return MichiTheme.colors.borderCard
@@ -64,7 +64,7 @@ Item {
                 anchors.fill: parent
                 radius: parent.radius
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: Qt.rgba(1.0, 1.0, 1.0, 0.025) }
+                    GradientStop { position: 0.0; color: MichiTheme.colors.surfaceSubtle }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -73,7 +73,7 @@ Item {
                 anchors.fill: parent
                 radius: parent.radius
                 color: "transparent"
-                border.color: Qt.rgba(1.0, 1.0, 1.0, 0.02)
+                border.color: MichiTheme.colors.borderInner
                 border.width: MichiTheme.borderWidth
             }
         }

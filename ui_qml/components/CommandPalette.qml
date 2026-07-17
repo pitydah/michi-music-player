@@ -216,7 +216,7 @@ Item {
                         anchors.leftMargin: MichiTheme.spacing.xs
                         width: 4
                         height: 4
-                        radius: 2
+                        radius: MichiTheme.radius.xs
                         color: MichiTheme.colors.experimental
                     }
 
@@ -301,7 +301,7 @@ Item {
                         Rectangle {
                             height: parent.height
                             width: sectionText.implicitWidth + MichiTheme.spacing.md
-                            radius: MichiTheme.radiusPill
+                            radius: MichiTheme.radius.pill
                             color: MichiTheme.colors.surfaceSubtle
                             border.color: MichiTheme.colors.borderInner
                             border.width: MichiTheme.borderWidth

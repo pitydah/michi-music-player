@@ -113,7 +113,7 @@ Item {
                     }
 
                     Rectangle {
-                        width: 48; height: 48; radius: MichiTheme.radiusPill
+                        width: 48; height: 48; radius: MichiTheme.radius.pill
                         color: root._canPlay && maP.containsMouse ? MichiTheme.colors.surfacePressed : root._canPlay ? MichiTheme.colors.accentBlue : MichiTheme.colors.accentSurface
                         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
                         Image {

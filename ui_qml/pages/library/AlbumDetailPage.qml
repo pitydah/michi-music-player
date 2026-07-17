@@ -71,7 +71,7 @@ Item {
                             text: root.albumTitle
                             color: MichiTheme.colors.textPrimary
                             font.pixelSize: MichiTheme.typography.heroTitleSize
-                            font.weight: FontWeight.Bold
+                            font.weight: MichiTheme.typography.weightBold
                             wrapMode: Text.WordWrap; width: parent.width
                         }
 

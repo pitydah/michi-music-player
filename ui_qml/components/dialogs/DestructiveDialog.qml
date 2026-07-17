@@ -70,9 +70,9 @@ BaseDialog {
             Layout.fillWidth: true
             height: 36
             radius: MichiTheme.radius.sm
-            color: Qt.rgba(1, 0.44, 0.44, 0.08)
+            color: MichiTheme.colors.badgeDangerBg
             border.width: 1
-            border.color: Qt.rgba(1, 0.44, 0.44, 0.20)
+            border.color: MichiTheme.colors.borderError
             visible: true
 
             RowLayout {

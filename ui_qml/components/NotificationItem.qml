@@ -51,7 +51,7 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 8
                 height: 8
-                radius: 4
+                radius: MichiTheme.radius.sm
                 color: {
                     if (!root.notification) return MichiTheme.colors.accentBlue
                     switch (root.notification.kind) {

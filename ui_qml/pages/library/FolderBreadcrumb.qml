@@ -28,7 +28,7 @@ Item {
             Text {
                 text: "BL"
                 color: MichiTheme.colors.accentBlue
-                font.pixelSize: 12
+                font.pixelSize: MichiTheme.typography.captionSize
                 font.weight: MichiTheme.typography.weightBold
             }
 

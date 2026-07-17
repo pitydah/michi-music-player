@@ -33,7 +33,7 @@ Item {
                 text: "Compositor: " + root.composer
                 color: MichiTheme.colors.textPrimary
                 font.pixelSize: MichiTheme.typography.heroTitleSize
-                font.weight: FontWeight.Bold
+                font.weight: MichiTheme.typography.weightBold
             }
         }
 

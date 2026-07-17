@@ -8,7 +8,7 @@ Item {
     focus: true
     id: root
 
-    property int radius: MichiTheme.radiusLg
+    property int radius: MichiTheme.radius.lg
 
     Rectangle {
         anchors.fill: parent

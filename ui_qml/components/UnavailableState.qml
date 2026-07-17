@@ -34,7 +34,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: root.iconText || "\u26A0"
             color: MichiTheme.colors.textMuted
-            font.pixelSize: 36
+            font.pixelSize: MichiTheme.typography.heroTitleSize
             visible: true
         }
 

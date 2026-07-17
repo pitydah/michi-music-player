@@ -199,7 +199,7 @@ Item {
                                 text: modelData.title || ""
                                 color: root.selectedCategoryId === modelData.id ? MichiTheme.colors.accent : MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.bodySize
-                                font.weight: root.selectedCategoryId === modelData.id ? Font.Bold : Font.Normal
+                                font.weight: root.selectedCategoryId === modelData.id ? MichiTheme.typography.weightBold : MichiTheme.typography.weightNormal
                                 Layout.fillWidth: true
                             }
                             Label {
@@ -265,7 +265,7 @@ Item {
                         text: root.selectedCategory ? root.selectedCategory.title : ""
                         color: root.selectedSection ? MichiTheme.colors.textSecondary : MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: root.selectedSection ? Font.Normal : Font.Bold
+                        font.weight: root.selectedSection ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightBold
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: { root.selectedSection = null; root.selectedEntry = null }
@@ -279,7 +279,7 @@ Item {
                         text: root.selectedSection ? root.selectedSection.title : ""
                         color: root.selectedEntry ? MichiTheme.colors.textSecondary : MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: root.selectedEntry ? Font.Normal : Font.Bold
+                        font.weight: root.selectedEntry ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightBold
                         visible: root.selectedSection !== null
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -294,7 +294,7 @@ Item {
                         text: root.selectedEntry ? root.selectedEntry.label : ""
                         color: MichiTheme.colors.textPrimary
                         font.pixelSize: MichiTheme.typography.captionSize
-                        font.weight: Font.Bold
+                        font.weight: MichiTheme.typography.weightBold
                         visible: root.selectedEntry !== null
                     }
                 }

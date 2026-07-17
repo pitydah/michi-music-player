@@ -28,7 +28,7 @@ Rectangle {
 
     width: parent ? parent.width : 0
     implicitHeight: 56
-    color: root.dirty ? Qt.rgba(0.561, 0.718, 1.0, 0.04) : "transparent"
+    color: root.dirty ? MichiTheme.colors.accentSurface : "transparent"
     radius: MichiTheme.radius.sm
     Accessible.description: entry ? entry.hint || "" : ""
     Accessible.onPressAction: root.doSave(root.editedValue !== null ? root.editedValue : root.originalValue)
@@ -125,7 +125,7 @@ Rectangle {
         }
 
         Rectangle {
-            visible: root.dirty; width: 8; height: 8; radius: 4
+            visible: root.dirty; width: 8; height: 8; radius: MichiTheme.radius.sm
             color: MichiTheme.colors.warning; Layout.alignment: Qt.AlignVCenter
         }
 
