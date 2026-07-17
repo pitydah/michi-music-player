@@ -16,6 +16,7 @@ _INTENT_PATTERNS: Final[list[tuple[str, str]]] = [
     ("genre_info", r"\b(qu[eé] es|explica|caracter[ií]sticas de|informaci[oó]n de|dime sobre)\b.*\b(g[eé]nero|estilo)\b"),
     ("genre_info", r"\b(dime|cu[eé]ntame|habla)\b.*\b(de(l)?)\s+(rock|pop|jazz|cl[aá]sica|electr(o|ó)nica|reggae|blues|metal|hip.?hop|rap|indie|folk|soul|punk|grunge)\b"),
     ("library_status", r"\b(cu[aá]ntas|cua[aá]ntos|qu[eé] (hay|tengo)|estado de (la )?biblioteca|resumen|status|library|estad[ií]sticas|totales)\b.*\b(canciones?|temas?|[aá]lbumes?|artistas?|g[eé]neros?)\b"),
+    ("library_status", r"\b(cu[aá]ntas?)\s+\w+\s+(tengo|hay)\b"),
     ("library_status", r"\b(cu[aá]nta|qu[eé] (m[uú]sica|contenido)|estado)\b.*\b(m[uú]sica|biblioteca|librer[ií]a|library)\b"),
     ("library_status", r"\b(library|biblioteca|m[uú]sica)\b.*\b(status|estado|resumen|totales|health)\b"),
 ]
