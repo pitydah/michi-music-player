@@ -1,29 +1,45 @@
+"""Productive analog/ADC capture service for Michi Audio Lab.
+
+The service owns exactly one recording process. Hardware discovery and capture
+are capability-gated: unsupported platforms or missing tools return structured
+errors instead of pretending that recording started.
 """
-Servicio de Grabación desde ADC (Analog-to-Digital Converter).
-Soporta tocadiscos USB, cassettes y otras fuentes analógicas.
-"""
+from __future__ import annotations
+
+import logging
 import os
+import re
+import shutil
+import signal
 import subprocess
-import tempfile
+import sys
 import threading
 import time
-from typing import List, Dict, Optional, Any, Callable
-from dataclasses import dataclass
+import uuid
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-import logging
-import json
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-@dataclass
+
+@dataclass(frozen=True)
 class AudioDevice:
-    device_id: int
+    """Stable description of an input device and its FFmpeg capture target."""
+
+    device_id: str
     name: str
-    is_usb: bool
-    is_turntable: bool
-    brand: Optional[str]
-    channels: int
-    sample_rate: int
+    backend: str
+    capture_spec: str
+    is_usb: bool = False
+    is_turntable: bool = False
+    brand: str | None = None
+    channels: int = 2
+    sample_rate: int = 44100
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
 
 @dataclass
 class RecordingSession:
@@ -32,460 +48,586 @@ class RecordingSession:
     output_path: str
     format: str
     start_time: float
-    end_time: Optional[float]
-    duration: float
-    file_size: int
-    markers: List[Dict[str, Any]]  # Puntos de corte para pistas
-    status: str  # 'recording', 'paused', 'stopped', 'completed'
+    end_time: float | None = None
+    duration: float = 0.0
+    file_size: int = 0
+    markers: list[dict[str, Any]] = field(default_factory=list)
+    status: str = "starting"
+    error: str = ""
+    pid: int | None = None
+
 
 class USBTurntableDetector:
-    """Detecta tocadiscos con USB conectados al sistema."""
-    
-    # Marcas comunes de tocadiscos USB
-    TURNTABLE_BRANDS = [
-        'audio-technica', 'audiotechnica', 'pro-ject', 'project', 
-        'rega', 'numark', 'sony', 'pioneer', 'technics', 'yamaha',
-        'denon', 'marantz', 'cambridge audio', 'art', 'behringer'
-    ]
-    
-    def __init__(self):
-        self.detected_devices: List[AudioDevice] = []
-        
-    def scan_usb_devices(self) -> List[AudioDevice]:
-        """Escanea dispositivos USB de audio conectados."""
-        devices = []
-        
-        try:
-            # Linux: usar lsusb y arecord
-            if os.name == 'posix':
-                devices.extend(self._scan_linux())
-            # Windows: usar pyaudio o wmic
-            elif os.name == 'nt':
-                devices.extend(self._scan_windows())
-            # macOS: usar system_profiler
-            elif os.name == 'darwin':
-                devices.extend(self._scan_macos())
-        except Exception as e:
-            logger.error(f"Error al escanear dispositivos USB: {e}")
-            
+    """Discover audio capture devices without treating brand matching as proof."""
+
+    TURNTABLE_BRANDS = (
+        "audio-technica",
+        "audiotechnica",
+        "pro-ject",
+        "project",
+        "rega",
+        "numark",
+        "sony",
+        "pioneer",
+        "technics",
+        "yamaha",
+        "denon",
+        "marantz",
+        "cambridge audio",
+        "behringer",
+    )
+
+    def __init__(self) -> None:
+        self.detected_devices: list[AudioDevice] = []
+
+    def scan_usb_devices(self) -> list[AudioDevice]:
+        if sys.platform.startswith("linux"):
+            devices = self._scan_linux()
+        elif sys.platform == "win32":
+            devices = self._scan_windows()
+        elif sys.platform == "darwin":
+            devices = self._scan_macos()
+        else:
+            devices = []
         self.detected_devices = devices
-        return devices
-    
-    def _scan_linux(self) -> List[AudioDevice]:
-        """Escanea dispositivos en Linux."""
-        devices = []
-        
+        return list(devices)
+
+    def _classification(self, name: str) -> tuple[bool, str | None]:
+        lowered = name.casefold()
+        for brand in self.TURNTABLE_BRANDS:
+            if brand in lowered:
+                return True, brand.title()
+        return False, None
+
+    def _scan_linux(self) -> list[AudioDevice]:
+        if not shutil.which("arecord"):
+            return []
         try:
-            # Obtener lista de dispositivos de captura con arecord
             result = subprocess.run(
-                ['arecord', '-l'],
-                capture_output=True,
-                text=True,
-                timeout=5
+                ["arecord", "-l"], capture_output=True, text=True, timeout=5, check=False
             )
-            
-            if result.returncode == 0:
-                lines = result.stdout.split('\n')
-                for line in lines:
-                    if 'card' in line.lower() and 'device' in line.lower():
-                        # Parsear línea: card X: USB Audio [Device Name], device Y
-                        parts = line.split(':')
-                        if len(parts) >= 2:
-                            card_info = parts[1].strip()
-                            device_name = card_info.split(',')[0] if ',' in card_info else card_info
-                            
-                            # Verificar si es USB
-                            is_usb = 'usb' in line.lower() or 'USB' in line
-                            
-                            # Verificar si parece un tocadiscos
-                            is_turntable = False
-                            brand = None
-                            device_lower = device_name.lower()
-                            
-                            for tb_brand in self.TURNTABLE_BRANDS:
-                                if tb_brand in device_lower:
-                                    is_turntable = True
-                                    brand = tb_brand.title()
-                                    break
-                                    
-                            # Obtener ID del dispositivo
-                            device_id = None
-                            for part in line.split():
-                                if part.isdigit():
-                                    device_id = int(part)
-                                    break
-                                    
-                            if device_id is not None:
-                                devices.append(AudioDevice(
-                                    device_id=device_id,
-                                    name=device_name,
-                                    is_usb=is_usb,
-                                    is_turntable=is_turntable,
-                                    brand=brand,
-                                    channels=2,  # Estéreo por defecto
-                                    sample_rate=44100  # CD quality por defecto
-                                ))
-        except Exception as e:
-            logger.warning(f"Error en escaneo Linux: {e}")
-            
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            logger.warning("Linux capture discovery failed: %s", exc)
+            return []
+        if result.returncode != 0:
+            logger.warning("arecord -l failed: %s", result.stderr.strip())
+            return []
+
+        devices: list[AudioDevice] = []
+        pattern = re.compile(
+            r"card\s+(?P<card>\d+):\s*(?P<card_name>[^\[]+)?\[(?P<label>[^\]]+)\].*"
+            r"device\s+(?P<device>\d+):\s*(?P<device_name>[^\[]+)?",
+            re.IGNORECASE,
+        )
+        for line in result.stdout.splitlines():
+            match = pattern.search(line)
+            if not match:
+                continue
+            card = match.group("card")
+            device = match.group("device")
+            label = (match.group("label") or match.group("card_name") or "Audio input").strip()
+            full_name = " ".join(part for part in (label, match.group("device_name")) if part).strip()
+            is_turntable, brand = self._classification(full_name)
+            lowered = line.casefold()
+            devices.append(
+                AudioDevice(
+                    device_id=f"alsa:{card},{device}",
+                    name=full_name,
+                    backend="alsa",
+                    capture_spec=f"hw:{card},{device}",
+                    is_usb="usb" in lowered,
+                    is_turntable=is_turntable,
+                    brand=brand,
+                )
+            )
         return devices
-    
-    def _scan_windows(self) -> List[AudioDevice]:
-        """Escanea dispositivos en Windows."""
-        devices = []
+
+    def _scan_windows(self) -> list[AudioDevice]:
         try:
-            import pyaudio
-            p = pyaudio.PyAudio()
-            
-            for i in range(p.get_device_count()):
-                info = p.get_device_info_by_index(i)
-                
-                # Solo dispositivos de entrada
-                if info['maxInputChannels'] > 0:
-                    device_name = info['name']
-                    is_usb = 'usb' in device_name.lower()
-                    
-                    is_turntable = False
-                    brand = None
-                    device_lower = device_name.lower()
-                    
-                    for tb_brand in self.TURNTABLE_BRANDS:
-                        if tb_brand in device_lower:
-                            is_turntable = True
-                            brand = tb_brand.title()
-                            break
-                            
-                    devices.append(AudioDevice(
-                        device_id=i,
-                        name=device_name,
-                        is_usb=is_usb,
+            import pyaudio  # type: ignore
+        except ImportError:
+            logger.info("PyAudio is not installed; Windows capture discovery disabled")
+            return []
+
+        devices: list[AudioDevice] = []
+        audio = pyaudio.PyAudio()
+        try:
+            for index in range(audio.get_device_count()):
+                info = audio.get_device_info_by_index(index)
+                if int(info.get("maxInputChannels", 0)) <= 0:
+                    continue
+                name = str(info.get("name", f"Input {index}"))
+                is_turntable, brand = self._classification(name)
+                devices.append(
+                    AudioDevice(
+                        device_id=f"dshow:{index}",
+                        name=name,
+                        backend="dshow",
+                        capture_spec=name,
+                        is_usb="usb" in name.casefold(),
                         is_turntable=is_turntable,
                         brand=brand,
-                        channels=min(info['maxInputChannels'], 2),
-                        sample_rate=int(info['defaultSampleRate'])
-                    ))
-                    
-            p.terminate()
-        except ImportError:
-            logger.warning("PyAudio no disponible en Windows")
-        except Exception as e:
-            logger.warning(f"Error en escaneo Windows: {e}")
-            
+                        channels=min(int(info.get("maxInputChannels", 2)), 2),
+                        sample_rate=int(info.get("defaultSampleRate", 44100)),
+                    )
+                )
+        finally:
+            audio.terminate()
         return devices
-    
-    def _scan_macos(self) -> List[AudioDevice]:
-        """Escanea dispositivos en macOS."""
-        devices = []
+
+    def _scan_macos(self) -> list[AudioDevice]:
+        """Parse FFmpeg's AVFoundation input list when available."""
+        if not shutil.which("ffmpeg"):
+            return []
         try:
             result = subprocess.run(
-                ['system_profiler', 'SPUSBDataType', '-json'],
+                ["ffmpeg", "-hide_banner", "-f", "avfoundation", "-list_devices", "true", "-i", ""],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=8,
+                check=False,
             )
-            
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
-                # Parsear estructura JSON de macOS para encontrar dispositivos de audio USB
-                # Implementación simplificada
-                pass
-        except Exception as e:
-            logger.warning(f"Error en escaneo macOS: {e}")
-            
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            logger.warning("macOS capture discovery failed: %s", exc)
+            return []
+
+        devices: list[AudioDevice] = []
+        in_audio_section = False
+        pattern = re.compile(r"\[(?P<index>\d+)\]\s+(?P<name>.+)$")
+        for line in result.stderr.splitlines():
+            lower = line.casefold()
+            if "avfoundation audio devices" in lower:
+                in_audio_section = True
+                continue
+            if in_audio_section and "avfoundation video devices" in lower:
+                continue
+            if not in_audio_section:
+                continue
+            match = pattern.search(line)
+            if not match:
+                continue
+            index = match.group("index")
+            name = match.group("name").strip()
+            is_turntable, brand = self._classification(name)
+            devices.append(
+                AudioDevice(
+                    device_id=f"avfoundation:{index}",
+                    name=name,
+                    backend="avfoundation",
+                    capture_spec=f":{index}",
+                    is_usb="usb" in name.casefold(),
+                    is_turntable=is_turntable,
+                    brand=brand,
+                )
+            )
         return devices
-    
-    def get_turntables(self) -> List[AudioDevice]:
-        """Retorna solo los tocadiscos USB detectados."""
-        return [d for d in self.detected_devices if d.is_turntable]
-    
-    def apply_riaa_eq(self, device: AudioDevice) -> bool:
-        """
-        Aplica ecualización RIAA si se detecta entrada PHONO.
-        Retorna True si se aplicó, False si no fue necesario o falló.
-        """
-        if device.is_turntable and device.brand:
-            logger.info(f"Aplicando EQ RIAA para tocadiscos {device.brand}")
-            # Aquí se configuraría el pipeline de audio con filtro RIAA
-            # Esto depende del backend de audio (GStreamer, etc.)
-            return True
-        return False
+
+    def get_turntables(self) -> list[AudioDevice]:
+        return [device for device in self.detected_devices if device.is_turntable]
 
 
 class ADCRecorderService:
-    """Servicio para grabación desde convertidores analógico-digitales."""
-    
-    SUPPORTED_FORMATS = ['wav', 'flac', 'mp3', 'opus']
-    DSP_FILTERS = ['declicker', 'dehisser', 'riaa_eq', 'noise_gate', 'normalize']
-    
-    def __init__(self):
-        self.turntable_detector = USBTurntableDetector()
-        self.active_session: Optional[RecordingSession] = None
-        self.recording_thread: Optional[threading.Thread] = None
-        self.is_recording = False
-        self.is_paused = False
-        
-    def detect_devices(self) -> List[AudioDevice]:
-        """Detecta todos los dispositivos de entrada disponibles."""
+    """Own a single FFmpeg capture process and its recording session."""
+
+    SUPPORTED_FORMATS = ("wav", "flac", "mp3", "opus")
+    DSP_FILTERS = ("declicker", "dehisser", "riaa_eq", "noise_gate", "normalize")
+
+    def __init__(self, detector: USBTurntableDetector | None = None) -> None:
+        self.turntable_detector = detector or USBTurntableDetector()
+        self.active_session: RecordingSession | None = None
+        self._process: subprocess.Popen[bytes] | None = None
+        self._monitor_thread: threading.Thread | None = None
+        self._stderr_thread: threading.Thread | None = None
+        self._stderr_lines: list[str] = []
+        self._lock = threading.RLock()
+        self._paused_at: float | None = None
+        self._paused_total = 0.0
+
+    @property
+    def is_recording(self) -> bool:
+        with self._lock:
+            return bool(self._process and self._process.poll() is None and self.active_session)
+
+    @property
+    def is_paused(self) -> bool:
+        with self._lock:
+            return bool(self.active_session and self.active_session.status == "paused")
+
+    def available(self) -> bool:
+        return shutil.which("ffmpeg") is not None
+
+    def detect_devices(self) -> list[AudioDevice]:
         return self.turntable_detector.scan_usb_devices()
-    
-    def get_recommended_device(self) -> Optional[AudioDevice]:
-        """Obtiene el dispositivo recomendado (prioriza tocadiscos USB)."""
+
+    def get_recommended_device(self) -> AudioDevice | None:
         devices = self.detect_devices()
-        
-        # Prioridad 1: Tocadiscos USB
-        turntables = [d for d in devices if d.is_turntable]
-        if turntables:
-            return turntables[0]
-            
-        # Prioridad 2: Cualquier dispositivo USB
-        usb_devices = [d for d in devices if d.is_usb]
-        if usb_devices:
-            return usb_devices[0]
-            
-        # Prioridad 3: Cualquier dispositivo de entrada
-        if devices:
-            return devices[0]
-            
-        return None
-    
+        return next(
+            (
+                device
+                for predicate in (
+                    lambda item: item.is_turntable,
+                    lambda item: item.is_usb,
+                    lambda _item: True,
+                )
+                for device in devices
+                if predicate(device)
+            ),
+            None,
+        )
+
+    def _input_args(self, device: AudioDevice) -> list[str]:
+        if device.backend == "alsa":
+            return ["-f", "alsa", "-i", device.capture_spec]
+        if device.backend == "dshow":
+            return ["-f", "dshow", "-i", f"audio={device.capture_spec}"]
+        if device.backend == "avfoundation":
+            return ["-f", "avfoundation", "-i", device.capture_spec]
+        raise ValueError(f"Unsupported capture backend: {device.backend}")
+
+    @staticmethod
+    def _filter_chain(filters: list[str]) -> list[str]:
+        chain: list[str] = []
+        if "riaa_eq" in filters:
+            # Approximate inverse RIAA curve. Kept opt-in because many USB
+            # turntables already provide line-level, RIAA-equalized audio.
+            chain.extend(
+                (
+                    "equalizer=f=50:t=q:w=0.7:g=-19",
+                    "equalizer=f=500:t=q:w=0.7:g=0",
+                    "equalizer=f=2122:t=q:w=0.7:g=19",
+                )
+            )
+        if "declicker" in filters:
+            chain.append("adeclick")
+        if "dehisser" in filters:
+            chain.append("afftdn=nf=-55")
+        if "noise_gate" in filters:
+            chain.append("agate=threshold=0.015:ratio=3:attack=10:release=250")
+        if "normalize" in filters:
+            chain.append("loudnorm=I=-18:TP=-1.0:LRA=11")
+        return chain
+
+    @staticmethod
+    def _codec_args(fmt: str, bit_depth: int) -> list[str]:
+        if fmt == "wav":
+            codec = {16: "pcm_s16le", 24: "pcm_s24le", 32: "pcm_s32le"}.get(bit_depth)
+            if not codec:
+                raise ValueError("WAV bit depth must be 16, 24 or 32")
+            return ["-c:a", codec]
+        if fmt == "flac":
+            return ["-c:a", "flac", "-compression_level", "8"]
+        if fmt == "mp3":
+            return ["-c:a", "libmp3lame", "-b:a", "320k"]
+        if fmt == "opus":
+            return ["-c:a", "libopus", "-b:a", "256k"]
+        raise ValueError(f"Unsupported output format: {fmt}")
+
     def start_recording(
         self,
         device: AudioDevice,
         output_path: str,
-        format: str = 'wav',
+        format: str = "wav",
         sample_rate: int = 44100,
         bit_depth: int = 16,
         channels: int = 2,
-        apply_dsp: List[str] = None
-    ) -> Dict[str, Any]:
-        """Inicia una sesión de grabación."""
-        result = {'success': False, 'error': None, 'session_id': None}
-        
-        if self.is_recording:
-            result['error'] = "Ya hay una grabación en curso"
-            return result
-            
-        try:
-            # Validar formato
-            if format not in self.SUPPORTED_FORMATS:
-                result['error'] = f"Formato {format} no soportado"
-                return result
-                
-            # Crear sesión
-            session_id = f"rec_{int(time.time())}"
-            self.active_session = RecordingSession(
-                session_id=session_id,
+        apply_dsp: list[str] | None = None,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
+        with self._lock:
+            if self.is_recording:
+                return {"success": False, "error": "RECORDING_ALREADY_ACTIVE"}
+            if not self.available():
+                return {"success": False, "error": "FFMPEG_NOT_AVAILABLE"}
+
+            fmt = format.casefold().strip()
+            if fmt not in self.SUPPORTED_FORMATS:
+                return {"success": False, "error": f"UNSUPPORTED_FORMAT:{fmt}"}
+            if sample_rate < 8000 or sample_rate > 384000:
+                return {"success": False, "error": "INVALID_SAMPLE_RATE"}
+            if channels not in (1, 2):
+                return {"success": False, "error": "INVALID_CHANNEL_COUNT"}
+
+            filters = list(dict.fromkeys(apply_dsp or []))
+            unknown_filters = sorted(set(filters) - set(self.DSP_FILTERS))
+            if unknown_filters:
+                return {
+                    "success": False,
+                    "error": "UNSUPPORTED_DSP_FILTER",
+                    "filters": unknown_filters,
+                }
+
+            target = Path(output_path).expanduser()
+            if target.suffix.casefold() != f".{fmt}":
+                return {"success": False, "error": "OUTPUT_EXTENSION_MISMATCH"}
+            if target.exists() and not overwrite:
+                return {"success": False, "error": "OUTPUT_EXISTS"}
+            target.parent.mkdir(parents=True, exist_ok=True)
+
+            try:
+                command = ["ffmpeg", "-hide_banner", "-nostdin" if False else "-loglevel", "warning"]
+                command.extend(self._input_args(device))
+                command.extend(["-ar", str(sample_rate), "-ac", str(channels)])
+                filter_chain = self._filter_chain(filters)
+                if filter_chain:
+                    command.extend(["-af", ",".join(filter_chain)])
+                command.extend(self._codec_args(fmt, bit_depth))
+                command.extend(["-y" if overwrite else "-n", str(target)])
+            except ValueError as exc:
+                return {"success": False, "error": str(exc)}
+
+            session = RecordingSession(
+                session_id=f"rec_{uuid.uuid4().hex[:12]}",
                 input_device=device,
-                output_path=output_path,
-                format=format,
-                start_time=time.time(),
-                end_time=None,
-                duration=0,
-                file_size=0,
-                markers=[],
-                status='recording'
+                output_path=str(target),
+                format=fmt,
+                start_time=time.monotonic(),
             )
-            
-            # Construir comando ffmpeg
-            dsp_filters = apply_dsp or []
-            filter_chain = []
-            
-            if 'riaa_eq' in dsp_filters or (device.is_turntable and 'riaa_eq' not in dsp_filters):
-                filter_chain.append('equalizer=f=50:t=q:w=1:g=-20')  # RIAA simplificado
-                filter_chain.append('equalizer=f=500:t=q:w=1:g=0')
-                filter_chain.append('equalizer=f=2122:t=q:w=1:g=20')
-                
-            if 'declicker' in dsp_filters:
-                filter_chain.append('afftdn=nf=-70')  # Reducción de clicks
-                
-            if 'dehisser' in dsp_filters:
-                filter_chain.append('afftdn=nf=-80')  # Reducción de hiss
-                
-            filter_str = ','.join(filter_chain) if filter_chain else ''
-            
-            cmd = [
-                'ffmpeg',
-                '-f', 'alsa' if os.name == 'posix' else 'dshow',
-                '-i', f'hw:{device.device_id}' if os.name == 'posix' else f'audio={device.device_id}',
-                '-ar', str(sample_rate),
-                '-ac', str(channels),
-                '-sample_fmt', f's{bit_depth//8}',
-            ]
-            
-            if filter_str:
-                cmd.extend(['-af', filter_str])
-                
-            # Formato de salida
-            if format == 'wav':
-                cmd.extend(['-c:a', 'pcm_s16le', output_path])
-            elif format == 'flac':
-                cmd.extend(['-c:a', 'flac', '-compression_level', '8', output_path])
-            elif format == 'mp3':
-                cmd.extend(['-c:a', 'libmp3lame', '-b:a', '320k', output_path])
-            elif format == 'opus':
-                cmd.extend(['-c:a', 'libopus', '-b:a', '256k', output_path])
-                
-            logger.info(f"Iniciando grabación: {' '.join(cmd)}")
-            
-            # Iniciar proceso en hilo separado
-            def record_thread():
+            self._stderr_lines.clear()
+            self._paused_at = None
+            self._paused_total = 0.0
+
+            try:
+                process = subprocess.Popen(
+                    command,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+            except OSError as exc:
+                session.status = "error"
+                session.error = str(exc)
+                self.active_session = session
+                return {"success": False, "error": str(exc)}
+
+            session.pid = process.pid
+            self.active_session = session
+            self._process = process
+            self._stderr_thread = threading.Thread(
+                target=self._consume_stderr, args=(process,), daemon=True, name="michi-adc-stderr"
+            )
+            self._stderr_thread.start()
+
+            # Detect invalid devices/codecs before reporting a successful start.
+            time.sleep(0.15)
+            if process.poll() is not None:
+                session.status = "error"
+                session.error = "\n".join(self._stderr_lines[-8:]) or f"ffmpeg exited {process.returncode}"
+                self._process = None
+                return {"success": False, "error": session.error}
+
+            session.status = "recording"
+            self._monitor_thread = threading.Thread(
+                target=self._monitor_process, args=(process, session), daemon=True, name="michi-adc-monitor"
+            )
+            self._monitor_thread.start()
+            return {
+                "success": True,
+                "session_id": session.session_id,
+                "pid": process.pid,
+                "output_path": str(target),
+                "dsp_filters": filters,
+            }
+
+    def _consume_stderr(self, process: subprocess.Popen[bytes]) -> None:
+        if not process.stderr:
+            return
+        for raw_line in iter(process.stderr.readline, b""):
+            line = raw_line.decode("utf-8", errors="replace").rstrip()
+            if line:
+                with self._lock:
+                    self._stderr_lines.append(line)
+                    del self._stderr_lines[:-100]
+
+    def _monitor_process(self, process: subprocess.Popen[bytes], session: RecordingSession) -> None:
+        return_code = process.wait()
+        with self._lock:
+            now = time.monotonic()
+            session.end_time = now
+            session.duration = max(0.0, now - session.start_time - self._paused_total)
+            target = Path(session.output_path)
+            session.file_size = target.stat().st_size if target.exists() else 0
+            if session.status not in ("stopping", "cancelled") and return_code != 0:
+                session.status = "error"
+                session.error = "\n".join(self._stderr_lines[-8:]) or f"ffmpeg exited {return_code}"
+            elif session.status != "cancelled":
+                session.status = "completed"
+            if self._process is process:
+                self._process = None
+
+    def pause_recording(self) -> dict[str, Any]:
+        with self._lock:
+            process = self._process
+            session = self.active_session
+            if not process or process.poll() is not None or not session:
+                return {"success": False, "error": "NO_ACTIVE_RECORDING"}
+            if session.status == "paused":
+                return {"success": True, "status": "paused"}
+            if os.name != "posix":
+                return {"success": False, "error": "PAUSE_UNSUPPORTED_ON_PLATFORM"}
+            os.kill(process.pid, signal.SIGSTOP)
+            self._paused_at = time.monotonic()
+            session.status = "paused"
+            return {"success": True, "status": "paused"}
+
+    def resume_recording(self) -> dict[str, Any]:
+        with self._lock:
+            process = self._process
+            session = self.active_session
+            if not process or process.poll() is not None or not session:
+                return {"success": False, "error": "NO_ACTIVE_RECORDING"}
+            if session.status != "paused":
+                return {"success": False, "error": "RECORDING_NOT_PAUSED"}
+            if os.name != "posix":
+                return {"success": False, "error": "RESUME_UNSUPPORTED_ON_PLATFORM"}
+            os.kill(process.pid, signal.SIGCONT)
+            if self._paused_at is not None:
+                self._paused_total += time.monotonic() - self._paused_at
+            self._paused_at = None
+            session.status = "recording"
+            return {"success": True, "status": "recording"}
+
+    def stop_recording(self, timeout: float = 8.0) -> dict[str, Any]:
+        with self._lock:
+            process = self._process
+            session = self.active_session
+            if not process or process.poll() is not None or not session:
+                return {"success": False, "error": "NO_ACTIVE_RECORDING"}
+            if session.status == "paused" and os.name == "posix":
+                os.kill(process.pid, signal.SIGCONT)
+            session.status = "stopping"
+            if process.stdin:
                 try:
-                    process = subprocess.Popen(
-                        cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
-                    )
-                    
-                    self.is_recording = True
-                    self.is_paused = False
-                    
-                    # Monitorear progreso
-                    while self.is_recording:
-                        if self.is_paused:
-                            time.sleep(0.1)
-                            continue
-                            
-                        # Actualizar duración y tamaño
-                        if os.path.exists(output_path):
-                            self.active_session.duration = time.time() - self.active_session.start_time
-                            self.active_session.file_size = os.path.getsize(output_path)
-                            
-                        time.sleep(1)
-                        
-                    # Detener grabación
-                    process.terminate()
-                    process.wait(timeout=5)
-                    
-                    self.active_session.end_time = time.time()
-                    self.active_session.duration = self.active_session.end_time - self.active_session.start_time
-                    self.active_session.status = 'completed'
-                    
-                    logger.info(f"Grabación completada: {self.active_session.duration:.2f}s, {self.active_session.file_size} bytes")
-                    
-                except Exception as e:
-                    logger.error(f"Error en grabación: {e}")
-                    self.active_session.status = 'error'
-                finally:
-                    self.is_recording = False
-                    
-            self.recording_thread = threading.Thread(target=record_thread)
-            self.recording_thread.start()
-            
-            result['success'] = True
-            result['session_id'] = session_id
-            
-        except Exception as e:
-            result['error'] = str(e)
-            logger.error(f"Error al iniciar grabación: {e}")
-            
-        return result
-    
-    def pause_recording(self):
-        """Pausa la grabación actual."""
-        if self.is_recording and not self.is_paused:
-            self.is_paused = True
-            self.active_session.status = 'paused'
-            logger.info("Grabación pausada")
-            
-    def resume_recording(self):
-        """Reanuda la grabación pausada."""
-        if self.is_recording and self.is_paused:
-            self.is_paused = False
-            self.active_session.status = 'recording'
-            logger.info("Grabación reanudada")
-            
-    def stop_recording(self):
-        """Detiene la grabación actual."""
-        if self.is_recording:
-            self.is_recording = False
-            logger.info("Deteniendo grabación...")
-            
-            # Esperar a que el hilo termine
-            if self.recording_thread:
-                self.recording_thread.join(timeout=10)
-                
-    def add_marker(self, timestamp: Optional[float] = None, label: str = "") -> Dict[str, Any]:
-        """Agrega un marcador (punto de corte) en la grabación actual."""
-        if not self.active_session or not self.is_recording:
-            return {'success': False, 'error': 'No hay grabación activa'}
-            
-        ts = timestamp or (time.time() - self.active_session.start_time)
-        marker = {
-            'timestamp': ts,
-            'label': label or f"Pista {len(self.active_session.markers) + 1}",
-            'created_at': time.time()
-        }
-        
-        self.active_session.markers.append(marker)
-        logger.info(f"Marcador agregado en {ts:.2f}s: {label}")
-        
-        return {'success': True, 'marker': marker}
-    
-    def split_by_markers(self, input_file: str, output_dir: str) -> Dict[str, Any]:
-        """Divide una grabación en pistas usando los marcadores."""
-        result = {'success': False, 'tracks': [], 'errors': []}
-        
-        if not self.active_session or not self.active_session.markers:
-            result['errors'].append("No hay marcadores para dividir")
-            return result
-            
+                    process.stdin.write(b"q\n")
+                    process.stdin.flush()
+                except (BrokenPipeError, OSError):
+                    pass
+
         try:
-            os.makedirs(output_dir, exist_ok=True)
-            
-            markers = sorted(self.active_session.markers, key=lambda m: m['timestamp'])
-            
-            for i, marker in enumerate(markers):
-                start_time = marker['timestamp']
-                end_time = markers[i+1]['timestamp'] if i+1 < len(markers) else self.active_session.duration
-                
-                duration = end_time - start_time
-                output_filename = f"{i+1:02d}_{marker['label']}.{self.active_session.format}"
-                output_path = os.path.join(output_dir, output_filename)
-                
-                # Usar ffmpeg para cortar
-                cmd = [
-                    'ffmpeg',
-                    '-i', input_file,
-                    '-ss', str(start_time),
-                    '-t', str(duration),
-                    '-c', 'copy',  # Sin re-codificar
-                    '-y', output_path
-                ]
-                
-                process = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-                
-                if process.returncode == 0:
-                    result['tracks'].append({
-                        'index': i+1,
-                        'label': marker['label'],
-                        'start': start_time,
-                        'duration': duration,
-                        'file': output_path
-                    })
-                else:
-                    result['errors'].append(f"Error al cortar pista {i+1}: {process.stderr}")
-                    
-            result['success'] = len(result['errors']) == 0
-            
-        except Exception as e:
-            result['errors'].append(str(e))
-            logger.error(f"Error al dividir por marcadores: {e}")
-            
-        return result
-    
-    def get_recording_status(self) -> Dict[str, Any]:
-        """Obtiene el estado de la grabación actual."""
-        if not self.active_session:
-            return {'active': False}
-            
-        return {
-            'active': self.is_recording,
-            'paused': self.is_paused,
-            'session_id': self.active_session.session_id,
-            'device': self.active_session.input_device.name,
-            'duration': time.time() - self.active_session.start_time if self.is_recording else self.active_session.duration,
-            'file_size': self.active_session.file_size,
-            'markers_count': len(self.active_session.markers),
-            'status': self.active_session.status,
-            'output_path': self.active_session.output_path
-        }
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
+        return {"success": True, "status": self.active_session.status if self.active_session else "stopped"}
+
+    def add_marker(self, timestamp: float | None = None, label: str = "") -> dict[str, Any]:
+        with self._lock:
+            session = self.active_session
+            if not session or session.status not in ("recording", "paused"):
+                return {"success": False, "error": "NO_ACTIVE_RECORDING"}
+            elapsed = self._elapsed_locked()
+            marker_time = elapsed if timestamp is None else float(timestamp)
+            if marker_time < 0 or marker_time > elapsed + 0.5:
+                return {"success": False, "error": "INVALID_MARKER_TIMESTAMP"}
+            marker = {
+                "timestamp": marker_time,
+                "label": label.strip() or f"Pista {len(session.markers) + 1}",
+                "created_at": time.time(),
+            }
+            session.markers.append(marker)
+            session.markers.sort(key=lambda item: item["timestamp"])
+            return {"success": True, "marker": dict(marker)}
+
+    @staticmethod
+    def _safe_name(value: str) -> str:
+        cleaned = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", value).strip(" .")
+        return cleaned[:120] or "Pista"
+
+    def split_by_markers(self, input_file: str, output_dir: str) -> dict[str, Any]:
+        with self._lock:
+            session = self.active_session
+            if not session or not session.markers:
+                return {"success": False, "tracks": [], "errors": ["NO_MARKERS"]}
+            markers = [dict(marker) for marker in session.markers]
+            total_duration = session.duration or self._elapsed_locked()
+            fmt = session.format
+
+        source = Path(input_file)
+        if not source.is_file():
+            return {"success": False, "tracks": [], "errors": ["INPUT_NOT_FOUND"]}
+        target_dir = Path(output_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        if markers[0]["timestamp"] > 0.001:
+            markers.insert(0, {"timestamp": 0.0, "label": "Pista 1"})
+
+        tracks: list[dict[str, Any]] = []
+        errors: list[str] = []
+        for index, marker in enumerate(markers):
+            start = float(marker["timestamp"])
+            end = float(markers[index + 1]["timestamp"]) if index + 1 < len(markers) else total_duration
+            duration = max(0.0, end - start)
+            if duration <= 0:
+                errors.append(f"INVALID_DURATION:{index + 1}")
+                continue
+            filename = f"{index + 1:02d}_{self._safe_name(str(marker['label']))}.{fmt}"
+            output = target_dir / filename
+            command = [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                str(start),
+                "-i",
+                str(source),
+                "-t",
+                str(duration),
+                "-c:a",
+                "copy",
+                "-n",
+                str(output),
+            ]
+            completed = subprocess.run(command, capture_output=True, text=True, timeout=180, check=False)
+            if completed.returncode == 0:
+                tracks.append(
+                    {
+                        "index": index + 1,
+                        "label": marker["label"],
+                        "start": start,
+                        "duration": duration,
+                        "file": str(output),
+                    }
+                )
+            else:
+                errors.append(completed.stderr.strip() or f"TRACK_SPLIT_FAILED:{index + 1}")
+        return {"success": not errors, "tracks": tracks, "errors": errors}
+
+    def _elapsed_locked(self) -> float:
+        session = self.active_session
+        if not session:
+            return 0.0
+        if session.end_time is not None:
+            return session.duration
+        now = self._paused_at if session.status == "paused" and self._paused_at else time.monotonic()
+        return max(0.0, now - session.start_time - self._paused_total)
+
+    def get_recording_status(self) -> dict[str, Any]:
+        with self._lock:
+            session = self.active_session
+            if not session:
+                return {"active": False, "status": "idle"}
+            target = Path(session.output_path)
+            if target.exists():
+                session.file_size = target.stat().st_size
+            return {
+                "active": self.is_recording,
+                "paused": session.status == "paused",
+                "session_id": session.session_id,
+                "device": session.input_device.name,
+                "duration": self._elapsed_locked(),
+                "file_size": session.file_size,
+                "markers_count": len(session.markers),
+                "markers": [dict(marker) for marker in session.markers],
+                "status": session.status,
+                "output_path": session.output_path,
+                "error": session.error,
+                "pid": session.pid,
+                "stderr_tail": list(self._stderr_lines[-8:]),
+            }
+
+    def shutdown(self) -> None:
+        if self.is_recording:
+            self.stop_recording(timeout=3.0)
