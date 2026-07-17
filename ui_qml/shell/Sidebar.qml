@@ -134,9 +134,20 @@ Item {
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
         ListElement { route: "connections"; iconSource: "icons/sidebar_servers.svg"; label: "Conexiones"; notificationCount: 0; isSeparator: false }
         ListElement { route: "home_audio"; iconSource: "icons/sidebar_home_audio.svg"; label: "Audio del Hogar"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "home_audio.zones"; iconSource: ""; label: "  └ Zonas"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "home_audio.devices"; iconSource: ""; label: "  └ Dispositivos"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "home_audio.latency"; iconSource: ""; label: "  └ Latencia"; notificationCount: 0; isSeparator: false }
 
         ListElement { route: ""; iconSource: ""; label: "HERRAMIENTAS"; notificationCount: 0; isSeparator: true }
         ListElement { route: "audio_lab"; iconSource: "icons/sidebar_audio_lab.svg"; label: "Audio Lab"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.analysis"; iconSource: ""; label: "  └ Análisis"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.conversion"; iconSource: ""; label: "  └ Conversión"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.normalization"; iconSource: ""; label: "  └ Normalización"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.replaygain"; iconSource: ""; label: "  └ ReplayGain"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.integrity"; iconSource: ""; label: "  └ Integridad"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.comparison"; iconSource: ""; label: "  └ Comparación"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.jobs"; iconSource: ""; label: "  └ Trabajos"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "audio_lab.profiles"; iconSource: ""; label: "  └ Perfiles"; notificationCount: 0; isSeparator: false }
         ListElement { route: "assistant"; iconSource: "icons/sidebar_assistant.svg"; label: "Michi IA"; notificationCount: 0; isSeparator: false }
     }
 
