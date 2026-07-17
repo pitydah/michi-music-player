@@ -7,11 +7,12 @@ import "../components/foundations"
 import "."
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "App Shell"
+    id: root
     objectName: "appShell"
     focus: true
-    id: root
+
+    Accessible.role: Accessible.Pane
+    Accessible.name: "Aplicación Michi"
 
     property alias currentRoute: sidebar.currentRoute
     property alias pageTitle: header.pageTitle
@@ -51,7 +52,10 @@ Item {
             Sidebar {
                 id: sidebar
                 Layout.fillHeight: true
-                Layout.preferredWidth: responsive.sidebarAutoCollapse ? MichiTheme.sidebarWidthCompact : MichiTheme.sidebarWidth
+                Layout.preferredWidth: sidebar.implicitWidth
+                Layout.minimumWidth: sidebar.implicitWidth
+                Layout.maximumWidth: sidebar.implicitWidth
+                autoCollapsed: responsive.sidebarAutoCollapse
                 currentRoute: navigationBridge ? navigationBridge.currentRoute : "home"
 
                 onRouteRequested: function(route) {
@@ -60,26 +64,44 @@ Item {
                     } else {
                         pageStack.loadRoute(route)
                         sidebar.currentRoute = route
-                        updateHeaderTitle(route)
+                        root.updateHeaderTitle(route)
                     }
                 }
             }
 
             Rectangle {
-                width: 4
-                height: parent.height
-                color: "transparent"
+                id: sidebarResizeHandle
+                Layout.fillHeight: true
+                Layout.preferredWidth: visible ? 4 : 0
+                Layout.minimumWidth: Layout.preferredWidth
+                Layout.maximumWidth: Layout.preferredWidth
+                visible: !sidebar.collapsed && !sidebar.autoCollapsed
+                color: resizeMouse.containsMouse ? MichiTheme.colors.borderHover : "transparent"
+
+                Behavior on color {
+                    ColorAnimation { duration: MichiTheme.motion.durationFast }
+                }
+
                 MouseArea {
+                    id: resizeMouse
                     anchors.fill: parent
                     anchors.leftMargin: -4
                     anchors.rightMargin: -4
+                    hoverEnabled: true
                     cursorShape: Qt.SizeHorCursor
-                    onPositionChanged: {
-                        if (mouse.buttons & Qt.LeftButton) {
-                            var newWidth = sidebar.width + mouse.x
-                            if (newWidth > 150 && newWidth < 500)
-                                sidebar.width = newWidth
-                        }
+                    property real pressX: 0
+                    property real startWidth: sidebar.expandedWidth
+
+                    onPressed: function(mouse) {
+                        pressX = mouse.x
+                        startWidth = sidebar.expandedWidth
+                    }
+
+                    onPositionChanged: function(mouse) {
+                        if (!(mouse.buttons & Qt.LeftButton))
+                            return
+                        var requested = startWidth + mouse.x - pressX
+                        sidebar.expandedWidth = Math.max(180, Math.min(420, requested))
                     }
                 }
             }
@@ -92,30 +114,20 @@ Item {
                 HeaderBar {
                     id: header
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 56
+                    Layout.preferredHeight: MichiTheme.headerHeight
                     pageTitle: "Inicio"
-
-                    MouseArea {
-                        anchors.fill: parent
-                        property variant previousPosition: Qt.point(0, 0)
-                        onPressed: {
-                            previousPosition = Qt.point(mouse.x, mouse.y)
-                        }
-                        onPositionChanged: {
-                            if (mouse.buttons & Qt.LeftButton) {
-                                var mainWindow = root.parent
-                                while (mainWindow && mainWindow.objectName !== "mainWindow")
-                                    mainWindow = mainWindow.parent
-                                if (mainWindow && mainWindow.hasOwnProperty("startSystemMove")) {
-                                    mainWindow.startSystemMove()
-                                }
-                            }
-                        }
-                        cursorShape: Qt.OpenHandCursor
-                    }
                     canGoBack: navigationBridge ? navigationBridge.canGoBack : false
                     canGoForward: navigationBridge ? navigationBridge.canGoForward : false
                     routeHistory: navigationBridge ? navigationBridge.history : []
+
+                    DragHandler {
+                        target: null
+                        acceptedButtons: Qt.LeftButton
+                        onActiveChanged: {
+                            if (active && root.Window.window)
+                                root.Window.window.startSystemMove()
+                        }
+                    }
 
                     onBackClicked: {
                         if (typeof navigationBridge !== "undefined" && navigationBridge)
@@ -215,34 +227,14 @@ Item {
         z: 9999
         visible: pageStack.lastError !== "" && !root.fatalError
 
-        Column {
+        ErrorState {
             anchors.centerIn: parent
-            spacing: MichiTheme.spacing.lg
-            width: Math.min(420, parent.width * 0.8)
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Error de carga"
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightBold
-            }
-
-            Text {
-                width: parent.width
-                text: pageStack.lastError
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            MichiButton {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Reintentar"
-                variant: "primary"
-                onClicked: pageStack.loadRoute(pageStack.currentRoute)
-            }
+            width: Math.min(440, parent.width * 0.8)
+            title: "No se pudo abrir la página"
+            message: pageStack.lastError
+            errorSource: pageStack.currentRoute
+            showRetry: true
+            onRetryRequested: pageStack.loadRoute(pageStack.currentRoute)
         }
 
         Accessible.role: Accessible.AlertMessage
@@ -253,38 +245,18 @@ Item {
         id: fatalOverlay
         anchors.fill: parent
         color: MichiTheme.colors.bgApp
-        z: 9999
+        z: 10000
         visible: root.fatalError
         objectName: "fatalOverlay"
 
-        Column {
+        ErrorState {
             anchors.centerIn: parent
-            spacing: MichiTheme.spacing.lg
-            width: Math.min(400, parent.width * 0.8)
-
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Error fatal"
-                color: MichiTheme.colors.error
-                font.pixelSize: MichiTheme.typography.pageTitleSize
-                font.weight: MichiTheme.typography.weightBold
-            }
-
-            Text {
-                width: parent.width
-                text: root.fatalMessage
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.bodySize
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignHCenter
-            }
-
-            MichiButton {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Reintentar"
-                variant: "primary"
-                onClicked: root.dismissFatal()
-            }
+            width: Math.min(440, parent.width * 0.8)
+            title: "Error fatal"
+            message: root.fatalMessage
+            showRetry: false
+            primaryActionText: "Cerrar aviso"
+            onPrimaryActionRequested: root.dismissFatal()
         }
 
         Accessible.role: Accessible.AlertMessage
@@ -296,7 +268,7 @@ Item {
         function onRouteChanged(route) {
             pageStack.loadRoute(route)
             sidebar.currentRoute = route
-            updateHeaderTitle(route)
+            root.updateHeaderTitle(route)
         }
     }
 
@@ -305,7 +277,7 @@ Item {
             var initial = navigationBridge.currentRoute
             pageStack.loadRoute(initial)
             sidebar.currentRoute = initial
-            updateHeaderTitle(initial)
+            root.updateHeaderTitle(initial)
         } else {
             pageStack.loadRoute("home")
         }
@@ -328,9 +300,16 @@ Item {
                 anchors.centerIn: parent
                 spacing: MichiTheme.spacing.md
 
+                MichiIcon {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    iconName: "library"
+                    iconSize: 32
+                    accessibleName: "Añadir música"
+                }
+
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Soltar archivos para añadir a la biblioteca"
+                    text: "Suelta los archivos para añadirlos a la biblioteca"
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.bodySize
                     font.weight: MichiTheme.typography.weightMedium
@@ -339,26 +318,40 @@ Item {
         }
 
         onDropped: function(drop) {
-            if (drop.hasUrls) {
-                var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
-                var notif = typeof notificationBridge !== "undefined" ? notificationBridge : null
-                for (var i = 0; i < drop.urls.length; i++) {
-                    var droppedPath = drop.urls[i].toLocalFile()
-                    if (!droppedPath) continue
-                    if (lib && typeof lib.addMedia !== "undefined") {
-                        var result = lib.addMedia(droppedPath)
-                        if (notif) {
-                            var ok = result && result.ok
-                            var msg = ok ? "Añadido: " + droppedPath.split("/").pop() : "Error: " + (result ? result.error : "desconocido")
-                            notif.showMessage(msg, ok ? "info" : "error")
-                        }
-                    }
+            if (!drop.hasUrls)
+                return
+
+            var lib = typeof libraryBridge !== "undefined" ? libraryBridge : null
+            var notif = typeof notificationBridge !== "undefined" ? notificationBridge : null
+            var accepted = false
+
+            for (var i = 0; i < drop.urls.length; i++) {
+                var droppedPath = drop.urls[i].toLocalFile()
+                if (!droppedPath)
+                    continue
+                if (!lib || typeof lib.addMedia === "undefined") {
+                    if (notif)
+                        notif.showMessage("La biblioteca no está disponible", "error")
+                    break
                 }
-                drop.accept()
+
+                var result = lib.addMedia(droppedPath)
+                var ok = result && result.ok
+                accepted = accepted || ok
+                if (notif) {
+                    var filename = droppedPath.split("/").pop()
+                    var message = ok ? "Añadido: " + filename
+                                     : "No se pudo añadir " + filename + ": "
+                                       + (result && result.error ? result.error : "error desconocido")
+                    notif.showMessage(message, ok ? "success" : "error")
+                }
             }
+
+            if (accepted)
+                drop.accept()
         }
 
         Accessible.role: Accessible.Pane
-        Accessible.name: "Área de soltar archivos"
+        Accessible.name: "Área para añadir archivos"
     }
 }
