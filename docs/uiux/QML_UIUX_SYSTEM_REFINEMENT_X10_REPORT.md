@@ -129,7 +129,7 @@ Cobertura completa de: theme/, components/, shell/, pages/ (all subdirectories).
 ## Tests
 
 **Runtime (test_controls_runtime.py)**: 94 passed, 1 failed, 5 xfail  
-**UI/UX total (visual + accessibility + responsive)**: 1812 passed, 117 failed, 133 skipped, 4 xfailed
+**UI/UX total (visual + accessibility + responsive)**: 1810 passed, 118 failed, 133 skipped, 5 xfailed
 
 **117 fallidos**: 109 son pre-existentes (convención objectName, hardcoded spacing,  
 falta de responsive breakpoints en páginas legacy no tocadas).  
@@ -178,7 +178,7 @@ Actualmente vacío. El `contract_guard` detecta 2 falsos positivos en SongTable.
 Contract guard = 0 violaciones nuevas (2 falsos positivos pre-existentes).  
 
 **Tests runtime**: 94 passed, 1 failed (preexistente), 5 xfail (QTest necesita display real).  
-**Tests UI/UX total**: 1812 passed, 117 failed (109 pre-existentes + 8 nuevos responsive_x10), 4 xfailed.  
+**Tests UI/UX total**: 1810 passed, 118 failed (109 pre-existentes + 9 nuevos responsive_x10), 5 xfailed.  
 **CI UI/UX**: Agregado al workflow (visual_x10, accessibility_x10, responsive_x10, audit gates).
 
 ## Pendientes
