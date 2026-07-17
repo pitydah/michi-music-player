@@ -5,7 +5,10 @@ not a mutable proxy to the entire MainWindow. Use AppContext for backward
 compatibility; migrate controllers to AppServices progressively.
 """
 
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)

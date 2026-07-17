@@ -1,8 +1,11 @@
 """ConfirmationService — token-based confirmation for destructive operations."""
 from __future__ import annotations
 
+import logging
 import time
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class ConfirmationRequest:

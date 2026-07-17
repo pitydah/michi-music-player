@@ -1,7 +1,11 @@
 """Background theme service — adaptive background color extraction and animation.
 QML-compatible: uses PySide6 signals instead of QStackedWidget."""
+import logging
+
 from PySide6.QtCore import QObject, Signal, Qt
 from PySide6.QtGui import QColor
+
+logger = logging.getLogger(__name__)
 
 
 class BackgroundThemeService(QObject):
@@ -9,6 +13,7 @@ class BackgroundThemeService(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.debug("BackgroundThemeService.__init__ called")
         self._last_bg_color = QColor("#090B11")
         self._bg_fade_anim = None
 
