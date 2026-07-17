@@ -37,6 +37,7 @@ QtObject {
     readonly property color surfacePressed: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1.0, 1.0, 1.0, 0.12)
     readonly property color surfaceDisabled: lightMode ? Qt.rgba(0, 0, 0, 0.03) : Qt.rgba(1.0, 1.0, 1.0, 0.04)
     readonly property color surfaceSubtle: lightMode ? Qt.rgba(0, 0, 0, 0.02) : Qt.rgba(1.0, 1.0, 1.0, 0.03)
+    readonly property color surfaceSelected: accentSelection
 
     // ── Controles ──
     readonly property color controlTrack: lightMode ? Qt.rgba(0, 0, 0, 0.10) : Qt.rgba(1.0, 1.0, 1.0, 0.08)
@@ -62,6 +63,9 @@ QtObject {
     readonly property color textOnAccent: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnError: lightMode ? "#FFFFFF" : bgBase
     readonly property color textOnSuccess: lightMode ? "#FFFFFF" : bgBase
+    readonly property color onError: textOnError
+    readonly property color onAccent: textOnAccent
+    readonly property color onSuccess: textOnSuccess
 
     readonly property color accentPrimary: "#8FB7FF"
     readonly property color accentSecondary: "#A78BFA"
