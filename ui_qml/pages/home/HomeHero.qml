@@ -86,7 +86,7 @@ Item {
                         anchors.centerIn: parent
                         width: 48
                         height: 48
-                        source: "qrc:/icons/app_icon.svg"
+                        source: "../../../icons/app_icon.svg"
                         sourceSize.width: 48
                         sourceSize.height: 48
                         fillMode: Image.PreserveAspectFit

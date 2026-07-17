@@ -36,10 +36,10 @@ Item {
                 Image {
                     anchors.centerIn: parent
                     source: {
-                        if (root.muted || root.volume === 0) return "qrc:/icons/nowplaying_clean/warm_mute_32.png"
-                        if (root.volume < 40) return "qrc:/icons/nowplaying_clean/warm_vol_low_32.png"
-                        if (root.volume < 70) return "qrc:/icons/nowplaying_clean/warm_vol_medium_32.png"
-                        return "qrc:/icons/nowplaying_clean/warm_vol_high_32.png"
+                        if (root.muted || root.volume === 0) return "../../icons/nowplaying_clean/warm_mute_32.png"
+                        if (root.volume < 40) return "../../icons/nowplaying_clean/warm_vol_low_32.png"
+                        if (root.volume < 70) return "../../icons/nowplaying_clean/warm_vol_medium_32.png"
+                        return "../../icons/nowplaying_clean/warm_vol_high_32.png"
                     }
                     sourceSize.width: 22
                     sourceSize.height: 22

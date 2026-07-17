@@ -25,7 +25,7 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         UtilityButton {
-            iconSource: "qrc:/icons/nowplaying_clean/warm_eq_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_eq_32.png"
             iconVisualSize: 24
             btnSize: 40
             tooltipText: "Ecualizador"
@@ -34,7 +34,7 @@ Item {
         }
 
         UtilityButton {
-            iconSource: "qrc:/icons/nowplaying_clean/warm_transmit_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_transmit_32.png"
             iconVisualSize: 24
             btnSize: 40
             tooltipText: root.transmitActive && root.transmitDeviceName ? root.transmitDeviceName : "Transmitir a dispositivo"
@@ -46,7 +46,7 @@ Item {
         }
 
         UtilityButton {
-            iconSource: "qrc:/icons/nowplaying_clean/warm_audio_source_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_audio_source_32.png"
             iconVisualSize: 22
             btnSize: 44
             tooltipText: "Seleccionar salida de audio"
@@ -54,7 +54,7 @@ Item {
         }
 
         UtilityButton {
-            iconSource: "qrc:/icons/nowplaying_clean/warm_mini_player_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_mini_player_32.png"
             iconVisualSize: 22
             btnSize: 44
             tooltipText: "Abrir mini reproductor"

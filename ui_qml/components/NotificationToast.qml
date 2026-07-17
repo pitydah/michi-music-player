@@ -166,7 +166,7 @@ Item {
                 id: dismissBtn
                 anchors.verticalCenter: parent.verticalCenter
                 btnSize: 28
-                iconSource: "qrc:/icons/nav_back.svg"
+                iconSource: "../../icons/nav_back.svg"
                 tooltipText: "Cerrar"
                 accessibleName: "Cerrar esta notificación"
                 onClicked: root.dismissToast()

@@ -76,7 +76,7 @@ Rectangle {
                 id: cancelBtn
                 anchors.verticalCenter: parent.verticalCenter
                 btnSize: 24
-                iconSource: "qrc:/icons/nav_back.svg"
+                iconSource: "../../icons/nav_back.svg"
                 tooltipText: root.cancelText || "Cancelar"
                 accessibleName: root.cancelText || "Cancelar trabajo"
                 visible: root.showCancel

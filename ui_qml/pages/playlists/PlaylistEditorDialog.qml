@@ -190,7 +190,6 @@ Dialog {
 
     Item {
         focus: root.opened
+        Keys.onEscapePressed: { root.reject(); root.close() }
     }
-
-    Keys.onEscapePressed: { root.reject(); root.close() }
 }

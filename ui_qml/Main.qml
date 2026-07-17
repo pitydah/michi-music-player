@@ -24,7 +24,7 @@ Window {
     }
 
     Component.onCompleted: {
-        var settings = Qt.createQmlObject('import QtQuick.Controls; Settings {}', mainWindow)
+        var settings = Qt.createQmlObject('import Qt.labs.settings; Settings {}', mainWindow)
         if (settings) {
             var w = settings.getValue("window/width", 1440)
             var h = settings.getValue("window/height", 900)
@@ -44,7 +44,7 @@ Window {
     }
 
     Component.onDestruction: {
-        var settings = Qt.createQmlObject('import QtQuick.Controls; Settings {}', mainWindow)
+        var settings = Qt.createQmlObject('import Qt.labs.settings; Settings {}', mainWindow)
         if (settings) {
             settings.setValue("window/width", mainWindow.width)
             settings.setValue("window/height", mainWindow.height)

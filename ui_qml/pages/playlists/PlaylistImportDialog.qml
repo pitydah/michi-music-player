@@ -287,18 +287,17 @@ Dialog {
 
     Item {
         focus: root.opened
-    }
-
-    Keys.onEscapePressed: {
-        if (root._importing) {
-            root._cancelled = true
-            if (root.bridge && typeof root.bridge.cancelPlaylistImport !== "undefined")
-                root.bridge.cancelPlaylistImport(root._importPath)
-            root._importing = false
-            root._status = "Importación cancelada"
-            root.importCancelled()
-        } else {
-            root.close()
+        Keys.onEscapePressed: {
+            if (root._importing) {
+                root._cancelled = true
+                if (root.bridge && typeof root.bridge.cancelPlaylistImport !== "undefined")
+                    root.bridge.cancelPlaylistImport(root._importPath)
+                root._importing = false
+                root._status = "Importación cancelada"
+                root.importCancelled()
+            } else {
+                root.close()
+            }
         }
     }
 }

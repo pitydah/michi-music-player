@@ -49,7 +49,7 @@ Item {
                 spacing: MichiTheme.spacing.xs
 
                 MichiIconButton {
-                    iconSource: "qrc:/icons/nav_back.svg"
+                    iconSource: "../../icons/nav_back.svg"
                     tooltipText: "Atrás"
                     btnSize: responsive.compact ? 24 : 28
                     enabled: root.canGoBack
@@ -59,7 +59,7 @@ Item {
                 }
 
                 MichiIconButton {
-                    iconSource: "qrc:/icons/nav_forward.svg"
+                    iconSource: "../../icons/nav_forward.svg"
                     tooltipText: "Adelante"
                     btnSize: responsive.compact ? 24 : 28
                     enabled: root.canGoForward
@@ -87,7 +87,7 @@ Item {
                             spacing: MichiTheme.spacing.xs
 
                             Text {
-                                text: modelData
+                                text: typeof modelData === 'object' ? modelData.title : modelData
                                 color: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.colors.textMuted : MichiTheme.colors.textPrimary
                                 font.pixelSize: MichiTheme.typography.secondarySize
                                 font.weight: index < (responsive.compact ? 0 : root.routeHistory.length - 1) ? MichiTheme.typography.weightNormal : MichiTheme.typography.weightSemiBold
@@ -108,7 +108,7 @@ Item {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 enabled: index < (responsive.compact ? 0 : root.routeHistory.length - 1)
-                                onClicked: root.breadcrumbClicked(modelData)
+                                onClicked: root.breadcrumbClicked(typeof modelData === 'object' ? modelData.route : modelData)
                             }
                         }
                     }

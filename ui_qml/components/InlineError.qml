@@ -99,7 +99,7 @@ Rectangle {
             id: dismissBtn
             anchors.verticalCenter: parent.verticalCenter
             visible: root.showDismiss
-            iconSource: "qrc:/icons/nav_back.svg"
+            iconSource: "../../icons/nav_back.svg"
             btnSize: 24
             tooltipText: "Cerrar"
             accessibleName: "Cerrar"

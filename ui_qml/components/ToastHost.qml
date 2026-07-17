@@ -57,7 +57,7 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: MichiTheme.spacing.xs
             anchors.verticalCenter: parent.verticalCenter
-            iconSource: "qrc:/icons/nav_back.svg"
+            iconSource: "../../icons/nav_back.svg"
             btnSize: 28
             tooltipText: "Cerrar"
             onClicked: { if (root.notif) root.notif.clear() }

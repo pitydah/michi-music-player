@@ -116,7 +116,7 @@ Rectangle {
             objectName: "notificationCloseButton"
             anchors.verticalCenter: parent.verticalCenter
             btnSize: 24
-            iconSource: "qrc:/icons/nav_back.svg"
+            iconSource: "../../icons/nav_back.svg"
             tooltipText: "Cerrar"
             accessibleName: "Cerrar este banner"
             visible: root.showDismiss

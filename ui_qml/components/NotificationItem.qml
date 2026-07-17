@@ -116,7 +116,7 @@ Rectangle {
                 id: dismissBtn
                 anchors.verticalCenter: parent.verticalCenter
                 btnSize: 24
-                iconSource: "qrc:/icons/nav_back.svg"
+                iconSource: "../../icons/nav_back.svg"
                 tooltipText: "Eliminar"
                 accessibleName: "Eliminar esta notificación de la lista"
                 onClicked: root.dismissItem()

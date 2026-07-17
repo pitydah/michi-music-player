@@ -33,7 +33,7 @@ Item {
                 spacing: MichiTheme.spacing.xs; topPadding: MichiTheme.spacing.xl; bottomPadding: MichiTheme.spacing.sm
 
                 Row { anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md; spacing: MichiTheme.spacing.sm
-                    Image { source: "qrc:/icons/app_icon.svg"; sourceSize.width: 28; sourceSize.height: 28; fillMode: Image.PreserveAspectFit }
+                    Image { source: "../../icons/app_icon.svg"; sourceSize.width: 28; sourceSize.height: 28; fillMode: Image.PreserveAspectFit }
                     Column { spacing: 0; visible: !root.collapsed
                         Text { text: "Michi"; color: MichiTheme.colors.textPrimary; font.pixelSize: MichiTheme.typography.cardTitleSize; font.weight: MichiTheme.typography.weightBold }
                         Text { text: "Music Player"; color: MichiTheme.colors.textMuted; font.pixelSize: MichiTheme.typography.metaSize }
@@ -82,7 +82,7 @@ Item {
                     border.width: collapseBtn.activeFocus ? MichiTheme.focusWidth : 0
                     border.color: MichiTheme.colors.borderFocus
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
-                    Image { anchors.centerIn: parent; source: "qrc:/icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
+                    Image { anchors.centerIn: parent; source: "../../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
                     MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
                 }
                 Accessible.role: Accessible.Button
@@ -111,7 +111,7 @@ Item {
         ListElement { route: "playback"; iconSource: "icons/sidebar_songs.svg"; label: "Reproducción"; notificationCount: 0 }
         ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0 }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0 }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_playlists.svg"; label: "Ajustes"; notificationCount: 0 }
+        ListElement { route: "settings"; iconSource: "icons/sidebar_home.svg"; label: "Ajustes"; notificationCount: 0 }
         ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0 }
     }
 }

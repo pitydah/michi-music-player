@@ -114,7 +114,7 @@ Rectangle {
                 id: dismissBtn
                 anchors.verticalCenter: parent.verticalCenter
                 btnSize: 24
-                iconSource: "qrc:/icons/nav_back.svg"
+                iconSource: "../../icons/nav_back.svg"
                 tooltipText: "Eliminar"
                 accessibleName: "Eliminar este elemento de progreso"
                 onClicked: root.dismissItem()

@@ -33,7 +33,7 @@ Item {
             id: shuffleBtn
             btnSize: 40
             iconSize: 20
-            iconSource: "qrc:/icons/nowplaying_clean/warm_shuffle_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_shuffle_32.png"
             tooltipText: root.shuffleSupported ? "Aleatorio" : "No soportado"
             enabled: root.shuffleSupported
             active: root.shuffleEnabled
@@ -46,7 +46,7 @@ Item {
             id: prevBtn
             btnSize: 44
             iconSize: 26
-            iconSource: "qrc:/icons/nowplaying_clean/warm_prev_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_prev_32.png"
             tooltipText: root.previousSupported ? "Anterior" : "No soportado"
             enabled: root.previousSupported
             onClicked: root.prevClicked()
@@ -76,7 +76,7 @@ Item {
 
                 Image {
                     anchors.centerIn: parent
-                    source: root.isPlaying ? "qrc:/icons/nowplaying_clean/warm_pause_32.png" : "qrc:/icons/nowplaying_clean/warm_play_32.png"
+                    source: root.isPlaying ? "../../icons/nowplaying_clean/warm_pause_32.png" : "../../icons/nowplaying_clean/warm_play_32.png"
                     sourceSize.width: root.isPlaying ? 32 : 34
                     sourceSize.height: root.isPlaying ? 32 : 34
                     fillMode: Image.PreserveAspectFit
@@ -114,7 +114,7 @@ Item {
             id: nextBtn
             btnSize: 44
             iconSize: 26
-            iconSource: "qrc:/icons/nowplaying_clean/warm_next_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_next_32.png"
             tooltipText: root.nextSupported ? "Siguiente" : "No soportado"
             enabled: root.nextSupported
             onClicked: root.nextClicked()
@@ -124,7 +124,7 @@ Item {
             id: repeatBtn
             btnSize: 40
             iconSize: 20
-            iconSource: "qrc:/icons/nowplaying_clean/warm_repeat_32.png"
+            iconSource: "../../icons/nowplaying_clean/warm_repeat_32.png"
             tooltipText: root.repeatSupported ? (root.repeatMode === "one" ? "Repetir una" : "Repetir todo") : "No soportado"
             enabled: root.repeatSupported
             active: root.repeatMode !== "none"

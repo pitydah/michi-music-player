@@ -70,7 +70,7 @@ Rectangle {
 
         MichiIconButton {
             anchors.verticalCenter: parent.verticalCenter
-            iconSource: "qrc:/icons/nav_back.svg"
+            iconSource: "../../icons/nav_back.svg"
             btnSize: 24
             tooltipText: "Deseleccionar todo"
             accessibleName: "Limpiar selección"

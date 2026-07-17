@@ -12,33 +12,11 @@ Item {
 
     property string routeName: "placeholder"
 
-    property string sectionTitle: {
-        if (routeName === "mix") return "Mix no disponible"
-        if (routeName === "radio") return "Radio no disponible"
-        if (routeName === "playback") return "Reproducción"
-        if (routeName === "eq") return "Ecualizador"
-        if (routeName === "diagnostics") return "Diagnóstico"
-        if (routeName === "history") return "Historial"
-        if (routeName === "queue") return "Cola de reproducción"
-        return "Sección no disponible"
-    }
+    property string sectionTitle: routeName === "placeholder" ? "Sección no disponible" : "Ruta desconocida"
 
-    property string sectionDescription: {
-        if (routeName === "mix" || routeName === "radio")
-            return "Esta función requiere servicios de backend que no están disponibles actualmente. Asegúrate de que los módulos correspondientes estén instalados y en ejecución."
-        return "Esta sección está siendo implementada. Vuelve más tarde."
-    }
+    property string sectionDescription: "La sección solicitada no está disponible. Verifica que los módulos necesarios estén instalados."
 
-    property string sectionGlyph: {
-        if (routeName === "mix") return "MX"
-        if (routeName === "radio") return "RD"
-        if (routeName === "playback") return "RP"
-        if (routeName === "eq") return "EQ"
-        if (routeName === "diagnostics") return "DG"
-        if (routeName === "history") return "HT"
-        if (routeName === "queue") return "CQ"
-        return "--"
-    }
+    property string sectionGlyph: routeName.length >= 2 ? routeName.substring(0, 2).toUpperCase() : "--"
 
     signal goBack()
 
@@ -85,8 +63,8 @@ Item {
 
         StatusBadge {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: routeName === "mix" || routeName === "radio" ? "Servicio no disponible" : "En desarrollo"
-            kind: routeName === "mix" || routeName === "radio" ? "warning" : "info"
+            text: "No disponible"
+            kind: "warning"
         }
 
         Row {

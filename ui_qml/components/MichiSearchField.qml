@@ -99,7 +99,7 @@ Item {
 
             MichiIconButton {
                 id: clearBtn
-                iconSource: "qrc:/icons/nav_back.svg"
+                iconSource: "../../icons/nav_back.svg"
                 tooltipText: "Limpiar"
                 btnSize: Math.min(root.height - MichiTheme.spacing.xs * 2, 28)
                 visible: root.text !== ""

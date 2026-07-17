@@ -36,7 +36,7 @@ Item {
             spacing: MichiTheme.spacing.xs
 
             MichiIconButton {
-                iconSource: "qrc:/icons/warm_play.svg"
+                iconSource: "../../../icons/warm_play.svg"
                 btnSize: 32
                 tooltipText: "Reproducir"
                 accessibleName: "Reproducir emisora"
