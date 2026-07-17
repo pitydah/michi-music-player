@@ -5,13 +5,14 @@
 | Field | Value |
 |-------|-------|
 | Baseline SHA | `330047fd` |
-| Final SHA | `364a04b2` |
+| Final SHA | `40427e60` |
 | Files changed | 375 files, +19128 / -938 |
 | Commits | 23 |
 
-## Commits (330047fd..364a04b2)
+## Commits (330047fd..40427e60)
 
 ```
+40427e60 P7/P8/P9 — rebase, reporte final, push
 364a04b2 P1/P2/P3/P4/P5/P6 — slider, dialog focus, combobox, tests, ci, responsive
 6500f650 final — ComboBox ListModel, Slider accesible, focus trap, reporte
 6162e245 C8/C9/C10 — rebase, CI, reporte final
