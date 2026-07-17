@@ -228,7 +228,7 @@ Item {
         ListElement { route: "playlists"; iconSource: "icons/sidebar_playlists.svg"; label: "Playlists"; notificationCount: 0; isSeparator: false }
         ListElement { route: "radio"; iconSource: "icons/sidebar_radio.svg"; label: "Radio"; notificationCount: 0; isSeparator: false }
         ListElement { route: ""; iconSource: ""; label: "SISTEMA"; notificationCount: 0; isSeparator: true }
-        ListElement { route: "settings"; iconSource: "icons/sidebar_settings.svg"; label: "Ajustes"; notificationCount: 0; isSeparator: false }
+        ListElement { route: "settings"; iconSource: "icons/warm_settings.svg"; label: "Ajustes"; notificationCount: 0; isSeparator: false }
         ListElement { route: "diagnostics"; iconSource: "icons/sidebar_identifier.svg"; label: "Diagnóstico"; notificationCount: 0; isSeparator: false }
     }
 }
