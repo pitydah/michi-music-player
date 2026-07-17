@@ -1,5 +1,9 @@
 # Michi Music Player
 
+![CI](https://github.com/pitydah/michi-music-player/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.11+-blue)
+![License](https://img.shields.io/badge/license-GPL--3.0-orange)
+
 Reproductor audiófilo premium para Linux · PySide6/Qt6 · GStreamer · pytest suite · pre-beta técnica
 
 [![Ruff](https://img.shields.io/badge/ruff-passing-brightgreen)]()
