@@ -76,20 +76,37 @@ jobs:
       - name: QML compile check
         run: |
           QT_QPA_PLATFORM=offscreen timeout 30 python3 -c "
-      import sys, os; sys.path.insert(0, '.'); os.environ['QT_QPA_PLATFORM']='offscreen'
-      from PySide6.QtQml import QQmlEngine, QQmlComponent
-      from PySide6.QtGui import QGuiApplication
-      from PySide6.QtCore import QObject
+      import sys, os
+      sys.path.insert(0, '.')
+      os.environ['QT_QPA_PLATFORM'] = 'offscreen'
       from pathlib import Path
-      app = QGuiApplication(sys.argv); engine = QQmlEngine(); engine.addImportPath('ui_qml')
+      from PySide6.QtCore import QObject, QUrl
+      from PySide6.QtGui import QGuiApplication
+      from PySide6.QtQml import QQmlEngine, QQmlComponent
+
+      app = QGuiApplication(sys.argv)
+      engine = QQmlEngine()
+      engine.addImportPath('ui_qml')
+
       class D(QObject): pass
-      for n in ['appBridge','navigationBridge','themeBridge','queueBridge','libraryBridge','playbackBridge','playlistsBridge','historyBridge','globalSearchBridge','settingsBridge','devicesBridge','notificationBridge','michiAiBridge','commandPaletteBridge','capabilityBridge','jobBridge','desktopBridge','homeBridge']:
+      for n in ['appBridge','navigationBridge','themeBridge','queueBridge','libraryBridge',
+                'playbackBridge','playlistsBridge','historyBridge','globalSearchBridge',
+                'settingsBridge','devicesBridge','notificationBridge','michiAiBridge',
+                'commandPaletteBridge','capabilityBridge','jobBridge','desktopBridge','homeBridge']:
           engine.rootContext().setContextProperty(n, D())
-      errors = [str(f.relative_to(Path('.'))) for f in sorted(Path('ui_qml').rglob('*.qml')) if QQmlComponent(engine, str(f)).status() != QQmlComponent.Ready]
-      if errors:
-          for e in errors: print(f'QML ERROR: {e}')
-          sys.exit(1)
-      print('QML OK')
+
+      exit_code = 0
+      for f in sorted(Path('ui_qml').rglob('*.qml')):
+          component = QQmlComponent(engine)
+          component.loadUrl(QUrl.fromLocalFile(str(f.resolve())))
+          if component.status() != QQmlComponent.Ready:
+              print(f'QML ERROR: {f.relative_to(Path(\".\"))}')
+              for error in component.errors():
+                  print(f'  {error.toString()}')
+              exit_code = 1
+      if exit_code == 0:
+          print('QML OK')
+      sys.exit(exit_code)
       "
       - name: Upload e2e results
         if: always()
