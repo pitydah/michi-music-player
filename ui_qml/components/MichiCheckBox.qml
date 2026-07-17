@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiCheckBox"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property bool checked: false
     property bool tristate: false
@@ -26,7 +27,7 @@ Item {
 
     readonly property int boxSize: 20
 
-    activeFocusOnTab: enabled
+    activeFocusOnTab: enabled && visible
 
     function toggle() {
         if (!root.enabled || root.loading) return

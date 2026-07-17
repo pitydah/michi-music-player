@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiTabBar"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property var model: []
     property int currentIndex: 0
@@ -16,6 +17,7 @@ Item {
 
     implicitHeight: MichiTheme.minimumInteractiveSize
     implicitWidth: parent ? parent.width : 400
+    activeFocusOnTab: enabled && visible
 
     Accessible.role: Accessible.PageTabList
     Accessible.name: root.accessibleName
@@ -48,6 +50,14 @@ Item {
 
                         Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
                     }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: MichiTheme.radius.sm
+                    color: "transparent"
+                    border.width: root.activeFocus && isActive ? MichiTheme.focusWidth : 0
+                    border.color: MichiTheme.colors.borderFocus
                 }
 
                 Text {
@@ -102,12 +112,6 @@ Item {
         root.currentIndex = root.model.length - 1
         root.activated(root.currentIndex)
         event.accepted = true
-    }
-
-    onActiveFocusChanged: {
-        if (root.activeFocus) {
-            var tab = root.model.length > 0 ? root.currentIndex : -1
-        }
     }
 
     Rectangle {

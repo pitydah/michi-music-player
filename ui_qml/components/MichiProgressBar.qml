@@ -4,7 +4,8 @@ import "../theme"
 Rectangle {
     id: root
 
-    objectName: "michiProgressBar"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property real value: 0
     property real from: 0
@@ -12,7 +13,7 @@ Rectangle {
     property bool indeterminate: false
     property string variant: "normal"
     property bool reducedMotion: false
-    property string accessibleName: "Progreso"
+    property string accessibleName: "Progreso: " + Math.round((root.value - root.from) / Math.max(1, root.to - root.from) * 100) + "%"
     property string accessibleDescription: ""
 
     implicitHeight: 4

@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiCard"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property bool hovered: false
     property bool interactive: true
@@ -19,7 +20,7 @@ Item {
     implicitWidth: 200
     implicitHeight: 120
 
-    Accessible.role: Accessible.Pane
+    Accessible.role: root.interactive ? Accessible.Button : Accessible.Pane
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 

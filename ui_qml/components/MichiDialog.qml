@@ -6,11 +6,12 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiDialog"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string titleText: ""
     property bool open: false
-    property int closePolicy: 1
+    property int closePolicy: QQC2.Popup.CloseOnEscape
     property bool loading: false
     property string accessibleName: root.titleText
     property string accessibleDescription: ""
@@ -20,10 +21,6 @@ Item {
 
     signal accepted()
     signal rejected()
-
-    readonly property int closeOnEscape: 1
-    readonly property int closeOnClickOutside: 2
-    readonly property int closeOnEscapeOrClickOutside: 3
 
     visible: root.open
     enabled: visible
@@ -49,7 +46,7 @@ Item {
     }
 
     Keys.onEscapePressed: {
-        if (root.closePolicy & root.closeOnEscape) {
+        if (root.closePolicy & QQC2.Popup.CloseOnEscape) {
             root.doReject()
         }
     }
@@ -77,7 +74,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                if (root.closePolicy & root.closeOnClickOutside) {
+                if (root.closePolicy & QQC2.Popup.CloseOnPressOutside) {
                     root.doReject()
                 }
             }

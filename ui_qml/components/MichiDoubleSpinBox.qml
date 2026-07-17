@@ -6,7 +6,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiDoubleSpinBox"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property real from: 0
     property real to: 100
@@ -21,6 +22,7 @@ Item {
 
     implicitWidth: 160
     implicitHeight: MichiTheme.minimumInteractiveSize
+    activeFocusOnTab: enabled && visible
 
     Accessible.role: Accessible.Pane
     Accessible.name: root.accessibleName
@@ -35,11 +37,7 @@ Item {
         spacing: 2
 
         MichiButton {
-            Accessible.role: Accessible.Button
-
             objectName: "michiDoubleSpinBoxDecrement"
-            activeFocusOnTab: true
-
             text: "-"
             implicitWidth: 32
             implicitHeight: parent.height
@@ -54,10 +52,6 @@ Item {
                 }
             }
         }
-            Accessible.role: Accessible.EditableText
-
-            Accessible.name: "Campo de texto"
-
 
         QQC2.TextField {
             id: field
@@ -69,7 +63,7 @@ Item {
             font.pixelSize: MichiTheme.typography.bodySize
             color: MichiTheme.colors.textPrimary
             enabled: root.enabled && !root.loading
-            activeFocusOnTab: enabled
+            activeFocusOnTab: enabled && visible
             background: Rectangle {
                 color: MichiTheme.colors.surfaceInput
                 radius: MichiTheme.radius.sm
@@ -110,10 +104,6 @@ Item {
                     root.valueModified()
                 }
                 event.accepted = true
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
             }
         }
 

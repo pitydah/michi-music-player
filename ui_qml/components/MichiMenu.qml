@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiMenu"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property bool open: false
     property int currentIndex: -1

@@ -5,13 +5,14 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiSearchField"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string placeholderText: "Buscar..."
     property string text: ""
     property bool loading: false
     property int debounceMs: 0
-    property string accessibleName: root.placeholderText
+    property string accessibleName: "Buscar..."
     property string accessibleDescription: ""
 
     signal searchTextChanged(string newText)
@@ -49,10 +50,6 @@ Item {
             }
 
             QQC2.TextField {
-                Accessible.role: Accessible.EditableText
-
-                Accessible.name: "Campo de texto"
-
                 id: field
                 height: parent.height
                 width: parent.width - clearBtn.width - MichiTheme.spacing.sm - parent.spacing - parent.anchors.leftMargin - parent.anchors.rightMargin
@@ -63,7 +60,7 @@ Item {
                 placeholderTextColor: MichiTheme.colors.textMuted
                 text: root.text
                 enabled: !root.loading
-                activeFocusOnTab: enabled
+                activeFocusOnTab: enabled && visible
                 verticalAlignment: TextInput.AlignVCenter
 
                 onTextChanged: {
@@ -91,11 +88,10 @@ Item {
                         event.accepted = true
                     }
                 }
+
+                Accessible.role: Accessible.EditableText
+                Accessible.name: root.accessibleName
             }
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
 
             MichiIconButton {
                 id: clearBtn

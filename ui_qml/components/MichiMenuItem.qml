@@ -1,10 +1,12 @@
 import QtQuick
+import QtQuick.Layouts
 import "../theme"
 
 Item {
     id: root
 
-    objectName: "michiMenuItem"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string itemText: ""
     property string iconText: ""

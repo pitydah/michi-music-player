@@ -4,7 +4,8 @@ import "../theme"
 Rectangle {
     id: root
 
-    objectName: "michiSlider"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property real from: 0
     property real to: 100
@@ -13,7 +14,7 @@ Rectangle {
     property bool hovered: ma.containsMouse
     property bool pressed: ma.pressed
     property bool loading: false
-    property string accessibleName: "Volumen: " + Math.round(root.value) + "%"
+    property string accessibleName: "Valor: " + Math.round(root.value) + "%"
     property string accessibleDescription: ""
 
     signal moved(real value)
@@ -42,26 +43,23 @@ Rectangle {
         return Math.max(root.from, Math.min(root.to, v))
     }
 
-    function _setValue(v, emitMoved) {
-        var next = root._clamp(v)
-        if (Math.abs(next - root.value) > 0.0001)
-            root.value = next
-        if (emitMoved)
-            root.moved(root.value)
+    function setClampedValue(candidate, emitSignal) {
+        var nextValue = Math.max(root.from, Math.min(root.to, candidate))
+        if (nextValue !== root.value) root.value = nextValue
+        if (emitSignal) root.moved(nextValue)
+    }
+
+    function _step(delta) {
+        root.setClampedValue(root.value + delta, true)
     }
 
     function _setFromPosition(mx) {
         var ratio = Math.max(0, Math.min(1, mx / Math.max(1, root.width)))
-        root._setValue(root.from + ratio * root._range(), true)
+        root.setClampedValue(root.from + ratio * root._range(), true)
     }
 
-    function _step(delta) {
-        root._setValue(root.value + delta, true)
-    }
-
-    onFromChanged: root._setValue(root.value, false)
-    onToChanged: root._setValue(root.value, false)
-    onValueChanged: root.value = root._clamp(root.value)
+    onFromChanged: root.setClampedValue(root.value, false)
+    onToChanged: root.setClampedValue(root.value, false)
 
     Keys.onLeftPressed: function(event) {
         if (!root.enabled) return
@@ -89,13 +87,13 @@ Rectangle {
 
     Keys.onHomePressed: function(event) {
         if (!root.enabled) return
-        root._setValue(root.from, true)
+        root.setClampedValue(root.from, true)
         event.accepted = true
     }
 
     Keys.onEndPressed: function(event) {
         if (!root.enabled) return
-        root._setValue(root.to, true)
+        root.setClampedValue(root.to, true)
         event.accepted = true
     }
 
