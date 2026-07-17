@@ -68,6 +68,6 @@ QtObject {
 
     readonly property int sidebarWidth: 250
     readonly property int sidebarWidthCompact: 68
-    readonly property int nowPlayingHeight: 100
+    readonly property int nowPlayingHeight: 116
     readonly property int headerHeight: 56
 }

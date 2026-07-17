@@ -2,12 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../theme"
-import "../materials"
 
 Item {
-    Accessible.role: Accessible.Pane
-    objectName: "nowPlayingVolume"
-    focus: true
     id: root
 
     property int volume: 80
@@ -18,8 +14,8 @@ Item {
     signal volumeAdjusted(int vol)
     signal muteClicked()
 
-    implicitHeight: 24
-    implicitWidth: 100
+    implicitHeight: 38
+    implicitWidth: 140
 
     Accessible.name: "Volumen"
     Accessible.description: "Control de volumen de reproducción"
@@ -29,57 +25,61 @@ Item {
         spacing: MichiTheme.spacing.xs
 
         Item {
-            Layout.preferredWidth: 22
-            Layout.preferredHeight: 22
-            Accessible.description: "Activar o desactivar el silencio"
-            GlassMaterial {
-                anchors.fill: parent; radius: MichiTheme.radius.lg
-                variant: "status"
-                hovered: muteMouse.containsMouse
-                MouseArea {
-                    id: muteMouse; anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.muteClicked()
-                }
-                Image {
-                    anchors.centerIn: parent
-                    width: 13; height: 13
-                    source: root.muted || root.volume === 0
-                        ? "../../icons/nowplaying_clean/warm_mute_32.png"
-                        : root.volume < 40
-                            ? "../../icons/nowplaying_clean/warm_vol_low_32.png"
-                            : "../../icons/nowplaying_clean/warm_vol_high_32.png"
-                    sourceSize.width: 32; sourceSize.height: 32
-                    fillMode: Image.PreserveAspectFit
-                }
-            }
-        }
-
-        Item {
-            Layout.fillWidth: true
-            height: 5
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
 
             Rectangle {
                 anchors.fill: parent
-                radius: MichiTheme.radius.xs
-                color: MichiTheme.colors.controlTrack
-                clip: true
+                radius: width / 2
+                color: volMa.containsMouse ? Qt.rgba(1, 1, 1, 0.06) : "transparent"
 
-                Rectangle {
-                    height: parent.height
-                    width: parent.width * Math.min(1.0, root.volume / 100.0)
-                    radius: MichiTheme.radius.xs
-                    color: root.muted ? MichiTheme.colors.textMuted : MichiTheme.colors.accentBlue
+                Image {
+                    anchors.centerIn: parent
+                    source: {
+                        if (root.muted || root.volume === 0) return "qrc:/icons/nowplaying_clean/warm_mute_32.png"
+                        if (root.volume < 40) return "qrc:/icons/nowplaying_clean/warm_vol_low_32.png"
+                        if (root.volume < 70) return "qrc:/icons/nowplaying_clean/warm_vol_medium_32.png"
+                        return "qrc:/icons/nowplaying_clean/warm_vol_high_32.png"
+                    }
+                    sourceSize.width: 22
+                    sourceSize.height: 22
+                    fillMode: Image.PreserveAspectFit
+                    opacity: root.volumeSupported ? 1.0 : 0.35
                 }
-            }
 
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    var pct = Math.round((mouse.x / width) * 100)
-                    root.volumeAdjusted(Math.max(0, Math.min(100, pct)))
+                MouseArea {
+                    id: volMa
+                    anchors.fill: parent
+                    hoverEnabled: root.muteSupported
+                    cursorShape: root.muteSupported ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: { if (root.muteSupported) root.muteClicked() }
+                }
+
+                Accessible.role: Accessible.Button
+                Accessible.name: root.muted ? "Activar sonido" : "Silenciar"
+                activeFocusOnTab: root.muteSupported
+                Keys.onSpacePressed: root.muteClicked()
+                Keys.onReturnPressed: root.muteClicked()
+            }
+        }
+
+        MichiWarmSlider {
+            id: volSlider
+            Layout.preferredWidth: 88
+            Layout.alignment: Qt.AlignVCenter
+            from: 0
+            to: 100
+            value: root.muted ? 0 : root.volume
+            enabled: root.volumeSupported
+            onValueChanged: { if (pressed) root.volumeAdjusted(value) }
+            onCommit: root.volumeAdjusted(value)
+
+            WheelHandler {
+                onWheel: function(event) {
+                    var delta = event.angleDelta.y > 0 ? 5 : -5
+                    var newVol = Math.max(0, Math.min(100, volSlider.value + delta))
+                    volSlider.value = newVol
+                    root.volumeAdjusted(newVol)
                 }
             }
         }

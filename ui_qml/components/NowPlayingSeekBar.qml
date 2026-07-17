@@ -4,10 +4,6 @@ import QtQuick.Layouts
 import "../theme"
 
 Item {
-    Accessible.role: Accessible.Pane
-    Accessible.name: "Now Playing Seek Bar"
-    objectName: "nowPlayingSeekBar"
-    focus: true
     id: root
 
     property int position: 0
@@ -15,52 +11,42 @@ Item {
 
     signal seekRequested(int pos)
 
-    implicitHeight: 28
+    implicitHeight: 20
 
     RowLayout {
         anchors.fill: parent
         spacing: MichiTheme.spacing.xs
 
         Text {
+            id: currentTimeText
+            Layout.preferredWidth: 36
+            horizontalAlignment: Text.AlignHCenter
             text: formatTime(root.position)
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.metaSize
+            color: Qt.rgba(245/255, 245/255, 247/255, 0.86)
+            font.pixelSize: 10
+            font.weight: Font.DemiBold
         }
 
-        Item {
+        MichiWarmSlider {
+            id: seekSlider
             Layout.fillWidth: true
-            height: 5
-
-            Rectangle {
-                anchors.fill: parent
-                radius: MichiTheme.radius.xs
-                color: MichiTheme.colors.controlTrack
-                clip: true
-
-                Rectangle {
-                    height: parent.height
-                    width: root.duration > 0 && root.enabled ? parent.width * Math.min(root.position / root.duration, 1.0) : 0
-                    radius: MichiTheme.radius.xs
-                    color: MichiTheme.colors.accentBlue
-                }
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: {
-                    if (root.enabled && root.duration > 0) {
-                        var pct = mouse.x / width
-                        root.seekRequested(Math.round(pct * root.duration))
-                    }
-                }
-            }
+            Layout.alignment: Qt.AlignVCenter
+            from: 0
+            to: Math.max(1, root.duration)
+            value: root.position
+            enabled: root.duration > 0
+            showThumb: enabled && (pressed || hovered || root.position > 0)
+            onValueChanged: { if (pressed) root.seekRequested(value) }
+            onCommit: root.seekRequested(value)
         }
 
         Text {
+            Layout.preferredWidth: 36
+            horizontalAlignment: Text.AlignHCenter
             text: formatTime(root.duration)
-            color: MichiTheme.colors.textMuted
-            font.pixelSize: MichiTheme.typography.metaSize
+            color: Qt.rgba(245/255, 245/255, 247/255, 0.86)
+            font.pixelSize: 10
+            font.weight: Font.DemiBold
         }
     }
 

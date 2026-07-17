@@ -49,6 +49,27 @@ QtObject {
     readonly property color experimental: "#A78BFA"
     readonly property color accentSecondary: "#A78BFA"
     readonly property color disconnected: "#6B7280"
+
+    // Now Playing Bar
+    readonly property color nowPlayingBackground: "#090B11"
+    readonly property color nowPlayingBorder: Qt.rgba(1, 1, 1, 0.06)
+    readonly property color nowPlayingTrack: "#24272E"
+    readonly property color nowPlayingThumb: "#F92141"
+    readonly property color nowPlayingThumbBorder: "#FFFFFF"
+    readonly property color nowPlayingGradientStart: "#FF7903"
+    readonly property color nowPlayingGradientMiddle: "#FF5D1C"
+    readonly property color nowPlayingGradientEnd: "#FA393E"
+    readonly property color nowPlayingTransportBg: "#1B1D23"
+    readonly property color nowPlayingTransportBorder: Qt.rgba(255, 255, 255, 0.09)
+    readonly property color nowPlayingTransportHover: Qt.rgba(255, 255, 255, 0.12)
+    readonly property color nowPlayingTransportHoverBorder: Qt.rgba(255, 255, 255, 0.145)
+    readonly property color nowPlayingTransportPressed: Qt.rgba(255, 255, 255, 0.055)
+    readonly property color nowPlayingShuffleActive: Qt.rgba(249, 33, 65, 0.135)
+    readonly property color nowPlayingShuffleActiveBorder: Qt.rgba(249, 33, 65, 0.26)
+    readonly property color nowPlayingTransmitActive: Qt.rgba(52, 199, 89, 0.13)
+    readonly property color nowPlayingTransmitActiveBorder: Qt.rgba(52, 199, 89, 0.28)
+    readonly property color nowPlayingQualityBg: "#17191F"
+    readonly property color nowPlayingQualityBorder: Qt.rgba(255, 255, 255, 0.08)
     readonly property color badgeInfoBg: Qt.rgba(0.561, 0.718, 1.0, 0.12)
     readonly property color badgeInfoText: "#8FB7FF"
     readonly property color badgeActiveBg: Qt.rgba(0.29, 0.87, 0.50, 0.20)

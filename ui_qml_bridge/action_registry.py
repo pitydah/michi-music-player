@@ -131,8 +131,17 @@ class ActionRegistry(QObject):
             )
 
     def register(self, action: ActionDescriptor):
+        if action.id in self._actions:
+            raise ValueError(f"Duplicate action ID: {action.id}")
         self._actions[action.id] = action
         self.registryChanged.emit()
+
+    def validate_all(self) -> list[dict]:
+        issues = []
+        for aid, action in self._actions.items():
+            if action.handler is None:
+                issues.append({"action_id": aid, "issue": "no_handler"})
+        return issues
 
     def get(self, action_id: str) -> ActionDescriptor | None:
         return self._actions.get(action_id) if isinstance(self._actions.get(action_id), ActionDescriptor) else None

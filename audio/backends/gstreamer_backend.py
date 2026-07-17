@@ -1,4 +1,5 @@
 """GStreamerAudioBackend — production audio backend using GStreamer pipeline."""
+
 from __future__ import annotations
 
 import logging
@@ -17,6 +18,24 @@ class GStreamerAudioBackend:
         self._volume = 1.0
         self._position = 0.0
         self._duration = 0.0
+        self._queue: list[str] = []
+        self._queue_index = -1
+
+        self._on_state_changed = None
+        self._on_track_ended = None
+        self._on_position_updated = None
+        self._on_error = None
+
+    def set_callbacks(self, *, on_state_changed=None, on_track_ended=None,
+                      on_position_updated=None, on_error=None):
+        self._on_state_changed = on_state_changed
+        self._on_track_ended = on_track_ended
+        self._on_position_updated = on_position_updated
+        self._on_error = on_error
+
+    def adopt_pipeline(self, pipeline):
+        self._pipeline = pipeline
+        self._playing = False
 
     def play(self, uri: str) -> bool:
         try:
@@ -119,3 +138,39 @@ class GStreamerAudioBackend:
 
     def shutdown(self):
         self.stop()
+
+    def set_queue(self, paths: list[str], start_index: int = 0):
+        self._queue = list(paths)
+        self._queue_index = start_index
+
+    def enqueue(self, paths: list[str], play_now: bool = True):
+        self._queue.extend(paths)
+        if play_now and self._queue_index < 0 and self._queue:
+            self._queue_index = 0
+
+    def enqueue_next(self, paths: list[str]):
+        pos = self._queue_index + 1 if self._queue_index >= 0 else len(self._queue)
+        for i, p in enumerate(paths):
+            self._queue.insert(pos + i, p)
+
+    def clear_queue(self):
+        self._queue.clear()
+        self._queue_index = -1
+
+    def play_next(self) -> bool:
+        if self._queue_index < len(self._queue) - 1:
+            self._queue_index += 1
+            return True
+        return False
+
+    def play_prev(self) -> bool:
+        if self._queue_index > 0:
+            self._queue_index -= 1
+            return True
+        return False
+
+    def get_queue(self) -> list[dict]:
+        return [{"filepath": p} for p in self._queue]
+
+    def get_queue_index(self) -> int:
+        return self._queue_index
