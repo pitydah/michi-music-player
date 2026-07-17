@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick
 import QtQuick.Controls
-import "../../../theme"
-import "../../../components"
+import QtQuick.Layouts
+import "../../../../theme"
+import "../../../../components"
+import "delegates"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -12,79 +16,86 @@ Item {
 
     property var albumModel: null
     property var bridge: null
+    property bool groupByDecade: false
     signal albumClicked(string albumKey, string title, string artist, int year)
 
-    ListView {
-        Accessible.role: Accessible.List
+    function scrollToAlbum(albumKey) {
+        if (!root.albumModel) return
+        for (var i = 0; i < root.albumModel.count; i++) {
+            var item = root.albumModel.get(i)
+            if (item.albumKey === albumKey) {
+                listView.positionViewAtIndex(i, ListView.Contain)
+                return
+            }
+        }
+    }
 
-        Accessible.name: "Línea de tiempo de álbumes"
-
-        activeFocusOnTab: true
-
-        focusPolicy: Qt.StrongFocus
-        id: listView
+    ColumnLayout {
         anchors.fill: parent
-        model: root.albumModel
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        section.property: "year"
-        section.labelPositioning: ViewSection.CurrentLabelAtStart | ViewSection.InlineLabels
+        spacing: 0
 
-        section.delegate: Rectangle {
-            width: listView.width; height: 28
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 32
             color: MichiTheme.colors.surfaceCard
-            Text {
-                anchors.left: parent.left; anchors.leftMargin: MichiTheme.spacing.md
-                anchors.verticalCenter: parent.verticalCenter
-                text: section > 0 ? section : "Año desconocido"
-                color: MichiTheme.colors.textPrimary
-                font.pixelSize: MichiTheme.typography.metaSize
-                font.weight: FontWeight.Bold
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: MichiTheme.spacing.md
+                anchors.rightMargin: MichiTheme.spacing.md
+
+                Text {
+                    text: root.groupByDecade ? "Agrupado por década" : "Agrupado por año"
+                    color: MichiTheme.colors.textSecondary
+                    font.pixelSize: MichiTheme.typography.metaSize
+                }
+
+                Item { Layout.fillWidth: true }
+
+                MichiButton {
+                    text: root.groupByDecade ? "Año" : "Década"
+                    variant: "ghost"
+                    implicitHeight: 24
+                    onClicked: root.groupByDecade = !root.groupByDecade
+                }
             }
         }
 
-        delegate: Item {
-            width: listView.width; height: 48
+        ListView {
+            focusPolicy: Qt.StrongFocus
+            id: listView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            anchors.leftMargin: MichiTheme.spacing.md
+            anchors.rightMargin: MichiTheme.spacing.md
+            model: root.albumModel
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
 
-            Row {
-                anchors.fill: parent
-                anchors.leftMargin: MichiTheme.spacing.lg
-                spacing: MichiTheme.spacing.sm
+            ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-                Rectangle {
-                    width: 40; height: 40; radius: 4
-                    color: MichiTheme.colors.borderInner
-                    Text {
-                        anchors.centerIn: parent
-                        text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: 12
+            section.property: root.groupByDecade ? "decade" : "year"
+            section.labelPositioning: ViewSection.CurrentLabelAtStart | ViewSection.InlineLabels
+            section.delegate: AlbumSectionHeader {
+                width: listView.width
+                sectionText: {
+                    if (root.groupByDecade && section > 0) {
+                        return section + "s"
+                    } else if (section > 0) {
+                        return section
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.albumClicked(albumKey || "", title || "", artist || "", year || 0)
-                    }
+                    return "Año desconocido"
                 }
+            }
 
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    Text {
-                        text: title || ""
-                        color: MichiTheme.colors.textPrimary
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        font.weight: FontWeight.Medium
-                        elide: Text.ElideRight
-                        width: parent.parent.width - 60
-                    }
-                    Text {
-                        text: artist || ""
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: MichiTheme.typography.metaSize
-                        elide: Text.ElideRight
-                        width: parent.parent.width - 60
-                    }
-                }
+            delegate: AlbumRowDelegate {
+                width: listView.width
+                albumKey: model.albumKey || ""
+                albumTitle: model.title || ""
+                albumArtist: model.artist || ""
+                albumYear: model.year || 0
+                trackCount: model.trackCount || 0
+                onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
             }
         }
     }

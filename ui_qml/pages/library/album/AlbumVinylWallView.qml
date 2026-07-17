@@ -1,7 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick
 import QtQuick.Controls
-import "../../../theme"
-import "../../../components"
+import "../../../../theme"
+import "../../../../components"
+import "delegates"
 
 Item {
     Accessible.role: Accessible.Pane
@@ -15,65 +18,26 @@ Item {
     signal albumClicked(string albumKey, string title, string artist, int year)
 
     GridView {
-        Accessible.role: Accessible.List
-
-        Accessible.name: "Muro de vinilos"
-
-        activeFocusOnTab: true
-
+        id: vinylGrid
         anchors.fill: parent
+        anchors.margins: MichiTheme.spacing.md
         model: root.albumModel
         cellWidth: 150
-        cellHeight: 170
+        cellHeight: 180
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        delegate: Item {
-            width: GridView.view.cellWidth
-            height: GridView.view.cellHeight
+        ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
 
-            Item {
-                anchors.centerIn: parent
-                width: 120; height: 130
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 60
-                    color: MichiTheme.colors.borderInner
-                    border.width: 2
-                    border.color: MichiTheme.colors.borderSubtle
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 40; height: 40; radius: 20
-                        color: MichiTheme.colors.surfaceCard
-                    }
-
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.top: parent.top; anchors.topMargin: MichiTheme.spacing.xl
-                        text: (albumKey || "?").toString().substring(0, 2).toUpperCase()
-                        color: MichiTheme.colors.textMuted
-                        font.pixelSize: 16
-                        font.weight: FontWeight.Bold
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.albumClicked(albumKey || "", title || "", artist || "", year || 0)
-                    }
-                }
-
-                Text {
-                    anchors.top: parent.bottom; anchors.topMargin: MichiTheme.spacing.xs
-                    width: parent.width; horizontalAlignment: Text.AlignHCenter
-                    text: title || ""
-                    color: MichiTheme.colors.textPrimary
-                    font.pixelSize: MichiTheme.typography.metaSize
-                    elide: Text.ElideRight
-                }
-            }
+        delegate: AlbumVinylDelegate {
+            width: vinylGrid.cellWidth - MichiTheme.spacing.md
+            height: vinylGrid.cellHeight - MichiTheme.spacing.md
+            albumKey: model.albumKey || ""
+            albumTitle: model.title || ""
+            albumArtist: model.artist || ""
+            albumYear: model.year || 0
+            trackCount: model.trackCount || 0
+            onClicked: root.albumClicked(model.albumKey || "", model.title || "", model.artist || "", model.year || 0)
         }
     }
 }

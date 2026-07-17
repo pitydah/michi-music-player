@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -14,11 +16,11 @@ RowLayout {
 
     Repeater {
         model: [
-            {label: "Grid", icon: "⊞"},
-            {label: "Cover", icon: "⊡"},
-            {label: "Vinyl", icon: "◉"},
-            {label: "Years", icon: "⊟"},
-            {label: "Mag", icon: "▣"},
+            {label: "Grid", tooltip: "Vista cuadrícula"},
+            {label: "Cover", tooltip: "Cover Flow"},
+            {label: "Vinyl", tooltip: "Pared de vinilos"},
+            {label: "Years", tooltip: "Línea de tiempo"},
+            {label: "Mag", tooltip: "Revista"},
         ]
 
         MichiButton {
@@ -28,6 +30,7 @@ RowLayout {
 
             text: modelData.label
             variant: currentView === index ? "primary" : "ghost"
+            Accessible.name: modelData.tooltip
             implicitHeight: 28
             onClicked: {
                 root.currentView = index
