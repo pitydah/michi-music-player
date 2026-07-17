@@ -86,15 +86,16 @@ Item {
                 }
             }
 
-            delegate: SongRow {
+            delegate: MichiTrackRow {
                 width: parent.width
-                trackTitle: root.trackModel ? (title || "") : (modelData.title || modelData.filepath || "")
-                trackArtist: root.trackModel ? (artist || "") : (modelData.artist || "")
-                trackAlbum: root.trackModel ? (album || "") : (modelData.album || "")
-                trackDuration: root.trackModel ? (duration ? formatDuration(duration) : "") : (modelData.duration ? formatDuration(modelData.duration) : "")
-                trackFilepath: ""
+                title: root.trackModel ? (title || "") : (modelData.title || modelData.filepath || "")
+                artist: root.trackModel ? (artist || "") : (modelData.artist || "")
+                album: root.trackModel ? (album || "") : (modelData.album || "")
+                duration: root.trackModel ? (duration ? formatDuration(duration) : "") : (modelData.duration ? formatDuration(modelData.duration) : "")
+                trackNumber: root.trackModel ? (trackNumber || 0) : (modelData.trackNumber || 0)
+                playing: root.trackModel ? (isPlaying || false) : false
 
-                onPlayClicked: {
+                onClicked: {
                     if (root.trackModel) {
                         var tid = trackId || 0
                         if (root.bridge && root.bridge.playTrackById) root.bridge.playTrackById(tid)
@@ -111,7 +112,7 @@ Item {
                     }
                 }
 
-                onRightClicked: function(mx, my) {
+                onContextMenuRequested: function(mx, my) {
                     var data = root.trackModel ? {id: trackId, title: trackTitle, artist: trackArtist, album: trackAlbum, filepath: ""} : modelData
                     root._selId = data.id || ""; root._selTitle = data.title || ""
                     root._selArtist = data.artist || ""; root._selAlbum = data.album || ""

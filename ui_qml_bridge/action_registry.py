@@ -54,6 +54,13 @@ class ActionRegistry(QObject):
             else {"ok": False, "error": "NO_NAV"}
         )
 
+    def _make_service_handler(self, service_attr: str, method: str, *args):
+        return lambda: (
+            getattr(getattr(self._container, service_attr, None), method, lambda: None)(*args)
+            if self._container and hasattr(self._container, service_attr)
+            else {"ok": False, "error": f"NO_{service_attr.upper()}"}
+        )
+
     def bind_default_handlers(self):
         nav_actions = [
             "navigate_home", "navigate_library", "navigate_playlists",
@@ -63,26 +70,71 @@ class ActionRegistry(QObject):
             "navigate_diagnostics", "navigate_library_doctor", "navigate_mix",
         ]
         route_map = {
-            "navigate_home": "home",
-            "navigate_library": "library",
-            "navigate_playlists": "playlists",
-            "navigate_radio": "radio",
-            "navigate_lyrics": "lyrics",
-            "navigate_settings": "settings",
-            "navigate_eq": "equalizer",
-            "navigate_library_sources": "library.sources",
-            "navigate_jobs": "jobs",
-            "navigate_queue": "queue",
-            "navigate_history": "history",
-            "navigate_home_audio": "home_audio",
+            "navigate_home": "home", "navigate_library": "library",
+            "navigate_playlists": "playlists", "navigate_radio": "radio",
+            "navigate_lyrics": "lyrics", "navigate_settings": "settings",
+            "navigate_eq": "equalizer", "navigate_library_sources": "library.sources",
+            "navigate_jobs": "jobs", "navigate_queue": "queue",
+            "navigate_history": "history", "navigate_home_audio": "home_audio",
             "navigate_diagnostics": "diagnostics",
-            "navigate_library_doctor": "library_doctor",
-            "navigate_mix": "mix",
+            "navigate_library_doctor": "library_doctor", "navigate_mix": "mix",
         }
         for aid in nav_actions:
             action = self._actions.get(aid)
             if action and aid in route_map:
                 action.handler = self._make_nav_handler(route_map[aid])
+                action.service_name = "navigation_bridge"
+
+        playback_map = {
+            "playback_playpause": ("playback_bridge", "togglePlay"),
+            "playback_next": ("playback_bridge", "next"),
+            "playback_prev": ("playback_bridge", "previous"),
+            "playback_volume_up": ("playback_bridge", "volumeUp"),
+            "playback_volume_down": ("playback_bridge", "volumeDown"),
+            "playback_mute": ("playback_bridge", "toggleMute"),
+            "playback_seek_forward": ("playback_bridge", "seekForward"),
+            "playback_seek_back": ("playback_bridge", "seekBack"),
+        }
+        for aid, (svc, method) in playback_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        library_map = {
+            "library_refresh": ("library_bridge", "refresh"),
+            "library_scan": ("library_bridge", "scan"),
+            "library_add_folder": ("library_bridge", "addFolder"),
+        }
+        for aid, (svc, method) in library_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        track_map = {
+            "track_play_now": ("playback_bridge", "play"),
+            "track_play_next": ("playback_bridge", "playNext"),
+            "track_add_to_queue": ("queue_bridge", "add"),
+            "track_favorite": ("library_bridge", "toggleFavorite"),
+            "track_open_album": ("navigation_bridge", "navigateToAlbum"),
+        }
+        for aid, (svc, method) in track_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
+
+        album_map = {
+            "album_play": ("playback_bridge", "playAlbum"),
+            "album_shuffle": ("playback_bridge", "shuffleAlbum"),
+            "album_queue": ("queue_bridge", "addAlbum"),
+        }
+        for aid, (svc, method) in album_map.items():
+            action = self._actions.get(aid)
+            if action:
+                action.handler = self._make_service_handler(svc, method)
+                action.service_name = svc
 
     def _init_defaults(self):
         defaults = [

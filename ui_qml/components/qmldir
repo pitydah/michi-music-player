@@ -55,7 +55,7 @@ MichiArtistTile 1.0 content/MichiArtistTile.qml
 MichiListRow 1.0 MichiListRow.qml
 MichiMetadataLine 1.0 content/MichiMetadataLine.qml
 MichiStatCard 1.0 content/MichiStatCard.qml
-MichiTrackRow 1.0 content/MichiTrackRow.qml
+MichiTrackRow 1.0 MichiTrackRow.qml
 
 # foundations
 MichiFocusRing 1.0 foundations/MichiFocusRing.qml

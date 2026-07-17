@@ -113,11 +113,11 @@ Item {
                     border.color: MichiTheme.colors.borderFocus
                     Behavior on color { ColorAnimation { duration: MichiTheme.motion.fast } }
                     Image { anchors.centerIn: parent; source: "../../icons/nav_back.svg"; sourceSize.width: 14; sourceSize.height: 14; rotation: root.collapsed ? 180 : 0; fillMode: Image.PreserveAspectFit }
-                    MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.collapsed = !root.collapsed }
+                    MouseArea { id: collapseBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root._userCollapsed = !root._userCollapsed }
                 }
                 Accessible.role: Accessible.Button
                 Accessible.name: root.collapsed ? "Expandir sidebar" : "Colapsar sidebar"
-                Accessible.onPressAction: root.collapsed = !root.collapsed
+                Accessible.onPressAction: root._userCollapsed = !root._userCollapsed
             }
         }
     }

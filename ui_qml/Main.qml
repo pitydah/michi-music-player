@@ -19,6 +19,11 @@ Window {
         category: "window"
     }
 
+    Settings {
+        id: appearanceSettings
+        category: "appearance"
+    }
+
     Shortcut {
         sequence: "F11"
         onActivated: {
@@ -40,6 +45,9 @@ Window {
         mainWindow.height = h
         if (appSettings.value("maximized", false))
             mainWindow.showMaximized()
+
+        var darkMode = appearanceSettings.value("dark_mode", true)
+        MichiTheme.setDarkMode(darkMode)
     }
 
     MichiApp {

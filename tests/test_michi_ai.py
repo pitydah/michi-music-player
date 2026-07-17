@@ -144,6 +144,33 @@ class TestResponseComposer:
         assert "No entendí" in result
 
 
+class TestLibraryProvider:
+    def test_set_library_provider_overrides_mock(self):
+        from michi_ai.recommender import set_library_provider, recommend
+        custom_data = [
+            {"artist": "TestArtist", "album": "TestAlbum", "title": "TestSong", "genre": "test"},
+        ]
+        set_library_provider(lambda: custom_data)
+        results = recommend(genre="test", count=5)
+        assert len(results) == 1
+        assert results[0]["artist"] == "TestArtist"
+        assert results[0]["title"] == "TestSong"
+
+    def test_set_library_provider_empty_returns_empty(self):
+        from michi_ai.recommender import set_library_provider, recommend
+        set_library_provider(lambda: [])
+        results = recommend(count=5)
+        assert len(results) == 0
+
+    def test_library_provider_fallback_to_mock_on_error(self):
+        from michi_ai.recommender import set_library_provider, recommend
+        def failing_provider():
+            raise RuntimeError("DB unavailable")
+        set_library_provider(failing_provider)
+        results = recommend(genre="rock", count=3)
+        assert len(results) > 0
+
+
 class TestEngine:
     def test_engine_process_play_music(self):
         result = process("reproduce jazz")
