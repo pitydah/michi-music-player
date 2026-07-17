@@ -118,9 +118,9 @@ target-version = ["py311"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
+addopts = "-p no:qt -m 'not perf and not hardware'"
 timeout = 120
 asyncio_mode = "auto"
-addopts = "-m 'not perf and not hardware'"
 markers = [
     "hardware: tests requiring physical DAC/audio hardware",
     "perf: performance tests, run manually with -m perf",

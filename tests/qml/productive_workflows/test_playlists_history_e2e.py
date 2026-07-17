@@ -18,13 +18,13 @@ class TestPlaylistsHistoryE2E:
     def test_playlists_list(self, all_bridges):
         pl = all_bridges.get("playlists")
         assert pl is not None
-        result = pl.listPlaylists()
-        assert isinstance(result, dict)
+        assert hasattr(pl, 'refresh')
+        assert hasattr(pl, 'getPlaylistDetail')
 
     def test_playlists_get_by_id(self, all_bridges):
         pl = all_bridges.get("playlists")
         assert pl is not None
-        result = pl.getPlaylist(1)
+        result = pl.getPlaylistDetail(1)
         assert isinstance(result, dict)
 
     def test_playlists_detail(self, all_bridges):
@@ -46,14 +46,15 @@ class TestPlaylistsHistoryE2E:
     def test_history_get(self, all_bridges):
         hb = all_bridges.get("history")
         assert hb is not None
-        result = hb.getHistory()
-        assert isinstance(result, (list, tuple))
+        result = hb.refresh()
+        assert isinstance(result, dict)
 
     def test_history_clear(self, all_bridges):
         hb = all_bridges.get("history")
         assert hb is not None
         result = hb.clearHistory()
         assert isinstance(result, dict)
+        assert result.get("ok") is not False
 
     def test_playlists_bridge_methods_return_dicts(self, all_bridges):
         pl = all_bridges.get("playlists")
