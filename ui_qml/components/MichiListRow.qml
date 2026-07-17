@@ -6,7 +6,8 @@ import "foundations"
 FocusScope {
     id: root
 
-    objectName: "michiListRow"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string title: ""
     property string subtitle: ""
@@ -24,7 +25,7 @@ FocusScope {
     signal secondaryActionRequested()
 
     implicitHeight: MichiTheme.rowHeightComfortable
-    activeFocusOnTab: enabled
+    activeFocusOnTab: enabled && visible
     opacity: root.enabled ? 1.0 : MichiTheme.disabledOpacity
 
     Accessible.role: Accessible.ListItem
@@ -33,6 +34,7 @@ FocusScope {
     Accessible.selected: root.selected
 
     Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
     Keys.onSpacePressed: root.clicked()
 
     Rectangle {

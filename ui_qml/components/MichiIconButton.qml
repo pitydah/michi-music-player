@@ -5,7 +5,8 @@ import "../theme"
 QQC2.Button {
     id: root
 
-    objectName: "michiIconButton"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string iconText: ""
     property string iconSource: ""
@@ -15,8 +16,8 @@ QQC2.Button {
     property string accessibleName: tooltipText
     property string accessibleDescription: tooltipText
 
-    width: Math.max(btnSize, MichiTheme.minimumInteractiveSize)
-    height: width
+    implicitWidth: Math.max(btnSize, MichiTheme.minimumInteractiveSize)
+    implicitHeight: width
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus
     activeFocusOnTab: enabled

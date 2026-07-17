@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiRadioButton"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property bool checked: false
     property bool loading: false
@@ -25,7 +26,7 @@ Item {
 
     readonly property int circleSize: 20
 
-    activeFocusOnTab: enabled
+    activeFocusOnTab: enabled && visible
 
     function toggle() {
         if (!root.enabled || root.loading || root.checked) return

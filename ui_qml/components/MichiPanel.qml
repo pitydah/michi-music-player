@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiPanel"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string accessibleName: ""
     property string accessibleDescription: ""

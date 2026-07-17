@@ -5,12 +5,14 @@ import "../theme"
 QQC2.Button {
     id: root
 
-    objectName: "michiButton"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string variant: "primary"
     property string iconText: ""
     property string iconSource: ""
     property string tooltipText: ""
+    property bool loading: false
     property string accessibleName: text
     property string accessibleDescription: tooltipText
 
@@ -24,7 +26,7 @@ QQC2.Button {
     implicitHeight: Math.max(MichiTheme.minimumInteractiveSize,
                              contentRow.implicitHeight + topPadding + bottomPadding)
     focusPolicy: Qt.StrongFocus
-    activeFocusOnTab: enabled
+    activeFocusOnTab: enabled && !loading
 
     Accessible.role: Accessible.Button
     Accessible.name: root.accessibleName
@@ -38,7 +40,7 @@ QQC2.Button {
     background: Rectangle {
         radius: MichiTheme.radius.md
         color: {
-            if (!root.enabled) return MichiTheme.colors.surfaceDisabled
+            if (!root.enabled || root.loading) return MichiTheme.colors.surfaceDisabled
             if (root.down) return MichiTheme.colors.surfacePressed
             if (root.hovered) return MichiTheme.colors.surfaceHover
             if (root.variant === "primary") return MichiTheme.colors.accentBlue
@@ -47,9 +49,9 @@ QQC2.Button {
             if (root.variant === "ghost") return "transparent"
             return MichiTheme.colors.surfaceCard
         }
-        border.width: root.variant === "ghost" ? 0 : MichiTheme.borderWidth
+        border.width: root.activeFocus ? MichiTheme.focusWidth : (root.variant === "ghost" ? 0 : MichiTheme.borderWidth)
         border.color: {
-            if (!root.enabled) return "transparent"
+            if (!root.enabled || root.loading) return "transparent"
             if (root.activeFocus) return MichiTheme.colors.borderFocus
             if (root.variant === "secondary") return MichiTheme.colors.borderCard
             return "transparent"

@@ -5,7 +5,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiComboBox"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property var model: []
     property int currentIndex: -1

@@ -4,7 +4,8 @@ import "../theme"
 Rectangle {
     id: root
 
-    objectName: "michiTooltip"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string tooltipText: ""
     property Item target: null

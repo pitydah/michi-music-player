@@ -4,7 +4,8 @@ import "../theme"
 Rectangle {
     id: root
 
-    objectName: "michiBadge"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string badgeText: ""
     property string variant: "info"

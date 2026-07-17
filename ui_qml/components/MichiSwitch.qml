@@ -4,7 +4,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiSwitch"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property bool checked: false
     property bool loading: false
@@ -26,7 +27,7 @@ Item {
     readonly property int trackHeight: 24
     readonly property int thumbSize: 20
 
-    activeFocusOnTab: enabled
+    activeFocusOnTab: enabled && visible
 
     function toggle() {
         if (!root.enabled || root.loading) return

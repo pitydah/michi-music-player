@@ -5,7 +5,8 @@ import "../theme"
 Item {
     id: root
 
-    objectName: "michiTextField"
+    property string controlObjectName: ""
+    objectName: controlObjectName
 
     property string label: ""
     property string placeholderText: ""
@@ -76,7 +77,7 @@ Item {
             placeholderTextColor: MichiTheme.colors.textMuted
             readOnly: root.readOnly || root.loading
             text: root.text
-            activeFocusOnTab: enabled
+            activeFocusOnTab: enabled && visible
             verticalAlignment: TextInput.AlignVCenter
 
             onTextChanged: root.textChanged(text)
