@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+set -euo pipefail
 # CI Canonical — single command for full validation
 # Usage: ./scripts/ci_canonical.sh
 

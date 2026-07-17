@@ -528,9 +528,9 @@ class ObservableServiceContainer(ServiceContainer, QObject):
         QObject.__init__(self)
         self._service_states: dict[str, str] = {}
 
-    def register(self, name, service, dependencies=None):
+    def register(self, name, service, priority=None, dependencies=None):
         self._service_states[name] = "registered"
-        ServiceContainer.register(self, name, service, dependencies)
+        ServiceContainer.register(self, name, service, priority, dependencies or ())
         if hasattr(service, 'start') and callable(service.start):
             try:
                 self._service_states[name] = "starting"

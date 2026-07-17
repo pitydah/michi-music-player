@@ -87,8 +87,6 @@ ui_qml = ["*.qml", "*.js", "qmldir", "**/*.qml", "**/*.js", "**/qmldir"]
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests*", "tools*", "ha_custom_component*", "legacy_widgets*", "ui", "ui.*", "michi_ai/ui*", "__pycache__*"]
-include = ["ui_qml*", "ui_qml_bridge*"]
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"

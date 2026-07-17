@@ -9,14 +9,14 @@ from pathlib import Path
 
 from PySide6.QtQml import QQmlApplicationEngine
 
-from core.service_container import ServiceContainer, ServicePriority
+from core.service_container import ObservableServiceContainer, ServiceContainer, ServicePriority
 
 logger = logging.getLogger("michi.bootstrap")
 
 
 class ApplicationBootstrap:
     def __init__(self):
-        self.container = ServiceContainer()
+        self.container = ObservableServiceContainer()
         self._bridges: dict[str, object] = {}
         self._has_built = False
         self._has_started = False
@@ -550,11 +550,15 @@ class ApplicationBootstrap:
         def _handler(service_name: str, method: str, *default_args):
             svc = self.container.get(service_name)
             def _call(*args):
-                if svc and hasattr(svc, method):
-                    try:
-                        return getattr(svc, method)(*default_args, *args)
-                    except Exception:
-                        pass
+                if not svc:
+                    return {"ok": False, "error": f"Service not available: {service_name}", "error_code": "SERVICE_UNAVAILABLE"}
+                if not hasattr(svc, method):
+                    return {"ok": False, "error": f"Method not found: {service_name}.{method}", "error_code": "METHOD_NOT_FOUND"}
+                try:
+                    result = getattr(svc, method)(*default_args, *args)
+                    return result if isinstance(result, dict) else {"ok": True, "result": str(result)}
+                except Exception as e:
+                    return {"ok": False, "error": str(e), "error_code": "EXECUTION_ERROR", "recoverable": True}
             return _call
 
         ar.register(ActionDescriptor(action_id="play", title="Play", category="playback",
@@ -739,7 +743,6 @@ class ApplicationBootstrap:
         ar.register(ActionDescriptor(action_id="queue.move_up", title="Move up", category="queue", handler=_handler("queue_service", "move")))
         ar.register(ActionDescriptor(action_id="queue.move_down", title="Move down", category="queue", handler=_handler("queue_service", "reorder")))
         ar.register(ActionDescriptor(action_id="playlist.info", title="Playlist info", category="playlist", handler=_handler("playlist_service", "get_info")))
-        ar.register(ActionDescriptor(action_id="playlist.duplicate", title="Duplicate", category="playlist", handler=_handler("playlist_service", "duplicate")))
         ar.register(ActionDescriptor(action_id="playlist.add_album", title="Add album", category="playlist", handler=_handler("playlist_service", "add_track")))
         ar.register(ActionDescriptor(action_id="mix.daily", title="Daily mix", category="mix", handler=_handler("mix_service", "generate")))
         ar.register(ActionDescriptor(action_id="mix.favorites", title="Favorites mix", category="mix", handler=_handler("mix_service", "generate")))
@@ -750,15 +753,10 @@ class ApplicationBootstrap:
         ar.register(ActionDescriptor(action_id="mix.genre", title="Genre mix", category="mix", handler=_handler("mix_service", "generate")))
         ar.register(ActionDescriptor(action_id="mix.decade", title="Decade mix", category="mix", handler=_handler("mix_service", "generate")))
         ar.register(ActionDescriptor(action_id="mix.quality", title="Quality mix", category="mix", handler=_handler("mix_service", "generate")))
-        ar.register(ActionDescriptor(action_id="mix.explain", title="Explain mix", category="mix", handler=_handler("mix_service", "explain")))
-        ar.register(ActionDescriptor(action_id="history.export.csv", title="Export CSV", category="history", handler=_handler("history_query_service", "export_history")))
         ar.register(ActionDescriptor(action_id="history.export.json", title="Export JSON", category="history", handler=_handler("history_export_service", "export_json")))
         ar.register(ActionDescriptor(action_id="history.stats", title="Statistics", category="history", handler=_handler("history_query_service", "statistics")))
         ar.register(ActionDescriptor(action_id="album.shuffle", title="Shuffle album", category="playback", handler=_handler("album_service", "play_album")))
         ar.register(ActionDescriptor(action_id="album.info", title="Album info", category="navigation", handler=_handler("album_service", "navigate_to_album_by_title")))
-        ar.register(ActionDescriptor(action_id="artist.shuffle", title="Shuffle artist", category="playback", handler=_handler("artist_service", "play_artist")))
-        ar.register(ActionDescriptor(action_id="artist.albums", title="Artist albums", category="navigation", handler=_handler("artist_service", "get_albums")))
-        ar.register(ActionDescriptor(action_id="artist.tracks", title="Artist tracks", category="navigation", handler=_handler("artist_service", "get_tracks")))
         ar.register(ActionDescriptor(action_id="library.filter.artist", title="Filter by artist", category="library", handler=_handler("library_query_service", "tracks_for_artist")))
         ar.register(ActionDescriptor(action_id="library.filter.album", title="Filter by album", category="library", handler=_handler("library_query_service", "tracks_for_album")))
         ar.register(ActionDescriptor(action_id="library.filter.genre", title="Filter by genre", category="library", handler=_handler("genres_service", "play_genre")))
@@ -777,14 +775,8 @@ class ApplicationBootstrap:
         ar.register(ActionDescriptor(action_id="playlist.reorder.down", title="Move down", category="playlist", handler=_handler("playlist_service", "reorder")))
         ar.register(ActionDescriptor(action_id="playlist.clear", title="Clear playlist", category="playlist", handler=_handler("playlist_service", "clear")))
         ar.register(ActionDescriptor(action_id="playlist.batch_add", title="Batch add", category="playlist", handler=_handler("playlist_service", "batch_add")))
-        ar.register(ActionDescriptor(action_id="mix.cancel", title="Cancel mix", category="mix", handler=_handler("mix_service", "cancel")))
-        ar.register(ActionDescriptor(action_id="mix.playlist", title="Save as playlist", category="mix", handler=_handler("mix_service", "save_playlist")))
-        ar.register(ActionDescriptor(action_id="mix.explain", title="Explain", category="mix", handler=_handler("mix_service", "explain")))
-        ar.register(ActionDescriptor(action_id="device.transcode.lossless", title="Lossless", category="devices", handler=_handler("device_sync_service", "transcode_policy")))
         ar.register(ActionDescriptor(action_id="device.transcode.high", title="High quality", category="devices", handler=_handler("device_sync_service", "transcode_policy")))
         ar.register(ActionDescriptor(action_id="device.transcode.medium", title="Medium", category="devices", handler=_handler("device_sync_service", "transcode_policy")))
-        ar.register(ActionDescriptor(action_id="device.sync.profile", title="Sync profile", category="devices", handler=_handler("device_sync_service", "profiles")))
-        ar.register(ActionDescriptor(action_id="device.naming.keep", title="Keep names", category="devices", handler=_handler("device_sync_service", "naming_policy")))
         ar.register(ActionDescriptor(action_id="device.collision.skip", title="Skip duplicates", category="devices", handler=_handler("device_sync_service", "collision_policy")))
         ar.register(ActionDescriptor(action_id="device.collision.overwrite", title="Overwrite", category="devices", handler=_handler("device_sync_service", "collision_policy")))
         ar.register(ActionDescriptor(action_id="device.collision.rename", title="Rename", category="devices", handler=_handler("device_sync_service", "collision_policy")))
@@ -793,12 +785,7 @@ class ApplicationBootstrap:
         ar.register(ActionDescriptor(action_id="home_audio.reconnect", title="Reconnect", category="home_audio", handler=_handler("home_audio_service", "reconnect")))
         ar.register(ActionDescriptor(action_id="home_audio.volume.up", title="Volume up", category="home_audio", handler=_handler("home_audio_service", "set_volume")))
         ar.register(ActionDescriptor(action_id="home_audio.volume.down", title="Volume down", category="home_audio", handler=_handler("home_audio_service", "set_volume")))
-        ar.register(ActionDescriptor(action_id="home_audio.mute", title="Mute", category="home_audio", handler=_handler("home_audio_service", "mute")))
-        ar.register(ActionDescriptor(action_id="home_audio.unmute", title="Unmute", category="home_audio", handler=_handler("home_audio_service", "mute")))
-        ar.register(ActionDescriptor(action_id="radio.buffer", title="Buffer", category="radio", handler=_handler("radio_service", "set_buffer_ms")))
         ar.register(ActionDescriptor(action_id="radio.timeout", title="Timeout", category="radio", handler=_handler("radio_service", "set_timeout_s")))
-        ar.register(ActionDescriptor(action_id="radio.reconnect.auto", title="Auto reconnect", category="radio", handler=_handler("radio_service", "set_reconnect_policy")))
-        ar.register(ActionDescriptor(action_id="eq.enable", title="Enable EQ", category="equalizer", handler=_handler("equalizer_service", "set_enabled")))
         ar.register(ActionDescriptor(action_id="eq.disable", title="Disable EQ", category="equalizer", handler=_handler("equalizer_service", "set_enabled")))
         ar.register(ActionDescriptor(action_id="eq.reset", title="Reset EQ", category="equalizer", handler=_handler("equalizer_service", "reset")))
         ar.register(ActionDescriptor(action_id="eq.preset.save", title="Save preset", category="equalizer", handler=_handler("equalizer_service", "save_preset")))

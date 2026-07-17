@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import contextlib
+from typing import Any
 
 logger = logging.getLogger("michi.audio.gstreamer")
 
@@ -99,11 +100,48 @@ class GStreamerAudioBackend:
             except Exception:
                 pass
 
-    def set_volume(self, volume: float):
-        self._volume = max(0.0, min(1.0, volume))
+    def set_volume(self, volume: int):
+        clamped = max(0, min(100, int(volume)))
+        self._volume = clamped / 100.0
         if self._pipeline:
             with contextlib.suppress(Exception):
                 self._pipeline.set_property("volume", self._volume)
+
+    def toggle(self):
+        if self._playing:
+            self.pause()
+        else:
+            self.resume()
+
+    def get_snapshot(self) -> dict:
+        return {
+            "state": "PLAYING" if self._playing else ("PAUSED" if self._pipeline else "STOPPED"),
+            "position": self.get_position(),
+            "duration": self.get_duration(),
+            "volume": int(self._volume * 100),
+            "backend_id": "gstreamer",
+        }
+
+    def get_diagnostics(self) -> dict:
+        return {
+            "backend": "gstreamer",
+            "pipeline_active": self._pipeline is not None,
+            "volume_raw": self._volume,
+            "playing": self._playing,
+            "queue_size": len(self._queue),
+            "queue_index": self._queue_index,
+        }
+
+    @property
+    def capabilities(self) -> dict:
+        return {
+            "max_volume": 100,
+            "supports_seek": True,
+            "supports_queue": True,
+            "supports_eq": False,
+            "supports_replaygain": False,
+            "supports_spectrum": False,
+        }
 
     def get_position(self) -> float:
         if self._pipeline:

@@ -49,9 +49,8 @@ class PlayerService(QObject):
         self._active_backend_id = ""
 
         from audio.backends.hybrid_audio_manager import HybridAudioManager
-        if engine is not None:
-            from audio.backends.gstreamer_backend import GStreamerAudioBackend
-            self._gst_backend = GStreamerAudioBackend()
+        if engine is not None and hasattr(engine, '_backend') and engine._backend is not None:
+            self._gst_backend = engine._backend
             self._hybrid = HybridAudioManager(default_backend=self._gst_backend)
             self._active_backend_id = "gstreamer"
             self._engine.position_changed.connect(lambda s: self.position_changed.emit(s))
