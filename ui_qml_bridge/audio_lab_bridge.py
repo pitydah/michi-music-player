@@ -470,3 +470,242 @@ class AudioLabBridge(QObject):
         if not route:
             return {"ok": False, "error_code": "INVALID_AREA"}
         return self.navigateTo(route)
+
+    # ==================== CD RIPPER ====================
+    
+    @Slot(result=list)
+    def detectCDDrives(self) -> list:
+        """Detecta unidades de CD disponibles."""
+        if not self._svc:
+            return []
+        try:
+            from core.audio_lab.cd_ripper_service import CDRipperService
+            ripper = CDRipperService()
+            drives = ripper.detect_drives()
+            return [{
+                'device': d.device,
+                'model': d.model,
+                'is_audio_capable': d.is_audio_capable
+            } for d in drives]
+        except Exception as e:
+            logger.error(f"Error detecting CD drives: {e}")
+            return []
+    
+    @Slot(str, result=dict)
+    def getCDInfo(self, device: str) -> dict:
+        """Obtiene información del CD insertado."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.cd_ripper_service import CDRipperService
+            ripper = CDRipperService()
+            cd_info = ripper.get_cd_info(device)
+            if cd_info:
+                return {
+                    'ok': True,
+                    'album_title': cd_info.album_title,
+                    'album_artist': cd_info.album_artist,
+                    'year': cd_info.year,
+                    'genre': cd_info.genre,
+                    'disc_id': cd_info.disc_id,
+                    'total_tracks': cd_info.total_tracks,
+                    'tracks': [{
+                        'track_number': t.track_number,
+                        'title': t.title,
+                        'artist': t.artist,
+                        'duration': t.duration
+                    } for t in cd_info.tracks]
+                }
+            return {'ok': False, 'error': 'No CD info available'}
+        except Exception as e:
+            logger.error(f"Error getting CD info: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(str, str, str, str, result=dict)
+    def ripCDTrack(self, device: str, track_number: int, output_path: str, format: str = 'flac') -> dict:
+        """Extrae una pista individual del CD."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.cd_ripper_service import CDRipperService
+            ripper = CDRipperService()
+            result = ripper.rip_track(device, int(track_number), output_path, format)
+            return {'ok': result['success'], **result}
+        except Exception as e:
+            logger.error(f"Error ripping CD track: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(str, str, str, str, bool, result=dict)
+    def ripFullCD(self, device: str, output_dir: str, format: str = 'flac', quality: str = 'lossless', include_log: bool = True) -> dict:
+        """Extrae todo el CD."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.cd_ripper_service import CDRipperService
+            ripper = CDRipperService()
+            result = ripper.rip_full_cd(device, output_dir, format, quality, include_log)
+            return {'ok': result['success'], **result}
+        except Exception as e:
+            logger.error(f"Error ripping full CD: {e}")
+            return {'ok': False, 'error': str(e)}
+
+    # ==================== ADC RECORDER / TURNTABLE ====================
+    
+    @Slot(result=list)
+    def detectAudioDevices(self) -> list:
+        """Detecta dispositivos de entrada de audio (incluye tocadiscos USB)."""
+        if not self._svc:
+            return []
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            devices = recorder.detect_devices()
+            return [{
+                'device_id': d.device_id,
+                'name': d.name,
+                'is_usb': d.is_usb,
+                'is_turntable': d.is_turntable,
+                'brand': d.brand,
+                'channels': d.channels,
+                'sample_rate': d.sample_rate
+            } for d in devices]
+        except Exception as e:
+            logger.error(f"Error detecting audio devices: {e}")
+            return []
+    
+    @Slot(result=dict)
+    def getRecommendedDevice(self) -> dict:
+        """Obtiene el dispositivo recomendado (prioriza tocadiscos USB)."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            device = recorder.get_recommended_device()
+            if device:
+                return {
+                    'ok': True,
+                    'device_id': device.device_id,
+                    'name': device.name,
+                    'is_usb': device.is_usb,
+                    'is_turntable': device.is_turntable,
+                    'brand': device.brand
+                }
+            return {'ok': False, 'error': 'No devices found'}
+        except Exception as e:
+            logger.error(f"Error getting recommended device: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(int, str, str, int, int, int, list, result=dict)
+    def startRecording(self, device_id: int, output_path: str, format: str = 'wav', 
+                       sample_rate: int = 44100, bit_depth: int = 16, channels: int = 2, 
+                       dsp_filters: list = None) -> dict:
+        """Inicia grabación desde dispositivo ADC."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService, AudioDevice
+            recorder = ADCRecorderService()
+            
+            # Crear dispositivo desde ID
+            devices = recorder.detect_devices()
+            device = next((d for d in devices if d.device_id == device_id), None)
+            if not device:
+                return {'ok': False, 'error': 'Device not found'}
+            
+            result = recorder.start_recording(
+                device=device,
+                output_path=output_path,
+                format=format,
+                sample_rate=sample_rate,
+                bit_depth=bit_depth,
+                channels=channels,
+                apply_dsp=dsp_filters or []
+            )
+            return {'ok': result['success'], **result}
+        except Exception as e:
+            logger.error(f"Error starting recording: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(result=dict)
+    def pauseRecording(self) -> dict:
+        """Pausa la grabación actual."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            recorder.pause_recording()
+            return {'ok': True}
+        except Exception as e:
+            logger.error(f"Error pausing recording: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(result=dict)
+    def resumeRecording(self) -> dict:
+        """Reanuda la grabación pausada."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            recorder.resume_recording()
+            return {'ok': True}
+        except Exception as e:
+            logger.error(f"Error resuming recording: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(result=dict)
+    def stopRecording(self) -> dict:
+        """Detiene la grabación actual."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            recorder.stop_recording()
+            return {'ok': True}
+        except Exception as e:
+            logger.error(f"Error stopping recording: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(str, float, result=dict)
+    def addMarker(self, label: str = "", timestamp: float = None) -> dict:
+        """Agrega un marcador en la grabación actual."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            result = recorder.add_marker(timestamp=timestamp, label=label)
+            return {'ok': result['success'], **result}
+        except Exception as e:
+            logger.error(f"Error adding marker: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(str, str, result=dict)
+    def splitByMarkers(self, input_file: str, output_dir: str) -> dict:
+        """Divide grabación por marcadores."""
+        if not self._svc:
+            return {'ok': False, 'error': 'Service unavailable'}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            result = recorder.split_by_markers(input_file, output_dir)
+            return {'ok': result['success'], **result}
+        except Exception as e:
+            logger.error(f"Error splitting by markers: {e}")
+            return {'ok': False, 'error': str(e)}
+    
+    @Slot(result=dict)
+    def getRecordingStatus(self) -> dict:
+        """Obtiene estado de la grabación actual."""
+        if not self._svc:
+            return {'active': False}
+        try:
+            from core.audio_lab.adc_recorder_service import ADCRecorderService
+            recorder = ADCRecorderService()
+            return recorder.get_recording_status()
+        except Exception as e:
+            logger.error(f"Error getting recording status: {e}")
+            return {'active': False, 'error': str(e)}
