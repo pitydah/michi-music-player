@@ -131,6 +131,7 @@ markers = [
     "isolation: tests requiring process isolation due to connection caching",
     "qml_module: QML module name for evidence V5 mapping",
     "qml_dimension: QML migration dimension for evidence V5 scoring",
+    "recognition: tests requiring audio recognition services (PyAudio, etc.)",
 ]
 
 # ── EL: Package separation ──
