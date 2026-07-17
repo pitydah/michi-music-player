@@ -66,7 +66,6 @@ Rectangle {
             visible: root.hovered && root.description !== ""
             text: root.description || root.label + " (" + root.shortcut + ")"
             delay: 600
-            timeout: 5000
         }
     }
 }

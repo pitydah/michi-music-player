@@ -16,7 +16,7 @@ Rectangle {
     signal dismissAllRequested()
     signal notificationActivated(string notificationId)
 
-    Accessible.role: Accessible.Pane
+    Accessible.role: Accessible.Panel
     Accessible.name: "Centro de notificaciones"
     Accessible.description: "Lista de notificaciones activas"
 

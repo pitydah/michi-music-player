@@ -42,3 +42,12 @@ artifacts/*.txt
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Test runtime artifacts
+tests/**/results/*.xml
+
+# SQLite WAL/shm files (runtime)
+*.db-shm
+
+# Mock-generated directories
+MagicMock/
