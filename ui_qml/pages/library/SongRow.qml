@@ -22,7 +22,7 @@ Item {
     signal playClicked()
     signal rightClicked(var mouseX, var mouseY)
 
-    implicitHeight: 36
+    implicitHeight: MichiTheme.rowHeightCompact
 
     Rectangle {
         anchors.fill: parent

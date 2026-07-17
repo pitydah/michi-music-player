@@ -10,7 +10,7 @@ Item {
     objectName: "libraryFilterBar"
     focus: true
     id: root
-    width: parent.width; height: 30
+    width: parent.width; height: MichiTheme.rowHeightCompact
 
     property var lib: typeof libraryBridge !== "undefined" ? libraryBridge : null
 

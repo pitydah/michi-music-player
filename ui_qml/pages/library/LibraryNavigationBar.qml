@@ -11,7 +11,7 @@ Item {
     objectName: "libraryNavigationBar"
     focus: true
     id: root
-    width: parent.width; height: 38
+    width: parent.width; height: MichiTheme.toolbarHeight
 
     MichiResponsive { id: responsive; availableWidth: root.width }
 
@@ -53,7 +53,7 @@ Item {
                     background: Rectangle {
                         color: "transparent"
                         Rectangle {
-                            anchors.bottom: parent.bottom; width: parent.width; height: 2; radius: 1
+                            anchors.bottom: parent.bottom;         width: parent.width; height: MichiTheme.borderWidth; radius: MichiTheme.radius.xs
                             color: MichiTheme.colors.accentBlue
                             visible: tabBar.currentIndex === index
                         }

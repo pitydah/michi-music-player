@@ -10,7 +10,7 @@ Item {
     objectName: "libraryStatusHeader"
     focus: true
     id: root
-    width: parent.width; height: 28
+    width: parent.width; height: MichiTheme.density.compact
 
     property int songCount: 0
     property int albumCount: 0

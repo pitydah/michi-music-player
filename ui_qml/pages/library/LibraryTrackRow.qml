@@ -33,7 +33,7 @@ Item {
     signal rightClicked(int mx, int my)
     signal selectionToggled(int id, bool ctrl, bool shift)
 
-    height: 36
+    height: MichiTheme.rowHeightCompact
     Accessible.onPressAction: root.playClicked()
 
     Rectangle {

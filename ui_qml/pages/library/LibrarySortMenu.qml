@@ -49,7 +49,7 @@ Popup {
                 Text {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                     anchors.rightMargin: MichiTheme.spacing.sm
-                    text: root.bridge && root.bridge.activeSortKey === modelData.key ? (root.bridge.activeSortAscending ? "▲" : "▼") : ""
+                    text: root.bridge && root.bridge.activeSortKey === modelData.key ? (root.bridge.activeSortAscending ? "asc" : "desc") : ""
                     color: MichiTheme.colors.accentBlue
                     font.pixelSize: MichiTheme.typography.metaSize
                 }
