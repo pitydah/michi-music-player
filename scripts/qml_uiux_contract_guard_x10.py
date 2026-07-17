@@ -47,8 +47,11 @@ def load_exceptions():
     return []
 
 
-def is_excepted(file_rel, exceptions):
-    return any(exc.get("file") == file_rel for exc in exceptions)
+def is_excepted(file_rel, violation_type, exceptions):
+    return any(
+        exc.get("file") == file_rel and exc.get("type") == violation_type
+        for exc in exceptions
+    )
 
 
 def check_diff(exceptions):
@@ -65,7 +68,7 @@ def check_diff(exceptions):
 
     changed_files = [f for f in result.stdout.strip().split("\n") if f]
     for f in changed_files:
-        if is_excepted(f, exceptions):
+        if is_excepted(f, "protected_path_change", exceptions):
             continue
         for protected in PROTECTED_PATHS:
             if f.startswith(protected):
@@ -123,8 +126,6 @@ def full_scan(exceptions):
                 continue
             path = os.path.join(root, f)
             rel = os.path.relpath(path, PROJECT_ROOT)
-            if is_excepted(rel, exceptions):
-                continue
             try:
                 with open(path, encoding="utf-8") as fh:
                     content = fh.read()
@@ -133,7 +134,7 @@ def full_scan(exceptions):
 
             for imp in PROHIBITED_IMPORTS:
                 pattern = re.compile(rf'import\s+{re.escape(imp)}\b')
-                if pattern.search(content):
+                if pattern.search(content) and not is_excepted(rel, "prohibited_import", exceptions):
                     violations.append({
                         "type": "prohibited_import",
                         "file": rel,
@@ -141,7 +142,7 @@ def full_scan(exceptions):
                     })
 
             for cre in PROHIBITED_CREATIONS:
-                if cre.search(content):
+                if cre.search(content) and not is_excepted(rel, "service_creation", exceptions):
                     violations.append({
                         "type": "service_creation",
                         "file": rel,
@@ -152,7 +153,7 @@ def full_scan(exceptions):
             if root.endswith("pages") or "/pages/" in path:
                 lines = content.split("\n")
                 for i, line in enumerate(lines, 1):
-                    if MOCK_DATA_PATTERN.search(line) and "ListModel" in line:
+                    if MOCK_DATA_PATTERN.search(line) and "ListModel" in line and not is_excepted(rel, "mock_data", exceptions):
                         violations.append({
                             "type": "mock_data",
                             "file": rel,

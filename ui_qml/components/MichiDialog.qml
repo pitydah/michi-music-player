@@ -52,14 +52,14 @@ QQC2.Popup {
     }
 
     function _findFirstFocusable(container) {
-        if (!container || !container.data) return container
+        if (!container || !container.data) return null
         for (var i = 0; i < container.data.length; i++) {
             var child = container.data[i]
             if (_isFocusable(child)) return child
             var sub = _findFirstFocusable(child)
             if (sub) return sub
         }
-        return container.data.length > 0 ? container.data[0] : container
+        return null
     }
 
     onOpened: {
@@ -101,7 +101,11 @@ QQC2.Popup {
             id: focusScope
             anchors.fill: parent
 
-            readonly property Item firstFocusable: _findFirstFocusable(contentArea)
+            readonly property Item firstFocusable: {
+                var f = root._findFirstFocusable(contentArea)
+                if (f) return f
+                return root._findFirstFocusable(buttonsArea)
+            }
             readonly property Item lastFocusable: _findLastFocusable()
 
             function focusFirst() {
@@ -115,10 +119,10 @@ QQC2.Popup {
             function _findLastFocusable() {
                 for (var i = buttonsArea.data.length - 1; i >= 0; i--) {
                     var child = buttonsArea.data[i]
-                    if (child !== undefined && child !== null)
+                    if (child !== undefined && child !== null && root._isFocusable(child))
                         return child
                 }
-                return buttonsArea
+                return buttonsArea.data.length > 0 ? buttonsArea.data[buttonsArea.data.length - 1] : buttonsArea
             }
 
             Item {
