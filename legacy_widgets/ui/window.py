@@ -1,4 +1,5 @@
-"""MainWindow — 2 panels + nowplaying bar with library, EQ, and streaming."""
+"""MainWindow — LEGACY QtWidgets UI. No modificar sin tests.
+TODO: migrar navegación a NavigationController cuando se elimine el legacy gate."""
 
 import os
 import random
