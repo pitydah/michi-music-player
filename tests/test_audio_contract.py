@@ -1,10 +1,47 @@
 """Verify all backends fulfill the AudioBackend contract."""
 import pytest
 
+from audio.player import PlaybackState
 
-def test_gstreamer_backend_has_all_methods():
-    from audio.backends.gstreamer_backend import GStreamerAudioBackend
-    backend = GStreamerAudioBackend()
+
+def _make_mock_engine():
+    """Create a mock engine with enough structure for the adapter."""
+    from PySide6.QtCore import QObject, Signal
+    class FakeEngine(QObject):
+        position_changed = Signal(float)
+        duration_changed = Signal(float)
+        state_changed = Signal(object)
+        queue_changed = Signal(list)
+        finished = Signal()
+        error_occurred = Signal(str)
+
+        def __init__(self):
+            super().__init__()
+            self.state = PlaybackState.STOPPED
+            self._volume = 0.7
+            self._queue = []
+            self._queue_index = -1
+            self.current = ""
+            self._audio_profile = "standard"
+            self._replaygain = False
+            self._spectrum_enabled = False
+            self._eq = None
+
+        def get_position_ns(self):
+            return 0
+
+        def set_volume(self, vol):
+            self._volume = vol
+
+        def stop(self):
+            pass
+
+    return FakeEngine()
+
+
+def test_engine_backend_adapter_has_all_methods():
+    from audio.backends.engine_backend_adapter import EngineBackendAdapter
+    backend = EngineBackendAdapter(_make_mock_engine())
     required = ['play', 'pause', 'resume', 'toggle', 'stop', 'seek',
                 'set_volume', 'set_queue', 'enqueue', 'enqueue_next',
                 'clear_queue', 'play_next', 'play_prev', 'get_queue',
@@ -14,6 +51,7 @@ def test_gstreamer_backend_has_all_methods():
         assert hasattr(backend, method), f"Missing: {method}"
     assert hasattr(type(backend), 'capabilities'), "Missing capabilities property"
     assert hasattr(type(backend), 'backend_id'), "Missing backend_id"
+    assert backend.backend_id == "gstreamer"
 
 
 def test_mpd_backend_has_all_methods():
@@ -30,9 +68,20 @@ def test_mpd_backend_has_all_methods():
 
 
 def test_volume_contract():
-    from audio.backends.gstreamer_backend import GStreamerAudioBackend
-    backend = GStreamerAudioBackend()
+    from audio.backends.engine_backend_adapter import EngineBackendAdapter
+    backend = EngineBackendAdapter(_make_mock_engine())
     for vol in [0, 1, 50, 99, 100]:
         backend.set_volume(vol)
         snap = backend.get_snapshot()
         assert snap.volume == vol, f"Volume {vol} -> {snap.volume}"
+
+
+def test_adapter_capabilities_include_eq():
+    from audio.backends.engine_backend_adapter import EngineBackendAdapter
+    backend = EngineBackendAdapter(_make_mock_engine())
+    caps = backend.capabilities
+    assert caps.supports_eq is True
+    assert caps.supports_replaygain is True
+    assert caps.supports_spectrum is True
+    assert caps.supports_dsd is True
+    assert caps.supports_dop is True

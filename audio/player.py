@@ -26,7 +26,7 @@ from PySide6.QtCore import QObject, Signal, QTimer  # noqa: E402
 
 from audio.audio_chain import DacConfig  # noqa: E402
 from audio.dff_parser import parse_dff  # noqa: E402
-from audio.backends.gstreamer_backend import GStreamerAudioBackend  # noqa: E402
+# EngineBackendAdapter imported lazily in methods to avoid circular import
 
 Gst.init(None)
 
@@ -69,7 +69,8 @@ class GStreamerEngine(QObject):
     def __init__(self, dac: DacConfig = None, parent=None):
         super().__init__(parent)
         self._dac = dac or DacConfig()
-        self._backend = GStreamerAudioBackend()
+        from audio.backends.engine_backend_adapter import EngineBackendAdapter
+        self._backend = EngineBackendAdapter(self)
         self._backend.set_callbacks(
             on_state_changed=self._on_backend_state_changed,
             on_track_ended=self._on_backend_track_ended,

@@ -34,11 +34,13 @@ class EngineBackendAdapter(QObject):
             {PlaybackState.PLAYING: "playing", PlaybackState.PAUSED: "paused",
              PlaybackState.STOPPED: "stopped"}.get(s, "stopped")))
 
+    def set_callbacks(self, **kwargs):
+        pass
+
     @property
     def capabilities(self) -> BackendCapabilities:
         return BackendCapabilities(
             backend_id="gstreamer", display_name="GStreamer (Engine)",
-            supports_seek=True, supports_queue=True,
             supports_digital_volume=True, supports_eq=True,
             supports_replaygain=True, supports_spectrum=True,
             supports_radio=True, supports_streams=True,
