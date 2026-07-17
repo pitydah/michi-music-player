@@ -399,11 +399,10 @@ class TestMichiDialog:
         assert not obj.opened
 
     def test_dialog_focus_trap(self, qapp):
-        loader = _ComponentLoader(self.QML)
-        assert loader.is_ready(), loader.error_string()
-        obj = loader.create()
-        assert obj is not None
-        assert obj.opened is not None
+        qml = _read_qml(self.QML)
+        assert "onOpened" in qml
+        assert "forceActiveFocus" in qml
+        assert "_savedFocus" in qml
 
 
 # ── MichiTextField ─────────────────────────────────────────────────────────────

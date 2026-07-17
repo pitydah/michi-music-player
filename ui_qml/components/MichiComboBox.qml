@@ -26,10 +26,22 @@ Item {
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
 
+    function _modelLength() {
+        if (root.model === null || root.model === undefined) return 0
+        if (typeof root.model === 'object' && root.model.count !== undefined) return root.model.count
+        return root.model.length || 0
+    }
+
+    function _modelGet(idx) {
+        if (root.model === null || root.model === undefined) return undefined
+        if (typeof root.model === 'object' && root.model.get !== undefined) return root.model.get(idx)
+        return root.model[idx]
+    }
+
     onCurrentIndexChanged: {
-        if (root.currentIndex >= 0 && root.currentIndex < root.model.length) {
-            var item = root.model[root.currentIndex]
-            root.currentText = typeof item === "object" ? (item.text || item.name || "") : item
+        if (root.currentIndex >= 0 && root.currentIndex < root._modelLength()) {
+            var item = root._modelGet(root.currentIndex)
+            root.currentText = typeof item === "object" ? (item.text || item.name || "") : (item !== undefined ? String(item) : "")
         } else {
             root.currentText = ""
         }
@@ -148,7 +160,7 @@ Item {
             }
         }
 
-        height: Math.min(root.model.length * MichiTheme.rowHeightCompact + MichiTheme.spacing.xxs * 2, 300)
+        height: Math.min(root._modelLength() * MichiTheme.rowHeightCompact + MichiTheme.spacing.xxs * 2, 300)
     }
 
     Keys.onUpPressed: function(event) {
@@ -161,7 +173,7 @@ Item {
 
     Keys.onDownPressed: function(event) {
         if (root.popupOpen) {
-            var next = Math.min(root.model.length - 1, root.currentIndex + 1)
+            var next = Math.min(root._modelLength() - 1, root.currentIndex + 1)
             root.currentIndex = next
             event.accepted = true
         } else {

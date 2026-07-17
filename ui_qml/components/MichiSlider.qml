@@ -30,6 +30,10 @@ Rectangle {
     Accessible.role: Accessible.Slider
     Accessible.name: root.accessibleName
     Accessible.description: root.accessibleDescription
+    Accessible.value: root.value
+    Accessible.minimum: root.from
+    Accessible.maximum: root.to
+    Accessible.stepSize: root.stepSize
 
     function _range() {
         return Math.max(0.0001, root.to - root.from)
