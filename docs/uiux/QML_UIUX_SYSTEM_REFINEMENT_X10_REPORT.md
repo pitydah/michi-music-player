@@ -5,28 +5,36 @@
 | Field | Value |
 |-------|-------|
 | Baseline SHA | `330047fd` |
-| Final SHA | `1d9ab290` |
-| Files changed | 365 files, +18912 / -821 |
-| Commits | 16 |
+| Final SHA | `364a04b2` |
+| Files changed | 375 files, +19128 / -938 |
+| Commits | 23 |
 
-## Commits (330047fd..1d9ab290)
+## Commits (330047fd..364a04b2)
 
 ```
-1d9ab290 uiux-x10: C3 - QTest real en ComboBox/TextField/Dialog (xfail offscreen)
-c4d30565 uiux-x10: C1/C2/C4/C5/C6/C7 - button objectName, dialog shadow, textfield, exit codes, exceptions, tokens
-8f15302e (base rebase) uiux-x10-ola8: rebase, regresiones y reporte final
-14e5dbe0 uiux-x10-ola2/4-6: reparar accesibilidad automatica + refinar paginas criticas
-99cc81c3 uiux-x10-ola1: corregir 20 componentes Michi base
-2684abed uiux-x10: documentar excepciones del contract guard
-a9479969 uiux-x10-15/16: validacion final, auditorias y reporte UIUX
-a4837c7a uiux-x10-13/14: accesibilidad granular + responsive layouts
-3e82cd33 uiux-x10-06/07/08/09/10/11/12: dominio central + avanzado refinements
-7d0b7fd3 uiux-x10-02/03/04/05: theme tokens, controls unification, shell refinement
-303f8c3e uiux-x10-01: inventory QML components pages and visual debt
-330047fd fix: 16 correcciones — asserts obligatorios, backend verification, wait_for_condition
-b134d0b2 feat: 15 tests E2E QTest reales — 11 archivos
-52ec5812 feat: helpers wait_for_condition/property + QTest verification backend
-c215cdaa fix: 8 puntos — confirmDestructive, output_profiles, binder, gates, QTest, CI, cancel
+364a04b2 P1/P2/P3/P4/P5/P6 — slider, dialog focus, combobox, tests, ci, responsive
+6500f650 final — ComboBox ListModel, Slider accesible, focus trap, reporte
+6162e245 C8/C9/C10 — rebase, CI, reporte final
+13b44770 C3 — QTest real (xfail offscreen)
+9a6989fe C1/C2/C4/C5/C6/C7 — button, dialog, textfield, exit codes, tokens
+9a115a20 fix tests runtime post-veredicto
+58ed89db correccion post-veredicto B1-B6
+7db7af35 ola8: rebase, regresiones, reporte
+fc6f3413 ola2/4-6: accesibilidad + paginas criticas
+e89ed6b2 ola1: 20 componentes Michi base
+7520f0f2 documentar excepciones contract guard
+01d7a5a0 validacion final, auditorias, reporte
+6aa2d60d accesibilidad granular + responsive
+9c2b441f dominio central + avanzado refinements
+0c9ffb5d tokens, controles, shell
+68209dc4 inventory QML components
+fe5d3fdd feat: 6 prioridades — workflows, pages, CI
+e9656ed8 feat: 25 objectName en QML
+b97cc0c8 fix: asserts, CI engine
+35e88517 feat: asserts, CI engine, gates 100%
+dd8e9fac feat: QTest, assistant test, gates
+a2b167fc fix: backend verification + CI
+2731c1fb feat: tests, CI, wait_for_property
 ```
 
 ## Componentes Consolidados
@@ -128,13 +136,12 @@ Cobertura completa de: theme/, components/, shell/, pages/ (all subdirectories).
 
 ## Tests
 
-**Runtime (test_controls_runtime.py)**: 94 passed, 1 failed, 5 xfail  
-**UI/UX total (visual + accessibility + responsive)**: 1810 passed, 118 failed, 133 skipped, 5 xfailed
+**Runtime (test_controls_runtime.py)**: 97 passed, 3 xfailed (3 Dialog tests con QQC2.Popup no compatible con QQuickView)  
+**Responsive (responsive_x10)**: 1019 passed, 0 failures  
+**UI/UX total (visual + accessibility + responsive)**: 1823 passed, 107 failed (pre-existentes), 133 skipped, 3 xfailed
 
-**117 fallidos**: 109 son pre-existentes (convención objectName, hardcoded spacing,  
-falta de responsive breakpoints en páginas legacy no tocadas).  
-8 son nuevos (responsive_x10 detecta hardcoded spacing en componentes no modificados  
-por esta rama — deuda documentada para mantenimiento continuo).
+**107 fallidos**: todos pre-existentes (convención objectName, componentes legacy).  
+0 fallos nuevos de responsive_x10 (corregidos en P5).
 
 ## Correcciones post-veredicto (C1-C10)
 
@@ -167,24 +174,52 @@ por esta rama — deuda documentada para mantenimiento continuo).
 - Eliminados `fast: 120`, `normal: 160`, `slow: 220` de MichiMotion.qml (duplicados de `durationFast`, `durationNormal`, `durationSlow` con valores DISTINTOS).
 - Migrados 6 consumidores de `MichiTheme.disabledOpacity` → `MichiTheme.opacity.disabled`.
 
+## Correcciones Finales (P1-P6)
+
+### P1 — Slider accessible
+- `Accessible.minimum` → `Accessible.minimumValue`
+- `Accessible.maximum` → `Accessible.maximumValue`
+- Agregados `Accessible.onIncreaseAction` y `Accessible.onDecreaseAction`
+
+### P2 — Focus trap real en MichiDialog
+- Envuelto contenido en `FocusScope` con `focusFirst()`/`focusLast()`
+- `onOpened` llama a `focusScope.focusFirst()`
+- `KeyNavigation.tab`/`backtab` entre primer y último control
+- Test verifica `focusFirst`, `focusLast`, `TabFocusReason`, `BacktabFocusReason`
+
+### P3 — QTest sobre QQuickWindow
+- `_ComponentLoader` cambiado a `QQuickView` en vez de `QQmlComponent.create()`
+- 3 tests aún xfail (QQC2.Popup como root no es QQuickItem)
+- 97 passed, 3 xfailed
+
+### P4 — CI pipefail
+- Agregado `defaults: run: shell: bash` al workflow CI
+- Esto activa `bash -eo pipefail` para que `| tail` no oculte errores
+
+### P5 — 10 fallos responsive corregidos
+- SidebarItem, ToastHost, SettingsRow, EqualizerGraph, AlbumCard, ArtistCard,
+  FolderTreeView, AlbumCoverFlowView, AlbumVinylWallView, AppShell
+- **Resultado: 1019 passed, 0 failures**
+
+### P6 — ComboBox dropdown con ListView
+- Reemplazado `Column { Repeater }` por `ListView` con `clip: true`, `boundsBehavior: StopAtBounds`
+
 ## Excepciones del Contract Guard
 
-Actualmente vacío. El `contract_guard` detecta 2 falsos positivos en SongTable.qml y ThemeStore.qml (uso de `navigationBridge`, `selectionContextBridge`, etc. — no creación de servicios). El regex del guard es demasiado sensible pero no requiere excepción porque no hay creación real de servicios.
+Actualmente vacío. El `contract_guard` detecta 2 falsos positivos en SongTable.qml y ThemeStore.qml (uso de `navigationBridge`, `selectionContextBridge`, etc. — no creación de servicios).
 
-## Regresiones Post-Rebase
+## Estado Post-Rebase Final
 
-**No hubo conflictos** durante el rebase contra `origin/main` (16 commits aplicados limpiamente).  
-`git diff --check` = 0. `ruff check` = 0 errores. `compileall` = 0 errores.  
-Contract guard = 0 violaciones nuevas (2 falsos positivos pre-existentes).  
-
-**Tests runtime**: 94 passed, 1 failed (preexistente), 5 xfail (QTest necesita display real).  
-**Tests UI/UX total**: 1810 passed, 118 failed (109 pre-existentes + 9 nuevos responsive_x10), 5 xfailed.  
-**CI UI/UX**: Agregado al workflow (visual_x10, accessibility_x10, responsive_x10, audit gates).
+- Rebase contra `origin/main` completado: **0 commits behind, 16 ahead**
+- Ruff: 0 errores. Compileall: 0 errores. Contract guard: 0 violaciones nuevas.
+- **Tests runtime**: 97 passed, 3 xfailed (Dialog QQC2.Popup no compatible con QQuickView)
+- **Tests responsive**: 1019 passed, 0 failures
+- **Tests UI/UX total**: 1823 passed, 107 failed (todos pre-existentes), 133 skipped, 3 xfailed
+- **0 fallos nuevos** generados por esta rama
 
 ## Pendientes
 
-- Los 8 fallos nuevos de responsive_x10 son por hardcoded spacing en páginas legacy (no modificadas por esta rama). Deben corregirse como parte del mantenimiento continuo.
-- Los 5 xfail de QTest.keyClick requieren un entorno con display real para ejecutarse.
-- ~182 hardcoded values restantes identificados por token_audit (deuda visual continua).
-- 716 controles sin objectName (pre-existing en páginas legacy).
-- ~80+ páginas reportan `no_responsive_breakpoint` (pre-existing).
+- ~182 hardcoded values restantes (deuda visual pre-existente, mantenimiento continuo)
+- 716 controles sin objectName (pre-existing)
+- ~80+ páginas sin responsive breakpoint (pre-existing)
+- 3 xfail de Dialog (QQC2.Popup necesita manejo especial en QQuickView)
