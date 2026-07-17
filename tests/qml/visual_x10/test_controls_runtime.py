@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QObject, QUrl
+from PySide6.QtCore import QUrl
 from PySide6.QtQml import QQmlEngine
 from PySide6.QtQuick import QQuickView
 

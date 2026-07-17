@@ -182,7 +182,7 @@ def main():
                 new_regressions = True
                 print(f"  REGRESSION: {key} count {count} > baseline {baseline_count}", file=sys.stderr)
         if new_regressions:
-            print(f"REGRESSION DETECTED", file=sys.stderr)
+            print("REGRESSION DETECTED", file=sys.stderr)
             sys.exit(1)
         else:
             print(f"OK: {sum(current_fp.values())} occurrences ({len(current_fp)} fingerprints, baseline: {len(baseline_fp)})")

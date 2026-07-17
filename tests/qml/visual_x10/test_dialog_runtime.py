@@ -7,7 +7,6 @@ import pytest
 from PySide6.QtCore import QUrl, QObject, QCoreApplication
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtTest import QTest
 
 TEST_DIR = Path(__file__).resolve().parent
 HOST_QML = str(TEST_DIR / "host" / "DialogHost.qml")
