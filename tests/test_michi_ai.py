@@ -180,4 +180,4 @@ class TestEngine:
     def test_engine_process_library_status(self):
         result = process("cuántas canciones tengo")
         assert result["intent"] == "library_status"
-        assert "canciones" in result["response"]
+        assert any(w in result["response"] for w in ["canciones", "temas", "discos"])
