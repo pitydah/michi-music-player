@@ -9,6 +9,37 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
+          pip install ruff
+      - name: Ruff check
+        run: ruff check . ${{ env.ruff_out }}
+      - name: Compileall
+        run: python -m compileall -q -x '${{ env.compile_exclude }}' .
+      - name: Import audit
+        run: python scripts/audit_qtwidgets_imports.py
+
+  test:
+    needs: [lint]
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
@@ -26,30 +57,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
-          pip install ruff
-      - name: Ruff check
-        run: ruff check . ${{ env.ruff_out }}
-      - name: Compileall
-        run: python -m compileall -q -x '${{ env.compile_exclude }}' .
-      - name: Import audit
-        run: python scripts/audit_qtwidgets_imports.py 2>&1 || echo "WARNING: QtWidgets found"
-
-  test:
-    needs: [lint]
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 xvfb
-          pip install -e ".[dev]" 2>/dev/null || pip install PySide6 pytest
+          pip install -e ".[dev]" build
       - name: Core tests
         run: |
           QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q --timeout=300 \
@@ -116,7 +124,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install deps
-        run: pip install build
+        run: pip install build twine
       - name: Build wheel
         run: python -m build --wheel
       - name: Verify wheel
@@ -132,8 +140,19 @@ jobs:
           qml_files = [n for n in names if n.endswith('.qml')]
           print(f'Wheel OK: {len(names)} files, {len(qml_files)} QML')
       "
+      - name: Install wheel
+        run: |
+          pip install dist/*.whl
+          python -c "from michi.app_launcher import launch; print('Entry point OK')"
       - name: Upload wheel
         uses: actions/upload-artifact@v4
         with:
           name: wheel-${{ github.sha }}
           path: dist/*.whl
+      - name: Publish to PyPI (tagged releases only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          twine upload dist/*.whl
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
