@@ -53,6 +53,17 @@ QtObject {
     readonly property int coverRadius: radius.sm
 
     readonly property real focusWidth: borderWidthFocus
+
+    readonly property real disabledOpacity: opacity.disabled
+    readonly property int motionFast: motion.durationFast
+    readonly property int motionNormal: motion.durationNormal
+    readonly property int motionSlow: motion.durationSlow
+    readonly property int radiusXs: radius.xs
+    readonly property int radiusSm: radius.sm
+    readonly property int radiusMd: radius.md
+    readonly property int radiusLg: radius.lg
+    readonly property int radiusXl: radius.xl
+    readonly property int radiusPill: radius.pill
     readonly property real focusOffset: 2
 
     readonly property int sidebarWidth: 250

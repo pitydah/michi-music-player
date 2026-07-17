@@ -82,10 +82,6 @@ Item {
                     text: "Ver servidores"
                     variant: "primary"
                     onClicked: root.openConnections()
-                    Accessible.role: Accessible.Button
-
-                    activeFocusOnTab: true
-
                 }
                 MichiButton {
                     text: "Home Audio"
