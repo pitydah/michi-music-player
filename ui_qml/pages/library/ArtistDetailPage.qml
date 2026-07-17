@@ -56,7 +56,7 @@ Item {
                 MichiButton { text: "← Volver"; variant: "ghost"; onClicked: root.backRequested() }
 
                 Rectangle {
-                    width: 48; height: 48; radius: 24
+                    width: MichiTheme.coverSizeSmall; height: MichiTheme.coverSizeSmall; radius: MichiTheme.radius.pill
                     color: MichiTheme.colors.surfaceCard
                     Text {
                         anchors.centerIn: parent

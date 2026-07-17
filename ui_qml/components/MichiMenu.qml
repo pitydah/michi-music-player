@@ -50,7 +50,7 @@ Item {
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
-            radius: 16
+            radius: MichiTheme.radius.xl
             samples: 32
             color: MichiTheme.colors.shadowFloating
             verticalOffset: 4

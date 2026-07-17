@@ -33,8 +33,8 @@ Item {
 
         Rectangle {
             anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
-            width: 40; height: 3; radius: 2
-            color: MichiTheme.colors.textMuted; opacity: 0.3
+            width: MichiTheme.spacing.xl + MichiTheme.spacing.lg; height: MichiTheme.spacing.xxs; radius: MichiTheme.radius.xs
+            color: MichiTheme.colors.textMuted; opacity: MichiTheme.opacity.muted
         }
 
         Flickable {

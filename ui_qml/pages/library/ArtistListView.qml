@@ -43,7 +43,7 @@ Item {
                 spacing: MichiTheme.spacing.md
 
                 Rectangle {
-                    width: 40; height: 40; radius: 20
+                    width: MichiTheme.coverSizeSmall; height: MichiTheme.coverSizeSmall; radius: MichiTheme.radius.pill
                     color: MichiTheme.colors.surfaceCard
                     Text {
                         anchors.centerIn: parent
