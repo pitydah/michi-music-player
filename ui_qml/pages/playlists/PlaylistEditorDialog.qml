@@ -144,10 +144,6 @@ Dialog {
                             var result = root.bridge.createPlaylist(name)
                             var newId = result && result.id ? result.id : -1
                             root.saved(newId, name)
-                Accessible.role: Accessible.Button
-
-                activeFocusOnTab: true
-
                         } else {
                             root.saved(-1, name)
                         }
