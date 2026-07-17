@@ -10,16 +10,16 @@ Rectangle {
     property bool favorite: false
 
     visible: root.favorite
-    width: 16
-    height: 16
-    radius: 8
+    width: MichiTheme.spacing.lg
+    height: MichiTheme.spacing.lg
+    radius: MichiTheme.radius.md
     color: MichiTheme.colors.error
 
     Text {
         anchors.centerIn: parent
         text: "\u2665"
         color: MichiTheme.colors.textOnError
-        font.pixelSize: 10
-        font.weight: FontWeight.Bold
+        font.pixelSize: MichiTheme.typography.badgeSize
+        font.weight: MichiTheme.typography.weightBold
     }
 }

@@ -31,12 +31,12 @@ Item {
         anchors.fill: parent
         anchors.margins: MichiTheme.spacing.md
         model: root.albumModel
-        cellWidth: Math.max(140, Math.floor((root.width - MichiTheme.spacing.md * 2 - MichiTheme.spacing.md * (responsive.columnCount - 1)) / responsive.columnCount))
-        cellHeight: cellWidth + 80
+        cellWidth: Math.max(MichiTheme.coverSizeSmall * 3, Math.floor((root.width - MichiTheme.spacing.md * 2 - MichiTheme.spacing.md * (responsive.columnCount - 1)) / responsive.columnCount))
+        cellHeight: cellWidth + MichiTheme.spacing.xxxl + MichiTheme.typography.cardTitleSize + MichiTheme.typography.metaSize
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        ScrollBar.vertical: ScrollBar { width: 8; policy: ScrollBar.AsNeeded }
+        ScrollBar.vertical: ScrollBar { width: MichiTheme.spacing.sm; policy: ScrollBar.AsNeeded }
 
         delegate: AlbumCard {
             width: gridView.cellWidth - MichiTheme.spacing.md

@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -16,22 +14,18 @@ RowLayout {
 
     Repeater {
         model: [
-            {label: "Grid", tooltip: "Vista cuadrícula"},
-            {label: "Cover", tooltip: "Cover Flow"},
-            {label: "Vinyl", tooltip: "Pared de vinilos"},
-            {label: "Years", tooltip: "Línea de tiempo"},
-            {label: "Mag", tooltip: "Revista"},
+            {icon: "qrc:/icons/view/warm_view_grid.svg", tooltip: "Vista cuadrícula"},
+            {icon: "qrc:/icons/view/warm_view_coverflow.svg", tooltip: "Cover Flow"},
+            {icon: "qrc:/icons/view/warm_view_vinyl.svg", tooltip: "Pared de vinilos"},
+            {icon: "qrc:/icons/view/warm_view_timeline.svg", tooltip: "Línea de tiempo"},
+            {icon: "qrc:/icons/view/warm_view_magazine.svg", tooltip: "Revista"},
         ]
 
-        MichiButton {
-            Accessible.role: Accessible.Button
-
-            activeFocusOnTab: true
-
-            text: modelData.label
-            variant: currentView === index ? "primary" : "ghost"
-            Accessible.name: modelData.tooltip
-            implicitHeight: 28
+        MichiIconButton {
+            iconSource: modelData.icon
+            tooltipText: modelData.tooltip
+            btnSize: 28
+            selected: currentView === index
             onClicked: {
                 root.currentView = index
                 root.viewChanged(index)

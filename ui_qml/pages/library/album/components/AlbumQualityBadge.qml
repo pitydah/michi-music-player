@@ -11,9 +11,9 @@ Rectangle {
     property int sampleRate: 0
     property int bitDepth: 0
 
-    width: 8
-    height: 8
-    radius: 4
+    width: MichiTheme.spacing.sm
+    height: MichiTheme.spacing.sm
+    radius: MichiTheme.radius.xs
     visible: qualityKind !== ""
 
     color: {

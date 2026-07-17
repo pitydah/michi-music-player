@@ -124,8 +124,8 @@ Item {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         width: Math.min(parent.width * 0.3, 300)
-        height: 4
-        radius: 2
+        height: MichiTheme.spacing.xxs
+        radius: MichiTheme.radius.xs
         color: MichiTheme.colors.borderSubtle
         visible: root.albumModel && root.albumModel.count > 0
 
@@ -134,7 +134,7 @@ Item {
             anchors.bottom: parent.bottom
             x: (pathView.currentIndex / Math.max(1, pathView.count - 1)) * (parent.width - parent.height)
             width: parent.height
-            radius: 2
+            radius: MichiTheme.radius.xs
             color: MichiTheme.colors.accentBlue
         }
     }
